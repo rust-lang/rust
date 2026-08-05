@@ -1,5 +1,4 @@
 use std::iter;
-use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
@@ -13,7 +12,7 @@ use tracing::debug;
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use crate::ty::{self, Ident, Interner, RestrictionKind, Ty, TyCtxt, VisitorResult};
+use crate::ty::{self, Ident, Interner, RestrictionKind, Ty, TyCtxt, VisitorResult, try_visit};
 
 /// A trait's definition with type information.
 #[derive(StableHash, Encodable, Decodable)]
@@ -142,21 +141,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
-        macro_rules! ret {
-            ($e: expr) => {
-                match $e.branch() {
-                    ControlFlow::Break(b) => return R::from_residual(b),
-                    ControlFlow::Continue(()) => {}
-                }
-            };
-        }
-
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
-                    ret!(f(impl_def_id))
+                    try_visit!(f(impl_def_id))
                 }
             }
 
@@ -191,7 +181,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::fast_reject::TreatParams::AsRigid,
                 )
                 .unwrap();
-                ret!(consider_impls_for_simplified_type(simp));
+                try_visit!(consider_impls_for_simplified_type(simp));
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -219,7 +209,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    ret!(consider_impls_for_simplified_type(simp));
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -234,7 +224,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ];
 
                 for simp in possible_floats {
-                    ret!(consider_impls_for_simplified_type(simp));
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -245,14 +235,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
                 ) {
-                    ret!(consider_impls_for_simplified_type(simp));
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
             // This is only for diagnostics and normally ty vars should be handled by the callers.
             ty::Infer(ty::TyVar(_)) => {
                 for &impl_def_id in trait_impls.non_blanket_impls().values().flatten() {
-                    ret!(f(impl_def_id));
+                    try_visit!(f(impl_def_id));
                 }
             }
 
