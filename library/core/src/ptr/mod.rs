@@ -2078,10 +2078,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///   semantics associated to their manipulation, and cannot be used as general purpose memory.
 ///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
 ///   of such a read are well-defined by the target hardware. The provenance of the pointer is
-///   irrelevant, and it can be created with [`without_provenance`]. The access must not trap. It
-///   can cause side-effects, but those must not affect Rust-allocated memory in any way. This
-///   access is still not considered [atomic], and as such it cannot be used for inter-thread
-///   synchronization.
+///   irrelevant, and it can be created with [`without_provenance`]. The access is allowed to trap.
+///   It can also cause other side-effects, but those must not affect Rust-allocated memory in any
+///   way. This access is still not considered [atomic], and as such it cannot be used for
+///   inter-thread synchronization.
 ///
 /// Note that volatile memory operations where T is a zero-sized type are noops and may be ignored.
 ///
@@ -2184,9 +2184,9 @@ pub const unsafe fn read_volatile<T>(src: *const T) -> T {
 ///   semantics associated to their manipulation, and cannot be used as general purpose memory.
 ///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
 ///   of such a write are well-defined by the target hardware. The provenance of the pointer is
-///   irrelevant, and it can be created with [`without_provenance`]. The access must not trap. It
-///   can cause side-effects, but those must not affect Rust-allocated memory in any way. This
-///   access is still not considered [atomic], and as such it cannot be used for inter-thread
+///   irrelevant, and it can be created with [`without_provenance`]. The access is allowed to trap.
+///   It can also cause side-effects, but those must not affect Rust-allocated memory in any way.
+///   This access is still not considered [atomic], and as such it cannot be used for inter-thread
 ///   synchronization.
 ///
 /// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
