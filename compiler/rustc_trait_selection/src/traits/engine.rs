@@ -142,6 +142,13 @@ where
             }
         }
     }
+
+    fn is_in_probe(&self, infcx: &InferCtxt<'_>) -> bool {
+        match self {
+            FulfillmentEngine::Old(engine) => engine.is_in_probe(infcx),
+            FulfillmentEngine::Next(engine) => engine.is_in_probe(infcx),
+        }
+    }
 }
 
 /// Used if you want to have pleasant experience when dealing

@@ -330,6 +330,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcLintOptTyParser>>,
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
         Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,
+        Single<WithoutArgs<RustcLowPriorityImplParser>>,
         Single<WithoutArgs<RustcMainParser>>,
         Single<WithoutArgs<RustcNeverReturnsNullPtrParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,

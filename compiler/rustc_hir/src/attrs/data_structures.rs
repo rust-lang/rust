@@ -1523,6 +1523,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_lint_untracked_query_information]`
     RustcLintUntrackedQueryInformation,
 
+    RustcLowPriorityImpl,
+
     /// Represents `#[rustc_macro_transparency]`.
     RustcMacroTransparency(Transparency),
 
