@@ -149,7 +149,7 @@ pub struct InferCtxtInner<'tcx> {
     /// are deduced from the well-formedness of the witness's types, and are
     /// necessary because of the way we anonymize the regions in a coroutine,
     /// which may cause types to no longer be considered well-formed.
-    region_assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    region_assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 
     /// `-Znext-solver`: Successfully proven goals during HIR typeck which
     /// reference inference variables and get reproven in case MIR type check
@@ -188,7 +188,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn region_assumptions(&self) -> &[ty::ArgOutlivesPredicate<'tcx>] {
+    pub fn region_assumptions(&self) -> &[ty::ArgOutlivesClause<'tcx>] {
         &self.region_assumptions
     }
 

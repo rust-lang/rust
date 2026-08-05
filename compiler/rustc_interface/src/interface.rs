@@ -375,7 +375,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
     // Initialize jobserver as early as possible.
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
-    if let Some(limit) = config.opts.jobs.frontend.max(config.opts.jobs.backend) {
+    let jobs = config.opts.jobs;
+    if let Some(limit) = jobs.frontend.max(jobs.backend).max(jobs.linker.limit()) {
         jobserver::initialize(limit.get(), |err| {
             let note = "the build environment is likely misconfigured";
             early_dcx.early_struct_warn(err).with_note(note).emit()
@@ -398,7 +399,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     util::run_in_thread_pool_with_globals(
         &early_dcx,
         config.opts.edition,
-        config.opts.jobs,
+        jobs,
         &config.extra_symbols,
         SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind },
         |current_gcx| {

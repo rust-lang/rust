@@ -84,6 +84,7 @@ expression: test --skip=tests --skip=library --skip=tidyselftest
     - Set({compiler/rustc_traits})
     - Set({compiler/rustc_transmute})
     - Set({compiler/rustc_ty_utils})
+    - Set({compiler/rustc_ty_walk})
     - Set({compiler/rustc_type_ir})
     - Set({compiler/rustc_type_ir_macros})
     - Set({compiler/rustc_windows_rc})

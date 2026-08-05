@@ -419,7 +419,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, Determinacy> {
         // Make sure `self`, `super` etc produce an error when passed to here.
-        if !matches!(scope_set, ScopeSet::Module(..)) && ident.name.is_path_segment_keyword() {
+        if ident.name.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
         }
 
@@ -714,7 +714,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
                 Some(decl) => Ok(decl),
-                None => Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations())),
+                None => {
+                    Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations(&self)))
+                }
             },
             Scope::BuiltinAttrs => match self.builtin_attr_decls.get(&ident.name) {
                 Some(decl) => Ok(*decl),
@@ -727,9 +729,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                 ) {
                     Some(decl) => Ok(decl),
-                    None => {
-                        Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations()))
-                    }
+                    None => Err(Determinacy::determined(
+                        !self.graph_root.has_unexpanded_invocations(&self),
+                    )),
                 }
             }
             Scope::ExternPreludeFlags => {
@@ -1077,10 +1079,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_decl.unwrap());
-                    } else if ident.name == kw::Super {
-                        // FIXME: Implement these with renaming requirements so that e.g.
-                        // `use super;` doesn't work, but `use super as name;` does.
-                        // Fall through here to get an error from `early_resolve_...`.
                     }
                 }
 
@@ -1158,7 +1156,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             // finalize implies that the module is fully expanded
-            assert!(!module.has_unexpanded_invocations());
+            assert!(!module.has_unexpanded_invocations(&self));
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1195,7 +1193,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Check if one of unexpanded macros can still define the name.
-        if module.has_unexpanded_invocations() {
+        if module.has_unexpanded_invocations(&self) {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
@@ -1224,7 +1222,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             // finalize implies that the module is fully expanded
-            assert!(!module.has_unexpanded_invocations());
+            assert!(!module.has_unexpanded_invocations(&self));
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1268,7 +1266,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         if let Some(binding) = binding {
-            return if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
+            return if binding.determined(&self)
+                || ns == MacroNS
+                || shadowing == Shadowing::Restricted
+            {
                 let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
                 if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
             } else {
@@ -1283,13 +1284,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // scopes we return `Undetermined` with `ControlFlow::Continue`.
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        if module.has_unexpanded_invocations() {
+        if module.has_unexpanded_invocations(&self) {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        for glob_import in module.globs.borrow().iter() {
+        for glob_import in module.globs.borrow(&self).iter() {
             if ignore_import == Some(*glob_import) {
                 continue;
             }

@@ -13,23 +13,24 @@ The explicit implied bounds are computed in [`fn inferred_outlives_of`]. Only AD
 lazy type aliases have explicit implied bounds which are computed via a fixpoint algorithm
 in the [`fn inferred_outlives_crate`] query.
 
-We use [`fn insert_required_predicates_to_be_wf`] on all fields of all ADTs in the crate.
+We use [`fn insert_required_clauses_to_be_wf`] on all fields of all ADTs in the crate.
 This function computes the outlives bounds for each component of the field using a
 separate implementation.
 
-For ADTs, trait objects, and associated types the initially required predicates are
-computed in [`fn check_explicit_predicates`]. This simply uses `fn explicit_clauses_of`
+For ADTs, trait objects, and associated types the initially required clauses are
+computed in [`fn check_explicit_clauses`]. This simply uses `fn explicit_clauses_of`
 without elaborating them.
 
-Region predicates are added via [`fn insert_outlives_predicate`]. This function takes
-an outlives predicate, decomposes it and adds the components as explicit predicates only
+Region clauses are added via [`fn insert_outlives_clause`]. This function takes
+an outlives clause, decomposes it and adds the components as explicit clauses only
 if the outlived region is a region parameter. [It does not add `'static` requirements][nostatic].
 
+<!-- FIXME: update the links to point at the version of the repo with the renamed functions after #160343 lands -->
  [`fn inferred_outlives_of`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/mod.rs#L20
  [`fn inferred_outlives_crate`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/mod.rs#L83
- [`fn insert_required_predicates_to_be_wf`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L89
- [`fn check_explicit_predicates`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L238
- [`fn insert_outlives_predicate`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L15
+ [`fn insert_required_clauses_to_be_wf`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L89
+ [`fn check_explicit_clauses`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L238
+ [`fn insert_outlives_clause`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L15
  [nostatic]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L159-L165
 
 ## implicit implied bounds

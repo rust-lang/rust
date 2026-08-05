@@ -4565,7 +4565,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     )
                 });
             }
-            // Suppress `compare_type_predicate_entailment` errors for RPITITs, since they
+            // Suppress `compare_type_clause_entailment` errors for RPITITs, since they
             // should be implied by the parent method.
             ObligationCauseCode::CompareImplItem { trait_item_def_id, .. }
                 if tcx.is_impl_trait_in_trait(trait_item_def_id) => {}

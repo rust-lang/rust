@@ -3954,6 +3954,7 @@ dependencies = [
  "rustc_errors",
  "rustc_expand",
  "rustc_feature",
+ "rustc_hir",
  "rustc_hir_analysis",
  "rustc_hir_pretty",
  "rustc_index",
@@ -4414,7 +4415,6 @@ dependencies = [
  "rustc_graphviz",
  "rustc_hashes",
  "rustc_hir",
- "rustc_hir_pretty",
  "rustc_index",
  "rustc_lint_defs",
  "rustc_macros",
@@ -4621,7 +4621,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
- "rustc_ty_utils",
+ "rustc_ty_walk",
  "tracing",
 ]
 
@@ -4908,6 +4908,17 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_ty_walk",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_ty_walk"
+version = "0.0.0"
+dependencies = [
+ "rustc_hir",
+ "rustc_middle",
+ "rustc_span",
  "tracing",
 ]
 
