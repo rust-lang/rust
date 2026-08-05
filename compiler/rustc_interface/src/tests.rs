@@ -961,7 +961,8 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
     }
 
     // `-Zassumptions-on-binders` overrides `-Znext-solver=no` regardless of order, since
-    // the assumptions implementation requires the next solver.
+    // the assumptions implementation requires the next solver. This also emits an early
+    // warning (covered by the UI test `next-solver-no-overridden`).
     for args in [
         ["-Zassumptions-on-binders".to_string(), "-Znext-solver=no".to_string()],
         ["-Znext-solver=no".to_string(), "-Zassumptions-on-binders".to_string()],

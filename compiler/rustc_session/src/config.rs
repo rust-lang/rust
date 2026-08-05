@@ -2691,6 +2691,14 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // parsing so the effective config is independent of flag order and so consumers that
     // read `next_solver.globally` directly (e.g. feature-gate checks) see the right value.
     if unstable_opts.assumptions_on_binders {
+        // `NextSolverConfig::default()` has `coherence: true`; the only way `coherence` is
+        // false here is an explicit `-Znext-solver=no`.
+        if !unstable_opts.next_solver.coherence {
+            early_dcx.early_warn(
+                "-Zassumptions-on-binders unconditionally enables the next trait solver; \
+                 `-Znext-solver=no` is ignored",
+            );
+        }
         unstable_opts.next_solver = NextSolverConfig { coherence: true, globally: true };
     }
 
