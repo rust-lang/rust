@@ -849,9 +849,6 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
-
-    /// `use` injections are delayed for better placement and deduplication.
-    use_injections: Vec<UseError<'tcx>>,
 }
 
 impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for LateResolutionVisitor<'_, '_, 'ra, 'tcx> {
@@ -1536,7 +1533,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
-            use_injections: Vec::new(),
         }
     }
 
@@ -4618,7 +4614,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     is_call: source.is_call(),
                 };
 
-                this.use_injections.push(ue);
+                this.r.use_injections.push(ue);
             }
 
             PartialRes::new(Res::Err)
@@ -4722,7 +4718,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     } else {
                         // If there are suggested imports, the error reporting is delayed
-                        this.use_injections.push(UseError {
+                        this.r.use_injections.push(UseError {
                             err,
                             candidates,
                             node_id,
@@ -5696,10 +5692,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Returns the `use` and `extern crate` items of the crate, for use by `check_unused`.
-    pub(crate) fn late_resolve_crate<'ast>(
-        &mut self,
-        krate: &'ast Crate,
-    ) -> (Vec<&'ast Item>, Vec<UseError<'tcx>>) {
+    pub(crate) fn late_resolve_crate<'ast>(&mut self, krate: &'ast Crate) -> Vec<&'ast Item> {
         with_owner(self, CRATE_NODE_ID, |this| {
             let mut info_collector = ItemInfoCollector { r: this, use_items: Vec::new() };
             visit::walk_crate(&mut info_collector, krate);
@@ -5708,9 +5701,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             late_resolution_visitor
                 .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
             visit::walk_crate(&mut late_resolution_visitor, krate);
-            let LateResolutionVisitor { use_injections, diag_metadata, .. } =
-                late_resolution_visitor;
-            for (id, span) in diag_metadata.unused_labels.iter() {
+            for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
                 this.lint_buffer.buffer_lint(
                     lint::builtin::UNUSED_LABELS,
                     *id,
@@ -5718,7 +5709,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     crate::diagnostics::UnusedLabel,
                 );
             }
-            (use_items, use_injections)
+            use_items
         })
     }
 }
