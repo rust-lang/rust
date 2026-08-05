@@ -7,7 +7,6 @@ use rustc_apfloat::Float as _;
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1080,13 +1079,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        let ty = ensure_sufficient_stack(|| {
-            self.tcx
-                .type_of(def_id)
-                .instantiate(self.tcx, args)
-                .skip_normalization()
-                .fold_with(self)
-        });
+        let ty = self
+            .tcx
+            .type_of(def_id)
+            .instantiate(self.tcx, args)
+            .skip_normalization()
+            .fold_with(self);
         self.depth -= 1;
         ty
     }
