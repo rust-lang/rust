@@ -70,7 +70,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb7: {
-        goto -> bb15;
+        goto -> bb8;
     }
 
     bb8: {
@@ -103,9 +103,5 @@ fn method_1(_1: Guard) -> () {
 
     bb14 (cleanup): {
         resume;
-    }
-
-    bb15: {
-        goto -> bb8;
     }
 }

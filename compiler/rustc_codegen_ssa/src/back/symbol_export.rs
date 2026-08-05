@@ -17,6 +17,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
+use rustc_session::cstore::CrateDepKind;
 use rustc_span::Span;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
@@ -434,6 +435,14 @@ fn upstream_monomorphizations_provider(
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
+        // It should be possible to compile to build a crate against a conditional dependency then
+        // later link that crate without the conditional dependency, so we cannot use exported
+        // generics from conditional dependencies.
+        // https://github.com/rust-lang/rust/issues/159682
+        if tcx.crate_dep_kind(cnum) == CrateDepKind::Conditional {
+            continue;
+        }
+
         for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),

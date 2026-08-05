@@ -142,8 +142,8 @@ fn repr_discr(
         Integer::I8
     };
 
-    // If there are no negative values, we can use the unsigned fit.
-    Ok(if min >= 0 {
+    // `min` and `max` are the ends of a wrapping range, so their sign is not a usable test.
+    Ok(if unsigned_fit <= signed_fit {
         (cmp::max(unsigned_fit, at_least), false)
     } else {
         (cmp::max(signed_fit, at_least), true)

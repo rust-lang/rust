@@ -479,32 +479,34 @@ where
         trace!("deref to {} on {:?}", val.layout.ty, *val);
         let mplace = self.imm_ptr_to_mplace(&val)?;
 
-        // This is conceptually a typed load from `src` to get the pointer. Most of the time when
-        // we do typed loads for primitive operations, all relevant invariants are checked
-        // implicitly, e.g. when we call `to_bool()` on a Boolean.
-        // But here, we do need to specifically check for metadata validity, null, alignment, and
-        // dereferenceability, or they will not be checked anywhere at all.
-        // This duplicates some of the logic in the validity check, but so far we found no
-        // good way to share that logic.
-        if ptr_ty.is_ref() || ptr_ty.is_box() {
-            let kind = if ptr_ty.is_ref() { "reference" } else { "box" };
+        if M::enforce_validity(self, val.layout) {
+            // This is conceptually a typed load from `src` to get the pointer. Most of the time when
+            // we do typed loads for primitive operations, all relevant invariants are checked
+            // implicitly, e.g. when we call `to_bool()` on a Boolean.
+            // But here, we do need to specifically check for metadata validity, null, alignment, and
+            // dereferenceability, or they will not be checked anywhere at all.
+            // This duplicates some of the logic in the validity check, but so far we found no
+            // good way to share that logic.
+            if ptr_ty.is_ref() || ptr_ty.is_box() {
+                let kind = if ptr_ty.is_ref() { "reference" } else { "box" };
 
-            // Null check.
-            let scalar_ptr = Scalar::from_maybe_pointer(mplace.ptr(), self);
-            if self.scalar_may_be_null(scalar_ptr)? {
-                let maybe = !M::Provenance::OFFSET_IS_ADDR && matches!(scalar_ptr, Scalar::Ptr(..));
-                throw_ub_format!(
-                    "dereferencing a {maybe}null {kind}",
-                    maybe = if maybe { "maybe-" } else { "" }
-                );
-            }
+                // Null check.
+                let scalar_ptr = Scalar::from_maybe_pointer(mplace.ptr(), self);
+                if self.scalar_may_be_null(scalar_ptr)? {
+                    let maybe =
+                        !M::Provenance::OFFSET_IS_ADDR && matches!(scalar_ptr, Scalar::Ptr(..));
+                    throw_ub_format!(
+                        "dereferencing a {maybe}null {kind}",
+                        maybe = if maybe { "maybe-" } else { "" }
+                    );
+                }
 
-            // Dereferencability and alignment check. This also implicitly checks metadata validity.
-            let (size, align) = self
-                .size_and_align_of_val(&mplace)?
-                .unwrap_or_else(|| (mplace.layout.size, mplace.layout.align.abi));
-            self.check_ptr_access(mplace.ptr(), size, CheckInAllocMsg::Dereferenceable(kind))?;
-            self.check_ptr_align(mplace.ptr(), align).map_err_kind(|err| {
+                // Dereferencability and alignment check. This also implicitly checks metadata validity.
+                let (size, align) = self
+                    .size_and_align_of_val(&mplace)?
+                    .unwrap_or_else(|| (mplace.layout.size, mplace.layout.align.abi));
+                self.check_ptr_access(mplace.ptr(), size, CheckInAllocMsg::Dereferenceable(kind))?;
+                self.check_ptr_align(mplace.ptr(), align).map_err_kind(|err| {
                 let err_ub!(AlignmentCheckFailed(Misalignment { required, has }, _msg)) = err else { bug!() };
                 err_ub_format!(
                     "encountered an unaligned {kind} (required {required_bytes} byte alignment but found {found_bytes})",
@@ -512,21 +514,22 @@ where
                     found_bytes = has.bytes()
                 )
             })?;
-        } else {
-            assert!(ptr_ty.is_raw_ptr());
-            // For raw pointers, the validity invariant is pretty weak, but we do require the vtable
-            // to make sense, so we do have to check that if there is one.
-            if mplace.layout.is_unsized() {
-                let tail = self.tcx.struct_tail_for_codegen(mplace.layout.ty, self.typing_env);
-                match tail.kind() {
-                    ty::Dynamic(data, _) => {
-                        let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;
-                        self.get_ptr_vtable_ty(vtable, Some(data))?;
+            } else {
+                assert!(ptr_ty.is_raw_ptr());
+                // For raw pointers, the validity invariant is pretty weak, but we do require the vtable
+                // to make sense, so we do have to check that if there is one.
+                if mplace.layout.is_unsized() {
+                    let tail = self.tcx.struct_tail_for_codegen(mplace.layout.ty, self.typing_env);
+                    match tail.kind() {
+                        ty::Dynamic(data, _) => {
+                            let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;
+                            self.get_ptr_vtable_ty(vtable, Some(data))?;
+                        }
+                        ty::Slice(..) | ty::Str | ty::Foreign(..) => {
+                            // Nothing to check (`read_immediate` already ensured initialization).
+                        }
+                        _ => bug!("Unexpected unsized type tail: {:?}", tail),
                     }
-                    ty::Slice(..) | ty::Str | ty::Foreign(..) => {
-                        // Nothing to check (`read_immediate` already ensured initialization).
-                    }
-                    _ => bug!("Unexpected unsized type tail: {:?}", tail),
                 }
             }
         }
@@ -590,15 +593,27 @@ where
 
     /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_to_op`.
+    ///
+    /// If `skip_validity_for_simple_deref` is true, then we do not check validity of the inner
+    /// pointer for places of the form `*ptr`. The caller must justify why that is okay.
     #[instrument(skip(self), level = "trace")]
     pub fn eval_place(
         &self,
         mir_place: mir::Place<'tcx>,
+        skip_validity_for_simple_deref: bool,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         let _trace =
             enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
 
         let mut place = self.local_to_place(mir_place.local)?;
+        if skip_validity_for_simple_deref
+            && mir_place.projection.as_slice() == &[mir::ProjectionElem::Deref]
+        {
+            // We want to skip the checks in `deref_pointer`.
+            let val = self.read_immediate(&place)?;
+            let place = self.imm_ptr_to_mplace(&val)?;
+            return interp_ok(place.into());
+        }
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             place = self.project(&place, elem)?

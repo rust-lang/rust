@@ -84,6 +84,7 @@ use crate::vec::Vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(notable_trait)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
+#[rustc_must_implement_one_of(read_buf, read)] // Keep this order, it's important for rust-analyzer (the preferred-to-implement method should come first).
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -164,7 +165,10 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let mut buf = BorrowedBuf::from(buf);
+        self.read_buf(buf.unfilled()).map(|()| buf.len())
+    }
 
     /// Like `read`, except that it reads into a slice of buffers.
     ///
@@ -429,6 +433,7 @@ pub trait Read {
     /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
     /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     #[unstable(feature = "read_buf", issue = "78485")]
+    #[doc(alias("read_exact_buf"))]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> Result<()> {
         default_read_buf_exact(self, cursor)
     }

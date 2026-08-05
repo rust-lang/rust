@@ -1129,11 +1129,25 @@ struct TypePrivacyVisitor<'tcx> {
     mod_id: LocalModId,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     span: Span,
+    /// Types already walked clean (no privacy error). A walk's result depends only on the
+    /// interned type and `mod_id`, which is fixed for the whole visit, so a type that walks
+    /// clean once walks clean everywhere and we can skip it. Errored walks are never cached,
+    /// so their error still fires at every span.
+    accessible_tys: FxHashSet<Ty<'tcx>>,
 }
 
 impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn item_is_accessible(&self, did: DefId) -> bool {
         self.tcx.visibility(did).is_accessible_from(self.mod_id, self.tcx)
+    }
+
+    fn check_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+        if self.accessible_tys.contains(&ty) {
+            return ControlFlow::Continue(());
+        }
+        self.visit(ty)?;
+        self.accessible_tys.insert(ty);
+        ControlFlow::Continue(())
     }
 
     // Take node-id of an expression or pattern and check its type for privacy.
@@ -1143,10 +1157,10 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
             .maybe_typeck_results
             .unwrap_or_else(|| span_bug!(span, "`hir::Expr` or `hir::Pat` outside of a body"));
         try {
-            self.visit(typeck_results.node_type(id))?;
+            self.check_ty(typeck_results.node_type(id))?;
             self.visit(typeck_results.node_args(id))?;
             if let Some(adjustments) = typeck_results.adjustments().get(id) {
-                adjustments.iter().try_for_each(|adjustment| self.visit(adjustment.target))?;
+                adjustments.iter().try_for_each(|adjustment| self.check_ty(adjustment.target))?;
             }
         }
         .is_break()
@@ -1179,14 +1193,11 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         self.span = hir_ty.span;
-        if self
-            .visit(
-                self.maybe_typeck_results
-                    .unwrap_or_else(|| span_bug!(hir_ty.span, "`hir::Ty` outside of a body"))
-                    .node_type(hir_ty.hir_id),
-            )
-            .is_break()
-        {
+        let ty = self
+            .maybe_typeck_results
+            .unwrap_or_else(|| span_bug!(hir_ty.span, "`hir::Ty` outside of a body"))
+            .node_type(hir_ty.hir_id);
+        if self.check_ty(ty).is_break() {
             return;
         }
 
@@ -1205,7 +1216,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             .unwrap_or_else(|| span_bug!(inf_span, "Inference variable outside of a body"))
             .node_type_opt(inf_id)
         {
-            if self.visit(ty).is_break() {
+            if self.check_ty(ty).is_break() {
                 return;
             }
         } else {
@@ -1236,7 +1247,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     .unwrap_or_else(|| span_bug!(self.span, "`hir::Expr` outside of a body"));
                 if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                     if self
-                        .visit(self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip())
+                        .check_ty(self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip())
                         .is_break()
                     {
                         return;
@@ -1750,7 +1761,13 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, mod_id: LocalModId) {
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
     let span = tcx.def_span(mod_id);
-    let mut visitor = TypePrivacyVisitor { tcx, mod_id, maybe_typeck_results: None, span };
+    let mut visitor = TypePrivacyVisitor {
+        tcx,
+        mod_id,
+        maybe_typeck_results: None,
+        span,
+        accessible_tys: Default::default(),
+    };
 
     let module = tcx.hir_module_items(mod_id);
     for def_id in module.definitions() {

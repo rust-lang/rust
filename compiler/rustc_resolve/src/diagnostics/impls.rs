@@ -2032,8 +2032,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Don't confuse the user with tool modules or open modules.
                     continue;
                 }
-                Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
-                    "only a trait, without a derive macro".to_string()
+                Res::Def(DefKind::Trait, trait_def_id) if macro_kind == MacroKind::Derive => {
+                    if let crate::DeclKind::Import { import, .. } = binding.kind
+                        && !import.span.is_dummy()
+                    {
+                        self.record_use(ident, binding, Used::Other);
+                    }
+                    let trait_span = self.def_span(trait_def_id);
+                    err.span_note(trait_span, format!("`{ident}` is a trait, not a derive macro"));
+                    err.help(format!("consider implementing `{ident}` for your type manually"));
+                    return;
                 }
                 res => format!(
                     "{} {}, not {} {}",
@@ -2063,6 +2071,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             err.subdiagnostic(note);
             return;
+        }
+
+        // Not in scope: check if the name refers to a trait importable from elsewhere.
+        if macro_kind == MacroKind::Derive {
+            let trait_candidates =
+                self.lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
+                    matches!(res, Res::Def(DefKind::Trait, _))
+                });
+            let mut seen = FxHashSet::default();
+            for candidate in &trait_candidates {
+                if let Some(def_id) = candidate.did
+                    && seen.insert(def_id)
+                {
+                    err.span_note(
+                        self.def_span(def_id),
+                        format!("`{ident}` is a trait, not a derive macro"),
+                    );
+                }
+            }
+            if !seen.is_empty() {
+                err.help(format!("consider implementing `{ident}` for your type manually"));
+                return;
+            }
         }
 
         if self.macro_names.contains(&IdentKey::new(ident)) {

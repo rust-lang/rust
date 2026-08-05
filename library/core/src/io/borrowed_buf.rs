@@ -94,7 +94,7 @@ impl<'data, T> BorrowedBuf<'data, T> {
     }
 
     /// Returns `true` if the buffer is initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn is_init(&self) -> bool {
         self.init
@@ -170,7 +170,7 @@ impl<'data, T: Copy> BorrowedBuf<'data, T> {
     /// # Safety
     ///
     /// All the elements of the buffer must be initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub unsafe fn set_init(&mut self) -> &mut Self {
         self.init = true;
@@ -240,7 +240,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     }
 
     /// Returns `true` if the buffer is initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn is_init(&self) -> bool {
         self.buf.init
@@ -251,7 +251,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     /// # Safety
     ///
     /// All the elements of the cursor must be initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub unsafe fn set_init(&mut self) {
         self.buf.init = true;
@@ -280,7 +280,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     /// # Panics
     ///
     /// Panics if there are less than `n` elements initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn advance_checked(&mut self, n: usize) -> &mut Self {
         // The subtraction cannot underflow by invariant of this type.
@@ -359,7 +359,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
 
 impl<'a> BorrowedCursor<'a, u8> {
     /// Initializes all bytes in the cursor and returns them.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn ensure_init(&mut self) -> &mut [u8] {
         // SAFETY: always in bounds and we never uninitialize these bytes.

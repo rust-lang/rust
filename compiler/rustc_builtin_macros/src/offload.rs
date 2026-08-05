@@ -85,7 +85,7 @@ pub(crate) fn expand_kernel(
         contract: None,
         body,
         define_opaque: None,
-        eii_impls: Default::default(),
+        eii_impl: None,
     });
 
     let extern_gpu_kernel = ast::Extern::from_abi(
@@ -157,7 +157,7 @@ pub(crate) fn expand_kernel(
         contract: None,
         body: Some(body),
         define_opaque: None,
-        eii_impls: Default::default(),
+        eii_impl: None,
     });
 
     for param in host_fn.sig.decl.inputs.iter_mut() {

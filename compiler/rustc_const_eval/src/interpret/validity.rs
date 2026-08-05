@@ -32,7 +32,6 @@ use super::machine::AllocMap;
 use super::{
     AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
     Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
-    format_interp_error,
 };
 use crate::enter_trace_span;
 
@@ -1606,7 +1605,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             v.reset_padding(val)?;
             interp_ok(())
         })
-        .map_err_info(|err| {
+        .inspect_err_info(|err| {
             if !matches!(
                 err.kind(),
                 InterpErrorKind::UndefinedBehavior(ValidationError { .. })
@@ -1616,9 +1615,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // during validation.
                 | InterpErrorKind::MachineStop(_)
             ) {
-                bug!("Unexpected error during validation: {}", format_interp_error(err));
+                bug!("Unexpected error during validation: {}", err.to_string());
             }
-            err
         })
     }
 

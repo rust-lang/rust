@@ -291,7 +291,7 @@ impl<T> Box<T> {
         // Nothing below can panic so we do not have to worry about deallocating `ptr`.
         // SAFETY: we just allocated the box to store `x`.
         unsafe { core::intrinsics::write_via_move(ptr, x) };
-        // SAFETY: we just initialized `b`.
+        // SAFETY: we just initialized the memory `ptr` points to.
         unsafe { mem::transmute(ptr) }
     }
 

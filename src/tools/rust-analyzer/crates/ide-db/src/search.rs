@@ -119,13 +119,13 @@ impl FileReferenceNode {
             _ => None,
         }
     }
-    pub fn text(&self) -> syntax::TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             FileReferenceNode::NameRef(name_ref) => name_ref.text(),
             FileReferenceNode::Name(name) => name.text(),
             FileReferenceNode::Lifetime(lifetime) => lifetime.text(),
             FileReferenceNode::FormatStringEntry(it, range) => {
-                syntax::TokenText::borrowed(&it.text()[*range - it.syntax().text_range().start()])
+                &it.text()[*range - it.syntax().text_range().start()]
             }
         }
     }
@@ -751,7 +751,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                                     insert_type_alias(
                                         sema.db,
                                         &mut to_process,
-                                        name.text().as_str(),
+                                        name.text(),
                                         def.into(),
                                     );
                                 } else {
@@ -814,7 +814,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                                             insert_type_alias(
                                                 sema.db,
                                                 &mut to_process,
-                                                name.text().as_str(),
+                                                name.text(),
                                                 def.into(),
                                             );
                                         } else {

@@ -71,17 +71,33 @@ impl StoredEarlyBinder<StoredTraitRef> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StoredPolyFnSig {
     bound_vars: StoredBoundVarKinds,
-    inputs_and_output: StoredTys,
-    fn_sig_kind: FnSigKind<'static>,
+    sig: StoredFnSig,
 }
 
 impl StoredPolyFnSig {
     #[inline]
     pub fn new(sig: PolyFnSig<'_>) -> Self {
         let bound_vars = sig.bound_vars().store();
-        let sig = sig.skip_binder();
+        Self { bound_vars, sig: StoredFnSig::new(sig.skip_binder()) }
+    }
+
+    #[inline]
+    pub fn get(&self) -> PolyFnSig<'_> {
+        Binder::bind_with_vars(self.sig.get(), self.bound_vars.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
+pub struct StoredFnSig {
+    inputs_and_output: StoredTys,
+    #[type_visitable(ignore)]
+    fn_sig_kind: FnSigKind<'static>,
+}
+
+impl StoredFnSig {
+    #[inline]
+    pub fn new(sig: FnSig<'_>) -> Self {
         Self {
-            bound_vars,
             inputs_and_output: sig.inputs_and_output.store(),
             fn_sig_kind: FnSigKind::new(
                 sig.fn_sig_kind.abi(),
@@ -92,14 +108,8 @@ impl StoredPolyFnSig {
     }
 
     #[inline]
-    pub fn get(&self) -> PolyFnSig<'_> {
-        Binder::bind_with_vars(
-            FnSig {
-                inputs_and_output: self.inputs_and_output.as_ref(),
-                fn_sig_kind: self.fn_sig_kind,
-            },
-            self.bound_vars.as_ref(),
-        )
+    pub fn get(&self) -> FnSig<'_> {
+        FnSig { inputs_and_output: self.inputs_and_output.as_ref(), fn_sig_kind: self.fn_sig_kind }
     }
 }
 

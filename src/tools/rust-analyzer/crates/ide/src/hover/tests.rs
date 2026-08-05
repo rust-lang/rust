@@ -5620,6 +5620,30 @@ enum E {
             This is a doc
         "#]],
     );
+    // const eval failed test
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A$0 = {},
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture::E
+            ```
+
+            ```rust
+            A = {}
+            ```
+
+            ---
+
+            size = 1, align = 1, no Drop
+        "#]],
+    );
 }
 
 #[test]
@@ -9508,7 +9532,7 @@ pub fn f(x$0: impl Tr<{ 0 }>) {}
             *x*
 
             ```rust
-            x: impl Tr<{const}> + ?Sized
+            x: impl Tr<0> + ?Sized
             ```
 
             ---

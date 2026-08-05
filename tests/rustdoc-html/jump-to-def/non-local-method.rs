@@ -16,7 +16,7 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 
 pub fn bar2<T: Read>(readable: T) {
-    //@ has - '//a[@href="{{channel}}/alloc/io/read/trait.Read.html#tymethod.read"]' 'read'
+    //@ has - '//a[@href="{{channel}}/alloc/io/read/trait.Read.html#method.read"]' 'read'
     let _ = readable.read(&mut []);
 }
 

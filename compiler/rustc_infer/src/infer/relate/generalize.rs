@@ -161,81 +161,32 @@ impl<'tcx> InferCtxt<'tcx> {
             let Some(source_alias) = source_term.to_alias_term() else {
                 bug!("generalized `{source_term:?} to infer, not an alias");
             };
-            if self.next_trait_solver() {
-                if let Some(generalized_ty) = generalized_term.as_type() {
-                    match instantiation_variance {
-                        ty::Invariant => relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: source_alias.into(),
-                            term: generalized_ty.into(),
-                        }]),
-                        ty::Covariant => {
-                            // Generate a new var, then do:
-                            // `source_alias == ?A && ?A <: generalized_ty`
-                            let new_var = self.next_ty_var(relation.span());
-                            relation.register_predicates([
-                                ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                                    a_is_expected: !target_is_expected,
-                                    a: new_var,
-                                    b: generalized_ty,
-                                }),
-                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                                    ty::ProjectionPredicate {
-                                        projection_term: source_alias.into(),
-                                        term: new_var.into(),
-                                    },
-                                )),
-                            ]);
-                        }
-                        ty::Contravariant => {
-                            // a :> b is b <: a
-                            let new_var = self.next_ty_var(relation.span());
-                            relation.register_predicates([
-                                ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                                    a_is_expected: target_is_expected,
-                                    a: generalized_ty,
-                                    b: new_var,
-                                }),
-                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                                    ty::ProjectionPredicate {
-                                        projection_term: source_alias.into(),
-                                        term: new_var.into(),
-                                    },
-                                )),
-                            ]);
-                        }
-                        ty::Bivariant => unreachable!("bivariant generalization"),
-                    }
-                } else {
-                    debug_assert_eq!(instantiation_variance, ty::Variance::Invariant);
+            assert!(
+                !self.next_trait_solver(),
+                "nonrigid aliases should be handled in relations, not here"
+            );
+            match source_alias.kind {
+                ty::AliasTermKind::ProjectionTy { .. }
+                | ty::AliasTermKind::ProjectionConst { .. } => {
+                    // FIXME: This does not handle subtyping correctly, we could
+                    // instead create a new inference variable `?normalized_source`, emitting
+                    // `Projection(normalized_source, ?ty_normalized)` and
+                    // `?normalized_source <: generalized_term`.
                     relation.register_predicates([ty::ProjectionPredicate {
                         projection_term: source_alias,
                         term: generalized_term,
                     }]);
                 }
-            } else {
-                match source_alias.kind {
-                    ty::AliasTermKind::ProjectionTy { .. }
-                    | ty::AliasTermKind::ProjectionConst { .. } => {
-                        // FIXME: This does not handle subtyping correctly, we could
-                        // instead create a new inference variable `?normalized_source`, emitting
-                        // `Projection(normalized_source, ?ty_normalized)` and
-                        // `?normalized_source <: generalized_term`.
-                        relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: source_alias,
-                            term: generalized_term,
-                        }]);
-                    }
-                    // The old solver only accepts projection predicates for associated types.
-                    ty::AliasTermKind::InherentTy { .. }
-                    | ty::AliasTermKind::FreeTy { .. }
-                    | ty::AliasTermKind::OpaqueTy { .. } => {
-                        return Err(TypeError::CyclicTy(source_term.expect_type()));
-                    }
-                    ty::AliasTermKind::InherentConst { .. }
-                    | ty::AliasTermKind::FreeConst { .. }
-                    | ty::AliasTermKind::AnonConst { .. } => {
-                        return Err(TypeError::CyclicConst(source_term.expect_const()));
-                    }
+                // The old solver only accepts projection predicates for associated types.
+                ty::AliasTermKind::InherentTy { .. }
+                | ty::AliasTermKind::FreeTy { .. }
+                | ty::AliasTermKind::OpaqueTy { .. } => {
+                    return Err(TypeError::CyclicTy(source_term.expect_type()));
+                }
+                ty::AliasTermKind::InherentConst { .. }
+                | ty::AliasTermKind::FreeConst { .. }
+                | ty::AliasTermKind::AnonConst { .. } => {
+                    return Err(TypeError::CyclicConst(source_term.expect_const()));
                 }
             }
         } else {

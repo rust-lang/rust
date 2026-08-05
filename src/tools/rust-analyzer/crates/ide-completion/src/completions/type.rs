@@ -26,7 +26,7 @@ pub(crate) fn complete_type_path<'db>(
             ScopeDef::ModuleDef(Function(_) | EnumVariant(_) | Static(_)) | ScopeDef::Local(_) => {
                 false
             }
-            // unless its a constant in a generic arg list position
+            // unless it's a constant in a generic arg list position
             ScopeDef::ModuleDef(Const(_)) | ScopeDef::GenericParam(ConstParam(_)) => {
                 location.complete_consts()
             }

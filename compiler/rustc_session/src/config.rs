@@ -259,15 +259,23 @@ pub enum AnnotateMoves {
     Enabled(Option<u64>),
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct InstrumentMcountOpts {
+    // Insert a nop which could be replaced by an mcount call.
+    pub no_call: bool,
+    // Record the location of the call instrument in a special linker section.
+    pub record: bool,
+}
+
 /// The different settings that the `-Z Instrument-mcount` flag can have.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum InstrumentMcount {
     /// `-Z instrument-mcount=no`
     Disabled,
     /// `-Z instrument-mcount=yes`
-    Mcount,
+    Mcount(InstrumentMcountOpts),
     /// `-Z instrument-mcount=fentry`
-    Fentry,
+    Fentry(InstrumentMcountOpts),
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -1650,26 +1658,6 @@ impl PointerAuthOption {
 }
 
 #[derive(Clone, Copy)]
-pub enum BackendJobs {
-    /// The number of backend jobs has a static limit.
-    Limited(NonZero<usize>),
-    /// The number of backend jobs is either unlimited if there's an inherited jobserver,
-    /// or limited to 32 if there's no inherited jobserver.
-    /// This variant exists only to preserve the historical behavior.
-    /// FIXME: Just use `thread::available_parallelism` as the default static limit.
-    UnlimitedOr32,
-}
-
-impl BackendJobs {
-    pub fn value(self) -> NonZero<usize> {
-        match self {
-            BackendJobs::Limited(n) => n,
-            BackendJobs::UnlimitedOr32 => NonZero::new(32).unwrap(),
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
 pub enum LinkerJobs {
     /// Do not pass anything to the linker, use it's default behavior.
     Default,
@@ -1682,7 +1670,7 @@ pub enum LinkerJobs {
 #[derive(Clone, Copy)]
 pub struct Jobs {
     pub frontend: Option<NonZero<usize>>,
-    pub backend: Option<BackendJobs>,
+    pub backend: Option<NonZero<usize>>,
     pub linker: LinkerJobs,
 }
 
@@ -1735,11 +1723,12 @@ fn parse_jobs_all(
             let backend =
                 parse_jobs_one(early_dcx, opt_name, &jobs_backend, unstable, &mut available);
             check_upper_limit(backend, opt_name);
-            backend.map(BackendJobs::Limited)
+            backend
         }
         None => match jobs {
-            Some(n) => n.map(BackendJobs::Limited),
-            None => Some(BackendJobs::UnlimitedOr32),
+            Some(n) => n,
+            // Use all available parallelism as the default.
+            None => parse_jobs_one(early_dcx, "", "0", unstable, &mut available),
         },
     };
     let linker = match matches.opt_str("jobs-linker") {
@@ -3314,11 +3303,12 @@ pub(crate) mod dep_tracking {
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
-        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
+        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3381,6 +3371,7 @@ pub(crate) mod dep_tracking {
         InstrumentCoverage,
         CoverageOptions,
         InstrumentMcount,
+        InstrumentMcountOpts,
         InstrumentXRay,
         CrateType,
         MergeFunctions,

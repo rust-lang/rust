@@ -704,7 +704,7 @@ impl CommandLineStep for Rustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.selectors(&["src/tools/rustdoc", "src/librustdoc"])
+        run.multi_path(&["src/tools/rustdoc", "src/librustdoc"])
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -765,11 +765,7 @@ impl CommandLineStep for Rustdoc {
         // they'll be linked to those libraries). As such, don't explicitly `ensure` any additional
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
-        //
         let mut extra_features = Vec::new();
-        if let Some(allocator_feature_name) = builder.config.allocator(target).feature_name() {
-            extra_features.push(allocator_feature_name.to_string());
-        }
         if !builder.config.rust_debug_logging {
             extra_features.push("max_level_info".to_string())
         }
@@ -1428,7 +1424,6 @@ macro_rules! tool_rustc_extended {
             tool_name: $tool_name:expr,
             stable: $stable:expr
             $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
-            $( , add_features: $add_features:expr )?
             $( , cargo_args: $cargo_args:expr )?
             $( , )?
         }
@@ -1479,7 +1474,6 @@ macro_rules! tool_rustc_extended {
                     $tool_name,
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
-                    None $( .or(Some($add_features)) )?,
                     None $( .or(Some($cargo_args)) )?,
                 )
             }
@@ -1524,15 +1518,9 @@ fn build_extended_rustc_tool(
     tool_name: &'static str,
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
-    add_features: Option<fn(&Builder<'_>, TargetSelection, &mut Vec<String>)>,
     cargo_args: Option<&[&'static str]>,
 ) -> ToolBuildResult {
     let target = compilers.target();
-    let mut extra_features = Vec::new();
-    if let Some(func) = add_features {
-        func(builder, target, &mut extra_features);
-    }
-
     let build_compiler = compilers.build_compiler;
     let ToolBuildResult { tool_path, .. } = builder.ensure(ToolBuild {
         build_compiler,
@@ -1540,7 +1528,7 @@ fn build_extended_rustc_tool(
         tool: tool_name,
         mode: Mode::ToolRustcPrivate,
         path,
-        extra_features,
+        extra_features: Vec::new(),
         source_type: SourceType::InTree,
         allow_features: "",
         cargo_args: cargo_args.unwrap_or_default().iter().map(|s| String::from(*s)).collect(),
@@ -1583,23 +1571,13 @@ tool_rustc_extended!(Clippy {
     path: "src/tools/clippy",
     tool_name: "clippy-driver",
     stable: true,
-    add_bins_to_sysroot: ["clippy-driver"],
-    add_features: |builder, target, features| {
-        if let Some(allocator_feature_name) = builder.config.allocator(target).feature_name() {
-            features.push(allocator_feature_name.to_string());
-        }
-    }
+    add_bins_to_sysroot: ["clippy-driver"]
 });
 tool_rustc_extended!(Miri {
     path: "src/tools/miri",
     tool_name: "miri",
     stable: false,
     add_bins_to_sysroot: ["miri"],
-    add_features: |builder, target, features| {
-        if let Some(allocator_feature_name) = builder.config.allocator(target).feature_name() {
-            features.push(allocator_feature_name.to_string());
-        }
-    },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });

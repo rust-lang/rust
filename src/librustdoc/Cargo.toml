@@ -26,7 +26,7 @@ stringdex = "=0.0.6"
 tempfile = "3"
 threadpool = "1.8.1"
 tracing = "0.1"
-tracing-tree = "0.3.0"
+tracing-tree = "0.4.1"
 unicode-segmentation = "1.9"
 # tidy-alphabetical-end
 
@@ -43,7 +43,6 @@ minifier = { version = "0.4.0", default-features = false }
 expect-test = "1.4.0"
 
 [features]
-jemalloc = []
 max_level_info = ["tracing/max_level_info", "tracing/release_max_level_info"]
 
 [package.metadata.rust-analyzer]

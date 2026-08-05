@@ -13,8 +13,7 @@ use tracing::debug;
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use crate::ty::print::{with_crate_prefix, with_no_trimmed_paths};
-use crate::ty::{self, Ident, Interner, Ty, TyCtxt, VisitorResult};
+use crate::ty::{self, Ident, Interner, RestrictionKind, Ty, TyCtxt, VisitorResult};
 
 /// A trait's definition with type information.
 #[derive(StableHash, Encodable, Decodable)]
@@ -22,7 +21,7 @@ pub struct TraitDef {
     pub def_id: DefId,
 
     /// Restrictions on trait implementations.
-    pub impl_restriction: ImplRestrictionKind,
+    pub impl_restriction: RestrictionKind,
 
     pub safety: hir::Safety,
 
@@ -100,52 +99,6 @@ pub enum TraitSpecializationKind {
     /// `X<'x>: T<'y>` for any lifetimes, then `for<'a, 'b> X<'a>: T<'b>`.
     /// Applies to traits with the `rustc_specialization_trait` attribute.
     AlwaysApplicable,
-}
-
-/// Whether the trait implementation is unrestricted or restricted within a specific module.
-#[derive(StableHash, PartialEq, Clone, Copy, Encodable, Decodable)]
-pub enum ImplRestrictionKind {
-    /// The restriction does not affect this trait, and it can be implemented anywhere.
-    Unrestricted,
-    /// This trait can only be implemented within the specified module.
-    Restricted(DefId, Span),
-}
-
-impl ImplRestrictionKind {
-    /// Returns `true` if the behavior is allowed/unrestricted in the given module.
-    /// A value of `false` indicates that the behavior is prohibited.
-    pub fn is_allowed_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
-        match self {
-            ImplRestrictionKind::Unrestricted => true,
-            ImplRestrictionKind::Restricted(restricted_to, _) => {
-                tcx.is_descendant_of(module, restricted_to)
-            }
-        }
-    }
-
-    /// Obtain the [`Span`] of the restriction. Panics if the restriction is unrestricted.
-    pub fn expect_span(self) -> Span {
-        match self {
-            ImplRestrictionKind::Unrestricted => {
-                bug!("called `expect_span` on an unrestricted item")
-            }
-            ImplRestrictionKind::Restricted(_, span) => span,
-        }
-    }
-
-    /// Obtain the path of the restriction. If unrestricted, an empty string is returned.
-    pub fn restriction_path(self, tcx: TyCtxt<'_>) -> String {
-        match self {
-            ImplRestrictionKind::Unrestricted => String::new(),
-            ImplRestrictionKind::Restricted(restricted_to, _) => {
-                if restricted_to.krate == rustc_hir::def_id::LOCAL_CRATE {
-                    with_crate_prefix!(with_no_trimmed_paths!(tcx.def_path_str(restricted_to)))
-                } else {
-                    tcx.def_path_str(restricted_to.krate.as_mod_id())
-                }
-            }
-        }
-    }
 }
 
 #[derive(Default, Debug, StableHash)]
