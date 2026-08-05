@@ -403,9 +403,7 @@ mod items {
     }
     /// ItemKind::Use
     mod item_use {
-        use ::{};
-        use crate::expressions;
-        use crate::items::item_use;
+        use crate::{expressions;items::item_use;};
         use core::*;
     }
     /// ItemKind::Static
