@@ -12,6 +12,8 @@
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
 #![feature(final_associated_functions)]
+#![feature(iter_macro)]
+#![feature(yield_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

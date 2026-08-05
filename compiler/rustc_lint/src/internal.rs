@@ -407,7 +407,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
+        let rustc_hir::ItemKind::Use(hir::UseTree { prefix: path, kind }) = item.kind else {
+            return;
+        };
 
         let is_mod_inherent = |res: Res| {
             res.opt_def_id()
