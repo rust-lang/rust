@@ -16,12 +16,12 @@ use rustc_target::spec::HasTargetSpec;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::attributes;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, ToLlvmBool, Type, Value};
 use crate::type_of::LayoutLlvmExt;
+use crate::{attributes, llvm_util};
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_inline_asm(
@@ -499,7 +499,15 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        llvm::append_module_inline_asm(self.llmod, template_str.as_bytes());
+        let target_features = self.tcx.global_backend_features(()).join(",");
+        let target_cpu = llvm_util::target_cpu(self.tcx.sess);
+
+        llvm::append_module_inline_asm(
+            self.llmod,
+            template_str.as_bytes(),
+            &target_features,
+            target_cpu,
+        );
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
