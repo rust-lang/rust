@@ -50,7 +50,7 @@ use crate::diagnostics::{
 use crate::op::contains_let_in_chain;
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, GatherLocalsVisitor, Needs,
-    TupleArgumentsFlag, cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct,
+    TupleArgumentsFlag, cast, fatally_break_rust, type_error_struct,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -589,8 +589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
-                let e = report_unexpected_variant_res(
-                    tcx,
+                let e = self.report_unexpected_variant_res(
                     res,
                     Some(expr),
                     &[],
