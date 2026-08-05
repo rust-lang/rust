@@ -376,7 +376,7 @@ pub struct Session {
     pub asm_arch: Option<InlineAsmArch>,
 
     /// Set of actually enabled features for the current target, including ones that are not
-    /// in `cfg(target_feature)` because they are unstable or forbidden.
+    /// in `cfg(target_feature)` because they are unstable or internal-only.
     /// This is used by the compiler itself when it needs to know which target features are actually
     /// going to be enabled in the backend.
     pub internal_target_features: FxIndexSet<Symbol>,

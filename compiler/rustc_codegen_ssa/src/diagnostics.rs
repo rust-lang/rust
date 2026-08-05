@@ -1100,7 +1100,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct InternalOnlyTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1233,7 +1233,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}")]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
+pub(crate) struct InternalOnlyCTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
     pub reason: &'a str,

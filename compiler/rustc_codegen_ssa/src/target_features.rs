@@ -72,7 +72,7 @@ pub(crate) fn from_target_feature_attr(
         // Only allow target features whose feature gates have been enabled
         // and which are permitted to be toggled.
         if let Err(reason) = stability.toggle_allowed() {
-            tcx.dcx().emit_err(diagnostics::ForbiddenTargetFeatureAttr {
+            tcx.dcx().emit_err(diagnostics::InternalOnlyTargetFeatureAttr {
                 span: feature_span,
                 feature: feature_str,
                 reason,
@@ -107,7 +107,7 @@ pub(crate) fn from_target_feature_attr(
                                 diagnostics::Aarch64SoftfloatNeon,
                             );
                         } else {
-                            tcx.dcx().emit_err(diagnostics::ForbiddenTargetFeatureAttr {
+                            tcx.dcx().emit_err(diagnostics::InternalOnlyTargetFeatureAttr {
                                 span: feature_span,
                                 feature: name.as_str(),
                                 reason: "this feature is incompatible with the target ABI",
@@ -349,8 +349,8 @@ pub fn internal_target_features<'a, const N: usize>(
                     }
 
                     // Check feature stability.
-                    if let Stability::Forbidden { reason, hard_error } = stability {
-                        let diag = diagnostics::ForbiddenCTargetFeature {
+                    if let Stability::InternalOnly { reason, hard_error } = stability {
+                        let diag = diagnostics::InternalOnlyCTargetFeature {
                             feature: base_feature,
                             enabled: if enable { "enabled" } else { "disabled" },
                             reason,
@@ -528,9 +528,12 @@ pub(crate) fn provide(providers: &mut Providers) {
                                 (Stability::Stable, _)
                                 | (
                                     Stability::Unstable { .. },
-                                    Stability::Unstable { .. } | Stability::Forbidden { .. },
+                                    Stability::Unstable { .. } | Stability::InternalOnly { .. },
                                 )
-                                | (Stability::Forbidden { .. }, Stability::Forbidden { .. }) => {
+                                | (
+                                    Stability::InternalOnly { .. },
+                                    Stability::InternalOnly { .. },
+                                ) => {
                                     // The stability in the entry is at least as good as the new
                                     // one, just keep it.
                                 }

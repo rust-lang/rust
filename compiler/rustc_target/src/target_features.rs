@@ -28,8 +28,8 @@
 //! call ABI. For example, disabling the `x87` feature on x86 changes how scalar floats are passed as
 //! arguments, so letting people toggle that feature would be unsound. To this end, the
 //! [`Target::abi_required_features`] function computes which target features must and must not be
-//! enabled for any given target, and individual features can also be marked as [`Forbidden`]. See
-//! <https://github.com/rust-lang/rust/issues/116344> for some more context.
+//! enabled for any given target, and individual features can also be marked as [`InternalOnly`].
+//! See <https://github.com/rust-lang/rust/issues/116344> for some more context.
 //!
 //! The one exception to features that change the ABI is features that enable larger vector
 //! registers. Those are permitted to be listed here. The `*_FOR_CORRECT_VECTOR_ABI` arrays store
@@ -70,17 +70,21 @@ pub enum Stability {
         /// feature gate!
         Symbol,
     ),
+    /// This is not actually something we expose as a "target feature" to our users.
+    /// We just manage it internally as a target feature since that's how LLVM represents it.
     /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be
     /// set in the target spec. It is never set in `cfg(target_feature)`. Used in particular for
     /// features are actually ABI configuration flags (such as "soft-float" on many targets).
-    /// However, "forbidden" target features can still sometimes be enabled via `-Ctarget-cpu` or
-    /// target feature implications (on the Rust/LLVM level). To prevent that, ABI-relevant target
-    /// features are ideally pinned down (required or forbidden) in
-    /// [`Target::abi_required_features`].
-    Forbidden {
+    ///
+    /// However, "internal" target features can still sometimes be enabled or disabled via
+    /// `-Ctarget-cpu` or Rust/LLVM target feature implications. Make sure nothing implies this
+    /// target feature and nothing is implied by this target feature (except for other internal-only
+    /// features). Ideally, ABI-relevant target features are pinned down (marked as required or
+    /// incompatible) in [`Target::abi_required_features`].
+    InternalOnly {
         reason: &'static str,
         /// True if this is always an error, false if this can be reported as a warning when set via
-        /// `-Ctarget-feature`.
+        /// `-Ctarget-feature` (and a hard error when set via `#[target_feature]`).
         hard_error: bool,
     },
 }
@@ -121,7 +125,9 @@ impl Stability {
                 }
             }
             Stability::Stable { .. } => None,
-            Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
+            Stability::InternalOnly { .. } => {
+                panic!("internal-only features should not reach this far")
+            }
         }
     }
 
@@ -139,7 +145,7 @@ impl Stability {
             Stability::Unstable(_)
             | Stability::CfgStableToggleUnstable(_)
             | Stability::Stable { .. } => Ok(()),
-            Stability::Forbidden { reason, hard_error: _ } => Err(reason),
+            Stability::InternalOnly { reason, hard_error: _ } => Err(reason),
         }
     }
 }
@@ -158,7 +164,8 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
     (
         "atomics-32",
-        Stability::Forbidden {
+        // Not implied by any CPU model or other feature.
+        Stability::InternalOnly {
             reason: "unsound because it changes the ABI of atomic operations",
             hard_error: false,
         },
@@ -245,7 +252,8 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // We forbid directly toggling just `fp-armv8`; it must be toggled with `neon`.
     (
         "fp-armv8",
-        Stability::Forbidden { reason: "Rust ties `fp-armv8` to `neon`", hard_error: false },
+        // Pinned down by [`Target::abi_required_features`] when needed.
+        Stability::InternalOnly { reason: "Rust ties `fp-armv8` to `neon`", hard_error: false },
         &[],
     ),
     // FEAT_FP8
@@ -312,7 +320,8 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdm", Stable, &["neon"]),
     (
         "reserve-x18",
-        Forbidden { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
+        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
+        InternalOnly { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
         &[],
     ),
     // FEAT_SB
@@ -493,7 +502,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     (
         "retpoline-external-thunk",
-        Stability::Forbidden {
+        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
+        Stability::InternalOnly {
             reason: "use `-Zretpoline-external-thunk` compiler flag instead",
             hard_error: false,
         },
@@ -501,7 +511,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ),
     (
         "retpoline-indirect-branches",
-        Stability::Forbidden {
+        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
+        Stability::InternalOnly {
             reason: "use `-Zretpoline` compiler flag instead",
             hard_error: false,
         },
@@ -509,7 +520,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ),
     (
         "retpoline-indirect-calls",
-        Stability::Forbidden {
+        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
+        Stability::InternalOnly {
             reason: "use `-Zretpoline` compiler flag instead",
             hard_error: false,
         },
@@ -522,7 +534,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sm4", Stable, &["avx2"]),
     (
         "soft-float",
-        Stability::Forbidden { reason: "use a soft-float target instead", hard_error: false },
+        // Pinned down by [`Target::abi_required_features`].
+        Stability::InternalOnly { reason: "use a soft-float target instead", hard_error: false },
         &[],
     ),
     ("sse", Stable, &[]),
@@ -586,7 +599,8 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
     (
         "hard-float",
-        Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false },
+        // Pinned down by [`Target::abi_required_features`].
+        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
         &[],
     ),
     ("msync", Unstable(sym::powerpc_target_feature), &[]),
@@ -598,7 +612,12 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("power9-vector", Unstable(sym::powerpc_target_feature), &["power8-vector", "power9-altivec"]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
-    ("spe", Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
+    (
+        "spe",
+        // Pinned down by [`Target::abi_required_features`].
+        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        &[],
+    ),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
     // tidy-alphabetical-end
 ];
@@ -662,7 +681,8 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("f", CfgStableToggleUnstable(sym::riscv_target_feature), &["zicsr"]),
     (
         "forced-atomics",
-        Stability::Forbidden {
+        // Not implied by any CPU model or other feature.
+        Stability::InternalOnly {
             reason: "unsound because it changes the ABI of atomic operations",
             hard_error: false,
         },
@@ -922,7 +942,8 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Stable, &[]),
     ("miscellaneous-extensions-4", Stable, &[]),
     ("nnp-assist", Stable, &["vector"]),
-    ("soft-float", Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
+    // Pinned down by [`Target::abi_required_features`].
+    ("soft-float", InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Stable, &[]),
     ("vector-enhancements-1", Stable, &["vector"]),
@@ -976,7 +997,8 @@ static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("spmx", Unstable(sym::avr_target_feature), &[]),
     (
         "sram",
-        Forbidden { reason: "devices that have no SRAM are unsupported", hard_error: false },
+        // Pinned down by [`Target::abi_required_features`].
+        InternalOnly { reason: "devices that have no SRAM are unsupported", hard_error: false },
         &[],
     ),
     ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
@@ -991,7 +1013,11 @@ const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("interrupt", Unstable(sym::xtensa_target_feature), &["exception"]),
     (
         "windowed",
-        Forbidden { reason: "windowed changes the Xtensa calling convention", hard_error: false },
+        // Pinned down by [`Target::abi_required_features`].
+        InternalOnly {
+            reason: "windowed changes the Xtensa calling convention",
+            hard_error: false,
+        },
         &["exception"],
     ),
     ("loop", Unstable(sym::xtensa_target_feature), &[]),
@@ -1018,17 +1044,17 @@ const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 /// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
 pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
     std::iter::empty()
-        .chain(ARM_FEATURES.iter())
-        .chain(AARCH64_FEATURES.iter())
-        .chain(X86_FEATURES.iter())
-        .chain(HEXAGON_FEATURES.iter())
-        .chain(POWERPC_FEATURES.iter())
-        .chain(MIPS_FEATURES.iter())
-        .chain(NVPTX_FEATURES.iter())
-        .chain(RISCV_FEATURES.iter())
-        .chain(WASM_FEATURES.iter())
-        .chain(BPF_FEATURES.iter())
-        .chain(XTENSA_FEATURES.iter())
+        .chain(ARM_FEATURES)
+        .chain(AARCH64_FEATURES)
+        .chain(X86_FEATURES)
+        .chain(HEXAGON_FEATURES)
+        .chain(POWERPC_FEATURES)
+        .chain(MIPS_FEATURES)
+        .chain(NVPTX_FEATURES)
+        .chain(RISCV_FEATURES)
+        .chain(WASM_FEATURES)
+        .chain(BPF_FEATURES)
+        .chain(XTENSA_FEATURES)
         .chain(CSKY_FEATURES)
         .chain(LOONGARCH_FEATURES)
         .chain(IBMZ_FEATURES)
@@ -1204,7 +1230,7 @@ impl Target {
         }
     }
 
-    // Note: the returned set includes `base_feature`.
+    /// Note: the returned set includes `base_feature`.
     #[track_caller]
     pub fn implied_target_features<'a>(
         &self,
@@ -1240,7 +1266,7 @@ impl Target {
         const NOTHING: FeatureConstraints = FeatureConstraints { required: &[], incompatible: &[] };
         // Some architectures don't have a clean explicit ABI designation; instead, the ABI is
         // defined by target features. When that is the case, those target features must be
-        // "forbidden" in the list above to ensure that there is a consistent answer to the
+        // "internal-only" in the list above to ensure that there is a consistent answer to the
         // questions "which ABI is used".
         match &self.arch {
             Arch::X86 => {
@@ -1315,9 +1341,9 @@ impl Target {
                         // LLVM will use float registers when `fp-armv8` is available, e.g. for
                         // calls to built-ins. The only way to ensure a consistent softfloat ABI
                         // on aarch64 is to never enable `fp-armv8`, so we enforce that.
-                        // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is the
-                        // feature we have to mark as incompatible.
-                        FeatureConstraints { required: &[], incompatible: &["neon"] }
+                        // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is also
+                        // marked as incompatible.
+                        FeatureConstraints { required: &[], incompatible: &["neon", "fp-armv8"] }
                     }
                     None => {
                         // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
