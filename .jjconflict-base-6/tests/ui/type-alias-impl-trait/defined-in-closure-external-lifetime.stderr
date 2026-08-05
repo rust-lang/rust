@@ -1,0 +1,21 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/defined-in-closure-external-lifetime.rs:7:29
+   |
+LL |     type Opaque<'x> = impl Sized + 'x;
+   |                 -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |         let _ = || { let _: Opaque<'s> = (); };
+   |                             ^^^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/defined-in-closure-external-lifetime.rs:16:34
+   |
+LL |     type Opaque<'x> = impl Sized + 'x;
+   |                 -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |         let _ = || -> Opaque<'s> {};
+   |                                  ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

@@ -1,0 +1,10 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/multiple_expect_attrs.rs:6:10
+   |
+LL | #[expect(unused_variables)]
+   |          ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: 1 warning emitted
+

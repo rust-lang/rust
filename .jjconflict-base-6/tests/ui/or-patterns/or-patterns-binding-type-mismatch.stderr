@@ -1,0 +1,257 @@
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:11:39
+   |
+LL |     match Blah::A(1, 1, 2) {
+   |           ---------------- this expression has type `Blah`
+LL |         Blah::A(_, x, y) | Blah::B(x, y) => {}
+   |                       -               ^ expected `usize`, found `isize`
+   |                       |
+   |                       first introduced with type `usize` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:15:44
+   |
+LL |     match Some(Blah::A(1, 1, 2)) {
+   |           ---------------------- this expression has type `Option<Blah>`
+LL |         Some(Blah::A(_, x, y) | Blah::B(x, y)) => {}
+   |                            -               ^ expected `usize`, found `isize`
+   |                            |
+   |                            first introduced with type `usize` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:19:19
+   |
+LL |     match (0u8, 1u16) {
+   |           ----------- this expression has type `(u8, u16)`
+LL |         (x, y) | (y, x) => {}
+   |             -     ^ expected `u16`, found `u8`
+   |             |
+   |             first introduced with type `u16` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:19:22
+   |
+LL |     match (0u8, 1u16) {
+   |           ----------- this expression has type `(u8, u16)`
+LL |         (x, y) | (y, x) => {}
+   |          -           ^ expected `u8`, found `u16`
+   |          |
+   |          first introduced with type `u8` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:24:41
+   |
+LL |     match Some((0u8, Some((1u16, 2u32)))) {
+   |           ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+LL |         Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x)))) => {}
+   |                        -                ^ expected `u16`, found `u8`
+   |                        |
+   |                        first introduced with type `u16` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:24:50
+   |
+LL |     match Some((0u8, Some((1u16, 2u32)))) {
+   |           ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+LL |         Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x)))) => {}
+   |               -                                  ^ expected `u8`, found `u16`
+   |               |
+   |               first introduced with type `u8` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:24:59
+   |
+LL |     match Some((0u8, Some((1u16, 2u32)))) {
+   |           ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+LL |         Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x)))) => {}
+   |                           -                               ^ expected `u32`, found `u16`
+   |                           |
+   |                           first introduced with type `u32` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:24:62
+   |
+LL |     match Some((0u8, Some((1u16, 2u32)))) {
+   |           ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+LL |         Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x)))) => {}
+   |               - first introduced with type `u8` here         ^ expected `u8`, found `u32`
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:32:42
+   |
+LL |     if let Blah::A(_, x, y) | Blah::B(x, y) = Blah::A(1, 1, 2) {
+   |                          -               ^    ---------------- this expression has type `Blah`
+   |                          |               |
+   |                          |               expected `usize`, found `isize`
+   |                          first introduced with type `usize` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:36:47
+   |
+LL |     if let Some(Blah::A(_, x, y) | Blah::B(x, y)) = Some(Blah::A(1, 1, 2)) {
+   |                               -               ^     ---------------------- this expression has type `Option<Blah>`
+   |                               |               |
+   |                               |               expected `usize`, found `isize`
+   |                               first introduced with type `usize` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:40:22
+   |
+LL |     if let (x, y) | (y, x) = (0u8, 1u16) {
+   |                -     ^       ----------- this expression has type `(u8, u16)`
+   |                |     |
+   |                |     expected `u16`, found `u8`
+   |                first introduced with type `u16` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:40:25
+   |
+LL |     if let (x, y) | (y, x) = (0u8, 1u16) {
+   |             -           ^    ----------- this expression has type `(u8, u16)`
+   |             |           |
+   |             |           expected `u8`, found `u16`
+   |             first introduced with type `u8` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:45:44
+   |
+LL |     if let Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x))))
+   |                           -                ^ expected `u16`, found `u8`
+   |                           |
+   |                           first introduced with type `u16` here
+...
+LL |     = Some((0u8, Some((1u16, 2u32))))
+   |       ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:45:53
+   |
+LL |     if let Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x))))
+   |                  -                                  ^ expected `u8`, found `u16`
+   |                  |
+   |                  first introduced with type `u8` here
+...
+LL |     = Some((0u8, Some((1u16, 2u32))))
+   |       ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:45:62
+   |
+LL |     if let Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x))))
+   |                              -                               ^ expected `u32`, found `u16`
+   |                              |
+   |                              first introduced with type `u32` here
+...
+LL |     = Some((0u8, Some((1u16, 2u32))))
+   |       ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:45:65
+   |
+LL |     if let Some((x, Some((y, z)))) | Some((y, Some((x, z) | (z, x))))
+   |                  - first introduced with type `u8` here         ^ expected `u8`, found `u32`
+...
+LL |     = Some((0u8, Some((1u16, 2u32))))
+   |       ------------------------------- this expression has type `Option<(u8, Option<(u16, u32)>)>`
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:53:40
+   |
+LL |     let (Blah::A(_, x, y) | Blah::B(x, y)) = Blah::A(1, 1, 2);
+   |                        -               ^     ---------------- this expression has type `Blah`
+   |                        |               |
+   |                        |               expected `usize`, found `isize`
+   |                        first introduced with type `usize` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:56:20
+   |
+LL |     let ((x, y) | (y, x)) = (0u8, 1u16);
+   |              -     ^        ----------- this expression has type `(u8, u16)`
+   |              |     |
+   |              |     expected `u16`, found `u8`
+   |              first introduced with type `u16` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:56:23
+   |
+LL |     let ((x, y) | (y, x)) = (0u8, 1u16);
+   |           -           ^     ----------- this expression has type `(u8, u16)`
+   |           |           |
+   |           |           expected `u8`, found `u16`
+   |           first introduced with type `u8` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:60:42
+   |
+LL |     fn f1((Blah::A(_, x, y) | Blah::B(x, y)): Blah) {}
+   |                          -               ^    ---- expected due to this
+   |                          |               |
+   |                          |               expected `usize`, found `isize`
+   |                          first introduced with type `usize` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:63:22
+   |
+LL |     fn f2(((x, y) | (y, x)): (u8, u16)) {}
+   |                -     ^       --------- expected due to this
+   |                |     |
+   |                |     expected `u16`, found `u8`
+   |                first introduced with type `u16` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/or-patterns-binding-type-mismatch.rs:63:25
+   |
+LL |     fn f2(((x, y) | (y, x)): (u8, u16)) {}
+   |             -           ^    --------- expected due to this
+   |             |           |
+   |             |           expected `u8`, found `u16`
+   |             first introduced with type `u8` here
+   |
+   = note: a binding must have the same type in all alternatives
+
+error: aborting due to 22 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

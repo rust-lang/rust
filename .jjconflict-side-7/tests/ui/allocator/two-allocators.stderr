@@ -1,0 +1,12 @@
+error: cannot define multiple global allocators
+  --> $DIR/two-allocators.rs:6:1
+   |
+LL | static A: System = System;
+   | -------------------------- previous global allocator defined here
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static B: System = System;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot define a new global allocator
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `[Adt; std::mem::size_of::<Self::Assoc>()]: Foo` is not satisfied
+  --> $DIR/dont-evaluate-array-len-on-err-1.rs:15:10
+   |
+LL |         <[Adt; std::mem::size_of::<Self::Assoc>()] as Foo>::bar()
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `[Adt; std::mem::size_of::<Self::Assoc>()]`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-evaluate-array-len-on-err-1.rs:9:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,15 @@
+// MIR for `std::ptr::drop_glue` before AddMovesForPackedDrops
+
+fn std::ptr::drop_glue(_1: &mut [String; 42]) -> () {
+    let mut _0: ();
+    let mut _2: &mut [std::string::String];
+
+    bb0: {
+        _2 = move _1 as &mut [std::string::String] (PointerCoercion(Unsize, Implicit));
+        _0 = std::ptr::drop_glue::<[String]>(move _2) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

@@ -1,0 +1,5 @@
+break tests/ui/locals_wildcard_pointer.rs:15
+continue
+locals
+print 2
+quit

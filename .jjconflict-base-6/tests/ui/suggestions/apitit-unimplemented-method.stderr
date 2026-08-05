@@ -1,0 +1,14 @@
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `baz`, `quux`
+  --> $DIR/apitit-unimplemented-method.rs:8:1
+   |
+LL | impl Trait for Local {}
+   | ^^^^^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `baz`, `quux` in implementation
+   |
+   = help: implement the missing item: `fn foo(_: impl Sized) { todo!() }`
+   = help: implement the missing item: `fn bar<T>(_: impl Sized) where Foo<T>: MetaSized { todo!() }`
+   = help: implement the missing item: `fn baz<const N: usize>() { todo!() }`
+   = help: implement the missing item: `fn quux<'a: 'b, 'b, T>() where T: ?Sized { todo!() }`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

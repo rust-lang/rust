@@ -1,14 +1,19 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
+use std::ops::ControlFlow;
+
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::Span;
-use rustc_trait_selection::solve::Certainty;
 use rustc_trait_selection::solve::inspect::{
     InferCtxtProofTreeExt, InspectConfig, InspectGoal, ProofTreeVisitor,
 };
+use rustc_trait_selection::solve::{Certainty, MaybeInfo};
 use tracing::{debug, instrument, trace};
 
 use crate::FnCtxt;
@@ -110,22 +115,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_vid: ty::TyVid,
     ) -> bool {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => data
-                .trait_ref
-                .args
-                .iter()
-                .filter_map(|arg| arg.as_type())
-                .any(|t| self.type_matches_expected_vid(t, expected_vid, UseSubtyping::Yes)),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                references_infer_var(data.trait_ref.args, expected_vid, &self.infcx)
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                if data.projection_term.kind.is_trait_projection() {
-                    data.projection_term
-                        .args
-                        .iter()
-                        .filter_map(|arg| arg.as_type())
-                        .any(|t| self.type_matches_expected_vid(t, expected_vid, UseSubtyping::Yes))
-                } else {
-                    false
-                }
+                data.projection_term.kind.is_trait_projection()
+                    && references_infer_var(data.projection_term.args, expected_vid, &self.infcx)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
@@ -390,8 +385,19 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsReferencingInferVar<'_, '
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
         // No need to walk into goal subtrees that certainly hold, since they
         // wouldn't then be stalled on an infer var.
-        if inspect_goal.result() == Ok(Certainty::Yes) {
-            return;
+        //
+        // TODO: do this on both visitors + make match not uglyaf
+        match inspect_goal.result().unwrap() {
+            Certainty::Yes
+            | Certainty::Maybe(MaybeInfo {
+                cause:
+                    ty::solve::MaybeCause::Overflow {
+                        suggest_increasing_limit: _,
+                        keep_constraints: true,
+                    },
+                ..
+            }) => return,
+            Certainty::Maybe(_) => (),
         }
 
         // We don't care about any pending goals which don't actually
@@ -473,4 +479,36 @@ impl<'tcx> ProofTreeVisitor<'tcx> for FindFromFloatForF32RootVids<'_, 'tcx> {
             candidate.visit_nested_no_probe(self);
         }
     }
+}
+
+/// Returns `true` if `t` contains a type inference variable that is related via subtyping to `vid`.
+fn references_infer_var<'tcx>(
+    t: impl TypeVisitable<TyCtxt<'tcx>>,
+    vid: ty::TyVid,
+    infcx: &InferCtxt<'_>,
+) -> bool {
+    struct InferVarFinder<'a, 'b> {
+        vid: ty::TyVid,
+        infcx: &'a InferCtxt<'b>,
+    }
+
+    impl TypeVisitor<TyCtxt<'_>> for InferVarFinder<'_, '_> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(&mut self, t: Ty<'_>) -> Self::Result {
+            match t.kind() {
+                &ty::Infer(ty::InferTy::TyVar(vid)) => {
+                    if self.infcx.sub_unification_table_root_var(vid) == self.vid {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                }
+                _ => t.super_visit_with(self),
+            }
+        }
+    }
+
+    t.visit_with(&mut InferVarFinder { vid: infcx.sub_unification_table_root_var(vid), infcx })
+        .is_break()
 }

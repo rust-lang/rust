@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/unsized-bare-typaram.rs:2:29
+   |
+LL | fn foo<T: ?Sized>() { bar::<T>() }
+   |        -                    ^ doesn't have a size known at compile-time
+   |        |
+   |        this type parameter needs to be `Sized`
+   |
+note: required by a bound in `bar`
+  --> $DIR/unsized-bare-typaram.rs:1:11
+   |
+LL | fn bar<T: Sized>() { }
+   |           ^^^^^ required by this bound in `bar`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn foo<T: ?Sized>() { bar::<T>() }
+LL + fn foo<T>() { bar::<T>() }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

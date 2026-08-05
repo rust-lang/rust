@@ -1,0 +1,8 @@
+error: scalable vectors cannot be held over await points
+  --> $DIR/async.rs:36:13
+   |
+LL |         let x = svdup_n_s32(1);
+   |             ^
+
+error: aborting due to 1 previous error
+

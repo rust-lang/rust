@@ -1,0 +1,12 @@
+error[E0186]: method `bar` has a `&self` declaration in the trait, but not in the impl
+  --> $DIR/trait-impl-self-mismatch.rs:12:5
+   |
+LL |     fn bar(&self) {}
+   |     ------------- `&self` used in trait
+...
+LL |     fn bar() {
+   |     ^^^^^^^^ expected `&self` in impl
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0186`.

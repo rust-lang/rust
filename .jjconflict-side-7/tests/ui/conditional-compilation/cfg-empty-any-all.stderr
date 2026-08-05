@@ -1,0 +1,21 @@
+error[E0425]: cannot find value `Disabled` in this scope
+  --> $DIR/cfg-empty-any-all.rs:10:13
+   |
+LL |     let _ = Disabled;
+   |             ^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/cfg-empty-any-all.rs:4:8
+   |
+LL | #[cfg(any())]  // Equivalent to cfg(false)
+   |          -- the item is gated here
+LL | struct Disabled;
+   |        ^^^^^^^^
+help: consider importing this unit variant
+   |
+LL + use std::backtrace::BacktraceStatus::Disabled;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

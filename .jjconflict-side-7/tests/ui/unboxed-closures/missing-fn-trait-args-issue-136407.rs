@@ -1,0 +1,37 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/136407>.
+// Missing arguments must not suggest gated Fn-family syntax without its feature.
+
+//@ revisions: feature_disabled feature_enabled
+//@ edition: 2024
+//@[feature_disabled] run-rustfix
+#![cfg_attr(feature_enabled, feature(unboxed_closures))]
+
+pub fn shared<T: Fn>() {}
+//~^ ERROR missing generics
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+pub fn mutable<T: FnMut>() {}
+//~^ ERROR missing generics
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+pub fn once<T: FnOnce>() {}
+//~^ ERROR missing generics
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+pub fn async_shared<T: AsyncFn>() {}
+//~^ ERROR missing generics
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+pub fn async_mutable<T: AsyncFnMut>() {}
+//~^ ERROR missing generics
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+pub fn async_once<T: AsyncFnOnce>() {}
+//~^ ERROR missing generics
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+pub fn with_output<T: Fn<Output = ()>>() {}
+//~^ ERROR trait takes 1 generic argument but 0 generic arguments were supplied
+//[feature_disabled]~| ERROR the precise format of `Fn`-family traits' type parameters
+
+fn main() {}

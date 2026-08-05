@@ -1,0 +1,26 @@
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/foreign-2021.rs:10:5
+   |
+LL |     let h = foreign::hello(&x);
+   |                            -- immutable borrow occurs here
+...
+LL |     x.push(0);
+   |     ^^^^^^^^^ mutable borrow occurs here
+...
+LL |     println!("{h}");
+   |                - immutable borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/foreign-2021.rs:7:13
+   |
+LL |     let h = foreign::hello(&x);
+   |             ^^^^^^^^^^^^^^^^^^
+help: if you can modify this crate, add a precise capturing bound to avoid overcapturing: `+ use<>`
+  --> $DIR/auxiliary/foreign.rs:5:31
+   |
+LL | pub fn hello(x: &Vec<i32>) -> impl Display { 0 }
+   |                               ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

@@ -1,0 +1,19 @@
+error: unnecessary structure name repetition
+  --> src/main.rs:11:21
+   |
+11 |     pub fn bar() -> Foo {
+   |                     ^^^ help: use the applicable keyword: `Self`
+   |
+note: the lint level is defined here
+  --> src/main.rs:6:9
+   |
+ 6 | #![deny(clippy::use_self)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unnecessary structure name repetition
+  --> src/main.rs:12:9
+   |
+12 |         Foo
+   |         ^^^ help: use the applicable keyword: `Self`
+
+error: could not compile `fail-file-attr` (bin "fail-file-attr") due to 2 previous errors
