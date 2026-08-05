@@ -24,8 +24,8 @@ use crate::{Analysis, Backward, GenKill};
 pub struct MaybeLiveLocals;
 
 impl MaybeLiveLocals {
-    pub fn transfer_function<I>(state: &mut I) -> TransferFunction<'_, I> {
-        TransferFunction(state)
+    pub fn transfer_function<I>(state: &mut I) -> LivenessTransferFunction<'_, I> {
+        LivenessTransferFunction(state)
     }
 }
 
@@ -50,7 +50,7 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        TransferFunction(state).visit_statement(statement, location);
+        LivenessTransferFunction(state).visit_statement(statement, location);
     }
 
     fn apply_primary_terminator_effect(
@@ -59,7 +59,7 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        TransferFunction(state).visit_terminator(terminator, location);
+        LivenessTransferFunction(state).visit_terminator(terminator, location);
     }
 
     fn apply_call_return_effect(
@@ -84,9 +84,9 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     }
 }
 
-pub struct TransferFunction<'a, I>(pub &'a mut I);
+pub struct LivenessTransferFunction<'a, I>(pub &'a mut I);
 
-impl<'tcx, I> Visitor<'tcx> for TransferFunction<'_, I>
+impl<'tcx, I> Visitor<'tcx> for LivenessTransferFunction<'_, I>
 where
     I: GenKill<Local>,
 {
