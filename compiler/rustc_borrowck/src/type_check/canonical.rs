@@ -31,6 +31,7 @@ pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
     locations: Locations,
     category: ConstraintCategory<'tcx>,
     op: Op,
+    assumptions: &[ty::ArgOutlivesPredicate<'tcx>],
 ) -> Result<R, ErrorGuaranteed>
 where
     Op: type_op::TypeOp<'tcx, Output = R>,
@@ -60,7 +61,7 @@ where
             category,
             constraints,
         )
-        .convert_all(data);
+        .convert_all_with_assumptions(data, assumptions);
     }
 
     // If the query has created new universes and errors are going to be emitted, register the
@@ -110,6 +111,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             category,
             op,
+            &[],
         )
     }
 
@@ -203,6 +205,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let span = locations.span(self.body);
         let mut region_bound_pairs = self.region_bound_pairs.clone();
+        let mut assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>> = Vec::new();
         for input in sig_tys.with(hdr).skip_binder().inputs() {
             let Ok(TypeOpOutput { output: bounds, constraints, .. }) =
                 self.infcx.fully_perform(type_op::ImpliedOutlivesBounds { ty: *input }, span)
@@ -222,7 +225,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         region_bound_pairs
                             .insert(ty::OutlivesPredicate(GenericKind::Alias(alias), r));
                     }
-                    OutlivesBound::RegionSubRegion(..) => {}
+                    // Region-region bounds 'b: 'a can't go in region_bound_pairs,
+                    // so they are passed to the WF proof as higher-ranked assumptions.
+                    OutlivesBound::RegionSubRegion(r_a, r_b) => {
+                        assumptions.push(ty::OutlivesPredicate(r_b.into(), r_a));
+                    }
                 }
             }
         }
@@ -240,6 +247,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             category,
             param_env.and(type_op::prove_predicate::ProvePredicate { predicate }),
+            &assumptions,
         );
     }
 
