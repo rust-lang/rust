@@ -7,9 +7,7 @@ struct Test {
     name: &'static str,
     sha: &'static str,
     lock: Option<&'static str>,
-    test_packages: &'static [&'static str],
-    /// Additional packages to check after running the tests.
-    check_packages: &'static [&'static str],
+    packages: &'static [&'static str],
     features: Option<&'static [&'static str]>,
     manifest_path: Option<&'static str>,
     /// `filters` are passed to libtest (i.e., after a `--` in the `cargo test` invocation).
@@ -22,8 +20,7 @@ const TEST_REPOS: &[Test] = &[
         repo: "https://github.com/iron/iron",
         sha: "cf056ea5e8052c1feea6141e40ab0306715a2c33",
         lock: None,
-        test_packages: &[],
-        check_packages: &[],
+        packages: &[],
         features: None,
         manifest_path: None,
         filters: &[],
@@ -33,8 +30,7 @@ const TEST_REPOS: &[Test] = &[
         repo: "https://github.com/BurntSushi/ripgrep",
         sha: "ced5b92aa93eb47e892bd2fd26ab454008721730",
         lock: None,
-        test_packages: &[],
-        check_packages: &[],
+        packages: &[],
         features: None,
         manifest_path: None,
         filters: &[],
@@ -44,8 +40,7 @@ const TEST_REPOS: &[Test] = &[
         repo: "https://github.com/XAMPPRocky/tokei",
         sha: "fdf3f8cb279a7aeac0696c87e5d8b0cd946e4f9e",
         lock: None,
-        test_packages: &[],
-        check_packages: &[],
+        packages: &[],
         features: None,
         manifest_path: None,
         filters: &[],
@@ -55,8 +50,7 @@ const TEST_REPOS: &[Test] = &[
         repo: "https://github.com/BurntSushi/xsv",
         sha: "3de6c04269a7d315f7e9864b9013451cd9580a08",
         lock: None,
-        test_packages: &[],
-        check_packages: &[],
+        packages: &[],
         features: None,
         manifest_path: None,
         // Many tests here use quickcheck and some of them can fail randomly, so only run deterministic tests.
@@ -78,12 +72,9 @@ const TEST_REPOS: &[Test] = &[
     Test {
         name: "stylo",
         repo: "https://github.com/servo/stylo",
-        sha: "2d289c14fdf46952d52cabce63b1f0dc55b2ccde",
+        sha: "127b0b5cab6a6927552e889debb20beb031b79d1",
         lock: None,
-        test_packages: &["selectors"],
-        // Stylo's unit tests currently fail to compile under the default Servo configuration,
-        // so only check the library for now.
-        check_packages: &["stylo"],
+        packages: &["selectors", "stylo"],
         features: None,
         manifest_path: None,
         filters: &[],
@@ -93,8 +84,7 @@ const TEST_REPOS: &[Test] = &[
         repo: "https://github.com/diesel-rs/diesel",
         sha: "3db7c17c5b069656ed22750e84d6498c8ab5b81d",
         lock: None,
-        test_packages: &[],
-        check_packages: &[],
+        packages: &[],
         // Test the embedded sqlite variant of diesel
         // This does not require any dependency to be present,
         // sqlite will be compiled as part of the build process
@@ -126,28 +116,9 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     if let Some(lockfile) = test.lock {
         fs::write(&dir.join("Cargo.lock"), lockfile).unwrap();
     }
-    if !run_cargo_test(
-        cargo,
-        &dir,
-        test.test_packages,
-        test.features,
-        test.manifest_path,
-        test.filters,
-    ) {
-        panic!("tests failed for {}", test.repo);
-    }
-    if !test.check_packages.is_empty()
-        && !run_cargo(
-            cargo,
-            &dir,
-            "check",
-            test.check_packages,
-            test.features,
-            test.manifest_path,
-            None,
-        )
+    if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path, test.filters)
     {
-        panic!("checks failed for {}", test.repo);
+        panic!("tests failed for {}", test.repo);
     }
 }
 
@@ -206,20 +177,8 @@ fn run_cargo_test(
     manifest_path: Option<&str>,
     filters: &[&str],
 ) -> bool {
-    run_cargo(cargo_path, crate_path, "test", packages, features, manifest_path, Some(filters))
-}
-
-fn run_cargo(
-    cargo_path: &Path,
-    crate_path: &Path,
-    subcommand: &str,
-    packages: &[&str],
-    features: Option<&[&str]>,
-    manifest_path: Option<&str>,
-    filters: Option<&[&str]>,
-) -> bool {
     let mut command = Command::new(cargo_path);
-    command.arg(subcommand);
+    command.arg("test");
 
     if let Some(path) = manifest_path {
         command.arg(format!("--manifest-path={}", path));
@@ -236,10 +195,8 @@ fn run_cargo(
         command.arg("-p").arg(name);
     }
 
-    if let Some(filters) = filters {
-        command.arg("--");
-        command.args(filters);
-    }
+    command.arg("--");
+    command.args(filters);
 
     let status = command
         // `xsv` locates binaries relative to `current_exe()`
