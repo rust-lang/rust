@@ -283,7 +283,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     ) {
         // This is the one part of `MaybeTransitiveLiveLocals` that differs from `MaybeLiveLocals`.
         if let Some(destination) =
-            Self::can_be_removed_if_dead(&statement.kind, &self.always_live, &self.debuginfo_locals)
+            Self::can_be_removed_if_dead(&statement.kind, self.always_live, self.debuginfo_locals)
             && !state.contains(destination.local)
         {
             // This store is dead
