@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use indexmap::IndexSet;
 use quote::{ToTokens, quote};
 use syn::visit_mut::VisitMut;
@@ -28,13 +30,8 @@ enum TypeParameterPath {
     GenericParameter(syn::Ident),
 }
 
-enum TypeParameterTransform {
-    Continue,
-    Stop,
-}
-
 type TypeParameterVisitor =
-    fn(TypeParameterPath, &mut syn::TypePath, &mut IndexSet<syn::Ident>) -> TypeParameterTransform;
+    fn(TypeParameterPath, &mut syn::TypePath, &mut IndexSet<syn::Ident>) -> ControlFlow<()>;
 
 fn has_ignore_attr(attrs: &[Attribute], name: &'static str, meta: &'static str) -> bool {
     let mut ignored = false;
@@ -183,7 +180,7 @@ fn type_foldable_generic_parameters(
         if let TypeParameterPath::GenericParameter(param) = path {
             generic_parameter_bounds.insert(param);
         }
-        TypeParameterTransform::Continue
+        ControlFlow::Continue(())
     })
     .generic_parameter_bounds
 }
@@ -295,12 +292,12 @@ fn lift(ty: syn::Type, generic_parameters: &[syn::Ident]) -> TransformedTy {
         match path {
             TypeParameterPath::Interner => {
                 *ty.path.segments.first_mut().unwrap() = parse_quote! { J };
-                TypeParameterTransform::Continue
+                ControlFlow::Continue(())
             }
             TypeParameterPath::GenericParameter(param) => {
                 generic_parameter_bounds.insert(param.clone());
                 *ty = parse_quote! { <#param as ::rustc_type_ir::lift::Lift<J>>::Lifted };
-                TypeParameterTransform::Stop
+                ControlFlow::Break(())
             }
         }
     })
@@ -338,9 +335,7 @@ fn transform_type_parameters(
             };
 
             if let Some(path) = path {
-                if let TypeParameterTransform::Stop =
-                    (self.visit)(path, i, &mut self.generic_parameter_bounds)
-                {
+                if (self.visit)(path, i, &mut self.generic_parameter_bounds).is_break() {
                     return;
                 }
             }
