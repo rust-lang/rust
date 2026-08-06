@@ -229,7 +229,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // It is important that the order of reservation matches the order of writing.
     // The object crate contains many debug asserts that fire if you get this wrong.
 
-    let Some((arch, sub_arch)) = sess.target.object_architecture(&sess.unstable_target_features)
+    let Some((arch, sub_arch)) = sess.target.object_architecture(&sess.internal_target_features)
     else {
         sess.dcx().fatal(format!(
             "raw-dylib is not supported for the architecture `{}`",
