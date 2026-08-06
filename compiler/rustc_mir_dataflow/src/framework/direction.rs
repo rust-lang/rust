@@ -194,7 +194,9 @@ impl Direction for Forward {
         let terminator = block_data.terminator();
         let location = Location { block, statement_index: block_data.statements.len() };
         analysis.apply_early_terminator_effect(state, terminator, location);
-        let edges = analysis.apply_primary_terminator_effect(state, terminator, location);
+        // Edges are obtained *before* calling `apply_primary_terminator_effect`.
+        let edges = analysis.get_terminator_edges(state, terminator, location);
+        analysis.apply_primary_terminator_effect(state, terminator, location);
 
         let exit_state = state;
         match edges {

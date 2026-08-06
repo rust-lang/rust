@@ -41,14 +41,13 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
         Self::transfer_function(state).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         Self::transfer_function(state).visit_terminator(terminator, location);
-        terminator.edges()
     }
 }
 

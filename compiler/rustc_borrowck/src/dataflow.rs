@@ -2,9 +2,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
-use rustc_middle::mir::{
-    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, Body, CallReturnPlaces, Location, Place};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{
@@ -76,19 +74,15 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         self.ever_inits.apply_early_terminator_effect(&mut state.ever_inits, term, loc);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        term: &'mir mir::Terminator<'tcx>,
+        term: &mir::Terminator<'tcx>,
         loc: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
         self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
         self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
-
-        // This return value doesn't matter. It's only used by `iterate_to_fixpoint`, which this
-        // analysis doesn't use.
-        TerminatorEdges::None
     }
 
     fn apply_call_return_effect(
@@ -598,12 +592,12 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(state, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         _location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
@@ -613,7 +607,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                 }
             }
         }
-        terminator.edges()
     }
 }
 

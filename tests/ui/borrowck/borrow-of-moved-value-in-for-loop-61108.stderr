@@ -9,7 +9,7 @@ LL |     for l in bad_letters {
 LL |     bad_letters.push('s');
    |     ^^^^^^^^^^^ value borrowed here after move
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves `bad_letters`
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `bad_letters`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider iterating over a slice of the `Vec<char>`'s content to avoid moving into the `for` loop
    |
