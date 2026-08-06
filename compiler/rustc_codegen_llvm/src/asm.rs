@@ -414,6 +414,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        extra_rust_target_features: &[String],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -499,14 +500,26 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        let target_features = self.tcx.global_backend_features(()).join(",");
-        let target_cpu = llvm_util::target_cpu(self.tcx.sess);
+        // Globally-enabled features that are already in the backend format.
+        let global_features = self.tcx.global_backend_features(()).iter().map(String::as_str);
+
+        // Features enabled on a particular instance, in the rust format.
+        // These need to be translated to the LLVM format.
+        let function_features: Vec<_> = extra_rust_target_features
+            .iter()
+            .flat_map(|feat| llvm_util::to_llvm_features(self.tcx.sess, feat))
+            .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
+            .collect();
+
+        let function_features = function_features.iter().map(String::as_str);
+        let target_features =
+            global_features.chain(function_features).intersperse(",").collect::<String>();
 
         llvm::append_module_inline_asm(
             self.llmod,
             template_str.as_bytes(),
             &target_features,
-            target_cpu,
+            llvm_util::target_cpu(self.tcx.sess),
         );
     }
 
