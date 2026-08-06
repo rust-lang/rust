@@ -1,4 +1,4 @@
-error[E0658]: custom attributes cannot be applied to expressions
+error[E0658]: macro attributes on expressions are unstable
   --> $DIR/issue-111749.rs:8:17
    |
 LL |     cbor_map! { #[test(test)] 4i32};

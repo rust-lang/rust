@@ -1046,7 +1046,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.sess,
             sym::proc_macro_hygiene,
             span,
-            format!("custom attributes cannot be applied to {kind}"),
+            format!("macro attributes on {kind} are unstable"),
         )
         .emit();
     }

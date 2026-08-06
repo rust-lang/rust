@@ -4,7 +4,7 @@ error: `#[eii_declaration(...)]` is only valid on macros
 LL | #[eii_declaration(bar)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0658]: custom attributes cannot be applied to statements
+error[E0658]: macro attributes on statements are unstable
   --> $DIR/errors.rs:10:5
    |
 LL |     #[eii_declaration(bar)]

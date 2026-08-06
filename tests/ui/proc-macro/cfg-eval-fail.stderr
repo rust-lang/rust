@@ -4,7 +4,7 @@ error: removing an expression is not supported in this position
 LL |     let _ = #[cfg_eval] #[cfg(false)] 0;
    |                         ^^^^^^^^^^^^^
 
-error[E0658]: custom attributes cannot be applied to expressions
+error[E0658]: macro attributes on expressions are unstable
   --> $DIR/cfg-eval-fail.rs:5:13
    |
 LL |     let _ = #[cfg_eval] #[cfg(false)] 0;
