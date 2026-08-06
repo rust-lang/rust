@@ -353,10 +353,10 @@ pub fn finalize_session_directory(
     let _ = garbage_collect_session_directories(sess, &new_path);
 }
 
-pub(crate) fn delete_all_session_dir_contents(
-    incr_comp_session: &IncrCompSession,
+pub(crate) fn invalidate_old_session_dir(
+    incr_comp_session: &mut IncrCompSession,
 ) -> io::Result<()> {
-    if let Some(old_incr_comp_session_dir) = &incr_comp_session.old_session_directory {
+    if let Some(old_incr_comp_session_dir) = incr_comp_session.old_session_directory.take() {
         let sess_dir_iterator = old_incr_comp_session_dir.read_dir()?;
         for entry in sess_dir_iterator {
             let entry = entry?;

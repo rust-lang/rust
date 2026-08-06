@@ -16,8 +16,8 @@ use rustc_span::Symbol;
 use tracing::{debug, warn};
 
 use super::data::*;
+use super::file_format;
 use super::fs::*;
-use super::{file_format, work_product};
 use crate::diagnostics;
 use crate::persist::file_format::{OpenFile, OpenFileError};
 
@@ -30,15 +30,6 @@ enum LoadResult {
     DataOutOfDate,
     /// Loading failed due to an unexpected I/O error.
     IoError { path: PathBuf, err: io::Error },
-}
-
-fn delete_dirty_work_product(
-    sess: &Session,
-    incr_comp_session: &IncrCompSession,
-    swp: SerializedWorkProduct,
-) {
-    debug!("delete_dirty_work_product({:?})", swp);
-    work_product::delete_workproduct_files(sess, incr_comp_session, &swp.work_product);
 }
 
 fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadResult {
@@ -84,7 +75,7 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
                 prev_work_products.insert(swp.id, swp.work_product);
             } else {
                 debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                delete_dirty_work_product(sess, incr_comp_session, swp);
+                return LoadResult::DataOutOfDate;
             }
         }
     }
@@ -196,7 +187,7 @@ pub fn setup_dep_graph(
     }
 
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    let incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
+    let mut incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
     // Try to load the previous session's dep graph and work products.
     let load_result = load_dep_graph(sess, &incr_comp_session);
 
@@ -217,10 +208,16 @@ pub fn setup_dep_graph(
     let (prev_graph, prev_work_products) = match load_result {
         LoadResult::IoError { path, err } => {
             sess.dcx().emit_warn(diagnostics::LoadDepGraph { path, err });
+            if let Err(err) = invalidate_old_session_dir(&mut incr_comp_session) {
+                sess.dcx().emit_err(diagnostics::DeleteIncompatible {
+                    path: dep_graph_path(&incr_comp_session),
+                    err,
+                });
+            }
             Default::default()
         }
         LoadResult::DataOutOfDate => {
-            if let Err(err) = delete_all_session_dir_contents(&incr_comp_session) {
+            if let Err(err) = invalidate_old_session_dir(&mut incr_comp_session) {
                 sess.dcx().emit_err(diagnostics::DeleteIncompatible {
                     path: dep_graph_path(&incr_comp_session),
                     err,

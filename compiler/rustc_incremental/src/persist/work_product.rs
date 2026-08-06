@@ -1,8 +1,7 @@
-//! Functions for saving and removing intermediate [work products].
+//! Function for saving intermediate [work products].
 //!
 //! [work products]: WorkProduct
 
-use std::fs as std_fs;
 use std::path::Path;
 
 use rustc_data_structures::unord::UnordMap;
@@ -49,18 +48,4 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     debug!(?work_product);
     let work_product_id = WorkProductId::from_cgu_name(cgu_name);
     (work_product_id, work_product)
-}
-
-/// Removes files for a given work product.
-pub(crate) fn delete_workproduct_files(
-    sess: &Session,
-    incr_comp_session: &IncrCompSession,
-    work_product: &WorkProduct,
-) {
-    for (_, path) in work_product.saved_files.items().into_sorted_stable_ord() {
-        let path = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap();
-        if let Err(err) = std_fs::remove_file(&path) {
-            sess.dcx().emit_warn(diagnostics::DeleteWorkProduct { path: &path, err });
-        }
-    }
 }
