@@ -1,5 +1,5 @@
 error: unsupported operation: extern static `E` is not supported by Miri
-  --> tests/fail/extern_static_in_const.rs:LL:CC
+  --> tests/fail/extern_static/in_const.rs:LL:CC
    |
 LL |     let _val = X;
    |                ^ unsupported operation occurred here

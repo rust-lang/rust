@@ -1,0 +1,19 @@
+Content-Length: 85
+
+{"seq":1,"type":"request","command":"initialize","arguments":{"adapterID":"priroda"}}Content-Length: 60
+
+{"seq":2,"type":"request","command":"launch","arguments":{}}Content-Length: 56
+
+{"seq":3,"type":"request","command":"configurationDone"}Content-Length: 76
+
+{"seq":4,"type":"request","command":"stackTrace","arguments":{"threadId":2}}Content-Length: 71
+
+{"seq":5,"type":"request","command":"scopes","arguments":{"frameId":2}}Content-Length: 85
+
+{"seq":6,"type":"request","command":"variables","arguments":{"variablesReference":2}}Content-Length: 70
+
+{"seq":7,"type":"request","command":"next","arguments":{"threadId":2}}Content-Length: 72
+
+{"seq":8,"type":"request","command":"stepIn","arguments":{"threadId":2}}Content-Length: 65
+
+{"seq":9,"type":"request","command":"disconnect","arguments":{}}
