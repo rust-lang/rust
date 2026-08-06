@@ -1677,6 +1677,10 @@ pub struct IncrCompSession {
     /// The directory to which cached data for the current session can be
     /// written to.
     pub new_session_directory: PathBuf,
+    /// `_old_lock_file` is never directly used, but its presence
+    /// alone has an effect, because the file will unlock when the session is
+    /// dropped.
+    pub _old_lock_file: Option<flock::Lock>,
     /// `_lock_file` is never directly used, but its presence
     /// alone has an effect, because the file will unlock when the session is
     /// dropped.
