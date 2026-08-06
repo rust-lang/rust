@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `*mut _`
+  --> $DIR/recursive-hidden-type-canonicalization.rs:20:13
+   |
+LL |         let r = random_paulis().unwrap();
+   |             ^
+   |
+help: consider giving `r` an explicit type, where the placeholder `_` is specified
+   |
+LL |         let r: *mut _ = random_paulis().unwrap();
+   |              ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.
