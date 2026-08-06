@@ -1,8 +1,6 @@
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
-};
+use rustc_middle::mir::{self, CallReturnPlaces, Local, Location, Place, StatementKind};
 
 use crate::{Analysis, Backward, GenKill};
 
@@ -55,14 +53,13 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         TransferFunction(state).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         TransferFunction(state).visit_terminator(terminator, location);
-        terminator.edges()
     }
 
     fn apply_call_return_effect(
@@ -301,14 +298,13 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         TransferFunction(state).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         TransferFunction(state).visit_terminator(terminator, location);
-        terminator.edges()
     }
 
     fn apply_call_return_effect(
