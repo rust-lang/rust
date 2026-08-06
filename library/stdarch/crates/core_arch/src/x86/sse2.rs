@@ -3332,7 +3332,7 @@ mod tests {
         core_arch::{simd::*, x86::*},
         hint::black_box,
     };
-    use std::{boxed, f32, f64, mem, ptr};
+    use std::{boxed, mem, ptr};
     use stdarch_test::simd_test;
 
     const NAN: f64 = f64::NAN;
