@@ -33,6 +33,12 @@ error: cannot find attribute `rustc_unknown` in this scope
    |
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[rustc_unknown]
+LL + #[rustc_unroll]
+   |
 
 error[E0658]: use of an internal attribute
   --> $DIR/feature-gate-rustc-attrs.rs:20:3
