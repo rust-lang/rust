@@ -1,5 +1,6 @@
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
@@ -223,74 +224,12 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .collect();
 
         // Compute the implied bounds of the current function based on its signature.
-        //
-        // We need to make sure that all implied bounds are checked by the user of this
-        // item. For this, we compute the implied bounds in a different `TypingEnv`.
-        //
-        // This also returns the function signature as normalized in that separate environment
-        // which we then renormalize. This is necessary to correctly handle implied bounds
-        // involving unconstrained regions due to #136547.
-        let var_values =
-            implied_bounds_query_var_values(tcx, &unnormalized_input_output_tys, |region| {
-                self.universal_regions.is_external_free_region(region.as_var())
-            });
-        let original_query_values = OriginalQueryValues { var_values, ..Default::default() };
-        let mut query_constraints = QueryRegionConstraints::default();
-        let MirBorrowckImpliedOutlivesBounds {
-            outlives_bounds,
-            normalized_inputs_and_output: query_normalized_inputs_and_output,
-        } = match tcx.mir_borrowck_implied_outlives_bounds(body_def_id) {
-            Ok(canonical_result) => {
-                // `instantiate_nll_query_response_and_region_obligations` should never fail
-                // here as all our `var_values` are unique generic parameters.
-                let InferOk { value, obligations } = self
-                    .infcx
-                    .instantiate_nll_query_response_and_region_obligations(
-                        &ObligationCause::dummy_with_span(span),
-                        param_env,
-                        &original_query_values,
-                        canonical_result,
-                        &mut query_constraints,
-                    )
-                    .unwrap();
-
-                // `mir_borrowck_implied_outlives_bounds` for nested bodies can result in
-                // defining uses of opaques.
-                for obligation in obligations {
-                    let predicate = obligation.predicate;
-                    match self
-                        .infcx
-                        .fully_perform(type_op::prove_predicate::ProvePredicate { predicate }, span)
-                    {
-                        Ok(TypeOpOutput { constraints: obligation_constraints, .. }) => {
-                            if let Some(c) = obligation_constraints {
-                                constraints.push(c);
-                            }
-                        }
-                        Err::<_, ErrorGuaranteed>(_) => {}
-                    }
-                }
-                if !query_constraints.is_empty() {
-                    constraints.push(&query_constraints);
-                };
-                value
-            }
-            Err(NoSolution) => {
-                self.infcx.dcx().span_delayed_bug(
-                    span,
-                    format!("error computing implied bounds {body_def_id:?}"),
-                );
-                MirBorrowckImpliedOutlivesBounds {
-                    outlives_bounds: Vec::new(),
-                    normalized_inputs_and_output: unnormalized_input_output_tys,
-                }
-            }
-        };
-
-        // Because of #109628, we may have unexpected placeholders. Ignore them!
-        // FIXME(#109628): panic in this case once the issue is fixed.
-        let bounds = outlives_bounds.into_iter().filter(|bound| !bound.has_placeholders());
-        self.add_outlives_bounds(bounds);
+        let query_normalized_inputs_and_output = self.compute_implied_bounds(
+            body_def_id,
+            span,
+            unnormalized_input_output_tys,
+            &mut constraints,
+        );
 
         // We need to renormalize the signature returned by the implied bounds query. This
         // query normalizes the signature in a context which does not define any opaque types
@@ -343,6 +282,89 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             known_type_outlives_obligations: Frozen::freeze(known_type_outlives_obligations),
             region_bound_pairs: Frozen::freeze(self.region_bound_pairs),
             normalized_inputs_and_output,
+        }
+    }
+
+    /// Computes the implied bounds for the current body by using a separate query.
+    /// This is necessary as we need to make sure that all implied bounds are checked
+    /// by the user of this item.
+    ///
+    /// If we're a defining scope but can be used by caller which does not define the
+    /// same opaques, we must not get any assumptions from the hidden type of an opaque
+    /// type in our signature. We avoid this by computing implied bounds in a different
+    /// context which cannot normalize opaque types if we're in a typeck root.
+    ///
+    /// This also returns the function signature as normalized in that separate environment
+    /// which we then renormalize. This is necessary to correctly handle implied bounds
+    /// involving unconstrained regions due to #136547.
+    fn compute_implied_bounds(
+        &mut self,
+        body_def_id: LocalDefId,
+        span: Span,
+        unnormalized_inputs_and_output: Vec<Ty<'tcx>>,
+        constraints: &mut Vec<&QueryRegionConstraints<'tcx>>,
+    ) -> Vec<Ty<'tcx>> {
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
+        let var_values =
+            implied_bounds_query_var_values(tcx, &unnormalized_inputs_and_output, |region| {
+                self.universal_regions.is_external_free_region(region.as_var())
+            });
+        let original_query_values = OriginalQueryValues { var_values, ..Default::default() };
+        match tcx.mir_borrowck_implied_outlives_bounds(body_def_id) {
+            Ok(canonical_result) => {
+                // `instantiate_nll_query_response_and_region_obligations` should never fail
+                // here as all our `var_values` are unique generic parameters.
+                let mut query_constraints = QueryRegionConstraints::default();
+                let InferOk { value, obligations } = self
+                    .infcx
+                    .instantiate_nll_query_response_and_region_obligations(
+                        &ObligationCause::dummy_with_span(span),
+                        infcx.param_env,
+                        &original_query_values,
+                        canonical_result,
+                        &mut query_constraints,
+                    )
+                    .unwrap();
+                if !query_constraints.is_empty() {
+                    constraints.push(infcx.tcx.arena.alloc(query_constraints));
+                };
+
+                // `mir_borrowck_implied_outlives_bounds` for nested bodies can result in
+                // defining uses of opaques.
+                for obligation in obligations {
+                    let predicate = obligation.predicate;
+                    match infcx
+                        .fully_perform(type_op::prove_predicate::ProvePredicate { predicate }, span)
+                    {
+                        Ok(TypeOpOutput { constraints: obligation_constraints, .. }) => {
+                            if let Some(c) = obligation_constraints {
+                                constraints.push(c);
+                            }
+                        }
+                        Err::<_, ErrorGuaranteed>(_) => {}
+                    }
+                }
+
+                let MirBorrowckImpliedOutlivesBounds {
+                    outlives_bounds,
+                    normalized_inputs_and_output,
+                } = value;
+
+                // Because of #109628, we may have unexpected placeholders. Ignore them!
+                // FIXME(#109628): panic in this case once the issue is fixed.
+                let bounds = outlives_bounds.into_iter().filter(|bound| !bound.has_placeholders());
+                self.add_outlives_bounds(bounds);
+
+                normalized_inputs_and_output
+            }
+            Err(NoSolution) => {
+                self.infcx.dcx().span_delayed_bug(
+                    span,
+                    format!("error computing implied bounds {body_def_id:?}"),
+                );
+                unnormalized_inputs_and_output
+            }
         }
     }
 
