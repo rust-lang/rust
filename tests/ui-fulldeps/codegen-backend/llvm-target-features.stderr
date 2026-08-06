@@ -3,6 +3,7 @@ error: mixing `-Zcodegen-backend` will cause an ABI mismatch in crate `llvm_targ
    = help: the `-Zcodegen-backend` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
    = note: `-Zcodegen-backend=$TEST_BUILD_DIR/auxiliary/libthe_backend.so` in this crate is incompatible with `-Zcodegen-backend` being unset in dependency `with_llvm_target_feature`
    = help: unset `-Zcodegen-backend` in this crate or set `-Zcodegen-backend=$TEST_BUILD_DIR/auxiliary/libthe_backend.so` in `with_llvm_target_feature`
+   = help: this crate has `-Zllvm-target-features` set, which means mixing different codegen backends is unsafe
    = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=codegen-backend` to silence this error
 
 error: aborting due to 1 previous error
