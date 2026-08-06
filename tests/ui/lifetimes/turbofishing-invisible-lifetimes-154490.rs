@@ -1,3 +1,8 @@
+// Unless we check for it, we can hide early-bound lifetime parameters on
+// a function by using associated items. This is a bug.
+//
+// Regression test for <https://github.com/rust-lang/rust/issues/154490>
+
 trait EvilTrait {
     type EvilAssoc<'a>;
     fn evil_assoc_1(_: Option<Self::EvilAssoc<'_>>) -> &i32 {

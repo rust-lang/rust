@@ -60,7 +60,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             parent: Some(trait_def_id),
             parent_count,
             own_params,
-            own_all_params: opaque_ty_generics.own_all_params.clone(),
+            own_lifetime_params: opaque_ty_generics.own_lifetime_params.clone(),
             param_def_id_to_index,
             has_self: opaque_ty_generics.has_self,
             own_late_bound_regions: opaque_ty_generics.own_late_bound_regions.clone(),
@@ -156,7 +156,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         parent: generics.parent,
                         parent_count: generics.parent_count,
                         own_params,
-                        own_all_params: generics.own_all_params.clone(),
+                        own_lifetime_params: generics.own_lifetime_params.clone(),
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         own_late_bound_regions: generics.own_late_bound_regions.clone(),
@@ -271,7 +271,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         own_params.push(opt_self);
     }
 
-    let all_lifetimes = hir_generics
+    let own_lifetime_params = hir_generics
         .params
         .iter()
         .enumerate()
@@ -412,7 +412,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         parent: parent_def_id.map(LocalDefId::to_def_id),
         parent_count,
         own_params,
-        own_all_params: all_lifetimes,
+        own_lifetime_params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         own_late_bound_regions: late_bound_regions(tcx, node),

@@ -522,7 +522,7 @@ LL | const fn i_dare_you<'a: 'a, 'b, const N: usize, T, U>(you_can: &'a bool, _:
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: rustc_dump_generics: DefId(..)
-  --> $DIR/dump_generics.rs:66:1
+  --> $DIR/dump_generics.rs:67:1
    |
 LL | trait IfYouNeed<'_a: '_a, '_b, const N: usize, T, U: Clone> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -614,13 +614,13 @@ note: Generics {
           has_self: true,
           own_late_bound_regions: [],
       }
-  --> $DIR/dump_generics.rs:66:1
+  --> $DIR/dump_generics.rs:67:1
    |
 LL | trait IfYouNeed<'_a: '_a, '_b, const N: usize, T, U: Clone> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: rustc_dump_generics: DefId(..)
-  --> $DIR/dump_generics.rs:70:1
+  --> $DIR/dump_generics.rs:71:1
    |
 LL | type Instructions<'a: 'a, 'b, const N: usize, T, U: Clone> = dyn IfYouNeed<'a, 'b, N, T, U>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -698,13 +698,13 @@ note: Generics {
           has_self: false,
           own_late_bound_regions: [],
       }
-  --> $DIR/dump_generics.rs:70:1
+  --> $DIR/dump_generics.rs:71:1
    |
 LL | type Instructions<'a: 'a, 'b, const N: usize, T, U: Clone> = dyn IfYouNeed<'a, 'b, N, T, U>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: rustc_dump_generics: DefId(..)
-  --> $DIR/dump_generics.rs:74:1
+  --> $DIR/dump_generics.rs:75:1
    |
 LL | const ON_HOW_TO_GET: usize = <() as NiceOfTheFoundation::<'static, 'static, 7, (), ()>>::OVER_FOR;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -717,7 +717,7 @@ note: Generics {
           has_self: false,
           own_late_bound_regions: [],
       }
-  --> $DIR/dump_generics.rs:74:1
+  --> $DIR/dump_generics.rs:75:1
    |
 LL | const ON_HOW_TO_GET: usize = <() as NiceOfTheFoundation::<'static, 'static, 7, (), ()>>::OVER_FOR;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -439,12 +439,14 @@ pub(crate) fn check_generic_arg_count(
     // While most hidden lifetimes are late-bound (e.g. `fn(_: &u32)` ),
     // there are some cases (complicated and involve associated types)
     // where an early-bound lifetime parameter can be hidden from the function signature.
+    //
+    // see: <tests/ui/lifetimes/turbofishing-invisible-lifetimes-154490.rs>
 
     let hidden_early_lifetimes =
         gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count();
 
     let hidden_late_lifetimes =
-        gen_params.own_all_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
+        gen_params.own_lifetime_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
             - hidden_early_lifetimes;
 
     debug!(?hidden_early_lifetimes, ?hidden_late_lifetimes);
@@ -455,8 +457,8 @@ pub(crate) fn check_generic_arg_count(
         debug!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
     }
     debug!(?late_bound_lt_count);
-    debug!("# gen_args = {}", gen_args.args.len());
-    debug!("ALL gen_params={:?}", gen_params.own_all_params);
+    debug!("gen_args count = {}", gen_args.args.len());
+    debug!("lb+eb lifetimes={:?}", gen_params.own_lifetime_params);
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
