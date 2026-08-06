@@ -201,18 +201,18 @@ LL |     let almost_euler_gamma = 0.5772;
    = help: consider using the constant directly
 
 error: approximate value of `f{32, 64}::consts::GOLDEN_RATIO` found
-  --> tests/ui/approx_const.rs:118:28
+  --> tests/ui/approx_const.rs:118:27
    |
-LL |     let my_golden_ration = 1.618033988749895;
-   |                            ^^^^^^^^^^^^^^^^^
+LL |     let my_golden_ratio = 1.618033988749895;
+   |                           ^^^^^^^^^^^^^^^^^
    |
    = help: consider using the constant directly
 
 error: approximate value of `f{32, 64}::consts::GOLDEN_RATIO` found
-  --> tests/ui/approx_const.rs:121:32
+  --> tests/ui/approx_const.rs:121:31
    |
-LL |     let almost_golden_ration = 1.6180;
-   |                                ^^^^^^
+LL |     let almost_golden_ratio = 1.6180;
+   |                               ^^^^^^
    |
    = help: consider using the constant directly
 

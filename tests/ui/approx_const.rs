@@ -115,13 +115,13 @@ fn main() {
 
     let no_euler_gamma = 0.577;
 
-    let my_golden_ration = 1.618033988749895;
+    let my_golden_ratio = 1.618033988749895;
     //~^ approx_constant
 
-    let almost_golden_ration = 1.6180;
+    let almost_golden_ratio = 1.6180;
     //~^ approx_constant
 
-    let no_almost_golden_ration = 1.618;
+    let no_almost_golden_ratio = 1.618;
 
     // issue #15194
     #[allow(clippy::excessive_precision)]
