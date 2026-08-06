@@ -329,9 +329,9 @@ where
 }
 
 /// The old solver doesn't check depth requirement when looking up cache while the next solver
-/// does so. Thus the next solver is more prone to overflow.
-/// To mitigate breakages, we re-evaluate the overflowed goal with doubled recursion limit
-/// and emit a FCW if it succeeds.
+/// does so. Thus the next solver is more prone to overflow. To mitigate breakages, we re-evaluate
+/// the overflowed goal with doubled recursion limit and emit a FCW if doing so prevents overflow.
+///
 /// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
 fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     delegate: &D,
@@ -358,7 +358,7 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
                 ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
             });
         if let Ok(goal_evaluation) = &rerun_result
-            && goal_evaluation.certainty.is_yes()
+            && !goal_evaluation.certainty.is_overflow()
         {
             Ok(rerun_result)
         } else {
@@ -372,9 +372,9 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
 }
 
 /// The old solver doesn't check depth requirement when looking up cache while the next solver
-/// does so. Thus the next solver is more prone to overflow.
-/// To mitigate breakages, we re-evaluate the overflowed goal with doubled recursion limit
-/// and emit a FCW if it succeeds.
+/// does so. Thus the next solver is more prone to overflow. To mitigate breakages, we re-evaluate
+/// the overflowed goal with doubled recursion limit and emit a FCW if doing so prevents overflow.
+///
 /// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
 fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
     delegate: &D,
@@ -407,7 +407,7 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
             delegate.cx().recursion_limit() * 2,
         );
         if let Ok(response) = &new_goal_evaluation.result
-            && response.value.certainty.is_yes()
+            && !response.value.certainty.is_overflow()
         {
             Ok((new_result, new_goal_evaluation))
         } else {
