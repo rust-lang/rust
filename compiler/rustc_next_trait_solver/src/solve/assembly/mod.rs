@@ -546,18 +546,19 @@ where
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         cx.for_each_relevant_impl(goal.predicate.trait_ref(cx), |impl_def_id| -> Result<_, _> {
-            // For every `default impl`, there's always a non-default `impl`
-            // that will *also* apply. There's no reason to register a candidate
-            // for this impl, since it is *not* proof that the trait goal holds.
-            if cx.impl_is_default(impl_def_id) {
-                return Ok(());
-            }
             match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
                 ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             })
             .map_err_to_rerun()?
             {
-                Ok(candidate) => candidates.push(candidate),
+                Ok(candidate) => {
+                    // For every `default impl`, there's always a non-default `impl`
+                    // that will *also* apply. There's no reason to register a candidate
+                    // for this impl, since it is *not* proof that the trait goal holds.
+                    if !cx.impl_is_default(impl_def_id) {
+                        candidates.push(candidate);
+                    }
+                }
                 Err(NoSolution) => {}
             }
 
