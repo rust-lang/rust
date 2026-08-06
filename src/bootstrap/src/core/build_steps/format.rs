@@ -10,7 +10,7 @@ use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
 use crate::core::builder::{Builder, Kind, Step};
-use crate::core::download::{DownloadContext, maybe_download_rustfmt};
+use crate::core::download::maybe_download_rustfmt;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -118,7 +118,7 @@ impl Step for InternalRustfmt {
             return Some(initial_rustfmt.clone());
         }
         // No rustfmt was configured, try to download it
-        maybe_download_rustfmt(DownloadContext::from(&builder.config), &builder.config.out)
+        maybe_download_rustfmt(&builder.config, &builder.config.out)
     }
 }
 
