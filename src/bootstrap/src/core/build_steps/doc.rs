@@ -1034,8 +1034,7 @@ impl CommandLineStep for Rustc {
 macro_rules! tool_doc {
     (
         $tool: ident,
-        $path: literal,
-        mode = $mode:expr
+        $path: literal
         $(, is_library = $is_library:expr )?
         $(, crates = $crates:expr )?
         // Subset of nightly features that are allowed to be used when documenting
@@ -1062,26 +1061,16 @@ macro_rules! tool_doc {
 
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
-                let build_compiler = match $mode {
-                    Mode::ToolRustcPrivate => {
-                        // Rustdoc needs the rustc sysroot available to build.
-                        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
+                let build_compiler = {
+                    // Rustdoc needs the rustc sysroot available to build.
+                    let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
 
-                        // Build rustc docs so that we generate relative links.
-                        run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
-                        compilers.build_compiler()
-                    }
-                    Mode::ToolTarget => {
-                        // when shipping multiple docs together in one folder,
-                        // they all need to use the same rustdoc version
-                        prepare_doc_compiler(run.builder, run.builder.host_target, run.builder.top_stage)
-                    }
-                    _ => {
-                        panic!("Unexpected tool mode for documenting: {:?}", $mode);
-                    }
+                    // Build rustc docs so that we generate relative links.
+                    run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
+                    compilers.build_compiler()
                 };
 
-                run.builder.ensure($tool { build_compiler, mode: $mode, target });
+                run.builder.ensure($tool { build_compiler, mode: Mode::RustcDoc, target });
             }
 
             /// Generates documentation for a tool.
@@ -1173,40 +1162,14 @@ macro_rules! tool_doc {
 }
 
 // NOTE: make sure to register these in `Builder::get_step_description`.
-tool_doc!(
-    BuildHelper,
-    "src/build_helper",
-    // ideally, this would use ToolBootstrap,
-    // but we distribute these docs together in the same folder
-    // as a bunch of stage1 tools, and you can't mix rustdoc versions
-    // because that breaks cross-crate data (particularly search)
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["build_helper"]
-);
-tool_doc!(
-    Rustdoc,
-    "src/tools/rustdoc",
-    mode = Mode::ToolRustcPrivate,
-    crates = ["rustdoc", "rustdoc-json-types"]
-);
-tool_doc!(
-    Rustfmt,
-    "src/tools/rustfmt",
-    mode = Mode::ToolRustcPrivate,
-    crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
-);
-tool_doc!(
-    Clippy,
-    "src/tools/clippy",
-    mode = Mode::ToolRustcPrivate,
-    crates = ["clippy_config", "clippy_utils"]
-);
-tool_doc!(Miri, "src/tools/miri", mode = Mode::ToolRustcPrivate, crates = ["miri"]);
+tool_doc!(BuildHelper, "src/build_helper", is_library = true, crates = ["build_helper"]);
+tool_doc!(Rustdoc, "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
+tool_doc!(Rustfmt, "src/tools/rustfmt", crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]);
+tool_doc!(Clippy, "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
+tool_doc!(Miri, "src/tools/miri", crates = ["miri"]);
 tool_doc!(
     Cargo,
     "src/tools/cargo",
-    mode = Mode::ToolTarget,
     crates = [
         "cargo",
         "cargo-credential",
@@ -1223,28 +1186,15 @@ tool_doc!(
     // "specialization" feature in its build script when it detects a nightly toolchain.
     allow_features: "specialization"
 );
-tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolTarget, crates = ["tidy"]);
-tool_doc!(
-    Bootstrap,
-    "src/bootstrap",
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["bootstrap"]
-);
+tool_doc!(Tidy, "src/tools/tidy", crates = ["tidy"]);
+tool_doc!(Bootstrap, "src/bootstrap", is_library = true, crates = ["bootstrap"]);
 tool_doc!(
     RunMakeSupport,
     "src/tools/run-make-support",
-    mode = Mode::ToolTarget,
     is_library = true,
     crates = ["run_make_support"]
 );
-tool_doc!(
-    Compiletest,
-    "src/tools/compiletest",
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["compiletest"]
-);
+tool_doc!(Compiletest, "src/tools/compiletest", is_library = true, crates = ["compiletest"]);
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {

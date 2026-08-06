@@ -420,8 +420,9 @@ impl CommandLineStep for Rustc {
 
 /// Represents a compiler that can check something.
 ///
-/// If the compiler was created for `Mode::ToolRustcPrivate` or `Mode::Codegen`, it will also contain
-/// .rmeta artifacts from rustc that was already checked using `build_compiler`.
+/// If the compiler was created for `Mode::ToolRustcPrivate`, `Mode::Codegen`, or
+/// `Mode::RustcDoc`, it will also contain .rmeta artifacts from rustc that was already checked
+/// using `build_compiler`.
 ///
 /// All steps that use this struct in a "general way" (i.e. they don't know exactly what kind of
 /// thing is being built) should call `configure_cargo` to ensure that the rmeta artifacts are
@@ -515,7 +516,7 @@ pub fn prepare_compiler_for_check(
             std_rmeta_sysroot = prepare_std(builder, build_compiler, target);
             build_compiler
         }
-        Mode::Rustc => {
+        Mode::Rustc | Mode::RustcDoc => {
             // This is a horrible hack, because we actually change the compiler stage numbering
             // here. If you do `x check --stage 1 --host FOO`, we build stage 1 host rustc,
             // and use that to check stage 1 FOO rustc (which actually makes that stage 2 FOO
