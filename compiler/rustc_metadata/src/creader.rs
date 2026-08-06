@@ -390,7 +390,7 @@ impl CStore {
                         assert!(local_features.len() > 0 || extern_features.len() > 0);
 
                         let diag = format!(
-                            "mixing target features will cause an ABI mismatch in crate `{local_crate}`"
+                            "mixing target features may cause an ABI mismatch in crate `{local_crate}`"
                         );
                         let mut diag = tcx.dcx().struct_warn(diag);
                         diag.help("some target features modify the ABI so Rust crates compiled with different values for these target features cannot be used together safely");
@@ -409,6 +409,16 @@ impl CStore {
                             diag.help(format!("the target {before} {features} {after} enabled in `{extern_crate}` but disabled in this crate"));
                         }
                         diag.help("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=target-feature` to silence this warning");
+                        diag.emit();
+                    }
+                    "codegen-backend-name" => {
+                        let diag = format!(
+                            "mixing codegen backends while using backend-specific target features may cause an ABI mismatch in crate `{local_crate}`"
+                        );
+                        let mut diag = tcx.dcx().struct_err(diag);
+                        diag.help("this crate has `-Zllvm-target-feature` set, which means different codegen backends could interpret the target features differently, or ignore them entirely");
+                        diag.help("some target features modify the ABI so Rust crates compiled with different target features cannot be used together safely");
+                        diag.help("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=codegen-backend-name` to silence this warning");
                         diag.emit();
                     }
                     _ => panic!("unhandled synthetic target feature {opt_name}"),

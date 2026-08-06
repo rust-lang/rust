@@ -175,6 +175,25 @@ mod target_modifier_consistency_check {
         };
         l_tech_value == r_tech_value
     }
+    pub(super) fn codegen_backend_name(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        let l_val = l.value_name.as_str();
+        let r_val = match r {
+            Some(r) => r.value_name.as_str(),
+            None => option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("dummy"),
+        };
+        if l_val == r_val {
+            // Same codegen backend: all good.
+            // (We assume codegen backends with the same name are compatible wrt target features.)
+            return true;
+        }
+        // If the codegen backends differ, there must be no LLVM target features. (Those are
+        // themselves a target modifier so we know they are consistent across the crate graph.)
+        sess.opts.unstable_opts.llvm_target_feature.is_empty()
+    }
 }
 
 impl TargetModifier {
@@ -207,6 +226,9 @@ impl TargetModifier {
                     return target_modifier_consistency_check::target_cpu(sess, self, other);
                 }
             },
+            OptionsTargetModifiers::CodegenBackendName => {
+                return target_modifier_consistency_check::codegen_backend_name(sess, self, other);
+            }
             _ => {}
         };
         match other {
@@ -246,9 +268,14 @@ macro_rules! top_level_options {
                     $tmod_variant($tmod_enum),
                 )?
             )*
+
             // Synthetic target modifiers, manually computed.
+
             /// List of target features that are actually target modifiers.
             TargetFeatures,
+            /// Name of the codegen backend.
+            /// (Not the full path to the .so file to avoid storing file system paths.)
+            CodegenBackendName,
         }
 
         impl OptionsTargetModifiers {
@@ -265,6 +292,13 @@ macro_rules! top_level_options {
                         ExtendedTargetModifierInfo {
                             prefix: String::new(),
                             name: "target-feature".into(),
+                            tech_value: format!("{:?}", user_value),
+                        }
+                    }
+                    Self::CodegenBackendName => {
+                        ExtendedTargetModifierInfo {
+                            prefix: String::new(),
+                            name: "codegen-backend-name".into(),
                             tech_value: format!("{:?}", user_value),
                         }
                     }
@@ -286,7 +320,7 @@ macro_rules! top_level_options {
                 )*
 
                 // Synthetic target modifiers. The names must match `reparse` above.
-                if flag_name == "target-feature" {
+                if flag_name == "target-feature" || flag_name == "codegen-backend-name" {
                     return true;
                 }
 
@@ -350,6 +384,7 @@ macro_rules! top_level_options {
                     )?
                 )*
                 tmod_push_impl(OptionsTargetModifiers::TargetFeatures, &self.target_modifiers, &mut mods);
+                tmod_push_impl(OptionsTargetModifiers::CodegenBackendName, &self.target_modifiers, &mut mods);
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
