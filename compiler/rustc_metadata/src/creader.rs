@@ -57,7 +57,6 @@ pub struct CStore {
     metadata_loader: Box<MetadataLoaderDyn>,
 
     metas: IndexVec<CrateNum, Option<Box<CrateMetadata>>>,
-    injected_panic_runtime: Option<CrateNum>,
     /// This crate needs an allocator and either provides it itself, or finds it in a dependency.
     /// If the above is true, then this field denotes the kind of the found allocator.
     allocator_kind: Option<AllocatorKind>,
@@ -293,10 +292,6 @@ impl CStore {
             self.push_dependencies_in_postorder(&mut deps, cnum);
         }
         deps
-    }
-
-    pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
-        self.injected_panic_runtime
     }
 
     pub(crate) fn allocator_kind(&self) -> Option<AllocatorKind> {
@@ -545,7 +540,6 @@ impl CStore {
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
             metas: IndexVec::from_iter(iter::once(None)),
-            injected_panic_runtime: None,
             allocator_kind: None,
             alloc_error_handler_kind: None,
             has_global_allocator: false,
@@ -947,74 +941,57 @@ impl CStore {
     }
 
     fn inject_panic_runtime(&mut self, tcx: TyCtxt<'_>, krate: &ast::Crate) {
-        // If we're only compiling an rlib, then there's no need to select a
-        // panic runtime, so we just skip this section entirely.
-        let only_rlib = tcx.crate_types().iter().all(|ct| *ct == CrateType::Rlib);
-        if only_rlib {
-            info!("panic runtime injection skipped, only generating rlib");
+        // Panic runtimes are only injected when building std. We don't want to
+        // inject them as direct dependencies, because Cargo relies on loading
+        // panic runtimes via `-Ldependency` search paths, as per RFC 3874
+        // (build-std=always).
+        if !attr::contains_name(&krate.attrs, sym::needs_panic_runtime) {
             return;
         }
 
-        // If we need a panic runtime, we try to find an existing one here. At
-        // the same time we perform some general validation of the DAG we've got
-        // going such as ensuring everything has a compatible panic strategy.
-        let mut needs_panic_runtime = attr::contains_name(&krate.attrs, sym::needs_panic_runtime);
-        for (_cnum, data) in self.iter_crate_data() {
-            needs_panic_runtime |= data.needs_panic_runtime();
-        }
-
-        // If we just don't need a panic runtime at all, then we're done here
-        // and there's nothing else to do.
-        if !needs_panic_runtime {
-            return;
-        }
-
-        // By this point we know that we need a panic runtime. Here we just load
-        // an appropriate default runtime for our panic strategy.
+        // Here we just load `panic_unwind` and `panic_abort`.
         //
         // We may resolve to an already loaded crate (as the crate may not have
         // been explicitly linked prior to this), but this is fine.
         //
         // Also note that we have yet to perform validation of the crate graph
         // in terms of everyone has a compatible panic runtime format, that's
-        // performed later as part of the `dependency_format` module.
-        let desired_strategy = tcx.sess.panic_strategy();
-        let name = match desired_strategy {
-            PanicStrategy::Unwind => sym::panic_unwind,
-            PanicStrategy::Abort => sym::panic_abort,
-            PanicStrategy::ImmediateAbort => {
-                // Immediate-aborting panics don't use a runtime.
+        // performed later as part of the `dependency_format` module along with
+        // the activation of only one runtime for the desired strategy.
+        let mut resolve_panic_runtime = |desired_strategy: PanicStrategy| {
+            let name = match desired_strategy {
+                PanicStrategy::Unwind => sym::panic_unwind,
+                PanicStrategy::Abort => sym::panic_abort,
+                PanicStrategy::ImmediateAbort => unreachable!(),
+            };
+
+            info!("loading panic runtime, name = `{}`", name);
+
+            // This has to be conditional as both `panic_unwind` and `panic_abort` may be present in the
+            // crate graph at the same time. One of them will later be activated in dependency_formats.
+            let Some(cnum) = self.resolve_crate(
+                tcx,
+                name,
+                DUMMY_SP,
+                CrateDepKind::Conditional,
+                CrateOrigin::Injected,
+            ) else {
                 return;
+            };
+            let cdata = self.get_crate_data(cnum);
+
+            // Sanity check the loaded crate to ensure it is indeed a panic runtime.
+            if !cdata.is_panic_runtime() {
+                tcx.dcx().emit_err(diagnostics::CrateNotPanicRuntime { crate_name: name });
             }
         };
-        info!("panic runtime not found -- loading {}", name);
 
-        // This has to be conditional as both panic_unwind and panic_abort may be present in the
-        // crate graph at the same time. One of them will later be activated in dependency_formats.
-        let Some(cnum) = self.resolve_crate(
-            tcx,
-            name,
-            DUMMY_SP,
-            CrateDepKind::Conditional,
-            CrateOrigin::Injected,
-        ) else {
-            return;
-        };
-        let cdata = self.get_crate_data(cnum);
-
-        // Sanity check the loaded crate to ensure it is indeed a panic runtime
-        // and the panic strategy is indeed what we thought it was.
-        if !cdata.is_panic_runtime() {
-            tcx.dcx().emit_err(diagnostics::CrateNotPanicRuntime { crate_name: name });
+        // Always resolve `panic_abort` as it is a non-optional dependency of `std`.
+        resolve_panic_runtime(PanicStrategy::Abort);
+        // Conditionally resolve `panic_unwind` as it is an optional dependency of `std`.
+        if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
+            resolve_panic_runtime(PanicStrategy::Unwind);
         }
-        if cdata.required_panic_strategy() != Some(desired_strategy) {
-            tcx.dcx().emit_err(diagnostics::NoPanicStrategy {
-                crate_name: name,
-                strategy: desired_strategy,
-            });
-        }
-
-        self.injected_panic_runtime = Some(cnum);
     }
 
     fn inject_profiler_runtime(&mut self, tcx: TyCtxt<'_>) {
