@@ -10,7 +10,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
-use rustc_session::config::{DebugInfo, OptLevel};
+use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, hygiene, sym};
 
 use super::operand::{OperandRef, OperandValue};
@@ -78,15 +78,18 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
     /// it may so happen that the current span belongs to a different file than the DIScope
     /// corresponding to span's containing source scope. If so, we need to create a DIScope
     /// "extension" into that file.
-    pub fn adjust_dbg_scope_for_span<Cx: CodegenMethods<'tcx, DIScope = S, DILocation = L>>(
+    pub fn adjust_dbg_scope_for_span<
+        'a,
+        Bx: BuilderMethods<'a, 'tcx, DIScope = S, DILocation = L>,
+    >(
         &self,
-        cx: &Cx,
+        bx: &mut Bx,
         span: Span,
     ) -> S {
         let pos = span.lo();
         if pos < self.file_start_pos || pos >= self.file_end_pos {
-            let sm = cx.sess().source_map();
-            cx.extend_scope_to_file(self.dbg_scope, &sm.lookup_char_pos(pos).file)
+            let sm = bx.sess().source_map();
+            bx.extend_scope_to_file(self.dbg_scope, &sm.lookup_char_pos(pos).file)
         } else {
             self.dbg_scope
         }
@@ -217,23 +220,24 @@ fn calculate_debuginfo_offset<
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         bx.set_span(source_info.span);
-        if let Some(dbg_loc) = self.dbg_loc(source_info) {
+        if let Some(dbg_loc) = self.dbg_loc(bx, source_info) {
             bx.set_dbg_loc(dbg_loc);
         }
     }
 
-    fn dbg_loc(&self, source_info: mir::SourceInfo) -> Option<Bx::DILocation> {
-        let (dbg_scope, inlined_at, span) = self.adjusted_span_and_dbg_scope(source_info)?;
-        Some(self.cx.dbg_loc(dbg_scope, inlined_at, span))
+    fn dbg_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) -> Option<Bx::DILocation> {
+        let (dbg_scope, inlined_at, span) = self.adjusted_span_and_dbg_scope(bx, source_info)?;
+        Some(bx.dbg_loc(dbg_scope, inlined_at, span))
     }
 
     fn adjusted_span_and_dbg_scope(
         &self,
+        bx: &mut Bx,
         source_info: mir::SourceInfo,
     ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
         let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
         let span = hygiene::walk_chain_collapsed(source_info.span, self.mir.span);
-        Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
+        Some((scope.adjust_dbg_scope_for_span(bx, span), scope.inlined_at, span))
     }
 
     fn spill_operand_to_stack(
@@ -256,7 +260,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     // Indicates that local is set to a new value. The `layout` and `projection` are used to
     // calculate the offset.
-    pub(crate) fn debug_new_val_to_local(
+    fn debug_new_val_to_local(
         &self,
         bx: &mut Bx,
         local: mir::Local,
@@ -279,7 +283,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let Some(dbg_var) = var.dbg_var else {
                 continue;
             };
-            let Some(dbg_loc) = self.dbg_loc(var.source_info) else {
+            let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else {
                 continue;
             };
             bx.dbg_var_value(
@@ -293,7 +297,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
+    fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
         let ty = self.monomorphize(self.mir.local_decls[local].ty);
         let layout = bx.cx().layout_of(ty);
         let to_backend_ty = bx.cx().immediate_backend_type(layout);
@@ -334,14 +338,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let name = sym::empty;
                 let decl = &self.mir.local_decls[local];
                 let dbg_var = if full_debug_info {
-                    self.adjusted_span_and_dbg_scope(decl.source_info).map(
+                    self.adjusted_span_and_dbg_scope(bx, decl.source_info).map(
                         |(dbg_scope, _, span)| {
                             // FIXME(eddyb) is this `+ 1` needed at all?
                             let kind = VariableKind::ArgumentVariable(arg_index + 1);
 
                             let arg_ty = self.monomorphize(decl.ty);
 
-                            self.cx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
+                            bx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
                         },
                     )
                 } else {
@@ -456,18 +460,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::UnsizedPlace(_) => return,
         };
 
-        // FIXME(arm-maintainers): LLVM uses GlobalISel with -O0 that doesn't support scalable
-        // vectors. It normally falls back to SDAG which does support scalable vectors, but there's
-        // a bug that means that isn't happening for debuginfo - so temporarily don't emit debuginfo
-        // for scalable vector locals when there are no optimisations until that bug is
-        // fixed. See <https://github.com/llvm/llvm-project/issues/204585>.
-        if base.layout.peel_transparent_wrappers(bx).ty.is_scalable_vector()
-            && bx.tcx().backend_optimization_level(()) == OptLevel::No
-            && bx.sess().opts.debuginfo != DebugInfo::None
-        {
-            return;
-        }
-
         let vars = vars.iter().cloned().chain(fallback_var);
 
         for var in vars {
@@ -483,7 +475,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         var: PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
     ) {
         let Some(dbg_var) = var.dbg_var else { return };
-        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
+        let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else { return };
 
         let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
             calculate_debuginfo_offset(bx, var.projection, base.layout);
@@ -579,7 +571,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut params_seen: FxHashMap<_, Bx::DIVariable> = Default::default();
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
-                self.adjusted_span_and_dbg_scope(var.source_info)
+                self.adjusted_span_and_dbg_scope(bx, var.source_info)
             } else {
                 None
             };
@@ -607,7 +599,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // be marked as a `LocalVariable` for MSVC debuggers to visualize
                         // their data correctly. (See #81894 & #88625)
                         let var_ty_layout = self.cx.layout_of(var_ty);
-                        if let BackendRepr::ScalarPair(_, _) = var_ty_layout.backend_repr {
+                        if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
+                            var_ty_layout.backend_repr
+                        {
                             VariableKind::LocalVariable
                         } else {
                             VariableKind::ArgumentVariable(arg_index)
@@ -625,13 +619,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     match params_seen.entry((dbg_scope, arg_index)) {
                         Entry::Occupied(o) => o.get().clone(),
                         Entry::Vacant(v) => v
-                            .insert(
-                                self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span),
-                            )
+                            .insert(bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span))
                             .clone(),
                     }
                 } else {
-                    self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
+                    bx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
                 }
             });
 
@@ -669,7 +661,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::VarDebugInfoContents::Const(c) => {
                     if let Some(dbg_var) = dbg_var {
-                        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
+                        let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else { continue };
 
                         let operand = self.eval_mir_constant_to_operand(bx, &c);
                         constants.push(ConstDebugInfo {
@@ -688,11 +680,60 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Some((per_local, constants))
     }
 
+    pub(crate) fn codegen_stmt_debuginfo(
+        &mut self,
+        bx: &mut Bx,
+        debuginfo: &mir::StmtDebugInfo<'tcx>,
+    ) {
+        match debuginfo {
+            mir::StmtDebugInfo::AssignRef(dest, place) => {
+                let local_ref = match self.locals[place.local] {
+                    // For an rvalue like `&(_1.1)`, when `BackendRepr` is `BackendRepr::Memory`, we allocate a block of memory to this place.
+                    // The place is an indirect pointer, we can refer to it directly.
+                    LocalRef::Place(place_ref) => Some((place_ref, place.projection.as_slice())),
+                    // For an rvalue like `&((*_1).1)`, we are calculating the address of `_1.1`.
+                    // The deref projection is no-op here.
+                    LocalRef::Operand(operand_ref) if place.is_indirect_first_projection() => {
+                        Some((operand_ref.deref(bx.cx()), &place.projection[1..]))
+                    }
+                    // For an rvalue like `&1`, when `BackendRepr` is `BackendRepr::Scalar`,
+                    // we cannot get the address.
+                    // N.B. `non_ssa_locals` returns that this is an SSA local.
+                    LocalRef::Operand(_) => None,
+                    LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => None,
+                }
+                .filter(|(_, projection)| {
+                    // Drop unsupported projections.
+                    projection.iter().all(|p| p.can_use_in_debuginfo())
+                });
+                if let Some((base, projection)) = local_ref {
+                    self.debug_new_val_to_local(bx, *dest, base, projection);
+                } else {
+                    // If the address cannot be calculated, use poison to indicate that the value has been optimized out.
+                    self.debug_poison_to_local(bx, *dest);
+                }
+            }
+            mir::StmtDebugInfo::InvalidAssign(local) => {
+                self.debug_poison_to_local(bx, *local);
+            }
+        }
+    }
+
+    pub(crate) fn codegen_stmt_debuginfos(
+        &mut self,
+        bx: &mut Bx,
+        debuginfos: &[mir::StmtDebugInfo<'tcx>],
+    ) {
+        for debuginfo in debuginfos {
+            self.codegen_stmt_debuginfo(bx, debuginfo);
+        }
+    }
+
     /// Creates the function-specific debug context.
     ///
     /// Returns the FunctionDebugContext for the function which holds state needed
     /// for debug info creation, if it is enabled.
-    pub(super) fn fill_function_debug_context(&mut self) {
+    pub(super) fn fill_function_debug_context(&mut self, bx: &mut Bx) {
         if self.cx.sess().opts.debuginfo == DebugInfo::None {
             return;
         }
@@ -722,7 +763,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Instantiate all scopes.
         let mut discriminators = FxHashMap::default();
         for scope in self.mir.source_scopes.indices() {
-            let scope_data = self.make_mir_scope(&variables, &mut discriminators, scope);
+            let scope_data = self.make_mir_scope(bx, &variables, &mut discriminators, scope);
             let _s = self.debug_context.as_mut().unwrap().scopes.push(scope_data);
             debug_assert_eq!(_s, scope);
         }
@@ -730,6 +771,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn make_mir_scope(
         &mut self,
+        bx: &mut Bx,
         variables: &Option<DenseBitSet<mir::SourceScope>>,
         discriminators: &mut FxHashMap<BytePos, u32>,
         scope: mir::SourceScope,
@@ -741,7 +783,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             // The root is the function itself.
             let file = self.cx.sess().source_map().lookup_source_file(self.mir.span.lo());
-            let dbg_scope = self.cx.dbg_scope_fn(self.instance, self.fn_abi, Some(self.llfn));
+            let dbg_scope = bx.dbg_scope_fn(self.instance, self.fn_abi, Some(self.llfn));
             return DebugScope {
                 dbg_scope,
                 inlined_at: None,
@@ -770,16 +812,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .entry(callee)
                     .or_insert_with(|| {
                         let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
-                        self.cx.dbg_scope_fn(callee, callee_fn_abi, None)
+                        bx.dbg_scope_fn(callee, callee_fn_abi, None)
                     })
             }
-            None => self.cx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
+            None => bx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
         };
 
         let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
             let callsite_span = hygiene::walk_chain_collapsed(callsite_span, self.mir.span);
-            let callsite_scope = parent_scope.adjust_dbg_scope_for_span(self.cx, callsite_span);
-            let loc = self.cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
+            let callsite_scope = parent_scope.adjust_dbg_scope_for_span(bx, callsite_span);
+            let loc = bx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
 
             // NB: In order to produce proper debug info for variables (particularly
             // arguments) in multiply-inlined functions, LLVM expects to see a single
@@ -805,9 +847,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // NB: We have to emit *something* here or we'll fail LLVM IR verification
                     // in at least some circumstances (see issue #135322) so if the required
                     // discriminant cannot be encoded fall back to the dummy location.
-                    self.cx.dbg_location_clone_with_discriminator(loc, *o.get()).unwrap_or_else(
-                        || self.cx.dbg_loc(callsite_scope, parent_scope.inlined_at, DUMMY_SP),
-                    )
+                    bx.dbg_location_clone_with_discriminator(loc, *o.get()).unwrap_or_else(|| {
+                        bx.dbg_loc(callsite_scope, parent_scope.inlined_at, DUMMY_SP)
+                    })
                 }
                 Entry::Vacant(v) => {
                     v.insert(0);

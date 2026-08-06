@@ -24,8 +24,8 @@ use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
 use crate::diagnostics::{
-    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
-    SourceKindMultiSuggestion, SourceKindSubdiag,
+    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError, SourceKindSubdiag,
+    SpecifyGenericParamsSuggestion,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
@@ -448,8 +448,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
-        let infer_subdiags = Vec::new();
-        let multi_suggestions = Vec::new();
+        let subdiagnostic = None;
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
@@ -457,8 +456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name,
                 failure_span,
-                infer_subdiags,
-                multi_suggestions,
+                subdiagnostic,
                 bad_label,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -466,8 +464,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name,
                 failure_span,
-                infer_subdiags,
-                multi_suggestions,
+                subdiagnostic,
                 bad_label,
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -475,8 +472,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name,
                 failure_span,
-                infer_subdiags,
-                multi_suggestions,
+                subdiagnostic,
                 bad_label,
             }),
         }
@@ -562,189 +558,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             None
         };
 
-        let mut infer_subdiags = Vec::new();
-        let mut multi_suggestions = Vec::new();
-        match kind {
-            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
-                infer_subdiags.push(SourceKindSubdiag::LetLike {
-                    span: insert_span,
-                    name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: arg_data.where_x_is_kind(self.infcx, ty),
-                    prefix_kind: arg_data.kind.clone(),
-                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: arg_data.name,
-                    kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
-                    type_name: ty_to_string(self, ty, def_id),
-                });
-            }
-            InferSourceKind::ClosureArg { insert_span, ty, .. } => {
-                infer_subdiags.push(SourceKindSubdiag::LetLike {
-                    span: insert_span,
-                    name: String::new(),
-                    x_kind: arg_data.where_x_is_kind(self.infcx, ty),
-                    prefix_kind: arg_data.kind.clone(),
-                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: arg_data.name,
-                    kind: "closure",
-                    type_name: ty_to_string(self, ty, None),
-                });
-            }
-            InferSourceKind::GenericArg {
-                insert_span,
-                argument_index,
-                generics_def_id,
-                def_id: _,
-                generic_args,
-                have_turbofish,
-                hir_id,
-            } => {
-                let generics = self.tcx.generics_of(generics_def_id);
-                let is_type = term.as_type().is_some();
+        let subdiagnostic = kind.suggestion(
+            self.tcx,
+            self.infcx,
+            body_def_id,
+            term,
+            &arg_data,
+            typeck_results,
+            span,
+        );
 
-                let (parent_exists, parent_prefix, parent_name) =
-                    InferenceDiagnosticsParentData::for_parent_def_id(self.tcx, generics_def_id)
-                        .map_or((false, String::new(), String::new()), |parent| {
-                            (true, parent.prefix.to_string(), parent.name)
-                        });
-
-                let param = &generics.own_params[argument_index];
-                let param_name = param.name.to_string();
-
-                infer_subdiags.push(SourceKindSubdiag::GenericLabel {
-                    span,
-                    is_type,
-                    param_name: param_name.clone(),
-                    parent_exists,
-                    parent_prefix,
-                    parent_name,
-                });
-
-                let mut used_fallback = false;
-                let args = if self.tcx.get_diagnostic_item(sym::iterator_collect_fn)
-                    == Some(generics_def_id)
-                {
-                    if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(hir_id)
-                        && let hir::ExprKind::Call(expr, _args) = expr.kind
-                        && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
-                        && let Res::Def(DefKind::AssocFn, def_id) = path.res
-                        && let Some(try_trait) = self.tcx.lang_items().try_trait()
-                        && try_trait == self.tcx.parent(def_id)
-                        && let DefKind::Fn | DefKind::AssocFn =
-                            self.tcx.def_kind(body_def_id.to_def_id())
-                        && let ret = self
-                            .tcx
-                            .fn_sig(body_def_id.to_def_id())
-                            .instantiate_identity()
-                            .skip_binder()
-                            .output()
-                        && let ty::Adt(adt, _args) = ret.kind()
-                        && let Some(sym::Option | sym::Result) =
-                            self.tcx.get_diagnostic_name(adt.did())
-                    {
-                        if let Some(sym::Option) = self.tcx.get_diagnostic_name(adt.did()) {
-                            "Option<_>".to_string()
-                        } else {
-                            "Result<_, _>".to_string()
-                        }
-                    } else {
-                        "Vec<_>".to_string()
-                    }
-                } else {
-                    let mut p = fmt_printer(self, Namespace::TypeNS);
-                    p.comma_sep(generic_args.iter().copied().map(|arg| {
-                        if arg.is_suggestable(self.tcx, true) {
-                            used_fallback = true;
-                            return arg;
-                        }
-                        match arg.kind() {
-                            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
-                            GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
-                            GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
-                        }
-                    }))
-                    .unwrap();
-                    p.into_buffer()
-                };
-
-                if !have_turbofish {
-                    if generic_args.len() == 1 && used_fallback {
-                        match param.kind {
-                            GenericParamDefKind::Type { .. } => {
-                                infer_subdiags.push(SourceKindSubdiag::GenericTypeSuggestion {
-                                    span: insert_span,
-                                    param: param_name,
-                                });
-                            }
-                            GenericParamDefKind::Const { .. } => {
-                                infer_subdiags.push(SourceKindSubdiag::ConstGenericSuggestion {
-                                    span: insert_span,
-                                    param: param_name,
-                                });
-                            }
-                            GenericParamDefKind::Lifetime => {
-                                bug!("unexpected lifetime")
-                            }
-                        }
-                    } else {
-                        infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
-                            span: insert_span,
-                            arg_count: generic_args.len(),
-                            args,
-                        });
-                    }
-                }
-            }
-            InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
-                let placeholder = Some(self.next_ty_var(DUMMY_SP));
-                if let Some(args) = args.make_suggestable(self.infcx.tcx, true, placeholder) {
-                    let mut p = fmt_printer(self, Namespace::ValueNS);
-                    p.print_def_path(def_id, args).unwrap();
-                    let def_path = p.into_buffer();
-
-                    // We only care about whether we have to add `&` or `&mut ` for now.
-                    // This is the case if the last adjustment is a borrow and the
-                    // first adjustment was not a builtin deref.
-                    let adjustment = match typeck_results.expr_adjustments(receiver) {
-                        [
-                            Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: _ },
-                            ..,
-                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
-                        ] => "",
-                        [
-                            ..,
-                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mut_)), target: _ },
-                        ] => hir::Mutability::from(*mut_).ref_prefix_str(),
-                        _ => "",
-                    };
-
-                    multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
-                        receiver.span,
-                        def_path,
-                        adjustment,
-                        successor,
-                    ));
-                }
-            }
-            InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
-                let placeholder = Some(self.next_ty_var(DUMMY_SP));
-                if let Some(ty) = ty.make_suggestable(self.infcx.tcx, true, placeholder) {
-                    let ty_info = ty_to_string(self, ty, None);
-                    multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
-                        ty_info,
-                        data,
-                        should_wrap_expr,
-                    ));
-                }
-            }
-        }
         let mut err = match error_code {
             TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name: &name,
                 failure_span,
-                infer_subdiags,
-                multi_suggestions,
+                subdiagnostic,
                 bad_label: None,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -752,8 +582,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name: &name,
                 failure_span,
-                infer_subdiags,
-                multi_suggestions,
+                subdiagnostic,
                 bad_label: None,
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -761,8 +590,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source_kind,
                 source_name: &name,
                 failure_span,
-                infer_subdiags,
-                multi_suggestions,
+                subdiagnostic,
                 bad_label: None,
             }),
         };
@@ -866,6 +694,188 @@ impl<'tcx> InferSourceKind<'tcx> {
                 ("other", String::new(), long_ty_path)
             }
         }
+    }
+
+    fn suggestion<'local>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'tcx>,
+        body_def_id: LocalDefId,
+        term: Term<'tcx>,
+        arg_data: &'local InferenceDiagnosticsData,
+        typeck_results: &TypeckResults<'tcx>,
+        span: Span,
+    ) -> Option<SourceKindSubdiag<'local>>
+    where
+        'tcx: 'local,
+    {
+        let subdiag = match *self {
+            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
+                SourceKindSubdiag::LetLike {
+                    span: insert_span,
+                    name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
+                    x_kind: arg_data.where_x_is_kind(infcx, ty),
+                    prefix_kind: arg_data.kind.clone(),
+                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                    arg_name: &arg_data.name,
+                    kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
+                    type_name: ty_to_string(infcx, ty, def_id),
+                }
+            }
+            InferSourceKind::ClosureArg { insert_span, ty, .. } => SourceKindSubdiag::LetLike {
+                span: insert_span,
+                name: String::new(),
+                x_kind: arg_data.where_x_is_kind(infcx, ty),
+                prefix_kind: arg_data.kind.clone(),
+                prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                arg_name: &arg_data.name,
+                kind: "closure",
+                type_name: ty_to_string(infcx, ty, None),
+            },
+            InferSourceKind::GenericArg {
+                insert_span,
+                argument_index,
+                generics_def_id,
+                def_id: _,
+                generic_args,
+                have_turbofish,
+                hir_id,
+            } => {
+                let generics = tcx.generics_of(generics_def_id);
+                let is_type = term.as_type().is_some();
+
+                let (parent_exists, parent_prefix, parent_name) =
+                    InferenceDiagnosticsParentData::for_parent_def_id(tcx, generics_def_id)
+                        .map_or((false, String::new(), String::new()), |parent| {
+                            (true, parent.prefix.to_string(), parent.name)
+                        });
+
+                let param = &generics.own_params[argument_index];
+                let param_name = param.name.to_string();
+
+                let mut used_fallback = false;
+                let args = if tcx.get_diagnostic_item(sym::iterator_collect_fn)
+                    == Some(generics_def_id)
+                {
+                    if let hir::Node::Expr(expr) = tcx.parent_hir_node(hir_id)
+                        && let hir::ExprKind::Call(expr, _args) = expr.kind
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
+                        && let Res::Def(DefKind::AssocFn, def_id) = path.res
+                        && let Some(try_trait) = tcx.lang_items().try_trait()
+                        && try_trait == tcx.parent(def_id)
+                        && let DefKind::Fn | DefKind::AssocFn =
+                            tcx.def_kind(body_def_id.to_def_id())
+                        && let ret = tcx
+                            .fn_sig(body_def_id.to_def_id())
+                            .instantiate_identity()
+                            .skip_binder()
+                            .output()
+                        && let ty::Adt(adt, _args) = ret.kind()
+                        && let Some(sym::Option | sym::Result) = tcx.get_diagnostic_name(adt.did())
+                    {
+                        if let Some(sym::Option) = tcx.get_diagnostic_name(adt.did()) {
+                            "Option<_>".to_string()
+                        } else {
+                            "Result<_, _>".to_string()
+                        }
+                    } else {
+                        "Vec<_>".to_string()
+                    }
+                } else {
+                    let mut p = fmt_printer(infcx, Namespace::TypeNS);
+                    p.comma_sep(generic_args.iter().copied().map(|arg| {
+                        if arg.is_suggestable(tcx, true) {
+                            used_fallback = true;
+                            return arg;
+                        }
+                        match arg.kind() {
+                            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+                            GenericArgKind::Type(_) => infcx.next_ty_var(DUMMY_SP).into(),
+                            GenericArgKind::Const(_) => infcx.next_const_var(DUMMY_SP).into(),
+                        }
+                    }))
+                    .unwrap();
+                    p.into_buffer()
+                };
+
+                let suggestion = if have_turbofish {
+                    None
+                } else if generic_args.len() == 1 && used_fallback {
+                    match param.kind {
+                        GenericParamDefKind::Type { .. } => {
+                            Some(SpecifyGenericParamsSuggestion::GenericTypeSuggestion {
+                                span: insert_span,
+                                param: param_name.clone(),
+                            })
+                        }
+                        GenericParamDefKind::Const { .. } => {
+                            Some(SpecifyGenericParamsSuggestion::ConstGenericSuggestion {
+                                span: insert_span,
+                                param: param_name.clone(),
+                            })
+                        }
+                        GenericParamDefKind::Lifetime => {
+                            bug!("unexpected lifetime")
+                        }
+                    }
+                } else {
+                    Some(SpecifyGenericParamsSuggestion::GenericSuggestion {
+                        span: insert_span,
+                        arg_count: generic_args.len(),
+                        args,
+                    })
+                };
+
+                SourceKindSubdiag::Generic {
+                    span,
+                    is_type,
+                    param_name,
+                    parent_exists,
+                    parent_prefix,
+                    parent_name,
+                    suggestion,
+                }
+            }
+            InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
+                let placeholder = Some(infcx.next_ty_var(DUMMY_SP));
+                let args = args.make_suggestable(tcx, true, placeholder)?;
+
+                let mut p = fmt_printer(infcx, Namespace::ValueNS);
+                p.print_def_path(def_id, args).unwrap();
+                let def_path = p.into_buffer();
+
+                // We only care about whether we have to add `&` or `&mut ` for now.
+                // This is the case if the last adjustment is a borrow and the
+                // first adjustment was not a builtin deref.
+                let adjustment = match typeck_results.expr_adjustments(receiver) {
+                    [
+                        Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: _ },
+                        ..,
+                        Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
+                    ] => "",
+                    [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mut_)), target: _ }] => {
+                        hir::Mutability::from(*mut_).ref_prefix_str()
+                    }
+                    _ => "",
+                };
+
+                SourceKindSubdiag::new_fully_qualified(
+                    receiver.span,
+                    def_path,
+                    adjustment,
+                    successor,
+                )
+            }
+            InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
+                let placeholder = Some(infcx.next_ty_var(DUMMY_SP));
+
+                let ty = ty.make_suggestable(tcx, true, placeholder)?;
+                let ty_info = ty_to_string(infcx, ty, None);
+                SourceKindSubdiag::new_closure_return(ty_info, data, should_wrap_expr)
+            }
+        };
+
+        Some(subdiag)
     }
 }
 

@@ -1,5 +1,3 @@
-//@compile-flags: -Zdeduplicate-diagnostics=yes
-
 #![warn(clippy::suspicious_operation_groupings)]
 #![allow(dead_code, unused_parens, clippy::eq_op, clippy::manual_midpoint)]
 
@@ -85,7 +83,6 @@ fn odd_number_of_pairs(s1: &S, s2: &S) -> i32 {
     // There's no `s2.b`
     s1.a * s2.a + s1.b * s2.c + s1.c * s2.c
     //~^ suspicious_operation_groupings
-    //~| suspicious_operation_groupings
 }
 
 fn not_caught_by_eq_op_middle_change_left(s1: &S, s2: &S) -> i32 {
@@ -148,7 +145,6 @@ fn all_parens_balanced_tree(s1: &S, s2: &S) -> i32 {
     // There's no `s2.c`
     (((s1.a * s2.a) + (s1.b * s2.b)) + ((s1.c * s2.b) + (s1.d * s2.d)))
     //~^ suspicious_operation_groupings
-    //~| suspicious_operation_groupings
 }
 
 fn all_parens_left_tree(s1: &S, s2: &S) -> i32 {

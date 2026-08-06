@@ -54,9 +54,9 @@ pub enum LineFormat {
     Indentation,
 }
 
-fn item_name<Id, Loc>(db: &dyn DefDatabase, id: Id, default: &str) -> String
+fn item_name<Id, Loc>(db: &dyn SourceDatabase, id: Id, default: &str) -> String
 where
-    Id: Lookup<Database = dyn DefDatabase, Data = Loc>,
+    Id: Lookup<Data = Loc>,
     Loc: HasSource,
     Loc::Value: ast::HasName,
 {
@@ -66,7 +66,7 @@ where
 }
 
 pub fn print_body_hir(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     body: &Body,
     owner: DefWithBodyId,
     edition: Edition,
@@ -92,12 +92,12 @@ pub fn print_body_hir(
     };
     if let DefWithBodyId::FunctionId(_) = owner {
         p.buf.push('(');
-        if let Some(self_param) = body.self_param() {
-            p.print_binding(self_param);
+        if let Some(self_param) = body.self_param {
+            p.print_binding(self_param.formal);
             p.buf.push_str(", ");
         }
         body.params.iter().for_each(|param| {
-            p.print_pat(*param);
+            p.print_pat(param.formal);
             p.buf.push_str(", ");
         });
         // remove the last ", " in param list
@@ -114,7 +114,11 @@ pub fn print_body_hir(
     p.buf
 }
 
-pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: Edition) -> String {
+pub fn print_variant_body_hir(
+    db: &dyn SourceDatabase,
+    owner: VariantId,
+    edition: Edition,
+) -> String {
     let header = match owner {
         VariantId::StructId(it) => format!("struct {}", item_name(db, it, "<missing>")),
         VariantId::EnumVariantId(it) => format!(
@@ -166,7 +170,7 @@ pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: E
     p.buf
 }
 
-pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Edition) -> String {
+pub fn print_signature(db: &dyn SourceDatabase, owner: GenericDefId, edition: Edition) -> String {
     match owner {
         GenericDefId::AdtId(id) => match id {
             AdtId::StructId(id) => {
@@ -193,7 +197,7 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
 }
 
 pub fn print_path(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     store: &ExpressionStore,
     path: &Path,
     edition: Edition,
@@ -211,7 +215,7 @@ pub fn print_path(
 }
 
 pub fn print_struct(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     id: StructId,
     StructSignature { name, generic_params, store, flags, shape }: &StructSignature,
     edition: Edition,
@@ -259,7 +263,7 @@ pub fn print_struct(
 }
 
 pub fn print_function(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     id: FunctionId,
     signature @ FunctionSignature {
         name,
@@ -321,7 +325,11 @@ pub fn print_function(
     p.buf
 }
 
-fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: &mut Printer<'_>) {
+fn print_where_clauses(
+    db: &dyn SourceDatabase,
+    generic_params: &GenericParams,
+    p: &mut Printer<'_>,
+) {
     if !generic_params.where_predicates.is_empty() {
         w!(p, "\nwhere\n");
         p.indented(|p| {
@@ -330,7 +338,17 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                     w!(p, ",\n");
                 }
                 match pred {
-                    WherePredicate::TypeBound { target, bound } => {
+                    WherePredicate::TypeBound { lifetimes, target, bound } => {
+                        if let Some(lifetimes) = lifetimes {
+                            w!(p, "for<");
+                            for (i, lifetime) in lifetimes.iter().enumerate() {
+                                if i != 0 {
+                                    w!(p, ", ");
+                                }
+                                w!(p, "{}", lifetime.display(db, p.edition));
+                            }
+                            w!(p, "> ");
+                        }
                         p.print_type_ref(*target);
                         w!(p, ": ");
                         p.print_type_bounds(std::slice::from_ref(bound));
@@ -340,19 +358,6 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                         w!(p, ": ");
                         p.print_lifetime_ref(*bound);
                     }
-                    WherePredicate::ForLifetime { lifetimes, target, bound } => {
-                        w!(p, "for<");
-                        for (i, lifetime) in lifetimes.iter().enumerate() {
-                            if i != 0 {
-                                w!(p, ", ");
-                            }
-                            w!(p, "{}", lifetime.display(db, p.edition));
-                        }
-                        w!(p, "> ");
-                        p.print_type_ref(*target);
-                        w!(p, ": ");
-                        p.print_type_bounds(std::slice::from_ref(bound));
-                    }
                 }
             }
         });
@@ -360,7 +365,11 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
     }
 }
 
-fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p: &mut Printer<'_>) {
+fn print_generic_params(
+    db: &dyn SourceDatabase,
+    generic_params: &GenericParams,
+    p: &mut Printer<'_>,
+) {
     if !generic_params.is_empty() {
         w!(p, "<");
         let mut first = true;
@@ -400,7 +409,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
 }
 
 pub fn print_expr_hir(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     store: &ExpressionStore,
     _owner: ExpressionStoreOwnerId,
     expr: ExprId,
@@ -419,7 +428,7 @@ pub fn print_expr_hir(
 }
 
 pub fn print_pat_hir(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     store: &ExpressionStore,
     _owner: ExpressionStoreOwnerId,
     pat: PatId,
@@ -439,7 +448,7 @@ pub fn print_pat_hir(
 }
 
 struct Printer<'a> {
-    db: &'a dyn DefDatabase,
+    db: &'a dyn SourceDatabase,
     store: &'a ExpressionStore,
     buf: String,
     indent_level: usize,
@@ -716,10 +725,6 @@ impl Printer<'_> {
                 if mutability.is_mut() {
                     w!(self, "mut ");
                 }
-                self.print_expr_in(prec, *expr);
-            }
-            Expr::Box { expr } => {
-                w!(self, "box ");
                 self.print_expr_in(prec, *expr);
             }
             Expr::UnaryOp { expr, op } => {
@@ -1319,6 +1324,17 @@ impl Printer<'_> {
             TypeRef::Fn(fn_) => {
                 let ((_, return_type), args) =
                     fn_.params.split_last().expect("TypeRef::Fn is missing return type");
+                if let Some(binder) = &fn_.binder {
+                    w!(
+                        self,
+                        "for<{}> ",
+                        binder
+                            .iter()
+                            .map(|it| it.display(self.db, self.edition))
+                            .format(", ")
+                            .to_string()
+                    );
+                }
                 if fn_.is_unsafe {
                     w!(self, "unsafe ");
                 }

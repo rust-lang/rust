@@ -1,7 +1,7 @@
 //! ICE regression test for https://github.com/rust-lang/rust/issues/151462
 //@compile-flags: -Znext-solver=globally
 //@check-pass
-#![feature(lazy_type_alias, transmutability)]
+#![feature(checked_type_aliases, transmutability)]
 #![allow(incomplete_features)]
 mod assert {
     use std::mem::{Assume, TransmuteFrom};

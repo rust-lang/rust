@@ -1,5 +1,5 @@
 #!/bin/sh
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 set -eu
 set -x # so one can see where we are in the script

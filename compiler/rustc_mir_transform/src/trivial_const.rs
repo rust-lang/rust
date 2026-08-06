@@ -6,7 +6,7 @@ use rustc_middle::mir::{
     Body, Const, ConstValue, Operand, Place, RETURN_PLACE, Rvalue, START_BLOCK, StatementKind,
     TerminatorKind, UnevaluatedConst,
 };
-use rustc_middle::ty::{Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{AnonConstKind, Ty, TyCtxt, TypeVisitableExt};
 
 /// If the given def is a trivial const, returns the value and type the const evaluates to.
 ///
@@ -52,18 +52,17 @@ where
     F: FnOnce() -> B,
     B: Deref<Target = Body<'tcx>>,
 {
-    if !matches!(
-        tcx.def_kind(def),
-        DefKind::AssocConst { .. } | DefKind::Const { .. } | DefKind::AnonConst
-    ) {
-        return None;
+    match tcx.def_kind(def) {
+        DefKind::AssocConst { .. } | DefKind::Const { .. } => (),
+        DefKind::AnonConst if tcx.anon_const_kind(def) != AnonConstKind::NonTypeSystemInline => (),
+        _ => return None,
     }
 
-    // If there are impossible predicates then MIR passes will replace the body with
+    // If there are impossible clauses then MIR passes will replace the body with
     // `unreachable` causing const eval errors when trying to evaluate the body. For
     // now we avoid using trivial consts for such bodies so that the behaviour doesn't
     // change.
-    if crate::impossible_predicates::has_impossible_predicates(tcx, def.into()) {
+    if crate::impossible_clauses::has_impossible_clauses(tcx, def.into()) {
         return None;
     }
 

@@ -492,6 +492,10 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     unsupported()
 }
 
+pub fn set_perm_nofollow(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
@@ -545,7 +549,7 @@ fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {
     match fresult {
         vex_sdk::FRESULT::FR_OK => Ok(()),
         vex_sdk::FRESULT::FR_DISK_ERR => Err(io::const_error!(
-            io::ErrorKind::Uncategorized,
+            io::ErrorKind::InputOutputError,
             "internal function reported an unrecoverable hard error",
         )),
         vex_sdk::FRESULT::FR_INT_ERR => Err(io::const_error!(

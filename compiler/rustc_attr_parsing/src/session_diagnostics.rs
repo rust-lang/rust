@@ -14,10 +14,37 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("`#[rustc_force_inline]` and `#[inline]` cannot be used together")]
+pub(crate) struct InlineForceInlineConflict {
+    #[primary_span]
+    pub force_inline_span: Span,
+    #[label("the inline attribute is specified here")]
+    pub inline_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
     pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to `#[repr(transparent)]` types")]
+pub(crate) struct RustcPubTransparent {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a `#[repr(transparent)]` type")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to a macro")]
+pub(crate) struct MacroOnlyAttribute {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a macro")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -98,6 +125,26 @@ pub(crate) struct TargetFeatureOnLangItem {
         } function is not allowed to have `#[target_feature]`"
     )]
     pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$name ->
+    [panic_impl] `#[panic_handler]`
+    *[other] `{$name}` lang item
+} function is not allowed to have `#[track_caller]`"
+)]
+pub(crate) struct TrackCallerOnLangItem {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label(
+        "{$name ->
+            [panic_impl] `#[panic_handler]`
+            *[other] `{$name}` lang item
+        } function is not allowed to have `#[track_caller]`"
+    )]
+    pub sig_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -293,6 +340,13 @@ pub(crate) struct EmptyExportName {
 }
 
 #[derive(Diagnostic)]
+#[diag("`section` may not be empty")]
+pub(crate) struct EmptySection {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`export_name` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
@@ -328,6 +382,13 @@ pub(crate) struct NullOnObjcSelector {
 }
 
 #[derive(Diagnostic)]
+#[diag("`section` may not contain null characters", code = E0648)]
+pub(crate) struct NullOnSection {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`objc::class!` expected a string literal")]
 pub(crate) struct ObjcClassExpectedStringLiteral {
     #[primary_span]
@@ -349,17 +410,18 @@ pub(crate) struct EmptyConfusables {
 }
 
 #[derive(Diagnostic)]
-#[help("`#[{$name}{$attribute_args}]` can {$only}be applied to {$applied}")]
-#[diag("`#[{$name}{$attribute_args}]` attribute cannot be used on {$target}")]
+#[help("the `{$name}{$attribute_args}` attribute can {$only}be applied to {$applied}")]
+#[diag("the `{$name}{$attribute_args}` attribute cannot be used on {$target}")]
 pub(crate) struct InvalidTarget {
     #[primary_span]
+    pub span: Span,
     #[suggestion(
         "remove the attribute",
         code = "",
         applicability = "machine-applicable",
         style = "tool-only"
     )]
-    pub span: Span,
+    pub attr_span: Span,
     pub name: AttrPath,
     pub target: &'static str,
     pub applied: DiagArgValue,
@@ -379,6 +441,18 @@ pub(crate) struct InvalidTarget {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidTargetHelp {
+    #[multipart_suggestion(
+        "did you mean to use `#[export_name]`?",
+        applicability = "maybe-incorrect"
+    )]
+    UseExportName {
+        #[suggestion_part(code = "unsafe(")]
+        unsafe_open: Option<Span>,
+        #[suggestion_part(code = "export_name")]
+        name: Span,
+        #[suggestion_part(code = ")")]
+        unsafe_close: Option<Span>,
+    },
     #[help("use `#[rustc_align(...)]` instead")]
     UseRustcAlign,
     #[help("use `#[rustc_align_static(...)]` instead")]
@@ -485,7 +559,7 @@ pub enum ParsedDescription {
 
 pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
-    pub(crate) attr_span: Span,
+    pub(crate) inner_span: Span,
     pub(crate) template: AttributeTemplate,
     pub(crate) path: AttrPath,
     pub(crate) description: ParsedDescription,
@@ -579,7 +653,7 @@ impl<'a> AttributeParseError<'a> {
         match &self.suggestions {
             AttributeParseErrorSuggestions::CreatedByTemplate(suggestions) => {
                 diag.span_suggestions(
-                        self.attr_span,
+                        self.inner_span,
                         if suggestions.len() == 1 {
                             "must be of the form".to_string()
                         } else {
@@ -596,8 +670,8 @@ impl<'a> AttributeParseError<'a> {
                 for Suggestion { msg, sp, code } in suggestions {
                     diag.span_suggestion_verbose(
                         *sp,
-                        msg.to_string(),
-                        code.to_string(),
+                        msg.clone(),
+                        code.clone(),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -629,7 +703,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         let description = self.description();
 
         let mut diag = Diag::new(dcx, level, format!("malformed `{name}` {description} input"));
-        diag.span(self.attr_span);
+        diag.span(self.inner_span);
         diag.code(E0539);
         match &self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
@@ -645,9 +719,8 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                     // Avoid emitting an "attribute must be of the form" suggestion, as the
                     // attribute is likely to be well-formed already.
                     return diag;
-                } else {
-                    diag.span_label(self.span, "expected a string literal here");
                 }
+                diag.span_label(self.span, "expected a string literal here");
             }
             AttributeParseErrorReason::ExpectedFilenameLiteral => {
                 diag.span_label(self.span, "expected a filename string literal here");
@@ -705,12 +778,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                // If the span is the entire attribute, the suggestion we add below this match already contains enough information
-                if self.span != self.attr_span {
-                    diag.span_label(
-                        self.span,
-                        format!("expected this to be of the form `... = \"...\"`"),
-                    );
+                // If the span is the entire attribute inner, the suggestion we add below this
+                // match already contains enough information.
+                if self.span != self.inner_span {
+                    diag.span_label(self.span, "expected this to be of the form `... = \"...\"`");
                 }
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
@@ -727,14 +798,14 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 strings,
                 list: false,
             } => {
-                self.render_expected_specific_argument(&mut diag, *possibilities, *strings);
+                self.render_expected_specific_argument(&mut diag, possibilities, *strings);
             }
             AttributeParseErrorReason::ExpectedSpecificArgument {
                 possibilities,
                 strings,
                 list: true,
             } => {
-                self.render_expected_specific_argument_list(&mut diag, *possibilities, *strings);
+                self.render_expected_specific_argument_list(&mut diag, possibilities, *strings);
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");

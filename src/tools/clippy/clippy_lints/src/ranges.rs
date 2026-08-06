@@ -433,8 +433,8 @@ fn can_switch_ranges<'tcx>(
                 .param_env(id)
                 .caller_bounds()
                 .into_iter()
-                .any(|p| {
-                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
+                .any(|c| {
+                    if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && t.polarity == PredicatePolarity::Positive
                         && matches!(
                             cx.tcx.get_diagnostic_name(t.trait_ref.def_id),
@@ -523,11 +523,11 @@ fn check_range_switch<'tcx>(
     if let higher::Range {
         start,
         end: Some(end),
-        limits,
+        ty,
         span,
     } = *range
         && span.can_be_used_for_suggestions()
-        && limits == kind
+        && ty.limits() == kind
         && let Some(y) = predicate(end)
         && can_switch_ranges(cx, span.ctxt(), expr, kind, cx.typeck_results().expr_ty(y))
     {
@@ -590,7 +590,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
     if let higher::Range {
         start: Some(start),
         end: Some(end),
-        limits,
+        ty: range_ty,
         span,
     } = *range
         && let ty = cx.typeck_results().expr_ty(start)
@@ -599,7 +599,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
         && let Some(start_idx) = ecx.eval(start)
         && let Some(end_idx) = ecx.eval(end)
         && let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx)
-        && is_empty_range(limits, ordering)
+        && is_empty_range(range_ty.limits(), ordering)
     {
         if inside_indexing_expr(cx, expr) {
             // Avoid linting `N..N` as it has proven to be useful, see #5689 and #5628 ...
@@ -622,7 +622,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
                     if ordering != Ordering::Equal {
                         let start_snippet = snippet(cx, start.span, "_");
                         let end_snippet = snippet(cx, end.span, "_");
-                        let dots = match limits {
+                        let dots = match range_ty.limits() {
                             RangeLimits::HalfOpen => "..",
                             RangeLimits::Closed => "..=",
                         };

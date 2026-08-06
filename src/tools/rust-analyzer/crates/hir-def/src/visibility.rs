@@ -2,15 +2,14 @@
 
 use std::iter;
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use hir_expand::{InFile, Lookup};
 use la_arena::ArenaMap;
 use syntax::ast::{self, HasVisibility};
 
 use crate::{
-    AssocItemId, HasModule, ItemContainerId, LocalFieldId, ModuleId, TraitId, VariantId,
-    db::DefDatabase, nameres::DefMap, resolver::HasResolver, signatures::VariantFields,
-    src::HasSource,
+    AssocItemId, HasModule, ItemContainerId, LocalFieldId, ModuleId, ModuleIdLt, TraitId,
+    VariantId, nameres::DefMap, resolver::HasResolver, signatures::VariantFields, src::HasSource,
 };
 
 pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
@@ -28,7 +27,7 @@ pub enum Visibility {
 
 impl Visibility {
     pub fn resolve(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         resolver: &crate::resolver::Resolver<'_>,
         raw_vis: &RawVisibility,
     ) -> Self {
@@ -41,9 +40,13 @@ impl Visibility {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
+    pub fn is_visible_from<'db>(
+        self,
+        db: &'db dyn SourceDatabase,
+        from_module: ModuleIdLt<'db>,
+    ) -> bool {
         let to_module = match self {
-            Visibility::Module(m, _) => m,
+            Visibility::Module(m, _) => unsafe { m.to_db(db) },
             Visibility::PubCrate(krate) => return from_module.krate(db) == krate,
             Visibility::Public => return true,
         };
@@ -59,11 +62,11 @@ impl Visibility {
         Self::is_visible_from_def_map_(db, def_map, to_module, from_module)
     }
 
-    pub(crate) fn is_visible_from_def_map(
+    pub(crate) fn is_visible_from_def_map<'db>(
         self,
-        db: &dyn DefDatabase,
-        def_map: &DefMap,
-        from_module: ModuleId,
+        db: &'db dyn SourceDatabase,
+        def_map: &'db DefMap,
+        from_module: ModuleIdLt<'db>,
     ) -> bool {
         if cfg!(debug_assertions) {
             _ = def_map.modules[from_module];
@@ -89,11 +92,11 @@ impl Visibility {
         Self::is_visible_from_def_map_(db, def_map, to_module, from_module)
     }
 
-    fn is_visible_from_def_map_(
-        db: &dyn DefDatabase,
-        def_map: &DefMap,
-        mut to_module: ModuleId,
-        mut from_module: ModuleId,
+    fn is_visible_from_def_map_<'db>(
+        db: &'db dyn SourceDatabase,
+        def_map: &'db DefMap,
+        mut to_module: ModuleIdLt<'db>,
+        mut from_module: ModuleIdLt<'db>,
     ) -> bool {
         debug_assert_eq!(to_module.krate(db), def_map.krate());
         // `to_module` might be the root module of a block expression. Those have the same
@@ -150,7 +153,7 @@ impl Visibility {
     /// visible in unrelated modules).
     pub(crate) fn max(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         other: Visibility,
         def_map: &DefMap,
     ) -> Option<Visibility> {
@@ -216,7 +219,7 @@ impl Visibility {
     /// visible in unrelated modules).
     pub(crate) fn min(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         other: Visibility,
         def_map: &DefMap,
     ) -> Option<Visibility> {
@@ -282,7 +285,7 @@ impl VariantFields {
     /// Resolve visibility of all specific fields of a struct or union variant.
     #[salsa::tracked(returns(ref))]
     pub fn field_visibilities(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         variant_id: VariantId,
     ) -> ArenaMap<LocalFieldId, Visibility> {
         let variant_fields = variant_id.fields(db);
@@ -300,13 +303,13 @@ impl VariantFields {
 }
 
 pub fn visibility_from_ast(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     has_resolver: impl HasResolver + HasModule,
     ast_vis: InFile<Option<ast::Visibility>>,
 ) -> Visibility {
     let mut span_map = None;
     let raw_vis = crate::item_tree::visibility_from_ast(db, ast_vis.value, &mut |range| {
-        span_map.get_or_insert_with(|| db.span_map(ast_vis.file_id)).span_for_range(range).ctx
+        span_map.get_or_insert_with(|| ast_vis.file_id.span_map(db)).span_for_range(range).ctx
     });
     match raw_vis {
         RawVisibility::PubSelf(explicitness) => {
@@ -318,41 +321,48 @@ pub fn visibility_from_ast(
     }
 }
 
-/// Resolve visibility of a type alias.
-pub(crate) fn assoc_visibility_query(db: &dyn DefDatabase, def: AssocItemId) -> Visibility {
-    match def {
-        AssocItemId::FunctionId(function_id) => {
-            let loc = function_id.lookup(db);
-            trait_item_visibility(db, loc.container).unwrap_or_else(|| {
-                let source = loc.source(db);
-                visibility_from_ast(db, function_id, source.map(|src| src.visibility()))
-            })
-        }
-        AssocItemId::ConstId(const_id) => {
-            let loc = const_id.lookup(db);
-            trait_item_visibility(db, loc.container).unwrap_or_else(|| {
-                let source = loc.source(db);
-                visibility_from_ast(db, const_id, source.map(|src| src.visibility()))
-            })
-        }
-        AssocItemId::TypeAliasId(type_alias_id) => {
-            let loc = type_alias_id.lookup(db);
-            trait_item_visibility(db, loc.container).unwrap_or_else(|| {
-                let source = loc.source(db);
-                visibility_from_ast(db, type_alias_id, source.map(|src| src.visibility()))
-            })
+#[salsa::tracked]
+impl AssocItemId {
+    /// Resolve visibility of an assoc item.
+    #[salsa::tracked]
+    pub fn assoc_visibility(self, db: &dyn SourceDatabase) -> Visibility {
+        match self {
+            AssocItemId::FunctionId(function_id) => {
+                let loc = function_id.lookup(db);
+                trait_item_visibility(db, loc.container).unwrap_or_else(|| {
+                    let source = loc.source(db);
+                    visibility_from_ast(db, function_id, source.map(|src| src.visibility()))
+                })
+            }
+            AssocItemId::ConstId(const_id) => {
+                let loc = const_id.lookup(db);
+                trait_item_visibility(db, loc.container).unwrap_or_else(|| {
+                    let source = loc.source(db);
+                    visibility_from_ast(db, const_id, source.map(|src| src.visibility()))
+                })
+            }
+            AssocItemId::TypeAliasId(type_alias_id) => {
+                let loc = type_alias_id.lookup(db);
+                trait_item_visibility(db, loc.container).unwrap_or_else(|| {
+                    let source = loc.source(db);
+                    visibility_from_ast(db, type_alias_id, source.map(|src| src.visibility()))
+                })
+            }
         }
     }
 }
 
-fn trait_item_visibility(db: &dyn DefDatabase, container: ItemContainerId) -> Option<Visibility> {
+fn trait_item_visibility(
+    db: &dyn SourceDatabase,
+    container: ItemContainerId,
+) -> Option<Visibility> {
     match container {
         ItemContainerId::TraitId(trait_) => Some(trait_visibility(db, trait_)),
         _ => None,
     }
 }
 
-fn trait_visibility(db: &dyn DefDatabase, def: TraitId) -> Visibility {
+fn trait_visibility(db: &dyn SourceDatabase, def: TraitId) -> Visibility {
     let loc = def.lookup(db);
     let source = loc.source(db);
     visibility_from_ast(db, def, source.map(|src| src.visibility()))

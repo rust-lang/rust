@@ -228,7 +228,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                Some(_) => { /* for now we don't bother solving these */ }
+                Some(_) => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::Not(inner, _) => match &**inner {
                 CfgEntry::NameValue { name, value: None, .. } => {
@@ -247,7 +249,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                _ => { /* for now we don't bother solving these */ }
+                _ => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
                 /* for now we don't bother solving these */

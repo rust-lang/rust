@@ -201,6 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let Some(searcher) = self.searcher.take() {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
+                && !stmt.span.from_expansion()
                 && let ExprKind::MethodCall(name, self_arg, [_], _) = expr.kind
                 && self_arg.res_local_id() == Some(searcher.local_id)
                 && name.ident.name == sym::push

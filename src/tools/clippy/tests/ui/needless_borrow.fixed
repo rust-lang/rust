@@ -1,13 +1,9 @@
-#![allow(
-    unused,
-    non_local_definitions,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_mut_passed,
-    clippy::unnecessary_to_owned,
-    clippy::unnecessary_literal_unwrap,
-    clippy::needless_lifetimes
-)]
 #![warn(clippy::needless_borrow)]
+#![expect(
+    clippy::needless_lifetimes,
+    clippy::unnecessary_literal_unwrap,
+    clippy::unnecessary_mut_passed
+)]
 
 fn main() {
     let a = 5;

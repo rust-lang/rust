@@ -693,8 +693,8 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        // things like anon const, not an item
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        // anon consts are not an item and have no sig
+        (DefKind::AnonConst, _) => {}
         // `global_asm!` have fake bodies, which we may dump after mir-build
         (DefKind::GlobalAsm, _) => {}
         _ => bug!("Unexpected def kind {:?}", kind),
@@ -2035,7 +2035,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.pretty_print_value_path(*d, s)?;
+            p.pretty_print_value_path(*d, s.no_bound_vars().unwrap())?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }

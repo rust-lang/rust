@@ -1,4 +1,4 @@
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::Layout;
 use crate::ptr;
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sys::pal::abi::mem as sgx_mem;
@@ -57,31 +57,28 @@ unsafe impl dlmalloc::Allocator for Sgx {
     }
 }
 
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
-unsafe impl GlobalAlloc for System {
-    #[inline]
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: the caller must uphold the safety contract for `malloc`
-        unsafe { DLMALLOC.lock().malloc(layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    // SAFETY: the caller must uphold the safety contract for `malloc`
+    unsafe { DLMALLOC.lock().malloc(layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: the caller must uphold the safety contract for `malloc`
-        unsafe { DLMALLOC.lock().calloc(layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+    // SAFETY: the caller must uphold the safety contract for `malloc`
+    unsafe { DLMALLOC.lock().calloc(layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: the caller must uphold the safety contract for `malloc`
-        unsafe { DLMALLOC.lock().free(ptr, layout.size(), layout.align()) }
-    }
+#[inline]
+pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+    // SAFETY: the caller must uphold the safety contract for `malloc`
+    unsafe { DLMALLOC.lock().free(ptr, layout.size(), layout.align()) }
+}
 
-    #[inline]
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: the caller must uphold the safety contract for `malloc`
-        unsafe { DLMALLOC.lock().realloc(ptr, layout.size(), layout.align(), new_size) }
-    }
+#[inline]
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    // SAFETY: the caller must uphold the safety contract for `malloc`
+    unsafe { DLMALLOC.lock().realloc(ptr, layout.size(), layout.align(), new_size) }
 }
 
 // The following functions are needed by libunwind. These symbols are named

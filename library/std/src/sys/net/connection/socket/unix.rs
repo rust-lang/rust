@@ -76,6 +76,7 @@ impl Socket {
                 target_os = "openbsd",
                 target_os = "cygwin",
                 target_os = "nto",
+                target_os = "qnx",
                 target_os = "solaris",
             ) => {
                 // On platforms that support it we pass the SOCK_CLOEXEC
@@ -124,6 +125,7 @@ impl Socket {
                     target_os = "openbsd",
                     target_os = "cygwin",
                     target_os = "nto",
+                    target_os = "qnx",
                 ) => {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;

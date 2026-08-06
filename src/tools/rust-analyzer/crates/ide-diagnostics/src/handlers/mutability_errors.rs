@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
 use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast};
@@ -8,8 +7,11 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // Diagnostic: need-mut
 //
 // This diagnostic is triggered on mutating an immutable variable.
-pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NeedMut) -> Option<Diagnostic> {
-    let root = ctx.sema.db.parse_or_expand(d.span.file_id);
+pub(crate) fn need_mut(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::NeedMut<'_>,
+) -> Option<Diagnostic> {
+    let root = d.span.file_id.parse_or_expand(ctx.sema.db);
     let node = d.span.value.to_node(&root);
     let mut span = d.span;
     if let Some(parent) = node.parent()
@@ -65,7 +67,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NeedMut) -> Op
 // This diagnostic is triggered when a mutable variable isn't actually mutated.
 pub(crate) fn unused_mut(
     ctx: &DiagnosticsContext<'_, '_>,
-    d: &hir::UnusedMut,
+    d: &hir::UnusedMut<'_>,
 ) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
     let fixes = (|| {
@@ -1094,14 +1096,17 @@ fn x(t: &[u8]) {
 use core::ops::{Deref, DerefMut};
 use core::{marker::Unsize, ops::CoerceUnsized};
 
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn box_new<T>(_x: T) -> Box<T>;
+
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized> {
     inner: *mut T,
 }
 impl<T> Box<T> {
     fn new(t: T) -> Self {
-        #[rustc_box]
-        Box::new(t)
+        box_new(t)
     }
 }
 

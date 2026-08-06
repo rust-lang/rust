@@ -1,4 +1,4 @@
-error[E0423]: expected function, tuple struct or tuple variant, found struct `PersonOnlyName`
+error[E0423]: cannot find function, tuple struct or tuple variant `PersonOnlyName` in this scope
   --> $DIR/struct-construct-with-call-issue-138931.rs:14:19
    |
 LL | / struct PersonOnlyName {
@@ -9,13 +9,14 @@ LL | | }
 LL |       let wilfred = PersonOnlyName("Name1".to_owned());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: a struct named `PersonOnlyName` exists in another namespace
 help: use struct literal syntax instead of calling
    |
 LL -     let wilfred = PersonOnlyName("Name1".to_owned());
 LL +     let wilfred = PersonOnlyName{name: "Name1".to_owned()};
    |
 
-error[E0423]: expected function, tuple struct or tuple variant, found struct `PersonWithAge`
+error[E0423]: cannot find function, tuple struct or tuple variant `PersonWithAge` in this scope
   --> $DIR/struct-construct-with-call-issue-138931.rs:17:16
    |
 LL | / struct PersonWithAge {
@@ -33,6 +34,7 @@ LL | |         180,
 LL | |     );
    | |_____^
    |
+   = note: a struct named `PersonWithAge` exists in another namespace
 help: use struct literal syntax instead of calling
    |
 LL ~     let bill = PersonWithAge{name: "Name2".to_owned(),
@@ -40,7 +42,7 @@ LL ~         age: 20,
 LL ~         height: 180};
    |
 
-error[E0423]: expected function, tuple struct or tuple variant, found struct `PersonWithAge`
+error[E0423]: cannot find function, tuple struct or tuple variant `PersonWithAge` in this scope
   --> $DIR/struct-construct-with-call-issue-138931.rs:23:18
    |
 LL | / struct PersonWithAge {
@@ -52,6 +54,8 @@ LL | | }
 ...
 LL |       let person = PersonWithAge("Name3".to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `PersonWithAge { name: val, age: val, height: val }`
+   |
+   = note: a struct named `PersonWithAge` exists in another namespace
 
 error: aborting due to 3 previous errors
 

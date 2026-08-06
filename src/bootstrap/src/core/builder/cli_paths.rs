@@ -5,7 +5,7 @@
 use std::fmt::{self, Debug};
 use std::path::PathBuf;
 
-use crate::core::builder::{Builder, Kind, PathSet, ShouldRun, StepDescription};
+use crate::core::builder::{Builder, CommandLineStepDescription, Kind, PathSet, ShouldRun};
 
 #[cfg(test)]
 mod tests;
@@ -73,14 +73,6 @@ pub(crate) struct CLIStepPath {
     pub(crate) will_be_executed: bool,
 }
 
-#[cfg(test)]
-impl CLIStepPath {
-    pub(crate) fn will_be_executed(mut self, will_be_executed: bool) -> Self {
-        self.will_be_executed = will_be_executed;
-        self
-    }
-}
-
 impl Debug for CLIStepPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.path.display())
@@ -93,21 +85,21 @@ impl From<PathBuf> for CLIStepPath {
     }
 }
 
-/// Combines a `StepDescription` with its corresponding `ShouldRun`.
+/// Combines a [`CommandLineStepDescription`] with its corresponding [`ShouldRun`].
 struct StepExtra<'a> {
-    desc: &'a StepDescription,
+    desc: &'a CommandLineStepDescription,
     should_run: ShouldRun<'a>,
 }
 
 struct StepToRun<'a> {
     sort_index: usize,
-    desc: &'a StepDescription,
+    desc: &'a CommandLineStepDescription,
     pathsets: Vec<PathSet>,
 }
 
 pub(crate) fn match_paths_to_steps_and_run(
     builder: &Builder<'_>,
-    step_descs: &[StepDescription],
+    step_descs: &[CommandLineStepDescription],
     paths: &[PathBuf],
 ) {
     // Obtain `ShouldRun` information for each step, so that we know which
@@ -138,7 +130,8 @@ pub(crate) fn match_paths_to_steps_and_run(
     if paths.is_empty() || builder.config.include_default_paths {
         for StepExtra { desc, should_run } in &steps {
             if (desc.is_default_step_fn)(builder) {
-                desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
+                let default_pathsets = should_run.default_pathsets();
+                desc.maybe_run(builder, default_pathsets);
             }
         }
     }
@@ -202,7 +195,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     let mut steps_to_run = vec![];
 
     for StepExtra { desc, should_run } in &steps {
-        let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+        let pathsets = should_run.pathsets_for_paths_flagging_matches(&mut paths);
 
         // This value is used for sorting the step execution order.
         // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.

@@ -1,11 +1,11 @@
 #![warn(clippy::recursive_format_impl)]
-#![allow(
+#![expect(
     clippy::borrow_deref_ref,
     clippy::deref_addrof,
     clippy::inherent_to_string_shadow_display,
-    clippy::useless_borrows_in_formatting,
     clippy::to_string_in_format_args,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::useless_borrows_in_formatting
 )]
 
 use std::fmt;

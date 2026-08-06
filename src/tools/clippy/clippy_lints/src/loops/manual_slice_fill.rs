@@ -30,9 +30,10 @@ pub(super) fn check<'tcx>(
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
-        limits: RangeLimits::HalfOpen,
+        ty: range_ty,
         span: _,
     }) = higher::Range::hir(cx, arg)
+        && let RangeLimits::HalfOpen = range_ty.limits()
         && let ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),
             ..

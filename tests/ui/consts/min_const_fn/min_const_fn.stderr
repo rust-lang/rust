@@ -73,6 +73,11 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                  ^^                         - value is dropped here
    |                  |
    |                  the destructor for this type cannot be evaluated in constant functions
+   |
+help: consider restricting opaque type `impl std::fmt::Debug` with unstable trait `Destruct`
+   |
+LL | const fn no_apit(_x: impl std::fmt::Debug + [const] Destruct) {}
+   |                                           ++++++++++++++++++
 
 error: aborting due to 9 previous errors
 

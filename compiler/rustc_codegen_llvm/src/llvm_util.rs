@@ -14,14 +14,14 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
-use rustc_session::config::{PrintKind, PrintRequest};
+use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
 };
 use smallvec::{SmallVec, smallvec};
 
 use crate::back::write::create_informational_target_machine;
-use crate::{errors, llvm};
+use crate::{diagnostics, llvm};
 
 static INIT: Once = Once::new();
 
@@ -514,10 +514,12 @@ fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String)
 
     // Only print the "native" entry when host and target are the same arch,
     // since otherwise it could be wrong or misleading.
-    if sess.host.arch == sess.target.arch {
+    // Also do not print it if `requires_consistent_cpu` is set, because in this case
+    // "native" would be rejected.
+    if sess.host.arch == sess.target.arch && !sess.target.requires_consistent_cpu {
         let host = get_host_cpu_name();
         cpus.push_front(Cpu {
-            cpu_name: "native",
+            cpu_name: NATIVE_CPU,
             remark: format!(" - Select the CPU of the current host (currently {host})."),
         });
     }
@@ -612,7 +614,7 @@ fn get_host_cpu_name() -> &'static str {
 /// LLVM. Otherwise, the string is returned as-is.
 fn handle_native(cpu_name: &str) -> &str {
     match cpu_name {
-        "native" => get_host_cpu_name(),
+        NATIVE_CPU => get_host_cpu_name(),
         _ => cpu_name,
     }
 }
@@ -634,7 +636,8 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     // -Zfixed-x18
     if sess.opts.unstable_opts.fixed_x18 {
         if sess.target.arch != Arch::AArch64 {
-            sess.dcx().emit_fatal(errors::FixedX18InvalidArch { arch: sess.target.arch.desc() });
+            sess.dcx()
+                .emit_fatal(diagnostics::FixedX18InvalidArch { arch: sess.target.arch.desc() });
         } else {
             features.push("+reserve-x18".into());
         }
@@ -643,7 +646,11 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
-pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> Vec<String> {
+///
+/// If `for_cfg` is `true` then we are assembling the feature list for the purpose of populating
+/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
+/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
+pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -666,7 +673,7 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
 
     // -Ctarget-cpu=native
     match sess.opts.cg.target_cpu {
-        Some(ref s) if s == "native" => {
+        Some(ref s) if s == NATIVE_CPU => {
             // We have already figured out the actual CPU name with `LLVMRustGetHostCPUName` and set
             // that for LLVM, so the features implied by that CPU name will be available everywhere.
             // However, that is not sufficient: e.g. `skylake` alone is not sufficient to tell if
@@ -722,13 +729,32 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
     // Features implied by an implicit or explicit `--target`.
     target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
 
-    // -Ctarget-features
-    if !only_base_features {
+    // -Ctarget-features. Skipped for `cfg` as there we parse -Ctarget-features directly instead of
+    // going via an LLVM target machine (which avoids accidentally picking up LLVM-level target
+    // feature implications that we do not want).
+    if !for_cfg {
         target_features::flag_to_backend_features(sess, extend_backend_features);
     }
 
     // We add this in the "base target" so that these show up in `sess.unstable_target_features`.
     llvm_features_by_flags(sess, &mut features);
+
+    // `-Zllvm-target-features`, all the way at the end to overwrite everything.
+    // Should be picked up by `cfg` (e.g. if someone enables AVX this way).
+    for feature in sess.opts.unstable_opts.llvm_target_feature.split(',') {
+        if feature.is_empty() {
+            continue;
+        }
+        if feature.starts_with('+') || feature.starts_with('-') {
+            features.push(feature.to_owned());
+        } else {
+            // LLVM seems to silently ignore entries without leading `+`/`-`. Let's emit a warning
+            // to avoid confusion. But only emit this warning once, under `for_cfg`.
+            if for_cfg {
+                sess.dcx().emit_warn(diagnostics::UnknownLlvmTargetFeaturePrefix { feature });
+            }
+        }
+    }
 
     features
 }

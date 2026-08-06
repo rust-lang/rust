@@ -1,0 +1,16 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/mixed-direct-anon-expression-diagnostics.rs:13:39
+   |
+LL |     f::<{ core::direct_const_arg!((N, 1 + 1)) }>();
+   |                                       ^^^^^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/mixed-direct-anon-expression-diagnostics.rs:11:12
+   |
+LL |     f::<{ (N, 1 + 1) }>();
+   |            ^
+   |
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+
+error: aborting due to 2 previous errors
+

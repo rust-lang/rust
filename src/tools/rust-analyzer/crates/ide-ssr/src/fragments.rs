@@ -6,7 +6,7 @@
 //! needs to determine it somehow. We do this in a stupid way -- by pasting SSR
 //! rule into different contexts and checking what works.
 
-use syntax::{AstNode, SyntaxNode, ast};
+use syntax::{AstNode, SyntaxNode, ast, syntax_editor::SyntaxEditor};
 
 pub(crate) fn ty(s: &str) -> Result<SyntaxNode, ()> {
     fragment::<ast::Type>("type T = {};", s)
@@ -31,18 +31,20 @@ pub(crate) fn stmt(s: &str) -> Result<SyntaxNode, ()> {
     if !parse.errors().is_empty() {
         return Err(());
     }
-    let mut node =
-        parse.tree().syntax().descendants().skip(2).find_map(ast::Stmt::cast).ok_or(())?;
-    if !s.ends_with(';') && node.to_string().ends_with(';') {
-        node = node.clone_for_update();
-        if let Some(it) = node.syntax().last_token() {
-            it.detach()
-        }
+    let node = parse.tree().syntax().descendants().skip(2).find_map(ast::Stmt::cast).ok_or(())?;
+    let (editor, node) = SyntaxEditor::new(node.syntax().clone());
+    let node = ast::Stmt::cast(node).ok_or(())?;
+    if !s.ends_with(';')
+        && node.to_string().ends_with(';')
+        && let Some(token) = node.syntax().last_token()
+    {
+        editor.delete(token);
     }
+    let node = editor.finish().new_root().clone();
     if node.to_string() != s {
         return Err(());
     }
-    Ok(node.syntax().clone_subtree())
+    Ok(node)
 }
 
 fn fragment<T: AstNode>(template: &str, s: &str) -> Result<SyntaxNode, ()> {
@@ -53,8 +55,9 @@ fn fragment<T: AstNode>(template: &str, s: &str) -> Result<SyntaxNode, ()> {
         return Err(());
     }
     let node = parse.tree().syntax().descendants().find_map(T::cast).ok_or(())?;
-    if node.syntax().text() != s {
+    let (_, node) = SyntaxEditor::new(node.syntax().clone());
+    if node.text() != s {
         return Err(());
     }
-    Ok(node.syntax().clone_subtree())
+    Ok(node)
 }

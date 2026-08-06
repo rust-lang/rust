@@ -20,4 +20,10 @@ static auto format_error(VerificationError err) -> std::unique_ptr<std::string> 
     return std::make_unique<std::string>(s.str());
 }
 
+/** Standard overloaded-lambda helper for std::visit;
+ * see https://en.cppreference.com/w/cpp/utility/variant/visit2.html. */
+template <class... Ts> struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+
 #endif /* GENMC_RESULT_HANDLING_HPP */

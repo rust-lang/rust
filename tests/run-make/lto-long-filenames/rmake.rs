@@ -1,6 +1,6 @@
 // This file has very long lines, but there is no way to avoid it as we are testing
 // long crate names. so:
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 // A variant of the smoke test to check that link time optimization
 // (LTO) is accepted by the compiler, and that
@@ -12,6 +12,7 @@
 use run_make_support::{rfs, rustc};
 
 // This test make sure we don't get such following error:
+// ignore-tidy-linelength
 // error: could not write output to generated_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_crate_name.generated_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_large_crate_name.9384edb61bfd127c-cgu.0.rcgu.o: File name too long
 // as reported in issue #49914
 fn main() {

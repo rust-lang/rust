@@ -1,16 +1,19 @@
-error: multiple `#[splat]`s are not allowed in the same function
-  --> $DIR/splat-unsafe-fn-tuple-fail.rs:9:30
+error: multiple `#[rustc_splat]`s are not allowed in the same function argument list
+  --> $DIR/splat-unsafe-fn-tuple-fail.rs:10:5
    |
-LL | unsafe fn unsafe_multi_splat(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_splat] (_a, _b): (u32, i8),
+   |     ^^^^^^^^^^^^^^
+LL |
+LL |     #[rustc_splat] (_c, _d): (u32, i8),
+   |     ^^^^^^^^^^^^^^
    |
-   = help: remove `#[splat]` from all but one argument
+   = help: remove `#[rustc_splat]` from all but one argument
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
-  --> $DIR/splat-unsafe-fn-tuple-fail.rs:6:42
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+  --> $DIR/splat-unsafe-fn-tuple-fail.rs:6:48
    |
-LL | unsafe fn unsafe_wrong_type(#[splat] _x: u32) {}
-   |                                          ^^^
+LL | unsafe fn unsafe_wrong_type(#[rustc_splat] _x: u32) {}
+   |                                                ^^^
 ...
 LL |         unsafe_wrong_type(1u32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^

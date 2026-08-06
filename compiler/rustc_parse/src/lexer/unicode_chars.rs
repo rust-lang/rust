@@ -4,7 +4,7 @@
 use rustc_span::{BytePos, Pos, Span, kw};
 
 use super::Lexer;
-use crate::errors::TokenSubstitution;
+use crate::diagnostics::TokenSubstitution;
 use crate::token;
 
 #[rustfmt::skip] // for line breaks

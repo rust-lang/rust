@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 //@ run-pass
 //@ revisions: default strict

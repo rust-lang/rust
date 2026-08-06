@@ -1,7 +1,6 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args, generic_const_args)]
 #![expect(incomplete_features)]
 
 trait Trait {

@@ -287,7 +287,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if target_proc != Handle::Pseudo(PseudoHandle::CurrentProcess) {
             throw_unsup_format!(
-                "`DuplicateHandle` `hSourceProcessHandle` parameter is not the current process, which is unsupported"
+                "`DuplicateHandle` `hTargetProcessHandle` parameter is not the current process, which is unsupported"
             );
         }
 
@@ -342,13 +342,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             Handle::File(fd_num) =>
                 if let Some(fd) = this.machine.fds.remove(fd_num) {
-                    let err = fd.close_ref(this.machine.communicate(), this)?;
-                    if let Err(e) = err {
-                        this.set_last_error(e)?;
-                        this.eval_windows("c", "FALSE")
-                    } else {
-                        this.eval_windows("c", "TRUE")
-                    }
+                    drop(fd);
+                    this.eval_windows("c", "TRUE")
                 } else {
                     this.invalid_handle("CloseHandle")?
                 },

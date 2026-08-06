@@ -99,8 +99,13 @@ fn test_process_group_posix_spawn() {
         cmd.stdout(Stdio::MakePipe);
         let (mut cat, _pipes) = t!(cmd.spawn(Stdio::Null, true));
 
+        let pid = cat.id() as libc::pid_t;
+        let pgid = libc::getpgid(pid);
+        assert_ne!(-1, pgid, "getpgid failed");
+        assert_eq!(pid, pgid, "child process ID does not match its process group ID");
+
         // Check that we can kill its process group, which means there *is* one.
-        t!(cvt(libc::kill(-(cat.id() as libc::pid_t), libc::SIGINT)));
+        t!(cvt(libc::kill(-pgid, libc::SIGINT)));
 
         t!(cat.wait());
     }
@@ -127,8 +132,18 @@ fn test_process_group_no_posix_spawn() {
         cmd.stdout(Stdio::MakePipe);
         let (mut cat, _pipes) = t!(cmd.spawn(Stdio::Null, true));
 
+        let pid = cat.id() as libc::pid_t;
+        let pgid = libc::getpgid(pid);
+        assert_ne!(-1, pgid, "getpgid failed");
+        assert_eq!(pid, pgid, "child process ID does not match its process group ID");
+
+        if cfg!(target_os = "qnx") {
+            // kill(-pgid) appears to be unable to terminate the child process on QNX8
+            return;
+        }
+
         // Check that we can kill its process group, which means there *is* one.
-        t!(cvt(libc::kill(-(cat.id() as libc::pid_t), libc::SIGINT)));
+        t!(cvt(libc::kill(-pgid, libc::SIGINT)));
 
         t!(cat.wait());
     }
@@ -154,9 +169,19 @@ fn test_setsid_posix_spawn() {
     let (mut cat, _pipes) = t!(cmd.spawn(Stdio::Null, true));
 
     unsafe {
+        let pid = cat.id() as libc::pid_t;
+        let pgid = libc::getpgid(pid);
+        assert_ne!(-1, pgid, "getpgid failed");
+        assert_eq!(pid, pgid, "child process ID does not match its process group ID");
+
+        if cfg!(target_os = "qnx") {
+            // kill(-pgid) appears to be unable to terminate the child process on QNX8
+            return;
+        }
+
         // Setsid will create a new session and process group, so check that
         // we can kill the process group, which means there *is* one.
-        t!(cvt(libc::kill(-(cat.id() as libc::pid_t), libc::SIGINT)));
+        t!(cvt(libc::kill(-pgid, libc::SIGINT)));
 
         t!(cat.wait());
     }
@@ -184,9 +209,19 @@ fn test_setsid_no_posix_spawn() {
         cmd.pre_exec(Box::new(|| Ok(()))); // pre_exec forces fork + exec rather than posix spawn.
         let (mut cat, _pipes) = t!(cmd.spawn(Stdio::Null, true));
 
+        let pid = cat.id() as libc::pid_t;
+        let pgid = libc::getpgid(pid);
+        assert_ne!(-1, pgid, "getpgid failed");
+        assert_eq!(pid, pgid, "child process ID does not match its process group ID");
+
+        if cfg!(target_os = "qnx") {
+            // kill(-pgid) appears to be unable to terminate the child process on QNX8
+            return;
+        }
+
         // Setsid will create a new session and process group, so check that
         // we can kill the process group, which means there *is* one.
-        t!(cvt(libc::kill(-(cat.id() as libc::pid_t), libc::SIGINT)));
+        t!(cvt(libc::kill(-pgid, libc::SIGINT)));
 
         t!(cat.wait());
     }

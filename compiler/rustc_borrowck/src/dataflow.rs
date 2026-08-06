@@ -474,11 +474,9 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
         let other_borrows_of_local = self
             .borrow_set
-            .local_map
-            .get(&place.local)
-            .into_iter()
-            .flat_map(|bs| bs.iter())
-            .copied();
+            .borrows_on_local(place.local)
+            .map(|bs| bs.iter().copied())
+            .into_flat_iter();
 
         // If the borrowed place is a local with no projections, all other borrows of this
         // local must conflict. This is purely an optimization so we don't have to call
@@ -553,15 +551,18 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,
-                        &self.borrow_set.locals_state_at_exit,
+                        &self.borrow_set.locals_state_at_exit(),
                     ) {
                         return;
                     }
-                    let index = self.borrow_set.get_index_of(&location).unwrap_or_else(|| {
-                        panic!("could not find BorrowIndex for location {location:?}");
-                    });
+                    let idxs =
+                        self.borrow_set.borrows_at_location(&location).unwrap_or_else(|| {
+                            panic!("could not find BorrowIndex for location {location:?}");
+                        });
 
-                    state.gen_(index);
+                    for index in idxs {
+                        state.gen_(*index);
+                    }
                 }
 
                 // Make sure there are no remaining borrows for variables

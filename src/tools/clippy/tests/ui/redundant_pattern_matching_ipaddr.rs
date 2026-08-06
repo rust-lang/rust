@@ -1,10 +1,5 @@
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(
-    clippy::match_like_matches_macro,
-    clippy::needless_bool,
-    clippy::needless_ifs,
-    clippy::uninlined_format_args
-)]
+#![expect(clippy::needless_ifs)]
 
 use std::net::IpAddr::{self, V4, V6};
 use std::net::{Ipv4Addr, Ipv6Addr};

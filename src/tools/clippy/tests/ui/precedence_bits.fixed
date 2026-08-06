@@ -1,12 +1,5 @@
 #![warn(clippy::precedence_bits)]
-#![allow(
-    unused_must_use,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::precedence
-)]
-#![allow(clippy::identity_op)]
-#![allow(clippy::eq_op)]
+#![expect(clippy::eq_op, clippy::identity_op, clippy::no_effect, clippy::precedence)]
 
 macro_rules! trip {
     ($a:expr) => {

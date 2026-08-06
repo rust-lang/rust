@@ -19,7 +19,6 @@ use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
-    db::DefDatabase,
     expr_store::Body,
     hir::Pat,
     item_tree::FieldsShape,
@@ -710,7 +709,7 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database = dyn DefDatabase> + HasModule + Copy,
+        L: Lookup<Data = S> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,

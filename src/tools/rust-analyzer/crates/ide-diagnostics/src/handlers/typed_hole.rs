@@ -2,7 +2,6 @@ use std::ops::Not;
 
 use hir::{
     ClosureStyle, FindPathConfig, HirDisplay,
-    db::ExpandDatabase,
     term_search::{TermSearchConfig, TermSearchCtx, term_search},
 };
 use ide_db::text_edit::TextEdit;
@@ -46,7 +45,7 @@ pub(crate) fn typed_hole<'db>(
 
 fn fixes<'db>(ctx: &DiagnosticsContext<'_, 'db>, d: &hir::TypedHole<'db>) -> Option<Vec<Assist>> {
     let db = ctx.sema.db;
-    let root = db.parse_or_expand(d.expr.file_id);
+    let root = d.expr.file_id.parse_or_expand(db);
     let (original_range, _) =
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
     let scope = ctx.sema.scope(d.expr.value.to_node(&root).syntax())?;

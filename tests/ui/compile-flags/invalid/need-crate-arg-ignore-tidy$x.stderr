@@ -1,4 +1,7 @@
 error: invalid character '$' in crate name: `need_crate_arg_ignore_tidy$x`
+   |
+   = note: crate names may only contain alphanumeric characters or underscores
+   = help: you might have meant to use `--crate-name=need_crate_arg_ignore_tidy_x`
 
 error: aborting due to 1 previous error
 

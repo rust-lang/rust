@@ -101,6 +101,10 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("EACCES", PermissionDenied),
         ("EWOULDBLOCK", WouldBlock),
         ("EAGAIN", WouldBlock),
+        #[cfg(not(bootstrap))]
+        ("EMFILE", TooManyOpenFiles),
+        #[cfg(not(bootstrap))]
+        ("ENFILE", TooManyOpenFiles),
     ]
 };
 // On Unix hosts are can avoid round-tripping via `ErrorKind`, which can preserve more
@@ -254,6 +258,8 @@ const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ERROR_RUNLEVEL_SWITCH_TIMEOUT", TimedOut),
         ("ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT", TimedOut),
         ("ERROR_TOO_MANY_LINKS", TooManyLinks),
+        #[cfg(not(bootstrap))]
+        ("ERROR_TOO_MANY_OPEN_FILES", TooManyOpenFiles),
         ("ERROR_CALL_NOT_IMPLEMENTED", Unsupported),
         ("WSAEWOULDBLOCK", WouldBlock),
     ]
@@ -277,15 +283,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// Sets the last error variable.
-    fn set_last_error(&mut self, err: impl Into<IoError>) -> InterpResult<'tcx> {
+    fn io_error_to_errnum(&mut self, err: impl Into<IoError>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let errno = match err.into() {
-            HostError(err) => this.io_error_to_errnum(err)?,
+        interp_ok(match err.into() {
+            HostError(err) => this.host_error_to_errnum(err)?,
             LibcError(name) => this.eval_libc(name),
             WindowsError(name) => this.eval_windows("c", name),
             Raw(val) => val,
-        };
+        })
+    }
+
+    /// Sets the last error variable.
+    fn set_last_error(&mut self, err: impl Into<IoError>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let errno = this.io_error_to_errnum(err)?;
         let errno_place = this.last_error_place()?;
         this.write_scalar(errno, &errno_place)
     }
@@ -331,7 +342,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// This function converts host errors to target errors. It tries to produce the most similar OS
     /// error from the `std::io::ErrorKind` as a platform-specific errnum.
-    fn io_error_to_errnum(&self, err: std::io::Error) -> InterpResult<'tcx, Scalar> {
+    fn host_error_to_errnum(&self, err: std::io::Error) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
 

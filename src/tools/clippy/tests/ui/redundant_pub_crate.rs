@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-#![allow(dead_code)]
 #![warn(clippy::redundant_pub_crate)]
 
 mod m1 {
@@ -142,12 +141,10 @@ mod m5 {
 pub use m4::*;
 
 mod issue_8732 {
-    #[allow(unused_macros)]
     macro_rules! some_macro {
         () => {};
     }
 
-    #[allow(unused_imports)]
     pub(crate) use some_macro; // ok: macro exports are exempt
 }
 

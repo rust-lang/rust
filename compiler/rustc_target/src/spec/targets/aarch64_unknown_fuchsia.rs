@@ -10,6 +10,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
+        | SanitizerSet::HWADDRESS
         | SanitizerSet::LEAK
         | SanitizerSet::SHADOWCALLSTACK;
     base.default_sanitizers = SanitizerSet::SHADOWCALLSTACK;

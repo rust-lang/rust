@@ -294,7 +294,11 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Previously, layout was calculated on the expression
     // `&*(ptr as *const RcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<RcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<RcInner<()>>()
+        .extend(layout)
+        .unwrap_or_else(|_| panic!("capacity overflow"))
+        .0
+        .pad_to_align()
 }
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
@@ -2090,8 +2094,6 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
 
-            // We don't need panic-protection like the above branch does, but we might as well
-            // use the same mechanism.
             let mut in_progress: UniqueRcUninit<T, A> =
                 UniqueRcUninit::new(&**this, this.alloc.clone());
             unsafe {
@@ -2104,10 +2106,18 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
                     size_of_val,
                 );
 
+                // This leaves us with 0 strong refs, so the data has
+                // effectively been moved to the new rc.
                 this.inner().dec_strong();
+
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
                 this.inner().dec_weak();
+
+                // Last chance to not accidentally forget the allocator.
+                // Only drop at the end of the scope to avoid panics.
+                let _alloc = ptr::read(&this.alloc);
+
                 // Replace `this` with newly constructed Rc that has the moved data.
                 ptr::write(this, in_progress.into_rc());
             }
@@ -2609,7 +2619,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 pub(crate) trait MarkerEq: PartialEq<Self> {}
 
 impl<T: ?Sized + Eq> MarkerEq for T {}

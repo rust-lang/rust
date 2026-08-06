@@ -1,3 +1,5 @@
+// ignore-tidy-file-linelength
+//
 //@ compile-flags: --enable-index-page -Z unstable-options
 //! The point of this crate is to be able to have enough different "kinds" of
 //! documentation generated so we can test each different features.
@@ -701,7 +703,6 @@ impl ImplDoc {
     pub fn bar2() {}
 }
 
-// ignore-tidy-linelength
 /// | this::is::a::kinda::very::long::header::number::one | this::is::a::kinda::very::long::header::number::two | this::is::a::kinda::very::long::header::number::three |
 /// |-|-|-|
 /// | bla | bli | blob |

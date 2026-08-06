@@ -1,6 +1,6 @@
 //@ build-pass
-// ignore-tidy-filelength
-// ignore-tidy-linelength
+// ignore-tidy-file-filelength
+// ignore-tidy-file-linelength
 // some very lightly modified generated code from issue rust-lang/rust#122715
 // the main differences are to strip the dependency on bumpalo so it can be tested separately
 // the original purpose of this code was to implement a binomial queue, however it is extracted from Gallina

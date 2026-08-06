@@ -67,14 +67,13 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
         }
         check_is_not_variant(&field)?;
         (vis_offset(field.syntax()), field_name.syntax().text_range())
-    } else if let Some(field) = ctx.find_node_at_offset::<ast::TupleField>() {
+    } else {
+        let field = ctx.find_node_at_offset::<ast::TupleField>()?;
         if field.visibility().is_some() {
             return None;
         }
         check_is_not_variant(&field)?;
         (vis_offset(field.syntax()), field.syntax().text_range())
-    } else {
-        return None;
     };
 
     acc.add(

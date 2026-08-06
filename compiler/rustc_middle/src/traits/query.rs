@@ -17,7 +17,7 @@ use crate::ty::{self, GenericArg, Ty, TyCtxt};
 pub mod type_op {
     use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 
-    use crate::ty::{Predicate, Ty, UserType};
+    use crate::ty::{Predicate, Ty, Unnormalized, UserType};
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
@@ -42,16 +42,10 @@ pub mod type_op {
         pub predicate: Predicate<'tcx>,
     }
 
-    /// Normalizes, but not in the new solver.
+    /// Normalizes a value that may contain unnormalized aliases.
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
-    pub struct Normalize<T> {
-        pub value: T,
-    }
-
-    /// Normalizes, and deeply normalizes in the new solver.
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
-    pub struct DeeplyNormalize<T> {
-        pub value: T,
+    pub struct Normalize<'tcx, T> {
+        pub value: Unnormalized<'tcx, T>,
     }
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
@@ -89,10 +83,7 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
-
-pub type CanonicalTypeOpDeeplyNormalizeGoal<'tcx, T> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DeeplyNormalize<T>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<'tcx, T>>>;
 
 pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;

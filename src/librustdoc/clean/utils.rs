@@ -16,6 +16,7 @@ use rustc_hir::find_attr;
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
 
@@ -116,18 +117,22 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let mut elision_has_failed_once_before = false;
+
+    // Calculates where the parent trait's generic parameters end
+    let index_offset = generics.count() - args.len();
     let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
         // Elide the self type.
         if has_self && index == 0 {
             return None;
         }
 
-        let param = generics.param_at(index, cx.tcx);
+        // Skips over the parent trait's generic parameters
+        let param = generics.param_at(index + index_offset, cx.tcx);
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
         // Elide arguments that coincide with their default.
         if !elision_has_failed_once_before && let Some(default) = param.default_value(cx.tcx) {
-            let default = default.instantiate(cx.tcx, args.as_ref()).skip_norm_wip();
+            let default = default.instantiate(cx.tcx, args.as_ref()).skip_normalization();
             if can_elide_generic_arg(arg, arg.rebind(default)) {
                 return None;
             }
@@ -350,28 +355,21 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
-        ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => match kind {
-            ty::AliasConstKind::Projection { def_id } => {
-                if let Some(local_def_id) = def_id.as_local()
-                    && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
-                {
-                    rendered_const(tcx, body_id, local_def_id)
-                } else {
-                    n.to_string()
-                }
+        ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => {
+            let def_id: DefId = match kind {
+                ty::AliasConstKind::Projection { def_id } => def_id.into(),
+                ty::AliasConstKind::Inherent { def_id } => def_id.into(),
+                ty::AliasConstKind::Free { def_id } => def_id.into(),
+                ty::AliasConstKind::Anon { def_id } => def_id.into(),
+            };
+            if let Some(local_def_id) = def_id.as_local()
+                && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
+            {
+                rendered_const(tcx, body_id, local_def_id)
+            } else {
+                n.to_string()
             }
-            ty::AliasConstKind::Inherent { def_id }
-            | ty::AliasConstKind::Free { def_id }
-            | ty::AliasConstKind::Anon { def_id } => {
-                if let Some(local_def_id) = def_id.as_local()
-                    && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
-                {
-                    rendered_const(tcx, body_id, local_def_id)
-                } else {
-                    inline::print_inlined_const(tcx, def_id)
-                }
-            }
-        },
+        }
         // array lengths are obviously usize
         ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
             cv.to_leaf().to_string()
@@ -563,17 +561,17 @@ where
 }
 
 /// Find the nearest parent module of a [`DefId`].
-pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
+pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ModId> {
     if def_id.is_top_level_module() {
         // The crate root has no parent. Use it as the root instead.
-        Some(def_id)
+        Some(ModId::new_unchecked(def_id))
     } else {
         let mut current = def_id;
         // The immediate parent might not always be a module.
         // Find the first parent which is.
         while let Some(parent) = tcx.opt_parent(current) {
             if tcx.def_kind(parent) == DefKind::Mod {
-                return Some(parent);
+                return Some(ModId::new_unchecked(parent));
             }
             current = parent;
         }

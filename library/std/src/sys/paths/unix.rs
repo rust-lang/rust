@@ -234,18 +234,31 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut mib = [libc::CTL_KERN, libc::KERN_PROC_ARGS, libc::getpid(), libc::KERN_PROC_ARGV];
         let mib = mib.as_mut_ptr();
-        let mut argv_len = 0;
-        cvt(libc::sysctl(mib, 4, ptr::null_mut(), &mut argv_len, ptr::null_mut(), 0))?;
-        let mut argv = Vec::<*const libc::c_char>::with_capacity(argv_len as usize);
-        cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_len, ptr::null_mut(), 0))?;
-        argv.set_len(argv_len as usize);
+
+        // Determine the required size (in bytes) for the argument array ...
+        let mut argv_size = 0;
+        cvt(libc::sysctl(mib, 4, ptr::null_mut(), &mut argv_size, ptr::null_mut(), 0))?;
+
+        // ... allocate a buffer for it ...
+        let argc = argv_size.div_exact(size_of::<*const libc::c_char>()).unwrap();
+        let mut argv = Vec::<*const libc::c_char>::with_capacity(argc);
+
+        // ... and retrieve the argument array.
+        cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_size, ptr::null_mut(), 0))?;
+        let argc = argv_size.div_exact(size_of::<*const libc::c_char>()).unwrap();
+        argv.set_len(argc);
+
         if argv[0].is_null() {
             return Err(io::const_error!(io::ErrorKind::Uncategorized, "no current exe available"));
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
-        if argv0[0] == b'.' || argv0.iter().any(|b| *b == b'/') {
+        if argv0.iter().any(|b| *b == b'/') {
+            // The program name is path-like, so try to canonicalize it.
             crate::fs::canonicalize(OsStr::from_bytes(argv0))
         } else {
+            // The program was probably found in the PATH. Instead of trying to
+            // find it again (which might not succeed if PATH has changed), just
+            // return the program name – this function is best-effort anyway.
             Ok(PathBuf::from(OsStr::from_bytes(argv0)))
         }
     }
@@ -269,10 +282,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     let mut e = crate::fs::read("/proc/self/exefile")?;
-    // Current versions of QNX Neutrino provide a null-terminated path.
+    // Current versions of QNX SDP provide a null-terminated path.
     // Ensure the trailing null byte is not returned here.
     if let Some(0) = e.last() {
         e.pop();

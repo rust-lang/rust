@@ -15,7 +15,7 @@
 //!
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
-#![cfg_attr(test, allow(unused))]
+#![allow(clippy::assertions_on_constants, reason = "false positive for `assert!(cfg!(..))`")]
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -26,7 +26,6 @@ use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
-use build_helper::exit;
 use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
@@ -42,9 +41,9 @@ use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, spl
 mod core;
 mod utils;
 
-pub use core::builder::PathSet;
 #[cfg(feature = "tracing")]
 pub use core::builder::STEP_SPAN_TARGET;
+pub use core::builder::{PathSet, StepStack};
 pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::{ChangeId, Config};
 
@@ -849,10 +848,6 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
-        if self.config.llvm_enzyme {
-            features.insert("llvm_enzyme");
-        }
-
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -867,14 +862,14 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if self.config.jemalloc(target) && check("jemalloc") {
-            features.push("jemalloc");
+
+        if let Some(allocator_feature_name) = self.config.allocator(target).feature_name()
+            && check(allocator_feature_name)
+        {
+            features.push(allocator_feature_name);
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
-        }
-        if self.config.llvm_enzyme {
-            features.push("llvm_enzyme");
         }
         if self.config.llvm_offload {
             features.push("llvm_offload");
@@ -1280,7 +1275,7 @@ impl Build {
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
     /// specified target by default.
-    fn cc_handled_clags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
+    fn cc_handled_cflags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1323,10 +1318,10 @@ impl Build {
 
         if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
-            let cc = self.cc(target);
-            if cc.ends_with("clang") || cc.ends_with("gcc") {
+            let cc = self.cc_tool(target);
+            if cc.is_like_clang() || cc.is_like_gnu() {
                 base.push(format!("-fdebug-prefix-map={map}"));
-            } else if cc.ends_with("clang-cl.exe") {
+            } else if cc.is_like_clang_cl() {
                 base.push("-Xclang".into());
                 base.push(format!("-fdebug-prefix-map={map}"));
             }
@@ -1736,7 +1731,9 @@ impl Build {
                 }
             }
         }
-        ret.sort_unstable_by_key(|krate| krate.name.clone()); // reproducible order needed for tests
+
+        // Sort the crates so that bootstrap unit tests can assume a deterministic order.
+        ret.sort_unstable_by(|a, b| Ord::cmp(&a.name, &b.name));
         ret
     }
 
@@ -2148,4 +2145,11 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
 
         t!(INITIALIZED.set(true));
     }
+}
+
+#[macro_export]
+macro_rules! exit {
+    ($code:expr) => {
+        $crate::utils::helpers::detail_exit($code, cfg!(test));
+    };
 }

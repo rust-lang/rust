@@ -218,6 +218,24 @@ fn issue12846() {
     //~^ needless_bool
 }
 
+fn operands_need_parentheses() {
+    let a = true;
+    let b = false;
+    let z = true;
+
+    // parentheses are needed here
+    let _x = if a || b { true } else { false } && z;
+    //~^ needless_bool
+    let _x = if a || b { true } else { false } == z;
+    //~^ needless_bool
+    let _x = !if a || b { true } else { false };
+    //~^ needless_bool
+
+    // parentheses are not needed here
+    let _x = if a { true } else { false } && z;
+    //~^ needless_bool
+}
+
 fn wrongly_unmangled_macros() {
     macro_rules! test_expr {
         ($val:expr) => {

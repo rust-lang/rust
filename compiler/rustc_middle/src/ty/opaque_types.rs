@@ -5,7 +5,8 @@ use tracing::{debug, instrument, trace};
 
 use crate::error::ConstNotUsedTraitAlias;
 use crate::ty::{
-    self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self, GenericArg, GenericArgKind, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable,
 };
 
 pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
@@ -133,7 +134,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                         self.span,
                         format!(
                             "lifetime `{r}` is part of concrete type but not used in \
-                             parameter list of the `impl Trait` type alias"
+                             parameter list of the `impl Trait` type alias",
                         ),
                     )
                     .emit();

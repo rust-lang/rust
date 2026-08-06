@@ -3,7 +3,7 @@ use std::{fmt, ops};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanExt;
-use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_in_test};
+use clippy_utils::{fn_has_unsatisfiable_clauses, is_entrypoint_fn, is_in_test};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
@@ -147,8 +147,8 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         local_def_id: LocalDefId,
     ) {
         let def_id = local_def_id.to_def_id();
-        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id) {
+        // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
+        if fn_has_unsatisfiable_clauses(cx, def_id) {
             return;
         }
 

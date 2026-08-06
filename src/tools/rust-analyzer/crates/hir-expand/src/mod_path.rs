@@ -6,12 +6,11 @@ use std::{
 };
 
 use crate::{
-    db::ExpandDatabase,
     hygiene::Transparency,
     name::{AsName, Name},
     tt,
 };
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use intern::{Symbol, sym};
 use parser::T;
 use smallvec::SmallVec;
@@ -23,6 +22,8 @@ pub struct ModPath {
     pub kind: PathKind,
     segments: SmallVec<[Name; 1]>,
 }
+
+intern::impl_internable!(ModPath);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
@@ -43,14 +44,14 @@ impl PathKind {
 
 impl ModPath {
     pub fn from_src(
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         path: ast::Path,
         span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
     ) -> Option<ModPath> {
         convert_path(db, path, span_for_range)
     }
 
-    pub fn from_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
+    pub fn from_tt(db: &dyn SourceDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
         convert_path_tt(db, tt)
     }
 
@@ -66,7 +67,7 @@ impl ModPath {
     }
 
     pub fn from_tokens(
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
         is_abs: bool,
         segments: impl Iterator<Item = SyntaxToken>,
@@ -178,16 +179,13 @@ impl ModPath {
             _ => None,
         }
     }
-    pub fn display_verbatim<'a>(
-        &'a self,
-        db: &'a dyn crate::db::ExpandDatabase,
-    ) -> impl fmt::Display + 'a {
+    pub fn display_verbatim<'a>(&'a self, db: &'a dyn SourceDatabase) -> impl fmt::Display + 'a {
         Display { db, path: self, edition: None }
     }
 
     pub fn display<'a>(
         &'a self,
-        db: &'a dyn crate::db::ExpandDatabase,
+        db: &'a dyn SourceDatabase,
         edition: Edition,
     ) -> impl fmt::Display + 'a {
         Display { db, path: self, edition: Some(edition) }
@@ -201,7 +199,7 @@ impl Extend<Name> for ModPath {
 }
 
 struct Display<'a> {
-    db: &'a dyn ExpandDatabase,
+    db: &'a dyn SourceDatabase,
     path: &'a ModPath,
     edition: Option<Edition>,
 }
@@ -219,7 +217,7 @@ impl From<Name> for ModPath {
 }
 
 fn display_fmt_path(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     path: &ModPath,
     f: &mut fmt::Formatter<'_>,
     edition: Option<Edition>,
@@ -259,7 +257,7 @@ fn display_fmt_path(
 }
 
 fn convert_path(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     path: ast::Path,
     span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
 ) -> Option<ModPath> {
@@ -344,7 +342,7 @@ fn convert_path(
     Some(mod_path)
 }
 
-fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
+fn convert_path_tt(db: &dyn SourceDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
     let mut leaves = tt.iter().filter_map(|tt| match tt {
         tt::TtElement::Leaf(leaf) => Some(leaf),
         tt::TtElement::Subtree(..) => None,
@@ -386,7 +384,7 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Optio
     Some(ModPath { kind, segments })
 }
 
-pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContext) -> Option<Crate> {
+pub fn resolve_crate_root(db: &dyn SourceDatabase, mut ctxt: SyntaxContext) -> Option<Crate> {
     // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
     // we don't want to pretend that the `macro_rules!` definition is in the `macro`
     // as described in `SyntaxContextId::apply_mark`, so we ignore prepended opaque marks.

@@ -4,8 +4,12 @@ error: implementation of `FnOnce` is not general enough
 LL |     require_send(future);
    |     ^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'0 Vec<i32>) -> std::slice::Iter<'_, i32>` must implement `FnOnce<(&'1 Vec<i32>,)>`, for any two lifetimes `'0` and `'1`...
+   = note: closure with signature `fn(&'0 _) -> Iter<'_, i32>` must implement `FnOnce<(&'1 Vec<i32>,)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&Vec<i32>,)>`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     for _ in things.iter().map(|n: &Vec<i32>| n.iter()).flatten() {
+   |                                  +++++++++++
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/higher-ranked-auto-trait-15.rs:20:5
@@ -13,9 +17,13 @@ error: implementation of `FnOnce` is not general enough
 LL |     require_send(future);
    |     ^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'0 Vec<i32>) -> std::slice::Iter<'_, i32>` must implement `FnOnce<(&'1 Vec<i32>,)>`, for any two lifetimes `'0` and `'1`...
+   = note: closure with signature `fn(&'0 _) -> Iter<'_, i32>` must implement `FnOnce<(&'1 Vec<i32>,)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&Vec<i32>,)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     for _ in things.iter().map(|n: &Vec<i32>| n.iter()).flatten() {
+   |                                  +++++++++++
 
 error: aborting due to 2 previous errors
 

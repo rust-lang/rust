@@ -28,8 +28,9 @@ pub(super) struct StackEntry<X: Cx> {
     /// The available depth of a given goal, immutable.
     pub available_depth: AvailableDepth,
 
-    /// The maximum depth required while evaluating this goal.
-    pub required_depth: usize,
+    /// The minimum available depth encountered while evaluating this goal's nested goals.
+    /// If there's no nested goal, this is equal to the `available_depth`.
+    pub min_reached_available_depth: AvailableDepth,
 
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
@@ -55,6 +56,12 @@ pub(super) struct StackEntry<X: Cx> {
 
     /// The nested goals of this goal, see the doc comment of the type.
     pub nested_goals: NestedGoals<X>,
+}
+
+impl<X: Cx> StackEntry<X> {
+    pub(super) fn required_depth(&self) -> usize {
+        self.available_depth.0 - self.min_reached_available_depth.0
+    }
 }
 
 /// The stack of goals currently being computed.

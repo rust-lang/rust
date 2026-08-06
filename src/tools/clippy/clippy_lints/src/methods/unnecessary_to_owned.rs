@@ -480,8 +480,8 @@ fn get_input_traits_and_projections<'tcx>(
 ) -> (Vec<TraitPredicate<'tcx>>, Vec<ProjectionPredicate<'tcx>>) {
     let mut trait_predicates = Vec::new();
     let mut projection_predicates = Vec::new();
-    for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
-        match predicate.kind().skip_binder() {
+    for clause in cx.tcx.param_env(callee_def_id).caller_bounds() {
+        match clause.kind().skip_binder() {
             ClauseKind::Trait(trait_predicate) if trait_predicate.trait_ref.self_ty() == input => {
                 trait_predicates.push(trait_predicate);
             },
@@ -543,20 +543,16 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let mut trait_predicates =
-                            cx.tcx
-                                .param_env(callee_def_id)
-                                .caller_bounds()
-                                .iter()
-                                .filter(|predicate| {
-                                    if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                                        && trait_predicate.trait_ref.self_ty() == param_ty
-                                    {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                });
+                        let mut trait_clauses =
+                            cx.tcx.param_env(callee_def_id).caller_bounds().iter().filter(|clause| {
+                                if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
+                                    && trait_predicate.trait_ref.self_ty() == param_ty
+                                {
+                                    true
+                                } else {
+                                    false
+                                }
+                            });
 
                         let new_subst = cx
                             .tcx
@@ -568,12 +564,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                                 }
                             }));
 
-                        if trait_predicates.any(|predicate| {
-                            let predicate = bound_fn_sig
-                                .rebind(predicate)
+                        if trait_clauses.any(|clause| {
+                            let clause = bound_fn_sig
+                                .rebind(clause)
                                 .instantiate(cx.tcx, new_subst)
                                 .skip_norm_wip();
-                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
+                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, clause);
                             !cx.tcx
                                 .infer_ctxt()
                                 .build(cx.typing_mode())
@@ -741,8 +737,8 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && cx.tcx.trait_of_assoc(method_def_id).is_none()
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
-        && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
-            if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
+        && cx.tcx.clauses_of(method_def_id).clauses.iter().any(|(clause, _)| {
+            if let ClauseKind::Trait(trait_pred) = clause.kind().skip_binder()
                 && trait_pred.polarity == ty::PredicatePolarity::Positive
                 && trait_pred.trait_ref.def_id == borrow_id
             {

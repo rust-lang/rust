@@ -1,5 +1,5 @@
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:15:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:11:12
    |
 LL |     if let Ok(_) = m.lock() {}
    |            ^^^^^
@@ -15,7 +15,7 @@ LL +     if m.lock().is_ok() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:17:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:13:12
    |
 LL |     if let Err(_) = Err::<(), _>(m.lock().unwrap().0) {}
    |            ^^^^^^
@@ -29,7 +29,7 @@ LL +     if Err::<(), _>(m.lock().unwrap().0).is_err() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:21:16
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:17:16
    |
 LL |         if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
    |                ^^^^^
@@ -43,7 +43,7 @@ LL +         if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:24:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:20:12
    |
 LL |     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {
    |            ^^^^^
@@ -57,7 +57,7 @@ LL +     if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:28:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:24:12
    |
 LL |     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
    |            ^^^^^
@@ -69,7 +69,7 @@ LL +     if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:30:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:26:12
    |
 LL |     if let Err(_) = Err::<std::sync::MutexGuard<()>, _>(()) {}
    |            ^^^^^^
@@ -81,7 +81,7 @@ LL +     if Err::<std::sync::MutexGuard<()>, _>(()).is_err() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:33:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:29:12
    |
 LL |     if let Ok(_) = Ok::<_, ()>(String::new()) {}
    |            ^^^^^
@@ -93,7 +93,7 @@ LL +     if Ok::<_, ()>(String::new()).is_ok() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:35:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:31:12
    |
 LL |     if let Err(_) = Err::<(), _>((String::new(), ())) {}
    |            ^^^^^^
@@ -105,7 +105,7 @@ LL +     if Err::<(), _>((String::new(), ())).is_err() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:39:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:35:12
    |
 LL |     if let Some(_) = Some(m.lock()) {}
    |            ^^^^^^^
@@ -119,7 +119,7 @@ LL +     if Some(m.lock()).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:41:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:37:12
    |
 LL |     if let Some(_) = Some(m.lock().unwrap().0) {}
    |            ^^^^^^^
@@ -133,7 +133,7 @@ LL +     if Some(m.lock().unwrap().0).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:45:16
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:41:16
    |
 LL |         if let None = None::<std::sync::MutexGuard<()>> {}
    |                ^^^^
@@ -147,7 +147,7 @@ LL +         if None::<std::sync::MutexGuard<()>>.is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:48:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:44:12
    |
 LL |     if let None = None::<std::sync::MutexGuard<()>> {
    |            ^^^^
@@ -161,7 +161,7 @@ LL +     if None::<std::sync::MutexGuard<()>>.is_none() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:53:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:49:12
    |
 LL |     if let None = None::<std::sync::MutexGuard<()>> {}
    |            ^^^^
@@ -173,7 +173,7 @@ LL +     if None::<std::sync::MutexGuard<()>>.is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:56:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:52:12
    |
 LL |     if let Some(_) = Some(String::new()) {}
    |            ^^^^^^^
@@ -185,7 +185,7 @@ LL +     if Some(String::new()).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:58:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:54:12
    |
 LL |     if let Some(_) = Some((String::new(), ())) {}
    |            ^^^^^^^
@@ -197,7 +197,7 @@ LL +     if Some((String::new(), ())).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:62:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:58:12
    |
 LL |     if let Ready(_) = Ready(m.lock()) {}
    |            ^^^^^^^^
@@ -211,7 +211,7 @@ LL +     if Ready(m.lock()).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:64:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:60:12
    |
 LL |     if let Ready(_) = Ready(m.lock().unwrap().0) {}
    |            ^^^^^^^^
@@ -225,7 +225,7 @@ LL +     if Ready(m.lock().unwrap().0).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:68:16
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:64:16
    |
 LL |         if let Pending = Pending::<std::sync::MutexGuard<()>> {}
    |                ^^^^^^^
@@ -239,7 +239,7 @@ LL +         if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:71:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:67:12
    |
 LL |     if let Pending = Pending::<std::sync::MutexGuard<()>> {
    |            ^^^^^^^
@@ -253,7 +253,7 @@ LL +     if Pending::<std::sync::MutexGuard<()>>.is_pending() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:76:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:72:12
    |
 LL |     if let Pending = Pending::<std::sync::MutexGuard<()>> {}
    |            ^^^^^^^
@@ -265,7 +265,7 @@ LL +     if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:79:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:75:12
    |
 LL |     if let Ready(_) = Ready(String::new()) {}
    |            ^^^^^^^^
@@ -277,7 +277,7 @@ LL +     if Ready(String::new()).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_drop_order.rs:81:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:77:12
    |
 LL |     if let Ready(_) = Ready((String::new(), ())) {}
    |            ^^^^^^^^

@@ -116,7 +116,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
-use rustc_session::{Session, StableCrateId};
+use rustc_session::{IncrCompSession, Session, StableCrateId};
 use rustc_span::Symbol;
 use tracing::debug;
 
@@ -138,25 +138,25 @@ const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 /// Returns the path to a session's dependency graph.
-pub(crate) fn dep_graph_path(sess: &Session) -> PathBuf {
-    in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
+pub(crate) fn dep_graph_path(incr_comp_session: &IncrCompSession) -> PathBuf {
+    in_incr_comp_dir_sess(incr_comp_session, DEP_GRAPH_FILENAME)
 }
 
 /// Returns the path to a session's staging dependency graph.
 ///
 /// On the difference between dep-graph and staging dep-graph,
 /// see `build_dep_graph`.
-pub(crate) fn staging_dep_graph_path(sess: &Session) -> PathBuf {
-    in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
+pub(crate) fn staging_dep_graph_path(incr_comp_session: &IncrCompSession) -> PathBuf {
+    in_incr_comp_dir_sess(incr_comp_session, STAGING_DEP_GRAPH_FILENAME)
 }
 
-pub(crate) fn work_products_path(sess: &Session) -> PathBuf {
-    in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
+pub(crate) fn work_products_path(incr_comp_session: &IncrCompSession) -> PathBuf {
+    in_incr_comp_dir_sess(incr_comp_session, WORK_PRODUCTS_FILENAME)
 }
 
 /// Returns the path to a session's query cache.
-pub(crate) fn query_cache_path(sess: &Session) -> PathBuf {
-    in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
+pub(crate) fn query_cache_path(incr_comp_session: &IncrCompSession) -> PathBuf {
+    in_incr_comp_dir_sess(incr_comp_session, QUERY_CACHE_FILENAME)
 }
 
 /// Locks a given session directory.
@@ -183,16 +183,8 @@ fn lock_file_path(session_dir: &Path) -> PathBuf {
 
 /// Returns the path for a given filename within the incremental compilation directory
 /// in the current session.
-pub fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
-    in_incr_comp_dir(&sess.incr_comp_session_dir(), file_name)
-}
-
-/// Returns the path for a given filename within the incremental compilation directory,
-/// not necessarily from the current session.
-///
-/// To ensure the file is part of the current session, use [`in_incr_comp_dir_sess`].
-pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBuf {
-    incr_comp_session_dir.join(file_name)
+pub fn in_incr_comp_dir_sess(incr_comp_session: &IncrCompSession, file_name: &str) -> PathBuf {
+    incr_comp_session.session_directory.join(file_name)
 }
 
 /// Allocates the private session directory.
@@ -214,7 +206,7 @@ pub(crate) fn prepare_session_directory(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
-) {
+) -> IncrCompSession {
     assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.timer("incr_comp_prepare_session_directory");
@@ -265,8 +257,7 @@ pub(crate) fn prepare_session_directory(
                     directory."
             );
 
-            sess.init_incr_comp_session(session_dir, directory_lock);
-            return;
+            return IncrCompSession { session_directory: session_dir, _lock_file: directory_lock };
         };
 
         debug!("attempting to copy data from source: {}", source_directory.display());
@@ -279,8 +270,7 @@ pub(crate) fn prepare_session_directory(
                 sess.dcx().emit_warn(diagnostics::HardLinkFailed { path: &session_dir });
             }
 
-            sess.init_incr_comp_session(session_dir, directory_lock);
-            return;
+            return IncrCompSession { session_directory: session_dir, _lock_file: directory_lock };
         } else {
             debug!("copying failed - trying next directory");
 
@@ -302,36 +292,24 @@ pub(crate) fn prepare_session_directory(
 
 /// This function finalizes and thus 'publishes' the session directory by
 /// renaming it to `s-{timestamp}-{svh}` and releasing the file lock.
-/// If there have been compilation errors, however, this function will just
-/// delete the presumably invalid session directory.
-pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
+/// This must not be called if there have been any compilation errors.
+pub fn finalize_session_directory(
+    sess: &Session,
+    incr_comp_session: Option<IncrCompSession>,
+    svh: Option<Svh>,
+) {
+    assert!(sess.dcx().has_errors_or_delayed_bugs().is_none());
+
     if sess.opts.incremental.is_none() {
         return;
     }
+    let incr_comp_session = incr_comp_session.unwrap();
     // The svh is always produced when incr. comp. is enabled.
     let svh = svh.unwrap();
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
-    let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
-
-    if sess.dcx().has_errors_or_delayed_bugs().is_some() {
-        // If there have been any errors during compilation, we don't want to
-        // publish this session directory. Rather, we'll just delete it.
-
-        debug!(
-            "finalize_session_directory() - invalidating session directory: {}",
-            incr_comp_session_dir.display()
-        );
-
-        if let Err(err) = std_fs::remove_dir_all(&*incr_comp_session_dir) {
-            sess.dcx().emit_warn(diagnostics::DeleteFull { path: &incr_comp_session_dir, err });
-        }
-
-        let lock_file_path = lock_file_path(&*incr_comp_session_dir);
-        delete_session_dir_lock_file(sess, &lock_file_path);
-        sess.mark_incr_comp_session_as_invalid();
-    }
+    let incr_comp_session_dir = incr_comp_session.session_directory.clone();
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
@@ -358,25 +336,24 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
-
-            // This unlocks the directory
-            sess.finalize_incr_comp_session(new_path);
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
             sess.dcx().emit_note(diagnostics::Finalize { path: &incr_comp_session_dir, err: e });
 
-            debug!("finalize_session_directory() - error, marking as invalid");
-            // Drop the file lock, so we can garage collect
-            sess.mark_incr_comp_session_as_invalid();
+            debug!("finalize_session_directory() - error");
         }
     }
 
-    let _ = garbage_collect_session_directories(sess);
+    drop(incr_comp_session); // Unlock incr comp session dir
+
+    let _ = garbage_collect_session_directories(sess, &new_path);
 }
 
-pub(crate) fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
-    let sess_dir_iterator = sess.incr_comp_session_dir().read_dir()?;
+pub(crate) fn delete_all_session_dir_contents(
+    incr_comp_session: &IncrCompSession,
+) -> io::Result<()> {
+    let sess_dir_iterator = incr_comp_session.session_directory.read_dir()?;
     for entry in sess_dir_iterator {
         let entry = entry?;
         safe_remove_file(&entry.path())?
@@ -610,10 +587,12 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 }
 
 /// Runs garbage collection for the current session.
-pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
+pub(crate) fn garbage_collect_session_directories(
+    sess: &Session,
+    session_directory: &Path,
+) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
-    let session_directory = sess.incr_comp_session_dir();
     debug!(
         "garbage_collect_session_directories() - session directory: {}",
         session_directory.display()

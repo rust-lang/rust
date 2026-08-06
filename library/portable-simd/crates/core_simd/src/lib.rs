@@ -4,6 +4,7 @@
     f16,
     core_intrinsics,
     decl_macro,
+    impl_restriction,
     repr_simd,
     staged_api,
     prelude_import,

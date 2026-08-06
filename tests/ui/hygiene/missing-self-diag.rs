@@ -7,7 +7,7 @@ pub struct Foo;
 
 macro_rules! call_bar {
     () => {
-        self.bar(); //~ ERROR expected value
+        self.bar(); //~ ERROR cannot find value `self` in this scope
     }
 }
 

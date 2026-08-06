@@ -64,5 +64,17 @@ note: the lint level is defined here
 LL |         #![deny(clippy::non_ascii_literal)]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: literal non-ASCII character detected
+  --> tests/ui/unicode.rs:93:9
+   |
+LL |         with_location!("héllo");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `with_location!("h\u{e9}llo")`
+   |
+note: the lint level is defined here
+  --> tests/ui/unicode.rs:84:13
+   |
+LL |     #![deny(clippy::non_ascii_literal)]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
 

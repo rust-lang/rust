@@ -1,6 +1,6 @@
 // exact-check
 // ignore-order
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 // This test case verifies that the href points at the correct impl
 

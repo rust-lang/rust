@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 set -eux
 
@@ -41,21 +41,21 @@ cd netbsd
 
 mkdir -p /x-tools/x86_64-unknown-netbsd/sysroot
 
-# Hashes come from https://cdn.netbsd.org/pub/NetBSD/security/hashes/NetBSD-9.0_hashes.asc
-SRC_SHA=2c791ae009a6929c6fc893ec5df7e62910ee8207e0b2159d6937309c03efe175b6ae1e445829a13d041b6851334ad35c521f2fa03c97675d4a05f1fafe58ede0
-GNUSRC_SHA=3710085a73feecf6a843415271ec794c90146b03f6bbd30f07c9e0c79febf8995d557e40194f1e05db655e4f5ef2fae97563f8456fceaae65d4ea98857a83b1c
-SHARESRC_SHA=f080776ed82c3ac5d6272dee39746f87897d8e6984996caf5bf6d87bf11d9c9e0c1ad5c437c21258bd278bb6fd76974946e878f548517885f71c556096231369
-SYSSRC_SHA=60b9ddf4cc6402256473e2e1eefeabd9001aa4e205208715ecc6d6fc3f5b400e469944580077271b8e80562a4c2f601249e69e07a504f46744e0c50335f1cbf1
-BASE_SHA=b5926b107cebf40c3c19b4f6cd039b610987dd7f819e7cdde3bd1e5230a856906e7930b15ab242d52ced9f0bda01d574be59488b8dbb95fa5df2987d0a70995f
-COMP_SHA=38ea54f30d5fc2afea87e5096f06873e00182789e8ad9cec0cb3e9f7c538c1aa4779e63fd401a36ba02676158e83fa5c95e8e87898db59c1914fb206aecd82d2
+# Hashes come from https://cdn.netbsd.org/pub/NetBSD/security/hashes/NetBSD-10.1_hashes.asc
+SRC_SHA=6ae2053b4b75821238c0757d4f7258daece425de72524c616e07d3adee7c48d87422dd47d852a137918cec3dd3c0d339e372f4504dfe9f1bc5520011775bdb86
+GNUSRC_SHA=8a1c42030ba44eb2a0c7a5111187bc02e8f4d0860d8491b7863579e612333665c478625c37b01f08732e3cfd29ec31335f1db1274fd7dcfdc048b09d1b4bbb83
+SHARESRC_SHA=703eeb306fc0328cad7e6f0e100d2e7af194f82e613338f4611a7bcd5f6d773d8789e7ce03ec25268ec2b95ccdb97c3b4289a838a629716498b4d7c3184cb1ef
+SYSSRC_SHA=766ac21f33cfe0e701dfedb894fa07f36d811da1a12e979181e8fca7af4e627852680ce42a7b29e97dd3e2e402ddf9ae7bfba60c8d7dc6b8a3354d8ce8c06926
+BASE_SHA=1c6b74cedd7fc92adfe51239808d41e63fc6eb9e9877c1101c1da515a38457278c7774e8fc3041d69cefc49821bad836cfdcc5147ad757f2f4a1f59f9e3862e5
+COMP_SHA=ea90d527d1475bd64d2b4c36d9d6ae53cb353cbc8c4feaa2b2bf006710282d2f47349a8aeeb64531f9da04268ed368ff2603c1e11a30bdfc8b2539ad73fe725f
 
-SOURCE_URL=https://ci-mirrors.rust-lang.org/rustc/2025-03-14-netbsd-9.0-src
+SOURCE_URL=https://ci-mirrors.rust-lang.org/rustc/netbsd/2026-07-28-netbsd-10.1-src
 download src.tgz "$SOURCE_URL-src.tgz" "$SRC_SHA" tar xzf src.tgz
 download gnusrc.tgz "$SOURCE_URL-gnusrc.tgz" "$GNUSRC_SHA" tar xzf gnusrc.tgz
 download sharesrc.tgz "$SOURCE_URL-sharesrc.tgz" "$SHARESRC_SHA" tar xzf sharesrc.tgz
 download syssrc.tgz "$SOURCE_URL-syssrc.tgz" "$SYSSRC_SHA" tar xzf syssrc.tgz
 
-BINARY_URL=https://ci-mirrors.rust-lang.org/rustc/2025-03-14-netbsd-9.0-amd64-binary
+BINARY_URL=https://ci-mirrors.rust-lang.org/rustc/netbsd/2026-07-28-netbsd-10.1-amd64-binary
 download base.tar.xz "$BINARY_URL-base.tar.xz" "$BASE_SHA" \
   tar xJf base.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
 download comp.tar.xz "$BINARY_URL-comp.tar.xz" "$COMP_SHA" \

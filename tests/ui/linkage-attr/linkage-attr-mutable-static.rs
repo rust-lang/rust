@@ -2,13 +2,14 @@
 //! them at runtime, so deny mutable statics with #[linkage].
 
 #![feature(linkage)]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 fn main() {
     #[rustfmt::skip]
     extern "C" {
-        #[linkage = "extern_weak"] //~ ERROR extern mutable statics are not allowed with `#[linkage]`
+        #[linkage = "extern_weak"]
+        //~^ ERROR extern mutable statics are incompatible with the `linkage` attribute
         static mut EXTERN_WEAK: *const u8;
     }
 

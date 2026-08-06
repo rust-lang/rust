@@ -551,7 +551,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Pair(a, b) => {
                     let i = apply(a);
                     let ii = apply(b);
-                    if let BackendRepr::ScalarPair(scalar_a, scalar_b) = arg.layout.backend_repr {
+                    if let BackendRepr::ScalarPair { a: scalar_a, b: scalar_b, b_offset: _ } =
+                        arg.layout.backend_repr
+                    {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
                         let primitive_b = scalar_b.primitive();
                         let scalar_b = if let rustc_abi::Primitive::Int(int, false) = primitive_b

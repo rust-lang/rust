@@ -1,0 +1,10 @@
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/const-param-in-nested-inline-const-arg.rs:5:47
+   |
+LL | fn foo<const N: usize>(_: S<{ const { const { N } } }>) {}
+   |                                               ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: aborting due to 1 previous error
+

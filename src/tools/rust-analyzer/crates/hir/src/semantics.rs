@@ -26,7 +26,6 @@ use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
     attrs::AstPathExt,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
-    db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
     mod_path::{ModPath, PathKind},
     name::AsName,
@@ -68,11 +67,11 @@ use crate::{
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum PathResolution {
+pub enum PathResolution<'db> {
     /// An item
     Def(ModuleDef),
     /// A local binding (only value namespace)
-    Local(Local),
+    Local(Local<'db>),
     /// A type parameter
     TypeParam(TypeParam),
     /// A const parameter
@@ -83,7 +82,7 @@ pub enum PathResolution {
     DeriveHelper(DeriveHelper),
 }
 
-impl PathResolution {
+impl<'db> PathResolution<'db> {
     pub(crate) fn in_type_ns(&self) -> Option<TypeNs> {
         match self {
             PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId((*adt).into())),
@@ -117,21 +116,21 @@ impl PathResolution {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct PathResolutionPerNs {
-    pub type_ns: Option<PathResolution>,
-    pub value_ns: Option<PathResolution>,
-    pub macro_ns: Option<PathResolution>,
+pub struct PathResolutionPerNs<'db> {
+    pub type_ns: Option<PathResolution<'db>>,
+    pub value_ns: Option<PathResolution<'db>>,
+    pub macro_ns: Option<PathResolution<'db>>,
 }
 
-impl PathResolutionPerNs {
+impl<'db> PathResolutionPerNs<'db> {
     pub fn new(
-        type_ns: Option<PathResolution>,
-        value_ns: Option<PathResolution>,
-        macro_ns: Option<PathResolution>,
+        type_ns: Option<PathResolution<'db>>,
+        value_ns: Option<PathResolution<'db>>,
+        macro_ns: Option<PathResolution<'db>>,
     ) -> Self {
         PathResolutionPerNs { type_ns, value_ns, macro_ns }
     }
-    pub fn any(&self) -> Option<PathResolution> {
+    pub fn any(&self) -> Option<PathResolution<'db>> {
         self.type_ns.or(self.value_ns).or(self.macro_ns)
     }
 }
@@ -166,8 +165,8 @@ pub struct Semantics<'db, DB: ?Sized> {
 }
 
 type DefWithoutBodyWithAnonConsts = Either<GenericDefId, VariantId>;
-type ExprToAnonConst = FxHashMap<ExprId, AnonConstId>;
-type DefAnonConstsMap = FxHashMap<DefWithoutBodyWithAnonConsts, ExprToAnonConst>;
+type ExprToAnonConst<'db> = FxHashMap<ExprId, AnonConstId<'db>>;
+type DefAnonConstsMap<'db> = FxHashMap<DefWithoutBodyWithAnonConsts, ExprToAnonConst<'db>>;
 
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
@@ -175,7 +174,7 @@ pub struct SemanticsImpl<'db> {
     /// MacroCall to its expansion's MacroCallId cache
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroCallId>>,
     /// All anon consts defined by a *signature* (not a body).
-    signature_anon_consts_cache: RefCell<DefAnonConstsMap>,
+    signature_anon_consts_cache: RefCell<DefAnonConstsMap<'db>>,
 }
 
 impl<DB: ?Sized> fmt::Debug for Semantics<'_, DB> {
@@ -522,7 +521,7 @@ impl<'db> SemanticsImpl<'db> {
                         let file_id = declaration_tree_id.file_id();
                         let in_file = InFile::new(file_id, declaration);
                         let node = in_file.to_node(self.db);
-                        let root = find_root(node.syntax());
+                        let root = node.syntax().tree_top();
                         self.cache(root, file_id);
                         Some(in_file.with_value(node.syntax().clone()))
                     }
@@ -531,7 +530,7 @@ impl<'db> SemanticsImpl<'db> {
             }
             HirFileId::MacroFile(macro_file) => {
                 let node = macro_file.loc(self.db).to_node(self.db);
-                let root = find_root(&node.value);
+                let root = node.value.tree_top();
                 self.cache(root, node.file_id);
                 Some(node)
             }
@@ -544,13 +543,13 @@ impl<'db> SemanticsImpl<'db> {
         let def_map = module.id.def_map(self.db);
         let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
-        let root_node = find_root(&definition.value);
+        let root_node = definition.value.tree_top();
         self.cache(root_node, definition.file_id);
         definition
     }
 
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
-        let node = self.db.parse_or_expand(file_id);
+        let node = file_id.parse_or_expand(self.db);
         self.cache(node.clone(), file_id);
         node
     }
@@ -564,7 +563,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn expand(&self, file_id: MacroCallId) -> ExpandResult<SyntaxNode> {
-        let res = self.db.parse_macro_expansion(file_id).as_ref().map(|it| it.0.syntax_node());
+        let res = file_id.parse_macro_expansion(self.db).as_ref().map(|it| it.0.syntax_node());
         self.cache(res.value.clone(), file_id.into());
         res
     }
@@ -661,7 +660,7 @@ impl<'db> SemanticsImpl<'db> {
             .into_iter()
             .map(|call| {
                 let file_id = call?.left()?;
-                let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
+                let ExpandResult { value, err } = file_id.parse_macro_expansion(self.db);
                 let root_node = value.0.syntax_node();
                 self.cache(root_node.clone(), file_id.into());
                 Some(ExpandResult { value: root_node, err: err.clone() })
@@ -690,7 +689,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(adt);
         let result = sa
             .resolver
             .def_map()
@@ -713,7 +712,7 @@ impl<'db> SemanticsImpl<'db> {
         })?;
         let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(&adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(&adt);
         let res: Vec<_> = sa
             .resolver
             .def_map()
@@ -739,12 +738,7 @@ impl<'db> SemanticsImpl<'db> {
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_file = self.to_def(actual_macro_call)?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_file,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_file, speculative_args.syntax(), token_to_map)
     }
 
     pub fn speculative_expand_raw(
@@ -753,7 +747,7 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
-        hir_expand::db::expand_speculative(self.db, macro_file, speculative_args, token_to_map)
+        macro_file.expand_speculative(self.db, speculative_args, token_to_map)
     }
 
     /// Expand the macro call with a different item as the input, mapping the `token_to_map` down into the
@@ -766,12 +760,7 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_call_id,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_call_id, speculative_args.syntax(), token_to_map)
     }
 
     pub fn speculative_expand_derive_as_pseudo_attr_macro(
@@ -789,17 +778,16 @@ impl<'db> SemanticsImpl<'db> {
             )
             .map(|(_, it, _)| it)
         })?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_call_id,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_call_id, speculative_args.syntax(), token_to_map)
     }
 
     /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
     /// and returns the conflicting locals.
-    pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &Name) -> Vec<Local> {
+    pub fn rename_conflicts<'a>(
+        &self,
+        to_be_renamed: &Local<'a>,
+        new_name: &Name,
+    ) -> Vec<Local<'a>> {
         let (store, root_expr) = to_be_renamed.parent_infer.store_and_root_expr(self.db);
         let resolver = to_be_renamed.parent.resolver(self.db);
         let starting_expr = store.binding_owner(to_be_renamed.binding_id).unwrap_or(root_expr);
@@ -829,7 +817,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn as_format_args_parts(
         &self,
         string: &ast::String,
-    ) -> Option<Vec<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)>> {
+    ) -> Option<Vec<(TextRange, Option<Either<PathResolution<'db>, InlineAsmOperand>>)>> {
         let string_start = string.syntax().text_range().start();
         let token = self.wrap_token_infile(string.syntax().clone());
         self.descend_into_macros_breakable(token, |token, _| {
@@ -886,7 +874,7 @@ impl<'db> SemanticsImpl<'db> {
         TextRange,
         HirFileRange,
         ast::String,
-        Option<Either<PathResolution, InlineAsmOperand>>,
+        Option<Either<PathResolution<'db>, InlineAsmOperand>>,
     )> {
         let original_token =
             self.wrap_token_infile(original_token).map(ast::String::cast).transpose()?;
@@ -908,7 +896,7 @@ impl<'db> SemanticsImpl<'db> {
         TextRange,
         HirFileRange,
         ast::String,
-        Option<Either<PathResolution, InlineAsmOperand>>,
+        Option<Either<PathResolution<'db>, InlineAsmOperand>>,
     )> {
         let relative_offset =
             offset.checked_sub(original_token.value.syntax().text_range().start())?;
@@ -940,13 +928,13 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         InFile { value: string, file_id }: InFile<&ast::String>,
         offset: TextSize,
-    ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
+    ) -> Option<(TextRange, Option<Either<PathResolution<'db>, InlineAsmOperand>>)> {
         debug_assert!(offset <= string.syntax().text_range().len());
         let literal = string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
         let parent = literal.parent()?;
         if let Some(format_args) = ast::FormatArgsExpr::cast(parent.clone()) {
             let source_analyzer =
-                &self.analyze_impl(InFile::new(file_id, format_args.syntax()), None, false)?;
+                self.analyze_impl(InFile::new(file_id, format_args.syntax()), None, false)?;
             source_analyzer
                 .resolve_offset_in_format_args(self.db, InFile::new(file_id, &format_args), offset)
                 .map(|(range, res)| (range, res.map(Either::Left)))
@@ -1002,7 +990,8 @@ impl<'db> SemanticsImpl<'db> {
         else {
             return tok.into();
         };
-        let span = self.db.real_span_map(tok.file_id).span_for_range(tok.value.text_range());
+        let span =
+            HirFileId::from(tok.file_id).span_map(self.db).span_for_range(tok.value.text_range());
         let Some(InMacroFile { file_id, value: mut mapped_tokens }) = self.with_ctx(|ctx| {
             Some(
                 ctx.cache
@@ -1067,7 +1056,8 @@ impl<'db> SemanticsImpl<'db> {
                         && let Some(p) = first.parent()
                     {
                         let range = first.text_range().cover(last.text_range());
-                        let node = find_root(&p)
+                        let node = p
+                            .tree_top()
                             .covering_element(range)
                             .ancestors()
                             .take_while(|it| it.text_range() == range)
@@ -1253,7 +1243,7 @@ impl<'db> SemanticsImpl<'db> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
 
         let db = self.db;
-        let span = db.span_map(file_id).span_for_range(token.text_range());
+        let span = file_id.span_map(db).span_for_range(token.text_range());
 
         // Process the expansion of a call, pushing all tokens with our span in the expansion back onto our stack
         let process_expansion_for_token =
@@ -1497,7 +1487,7 @@ impl<'db> SemanticsImpl<'db> {
                                     self.analyze_impl(InFile::new(expansion, &parent), None, false)
                                 })?
                                 .resolver;
-                            let id = db.ast_id_map(expansion).ast_id(&adt);
+                            let id = expansion.ast_id_map(db).ast_id(&adt);
                             let helpers = resolver
                                 .def_map()
                                 .derive_helpers_in_scope(InFile::new(expansion, id))?;
@@ -1573,23 +1563,23 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Attempts to map the node out of macro expanded files.
-    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    /// This only works for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(value.syntax()), file_id.into());
+                self.cache(value.syntax().tree_top(), file_id.into());
                 value
             },
         )
     }
 
     /// Attempts to map the node out of macro expanded files.
-    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    /// This only works for attribute expansions, as other ones do not have nodes as input.
     pub fn original_syntax_node_rooted(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let InFile { file_id, .. } = self.find_file(node);
         InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(&value), file_id.into());
+                self.cache(value.tree_top(), file_id.into());
                 value
             },
         )
@@ -1837,11 +1827,14 @@ impl<'db> SemanticsImpl<'db> {
         let AnyFunctionId::FunctionId(func) = func.id else { return Some(func) };
         let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
-        let substs =
-            hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
+        let substs = hir_ty::next_solver::GenericArgs::for_item(
+            interner,
+            trait_.id.into(),
+            |_, id, _, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
                 subst.next().expect("too few subst").ty.skip_binder().into()
-            });
+            },
+        );
         assert!(subst.next().is_none(), "too many subst");
         Some(match self.db.lookup_impl_method(env.param_env(self.db), func, substs).0 {
             Either::Left(it) => it.into(),
@@ -1910,14 +1903,14 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(call.syntax())?.resolve_method_call_as_callable(self.db, call)
     }
 
-    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Either<Field, TupleField>> {
+    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Either<Field, TupleField<'db>>> {
         self.analyze(field.syntax())?.resolve_field(field)
     }
 
     pub fn resolve_field_fallback(
         &self,
         field: &ast::FieldExpr,
-    ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution<'db>>)>
+    ) -> Option<(Either<Either<Field, TupleField<'db>>, Function>, Option<GenericSubstitution<'db>>)>
     {
         self.analyze(field.syntax())?.resolve_field_fallback(self.db, field)
     }
@@ -1925,7 +1918,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_record_field(
         &self,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>, Type<'db>)> {
+    ) -> Option<(Field, Option<Local<'db>>, Type<'db>)> {
         self.resolve_record_field_with_substitution(field)
             .map(|(field, local, ty, _)| (field, local, ty))
     }
@@ -1933,7 +1926,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_record_field_with_substitution(
         &self,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>, Type<'db>, GenericSubstitution<'db>)> {
+    ) -> Option<(Field, Option<Local<'db>>, Type<'db>, GenericSubstitution<'db>)> {
         self.analyze(field.syntax())?.resolve_record_field(self.db, field)
     }
 
@@ -1978,8 +1971,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        let file_id = self.to_def(macro_call)?;
-        self.db.parse_macro_expansion(file_id).value.1.matched_arm
+        self.to_def(macro_call)?.expansion_span_map(self.db).matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {
@@ -2038,18 +2030,18 @@ impl<'db> SemanticsImpl<'db> {
         Some(Macro { id })
     }
 
-    pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
+    pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution<'db>> {
         self.resolve_path_with_subst(path).map(|(it, _)| it)
     }
 
-    pub fn resolve_path_per_ns(&self, path: &ast::Path) -> Option<PathResolutionPerNs> {
+    pub fn resolve_path_per_ns(&self, path: &ast::Path) -> Option<PathResolutionPerNs<'db>> {
         self.analyze(path.syntax())?.resolve_hir_path_per_ns(self.db, path)
     }
 
     pub fn resolve_path_with_subst(
         &self,
         path: &ast::Path,
-    ) -> Option<(PathResolution, Option<GenericSubstitution<'db>>)> {
+    ) -> Option<(PathResolution<'db>, Option<GenericSubstitution<'db>>)> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
     }
 
@@ -2118,17 +2110,17 @@ impl<'db> SemanticsImpl<'db> {
             .unwrap_or_default()
     }
 
-    fn with_ctx<F: FnOnce(&mut SourceToDefCtx<'_, '_>) -> T, T>(&self, f: F) -> T {
+    fn with_ctx<F: FnOnce(&mut SourceToDefCtx<'db, '_>) -> T, T>(&self, f: F) -> T {
         let mut ctx = SourceToDefCtx { db: self.db, cache: &mut self.s2d_cache.borrow_mut() };
         f(&mut ctx)
     }
 
-    pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
+    pub fn to_def<T: ToDef<'db>>(&self, src: &T) -> Option<T::Def> {
         let src = self.find_file(src.syntax()).with_value(src);
         T::to_def(self, src)
     }
 
-    pub fn to_def2<T: ToDef>(&self, src: InFile<&T>) -> Option<T::Def> {
+    pub fn to_def2<T: ToDef<'db>>(&self, src: InFile<&T>) -> Option<T::Def> {
         T::to_def(self, src)
     }
 
@@ -2171,7 +2163,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>> {
         // FIXME: source call should go through the parse cache
         let res = def.source(self.db)?;
-        self.cache(find_root(res.value.syntax()), res.file_id);
+        self.cache(res.value.syntax().tree_top(), res.file_id);
         Some(res)
     }
 
@@ -2191,9 +2183,9 @@ impl<'db> SemanticsImpl<'db> {
 
     fn populate_anon_const_cache_for<'a>(
         &self,
-        cache: &'a mut DefAnonConstsMap,
+        cache: &'a mut DefAnonConstsMap<'db>,
         def: DefWithoutBodyWithAnonConsts,
-    ) -> &'a ExprToAnonConst {
+    ) -> &'a ExprToAnonConst<'db> {
         cache.entry(def).or_insert_with(|| match def {
             Either::Left(def) => {
                 let all_anon_consts =
@@ -2216,7 +2208,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         def: DefWithoutBodyWithAnonConsts,
         root_expr: ExprId,
-    ) -> Option<AnonConstId> {
+    ) -> Option<AnonConstId<'db>> {
         let mut cache = self.signature_anon_consts_cache.borrow_mut();
         let anon_consts_map = self.populate_anon_const_cache_for(&mut cache, def);
         anon_consts_map.get(&root_expr).copied()
@@ -2227,7 +2219,7 @@ impl<'db> SemanticsImpl<'db> {
         def: ExpressionStoreOwnerId,
         store: &ExpressionStore,
         node: ExprOrPatId,
-    ) -> Option<InferBodyId> {
+    ) -> Option<InferBodyId<'db>> {
         let handle_def_without_body = |def| {
             let root_expr = match node {
                 ExprOrPatId::ExprId(expr) => store.find_root_for_expr(expr),
@@ -2248,7 +2240,7 @@ impl<'db> SemanticsImpl<'db> {
     fn with_all_infers_for_store(
         &self,
         owner: ExpressionStoreOwnerId,
-        callback: &mut dyn FnMut(&'db InferenceResult),
+        callback: &mut dyn FnMut(&'db InferenceResult<'db>),
     ) {
         let mut handle_def_without_body = |def| {
             let mut cache = self.signature_anon_consts_cache.borrow_mut();
@@ -2375,7 +2367,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Wraps the node in a [`InFile`] with the file id it belongs to.
     fn find_file<'node>(&self, node: &'node SyntaxNode) -> InFile<&'node SyntaxNode> {
-        let root_node = find_root(node);
+        let root_node = node.tree_top();
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\
@@ -2461,7 +2453,7 @@ impl<'db> SemanticsImpl<'db> {
             }
         };
         let adt_source = adt_ast_id.to_in_file_node(self.db);
-        self.cache(adt_source.value.syntax().ancestors().last().unwrap(), adt_source.file_id);
+        self.cache(adt_source.value.syntax().tree_top(), adt_source.file_id);
         ToDef::to_def(self, adt_source.as_ref())
     }
 
@@ -2469,7 +2461,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         element: Either<&ast::Expr, &ast::StmtList>,
         text_range: TextRange,
-    ) -> Option<FxIndexSet<Local>> {
+    ) -> Option<FxIndexSet<Local<'db>>> {
         let sa = self.analyze(element.either(|e| e.syntax(), |s| s.syntax()))?;
         let infer_body = sa.infer_body?;
         let store = sa.store()?;
@@ -2518,7 +2510,7 @@ impl<'db> SemanticsImpl<'db> {
         let mut exprs: Vec<_> =
             exprs.into_iter().filter_map(|e| sa.expr_id(e).and_then(|e| e.as_expr())).collect();
 
-        let mut locals: FxIndexSet<Local> = FxIndexSet::default();
+        let mut locals: FxIndexSet<Local<'db>> = FxIndexSet::default();
         let mut add_to_locals_used = |id, parent_expr| {
             let path = match id {
                 ExprOrPatId::ExprId(expr_id) => {
@@ -2618,7 +2610,7 @@ fn macro_call_to_macro_id(
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
-    let db: &dyn ExpandDatabase = ctx.db;
+    let db = ctx.db;
     let loc = macro_call_id.loc(db);
 
     match loc.def.ast_id() {
@@ -2649,16 +2641,16 @@ fn macro_call_to_macro_id(
     }
 }
 
-pub trait ToDef: AstNode + Clone {
+pub trait ToDef<'db>: AstNode + Clone {
     type Def;
-    fn to_def(sema: &SemanticsImpl<'_>, src: InFile<&Self>) -> Option<Self::Def>;
+    fn to_def(sema: &SemanticsImpl<'db>, src: InFile<&Self>) -> Option<Self::Def>;
 }
 
 macro_rules! to_def_impls {
-    ($(($def:path, $ast:path, $meth:ident)),* ,) => {$(
-        impl ToDef for $ast {
+    ($(($def:ty, $ast:path, $meth:ident)),* ,) => {$(
+        impl<'db> ToDef<'db> for $ast {
             type Def = $def;
-            fn to_def(sema: &SemanticsImpl<'_>, src: InFile<&Self>) -> Option<Self::Def> {
+            fn to_def(sema: &SemanticsImpl<'db>, src: InFile<&Self>) -> Option<Self::Def> {
                 sema.with_ctx(|ctx| ctx.$meth(src)).map(<$def>::from)
             }
         }
@@ -2685,7 +2677,7 @@ to_def_impls![
     (crate::ConstParam, ast::ConstParam, const_param_to_def),
     (crate::GenericParam, ast::GenericParam, generic_param_to_def),
     (crate::Macro, ast::Macro, macro_to_def),
-    (crate::Local, ast::SelfParam, self_param_to_def),
+    (crate::Local<'db>, ast::SelfParam, self_param_to_def),
     (crate::Label, ast::Label, label_to_def),
     (crate::Adt, ast::Adt, adt_to_def),
     (crate::ExternCrateDecl, ast::ExternCrate, extern_crate_to_def),
@@ -2694,16 +2686,12 @@ to_def_impls![
     (MacroCallId, ast::MacroCall, macro_call_to_macro_call),
 ];
 
-impl ToDef for ast::IdentPat {
-    type Def = crate::Local;
+impl<'db> ToDef<'db> for ast::IdentPat {
+    type Def = crate::Local<'db>;
 
-    fn to_def(sema: &SemanticsImpl<'_>, src: InFile<&Self>) -> Option<Self::Def> {
+    fn to_def(sema: &SemanticsImpl<'db>, src: InFile<&Self>) -> Option<Self::Def> {
         sema.with_ctx(|ctx| ctx.bind_pat_to_def(src, sema))
     }
-}
-
-fn find_root(node: &SyntaxNode) -> SyntaxNode {
-    node.ancestors().last().unwrap()
 }
 
 /// `SemanticsScope` encapsulates the notion of a scope (the set of visible
@@ -2728,7 +2716,7 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
 #[derive(Debug)]
 pub struct SemanticsScope<'db> {
     pub db: &'db dyn HirDatabase,
-    infer_body: Option<InferBodyId>,
+    infer_body: Option<InferBodyId<'db>>,
     file_id: HirFileId,
     resolver: Resolver<'db>,
 }
@@ -2769,7 +2757,7 @@ impl<'db> SemanticsScope<'db> {
     }
 
     /// Calls the passed closure `f` on all names in scope.
-    pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
+    pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef<'db>)) {
         let scope = self.resolver.names_in_scope(self.db);
         for (name, entries) in scope {
             for entry in entries {
@@ -2806,7 +2794,7 @@ impl<'db> SemanticsScope<'db> {
 
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
-    pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
+    pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution<'db>> {
         let mut kind = PathKind::Plain;
         let mut segments = vec![];
         let mut first = true;
@@ -2854,7 +2842,7 @@ impl<'db> SemanticsScope<'db> {
     /// `Ty::Assoc` syntax).
     pub fn assoc_type_shorthand_candidates(
         &self,
-        resolution: &PathResolution,
+        resolution: &PathResolution<'db>,
         mut cb: impl FnMut(TypeAlias),
     ) {
         let (Some(def), Some(resolution)) = (self.resolver.generic_def(), resolution.in_type_ns())

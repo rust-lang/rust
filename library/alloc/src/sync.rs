@@ -406,7 +406,11 @@ fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
     // Previously, layout was calculated on the expression
     // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<ArcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<ArcInner<()>>()
+        .extend(layout)
+        .unwrap_or_else(|_| panic!("capacity overflow"))
+        .0
+        .pad_to_align()
 }
 
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
@@ -2539,16 +2543,27 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
             // usize::MAX (i.e., locked), since the weak count can only be
             // locked by a thread with a strong reference.
 
-            // Materialize our own implicit weak pointer, so that it can clean
-            // up the ArcInner as needed.
-            let _weak = Weak { ptr: this.ptr, alloc: this.alloc.clone() };
+            // Guard against panics while using the allocator.
+            // If we unwind before the Arc is overwritten, we expose a strong
+            // count of 0, resulting in a UAF (#155746, #157203).
+            // Until the new Arc is written, the old Arc must remain valid
+            struct Guard<'a, T: ?Sized> {
+                inner: &'a ArcInner<T>,
+            }
+            impl<'a, T: ?Sized> Drop for Guard<'a, T> {
+                fn drop(&mut self) {
+                    self.inner.strong.store(1, Release);
+                }
+            }
+            let guard = Guard { inner: this.inner() };
 
             // Can just steal the data, all that's left is Weaks
-            //
-            // We don't need panic-protection like the above branch does, but we might as well
-            // use the same mechanism.
+            // Note that this can panic in two ways:
+            // - The allocation can fail
+            // - The allocator clone can fail
             let mut in_progress: UniqueArcUninit<T, A> =
                 UniqueArcUninit::new(&**this, this.alloc.clone());
+
             unsafe {
                 // Initialize `in_progress` with move of **this.
                 // We have to express this in terms of bytes because `T: ?Sized`; there is no
@@ -2558,6 +2573,15 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
                     in_progress.data_ptr().cast::<u8>(),
                     size_of_val,
                 );
+
+                // We are now safe from panics.
+                mem::forget(guard);
+
+                // Materialize our own implicit weak pointer, so that it can clean
+                // up the ArcInner as needed.
+                // Make sure the allocator is not leaked when the Arc is overwritten.
+                // Only drop at the end of the scope to avoid panics.
+                let _weak = Weak { ptr: this.ptr, alloc: ptr::read(&this.alloc) };
 
                 ptr::write(this, in_progress.into_arc());
             }
@@ -4307,7 +4331,6 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> Drop for UniqueArcUninit<T, A> {
     fn drop(&mut self) {
         // SAFETY:

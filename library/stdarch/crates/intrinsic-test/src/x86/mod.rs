@@ -99,6 +99,10 @@ impl SupportedArchitecture for X86 {
 
         Self { intrinsics }
     }
+
+    fn predicate_function(_: u32) -> String {
+        unimplemented!("no scalable vectors on x86")
+    }
 }
 
 const RUST_PRELUDE: &str = r#"

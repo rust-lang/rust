@@ -2,7 +2,7 @@
 
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::solve::Certainty;
@@ -13,19 +13,38 @@ use tracing::{debug, instrument, trace};
 
 use crate::FnCtxt;
 
+/// Whatever to use subtyping or not when inspecting obligations
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum UseSubtyping {
+    /// Do **not** use subtyping. [`FnCtxt::obligations_for_self_ty`] will only return obligations
+    /// where the self type is known to be equal to the provided vid.
+    No,
+
+    /// Use subtyping. [`FnCtxt::obligations_for_self_ty`] will return obligations
+    /// where the self type is related to the provided vid via subtyping.
+    ///
+    /// Using this requires extra care, as traits holding for a subtype or a supertype, does not
+    /// necessarily imply that they hold for the respective supertype or subtype.
+    Yes,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a list of all obligations whose self type has been unified
     /// with the unconstrained type `self_ty`.
     #[instrument(skip(self), level = "debug")]
-    pub(crate) fn obligations_for_self_ty(&self, self_ty: ty::TyVid) -> PredicateObligations<'tcx> {
+    pub(crate) fn obligations_for_self_ty(
+        &self,
+        self_ty: ty::TyVid,
+        subtyping: UseSubtyping,
+    ) -> PredicateObligations<'tcx> {
         if self.next_trait_solver() {
-            self.obligations_for_self_ty_next(self_ty)
+            self.obligations_for_self_ty_next(self_ty, subtyping)
         } else {
-            let ty_var_root = self.root_var(self_ty);
             let mut obligations = self.fulfillment_cx.borrow().pending_obligations();
             trace!("pending_obligations = {:#?}", obligations);
-            obligations
-                .retain(|obligation| self.predicate_has_self_ty(obligation.predicate, ty_var_root));
+            obligations.retain(|obligation| {
+                self.predicate_has_self_ty(obligation.predicate, self_ty, subtyping)
+            });
             obligations
         }
     }
@@ -35,14 +54,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         predicate: ty::Predicate<'tcx>,
         expected_vid: ty::TyVid,
+        subtyping: UseSubtyping,
     ) -> bool {
         match predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                self.type_matches_expected_vid(data.self_ty(), expected_vid)
+                self.type_matches_expected_vid(data.self_ty(), expected_vid, subtyping)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                 if data.projection_term.kind.is_trait_projection() {
-                    self.type_matches_expected_vid(data.self_ty(), expected_vid)
+                    self.type_matches_expected_vid(data.self_ty(), expected_vid, subtyping)
                 } else {
                     false
                 }
@@ -55,7 +75,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
             | ty::PredicateKind::DynCompatible(..)
             | ty::PredicateKind::NormalizesTo(..)
-            | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
@@ -65,14 +84,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn type_matches_expected_vid(&self, ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
+    fn type_matches_expected_vid(
+        &self,
+        ty: Ty<'tcx>,
+        expected_vid: ty::TyVid,
+        subtyping: UseSubtyping,
+    ) -> bool {
         let ty = self.shallow_resolve(ty);
         debug!(?ty);
 
         match *ty.kind() {
-            ty::Infer(ty::TyVar(found_vid)) => {
-                self.root_var(expected_vid) == self.root_var(found_vid)
-            }
+            ty::Infer(ty::TyVar(found_vid)) => match subtyping {
+                UseSubtyping::No => self.root_var(expected_vid) == self.root_var(found_vid),
+                UseSubtyping::Yes => {
+                    self.sub_unification_table_root_var(expected_vid)
+                        == self.sub_unification_table_root_var(found_vid)
+                }
+            },
             _ => false,
         }
     }
@@ -80,6 +108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn obligations_for_self_ty_next(
         &self,
         self_ty: ty::TyVid,
+        subtyping: UseSubtyping,
     ) -> PredicateObligations<'tcx> {
         // We only look at obligations which may reference the self type.
         // This lookup uses the `sub_root` instead of the inference variable
@@ -94,6 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .borrow()
             .pending_obligations_potentially_referencing_sub_root(&self.infcx, sub_root_var);
         debug!(?obligations);
+
         let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {
             let mut visitor = NestedObligationsForSelfTy {
@@ -101,6 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self_ty,
                 obligations_for_self_ty: &mut obligations_for_self_ty,
                 root_cause: &obligation.cause,
+                subtyping,
             };
 
             let goal = obligation.as_goal();
@@ -160,7 +191,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(from_trait) = self.tcx.lang_items().from_trait() else {
             return UnordSet::new();
         };
-        let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        let obligations = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations_potentially_referencing_float_infer(self);
         debug!(?obligations);
         let mut vids = UnordSet::new();
         for obligation in obligations {
@@ -178,11 +212,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
+/// Using an intentionally low depth to minimize the chance of future
+/// breaking changes in case we adapt the approach later on. This also
+/// avoids any hangs for exponentially growing proof trees.
+const MAX_DEPTH_FOR_OBLIGATIONS_VISITORS: usize = 5;
+
 struct NestedObligationsForSelfTy<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     self_ty: ty::TyVid,
     root_cause: &'a ObligationCause<'tcx>,
     obligations_for_self_ty: &'a mut PredicateObligations<'tcx>,
+    subtyping: UseSubtyping,
 }
 
 impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
@@ -191,10 +231,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
     }
 
     fn config(&self) -> InspectConfig {
-        // Using an intentionally low depth to minimize the chance of future
-        // breaking changes in case we adapt the approach later on. This also
-        // avoids any hangs for exponentially growing proof trees.
-        InspectConfig { max_depth: 5 }
+        InspectConfig { max_depth: MAX_DEPTH_FOR_OBLIGATIONS_VISITORS }
     }
 
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
@@ -210,7 +247,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
             .orig_values()
             .iter()
             .filter_map(|arg| arg.as_type())
-            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.self_ty))
+            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.self_ty, self.subtyping))
         {
             debug!(goal = ?inspect_goal.goal(), "goal does not mention self type");
             return;
@@ -218,7 +255,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
 
         let tcx = self.fcx.tcx;
         let goal = inspect_goal.goal();
-        if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty) {
+        if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty, self.subtyping) {
             self.obligations_for_self_ty.push(traits::Obligation::new(
                 tcx,
                 self.root_cause.clone(),
@@ -250,23 +287,37 @@ impl<'tcx> ProofTreeVisitor<'tcx> for FindFromFloatForF32RootVids<'_, 'tcx> {
     }
 
     fn config(&self) -> InspectConfig {
-        // Avoid hang from exponentially growing proof trees (see `cycle-modulo-ambig-aliases.rs`).
-        // 3 is more than enough for all occurrences in practice (a.k.a. `Into`).
-        InspectConfig { max_depth: 3 }
+        InspectConfig { max_depth: MAX_DEPTH_FOR_OBLIGATIONS_VISITORS }
     }
 
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
+        // No need to walk into goal subtrees that certainly hold, since they
+        // wouldn't then be stalled on an infer var.
+        if inspect_goal.result() == Ok(Certainty::Yes) {
+            return;
+        }
+
+        // We don't care about any pending goals which don't actually
+        // use any float infer var.
+        if !inspect_goal
+            .orig_values()
+            .iter()
+            .filter_map(|arg| arg.as_type())
+            .any(|ty| matches!(self.fcx.shallow_resolve(ty).kind(), ty::Infer(ty::FloatVar(_))))
+        {
+            debug!(goal = ?inspect_goal.goal(), "goal does not mention float infer var");
+            return;
+        }
+
         if let Some(vid) = self
             .fcx
             .predicate_from_float_for_f32_root_vid(self.from_trait, inspect_goal.goal().predicate)
         {
             self.vids.insert(vid);
-        } else if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
-            let start_len = self.vids.len();
-            let _ = candidate.goal().infcx().commit_if_ok(|_| {
-                candidate.visit_nested_no_probe(self);
-                if self.vids.len() > start_len { Ok(()) } else { Err(()) }
-            });
+        }
+
+        if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
+            candidate.visit_nested_no_probe(self);
         }
     }
 }

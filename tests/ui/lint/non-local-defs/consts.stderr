@@ -71,7 +71,7 @@ LL | |             fn hoo() {}
 ...  |
 LL | |         1
 LL | |     };
-   | |_____- move the `impl` block outside of this inline constant `<unnameable>` and up 2 bodies
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
    |
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
 

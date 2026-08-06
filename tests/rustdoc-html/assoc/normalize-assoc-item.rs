@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ aux-build:normalize-assoc-item.rs
 //@ build-aux-docs
 //@ compile-flags:-Znormalize-docs

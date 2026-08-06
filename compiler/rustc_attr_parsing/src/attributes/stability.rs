@@ -210,7 +210,7 @@ impl AttributeParser for ConstStabilityParser {
                 {
                     this.stability = Some((
                         PartialConstStability { level, feature, promotable: false },
-                        cx.attr_span,
+                        cx.attr_path.span,
                     ));
                 }
             },
@@ -225,7 +225,7 @@ impl AttributeParser for ConstStabilityParser {
                 {
                     this.stability = Some((
                         PartialConstStability { level, feature, promotable: false },
-                        cx.attr_span,
+                        cx.attr_path.span,
                     ));
                 }
             },
@@ -309,10 +309,10 @@ pub(crate) fn parse_stability(
         let word = param.path().word();
         match word.map(|i| i.name) {
             Some(sym::feature) => {
-                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut feature, word.unwrap())?
             }
             Some(sym::since) => {
-                insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut since, word.unwrap())?
             }
             _ => {
                 cx.adcx().expected_specific_argument(param_span, &[sym::feature, sym::since]);
@@ -376,13 +376,13 @@ pub(crate) fn parse_unstability(
         let word = param.path().word();
         match word.map(|i| i.name) {
             Some(sym::feature) => {
-                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut feature, word.unwrap())?
             }
             Some(sym::reason) => {
-                insert_value_into_option_or_error(cx, &param, &mut reason, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut reason, word.unwrap())?
             }
             Some(sym::issue) => {
-                insert_value_into_option_or_error(cx, &param, &mut issue, word.unwrap())?;
+                insert_value_into_option_or_error(cx, param, &mut issue, word.unwrap())?;
 
                 // These unwraps are safe because `insert_value_into_option_or_error` ensures the meta item
                 // is a name/value pair string literal.
@@ -406,10 +406,10 @@ pub(crate) fn parse_unstability(
                 };
             }
             Some(sym::implied_by) => {
-                insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut implied_by, word.unwrap())?
             }
             Some(sym::old_name) => {
-                insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
+                insert_value_into_option_or_error(cx, param, &mut old_name, word.unwrap())?
             }
             _ => {
                 cx.adcx().expected_specific_argument(
@@ -493,10 +493,10 @@ impl CombineAttributeParser for UnstableRemovedParser {
                 return None;
             };
             match word.name {
-                sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature, word)?,
-                sym::since => insert_value_into_option_or_error(cx, &param, &mut since, word)?,
-                sym::reason => insert_value_into_option_or_error(cx, &param, &mut reason, word)?,
-                sym::link => insert_value_into_option_or_error(cx, &param, &mut link, word)?,
+                sym::feature => insert_value_into_option_or_error(cx, param, &mut feature, word)?,
+                sym::since => insert_value_into_option_or_error(cx, param, &mut since, word)?,
+                sym::reason => insert_value_into_option_or_error(cx, param, &mut reason, word)?,
+                sym::link => insert_value_into_option_or_error(cx, param, &mut link, word)?,
                 _ => {
                     cx.adcx().expected_specific_argument(
                         param.span(),

@@ -14,17 +14,19 @@ use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::{
     MiniCore,
-    base_db::{Crate, ProcMacroPaths, SourceDatabase, salsa::Revision},
+    base_db::{Crate, ProcMacroPaths, SourceDatabase, all_crates, salsa::Revision},
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
-use lsp_types::{SemanticTokens, Url};
+use lsp_types::{Notification, SemanticTokens, Uri};
 use parking_lot::{
     MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
     RwLockWriteGuard,
 };
 use proc_macro_api::ProcMacroClient;
-use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
+use project_model::{
+    ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, TargetKind, WorkspaceBuildScripts,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::thread;
 use tracing::{Level, span, trace};
@@ -42,7 +44,7 @@ use crate::{
     main_loop::Task,
     mem_docs::MemDocs,
     op_queue::{Cause, OpQueue},
-    reload,
+    priming_scope, reload,
     target_spec::{CargoTargetSpec, ProjectJsonTargetSpec, TargetSpec},
     task_pool::{DeferredTaskQueue, TaskPool},
     test_runner::{CargoTestHandle, CargoTestMessage},
@@ -97,7 +99,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     /// A mapping that maps a local source root's `SourceRootId` to it parent's `SourceRootId`, if it has one.
     pub(crate) local_roots_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
-    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
 
     // status
     pub(crate) shutdown_requested: bool,
@@ -209,7 +211,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
-    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     // used to signal semantic highlighting to fall back to syntax based highlighting until
@@ -580,12 +582,12 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn send_request<R: lsp_types::request::Request>(
+    pub(crate) fn send_request<R: lsp_types::Request>(
         &mut self,
         params: R::Params,
         handler: ReqHandler,
     ) {
-        let request = self.req_queue.outgoing.register(R::METHOD.to_owned(), params, handler);
+        let request = self.req_queue.outgoing.register(R::METHOD.into(), params, handler);
         self.send(request.into());
     }
 
@@ -598,11 +600,8 @@ impl GlobalState {
         handler(self, response)
     }
 
-    pub(crate) fn send_notification<N: lsp_types::notification::Notification>(
-        &self,
-        params: N::Params,
-    ) {
-        let not = lsp_server::Notification::new(N::METHOD.to_owned(), params);
+    pub(crate) fn send_notification<N: lsp_types::Notification>(&self, params: N::Params) {
+        let not = lsp_server::Notification::new(N::METHOD.into(), params);
         self.send(not.into());
     }
 
@@ -647,7 +646,7 @@ impl GlobalState {
 
     pub(crate) fn publish_diagnostics(
         &mut self,
-        uri: Url,
+        uri: Uri,
         version: Option<i32>,
         mut diagnostics: Vec<lsp_types::Diagnostic>,
     ) {
@@ -664,23 +663,34 @@ impl GlobalState {
 
                 // See https://github.com/rust-lang/rust-analyzer/issues/11404
                 // See https://github.com/rust-lang/rust-analyzer/issues/13130
-                let patch_empty = |message: &mut String| {
-                    if message.is_empty() {
-                        " ".clone_into(message);
+                let patch_empty = |message: &mut lsp_types::Message| match message {
+                    lsp_types::Message::String(m) if m.is_empty() => {
+                        " ".clone_into(m);
                     }
+                    lsp_types::Message::MarkupContent(lsp_types::MarkupContent {
+                        value,
+                        kind: _,
+                    }) if value.is_empty() => {
+                        " ".clone_into(value);
+                    }
+                    _ => {}
                 };
 
                 for d in &mut diagnostics {
                     patch_empty(&mut d.message);
                     if let Some(dri) = &mut d.related_information {
                         for dri in dri {
-                            patch_empty(&mut dri.message);
+                            // The LSP does not (yet?) specify that related diagnostic messages can
+                            // be in Markdown format (in addition to plain text).
+                            if dri.message.is_empty() {
+                                " ".clone_into(&mut dri.message);
+                            }
                         }
                     }
                 }
 
                 let not = lsp_server::Notification::new(
-                    <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
+                    lsp_types::PublishDiagnosticsNotification::METHOD.into(),
                     lsp_types::PublishDiagnosticsParams { uri, diagnostics, version },
                 );
                 _ = sender.send(not.into());
@@ -730,6 +740,75 @@ impl GlobalState {
             *fetch_receiver = crossbeam_channel::after(Duration::from_millis(100));
         }
     }
+
+    /// Set of crates to prime: the transitive-dependency closure of every
+    /// local Cargo workspace `lib`/`bin` target, `rust-project.json` workspace
+    /// member, and detached file. Computed once when the server becomes
+    /// quiescent.
+    ///
+    /// Test, example, and benchmark members are deliberately excluded — they're
+    /// leaves, so not priming them costs no parallelism on dependency work.
+    /// `bin` targets are kept because they're the crate the user is most likely
+    /// editing.
+    pub(crate) fn compute_priming_scope(&self) -> Arc<[Crate]> {
+        let db = self.analysis_host.raw_database();
+        let all = all_crates(db);
+
+        // Map each crate-root path to its crate(s) so target roots resolve to
+        // `Crate` ids. The vfs read lock is held only for this build.
+        let root_to_crate: FxHashMap<AbsPathBuf, Vec<Crate>> = {
+            let vfs = self.vfs.read();
+            let mut root_to_crate: FxHashMap<AbsPathBuf, Vec<Crate>> = FxHashMap::default();
+            for &krate in &*all {
+                let root_file = krate.data(db).root_file_id;
+                let path = vfs.0.file_path(root_file);
+                let Some(path) = path.as_path() else {
+                    continue;
+                };
+                root_to_crate.entry(path.to_path_buf()).or_default().push(krate);
+            }
+            root_to_crate
+        };
+
+        let mut seed: FxHashSet<Crate> = FxHashSet::default();
+        for workspace in self.workspaces.iter() {
+            match &workspace.kind {
+                ProjectWorkspaceKind::Cargo { cargo, .. }
+                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, ..)), .. } => {
+                    for pkg in cargo.packages() {
+                        if !cargo[pkg].is_local {
+                            continue;
+                        }
+                        for &target in &cargo[pkg].targets {
+                            if !matches!(
+                                cargo[target].kind,
+                                TargetKind::Lib { .. } | TargetKind::Bin
+                            ) {
+                                continue;
+                            }
+                            if let Some(krates) = root_to_crate.get(&*cargo[target].root) {
+                                seed.extend(krates.iter().copied());
+                            }
+                        }
+                    }
+                }
+                ProjectWorkspaceKind::Json(project_json) => seed.extend(
+                    project_json
+                        .crates()
+                        .filter(|(_, krate)| krate.is_workspace_member)
+                        .filter_map(|(_, krate)| root_to_crate.get(&krate.root_module))
+                        .flat_map(|it| it.iter().copied()),
+                ),
+                ProjectWorkspaceKind::DetachedFile { file, cargo: None } => {
+                    if let Some(krates) = root_to_crate.get(&**file) {
+                        seed.extend(krates.iter().copied());
+                    }
+                }
+            }
+        }
+
+        priming_scope::compute(db, seed)
+    }
 }
 
 impl Drop for GlobalState {
@@ -744,11 +823,11 @@ impl GlobalStateSnapshot {
     }
 
     /// Returns `None` if the file was excluded.
-    pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<Option<FileId>> {
+    pub(crate) fn url_to_file_id(&self, url: &Uri) -> anyhow::Result<Option<FileId>> {
         url_to_file_id(&self.vfs_read(), url)
     }
 
-    pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
+    pub(crate) fn file_id_to_url(&self, id: FileId) -> Uri {
         file_id_to_url(&self.vfs_read(), id)
     }
 
@@ -768,12 +847,12 @@ impl GlobalStateSnapshot {
         Some(self.mem_docs.get(self.vfs_read().file_path(file_id))?.version)
     }
 
-    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {
+    pub(crate) fn url_file_version(&self, url: &Uri) -> Option<i32> {
         let path = from_proto::vfs_path(url).ok()?;
         Some(self.mem_docs.get(&path)?.version)
     }
 
-    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
+    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Uri {
         let mut base = self.vfs_read().file_path(path.anchor).clone();
         base.pop();
         let path = base.join(&path.path).unwrap();
@@ -898,14 +977,14 @@ impl GlobalStateSnapshot {
     }
 }
 
-pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
+pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Uri {
     let path = vfs.file_path(id);
     let path = path.as_path().unwrap();
     url_from_abs_path(path)
 }
 
 /// Returns `None` if the file was excluded.
-pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<Option<FileId>> {
+pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Uri) -> anyhow::Result<Option<FileId>> {
     let path = from_proto::vfs_path(url)?;
     vfs_path_to_file_id(vfs, &path)
 }

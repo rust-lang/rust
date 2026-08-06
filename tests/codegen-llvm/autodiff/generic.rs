@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -Zautodiff=NoPostopt -C opt-level=3 -Clto=fat
+//@ compile-flags: -Zautodiff=Enable -Zautodiff_post_passes=function(mem2reg,instsimplify,simplifycfg) -C opt-level=3 -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 //@ revisions: F32 F64 Main
@@ -34,7 +34,7 @@ fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
 // F64-NEXT: ; Function Attrs: {{.*}}
 // F64-NEXT: define internal {{.*}} void
 // F64-NEXT: start:
-// F64-NEXT:   {{(tail )?}}call {{(fastcc )?}}void @diffe_{{.*}}(double {{.*}}, ptr {{.*}})
+// F64-NEXT:   {{(tail )?}}call fast { double } @diffe_{{.*}}(ptr {{.*}}, ptr {{.*}}, double {{.*}})
 // F64-NEXT: ret void
 
 // Main-LABEL: ; generic::main

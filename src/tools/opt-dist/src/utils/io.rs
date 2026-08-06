@@ -85,3 +85,9 @@ pub fn find_file_in_dir(
         )),
     }
 }
+
+/// Normalizes a file path so that it can be used on the CLI or in bootstrap config file.
+/// Replaces backslashes with forward slashes on Windows.
+pub fn normalize_path(path: &Utf8Path) -> Utf8PathBuf {
+    path.to_string().replace('\\', "/").into()
+}

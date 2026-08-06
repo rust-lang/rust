@@ -10,7 +10,7 @@
 //! This problem is a part of more-or-less every IDE feature implemented. Every
 //! IDE functionality (like goto to definition), conceptually starts with a
 //! specific cursor position in a file. Starting with this text offset, we first
-//! figure out what syntactic construct are we at: is this a pattern, an
+//! figure out what syntactic construct we are at: is this a pattern, an
 //! expression, an item definition.
 //!
 //! Knowing only the syntax gives us relatively little info. For example,
@@ -32,11 +32,11 @@
 //! Specifically, the algorithm goes like this:
 //!
 //! 1. Find the syntactic container for the syntax. For example, field's
-//!    container is the struct, and structs container is a module.
+//!    container is the struct, and the struct's container is a module.
 //! 2. Recursively get the def corresponding to container.
 //! 3. Ask the container def for all child defs. These child defs contain
 //!    the answer and answer's siblings.
-//! 4. For each child def, ask for it's source.
+//! 4. For each child def, ask for its source.
 //! 5. The child def whose source is the syntax node we've started with
 //!    is the answer.
 //!
@@ -149,10 +149,10 @@ impl<'db> SourceToDefCache<'db> {
             return m;
         }
         self.included_file_cache.insert(file, None);
-        for &crate_id in relevant_crates(db, file.file_id(db)).iter() {
-            db.include_macro_invoc(crate_id).iter().for_each(|&(macro_call_id, file_id)| {
+        for &crate_id in relevant_crates(db, file.file_id(db)) {
+            for &(macro_call_id, file_id) in hir_def::include_macro_invoc(db, crate_id) {
                 self.included_file_cache.insert(file_id, Some(macro_call_id));
-            });
+            }
         }
         self.included_file_cache.get(&file).copied().flatten()
     }
@@ -165,8 +165,20 @@ impl<'db> SourceToDefCache<'db> {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
             let exp_info = macro_file.expansion_info(db);
 
+            // Ensure that the cache contains syntax nodes from expanded macros,
+            // whose root may be in another file.
             let InMacroFile { file_id, value } = exp_info.expanded();
             Self::cache(&mut self.root_to_file_cache, value, file_id.into());
+
+            // include!("foo.rs") invocations are awkward: in addition to the
+            // expansion site there's the included file (foo.rs), so we need to
+            // ensure that it exists in the cache too.
+            if macro_file.is_include_macro(db) {
+                let arg = exp_info.arg();
+                if let Some(arg_node) = arg.value {
+                    Self::cache(&mut self.root_to_file_cache, arg_node.tree_top(), arg.file_id);
+                }
+            }
 
             exp_info
         })
@@ -178,13 +190,13 @@ pub(super) struct SourceToDefCtx<'db, 'cache> {
     pub(super) cache: &'cache mut SourceToDefCache<'db>,
 }
 
-impl SourceToDefCtx<'_, '_> {
+impl<'db> SourceToDefCtx<'db, '_> {
     pub(super) fn file_to_def(&mut self, file: FileId) -> &SmallVec<[ModuleId; 1]> {
         let _p = tracing::info_span!("SourceToDefCtx::file_to_def").entered();
         self.cache.file_to_def_cache.entry(file).or_insert_with(|| {
             let mut mods = SmallVec::new();
 
-            for &crate_id in relevant_crates(self.db, file).iter() {
+            for &crate_id in relevant_crates(self.db, file) {
                 // Note: `mod` declarations in block modules cannot be supported here
                 let crate_def_map = crate_def_map(self.db, crate_id);
                 let n_mods = mods.len();
@@ -192,8 +204,7 @@ impl SourceToDefCtx<'_, '_> {
                 mods.extend(modules(file));
                 if mods.len() == n_mods {
                     mods.extend(
-                        self.db
-                            .include_macro_invoc(crate_id)
+                        hir_def::include_macro_invoc(self.db, crate_id)
                             .iter()
                             .filter(|&&(_, file_id)| file_id.file_id(self.db) == file)
                             .flat_map(|&(macro_call_id, file_id)| {
@@ -348,15 +359,17 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn bind_pat_to_def(
         &mut self,
         src: InFile<&ast::IdentPat>,
-        semantics: &SemanticsImpl<'_>,
-    ) -> Option<crate::Local> {
+        semantics: &SemanticsImpl<'db>,
+    ) -> Option<crate::Local<'db>> {
         let container = self.find_container(src.syntax_ref())?.as_expression_store_owner()?;
         let (store, source_map) = ExpressionStore::with_source_map(self.db, container);
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
-        if let crate::Pat::Bind { id, .. } = store[pat_id.as_pat()?] {
-            let parent_infer = semantics.infer_body_for_expr_or_pat(container, store, pat_id)?;
+        let pat_id = pat_id.as_pat()?;
+        if let crate::Pat::Bind { id, .. } = store[pat_id] {
+            let parent_infer =
+                semantics.infer_body_for_expr_or_pat(container, store, pat_id.into())?;
             Some(crate::Local { parent: container, parent_infer, binding_id: id })
         } else {
             None
@@ -371,7 +384,7 @@ impl SourceToDefCtx<'_, '_> {
             .as_expression_store_owner()?
             .as_def_with_body()?;
         let body = Body::of(self.db, container);
-        Some((container, body.self_param()?))
+        Some((container, body.self_param?.user_written))
     }
     pub(super) fn label_to_def(
         &mut self,

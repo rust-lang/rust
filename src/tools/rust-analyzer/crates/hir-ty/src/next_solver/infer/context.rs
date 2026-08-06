@@ -158,7 +158,7 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         self.next_const_var(Span::Dummy)
     }
 
-    fn fresh_args_for_item(&self, def_id: SolverDefId) -> GenericArgs<'db> {
+    fn fresh_args_for_item(&self, def_id: SolverDefId<'db>) -> GenericArgs<'db> {
         self.fresh_args_for_item(Span::Dummy, def_id)
     }
 

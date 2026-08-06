@@ -2,7 +2,7 @@
 //@ revisions: CODEGEN OPTIMIZED
 //@[CODEGEN] compile-flags: -Cno-prepopulate-passes
 //@ only-64bit
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![crate_type = "lib"]
 #![feature(repr_simd, rustc_attrs)]

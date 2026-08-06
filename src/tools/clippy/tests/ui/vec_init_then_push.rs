@@ -126,3 +126,32 @@ fn f() {
     v.push((0i32, 0i32));
     let y = v[0].0.abs();
 }
+
+macro_rules! make_vec {
+    ($($e:expr),*) => {{
+        let mut temp = Vec::new();
+        $(temp.push($e);)*
+        temp
+    }};
+}
+
+macro_rules! push_each {
+    ($v:ident) => {
+        $v.push(1);
+        $v.push(2);
+        $v.push(3);
+        $v.push(4);
+    };
+}
+
+fn pushes_from_macro() -> Vec<i32> {
+    // no lint: the `Vec` and all the `push`es come from the macro expansion
+    make_vec![1, 2, 3, 4, 5]
+}
+
+fn local_outside_but_pushes_from_macro() -> Vec<i32> {
+    // no lint: just `push`es came from a macro expansion
+    let mut v = Vec::new();
+    push_each!(v);
+    v
+}

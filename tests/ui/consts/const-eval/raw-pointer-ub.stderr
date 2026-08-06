@@ -25,7 +25,7 @@ error[E0080]: accessing memory based on pointer with alignment 4, but alignment 
 LL |     let _val = (*ptr).0;
    |                ^^^^^^^^ evaluation of `MISALIGNED_FIELD` failed here
 
-error[E0080]: memory access failed: attempting to access 8 bytes, but got ALLOC0 which is only 4 bytes from the end of the allocation
+error[E0080]: memory access failed: attempting to access 8 bytes, but got ALLOC$ID which is only 4 bytes from the end of the allocation
   --> $DIR/raw-pointer-ub.rs:40:16
    |
 LL |     let _val = *ptr;

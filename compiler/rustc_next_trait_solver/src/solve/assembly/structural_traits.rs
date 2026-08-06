@@ -8,7 +8,7 @@ use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
-    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
+    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, Region, TypeFoldable,
     TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
@@ -291,7 +291,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             let sig = cx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 Ok(Some(
-                    sig.instantiate(cx, args)
+                    sig.instantiate(cx, args.no_bound_vars().unwrap())
                         .skip_norm_wip()
                         .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
                 ))
@@ -442,7 +442,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
     cx: I,
     self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
-    env_region: I::Region,
+    env_region: Region<I>,
 ) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
     match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
@@ -625,7 +625,7 @@ fn fn_item_to_async_callable<I: Interner>(
 fn coroutine_closure_to_certain_coroutine<I: Interner>(
     cx: I,
     goal_kind: ty::ClosureKind,
-    goal_region: I::Region,
+    goal_region: Region<I>,
     def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
@@ -649,7 +649,7 @@ fn coroutine_closure_to_certain_coroutine<I: Interner>(
 fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     cx: I,
     goal_kind: ty::ClosureKind,
-    goal_region: I::Region,
+    goal_region: Region<I>,
     def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
@@ -691,6 +691,9 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
 ) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
+            // FIXME
+            let args = args.no_bound_vars().unwrap();
+
             let sig = cx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible()
                 && !cx.has_target_features(def_id)
@@ -905,7 +908,7 @@ where
     // make impls coinductive always, since they'll always need to prove their supertraits.
     requirements.extend(elaborate::elaborate(
         cx,
-        cx.explicit_super_predicates_of(trait_ref.def_id)
+        cx.explicit_super_clauses_of(trait_ref.def_id)
             .iter_instantiated(cx, trait_ref.args)
             .map(Unnormalized::skip_norm_wip)
             .map(|(pred, _)| pred),

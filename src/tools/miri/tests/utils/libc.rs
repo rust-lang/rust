@@ -164,7 +164,7 @@ pub mod epoll {
         epoll_ctl(epfd, EPOLL_CTL_ADD, fd, Ev { events, data: fd })
     }
 
-    /// Call `epoll_wait` on `epfd` with the provided `timeout`.
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` (in milliseconds).
     /// It fetches at most `max_events` events from `epfd` and
     /// ensures that the returned events match the `expected` events.
     #[track_caller]
@@ -182,7 +182,7 @@ pub mod epoll {
         assert_eq!(got, expected, "got wrong ready events");
     }
 
-    /// Call `epoll_wait` on `epfd` with the provided `timeout` and ensure
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` (in milliseconds) and ensure
     /// that the set of *all* ready events matches `expected`.
     #[track_caller]
     pub fn check_epoll_wait(epfd: i32, expected: &[Ev], timeout: i32) {
@@ -201,24 +201,42 @@ pub mod epoll {
     /// This is done by creating a new epoll instance, adding the
     /// fd to the epoll interests and then performing a zero-timeout
     /// wait.
-    pub fn current_epoll_readiness<const N: usize>(fd: i32, interests: i32) -> c_int {
+    pub fn current_epoll_readiness(fd: i32, interests: i32) -> c_int {
         let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
         // Add fd with all possible interests to epoll instance.
         epoll_ctl_add(epfd, fd, interests).unwrap();
 
-        let mut array: [libc::epoll_event; N] = [libc::epoll_event { events: 0, u64: 0 }; N];
+        let mut out: libc::epoll_event = libc::epoll_event { events: 0, u64: 0 };
         let num = errno_result(unsafe {
             // Use zero-timeout to just query without waiting.
-            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), 0)
+            libc::epoll_wait(epfd, &raw mut out, /* size of out */ 1, /* don't wait */ 0)
         })
         .expect("epoll_wait returned an error");
 
-        let mut readiness = 0;
-        let events = &mut array[..num.try_into().unwrap()];
-        events.iter().for_each(|e| {
-            readiness |= e.events.cast_signed();
-        });
-        readiness
+        if num == 0 { 0 } else { out.events.cast_signed() }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "illumos"))]
+pub mod eventfd {
+    use super::*;
+
+    // We want to do individual read/write calls here so we avoid read_exact/write_all.
+
+    #[track_caller]
+    pub fn read_val(fd: i32) -> io::Result<u64> {
+        let mut buf = [0u8; 8];
+        let len = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
+        assert_eq!(len, 8);
+        Ok(u64::from_ne_bytes(buf))
+    }
+
+    #[track_caller]
+    pub fn write_val(fd: i32, val: u64) -> io::Result<()> {
+        let buf = val.to_ne_bytes();
+        let len = errno_result(unsafe { libc::write(fd, buf.as_ptr().cast(), buf.len()) })?;
+        assert_eq!(len, 8);
+        Ok(())
     }
 }
 

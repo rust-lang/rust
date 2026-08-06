@@ -115,7 +115,7 @@ impl GenmcCtx {
         let thread_infos = self.exec_state.thread_id_manager.borrow();
         let genmc_tid = thread_infos.get_genmc_tid(active_thread_id);
 
-        let result = self.handle.borrow_mut().pin_mut().schedule_next(genmc_tid, atomic_kind);
+        let result = self.genmc.borrow_mut().pin_mut().schedule_next(genmc_tid, atomic_kind);
         // Depending on the exec_state, we either schedule the given thread, or we are finished with this execution.
         match result.exec_status {
             ExecutionStatus::Ok => interp_ok(Some(thread_infos.get_miri_tid(result.next_thread))),

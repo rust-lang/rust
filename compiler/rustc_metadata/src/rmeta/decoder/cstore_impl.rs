@@ -19,6 +19,7 @@ use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
 use rustc_session::cstore::{CrateStore, ExternCrate};
+use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
 
@@ -191,6 +192,13 @@ impl IntoArgs for DefId {
     }
 }
 
+impl IntoArgs for ModId {
+    type Other = ();
+    fn into_args(self) -> (DefId, ()) {
+        (self.to_def_id(), ())
+    }
+}
+
 impl IntoArgs for CrateNum {
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
@@ -222,17 +230,18 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 provide! { tcx, def_id, other, cdata,
     explicit_item_bounds => { table_defaulted_array }
     explicit_item_self_bounds => { table_defaulted_array }
-    explicit_predicates_of => { table }
+    explicit_clauses_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
-    explicit_super_predicates_of => { table_defaulted_array }
-    explicit_implied_predicates_of => { table_defaulted_array }
+    explicit_super_clauses_of => { table_defaulted_array }
+    explicit_implied_clauses_of => { table_defaulted_array }
     type_of => { table }
-    type_alias_is_lazy => { table_direct }
+    type_alias_is_checked => { table_direct }
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }
     impl_trait_header => { table }
+    impl_is_fully_generic_for_reflection => { table_direct }
     const_param_default => { table }
     object_lifetime_default => { table }
     thir_abstract_const => { table }
@@ -391,6 +400,7 @@ provide! { tcx, def_id, other, cdata,
     intrinsic_raw => { cdata.get_intrinsic(tcx, def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items(tcx) }
+    canonical_symbols => { cdata.get_canonical_symbols(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
@@ -417,6 +427,7 @@ provide! { tcx, def_id, other, cdata,
     }
     anon_const_kind => { table }
     const_of_item => { table }
+    args_known_to_outlive_alias_params => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -490,14 +501,14 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 }
 
                 if let Some(def_id) = child.res.opt_def_id() {
+                    let mut fallback = false;
+
                     if child.ident.name == kw::Underscore {
-                        fallback_map.push((def_id, parent));
-                        return;
+                        fallback = true;
                     }
 
                     if tcx.is_doc_hidden(parent) {
-                        fallback_map.push((def_id, parent));
-                        return;
+                        fallback = true;
                     }
 
                     // If the re-export itself is `#[doc(hidden)]`, deprioritize it.
@@ -508,20 +519,30 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .and_then(|r| r.id())
                         .is_some_and(|id| tcx.is_doc_hidden(id))
                     {
-                        fallback_map.push((def_id, parent));
-                        return;
+                        fallback = true;
                     }
 
                     match visible_parent_map.entry(def_id) {
                         Entry::Occupied(mut entry) => {
-                            // If `child` is defined in crate `cnum`, ensure
-                            // that it is mapped to a parent in `cnum`.
-                            if def_id.is_local() && entry.get().is_local() {
-                                entry.insert(parent);
+                            if !fallback {
+                                // If `child` is defined in crate `cnum`, ensure
+                                // that it is mapped to a parent in `cnum`.
+                                if def_id.is_local() && entry.get().is_local() {
+                                    entry.insert(parent);
+                                }
                             }
                         }
                         Entry::Vacant(entry) => {
-                            entry.insert(parent);
+                            if fallback {
+                                // We do all of the same steps to fallback entries as to
+                                // preferred entries, except for recording them in a separate map.
+                                // It is important to not return early in the fallback cases to
+                                // ensure that we extend the BFS to the children of fallback items.
+                                fallback_map.push((def_id, parent));
+                            } else {
+                                entry.insert(parent);
+                            }
+
                             if child.res.module_like_def_id().is_some() {
                                 bfs_queue.push_back(def_id);
                             }

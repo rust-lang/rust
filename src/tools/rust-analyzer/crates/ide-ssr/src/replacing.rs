@@ -15,7 +15,7 @@ use crate::{Match, SsrMatches, fragments, resolving::ResolvedRule};
 /// template. Placeholders in the template will have been substituted with whatever they matched to
 /// in the original code.
 pub(crate) fn matches_to_edit<'db>(
-    db: &'db dyn hir::db::ExpandDatabase,
+    db: &'db dyn ide_db::base_db::SourceDatabase,
     matches: &SsrMatches,
     file_src: &str,
     rules: &[ResolvedRule<'db>],
@@ -24,7 +24,7 @@ pub(crate) fn matches_to_edit<'db>(
 }
 
 fn matches_to_edit_at_offset<'db>(
-    db: &'db dyn hir::db::ExpandDatabase,
+    db: &'db dyn ide_db::base_db::SourceDatabase,
     matches: &SsrMatches,
     file_src: &str,
     relative_start: TextSize,
@@ -41,7 +41,7 @@ fn matches_to_edit_at_offset<'db>(
 }
 
 struct ReplacementRenderer<'a, 'db> {
-    db: &'db dyn hir::db::ExpandDatabase,
+    db: &'db dyn ide_db::base_db::SourceDatabase,
     match_info: &'a Match,
     file_src: &'a str,
     rules: &'a [ResolvedRule<'db>],
@@ -59,7 +59,7 @@ struct ReplacementRenderer<'a, 'db> {
 }
 
 fn render_replace<'db>(
-    db: &'db dyn hir::db::ExpandDatabase,
+    db: &'db dyn ide_db::base_db::SourceDatabase,
     match_info: &Match,
     file_src: &str,
     rules: &[ResolvedRule<'db>],

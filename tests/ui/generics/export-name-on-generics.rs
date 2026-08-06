@@ -1,6 +1,4 @@
-//@ run-rustfix
 #![allow(dead_code, mismatched_lifetime_syntaxes)]
-#![deny(no_mangle_generic_items)]
 
 #[export_name = "foo"]
 pub fn foo<T>() {} //~ ERROR functions generic over types or consts must be mangled

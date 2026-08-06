@@ -1,5 +1,6 @@
 //! Builtin derives.
 
+use base_db::SourceDatabase;
 use either::Either;
 use intern::sym;
 use itertools::{Itertools, izip};
@@ -13,7 +14,6 @@ use tracing::debug;
 use crate::{
     ExpandError, ExpandResult, MacroCallId,
     builtin::quote::dollar_crate,
-    db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
     name::{self, AsName, Name},
     span_map::ExpansionSpanMap,
@@ -35,7 +35,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinDeriveExpander {
-            pub fn expander(&self) -> fn(&dyn ExpandDatabase, Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
+            pub fn expander(&self) -> fn(&dyn SourceDatabase, Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
                 }
@@ -54,7 +54,7 @@ macro_rules! register_builtin {
 impl BuiltinDeriveExpander {
     pub fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         id: MacroCallId,
         tt: &tt::TopSubtree,
         span: Span,
@@ -228,7 +228,7 @@ struct AdtParam {
 
 // FIXME: This whole thing needs a refactor. Each derive requires its special values, and the result is a mess.
 fn parse_adt(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> Result<BasicAdtInfo, ExpandError> {
@@ -387,11 +387,11 @@ fn parse_adt_from_syntax(
 }
 
 fn to_adt_syntax(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> Result<(ast::Adt, span::SpanMap), ExpandError> {
-    let (parsed, tm) = crate::db::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
+    let (parsed, tm) = crate::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
         .ok_or_else(|| ExpandError::other(call_site, "invalid item definition"))?;
     let item =
@@ -412,7 +412,7 @@ fn name_to_token(
     })?;
     let span = token_map.span_at(name.syntax().text_range().start());
 
-    let name_token = tt::Ident::new(name.text().as_ref(), span);
+    let name_token = tt::Ident::new(name.text(), span);
     Ok(name_token)
 }
 
@@ -448,7 +448,7 @@ fn name_to_token(
 /// where B1, ..., BN are the bounds given by `bounds_paths`. Z is a phantom type, and
 /// therefore does not get bound by the derived trait.
 fn expand_simple_derive(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     invoc_span: Span,
     tt: &tt::TopSubtree,
     trait_path: tt::TopSubtree,
@@ -531,7 +531,7 @@ fn expand_simple_derive_with_parsed(
 }
 
 fn copy_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -547,7 +547,7 @@ fn copy_expand(
 }
 
 fn clone_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -602,7 +602,7 @@ fn and_and(span: Span) -> tt::TopSubtree {
 }
 
 fn default_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -667,7 +667,7 @@ fn default_expand(
 }
 
 fn debug_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -740,7 +740,7 @@ fn debug_expand(
 }
 
 fn hash_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -787,7 +787,7 @@ fn hash_expand(
 }
 
 fn eq_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -803,7 +803,7 @@ fn eq_expand(
 }
 
 fn partial_eq_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -875,7 +875,7 @@ fn self_and_other_patterns(
 }
 
 fn ord_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -933,7 +933,7 @@ fn ord_expand(
 }
 
 fn partial_ord_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -996,7 +996,7 @@ fn partial_ord_expand(
 }
 
 fn coerce_pointee_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -1184,7 +1184,7 @@ fn coerce_pointee_expand(
                 let new_bounds = bounds.bounds().filter_map(|bound| {
                     let new_bound = substitute_type_bound(
                         bound.clone(),
-                        &pointee_param_name.text(),
+                        pointee_param_name.text(),
                         ADDED_PARAM,
                     );
 
@@ -1197,7 +1197,7 @@ fn coerce_pointee_expand(
                 let new_bounds_target = if is_pointee {
                     make.name_ref(ADDED_PARAM)
                 } else {
-                    make.name_ref(&param_name.text())
+                    make.name_ref(param_name.text())
                 };
                 new_predicates.push(make.where_pred(
                     Either::Right(
@@ -1240,12 +1240,12 @@ fn coerce_pointee_expand(
             // If the target type references the pointee, duplicate the bound as whole.
             // Otherwise, duplicate only bounds that mention the pointee.
             if let Some(predicate_with_substituted_target) =
-                substitute_where_pred(&predicate, &pointee_param_name.text(), ADDED_PARAM)
+                substitute_where_pred(&predicate, pointee_param_name.text(), ADDED_PARAM)
             {
                 new_predicates.push(predicate_with_substituted_target);
             } else if let Some(bounds) = predicate.type_bound_list() {
                 let new_bounds = bounds.bounds().filter_map(|bound| {
-                    substitute_type_bound(bound, &pointee_param_name.text(), ADDED_PARAM)
+                    substitute_type_bound(bound, pointee_param_name.text(), ADDED_PARAM)
                 });
                 new_predicates.push(make.where_pred(Either::Right(pred_target), new_bounds));
             }
@@ -1259,7 +1259,7 @@ fn coerce_pointee_expand(
         new_predicates.push(
             make.where_pred(
                 Either::Right(make.ty_path_from_segments(
-                    [make.path_segment(make.name_ref(&pointee_param_name.text()))],
+                    [make.path_segment(make.name_ref(pointee_param_name.text()))],
                     false,
                 )),
                 [make.type_bound(
@@ -1294,7 +1294,7 @@ fn coerce_pointee_expand(
             .filter_map(|param| {
                 Some(match param {
                     ast::GenericParam::ConstParam(param) => {
-                        ast::GenericArg::ConstArg(make.expr_const_value(&param.name()?.text()))
+                        ast::GenericArg::ConstArg(make.expr_const_value(param.name()?.text()))
                     }
                     ast::GenericParam::LifetimeParam(param) => {
                         make.lifetime_arg(param.lifetime()?).into()
@@ -1303,7 +1303,7 @@ fn coerce_pointee_expand(
                         let name = if pointee_param_idx == type_param_idx {
                             make.name_ref(ADDED_PARAM)
                         } else {
-                            make.name_ref(&param.name()?.text())
+                            make.name_ref(param.name()?.text())
                         };
                         type_param_idx += 1;
                         make.type_arg(make.ty_path_from_segments([make.path_segment(name)], false))
@@ -1314,7 +1314,7 @@ fn coerce_pointee_expand(
 
         make.path_from_segments(
             [make.generic_ty_path_segment(
-                make.name_ref(&struct_name.text()),
+                make.name_ref(struct_name.text()),
                 self_params_for_traits,
             )],
             false,

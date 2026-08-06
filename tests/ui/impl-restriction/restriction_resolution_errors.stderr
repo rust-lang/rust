@@ -16,11 +16,11 @@ error: trait implementation can only be restricted to ancestor modules
 LL |         pub impl(in super::d) trait T4 {}
    |                     ^^^^^^^^
 
-error[E0433]: too many leading `super` keywords
+error[E0433]: too many leading `super` keywords within `crate::a::b`
   --> $DIR/restriction_resolution_errors.rs:26:35
    |
 LL |         pub impl(in super::super::super) trait T7 {}
-   |                                   ^^^^^ there are too many leading `super` keywords
+   |                                   ^^^^^ this `super` would go above the crate root
 
 error: trait implementation can only be restricted to ancestor modules
   --> $DIR/restriction_resolution_errors.rs:36:21
@@ -40,11 +40,11 @@ error: trait implementation can only be restricted to ancestor modules
 LL | pub impl(in crate::a) trait T13 {}
    |             ^^^^^^^^
 
-error[E0433]: too many leading `super` keywords
+error[E0433]: too many leading `super` keywords within `crate`
   --> $DIR/restriction_resolution_errors.rs:56:10
    |
 LL | pub impl(super) trait T17 {}
-   |          ^^^^^ there are too many leading `super` keywords
+   |          ^^^^^ this `super` would go above the crate root
 
 error: trait implementation can only be restricted to ancestor modules
   --> $DIR/restriction_resolution_errors.rs:58:13

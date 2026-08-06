@@ -1809,7 +1809,7 @@ impl PathBuf {
     /// let string = path_buf.into_string();
     /// assert_eq!(string, Ok(String::from("foo")));
     /// ```
-    #[stable(feature = "pathbuf_into_string", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pathbuf_into_string", since = "1.98.0")]
     pub fn into_string(self) -> Result<String, PathBuf> {
         self.into_os_string().into_string().map_err(PathBuf::from)
     }
@@ -2864,7 +2864,7 @@ impl Path {
     /// let path = Path::new(".");
     /// assert!(!path.is_empty());
     /// ```
-    #[stable(feature = "path_is_empty", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_is_empty", since = "1.98.0")]
     pub fn is_empty(&self) -> bool {
         self.as_os_str().is_empty()
     }
@@ -4137,7 +4137,7 @@ impl Error for NormalizeError {}
 /// Note that this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
-/// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
+/// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap04.html#tag_04_16
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
 /// [cygwin-path]: https://cygwin.com/cygwin-api/func-cygwin-conv-path.html
 #[stable(feature = "absolute_path", since = "1.79.0")]

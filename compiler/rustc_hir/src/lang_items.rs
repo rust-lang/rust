@@ -66,6 +66,11 @@ impl LanguageItems {
             .enumerate()
             .filter_map(|(i, id)| id.map(|id| (LangItem::from_u32(i as u32).unwrap(), id)))
     }
+
+    /// Remove any missing items from the list that aren't actually missing
+    pub fn trim_missing(&mut self) {
+        self.missing.retain(|&item| self.items[item as usize].is_none());
+    }
 }
 
 // The actual lang items defined come at the end of this file in one handy table.
@@ -189,6 +194,8 @@ language_item_table! {
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
 
+    TryAsDyn,                sym::try_as_dyn,          try_as_dyn,                 Target::Trait,          GenericRequirement::Exact(1);
+
     // lang items relating to transmutability
     TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
     TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(2);
@@ -219,6 +226,7 @@ language_item_table! {
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
+    CovariantUnsafeCell,   sym::covariant_unsafe_cell, covariant_unsafe_cell_type, Target::Struct,         GenericRequirement::Exact(1);
     UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
 
     VaArgSafe,               sym::va_arg_safe,         va_arg_safe,                Target::Trait,          GenericRequirement::None;
@@ -268,6 +276,7 @@ language_item_table! {
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
 
     Type,                    sym::type_info,           type_struct,                Target::Struct,         GenericRequirement::None;
+    TypeGeneric,             sym::type_info_generic,   type_generic,               Target::Enum,         GenericRequirement::None;
     TypeId,                  sym::type_id,             type_id,                    Target::Struct,         GenericRequirement::None;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
@@ -286,7 +295,7 @@ language_item_table! {
     PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, panic_misaligned_pointer_dereference_fn, Target::Fn, GenericRequirement::Exact(0);
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
-    PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
+    PanicImpl,               sym::panic_impl,          panic_impl,                 Target::ForeignFn,      GenericRequirement::None;
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicInCleanup,          sym::panic_in_cleanup,    panic_in_cleanup,           Target::Fn,             GenericRequirement::Exact(0);
     /// Constant panic messages, used for codegen of MIR asserts.
@@ -309,6 +318,7 @@ language_item_table! {
     PanicAsyncGenFnResumedPanic, sym::panic_const_async_gen_fn_resumed_panic, panic_const_async_gen_fn_resumed_panic, Target::Fn, GenericRequirement::None;
     PanicGenFnNonePanic, sym::panic_const_gen_fn_none_panic, panic_const_gen_fn_none_panic, Target::Fn, GenericRequirement::None;
     PanicNullPointerDereference, sym::panic_null_pointer_dereference, panic_null_pointer_dereference, Target::Fn, GenericRequirement::None;
+    PanicNullReferenceConstructed, sym::panic_null_reference_constructed, panic_null_reference_constructed, Target::Fn, GenericRequirement::None;
     PanicInvalidEnumConstruction, sym::panic_invalid_enum_construction, panic_invalid_enum_construction, Target::Fn, GenericRequirement::None;
     PanicCoroutineResumedDrop, sym::panic_const_coroutine_resumed_drop, panic_const_coroutine_resumed_drop, Target::Fn, GenericRequirement::None;
     PanicAsyncFnResumedDrop, sym::panic_const_async_fn_resumed_drop, panic_const_async_fn_resumed_drop, Target::Fn, GenericRequirement::None;
@@ -447,14 +457,6 @@ language_item_table! {
 
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
-
-    // Runtime symbols
-    MemCpy,                  sym::memcpy_fn,           memcpy_fn,                  Target::Fn,             GenericRequirement::None;
-    MemMove,                 sym::memmove_fn,          memmove_fn,                 Target::Fn,             GenericRequirement::None;
-    MemSet,                  sym::memset_fn,           memset_fn,                  Target::Fn,             GenericRequirement::None;
-    MemCmp,                  sym::memcmp_fn,           memcmp_fn,                  Target::Fn,             GenericRequirement::None;
-    Bcmp,                    sym::bcmp_fn,             bcmp_fn,                    Target::Fn,             GenericRequirement::None;
-    StrLen,                  sym::strlen_fn,           strlen_fn,                  Target::Fn,             GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

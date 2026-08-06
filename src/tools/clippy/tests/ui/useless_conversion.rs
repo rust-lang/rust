@@ -1,7 +1,7 @@
 #![deny(clippy::useless_conversion)]
 #![allow(clippy::into_iter_on_ref)]
 #![allow(clippy::needless_ifs, clippy::unnecessary_wraps, unused)]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 use std::ops::ControlFlow;

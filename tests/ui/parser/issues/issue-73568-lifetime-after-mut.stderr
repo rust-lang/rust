@@ -37,11 +37,13 @@ LL -         fn w<$lt>(w: &mut $lt i32) {}
 LL +         fn w<$lt>(w: &$lt mut i32) {}
    |
 
-error[E0423]: expected value, found trait `Send`
+error[E0423]: cannot find value `Send` in this scope
   --> $DIR/issue-73568-lifetime-after-mut.rs:17:28
    |
 LL |     let z = y as &mut 'a + Send;
-   |                            ^^^^ not a value
+   |                            ^^^^ not found in this scope
+   |
+   = note: a trait named `Send` exists in another namespace
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/issue-73568-lifetime-after-mut.rs:14:18

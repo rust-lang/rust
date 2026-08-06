@@ -88,6 +88,7 @@
 
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
@@ -98,12 +99,12 @@ mod attributes;
 mod check_cfg;
 mod context;
 mod diagnostics;
-mod early_parsed;
 mod interface;
 pub mod parser;
 mod safety;
 mod session_diagnostics;
 mod stability;
+mod synthetic;
 mod target_checking;
 mod template;
 pub mod validate_attr;
@@ -118,4 +119,4 @@ pub use context::{OmitDoc, ShouldEmit};
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
 pub use session_diagnostics::ParsedDescription;
-pub use template::{AttrSuggestionStyle, AttributeTemplate};
+pub use template::AttributeTemplate;

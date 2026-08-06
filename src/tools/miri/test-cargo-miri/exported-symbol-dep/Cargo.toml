@@ -2,3 +2,6 @@
 name = "exported_symbol_dep"
 version = "0.1.0"
 edition = "2018"
+
+[lib]
+test = false

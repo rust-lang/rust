@@ -3,6 +3,7 @@
 /// Unwrap an unsafe binder into its underlying type.
 #[allow_internal_unstable(builtin_syntax)]
 #[unstable(feature = "unsafe_binders", issue = "130516")]
+#[diagnostic::opaque]
 pub macro unwrap_binder {
     ($expr:expr) => {
         builtin # unwrap_binder ( $expr )
@@ -15,6 +16,7 @@ pub macro unwrap_binder {
 /// Wrap a type into an unsafe binder.
 #[allow_internal_unstable(builtin_syntax)]
 #[unstable(feature = "unsafe_binders", issue = "130516")]
+#[diagnostic::opaque]
 pub macro wrap_binder {
     ($expr:expr) => {
         builtin # wrap_binder ( $expr )

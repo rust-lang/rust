@@ -1,5 +1,5 @@
 use rustc_hir::OwnerId;
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, ModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModId, ModId};
 
 /// Argument-conversion trait used by some queries and other `TyCtxt` methods.
 ///
@@ -48,21 +48,21 @@ impl IntoQueryKey<DefId> for OwnerId {
     }
 }
 
-impl IntoQueryKey<DefId> for ModDefId {
+impl IntoQueryKey<DefId> for ModId {
     #[inline(always)]
     fn into_query_key(self) -> DefId {
         self.to_def_id()
     }
 }
 
-impl IntoQueryKey<DefId> for LocalModDefId {
+impl IntoQueryKey<DefId> for LocalModId {
     #[inline(always)]
     fn into_query_key(self) -> DefId {
         self.to_def_id()
     }
 }
 
-impl IntoQueryKey<LocalDefId> for LocalModDefId {
+impl IntoQueryKey<LocalDefId> for LocalModId {
     #[inline(always)]
     fn into_query_key(self) -> LocalDefId {
         self.into()

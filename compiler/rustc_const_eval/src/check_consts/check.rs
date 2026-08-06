@@ -29,7 +29,7 @@ use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::check_consts::is_fn_or_trait_safe_to_expose_on_stable;
-use crate::errors;
+use crate::diagnostics;
 
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'tcx, Q>>;
@@ -475,7 +475,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 if self.enforce_recursive_const_stability()
                     && !is_fn_or_trait_safe_to_expose_on_stable(self.tcx, def_id)
                 {
-                    self.dcx().emit_err(errors::UnmarkedConstItemExposed {
+                    self.dcx().emit_err(diagnostics::UnmarkedConstItemExposed {
                         span: self.span,
                         def_path: self.tcx.def_path_str(def_id),
                     });
@@ -757,7 +757,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let fn_ty = func.ty(body, tcx);
 
                 let (callee, fn_args) = match *fn_ty.kind() {
-                    ty::FnDef(def_id, fn_args) => (def_id, fn_args),
+                    ty::FnDef(def_id, fn_args) => (def_id, fn_args.no_bound_vars().unwrap()),
 
                     ty::FnPtr(..) => {
                         self.check_op(ops::FnCallIndirect);
@@ -874,7 +874,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // regular stability, and regular stability is checked separately.
                             // However, we *do* have to worry about *recursive* const stability.
                             if !is_const_stable && self.enforce_recursive_const_stability() {
-                                self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
+                                self.dcx().emit_err(diagnostics::UnmarkedIntrinsicExposed {
                                     span: self.span,
                                     def_path: self.tcx.def_path_str(callee),
                                 });
@@ -988,7 +988,7 @@ fn emit_unstable_in_stable_exposed_error(
 ) -> ErrorGuaranteed {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.dcx().emit_err(errors::UnstableInStableExposed {
+    ccx.dcx().emit_err(diagnostics::UnstableInStableExposed {
         gate: gate.to_string(),
         span,
         attr_span,

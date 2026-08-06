@@ -1,0 +1,18 @@
+error[E0277]: cannot add `u32` to `!`
+  --> $DIR/return-never-type.rs:7:13
+   |
+LL | fn foo() -> impl Add<u32> {
+   |             ^^^^^^^^^^^^^ no implementation for `! + u32`
+...
+LL |     unimplemented!()
+   |     ---------------- return type was inferred to be `!` here
+   |
+   = help: the trait `Add<u32>` is not implemented for `!`
+help: `!` can be coerced to any type; consider casting it to a concrete type that implements the trait
+   |
+LL |     unimplemented!() as /* Type */
+   |                      +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

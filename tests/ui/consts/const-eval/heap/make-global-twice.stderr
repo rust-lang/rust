@@ -1,4 +1,4 @@
-error[E0080]: attempting to call `const_make_global` twice on the same allocation ALLOC0
+error[E0080]: attempting to call `const_make_global` twice on the same allocation ALLOC$ID
   --> $DIR/make-global-twice.rs:13:5
    |
 LL |     intrinsics::const_make_global(ptr);

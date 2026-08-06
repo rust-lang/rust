@@ -1,6 +1,6 @@
 // rustfix-only-machine-applicable
 #![warn(clippy::redundant_clone)]
-#![allow(
+#![expect(
     clippy::drop_non_drop,
     clippy::implicit_clone,
     clippy::pathbuf_init_then_push,

@@ -16,6 +16,7 @@
     target_os = "solaris",
     target_os = "vxworks",
     target_os = "nto",
+    target_os = "qnx",
     target_vendor = "apple",
 ))]
 mod m {

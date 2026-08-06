@@ -172,10 +172,10 @@ where
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id.into())
+                .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
@@ -221,10 +221,10 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let where_clause_bounds = cx
-                .predicates_of(goal.predicate.def_id().into())
+                .clauses_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|p| goal.with(cx, p));
+                .map(|c| goal.with(cx, c));
 
             let const_conditions = cx
                 .const_conditions(goal.predicate.def_id().into())
@@ -289,7 +289,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        todo!("Fn* are not yet const")
+        unimplemented!("Fn* are not yet const")
     }
 
     #[instrument(level = "trace", skip_all, ret)]
@@ -347,7 +347,7 @@ where
         _goal: Goal<I, Self>,
         _kind: rustc_type_ir::ClosureKind,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        todo!("AsyncFn* are not yet const")
+        unimplemented!("AsyncFn* are not yet const")
     }
 
     fn consider_builtin_async_fn_kind_helper_candidate(
@@ -449,6 +449,13 @@ where
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("BikeshedGuaranteedNoDrop is not const");
+    }
+
+    fn consider_builtin_try_as_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        unreachable!("`TryAsDynCompat` is not const: {:?}", goal)
     }
 
     fn consider_structural_builtin_unsize_candidates(

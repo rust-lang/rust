@@ -112,7 +112,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Pair(attrs_a, attrs_b) => match self.layout.backend_repr {
-                BackendRepr::ScalarPair(a, b) => {
+                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     smallvec![
@@ -167,7 +167,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Pair(attrs_a, attrs_b) => match self.layout.backend_repr {
-                BackendRepr::ScalarPair(a, b) => {
+                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     (
@@ -211,7 +211,11 @@ pub(super) fn to_casted_value<'tcx>(
     cast_target_to_abi_params(cast)
         .into_iter()
         .map(|(offset, param)| {
-            ptr.offset_i64(fx, offset.bytes() as i64).load(fx, param.value_type, MemFlags::new())
+            ptr.offset_i64(fx, offset.bytes() as i64).load(
+                fx,
+                param.value_type,
+                MemFlagsData::new(),
+            )
         })
         .collect()
 }
@@ -237,7 +241,7 @@ pub(super) fn from_casted_value<'tcx>(
         ptr.offset_i64(fx, offset.bytes() as i64).store(
             fx,
             block_params_iter.next().unwrap(),
-            MemFlags::new(),
+            MemFlagsData::trusted(),
         )
     }
     assert_eq!(block_params_iter.next(), None, "Leftover block param");

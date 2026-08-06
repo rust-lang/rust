@@ -51,14 +51,13 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_log::tracing;
 use rustc_middle::mir;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{AtomicOrdering, Ty};
 use rustc_span::Span;
 
 use super::vector_clock::{VClock, VTimestamp, VectorIdx};
 use super::weak_memory::EvalContextExt as _;
 use crate::concurrency::GlobalDataRaceHandler;
 use crate::diagnostics::RacingOp;
-use crate::intrinsics::AtomicRmwOp;
 use crate::*;
 
 pub type AllocState = VClockAlloc;
@@ -73,12 +72,37 @@ pub enum AtomicRwOrd {
     SeqCst,
 }
 
+impl AtomicRwOrd {
+    pub fn from(ordering: AtomicOrdering) -> Self {
+        use AtomicRwOrd::*;
+        match ordering {
+            AtomicOrdering::Relaxed => Relaxed,
+            AtomicOrdering::Release => Release,
+            AtomicOrdering::Acquire => Acquire,
+            AtomicOrdering::AcqRel => AcqRel,
+            AtomicOrdering::SeqCst => SeqCst,
+        }
+    }
+}
+
 /// Valid atomic read orderings, subset of atomic::Ordering.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum AtomicReadOrd {
     Relaxed,
     Acquire,
     SeqCst,
+}
+
+impl AtomicReadOrd {
+    pub fn from(ordering: AtomicOrdering) -> Self {
+        use AtomicReadOrd::*;
+        match ordering {
+            AtomicOrdering::Relaxed => Relaxed,
+            AtomicOrdering::Acquire => Acquire,
+            AtomicOrdering::SeqCst => SeqCst,
+            _ => panic!("invalid atomic read ordering: {ordering:?}"),
+        }
+    }
 }
 
 /// Valid atomic write orderings, subset of atomic::Ordering.
@@ -89,6 +113,18 @@ pub enum AtomicWriteOrd {
     SeqCst,
 }
 
+impl AtomicWriteOrd {
+    pub fn from(ordering: AtomicOrdering) -> Self {
+        use AtomicWriteOrd::*;
+        match ordering {
+            AtomicOrdering::Relaxed => Relaxed,
+            AtomicOrdering::Release => Release,
+            AtomicOrdering::SeqCst => SeqCst,
+            _ => panic!("invalid atomic write ordering: {ordering:?}"),
+        }
+    }
+}
+
 /// Valid atomic fence orderings, subset of atomic::Ordering.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum AtomicFenceOrd {
@@ -96,6 +132,19 @@ pub enum AtomicFenceOrd {
     Release,
     AcqRel,
     SeqCst,
+}
+
+impl AtomicFenceOrd {
+    pub fn from(ordering: AtomicOrdering) -> Self {
+        use AtomicFenceOrd::*;
+        match ordering {
+            AtomicOrdering::Acquire => Acquire,
+            AtomicOrdering::Release => Release,
+            AtomicOrdering::SeqCst => SeqCst,
+            AtomicOrdering::AcqRel => AcqRel,
+            _ => panic!("invalid atomic fence ordering: {ordering:?}"),
+        }
+    }
 }
 
 /// The current set of vector clocks describing the state
@@ -637,7 +686,7 @@ impl MemoryCellClocks {
 
     /// Detect races for non-atomic read operations at the current memory cell
     /// returns true if a data-race is detected.
-    fn read_race_detect(
+    fn non_atomic_read_detect(
         &mut self,
         thread_clocks: &mut ThreadClockSet,
         index: VectorIdx,
@@ -664,7 +713,7 @@ impl MemoryCellClocks {
 
     /// Detect races for non-atomic write operations at the current memory cell
     /// returns true if a data-race is detected.
-    fn write_race_detect(
+    fn non_atomic_write_detect(
         &mut self,
         thread_clocks: &mut ThreadClockSet,
         index: VectorIdx,
@@ -740,6 +789,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             );
         }
 
+        trace!("read_scalar_atomic({:?}, {} bytes)", place.ptr(), place.layout.size.bytes());
+
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
         let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, |sync_clock| {
             this.validate_atomic_load(place, atomic, sync_clock)
@@ -757,9 +808,13 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(dest, AtomicAccessType::Store)?;
 
+        // Read the previous value so we can put it in the store buffer later.
+        // Both GenMC and Miri need this. This value is nonsense if there are concurrent writes
+        // but the code consuming the value is aware of that.
+        let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
+
         // Inform GenMC about the atomic store.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
             if genmc_ctx.atomic_store(
                 this,
                 dest.ptr().addr(),
@@ -775,21 +830,21 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             return interp_ok(());
         }
 
-        // Read the previous value so we can put it in the store buffer later.
-        let old_val = this.get_latest_nonatomic_val(dest);
+        trace!("write_scalar_atomic({:?}, {} bytes)", dest.ptr(), dest.layout.size.bytes());
+
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
         this.buffered_atomic_write(val, dest, atomic, old_val)
     }
 
     /// Perform an atomic RMW operation on a memory location.
-    fn atomic_rmw_op_immediate(
+    fn atomic_rmw(
         &mut self,
         place: &MPlaceTy<'tcx>,
         rhs: &ImmTy<'tcx>,
         atomic_op: AtomicRmwOp,
         ord: AtomicRwOrd,
-    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
@@ -797,7 +852,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // Inform GenMC about the atomic rmw operation.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let (old_val, new_val) = genmc_ctx.atomic_rmw_op(
+            let (old_val, new_val) = genmc_ctx.atomic_rmw(
                 this,
                 place.ptr().addr(),
                 place.layout.size,
@@ -810,68 +865,17 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             if let Some(new_val) = new_val {
                 this.allow_data_races_mut(|this| this.write_scalar(new_val, place))?;
             }
-            return interp_ok(ImmTy::from_scalar(old_val, old.layout));
-        }
-
-        let val = match atomic_op {
-            AtomicRmwOp::MirOp { op, neg } => {
-                let val = this.binary_op(op, &old, rhs)?;
-                if neg { this.unary_op(mir::UnOp::Not, &val)? } else { val }
-            }
-            AtomicRmwOp::Max => {
-                let lt = this.binary_op(mir::BinOp::Lt, &old, rhs)?.to_scalar().to_bool()?;
-                if lt { rhs } else { &old }.clone()
-            }
-            AtomicRmwOp::Min => {
-                let lt = this.binary_op(mir::BinOp::Lt, &old, rhs)?.to_scalar().to_bool()?;
-                if lt { &old } else { rhs }.clone()
-            }
-        };
-
-        this.allow_data_races_mut(|this| this.write_immediate(*val, place))?;
-
-        this.validate_atomic_rmw(place, ord)?;
-
-        this.buffered_atomic_rmw(val.to_scalar(), place, ord, old.to_scalar())?;
-        interp_ok(old)
-    }
-
-    /// Perform an atomic exchange with a memory place and a new
-    /// scalar value, the old value is returned.
-    fn atomic_exchange_scalar(
-        &mut self,
-        place: &MPlaceTy<'tcx>,
-        new: Scalar,
-        atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        this.atomic_access_check(place, AtomicAccessType::Rmw)?;
-
-        let old = this.allow_data_races_mut(|this| this.read_scalar(place))?;
-        this.allow_data_races_mut(|this| this.write_scalar(new, place))?;
-
-        // Inform GenMC about the atomic atomic exchange.
-        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let (old_val, new_val) = genmc_ctx.atomic_exchange(
-                this,
-                place.ptr().addr(),
-                place.layout.size,
-                new,
-                atomic,
-                old,
-            )?;
-            // The store might be the latest store in coherence order (determined by GenMC).
-            // If it is, we need to update the value in Miri's memory:
-            if let Some(new_val) = new_val {
-                this.allow_data_races_mut(|this| this.write_scalar(new_val, place))?;
-            }
             return interp_ok(old_val);
         }
 
-        this.validate_atomic_rmw(place, atomic)?;
+        trace!("atomic_rmw({:?}, {} bytes)", place.ptr(), place.layout.size.bytes());
 
-        this.buffered_atomic_rmw(new, place, atomic, old)?;
-        interp_ok(old)
+        let val = this.atomic_rmw_op(atomic_op, &old, rhs)?;
+
+        this.allow_data_races_mut(|this| this.write_immediate(*val, place))?;
+        this.validate_atomic_rmw(place, ord)?;
+        this.buffered_atomic_rmw(val.to_scalar(), place, ord, old.to_scalar())?;
+        interp_ok(old.to_scalar())
     }
 
     /// Perform an atomic compare and exchange at a given memory location.
@@ -880,7 +884,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// then we treat it as a "compare_exchange_weak" operation, and
     /// some portion of the time fail even when the values are actually
     /// identical.
-    fn atomic_compare_exchange_scalar(
+    fn atomic_compare_exchange(
         &mut self,
         place: &MPlaceTy<'tcx>,
         expect_old: &ImmTy<'tcx>,
@@ -888,7 +892,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
-    ) -> InterpResult<'tcx, Immediate<Provenance>> {
+    ) -> InterpResult<'tcx, (Scalar, bool)> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
@@ -913,7 +917,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             if let Some(new_value) = new_value {
                 this.allow_data_races_mut(|this| this.write_scalar(new_value, place))?;
             }
-            return interp_ok(Immediate::ScalarPair(old_value, Scalar::from_bool(cmpxchg_success)));
+            return interp_ok((old_value, cmpxchg_success));
         }
 
         // `binary_op` will bail if either of them is not a scalar.
@@ -927,7 +931,14 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             } else {
                 true
             };
-        let res = Immediate::ScalarPair(old.to_scalar(), Scalar::from_bool(cmpxchg_success));
+        let res = (old.to_scalar(), cmpxchg_success);
+
+        trace!(
+            "atomic_compare_exchange_scalar({:?}, {} bytes, success = {})",
+            place.ptr(),
+            place.layout.size.bytes(),
+            cmpxchg_success,
+        );
 
         // Update ptr depending on comparison.
         // if successful, perform a full rw-atomic validation
@@ -950,10 +961,10 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     }
 
     /// Update the data-race detector for an atomic fence on the current thread.
-    fn atomic_fence(&mut self, atomic: AtomicFenceOrd) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn atomic_fence(&self, atomic: AtomicFenceOrd) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let machine = &this.machine;
-        match &this.machine.data_race {
+        match &machine.data_race {
             GlobalDataRaceHandler::None => interp_ok(()),
             GlobalDataRaceHandler::Vclocks(data_race) => data_race.atomic_fence(machine, atomic),
             GlobalDataRaceHandler::Genmc(genmc_ctx) => genmc_ctx.atomic_fence(machine, atomic),
@@ -1219,9 +1230,12 @@ impl VClockAlloc {
         for (mem_clocks_range, mem_clocks) in
             alloc_ranges.iter_mut(access_range.start, access_range.size)
         {
-            if let Err(DataRace) =
-                mem_clocks.read_race_detect(&mut thread_clocks, index, read_type, current_span)
-            {
+            if let Err(DataRace) = mem_clocks.non_atomic_read_detect(
+                &mut thread_clocks,
+                index,
+                read_type,
+                current_span,
+            ) {
                 drop(thread_clocks);
                 // Report data-race.
                 return Self::report_data_race(
@@ -1260,9 +1274,12 @@ impl VClockAlloc {
         for (mem_clocks_range, mem_clocks) in
             self.alloc_ranges.borrow_mut().iter_mut(access_range.start, access_range.size)
         {
-            if let Err(DataRace) =
-                mem_clocks.write_race_detect(&mut thread_clocks, index, write_type, current_span)
-            {
+            if let Err(DataRace) = mem_clocks.non_atomic_write_detect(
+                &mut thread_clocks,
+                index,
+                write_type,
+                current_span,
+            ) {
                 drop(thread_clocks);
                 // Report data-race
                 return Self::report_data_race(
@@ -1540,35 +1557,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         )
     }
 
-    /// Returns the most recent *non-atomic* value stored in the given place.
-    /// Errors if we don't need that (because we don't do store buffering) or if
-    /// the most recent value is in fact atomic.
-    fn get_latest_nonatomic_val(&self, place: &MPlaceTy<'tcx>) -> Result<Option<Scalar>, ()> {
-        let this = self.eval_context_ref();
-        // These cannot fail because `atomic_access_check` was done first.
-        let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(place.ptr(), 0).unwrap();
-        let alloc_meta = &this.get_alloc_extra(alloc_id).unwrap().data_race;
-        if alloc_meta.as_weak_memory_ref().is_none() {
-            // No reason to read old value if we don't track store buffers.
-            return Err(());
-        }
-        let data_race = alloc_meta.as_vclocks_ref().unwrap();
-        // Only read old value if this is currently a non-atomic location.
-        for (_range, clocks) in data_race.alloc_ranges.borrow_mut().iter(offset, place.layout.size)
-        {
-            // If this had an atomic write that's not before the non-atomic write, that should
-            // already be in the store buffer. Initializing the store buffer now would use the
-            // wrong `sync_clock` so we better make sure that does not happen.
-            if clocks.atomic().is_some_and(|atomic| !(atomic.write_vector <= clocks.write())) {
-                return Err(());
-            }
-        }
-        // The program didn't actually do a read, so suppress the memory access hooks.
-        // This is also a very special exception where we just ignore an error -- if this read
-        // was UB e.g. because the memory is uninitialized, we don't want to know!
-        Ok(this.run_for_validation_ref(|this| this.read_scalar(place)).discard_err())
-    }
-
     /// Generic atomic operation implementation
     fn validate_atomic_op<A: Debug + Copy>(
         &self,
@@ -1683,11 +1671,11 @@ impl GlobalState {
     // We perform data race detection when there are more than 1 active thread
     // and we have not temporarily disabled race detection to perform something
     // data race free
-    fn race_detecting(&self) -> bool {
+    pub(super) fn race_detecting(&self) -> bool {
         self.multi_threaded.get() && !self.ongoing_action_data_race_free.get()
     }
 
-    pub fn ongoing_action_data_race_free(&self) -> bool {
+    pub(super) fn ongoing_action_data_race_free(&self) -> bool {
         self.ongoing_action_data_race_free.get()
     }
 

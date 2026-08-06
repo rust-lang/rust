@@ -23,6 +23,7 @@ use rustc_trait_selection::traits;
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
+use crate::fn_ctxt::UseSubtyping;
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
@@ -195,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (bound_sig.skip_binder().output(), tcx.types.unit)
                     }
                     hir::CoroutineDesugaring::AsyncGen => {
-                        todo!("`async gen` closures not supported yet")
+                        unimplemented!("`async gen` closures not supported yet")
                     }
                 };
                 // Compute all of the variables that will be used to populate the coroutine.
@@ -301,8 +302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
-                        .map(Unnormalized::skip_norm_wip)
-                        .map(|(c, s)| (c.as_predicate(), s)),
+                        .map(Unnormalized::skip_norm_wip),
                 ),
             ty::Dynamic(object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
@@ -317,9 +317,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
                 Ty::new_var(self.tcx, self.root_var(vid)),
                 closure_kind,
-                self.obligations_for_self_ty(vid)
+                self.obligations_for_self_ty(vid, UseSubtyping::No)
                     .into_iter()
-                    .map(|obl| (obl.predicate, obl.cause.span)),
+                    .filter_map(|obl| Some((obl.predicate.as_clause()?, obl.cause.span))),
             ),
             ty::FnPtr(sig_tys, hdr) => match closure_kind {
                 hir::ClosureKind::Closure => {
@@ -338,36 +338,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expected_ty: Ty<'tcx>,
         closure_kind: hir::ClosureKind,
-        predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
+        clauses: impl DoubleEndedIterator<Item = (ty::Clause<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for (pred, span) in traits::elaborate(
+        for (clause, span) in traits::elaborate(
             self.tcx,
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of
             // the registered obligations.
-            predicates.rev(),
+            clauses.rev(),
         )
         // We only care about self bounds
         .filter_only_self()
         {
-            debug!(?pred);
-            let bound_predicate = pred.kind();
+            debug!(?clause);
+            let bound_clause = clause.kind();
 
-            // Given a Projection predicate, we can potentially infer
-            // the complete signature.
+            // Given a Projection clause, we can potentially infer the complete signature.
             if expected_sig.is_none()
-                && let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) =
-                    bound_predicate.skip_binder()
+                && let ty::ClauseKind::Projection(proj_clause) = bound_clause.skip_binder()
             {
                 let inferred_sig = self.normalize(
                     span,
                     Unnormalized::new_wip(self.deduce_sig_from_projection(
                         Some(span),
                         closure_kind,
-                        bound_predicate.rebind(proj_predicate),
+                        bound_clause.rebind(proj_clause),
                     )),
                 );
 
@@ -434,11 +432,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // infer the kind. This can occur when we elaborate a predicate
             // like `F : Fn<A>`. Note that due to subtyping we could encounter
             // many viable options, so pick the most restrictive.
-            let trait_def_id = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
+            let trait_def_id = match bound_clause.skip_binder() {
+                ty::ClauseKind::Projection(data) => {
                     Some(data.projection_term.trait_def_id(self.tcx))
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => Some(data.def_id()),
+                ty::ClauseKind::Trait(data) => Some(data.def_id()),
                 _ => None,
             };
 
@@ -587,7 +585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME: We may want to elaborate here, though I assume this will be exceedingly rare.
         let mut return_ty = None;
-        for bound in self.obligations_for_self_ty(return_vid) {
+        for bound in self.obligations_for_self_ty(return_vid, UseSubtyping::No) {
             if let Some(ret_projection) = bound.predicate.as_projection_clause()
                 && let Some(ret_projection) = ret_projection.no_bound_vars()
                 && self.tcx.is_lang_item(ret_projection.def_id(), LangItem::FutureOutput)
@@ -965,32 +963,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.resolve_vars_with_obligations(ret_ty);
 
-        let get_future_output = |predicate: ty::Predicate<'tcx>, span| {
+        let get_future_output = |clause: ty::Clause<'tcx>, span| {
             // Search for a pending obligation like
             //
             // `<R as Future>::Output = T`
             //
             // where R is the return type we are expecting. This type `T`
             // will be our output.
-            let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) =
-                bound_predicate.skip_binder()
-            {
-                self.deduce_future_output_from_projection(
-                    span,
-                    bound_predicate.rebind(proj_predicate),
-                )
+            let bound_clause = clause.kind();
+            if let ty::ClauseKind::Projection(proj_clause) = bound_clause.skip_binder() {
+                self.deduce_future_output_from_projection(span, bound_clause.rebind(proj_clause))
             } else {
                 None
             }
         };
 
         let output_ty = match *ret_ty.kind() {
-            ty::Infer(ty::TyVar(ret_vid)) => {
-                self.obligations_for_self_ty(ret_vid).into_iter().find_map(|obligation| {
-                    get_future_output(obligation.predicate, obligation.cause.span)
-                })?
-            }
+            ty::Infer(ty::TyVar(ret_vid)) => self
+                .obligations_for_self_ty(ret_vid, UseSubtyping::No)
+                .into_iter()
+                .find_map(|obligation| {
+                    obligation
+                        .predicate
+                        .as_clause()
+                        .and_then(|clause| get_future_output(clause, obligation.cause.span))
+                })?,
             ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 return Some(Ty::new_error_with_message(
                     self.tcx,
@@ -1003,7 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
                 .map(Unnormalized::skip_norm_wip)
-                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
+                .find_map(|(c, s)| get_future_output(c, s))?,
             ty::Error(_) => return Some(ret_ty),
             _ => {
                 span_bug!(closure_span, "invalid async fn coroutine return type: {ret_ty:?}")

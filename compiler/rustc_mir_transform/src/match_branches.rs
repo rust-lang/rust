@@ -6,6 +6,7 @@ use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 
 use super::simplify::simplify_cfg;
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 use crate::unreachable_prop::remove_successors_from_switch;
 
@@ -13,9 +14,9 @@ use crate::unreachable_prop::remove_successors_from_switch;
 pub(super) struct MatchBranchSimplification;
 
 impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
         // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
-        sess.mir_opt_level() >= 2
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -31,10 +32,6 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
         if changed {
             simplify_cfg(tcx, body);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

@@ -10,6 +10,7 @@ use std::{
     ops::{self, ControlFlow},
 };
 
+use base_db::SourceDatabase;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -22,7 +23,7 @@ use syntax::{AstNode, ast};
 use syntax_bridge::DocCommentDesugarMode;
 use tt::token_to_literal;
 
-use crate::{db::DefDatabase, item_tree::lower::Ctx};
+use crate::item_tree::lower::Ctx;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum AttrsOrCfg {
@@ -42,7 +43,7 @@ impl Default for AttrsOrCfg {
 
 impl AttrsOrCfg {
     pub(crate) fn lower<'a, S>(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: &dyn ast::HasAttrs,
         cfg_options: &dyn Fn() -> &'a CfgOptions,
         span_map: S,

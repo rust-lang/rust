@@ -107,11 +107,37 @@ impl<'tcx> ConstToPat<'tcx> {
             self.tcx.erase_and_anonymize_regions(self.typing_env).with_codegen_normalized(self.tcx);
         let alias_const = self.tcx.erase_and_anonymize_regions(alias_const);
 
+        let mk_too_generic_err = || {
+            let mut err = self
+                .tcx
+                .dcx()
+                .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
+            for arg in alias_const.args {
+                if let ty::GenericArgKind::Type(ty) = arg.kind()
+                    && let ty::Param(param_ty) = ty.kind()
+                {
+                    let def_id = self.tcx.hir_enclosing_body_owner(self.id);
+                    let generics = self.tcx.generics_of(def_id);
+                    let param = generics.type_param(*param_ty, self.tcx);
+                    let span = self.tcx.def_span(param.def_id);
+                    err.span_label(span, "constant depends on this generic parameter");
+                    if let Some(ident) = self.tcx.def_ident_span(def_id)
+                        && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                    {
+                        // Display the `fn` name as well in the diagnostic, as the generic isn't
+                        // in the same line and it could be confusing otherwise.
+                        err.span_label(ident, "");
+                    }
+                }
+            }
+            return self.mk_err(err, ty);
+        };
+
         // FIXME(gca): This will become insufficient once associated constants can be
         // implemented as `type` consts (project-const-generics#76). At that point it'll
         // become necessary to just use type system normalization for all const patterns
         // but that's not yet possible.
-        let mut thir_pat = if alias_const.kind.is_type_const(self.tcx) {
+        let const_value = if alias_const.kind.is_type_const(self.tcx) {
             let Ok(normalize) = self
                 .tcx
                 .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(self.c))
@@ -124,7 +150,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
                 return self.mk_err(err, ty);
             };
-            self.valtree_to_pat(value)
+            value
         } else {
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
@@ -147,29 +173,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         return self.mk_err(err, ty);
                     }
                     Err(ErrorHandled::TooGeneric(_)) => {
-                        let mut err = self
-                            .tcx
-                            .dcx()
-                            .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
-                        for arg in alias_const.args {
-                            if let ty::GenericArgKind::Type(ty) = arg.kind()
-                                && let ty::Param(param_ty) = ty.kind()
-                            {
-                                let def_id = self.tcx.hir_enclosing_body_owner(self.id);
-                                let generics = self.tcx.generics_of(def_id);
-                                let param = generics.type_param(*param_ty, self.tcx);
-                                let span = self.tcx.def_span(param.def_id);
-                                err.span_label(span, "constant depends on this generic parameter");
-                                if let Some(ident) = self.tcx.def_ident_span(def_id)
-                                    && self.tcx.sess.source_map().is_multiline(ident.between(span))
-                                {
-                                    // Display the `fn` name as well in the diagnostic, as the generic isn't
-                                    // in the same line and it could be confusing otherwise.
-                                    err.span_label(ident, "");
-                                }
-                            }
-                        }
-                        return self.mk_err(err, ty);
+                        return mk_too_generic_err();
                     }
                     Ok(Err(bad_ty)) => {
                         // The pattern cannot be turned into a valtree.
@@ -192,8 +196,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 };
 
             // Lower the valtree to a THIR pattern.
-            self.valtree_to_pat(ty::Value { ty, valtree })
+            ty::Value { ty, valtree }
         };
+        if const_value.ty.has_param() {
+            return mk_too_generic_err();
+        }
+        let mut thir_pat = self.valtree_to_pat(const_value);
 
         if !thir_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.

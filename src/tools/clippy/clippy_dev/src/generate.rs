@@ -1,6 +1,6 @@
 use crate::parse::cursor::Cursor;
 use crate::parse::{Lint, LintData, LintPass, VecBuf};
-use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
+use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, slice_groups, update_text_region_fn};
 use core::range::Range;
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -40,12 +40,12 @@ impl LintData<'_> {
         let mut renamed = Vec::with_capacity(lints.len() / 8);
         for &(name, lint) in &lints {
             match lint {
-                Lint::Active(lint) => active.push((name, lint)),
+                Lint::Active(lint) => active.push((name, lint.file.path_as_krate_mod())),
                 Lint::Deprecated(lint) => deprecated.push((name, lint)),
                 Lint::Renamed(lint) => renamed.push((name, lint)),
             }
         }
-        active.sort_by_key(|&(_, lint)| lint.module);
+        active.sort_by_key(|&(_, path)| path);
 
         // Round to avoid updating the readme every time a lint is added/deprecated.
         let lint_count = active.len() / 50 * 50;
@@ -66,10 +66,10 @@ impl LintData<'_> {
             }),
         );
 
-        updater.update_file_checked(
+        updater.update_loaded_file_checked(
             "cargo dev update_lints",
             update_mode,
-            "clippy_lints/src/deprecated_lints.rs",
+            self.deprecated_file,
             &mut |_, src, dst| {
                 let mut cursor = Cursor::new(src);
                 assert!(
@@ -138,29 +138,25 @@ impl LintData<'_> {
                 UpdateStatus::from_changed(src != dst)
             },
         );
-        for (crate_name, lints) in active.iter().copied().into_group_map_by(|&(_, lint)| {
-            let Some(path::Component::Normal(name)) = lint.path.components().next() else {
-                // All paths should start with `{crate_name}/src` when parsed from `find_lint_decls`
-                panic!(
-                    "internal error: can't read crate name from path `{}`",
-                    lint.path.display()
-                );
-            };
-            name
+
+        for lints in slice_groups(&active, |(_, (head, _)), tail| {
+            tail.iter().take_while(|(_, (x, _))| head == x).count()
         }) {
+            let (_, (krate, _)) = lints[0];
             updater.update_file_checked(
                 "cargo dev update_lints",
                 update_mode,
-                Path::new(crate_name).join("src/lib.rs"),
+                Path::new(krate).join("src/lib.rs"),
                 &mut update_text_region_fn(
                     "// begin lints modules, do not remove this comment, it's used in `update_lints`\n",
                     "// end lints modules, do not remove this comment, it's used in `update_lints`",
                     |dst| {
                         let mut prev = "";
-                        for &(_, lint) in &lints {
-                            if lint.module != prev {
-                                writeln!(dst, "mod {};", lint.module).unwrap();
-                                prev = lint.module;
+                        for &(_, (_, mod_path)) in lints {
+                            let module = mod_path.split_once(path::MAIN_SEPARATOR).map_or(mod_path, |(x, _)| x);
+                            if module != prev {
+                                writeln!(dst, "mod {module};").unwrap();
+                                prev = module;
                             }
                         }
                     },
@@ -169,20 +165,21 @@ impl LintData<'_> {
             updater.update_file_checked(
                 "cargo dev update_lints",
                 update_mode,
-                Path::new(crate_name).join("src/declared_lints.rs"),
+                Path::new(krate).join("src/declared_lints.rs"),
                 &mut |_, src, dst| {
                     dst.push_str(GENERATED_FILE_COMMENT);
                     dst.push_str("pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[\n");
                     let mut buf = String::new();
-                    for &(name, lint) in &lints {
+                    for &(name, (_, mod_path)) in lints {
+                        dst.push_str("    crate::");
+                        for part in mod_path.split(path::MAIN_SEPARATOR) {
+                            dst.push_str(part);
+                            dst.push_str("::");
+                        }
                         buf.clear();
                         buf.push_str(name);
                         buf.make_ascii_uppercase();
-                        if lint.module.is_empty() {
-                            writeln!(dst, "    crate::{buf}_INFO,").unwrap();
-                        } else {
-                            writeln!(dst, "    crate::{}::{buf}_INFO,", lint.module).unwrap();
-                        }
+                        let _ = writeln!(dst, "{buf}_INFO,");
                     }
                     dst.push_str("];\n");
                     UpdateStatus::from_changed(src != dst)
@@ -283,6 +280,7 @@ pub fn gen_sorted_lints_file(
                 dst.push_str("\n\n");
             }
             for pass in passes {
+                pass.lints.sort_unstable();
                 pass.gen_mac(dst);
                 dst.push_str("\n\n");
             }

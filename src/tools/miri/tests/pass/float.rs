@@ -1529,12 +1529,6 @@ fn test_fmuladd() {
 }
 
 fn test_non_determinism() {
-    if cfg!(force_intrinsic_fallback) {
-        // Skip this test when we use the fallback bodies, as that one is deterministic.
-        // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
-        return;
-    }
-
     use std::intrinsics::{
         fadd_algebraic, fadd_fast, fdiv_algebraic, fdiv_fast, fmul_algebraic, fmul_fast,
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,

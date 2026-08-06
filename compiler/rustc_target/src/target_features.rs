@@ -153,6 +153,7 @@ type ImpliedFeatures = &'static [&'static str];
 static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("aclass", Unstable(sym::arm_target_feature), &[]),
+    ("acquire-release", Unstable(sym::arm_target_feature), &[]),
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
     (
         "atomics-32",
@@ -171,6 +172,8 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("fpregs", Unstable(sym::arm_target_feature), &[]),
     ("i8mm", Unstable(sym::arm_target_feature), &["neon"]),
     ("mclass", Unstable(sym::arm_target_feature), &[]),
+    ("mve", Unstable(sym::arm_target_feature), &["v8.1m.main", "dsp", "fpregs"]),
+    ("mve.fp", Unstable(sym::arm_target_feature), &["mve"]),
     ("neon", Unstable(sym::arm_target_feature), &["vfp3"]),
     ("rclass", Unstable(sym::arm_target_feature), &[]),
     ("sha2", Unstable(sym::arm_target_feature), &["neon"]),
@@ -188,9 +191,13 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("v5te", Unstable(sym::arm_target_feature), &[]),
     ("v6", Unstable(sym::arm_target_feature), &["v5te"]),
     ("v6k", Unstable(sym::arm_target_feature), &["v6"]),
-    ("v6t2", Unstable(sym::arm_target_feature), &["v6k", "thumb2"]),
+    ("v6m", Unstable(sym::arm_target_feature), &["v6"]),
+    ("v6t2", Unstable(sym::arm_target_feature), &["v6k", "v8m", "thumb2"]),
     ("v7", Unstable(sym::arm_target_feature), &["v6t2"]),
-    ("v8", Unstable(sym::arm_target_feature), &["v7"]),
+    ("v8", Unstable(sym::arm_target_feature), &["v7", "acquire-release"]),
+    ("v8.1m.main", Unstable(sym::arm_target_feature), &["v8m.main"]),
+    ("v8m", Unstable(sym::arm_target_feature), &["v6m"]),
+    ("v8m.main", Unstable(sym::arm_target_feature), &["v7"]),
     ("vfp2", Unstable(sym::arm_target_feature), &[]),
     ("vfp3", Unstable(sym::arm_target_feature), &["vfp2", "d32"]),
     ("vfp4", Unstable(sym::arm_target_feature), &["vfp3"]),
@@ -393,7 +400,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("v9.3a", Unstable(sym::aarch64_ver_target_feature), &["v9.2a", "v8.8a"]),
     ("v9.4a", Unstable(sym::aarch64_ver_target_feature), &["v9.3a", "v8.9a"]),
     ("v9.5a", Unstable(sym::aarch64_ver_target_feature), &["v9.4a"]),
-    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "sve2"]),
+    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a"]),
     // FEAT_VHE
     ("vh", Stable, &[]),
     // FEAT_WFxT
@@ -416,7 +423,6 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("amx-fp16", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
     ("amx-int8", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
     ("amx-movrs", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
-    ("amx-tf32", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
     ("amx-tile", Unstable(sym::x86_amx_intrinsics), &[]),
     ("apxf", Unstable(sym::apx_target_feature), &[]),
     ("avx", Stable, &["sse4.2"]),
@@ -1073,9 +1079,8 @@ const X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static
 const AARCH64_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "neon")];
 
-// We might want to add "helium" too.
 const ARM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "neon")];
+    &[(128, "neon"), (128, "mve")];
 
 const AMDGPU_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(1024, "")];
@@ -1214,7 +1219,7 @@ impl Target {
     /// These features are checked against the target features reported by LLVM based on
     /// `-Ctarget-cpu` and `-Ctarget-features`. Constraint violations result in a warning.
     ///
-    /// We also check features enabled via `#[target_features]` (and here, constraint violations
+    /// We also check features enabled via `#[target_feature(..)]` (and here, constraint violations
     /// emit a hard error), including features enabled indirectly via implications -- but if LLVM
     /// considers more features to be implied than we do, that could bypass this check!
     pub fn abi_required_features(&self) -> FeatureConstraints {

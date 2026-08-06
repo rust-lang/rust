@@ -128,6 +128,14 @@ impl FileSetConfig {
         self.map.stream().into_byte_vec()
     }
 
+    /// Returns the index of the set `path` would be partitioned into, or `None` if it
+    /// belongs to none of the configured sets (that is, the catch-all set for everything
+    /// else).
+    pub fn classify_path(&self, path: &VfsPath) -> Option<usize> {
+        let idx = self.classify(path, &mut Vec::new());
+        (idx != self.len() - 1).then_some(idx)
+    }
+
     /// Returns the set index for the given `path`.
     ///
     /// `scratch_space` is used as a buffer and will be entirely replaced.

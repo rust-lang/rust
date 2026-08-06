@@ -7,6 +7,7 @@
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
@@ -138,7 +139,8 @@ fn mir_borrowck(
         let opaque_types = Default::default();
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
+        let tainted_by_errors = Default::default();
+        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None, &tainted_by_errors);
         root_cx.do_mir_borrowck();
         root_cx.finalize()
     }
@@ -302,7 +304,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
-    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
@@ -314,7 +316,7 @@ struct CollectRegionConstraintsResult<'tcx> {
 /// the current body. This initializes the relevant data structures
 /// and then type checks the MIR body.
 fn borrowck_collect_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
     def: LocalDefId,
 ) -> CollectRegionConstraintsResult<'tcx> {
     let tcx = root_cx.tcx;
@@ -392,8 +394,9 @@ fn borrowck_collect_region_constraints<'tcx>(
 /// Using the region constraints computed by [borrowck_collect_region_constraints]
 /// and the additional constraints from [BorrowCheckRootCtxt::handle_opaque_type_uses],
 /// compute the region graph and actually check for any borrowck errors.
-fn borrowck_check_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+fn borrowck_check_region_constraints<'diag, 'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'diag, 'tcx>,
+    diags_buffer: &mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
     CollectRegionConstraintsResult {
         infcx,
         body_owned,
@@ -460,7 +463,6 @@ fn borrowck_check_region_constraints<'tcx>(
     let movable_coroutine = body.coroutine.is_some()
         && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
 
-    let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
     for promoted_body in &promoted {
@@ -494,8 +496,8 @@ fn borrowck_check_region_constraints<'tcx>(
             diags_buffer,
             polonius_context: polonius_context.as_ref(),
         };
-        struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
-            ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
+        struct MoveVisitor<'a, 'b, 'diag, 'tcx> {
+            ctxt: &'a mut MirBorrowckCtxt<'b, 'diag, 'tcx>,
         }
 
         impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx> {
@@ -577,7 +579,7 @@ fn borrowck_check_region_constraints<'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
-    if let Some(guar) = mbcx.diags_buffer.emit_errors().or(infcx.tainted_by_errors()) {
+    if let Some(guar) = infcx.tainted_by_errors() {
         root_cx.set_tainted_by_errors(guar);
     }
 
@@ -726,9 +728,9 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     }
 }
 
-pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
-    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+pub(crate) struct MirBorrowckCtxt<'a, 'diag, 'tcx> {
+    root_cx: &'a BorrowCheckRootCtxt<'diag, 'tcx>,
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
 
@@ -784,7 +786,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// The counter for generating new region names.
     next_region_name: RefCell<usize>,
 
-    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
+    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 
     /// Results of Polonius analysis.
@@ -1871,7 +1873,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
-        for &borrow_index in self.borrow_set.activations_at_location(location) {
+        for &borrow_index in self.borrow_set.activations_at_location(&location) {
             let borrow = &self.borrow_set[borrow_index];
 
             // only mutable borrows should be 2-phase
@@ -2370,8 +2372,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if base.ty(this.body(), tcx).ty.is_union()
-                    && this.move_data.path_map[mpi].iter().any(|moi| {
-                        this.move_data.moves[*moi].source.is_predecessor_of(location, this.body)
+                    && this.move_data.move_out_path_map[mpi].iter().any(|moi| {
+                        this.move_data.move_outs[*moi].source.is_predecessor_of(location, this.body)
                     })
                 {
                     return;
@@ -2495,13 +2497,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
         // to do a partial initialization).
-        let previously_initialized = self.is_local_ever_initialized(place.local, state);
+        let previously_initialized = state.ever_inits.contains(place.local);
 
         // at this point, we have set up the error reporting state.
-        if let Some(init_index) = previously_initialized {
+        if previously_initialized {
             if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
                 // If this is a mutate access to an immutable local variable with no projections
                 // report the error as an illegal reassignment
+                let init_index = self.first_reaching_init(place.local, location).unwrap();
                 let init = &self.move_data.inits[init_index];
                 let assigned_span = init.span(self.body);
                 self.report_illegal_reassignment((place, span), assigned_span, place);
@@ -2514,10 +2517,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
-    fn is_local_ever_initialized(&self, local: Local, state: &BorrowckDomain) -> Option<InitIndex> {
+    /// Returns the first init of `local` (in gather order) that may have executed on some path
+    /// reaching `location` without an intervening `StorageDead(local)`.
+    fn first_reaching_init(&self, local: Local, location: Location) -> Option<InitIndex> {
         let mpi = self.move_data.rev_lookup.find_local(local)?;
-        let ii = &self.move_data.init_path_map[mpi];
-        ii.into_iter().find(|&&index| state.ever_inits.contains(index)).copied()
+        self.move_data.init_path_map[mpi].iter().copied().find(|&ii| {
+            let init = self.move_data.inits[ii];
+            EverInitializedPlaces::init_reaches_location(self.body, local, init, location)
+        })
     }
 
     /// Adds the place into the used mutable variables set
@@ -2528,7 +2535,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
                 if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
-                    && self.is_local_ever_initialized(local, state).is_some()
+                    && state.ever_inits.contains(local)
                 {
                     self.used_mut.insert(local);
                 }

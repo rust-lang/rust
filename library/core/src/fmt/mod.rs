@@ -36,7 +36,7 @@ pub enum Alignment {
     Center,
 }
 
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 pub use num_buffer::NumBuffer;
 #[unstable(feature = "fmt_internals", issue = "none")]
 pub use num_buffer::NumBufferTrait;
@@ -2575,6 +2575,21 @@ impl<'a> Formatter<'a> {
             builder.field(name, value);
         }
         builder.finish()
+    }
+
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For C-like enums with concatenated variant name strings.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_c_like_enum_write_str<'b>(
+        &'b mut self,
+        names: &str,
+        offset: &[usize],
+        discr: usize,
+    ) -> Result {
+        let start = offset[discr];
+        let end = offset[discr + 1];
+        self.write_str(&names[start..end])
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of

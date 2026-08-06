@@ -4,13 +4,14 @@ use core::fmt;
 use std::any::Any;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError};
+use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError, SourceDatabase};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
+use salsa::{Durability, Setter};
 use span::Span;
 use triomphe::Arc;
 
-use crate::{ExpandError, ExpandErrorKind, ExpandResult, db::ExpandDatabase, tt};
+use crate::{ExpandError, ExpandErrorKind, ExpandResult, tt};
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug, Hash)]
 pub enum ProcMacroKind {
@@ -25,7 +26,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + Any {
     /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
@@ -83,14 +84,19 @@ impl ProcMacrosBuilder {
         );
     }
 
-    pub(crate) fn build(self, crates_id_map: &CratesIdMap) -> ProcMacros {
+    /// Builds [`ProcMacros`] and adds id to `db`
+    pub(crate) fn build_in(self, db: &mut dyn SourceDatabase, crates_id_map: &CratesIdMap) {
         let mut map = self
             .0
             .into_iter()
             .map(|(krate, proc_macro)| (crates_id_map[&krate], proc_macro))
             .collect::<FxHashMap<_, _>>();
         map.shrink_to_fit();
-        ProcMacros(map)
+        ProcMacros::try_get(db)
+            .unwrap_or_else(|| ProcMacros::new(db, Default::default()))
+            .set_by_crate(db)
+            .with_durability(Durability::HIGH)
+            .to(map);
     }
 }
 
@@ -107,11 +113,25 @@ impl FromIterator<(CrateBuilderId, ProcMacroLoadResult)> for ProcMacrosBuilder {
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateProcMacros(StoredProcMacroLoadResult);
 
-#[derive(Default, Debug)]
-pub struct ProcMacros(FxHashMap<Crate, Arc<CrateProcMacros>>);
+/// The proc macros. Do not use [`Self::get`]! Use [`Self::get_for_crate`] instead.
+#[salsa::input(singleton, debug)]
+pub struct ProcMacros {
+    #[returns(ref)]
+    pub by_crate: FxHashMap<Crate, Arc<CrateProcMacros>>,
+}
+
 impl ProcMacros {
-    fn get(&self, krate: Crate) -> Option<Arc<CrateProcMacros>> {
-        self.0.get(&krate).cloned()
+    pub fn init_default(db: &dyn SourceDatabase, durability: Durability) {
+        _ = Self::builder(Default::default()).durability(durability).new(db);
+    }
+}
+
+#[salsa::tracked]
+impl ProcMacros {
+    /// Incrementality query to prevent queries from directly depending on [`Self::get`].
+    #[salsa::tracked(returns(as_ref))]
+    pub fn get_for_crate(db: &dyn SourceDatabase, krate: Crate) -> Option<Arc<CrateProcMacros>> {
+        Self::get(db).by_crate(db).get(&krate).cloned()
     }
 }
 
@@ -253,7 +273,7 @@ impl CustomProcMacroExpander {
 
     pub fn expand(
         self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         def_crate: Crate,
         calling_crate: Crate,
         tt: &tt::TopSubtree,
@@ -276,7 +296,7 @@ impl CustomProcMacroExpander {
                 ExpandError::new(call_site, ExpandErrorKind::MacroDisabled),
             ),
             id => {
-                let proc_macros = match db.proc_macros_for_crate(def_crate) {
+                let proc_macros = match ProcMacros::get_for_crate(db, def_crate) {
                     Some(it) => it,
                     None => {
                         return ExpandResult::new(
@@ -346,11 +366,4 @@ impl CustomProcMacroExpander {
             }
         }
     }
-}
-
-pub(crate) fn proc_macros_for_crate(
-    db: &dyn ExpandDatabase,
-    krate: Crate,
-) -> Option<Arc<CrateProcMacros>> {
-    db.proc_macros().get(krate)
 }

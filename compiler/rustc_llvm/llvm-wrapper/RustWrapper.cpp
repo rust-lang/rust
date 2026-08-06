@@ -160,6 +160,10 @@ extern "C" void LLVMRustPrintStatisticsJSON(RustStringRef OutBuf) {
   llvm::PrintStatisticsJSON(OS);
 }
 
+extern "C" bool LLVMRustIsCall(LLVMValueRef V) {
+  return llvm::isa<llvm::CallBase>(llvm::unwrap(V));
+}
+
 // Some of the functions here rely on LLVM modules that may not always be
 // available. As such, we only try to build it in the first place, if
 // llvm.offload is enabled.
@@ -1846,6 +1850,35 @@ extern "C" bool LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn,
 
 extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
   return Intrinsic::isTargetIntrinsic(ID);
+}
+
+extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
+                                             uint64_t Disc,
+                                             LLVMValueRef AddrDiversity,
+                                             LLVMValueRef DeactivationSymbol) {
+  auto *C = cast<Constant>(unwrap<Value>(Ptr));
+  assert(C->getType()->isPointerTy() && "Expected pointer type");
+  assert(!isa<UndefValue>(C) && "Unexpected undef in const_ptr_auth");
+  assert(!isa<ConstantPointerNull>(C) && "Unexpected null in const_ptr_auth");
+
+  LLVMContext &Ctx = C->getContext();
+  auto *KeyC = ConstantInt::get(Type::getInt32Ty(Ctx), Key);
+  auto *DiscC = ConstantInt::get(Type::getInt64Ty(Ctx), Disc);
+  auto *PTy = cast<PointerType>(C->getType());
+  Constant *AddrDiv =
+      AddrDiversity ? dyn_cast<Constant>(unwrap<Value>(AddrDiversity))
+                    : ConstantPointerNull::get(cast<PointerType>(C->getType()));
+  assert(AddrDiv && "Failed to get Address Diversity");
+#if LLVM_VERSION_GE(22, 0)
+  Constant *DeactivationSym =
+      DeactivationSymbol ? dyn_cast<Constant>(unwrap<Value>(DeactivationSymbol))
+                         : ConstantPointerNull::get(PTy);
+  assert(DeactivationSym && "Failed to get Deactivation Symbol");
+
+  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv, DeactivationSym));
+#else
+  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv));
+#endif
 }
 
 // Statically assert that the fixed metadata kind IDs declared in

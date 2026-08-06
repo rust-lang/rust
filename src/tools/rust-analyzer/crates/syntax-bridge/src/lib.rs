@@ -903,7 +903,20 @@ impl TtTreeSink<'_> {
                 }
                 self.text_pos += TextSize::of(text);
             }
-            None => unreachable!(),
+            None => {
+                self.error("illegal float literal".to_owned());
+                self.inner.start_node(SyntaxKind::ERROR);
+                self.inner.token(SyntaxKind::FLOAT_NUMBER, text);
+                self.token_map.push(self.text_pos + TextSize::of(text), span);
+                self.inner.finish_node();
+                self.inner.finish_node();
+
+                if !has_pseudo_dot {
+                    self.inner.finish_node();
+                }
+
+                self.text_pos += TextSize::of(text);
+            }
         }
         self.cursor.bump();
     }

@@ -122,13 +122,14 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
+use crate::PassPolicy;
 use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 
 pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -184,10 +185,6 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
         StorageRemover { tcx, reused_locals: &state.reused_locals, storage_to_remove }
             .visit_body_preserves_cfg(body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -608,7 +605,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let fields =
                     fields.iter().map(|&f| self.eval_to_const(f)).collect::<Option<Vec<_>>>()?;
                 let variant = if ty.ty.is_enum() { Some(variant) } else { None };
-                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) = ty.backend_repr
+                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }) = ty.backend_repr
                 else {
                     return None;
                 };
@@ -639,7 +636,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     ImmTy::from_immediate(Immediate::Uninit, ty).into()
                 } else if matches!(
                     ty.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }
                 ) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let field_dest = self.ecx.project_field(&dest, active_field).discard_err()?;
@@ -738,11 +735,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                                 s1.size(&self.ecx) == s2.size(&self.ecx)
                                     && !matches!(s1.primitive(), Primitive::Pointer(..))
                             }
-                            (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
+                            (
+                                BackendRepr::ScalarPair { a: a1, b: b1, b_offset: b1_offset },
+                                BackendRepr::ScalarPair { a: a2, b: b2, b_offset: b2_offset },
+                            ) => {
                                 a1.size(&self.ecx) == a2.size(&self.ecx)
                                     && b1.size(&self.ecx) == b2.size(&self.ecx)
-                                    // The alignment of the second component determines its offset, so that also needs to match.
-                                    && b1.align(&self.ecx) == b2.align(&self.ecx)
+                                    // The first component is always at offset zero, but the offset to the second
+                                    // component needs to match as well for us to be able to transmute.
+                                    && b1_offset == b2_offset
                                     // None of the inputs may be a pointer.
                                     && !matches!(a1.primitive(), Primitive::Pointer(..))
                                     && !matches!(b1.primitive(), Primitive::Pointer(..))
@@ -1804,7 +1805,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     true
                 }
             }
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
+                // The offset is irrelevant to niches since it can only cause padding,
+                // which can never have a niche since it's uninitialized.
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
             BackendRepr::SimdVector { .. }
@@ -1902,7 +1905,10 @@ fn op_to_prop_const<'tcx>(
     // But we *do* want to synthesize any size constant if it is entirely uninit because that
     // benefits codegen, which has special handling for them.
     if !op.is_immediate_uninit()
-        && !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
+        && !matches!(
+            op.layout.backend_repr,
+            BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }
+        )
     {
         return None;
     }

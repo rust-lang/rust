@@ -11,7 +11,8 @@
 //!
 //! # Examples
 //!
-//! ```no_run
+#![cfg_attr(target_family = "unix", doc = "```no_run")]
+#![cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 //! use std::fs::File;
 //! use std::os::unix::prelude::*;
 //!
@@ -69,7 +70,7 @@ mod platform {
     pub use crate::os::linux::*;
     #[cfg(target_os = "netbsd")]
     pub use crate::os::netbsd::*;
-    #[cfg(target_os = "nto")]
+    #[cfg(any(target_os = "nto", target_os = "qnx"))]
     pub use crate::os::nto::*;
     #[cfg(target_os = "nuttx")]
     pub use crate::os::nuttx::*;

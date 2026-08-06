@@ -72,7 +72,7 @@ pub unsafe fn some_non_zero_from_atomic_get() -> Option<NonZeroUsize> {
 ///
 /// The way we check that the LLVM IR is correct is by making sure that neither
 /// `panic` nor `unreachable` is part of the LLVM IR:
-// CHECK-LABEL: define {{.*}} i64 @some_non_zero_from_atomic_get2() {{.*}} {
+// CHECK-LABEL: define {{.*}} i64 @some_non_zero_from_atomic_get2() {{.*}}
 // CHECK-NOT: panic
 // CHECK-NOT: unreachable
 #[no_mangle]

@@ -1,6 +1,7 @@
 We allow using AI (i.e., LLMs) as tools for contributing to rust-analyzer.
 However, you remain responsible for any code you publish and we are responsible for any code we merge and release.
 We hold a high bar for all contributions to our projects.
+Also, we kindly ask you to disclose usage of AI tools in your contributions.
 
 **AI should not be used to generate comments when communicating with maintainers**.
 We expect comments on our projects to be written by humans.
@@ -22,6 +23,12 @@ Do not share long snippets.
 We understand that AI is useful when communicating as a non-native English speaker.
 If you are using AI to edit your comments for this purpose, please take the time to ensure it reflects your own voice and ideas.
 If using AI for translation, we recommend writing in your native language and including the AI translation in a quote block.
+
+**AI should not be used to author code for E-easy+E-has-instructions issues**.
+
+E-easy issues are usually easier for maintainers to just fix directly than write instructions for. When we write instructions for them, we do that because this provides an opportunity for newcomers to learn the codebase. Using AI to author the code for you annihilates this benefit.
+
+AI *may* be used to understand the codebase for E-easy+E-has-instructions contributions, but not to write any code.
 
 This policy was adapted from [uv's AI policy].
 

@@ -26,6 +26,8 @@ download-rustc = false
 llvm-bitcode-linker = true
 # Required to make builds reproducible.
 remap-debuginfo = true
+# Compress debuginfo in generated artifacts to reduce their size
+compress-debuginfo = "zlib"
 
 [dist]
 # Use better compression when preparing tarballs.

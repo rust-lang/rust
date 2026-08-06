@@ -1,7 +1,7 @@
 use rustc_ast::LitKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
-use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
+use rustc_hir::VERSION_PLACEHOLDER;
+use rustc_hir::attrs::{DeprecatedSince, Deprecation, RustcVersion};
 
 use super::prelude::*;
 use super::util::parse_version;
@@ -24,7 +24,7 @@ fn get(
     if let Some(value_str) = v.value_as_ident() {
         Some(value_str)
     } else {
-        cx.adcx().expected_string_literal(v.value_span, Some(&v.value_as_lit()));
+        cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
         None
     }
 }

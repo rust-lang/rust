@@ -1802,9 +1802,8 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
             body_current = &mut body_unsafe;
         }
         ex.to_tokens(body_current);
-        let is_last = matches!(pos, itertools::Position::Last | itertools::Position::Only);
         let is_llvm_link = matches!(ex, Expression::LLVMLink(_));
-        if !is_last && !is_llvm_link {
+        if !pos.is_last && !is_llvm_link {
             body_current.append(Punct::new(';', Spacing::Alone));
         }
     }

@@ -1,0 +1,16 @@
+error: visibility `pub` is not followed by an item
+  --> $DIR/visibility-before-close-brace-issue-160171.rs:5:5
+   |
+LL |     pub
+   |     ^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+
+error: expected expression, found `}`
+  --> $DIR/visibility-before-close-brace-issue-160171.rs:7:1
+   |
+LL | }
+   | ^ expected expression
+
+error: aborting due to 2 previous errors
+

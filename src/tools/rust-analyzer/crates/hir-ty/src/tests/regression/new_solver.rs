@@ -1,6 +1,72 @@
 use expect_test::expect;
+use hir_def::ModuleDefId;
+use rustc_type_ir::inherent::IntoKind as _;
+use test_fixture::WithFixture;
 
-use crate::tests::{check_infer, check_no_mismatches, check_types};
+use crate::{
+    db::HirDatabase,
+    next_solver::{DbInterner, RegionKind, TyKind},
+    test_db::TestDB,
+    tests::{check_infer, check_no_mismatches, check_types},
+};
+
+#[test]
+fn nested_argument_position_impl_trait_captures_lifetime() {
+    check_no_mismatches(
+        r#"
+//- minicore: iterator
+trait Trait<'a> {}
+
+fn f<'a>(_values: impl IntoIterator<Item = impl Trait<'a>>) {}
+
+fn crash<'a>(expr: &'a (), values: impl IntoIterator<Item = impl Trait<'a>>) -> &'a () {
+    f(values);
+    expr
+}
+"#,
+    );
+}
+
+#[test]
+fn liberating_distinct_late_bound_lifetimes_preserves_identity() {
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+fn f<'a, 'b>(x: &'a u8, y: &'b u8) {}
+"#,
+    );
+
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let scope = &def_map[module_id].scope;
+        let func = scope
+            .declarations()
+            .find_map(
+                |decl| {
+                    if let ModuleDefId::FunctionId(func) = decl { Some(func) } else { None }
+                },
+            )
+            .unwrap();
+        let interner = DbInterner::new_with(&db, module_id.krate(&db));
+        let sig = db.callable_item_signature(func.into()).instantiate_identity().skip_norm_wip();
+        let sig = interner.liberate_late_bound_regions(func.into(), sig);
+        let inputs = sig.inputs();
+        let TyKind::Ref(first_region, _first_ty, _first_mutability) = inputs[0].kind() else {
+            panic!("expected reference input, got {:?}", inputs[0]);
+        };
+        let TyKind::Ref(second_region, _second_ty, _second_mutability) = inputs[1].kind() else {
+            panic!("expected reference input, got {:?}", inputs[1]);
+        };
+        let RegionKind::ReLateParam(_first_late_param) = first_region.kind() else {
+            panic!("expected late parameter region, got {first_region:?}");
+        };
+        let RegionKind::ReLateParam(_second_late_param) = second_region.kind() else {
+            panic!("expected late parameter region, got {second_region:?}");
+        };
+
+        assert_ne!(first_region, second_region);
+    });
+}
 
 #[test]
 fn regression_20365() {
@@ -216,63 +282,6 @@ fn regression_20487() {
     check_no_mismatches(
         r#"
 //- minicore: coerce_unsized, dispatch_from_dyn
-trait Foo {
-    fn bar(&self) -> u32 {
-        0xCAFE
-    }
-}
-
-fn debug(_: &dyn Foo) {}
-
-impl Foo for i32 {}
-
-fn main() {
-    debug(&1);
-}"#,
-    );
-
-    // toolchains <= 1.88.0, before sized-hierarchy.
-    check_no_mismatches(
-        r#"
-#![feature(lang_items)]
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "unsize"]
-pub trait Unsize<T: ?Sized> {}
-
-#[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
-
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
-
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
-
-#[lang = "dispatch_from_dyn"]
-pub trait DispatchFromDyn<T> {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
-
 trait Foo {
     fn bar(&self) -> u32 {
         0xCAFE

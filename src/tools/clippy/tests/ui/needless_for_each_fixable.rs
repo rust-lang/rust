@@ -1,6 +1,5 @@
 #![warn(clippy::needless_for_each)]
-#![allow(unused)]
-#![allow(
+#![expect(
     clippy::let_unit_value,
     clippy::match_single_binding,
     clippy::needless_return,

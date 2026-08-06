@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
-    std_crates_for_run_make,
+    std_crates_for_make_run,
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
@@ -13,7 +13,8 @@ use crate::core::build_steps::tool::{
     prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Alias, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -36,7 +37,7 @@ impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
 }
 
-impl Step for Std {
+impl CommandLineStep for Std {
     type Output = BuildStamp;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -68,7 +69,7 @@ impl Step for Std {
         // Explicitly pass -p for all dependencies crates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
-        let crates = std_crates_for_run_make(&run);
+        let crates = std_crates_for_make_run(&run);
         run.builder.ensure(Std {
             build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std)
                 .build_compiler(),
@@ -87,7 +88,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            builder.config.cmd.kind(),
+            builder.kind,
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
@@ -97,7 +98,7 @@ impl Step for Std {
         }
 
         let _guard = builder.msg(
-            builder.config.cmd.kind(),
+            builder.kind,
             format_args!("library artifacts{}", crate_description(&self.crates)),
             Mode::Std,
             build_compiler,
@@ -222,10 +223,6 @@ impl PrepareRustcRmetaSysroot {
 impl Step for PrepareRustcRmetaSysroot {
     type Output = RmetaSysroot;
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check rustc
         let stamp = builder.ensure(Rustc::from_build_compiler(
@@ -265,10 +262,6 @@ impl PrepareStdRmetaSysroot {
 
 impl Step for PrepareStdRmetaSysroot {
     type Output = RmetaSysroot;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check std
@@ -317,7 +310,7 @@ impl Rustc {
     }
 }
 
-impl Step for Rustc {
+impl CommandLineStep for Rustc {
     type Output = BuildStamp;
     const IS_HOST: bool = true;
 
@@ -528,7 +521,7 @@ pub struct CraneliftCodegenBackend {
     target: TargetSelection,
 }
 
-impl Step for CraneliftCodegenBackend {
+impl CommandLineStep for CraneliftCodegenBackend {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -607,7 +600,7 @@ pub struct GccCodegenBackend {
     target: TargetSelection,
 }
 
-impl Step for GccCodegenBackend {
+impl CommandLineStep for GccCodegenBackend {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -701,12 +694,12 @@ macro_rules! tool_check_step {
             target: TargetSelection,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.selectors(&[$path $(, $alt_path )*])
+                run.multi_path(&[$path $(, $alt_path )*])
             }
 
             fn is_default_step(_builder: &Builder<'_>) -> bool {

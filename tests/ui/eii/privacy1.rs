@@ -2,8 +2,8 @@
 //@ check-run-results
 //@ aux-build: other_crate_privacy1.rs
 //@ ignore-backends: gcc
-// FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
-//@ ignore-windows
+// FIXME(#125418): linking on Windows GNU targets is not yet supported.
+//@ ignore-windows-gnu
 // Tests whether re-exports work.
 
 extern crate other_crate_privacy1 as codegen;

@@ -623,7 +623,6 @@ ui/const-generics/issues/issue-88119.rs
 ui/const-generics/issues/issue-88468.rs
 ui/const-generics/issues/issue-88997.rs
 ui/const-generics/issues/issue-89146.rs
-ui/const-generics/issues/issue-89304.rs
 ui/const-generics/issues/issue-89320.rs
 ui/const-generics/issues/issue-89334.rs
 ui/const-generics/issues/issue-90318.rs
@@ -2324,8 +2323,6 @@ ui/resolve/issue-2356.rs
 ui/resolve/issue-23716.rs
 ui/resolve/issue-24968.rs
 ui/resolve/issue-26545.rs
-ui/resolve/issue-3021-c.rs
-ui/resolve/issue-3021.rs
 ui/resolve/issue-30535.rs
 ui/resolve/issue-3099-a.rs
 ui/resolve/issue-3099-b.rs

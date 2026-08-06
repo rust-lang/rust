@@ -19,9 +19,9 @@ use crate::const_eval::CheckAlignment;
 use crate::interpret::{
     CtfeValidationMode, GlobalId, Immediate, InternError, InternKind, InterpCx, InterpErrorKind,
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, ReturnContinuation, create_static_alloc,
-    intern_const_alloc_recursive, interp_ok, throw_exhaust,
+    ensure_monomorphic_enough, intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
-use crate::{CTRL_C_RECEIVED, errors};
+use crate::{CTRL_C_RECEIVED, diagnostics};
 
 fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>(
     key: ty::PseudoCanonicalInput<'tcx, K>,
@@ -44,6 +44,7 @@ fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>
         | ty::TypingMode::Typeck { .. }
         | ty::TypingMode::PostTypeckUntilBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
+        | ty::TypingMode::Reflection
         | ty::TypingMode::PostAnalysis => {}
     }
 
@@ -64,7 +65,6 @@ fn setup_for_eval<'tcx>(
                     | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
-                    | DefKind::InlineConst
                     | DefKind::AssocConst { .. }
             ),
         "Unexpected DefKind: {:?}",
@@ -97,8 +97,10 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     body: &'tcx mir::Body<'tcx>,
 ) -> InterpResult<'tcx, R> {
     let tcx = *ecx.tcx;
-    let layout = ecx
-        .layout_of(body.bound_return_ty(tcx).instantiate(tcx, cid.instance.args).skip_norm_wip())?;
+    let ty = body.bound_return_ty(tcx).instantiate(tcx, cid.instance.args).skip_norm_wip();
+    ensure_monomorphic_enough(ty)?;
+
+    let layout = ecx.layout_of(ty)?;
     let (intern_kind, ret) = setup_for_eval(ecx, cid, layout)?;
 
     trace!(
@@ -162,28 +164,31 @@ fn intern_and_validate<'tcx, R: InterpretationResult<'tcx>>(
         Ok(()) => {}
         Err(InternError::DanglingPointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx
-                    .dcx()
-                    .emit_err(errors::DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+                ecx.tcx.dcx().emit_err(diagnostics::DanglingPtrInFinal {
+                    span: ecx.tcx.span,
+                    kind: intern_kind
+                }),
             )));
         }
         Err(InternError::BadMutablePointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx
-                    .dcx()
-                    .emit_err(errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+                ecx.tcx.dcx().emit_err(diagnostics::MutablePtrInFinal {
+                    span: ecx.tcx.span,
+                    kind: intern_kind
+                }),
             )));
         }
         Err(InternError::ConstAllocNotGlobal) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx.dcx().emit_err(errors::ConstHeapPtrInFinal { span: ecx.tcx.span }),
+                ecx.tcx.dcx().emit_err(diagnostics::ConstHeapPtrInFinal { span: ecx.tcx.span }),
             )));
         }
         Err(InternError::PartialPointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx
-                    .dcx()
-                    .emit_err(errors::PartialPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+                ecx.tcx.dcx().emit_err(diagnostics::PartialPtrInFinal {
+                    span: ecx.tcx.span,
+                    kind: intern_kind
+                }),
             )));
         }
     }
@@ -479,7 +484,7 @@ fn const_validate_mplace<'tcx>(
                 CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
             }
         };
-        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)
+        ecx.const_validate_place(&mplace.into(), path, &mut ref_tracking, mode)
             .report_err()
             // Instead of just reporting the `InterpError` via the usual machinery, we give a more targeted
             // error about the validation failure.
@@ -533,7 +538,7 @@ fn report_validation_error<'tcx>(
     let bytes = ecx.print_alloc_bytes_for_diagnostics(alloc_id);
     let info = ecx.get_alloc_info(alloc_id);
     let raw_bytes =
-        errors::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
+        diagnostics::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
 
     crate::const_eval::report(ecx, error, move |diag, span, frames| {
         diag.span_label(span, "it is undefined behavior to use this value");

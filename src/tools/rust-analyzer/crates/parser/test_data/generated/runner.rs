@@ -25,6 +25,10 @@ mod ok {
     #[test]
     fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
     #[test]
+    fn asm_piece_attr() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/asm_piece_attr.rs");
+    }
+    #[test]
     fn asm_sym_paren() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_sym_paren.rs"); }
     #[test]
     fn assoc_const_eq() {
@@ -115,6 +119,10 @@ mod ok {
     #[test]
     fn closure_params() {
         run_and_expect_no_errors("test_data/parser/inline/ok/closure_params.rs");
+    }
+    #[test]
+    fn closure_postfix_range_method_call() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/closure_postfix_range_method_call.rs");
     }
     #[test]
     fn closure_range_method_call() {
@@ -876,6 +884,10 @@ mod err {
     #[test]
     fn let_else_right_curly_brace() {
         run_and_expect_errors("test_data/parser/inline/err/let_else_right_curly_brace.rs");
+    }
+    #[test]
+    fn macro_as_type_bound() {
+        run_and_expect_errors("test_data/parser/inline/err/macro_as_type_bound.rs");
     }
     #[test]
     fn macro_rules_as_macro_name() {

@@ -418,14 +418,32 @@ fn test_retain() {
 }
 
 #[test]
-fn test_extract_if() {
-    let mut x: HashSet<_> = [1].iter().copied().collect();
-    let mut y: HashSet<_> = [1].iter().copied().collect();
+fn test_extract_if_empty() {
+    let mut set: HashSet<i32> = HashSet::new();
+    let extracted: Vec<_> =
+        set.extract_if(|_| unreachable!("there's nothing to decide on")).collect();
 
-    x.extract_if(|_| true).for_each(drop);
-    y.extract_if(|_| false).for_each(drop);
-    assert_eq!(x.len(), 0);
-    assert_eq!(y.len(), 1);
+    assert!(extracted.is_empty());
+    assert!(set.is_empty());
+}
+
+#[test]
+fn test_extract_if_consuming_nothing() {
+    let mut set: HashSet<_> = (0..3).collect();
+    let extracted: Vec<_> = set.extract_if(|_| false).collect();
+
+    assert!(extracted.is_empty());
+    assert_eq!(set, HashSet::from([0, 1, 2]));
+}
+
+#[test]
+fn test_extract_if_consuming_all() {
+    let mut set: HashSet<_> = (0..3).collect();
+    let mut extracted: Vec<_> = set.extract_if(|_| true).collect();
+    extracted.sort_unstable();
+
+    assert_eq!(extracted, vec![0, 1, 2]);
+    assert!(set.is_empty());
 }
 
 #[test]

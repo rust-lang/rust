@@ -1,8 +1,7 @@
 use std::ops::{Bound, Range};
 
-use ast::token::IdentIsRaw;
 use rustc_ast as ast;
-use rustc_ast::token;
+use rustc_ast::token as tk;
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
@@ -31,65 +30,65 @@ trait ToInternal<T> {
     fn to_internal(self) -> T;
 }
 
-impl FromInternal<token::Delimiter> for Delimiter {
-    fn from_internal(delim: token::Delimiter) -> Delimiter {
+impl FromInternal<tk::Delimiter> for Delimiter {
+    fn from_internal(delim: tk::Delimiter) -> Delimiter {
         match delim {
-            token::Delimiter::Parenthesis => Delimiter::Parenthesis,
-            token::Delimiter::Brace => Delimiter::Brace,
-            token::Delimiter::Bracket => Delimiter::Bracket,
-            token::Delimiter::Invisible(_) => Delimiter::None,
+            tk::Delimiter::Parenthesis => Delimiter::Parenthesis,
+            tk::Delimiter::Brace => Delimiter::Brace,
+            tk::Delimiter::Bracket => Delimiter::Bracket,
+            tk::Delimiter::Invisible(_) => Delimiter::None,
         }
     }
 }
 
-impl ToInternal<token::Delimiter> for Delimiter {
-    fn to_internal(self) -> token::Delimiter {
+impl ToInternal<tk::Delimiter> for Delimiter {
+    fn to_internal(self) -> tk::Delimiter {
         match self {
-            Delimiter::Parenthesis => token::Delimiter::Parenthesis,
-            Delimiter::Brace => token::Delimiter::Brace,
-            Delimiter::Bracket => token::Delimiter::Bracket,
-            Delimiter::None => token::Delimiter::Invisible(token::InvisibleOrigin::ProcMacro),
+            Delimiter::Parenthesis => tk::Delimiter::Parenthesis,
+            Delimiter::Brace => tk::Delimiter::Brace,
+            Delimiter::Bracket => tk::Delimiter::Bracket,
+            Delimiter::None => tk::Delimiter::Invisible(tk::InvisibleOrigin::ProcMacro),
         }
     }
 }
 
-impl FromInternal<token::LitKind> for LitKind {
-    fn from_internal(kind: token::LitKind) -> Self {
+impl FromInternal<tk::LitKind> for LitKind {
+    fn from_internal(kind: tk::LitKind) -> Self {
         match kind {
-            token::Byte => LitKind::Byte,
-            token::Char => LitKind::Char,
-            token::Integer => LitKind::Integer,
-            token::Float => LitKind::Float,
-            token::Str => LitKind::Str,
-            token::StrRaw(n) => LitKind::StrRaw(n),
-            token::ByteStr => LitKind::ByteStr,
-            token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
-            token::CStr => LitKind::CStr,
-            token::CStrRaw(n) => LitKind::CStrRaw(n),
-            token::Err(_guar) => {
+            tk::Byte => LitKind::Byte,
+            tk::Char => LitKind::Char,
+            tk::Integer => LitKind::Integer,
+            tk::Float => LitKind::Float,
+            tk::Str => LitKind::Str,
+            tk::StrRaw(n) => LitKind::StrRaw(n),
+            tk::ByteStr => LitKind::ByteStr,
+            tk::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
+            tk::CStr => LitKind::CStr,
+            tk::CStrRaw(n) => LitKind::CStrRaw(n),
+            tk::Err(_guar) => {
                 // This is the only place a `rustc_proc_macro::bridge::LitKind::ErrWithGuar`
                 // is constructed. Note that an `ErrorGuaranteed` is available,
                 // as required. See the comment in `to_internal`.
                 LitKind::ErrWithGuar
             }
-            token::Bool => unreachable!(),
+            tk::Bool => unreachable!(),
         }
     }
 }
 
-impl ToInternal<token::LitKind> for LitKind {
-    fn to_internal(self) -> token::LitKind {
+impl ToInternal<tk::LitKind> for LitKind {
+    fn to_internal(self) -> tk::LitKind {
         match self {
-            LitKind::Byte => token::Byte,
-            LitKind::Char => token::Char,
-            LitKind::Integer => token::Integer,
-            LitKind::Float => token::Float,
-            LitKind::Str => token::Str,
-            LitKind::StrRaw(n) => token::StrRaw(n),
-            LitKind::ByteStr => token::ByteStr,
-            LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
-            LitKind::CStr => token::CStr,
-            LitKind::CStrRaw(n) => token::CStrRaw(n),
+            LitKind::Byte => tk::Byte,
+            LitKind::Char => tk::Char,
+            LitKind::Integer => tk::Integer,
+            LitKind::Float => tk::Float,
+            LitKind::Str => tk::Str,
+            LitKind::StrRaw(n) => tk::StrRaw(n),
+            LitKind::ByteStr => tk::ByteStr,
+            LitKind::ByteStrRaw(n) => tk::ByteStrRaw(n),
+            LitKind::CStr => tk::CStr,
+            LitKind::CStrRaw(n) => tk::CStrRaw(n),
             LitKind::ErrWithGuar => {
                 // This is annoying but valid. `LitKind::ErrWithGuar` would
                 // have an `ErrorGuaranteed` except that type isn't available
@@ -98,7 +97,7 @@ impl ToInternal<token::LitKind> for LitKind {
                 // which would be expensive.
                 #[allow(deprecated)]
                 let guar = ErrorGuaranteed::unchecked_error_guaranteed();
-                token::Err(guar)
+                tk::Err(guar)
             }
         }
     }
@@ -106,24 +105,22 @@ impl ToInternal<token::LitKind> for LitKind {
 
 impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
     fn from_internal(stream: TokenStream) -> Self {
-        use rustc_ast::token::*;
-
         // Estimate the capacity as `stream.len()` rounded up to the next power
         // of two to limit the number of required reallocations.
         let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
 
         for tree in stream.iter() {
-            let (Token { kind, span }, joint) = match tree.clone() {
+            let (tk::Token { kind, span }, joint) = match tree.clone() {
                 tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
                     // In `mk_delimited` we avoid nesting invisible delimited
                     // of the same `MetaVarKind`. Here we do the same but
                     // ignore the `MetaVarKind` because it is discarded when we
                     // convert it to a `Group`.
-                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim
+                    while let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) = delim
                         && stream.len() == 1
                         && let tree = stream.get(0).unwrap()
                         && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
-                        && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
+                        && let tk::Delimiter::Invisible(tk::InvisibleOrigin::MetaVar(_)) = delim2
                     {
                         delim = *delim2;
                         stream = stream2.clone();
@@ -183,79 +180,79 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
             };
 
             match kind {
-                Eq => op("="),
-                Lt => op("<"),
-                Le => op("<="),
-                EqEq => op("=="),
-                Ne => op("!="),
-                Ge => op(">="),
-                Gt => op(">"),
-                AndAnd => op("&&"),
-                OrOr => op("||"),
-                Bang => op("!"),
-                Tilde => op("~"),
-                Plus => op("+"),
-                Minus => op("-"),
-                Star => op("*"),
-                Slash => op("/"),
-                Percent => op("%"),
-                Caret => op("^"),
-                And => op("&"),
-                Or => op("|"),
-                Shl => op("<<"),
-                Shr => op(">>"),
-                PlusEq => op("+="),
-                MinusEq => op("-="),
-                StarEq => op("*="),
-                SlashEq => op("/="),
-                PercentEq => op("%="),
-                CaretEq => op("^="),
-                AndEq => op("&="),
-                OrEq => op("|="),
-                ShlEq => op("<<="),
-                ShrEq => op(">>="),
-                At => op("@"),
-                Dot => op("."),
-                DotDot => op(".."),
-                DotDotDot => op("..."),
-                DotDotEq => op("..="),
-                Comma => op(","),
-                Semi => op(";"),
-                Colon => op(":"),
-                PathSep => op("::"),
-                RArrow => op("->"),
-                LArrow => op("<-"),
-                FatArrow => op("=>"),
-                Pound => op("#"),
-                Dollar => op("$"),
-                Question => op("?"),
-                SingleQuote => op("'"),
+                tk::Eq => op("="),
+                tk::Lt => op("<"),
+                tk::Le => op("<="),
+                tk::EqEq => op("=="),
+                tk::Ne => op("!="),
+                tk::Ge => op(">="),
+                tk::Gt => op(">"),
+                tk::AndAnd => op("&&"),
+                tk::OrOr => op("||"),
+                tk::Bang => op("!"),
+                tk::Tilde => op("~"),
+                tk::Plus => op("+"),
+                tk::Minus => op("-"),
+                tk::Star => op("*"),
+                tk::Slash => op("/"),
+                tk::Percent => op("%"),
+                tk::Caret => op("^"),
+                tk::And => op("&"),
+                tk::Or => op("|"),
+                tk::Shl => op("<<"),
+                tk::Shr => op(">>"),
+                tk::PlusEq => op("+="),
+                tk::MinusEq => op("-="),
+                tk::StarEq => op("*="),
+                tk::SlashEq => op("/="),
+                tk::PercentEq => op("%="),
+                tk::CaretEq => op("^="),
+                tk::AndEq => op("&="),
+                tk::OrEq => op("|="),
+                tk::ShlEq => op("<<="),
+                tk::ShrEq => op(">>="),
+                tk::At => op("@"),
+                tk::Dot => op("."),
+                tk::DotDot => op(".."),
+                tk::DotDotDot => op("..."),
+                tk::DotDotEq => op("..="),
+                tk::Comma => op(","),
+                tk::Semi => op(";"),
+                tk::Colon => op(":"),
+                tk::PathSep => op("::"),
+                tk::RArrow => op("->"),
+                tk::LArrow => op("<-"),
+                tk::FatArrow => op("=>"),
+                tk::Pound => op("#"),
+                tk::Dollar => op("$"),
+                tk::Question => op("?"),
+                tk::SingleQuote => op("'"),
 
-                Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident {
+                tk::Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident {
                     sym,
-                    is_raw: matches!(is_raw, IdentIsRaw::Yes),
+                    is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
                     span,
                 })),
-                NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
+                tk::NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
                     sym: ident.name,
-                    is_raw: matches!(is_raw, IdentIsRaw::Yes),
+                    is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
                     span: ident.span,
                 })),
 
-                Lifetime(name, is_raw) => {
+                tk::Lifetime(name, is_raw) => {
                     let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
                         TokenTree::Ident(Ident {
                             sym: ident.name,
-                            is_raw: matches!(is_raw, IdentIsRaw::Yes),
+                            is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
                             span,
                         }),
                     ]);
                 }
-                NtLifetime(ident, is_raw) => {
+                tk::NtLifetime(ident, is_raw) => {
                     let stream =
-                        TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
+                        TokenStream::token_alone(tk::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::None,
                         stream: Some(stream),
@@ -263,7 +260,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     }))
                 }
 
-                Literal(token::Lit { kind, symbol, suffix }) => {
+                tk::Literal(tk::Lit { kind, symbol, suffix }) => {
                     trees.push(TokenTree::Literal(self::Literal {
                         kind: FromInternal::from_internal(kind),
                         symbol,
@@ -271,15 +268,15 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         span,
                     }));
                 }
-                DocComment(_, attr_style, data) => {
+                tk::DocComment(_, attr_style, data) => {
                     let mut escaped = String::new();
                     for ch in data.as_str().chars() {
                         escaped.extend(ch.escape_debug());
                     }
                     let stream = [
-                        Ident(sym::doc, IdentIsRaw::No),
-                        Eq,
-                        TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
+                        tk::Ident(sym::doc, tk::IdentIsRaw::No),
+                        tk::Eq,
+                        tk::TokenKind::lit(tk::Str, Symbol::intern(&escaped), None),
                     ]
                     .into_iter()
                     .map(|kind| tokenstream::TokenTree::token_alone(kind, span))
@@ -295,8 +292,15 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     }));
                 }
 
-                OpenParen | CloseParen | OpenBrace | CloseBrace | OpenBracket | CloseBracket
-                | OpenInvisible(_) | CloseInvisible(_) | Eof => unreachable!(),
+                tk::OpenParen
+                | tk::CloseParen
+                | tk::OpenBrace
+                | tk::CloseBrace
+                | tk::OpenBracket
+                | tk::CloseBracket
+                | tk::OpenInvisible(_)
+                | tk::CloseInvisible(_)
+                | tk::Eof => unreachable!(),
             }
         }
         trees
@@ -308,8 +312,6 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
     for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_, '_>)
 {
     fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
-        use rustc_ast::token::*;
-
         // The code below is conservative, using `token_alone`/`Spacing::Alone`
         // in most places. It's hard in general to do better when working at
         // the token level. When the resulting code is pretty-printed by
@@ -319,31 +321,31 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
         match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => {
                 let kind = match ch {
-                    b'=' => Eq,
-                    b'<' => Lt,
-                    b'>' => Gt,
-                    b'!' => Bang,
-                    b'~' => Tilde,
-                    b'+' => Plus,
-                    b'-' => Minus,
-                    b'*' => Star,
-                    b'/' => Slash,
-                    b'%' => Percent,
-                    b'^' => Caret,
-                    b'&' => And,
-                    b'|' => Or,
-                    b'@' => At,
-                    b'.' => Dot,
-                    b',' => Comma,
-                    b';' => Semi,
-                    b':' => Colon,
-                    b'#' => Pound,
-                    b'$' => Dollar,
-                    b'?' => Question,
-                    b'\'' => SingleQuote,
+                    b'=' => tk::Eq,
+                    b'<' => tk::Lt,
+                    b'>' => tk::Gt,
+                    b'!' => tk::Bang,
+                    b'~' => tk::Tilde,
+                    b'+' => tk::Plus,
+                    b'-' => tk::Minus,
+                    b'*' => tk::Star,
+                    b'/' => tk::Slash,
+                    b'%' => tk::Percent,
+                    b'^' => tk::Caret,
+                    b'&' => tk::And,
+                    b'|' => tk::Or,
+                    b'@' => tk::At,
+                    b'.' => tk::Dot,
+                    b',' => tk::Comma,
+                    b';' => tk::Semi,
+                    b':' => tk::Colon,
+                    b'#' => tk::Pound,
+                    b'$' => tk::Dollar,
+                    b'?' => tk::Question,
+                    b'\'' => tk::SingleQuote,
                     _ => unreachable!(),
                 };
-                // We never produce `token::Spacing::JointHidden` here, which
+                // We never produce `tk::Spacing::JointHidden` here, which
                 // means the pretty-printing of code produced by proc macros is
                 // ugly, with lots of whitespace between tokens. This is
                 // unavoidable because `proc_macro::Spacing` only applies to
@@ -364,7 +366,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(Ident(sym, is_raw.into()), span)]
+                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, is_raw.into()), span)]
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Integer,
@@ -373,8 +375,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 span,
             }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
                 let symbol = Symbol::intern(symbol);
-                let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
+                let integer = tk::TokenKind::lit(tk::Integer, symbol, suffix);
+                let a = tokenstream::TokenTree::token_joint_hidden(tk::Minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
                 smallvec![a, b]
             }
@@ -385,14 +387,14 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 span,
             }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
                 let symbol = Symbol::intern(symbol);
-                let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
+                let float = tk::TokenKind::lit(tk::Float, symbol, suffix);
+                let a = tokenstream::TokenTree::token_joint_hidden(tk::Minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);
                 smallvec![a, b]
             }
             TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
                 smallvec![tokenstream::TokenTree::token_alone(
-                    TokenKind::lit(kind.to_internal(), symbol, suffix),
+                    tk::TokenKind::lit(kind.to_internal(), symbol, suffix),
                     span,
                 )]
             }
@@ -490,15 +492,17 @@ impl server::Server for Rustc<'_, '_> {
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, String> {
         let name = FileName::proc_macro_source_code(s);
 
-        let mut parser =
+        let mut parser = rustc_errors::catch_fatal_errors(|| {
             new_parser_from_source_str(self.psess(), name, s.to_owned(), StripTokens::Nothing)
-                .map_err(cancel_diags_into_string)?;
+        })
+        .map_err(|_| String::from("failed to parse to literal"))?
+        .map_err(cancel_diags_into_string)?;
 
         let first_span = parser.token.span.data();
         let minus_present = parser.eat(exp!(Minus));
 
         let lit_span = parser.token.span.data();
-        let token::Literal(mut lit) = parser.token.kind else {
+        let tk::Literal(mut lit) = parser.token.kind else {
             return Err("not a literal".to_string());
         };
 
@@ -517,26 +521,26 @@ impl server::Server for Rustc<'_, '_> {
 
             // Check literal is a kind we allow to be negated in a proc macro token.
             match lit.kind {
-                token::LitKind::Bool
-                | token::LitKind::Byte
-                | token::LitKind::Char
-                | token::LitKind::Str
-                | token::LitKind::StrRaw(_)
-                | token::LitKind::ByteStr
-                | token::LitKind::ByteStrRaw(_)
-                | token::LitKind::CStr
-                | token::LitKind::CStrRaw(_)
-                | token::LitKind::Err(_) => {
+                tk::LitKind::Bool
+                | tk::LitKind::Byte
+                | tk::LitKind::Char
+                | tk::LitKind::Str
+                | tk::LitKind::StrRaw(_)
+                | tk::LitKind::ByteStr
+                | tk::LitKind::ByteStrRaw(_)
+                | tk::LitKind::CStr
+                | tk::LitKind::CStrRaw(_)
+                | tk::LitKind::Err(_) => {
                     return Err("non-numeric literal may not be negated".to_string());
                 }
-                token::LitKind::Integer | token::LitKind::Float => {}
+                tk::LitKind::Integer | tk::LitKind::Float => {}
             }
 
             // Synthesize a new symbol that includes the minus sign.
             let symbol = Symbol::intern(&s[..1 + lit.symbol.as_str().len()]);
-            lit = token::Lit::new(lit.kind, symbol, lit.suffix);
+            lit = tk::Lit::new(lit.kind, symbol, lit.suffix);
         }
-        let token::Lit { kind, symbol, suffix } = lit;
+        let tk::Lit { kind, symbol, suffix } = lit;
         Ok(Literal {
             kind: FromInternal::from_internal(kind),
             symbol,
@@ -569,12 +573,15 @@ impl server::Server for Rustc<'_, '_> {
     }
 
     fn ts_from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
-        source_str_to_stream(
-            self.psess(),
-            FileName::proc_macro_source_code(src),
-            src.to_string(),
-            Some(self.call_site),
-        )
+        rustc_errors::catch_fatal_errors(|| {
+            source_str_to_stream(
+                self.psess(),
+                FileName::proc_macro_source_code(src),
+                src.to_string(),
+                Some(self.call_site),
+            )
+        })
+        .map_err(|_| String::from("failed to parse to tokenstream"))?
         .map_err(cancel_diags_into_string)
     }
 
@@ -587,7 +594,7 @@ impl server::Server for Rustc<'_, '_> {
         let expr = try {
             let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
             let expr = p.parse_expr()?;
-            if p.token != token::Eof {
+            if p.token != tk::Eof {
                 p.unexpected()?;
             }
             expr
@@ -608,31 +615,28 @@ impl server::Server for Rustc<'_, '_> {
         // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
-            ast::ExprKind::Lit(token_lit) if token_lit.kind == token::Bool => {
+            ast::ExprKind::Lit(token_lit) if token_lit.kind == tk::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
-                    token::Ident(token_lit.symbol, IdentIsRaw::No),
+                    tk::Ident(token_lit.symbol, tk::IdentIsRaw::No),
                     expr.span,
                 ))
             }
             ast::ExprKind::Lit(token_lit) => {
-                Ok(tokenstream::TokenStream::token_alone(token::Literal(*token_lit), expr.span))
+                Ok(tokenstream::TokenStream::token_alone(tk::Literal(*token_lit), expr.span))
             }
             ast::ExprKind::IncludedBytes(byte_sym) => {
-                let lit = token::Lit::new(
-                    token::ByteStr,
-                    escape_byte_str_symbol(byte_sym.as_byte_str()),
-                    None,
-                );
-                Ok(tokenstream::TokenStream::token_alone(token::TokenKind::Literal(lit), expr.span))
+                let lit =
+                    tk::Lit::new(tk::ByteStr, escape_byte_str_symbol(byte_sym.as_byte_str()), None);
+                Ok(tokenstream::TokenStream::token_alone(tk::TokenKind::Literal(lit), expr.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(token_lit) => match token_lit {
-                    token::Lit { kind: token::Integer | token::Float, .. } => {
+                    tk::Lit { kind: tk::Integer | tk::Float, .. } => {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
-                            tokenstream::TokenTree::token_joint_hidden(token::Minus, e.span),
-                            tokenstream::TokenTree::token_alone(token::Literal(*token_lit), e.span),
+                            tokenstream::TokenTree::token_joint_hidden(tk::Minus, e.span),
+                            tokenstream::TokenTree::token_alone(tk::Literal(*token_lit), e.span),
                         ]))
                     }
                     _ => Err(()),
@@ -658,7 +662,7 @@ impl server::Server for Rustc<'_, '_> {
         let mut stream = base.unwrap_or_default();
         for tree in trees {
             for tt in (tree, &mut *self).to_internal() {
-                stream.push_tree(tt);
+                stream.push_tree_with_gluing(tt);
             }
         }
         stream
@@ -671,7 +675,7 @@ impl server::Server for Rustc<'_, '_> {
     ) -> Self::TokenStream {
         let mut stream = base.unwrap_or_default();
         for s in streams {
-            stream.push_stream(s);
+            stream.push_stream_with_gluing(s);
         }
         stream
     }

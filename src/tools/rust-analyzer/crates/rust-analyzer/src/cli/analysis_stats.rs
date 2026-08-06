@@ -12,8 +12,7 @@ use std::{
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
     Adt, AssocItem, Crate, DefWithBody, FindPathConfig, GenericDef, HasCrate, HasSource,
-    HirDisplay, ModuleDef, Name, Variant, crate_lang_items,
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
+    HirDisplay, ModuleDef, Name, Variant, crate_lang_items, db::HirDatabase,
 };
 use hir_def::{
     DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
@@ -151,26 +150,26 @@ impl flags::AnalysisStats {
                     // measure workspace/project code
                     if !source_root.is_library || self.with_deps {
                         let length = db.file_text(file_id).text(db).lines().count();
-                        let item_stats = db
-                            .file_item_tree(
-                                EditionedFileId::current_edition(db, file_id).into(),
-                                krate.into(),
-                            )
-                            .item_tree_stats()
-                            .into();
+                        let item_stats = hir::db::file_item_tree(
+                            db,
+                            EditionedFileId::current_edition(db, file_id).into(),
+                            krate.into(),
+                        )
+                        .item_tree_stats()
+                        .into();
 
                         workspace_loc += length;
                         workspace_item_trees += 1;
                         workspace_item_stats += item_stats;
                     } else {
                         let length = db.file_text(file_id).text(db).lines().count();
-                        let item_stats = db
-                            .file_item_tree(
-                                EditionedFileId::current_edition(db, file_id).into(),
-                                krate.into(),
-                            )
-                            .item_tree_stats()
-                            .into();
+                        let item_stats = hir::db::file_item_tree(
+                            db,
+                            EditionedFileId::current_edition(db, file_id).into(),
+                            krate.into(),
+                        )
+                        .item_tree_stats()
+                        .into();
 
                         dep_loc += length;
                         dep_item_trees += 1;
@@ -754,10 +753,7 @@ impl flags::AnalysisStats {
             };
             if verbosity.is_spammy() {
                 let full_name = module
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
+                    .path_segments(db)
                     .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
@@ -798,7 +794,9 @@ impl flags::AnalysisStats {
             bodies
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
-                    InferenceResult::of(snap, body);
+                    hir::attach_db(snap, || {
+                        InferenceResult::of(snap, body);
+                    });
                 })
                 .count();
             let _signatures = signatures
@@ -1435,6 +1433,8 @@ impl flags::AnalysisStats {
             annotate_references: false,
             annotate_method_references: false,
             annotate_enum_variant_references: false,
+            references_exclude_imports: false,
+            references_exclude_tests: false,
             location: ide::AnnotationLocation::AboveName,
             filter_adjacent_derive_implementations: false,
             ra_fixture: RaFixtureConfig::default(),
@@ -1488,10 +1488,7 @@ fn full_name(db: &RootDatabase, name: impl Fn() -> Option<Name>, module: hir::Mo
         .into_iter()
         .chain(
             module
-                .path_to_root(db)
-                .into_iter()
-                .filter_map(|it| it.name(db))
-                .rev()
+                .path_segments(db)
                 .chain(Some(name().unwrap_or_else(Name::missing)))
                 .map(|it| it.display(db, Edition::LATEST).to_string()),
         )
@@ -1503,7 +1500,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
         Ok(s) => s,
         Err(SyntheticSyntax) => return "synthetic,,".to_owned(),
     };
-    let root = db.parse_or_expand(src.file_id);
+    let root = src.file_id.parse_or_expand(db);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id.file_id(db));
@@ -1519,7 +1516,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
         Ok(s) => s,
         Err(SyntheticSyntax) => return "synthetic,,".to_owned(),
     };
-    let root = db.parse_or_expand(src.file_id);
+    let root = src.file_id.parse_or_expand(db);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id.file_id(db));
@@ -1538,7 +1535,7 @@ fn expr_syntax_range<'a>(
 ) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.expr_syntax(expr_id);
     if let Ok(src) = src {
-        let root = db.parse_or_expand(src.file_id);
+        let root = src.file_id.parse_or_expand(db);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id.file_id(db));
@@ -1559,7 +1556,7 @@ fn pat_syntax_range<'a>(
 ) -> Option<(&'a VfsPath, LineCol, LineCol)> {
     let src = sm.pat_syntax(pat_id);
     if let Ok(src) = src {
-        let root = db.parse_or_expand(src.file_id);
+        let root = src.file_id.parse_or_expand(db);
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id.file_id(db));

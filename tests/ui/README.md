@@ -216,6 +216,10 @@ Tests for the `--check-cfg` compiler mechanism  for checking cfg configurations,
 
 See [Checking conditional configurations | The rustc book](https://doc.rust-lang.org/rustc/check-cfg.html).
 
+## `tests/ui/checked-type-alias/`
+
+Tests for `#![feature(checked_type_aliases)]`. See [Tracking issue for checked type aliases](https://github.com/rust-lang/rust/issues/112792).
+
 ## `tests/ui/closure-expected-type/`: Closure type inference
 
 Tests targeted at how we deduce the types of closure arguments. This process is a result of some heuristics which take into account the *expected type* we have alongside the *actual types* that we get from inputs.
@@ -766,10 +770,6 @@ Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
 
-## `tests/ui/issues/`: Tests directly related to GitHub issues
-
-**FIXME (#133895)**: Random collection of regression tests and tests for issues, tests in this directory should be audited and rehomed.
-
 ## `tests/ui/iterators/`
 
 These tests revolve around anything to do with iterators, e.g. mismatched types.
@@ -799,10 +799,6 @@ See [Early vs Late bound parameters | rustc-dev-guide](https://rustc-dev-guide.r
 ## `tests/ui/layout/`
 
 See [Type Layout | Reference](https://doc.rust-lang.org/reference/type-layout.html).
-
-## `tests/ui/lazy-type-alias/`
-
-Tests for `#![feature(lazy_type_alias)]`. See [Tracking issue for lazy type aliases #112792](https://github.com/rust-lang/rust/issues/112792).
 
 ## `tests/ui/lazy-type-alias-impl-trait/`
 
@@ -1051,7 +1047,7 @@ Broad category of tests about panics in general, often but not necessarily using
 
 ## `tests/ui/parallel-rustc/`
 
-Efforts towards a [Parallel Rustc Front-end](https://github.com/rust-lang/rust/issues/113349). Includes `-Zthreads=`.
+Regression tests for [Parallel Rustc Front-end](https://github.com/rust-lang/rust/issues/113349).
 
 ## `tests/ui/parser/`
 
@@ -1082,6 +1078,10 @@ See [Tracking issue for pin ergonomics #130494](https://github.com/rust-lang/rus
 ## `tests/ui/pin-macro/`
 
 See [`std::pin`](https://doc.rust-lang.org/std/pin/).
+
+## `tests/ui/pointer_authentication/`
+
+Tests for `-Zpointer-authentication` compiler flag.
 
 ## `tests/ui/precondition-checks/`
 
@@ -1582,6 +1582,13 @@ See [Variance | Reference](https://doc.rust-lang.org/reference/subtyping.html#va
 Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
+
+## `tests/ui/view-types`
+
+Anything related to view types.
+
+See
+[Tracking Issue for view types](https://github.com/rust-lang/rust/issues/155938).
 
 ## `tests/ui/wasm/`
 

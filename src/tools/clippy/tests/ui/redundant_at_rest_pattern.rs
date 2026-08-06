@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
-#![allow(irrefutable_let_patterns, unused)]
 #![warn(clippy::redundant_at_rest_pattern)]
+#![expect(irrefutable_let_patterns)]
 
 #[macro_use]
 extern crate proc_macros;

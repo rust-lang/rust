@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 # This is a small script that we use on CI to collect CPU usage statistics of
 # our builders. By seeing graphs of CPU usage over time we hope to correlate

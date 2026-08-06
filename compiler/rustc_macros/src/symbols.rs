@@ -24,8 +24,7 @@
 //! CFG_RELEASE="0.0.0" cargo +nightly expand > /tmp/rustc_span.rs
 //! ```
 
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
@@ -148,12 +147,12 @@ struct Predefined {
 }
 
 struct Entries {
-    map: HashMap<String, Predefined>,
+    map: IndexMap<String, Predefined>,
 }
 
 impl Entries {
     fn with_capacity(capacity: usize) -> Self {
-        Entries { map: HashMap::with_capacity(capacity) }
+        Entries { map: IndexMap::with_capacity(capacity) }
     }
 
     fn insert(&mut self, span: Span, s: &str, errors: &mut Errors) -> u32 {

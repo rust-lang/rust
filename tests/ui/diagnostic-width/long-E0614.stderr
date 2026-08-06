@@ -1,4 +1,4 @@
-error[E0614]: type `(..., ..., ..., ...)` cannot be dereferenced
+error[E0614]: type `((_, _, _, _), _, _, _)` cannot be dereferenced
   --> $DIR/long-E0614.rs:9:5
    |
 LL |     *x;

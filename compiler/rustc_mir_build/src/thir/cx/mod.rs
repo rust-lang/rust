@@ -99,9 +99,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         Self {
             tcx,
             thir: Thir::new(body_type),
-            // FIXME(#132279): We're in a body, we should use a typing
-            // mode which reveals the opaque types defined by that body.
-            typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+            typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
             typeck_results,
             body_owner: def.to_def_id(),
             apply_adjustments: !find_attr!(tcx, hir_id, CustomMir(..)),

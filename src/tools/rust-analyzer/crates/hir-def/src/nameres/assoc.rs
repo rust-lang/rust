@@ -2,6 +2,7 @@
 
 use std::mem;
 
+use base_db::SourceDatabase;
 use cfg::CfgOptions;
 use hir_expand::{
     AstId, AttrMacroAttrIds, ExpandTo, HirFileId, InFile, Intern, Lookup, MacroCallKind,
@@ -21,7 +22,6 @@ use thin_vec::ThinVec;
 use crate::{
     AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
     ItemLoc, MacroCallId, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
-    db::DefDatabase,
     item_tree::AttrsOrCfg,
     macro_call_as_call_id,
     nameres::{
@@ -41,17 +41,17 @@ pub struct TraitItems {
 #[salsa::tracked]
 impl TraitItems {
     #[inline]
-    pub(crate) fn query(db: &dyn DefDatabase, tr: TraitId) -> &TraitItems {
+    pub(crate) fn query(db: &dyn SourceDatabase, tr: TraitId) -> &TraitItems {
         &Self::query_with_diagnostics(db, tr).0
     }
 
     #[salsa::tracked(returns(ref))]
     pub fn query_with_diagnostics(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         tr: TraitId,
     ) -> (TraitItems, DefDiagnostics) {
         let ItemLoc { container: module_id, id: ast_id } = *tr.lookup(db);
-        let ast_id_map = db.ast_id_map(ast_id.file_id);
+        let ast_id_map = ast_id.file_id.ast_id_map(db);
         let source = ast_id.with_value(ast_id_map.get(ast_id.value)).to_node(db);
         if source.eq_token().is_some() {
             // FIXME(trait-alias) probably needs special handling here
@@ -113,7 +113,7 @@ pub struct ImplItems {
 #[salsa::tracked]
 impl ImplItems {
     #[salsa::tracked(returns(ref))]
-    pub fn of(db: &dyn DefDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
+    pub fn of(db: &dyn SourceDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
         let _p = tracing::info_span!("impl_items_with_diagnostics_query").entered();
         let ItemLoc { container: module_id, id: ast_id } = *id.lookup(db);
 
@@ -133,7 +133,7 @@ impl ImplItems {
 }
 
 struct AssocItemCollector<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     module_id: ModuleId,
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
@@ -151,7 +151,7 @@ struct AssocItemCollector<'db> {
 
 impl<'db> AssocItemCollector<'db> {
     fn new(
-        db: &'db dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         module_id: ModuleId,
         container: ItemContainerId,
         file_id: HirFileId,
@@ -162,8 +162,8 @@ impl<'db> AssocItemCollector<'db> {
             module_id,
             def_map,
             local_def_map,
-            ast_id_map: db.ast_id_map(file_id),
-            span_map: db.span_map(file_id),
+            ast_id_map: file_id.ast_id_map(db),
+            span_map: file_id.span_map(db),
             cfg_options: module_id.krate(db).cfg_options(db),
             file_id,
             container,
@@ -312,7 +312,7 @@ impl<'db> AssocItemCollector<'db> {
                         )
                         .0
                         .take_macros()
-                        .map(|it| self.db.macro_def(it))
+                        .map(|it| it.definition(self.db))
                 };
                 match macro_call_as_call_id(
                     self.db,
@@ -356,9 +356,9 @@ impl<'db> AssocItemCollector<'db> {
             return;
         }
 
-        let (syntax, span_map) = &self.db.parse_macro_expansion(macro_call_id).value;
+        let (syntax, span_map) = &macro_call_id.parse_macro_expansion(self.db).value;
         let old_file_id = mem::replace(&mut self.file_id, macro_call_id.into());
-        let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.db.ast_id_map(self.file_id));
+        let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.file_id.ast_id_map(self.db));
         let old_span_map = mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(span_map));
         self.depth += 1;
 

@@ -207,7 +207,6 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                 let allow_dead_code = attr::mk_attr_nested_word(
                     &self.sess.psess.attr_id_generator,
                     ast::AttrStyle::Outer,
-                    ast::Safety::Default,
                     sym::allow,
                     sym::dead_code,
                     self.def_site,
@@ -348,14 +347,14 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         contract: None,
         body: Some(main_body),
         define_opaque: None,
-        eii_impls: ThinVec::new(),
+        eii_impl: None,
     }));
 
     let main = Box::new(ast::Item {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
-        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public },
         span: sp,
         tokens: None,
     });
@@ -392,7 +391,7 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
 }
 
 fn get_test_runner(sess: &Session, krate: &ast::Crate) -> Option<ast::Path> {
-    match AttributeParser::parse_limited(sess, &krate.attrs, &[sym::test_runner]) {
+    match AttributeParser::parse_limited_sym(sess, &krate.attrs, &[sym::test_runner]) {
         Some(rustc_hir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
         _ => None,
     }

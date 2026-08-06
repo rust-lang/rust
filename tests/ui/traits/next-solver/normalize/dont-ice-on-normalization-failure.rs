@@ -2,7 +2,7 @@
 
 // Regression test for #151308
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 trait Trait {
     type Associated;
 }

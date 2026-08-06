@@ -1,3 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+  --> $DIR/alias-bound-unsound.rs:22:5
+   |
+LL |     type Item = String where String: Copy;
+   |     ^^^^^^^^^
+
 error[E0275]: overflow evaluating the requirement `String: Copy`
   --> $DIR/alias-bound-unsound.rs:22:38
    |
@@ -13,17 +19,17 @@ LL |     type Item: Copy
    |          ^^^^ this trait's associated type doesn't have the requirement `String: Copy`
 
 error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == String`
-  --> $DIR/alias-bound-unsound.rs:28:22
+  --> $DIR/alias-bound-unsound.rs:29:22
    |
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
-  --> $DIR/alias-bound-unsound.rs:28:43
+  --> $DIR/alias-bound-unsound.rs:29:43
    |
 LL |     let _ = identity(<() as Foo>::copy_me(&x));
    |                                           ^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

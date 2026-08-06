@@ -11,7 +11,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
 use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
 
-use super::{GenericArg, GenericArgKind, Pattern, Region};
+use super::{GenericArg, GenericArgKind, Pattern};
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
@@ -169,12 +169,6 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for Region<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind())
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
@@ -250,6 +244,7 @@ TrivialTypeTraversalImpls! {
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
+    rustc_span::def_id::ModId,
     rustc_target::asm::InlineAsmRegOrRegClass,
     // tidy-alphabetical-end
 }
@@ -265,6 +260,12 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
     // tidy-alphabetical-end
+}
+
+TrivialLiftImpls! {
+    rustc_span::ErrorGuaranteed,
+    ty::EarlyParamRegion,
+    ty::LateParamRegion,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -481,25 +482,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Never
             | ty::Foreign(..) => V::Result::output(),
         }
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        folder.try_fold_region(self)
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        folder.fold_region(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        visitor.visit_region(*self)
     }
 }
 
@@ -806,6 +788,6 @@ list_fold! {
     &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>: mk_predefined_opaques_in_body,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
-    &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> : mk_outlives,
+    &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> : mk_outlives,
     &'tcx ty::List<ty::Const<'tcx>> : mk_const_list,
 }

@@ -18,7 +18,7 @@ pub(crate) struct DropCheckOverflow<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag("failed to write file {$path}: {$error}\"")]
+#[diag("failed to write file {$path}: {$error}")]
 pub(crate) struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
@@ -59,7 +59,7 @@ pub(crate) struct RecursionLimitReached<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_hir::limit::Limit,
+    pub suggested_limit: rustc_data_structures::Limit,
 }
 
 #[derive(Diagnostic)]
@@ -71,7 +71,7 @@ pub(crate) struct RecursionLimitReachedSizeSkeleton<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_hir::limit::Limit,
+    pub suggested_limit: rustc_data_structures::Limit,
 }
 
 #[derive(Diagnostic)]
@@ -137,8 +137,19 @@ pub(crate) struct MaxNumNodesInValtree {
 
 #[derive(Diagnostic)]
 #[diag("constant {$global_const_id} cannot be used as pattern")]
-#[note("constants that reference mutable or external memory cannot be used as patterns")]
+#[note(
+    "constants that reference mutable or external memory or that contain dangling references cannot be used as patterns"
+)]
 pub(crate) struct InvalidConstInValtree {
+    #[primary_span]
+    pub span: Span,
+    pub global_const_id: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("constant {$global_const_id} cannot be used as pattern")]
+#[note("constants whose type references itself cannot be used as patterns")]
+pub(crate) struct CyclicConstInValtree {
     #[primary_span]
     pub span: Span,
     pub global_const_id: String,
@@ -159,4 +170,33 @@ pub(crate) struct Reentrant;
 pub(crate) struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("multiple implementations of `#[{$name}]`")]
+pub struct DuplicateEiiImpls {
+    pub name: Symbol,
+
+    #[primary_span]
+    #[label("first implemented here in crate `{$first_crate}`")]
+    pub first_span: Span,
+    pub first_crate: Symbol,
+
+    #[label("also implemented here in crate `{$second_crate}`")]
+    pub second_span: Span,
+    pub second_crate: Symbol,
+
+    #[note("in addition to these two, { $num_additional_crates ->
+        [one] another implementation was found in crate {$additional_crate_names}
+        *[other] more implementations were also found in the following crates: {$additional_crate_names}
+    }")]
+    pub additional_crates: Option<()>,
+
+    pub num_additional_crates: usize,
+    pub additional_crate_names: String,
+
+    #[help(
+        "an \"externally implementable item\" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict"
+    )]
+    pub help: (),
 }

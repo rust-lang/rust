@@ -30,6 +30,7 @@ pub const m_test: test::TestDescAndFn =
         testfn: test::StaticTestFn(#[coverage(off)] ||
                 test::assert_test_result(m_test())),
     };
+#[rustc_test_entrypoint_marker]
 fn m_test() {}
 
 extern crate test;
@@ -55,6 +56,7 @@ pub const z_test: test::TestDescAndFn =
                 test::assert_test_result(z_test())),
     };
 #[ignore = "not yet implemented"]
+#[rustc_test_entrypoint_marker]
 fn z_test() {}
 
 extern crate test;
@@ -79,6 +81,7 @@ pub const a_test: test::TestDescAndFn =
         testfn: test::StaticTestFn(#[coverage(off)] ||
                 test::assert_test_result(a_test())),
     };
+#[rustc_test_entrypoint_marker]
 fn a_test() {}
 #[rustc_main]
 #[coverage(off)]

@@ -396,6 +396,27 @@ impl A {
     }
 
     #[test]
+    fn method_completion_with_late_bound_lifetime_in_return_type() {
+        check_no_kw(
+            r#"
+//- minicore: deref
+struct RelPath;
+struct StripPrefixError;
+enum Result<T, E> { Ok(T), Err(E) }
+impl RelPath {
+    fn strip_prefix<'a>(&'a self) -> Result<&'a RelPath, StripPrefixError> {
+        let path: &RelPath = self.strip_$0;
+        loop {}
+    }
+}
+"#,
+            expect![[r#"
+                me strip_prefix() fn(&'a self) -> Result<&RelPath, StripPrefixError>
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_no_struct_field_completion_for_method_call() {
         check_no_kw(
             r#"

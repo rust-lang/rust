@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::ref_patterns)]
 
 fn use_in_pattern() {

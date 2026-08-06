@@ -1,5 +1,6 @@
-#![allow(dead_code, clippy::explicit_auto_deref, clippy::useless_vec, clippy::manual_contains)]
 #![warn(clippy::search_is_some)]
+#![allow(clippy::explicit_auto_deref, clippy::manual_contains)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];

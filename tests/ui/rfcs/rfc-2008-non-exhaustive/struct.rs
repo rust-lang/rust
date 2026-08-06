@@ -27,7 +27,7 @@ fn main() {
     //~^ ERROR `..` required with struct marked as non-exhaustive
 
     let us = UnitStruct;
-    //~^ ERROR expected value, found struct `UnitStruct` [E0423]
+    //~^ ERROR cannot find value `UnitStruct` in this scope [E0423]
 
     let us_explicit = structs::UnitStruct;
     //~^ ERROR unit struct `UnitStruct` is private [E0603]

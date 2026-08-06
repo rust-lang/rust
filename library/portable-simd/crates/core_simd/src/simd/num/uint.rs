@@ -1,8 +1,7 @@
-use super::sealed::Sealed;
 use crate::simd::{Simd, SimdCast, SimdElement, cmp::SimdOrd};
 
 /// Operations on SIMD vectors of unsigned integers.
-pub trait SimdUint: Copy + Sealed {
+pub impl(self) trait SimdUint: Copy {
     /// Scalar type contained by this SIMD vector type.
     type Scalar;
 
@@ -124,8 +123,6 @@ pub trait SimdUint: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ident ($signed:ident)),* } => {
         $(
-        impl<const N: usize> Sealed for Simd<$ty, N> {}
-
         impl<const N: usize> SimdUint for Simd<$ty, N>
         {
             type Scalar = $ty;

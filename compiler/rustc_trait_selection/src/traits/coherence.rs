@@ -44,7 +44,6 @@ use crate::traits::{
 /// bounds / where-clauses).
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ImplHeader<'tcx> {
-    pub impl_def_id: DefId,
     pub impl_args: ty::GenericArgsRef<'tcx>,
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -207,13 +206,12 @@ fn fresh_impl_header<'tcx>(
     let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
     ImplHeader {
-        impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip(),
         trait_ref: is_of_trait
             .then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip()),
         predicates: tcx
-            .predicates_of(impl_def_id)
+            .clauses_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
             .map(|(c, _)| c.skip_norm_wip().as_predicate())
@@ -265,6 +263,7 @@ fn overlap<'tcx>(
         .infer_ctxt()
         .skip_leak_check(skip_leak_check.is_yes())
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
+        .enable_next_solver_overflow_fcw(false)
         .build(TypingMode::Coherence);
     let selcx = &mut SelectionContext::new(&infcx);
     if track_ambiguity_causes.is_yes() {
@@ -506,7 +505,11 @@ fn impl_intersection_has_negative_obligation(
 
     // N.B. We need to unify impl headers *with* `TypingMode::Coherence`,
     // even if proving negative predicates doesn't need `TypingMode::Coherence`.
-    let ref infcx = tcx.infer_ctxt().with_next_trait_solver(true).build(TypingMode::Coherence);
+    let ref infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .enable_next_solver_overflow_fcw(false)
+        .build(TypingMode::Coherence);
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
@@ -548,7 +551,7 @@ fn impl_intersection_has_negative_obligation(
 
     util::elaborate(
         tcx,
-        tcx.predicates_of(impl2_def_id)
+        tcx.clauses_of(impl2_def_id)
             .instantiate(tcx, impl2_header.impl_args)
             .into_iter()
             .map(|(c, s)| (c.skip_norm_wip(), s)),

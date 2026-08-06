@@ -38,6 +38,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &closure.body,
                     closure.fn_decl_span,
                     closure.fn_arg_span,
+                    attrs,
                 ),
                 span: self.lower_span(e.span),
             },
@@ -240,7 +241,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
             kind: closure_kind,
-            constness: self.lower_constness(constness),
+            constness: self.lower_constness(attrs, constness),
             explicit_captures,
         });
 
@@ -308,6 +309,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
+        attrs: &[hir::Attribute],
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -369,7 +371,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
-            constness: self.lower_constness(constness),
+            constness: self.lower_constness(attrs, constness),
             explicit_captures: &[],
         });
         hir::ExprKind::Closure(c)

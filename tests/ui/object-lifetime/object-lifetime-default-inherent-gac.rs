@@ -4,7 +4,12 @@
 
 // FIXME: Ideally, this test would be check-pass. See below for details.
 
-#![feature(min_generic_const_args, inherent_associated_types, generic_const_items)]
+#![feature(
+    min_generic_const_args,
+    macroless_generic_const_args,
+    inherent_associated_types,
+    generic_const_items
+)]
 #![expect(incomplete_features)]
 
 mod own { // the lifetime comes from the own generics

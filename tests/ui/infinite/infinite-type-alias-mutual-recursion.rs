@@ -6,7 +6,7 @@
 
 #![feature(rustc_attrs)]
 #![rustc_no_implicit_bounds]
-#![cfg_attr(any(feature_old, feature_new), feature(lazy_type_alias))]
+#![cfg_attr(any(feature_old, feature_new), feature(checked_type_aliases))]
 #![allow(incomplete_features)]
 
 type X1 = X2;

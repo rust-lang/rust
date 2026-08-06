@@ -1,9 +1,11 @@
+// ignore-tidy-file-linelength
+//
 // Make sure that marks from declarative macros are applied to tokens in nonterminal.
 
 //@ check-pass
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 //@ compile-flags: -Z trim-diagnostic-paths=no
-// ignore-tidy-linelength
+//
 //@ normalize-stdout: "\d+#" -> "0#"
 //@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
 //@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"

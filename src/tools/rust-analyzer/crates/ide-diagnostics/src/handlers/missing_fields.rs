@@ -1,8 +1,6 @@
 use either::Either;
 use hir::{
-    AssocItem, FindPathConfig, HasVisibility, HirDisplay, InFile, Type,
-    db::{ExpandDatabase, HirDatabase},
-    sym,
+    AssocItem, FindPathConfig, HasVisibility, HirDisplay, InFile, Type, db::HirDatabase, sym,
 };
 use ide_db::{
     FxHashMap,
@@ -65,7 +63,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingFields) -> Option<Vec
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.file);
+    let root = d.file.parse_or_expand(ctx.sema.db);
 
     let current_module =
         ctx.sema.scope(d.field_list_parent.to_node(&root).syntax()).map(|it| it.module());
@@ -117,7 +115,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingFields) -> Option<Vec
             });
 
             let old_field_list = field_list_parent.record_expr_field_list()?;
-            let root = old_field_list.syntax().ancestors().last()?;
+            let root = old_field_list.syntax().tree_top();
             let (editor, _) = SyntaxEditor::new(root);
             let make = editor.make();
 
@@ -178,7 +176,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingFields) -> Option<Vec
             let missing_fields = ctx.sema.record_pattern_missing_fields(field_list_parent);
 
             let old_field_list = field_list_parent.record_pat_field_list()?;
-            let root = old_field_list.syntax().ancestors().last()?;
+            let root = old_field_list.syntax().tree_top();
             let (editor, _) = SyntaxEditor::new(root);
             let make = editor.make();
 
@@ -276,7 +274,7 @@ fn get_default_constructor(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_has_fix, check_no_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {
@@ -831,7 +829,7 @@ fn f() {
 
     #[test]
     fn test_fill_struct_pat_fields_partial() {
-        check_fix(
+        check_has_fix(
             r#"
 struct S { a: &'static str, b: i32 }
 

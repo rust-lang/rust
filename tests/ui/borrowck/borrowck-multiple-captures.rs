@@ -47,7 +47,6 @@ fn same_var_after_move() {
     let x: Box<_> = Box::new(1);
     drop(x);
     thread::spawn(move|| {
-        //~^ ERROR use of moved value: `x`
         drop(x);
         drop(x); //~ ERROR use of moved value: `x`
     });

@@ -1,4 +1,4 @@
-// ignore-tidy-trailing-newlines
+// ignore-tidy-file-trailing-newlines
 
 // Verify that unused parens lint does not try to create a span
 // which points in the middle of a multibyte character.

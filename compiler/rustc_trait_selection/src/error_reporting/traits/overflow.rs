@@ -1,9 +1,9 @@
 use std::fmt;
 
+use rustc_data_structures::Limit;
 use rustc_errors::{Diag, E0275, EmissionGuarantee, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::limit::Limit;
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{self, TyCtxt, Upcast};
@@ -150,7 +150,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
             |err| {
                 self.note_obligation_cause_code(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     err,
                     predicate,
                     obligation.param_env,

@@ -17,17 +17,17 @@ pub(super) fn check(
     arg: &Expr<'_>,
     msrv: Msrv,
 ) {
-    // `pointer::add` and `pointer::wrapping_add` are only stable since 1.26.0. These functions
-    // became const-stable in 1.61.0, the same version that `pointer::offset` became const-stable.
-    if !msrv.meets(cx, msrvs::POINTER_ADD_SUB_METHODS) {
-        return;
-    }
-
     let method = match method {
         sym::offset => Method::Offset,
         sym::wrapping_offset => Method::WrappingOffset,
         _ => return,
     };
+
+    // `pointer::add` and `pointer::wrapping_add` are only stable since 1.26.0. These functions
+    // became const-stable in 1.61.0, the same version that `pointer::offset` became const-stable.
+    if !msrv.meets(cx, msrvs::POINTER_ADD_SUB_METHODS) {
+        return;
+    }
 
     if !cx.typeck_results().expr_ty_adjusted(recv).is_raw_ptr() {
         return;
@@ -43,7 +43,7 @@ pub(super) fn check(
         return;
     };
 
-    let msg = format!("use of `{method}` with a `usize` casted to an `isize`");
+    let msg = format!("use of `{method}` with a `usize` cast to an `isize`");
     span_lint_and_then(cx, PTR_OFFSET_WITH_CAST, expr.span, msg, |diag| {
         diag.multipart_suggestion(
             format!("use `{}` instead", method.suggestion()),

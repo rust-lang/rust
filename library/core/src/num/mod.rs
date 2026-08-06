@@ -1125,8 +1125,8 @@ impl u8 {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_06_05
     ///
     /// # Examples
     ///
@@ -1575,10 +1575,10 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[cold]
 #[track_caller]
-const fn from_ascii_radix_panic(radix: u32) -> ! {
+const fn from_ascii_bytes_radix_panic(radix: u32) -> ! {
     const_panic!(
-        "from_ascii_radix: radix must lie in the range `[2, 36]`",
-        "from_ascii_radix: radix must lie in the range `[2, 36]` - found {radix}",
+        "from_ascii_bytes_radix: radix must lie in the range `[2, 36]`",
+        "from_ascii_bytes_radix: radix must lie in the range `[2, 36]` - found {radix}",
         radix: u32 = radix,
     )
 }
@@ -1676,7 +1676,7 @@ macro_rules! from_str_int_impl {
             #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
-                <$int_ty>::from_ascii_radix(src.as_bytes(), radix)
+                <$int_ty>::from_ascii_bytes_radix_impl(src.as_bytes(), radix)
             }
 
             /// Parses an integer from an ASCII-byte slice with decimal digits.
@@ -1700,18 +1700,22 @@ macro_rules! from_str_int_impl {
             /// ```
             /// #![feature(int_from_ascii)]
             ///
-            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii(b\"+10\"), Ok(10));")]
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_bytes(b\"+10\"), Ok(10));")]
             /// ```
             /// Trailing space returns error:
             /// ```
             /// # #![feature(int_from_ascii)]
             /// #
-            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii(b\"1 \").is_err());")]
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_bytes(b\"1 \").is_err());")]
             /// ```
             #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
-            pub const fn from_ascii(src: &[u8]) -> Result<$int_ty, ParseIntError> {
-                <$int_ty>::from_ascii_radix(src, 10)
+            pub const fn from_ascii_bytes<T>(src: T) -> Result<$int_ty, ParseIntError>
+            where
+                T: [const] AsRef<[u8]> + [const] crate::marker::Destruct
+            {
+                <$int_ty>::from_ascii_bytes_radix(src.as_ref(), 10)
             }
 
             /// Parses an integer from an ASCII-byte slice with digits in a given base.
@@ -1744,22 +1748,31 @@ macro_rules! from_str_int_impl {
             /// ```
             /// #![feature(int_from_ascii)]
             ///
-            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_radix(b\"A\", 16), Ok(10));")]
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_bytes_radix(b\"A\", 16), Ok(10));")]
             /// ```
             /// Trailing space returns error:
             /// ```
             /// # #![feature(int_from_ascii)]
             /// #
-            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_radix(b\"1 \", 10).is_err());")]
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_bytes_radix(b\"1 \", 10).is_err());")]
             /// ```
             #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
-            pub const fn from_ascii_radix(src: &[u8], radix: u32) -> Result<$int_ty, ParseIntError> {
+            pub const fn from_ascii_bytes_radix<T>(src: T, radix: u32) -> Result<$int_ty, ParseIntError>
+            where
+                T: [const] AsRef<[u8]> + [const] crate::marker::Destruct
+            {
+                <$int_ty>::from_ascii_bytes_radix_impl(src.as_ref(), radix)
+            }
+
+            #[inline]
+            pub(super) const fn from_ascii_bytes_radix_impl(src: &[u8], radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
 
                 if 2 > radix || radix > 36 {
-                    from_ascii_radix_panic(radix);
+                    from_ascii_bytes_radix_panic(radix);
                 }
 
                 if src.is_empty() {

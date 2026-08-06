@@ -15,7 +15,7 @@ impl SingleAttributeParser for RustcDummyParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::ManuallyChecked;
     const TEMPLATE: AttributeTemplate = template!(Word); // Anything, really
     const STABILITY: AttributeStability =
-        unstable!(rustc_attrs, "the `#[rustc_dummy]` attribute is used for rustc unit tests");
+        unstable!(rustc_attrs, "the `rustc_dummy` attribute is used for rustc unit tests");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         args.ignore_args();

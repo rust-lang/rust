@@ -1,19 +1,23 @@
 //! This module is concerned with finding methods that a given type provides.
 //! For details about how this works in rustc, see the method lookup page in the
-//! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
-//! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
+//! [rustc guide] and the corresponding code mostly in
+//! [`rustc_hir_typeck/method/probe.rs`].
+//!
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
+//! [`rustc_hir_typeck/method/probe.rs`]: https://github.com/rust-lang/rust/blob/5503df87342a73d0c29126a7e08dc9c1255c46ad/compiler/rustc_hir_typeck/src/method/probe.rs
 
 mod confirm;
 mod probe;
 
 use either::Either;
 use hir_expand::name::Name;
+use salsa::Update;
 use span::Edition;
 use tracing::{debug, instrument};
 
-use base_db::Crate;
+use base_db::{Crate, salsa::update_fallback_db};
 use hir_def::{
-    AssocItemId, BlockId, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
+    AssocItemId, BlockIdLt, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
     ImplId, ItemContainerId, ModuleId, TraitId,
     attrs::AttrFlags,
     builtin_derive::BuiltinDeriveImplMethod,
@@ -27,7 +31,7 @@ use hir_def::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    TypeVisitableExt,
+    TypeVisitableExt, VisitorResult,
     fast_reject::{TreatParams, simplify_type},
     inherent::{BoundExistentialPredicates, IntoKind},
 };
@@ -50,6 +54,7 @@ use crate::{
         obligation_ctxt::ObligationCtxt,
         util::clauses_as_obligations,
     },
+    ret,
     traits::ParamEnvAndCrate,
 };
 
@@ -122,7 +127,7 @@ pub enum CandidateSource {
     Trait(TraitId),
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Performs method lookup. If lookup is successful, it will return the callee
     /// and store an appropriate adjustment for the self-expr. In some cases it may
     /// report an error (e.g., invoking the `drop` method).
@@ -233,7 +238,7 @@ impl<'db> InferenceTable<'db> {
         let args = GenericArgs::for_item(
             self.interner(),
             trait_def_id.into(),
-            |param_idx, param_id, _| match param_id {
+            |param_idx, param_id, _, _| match param_id {
                 GenericParamId::LifetimeParamId(_) | GenericParamId::ConstParamId(_) => {
                     unreachable!("did not expect operator trait to have lifetime/const")
                 }
@@ -519,10 +524,10 @@ fn crates_containing_incoherent_inherent_impls(db: &dyn HirDatabase, krate: Crat
     krate.transitive_deps(db).into_iter().filter(|krate| krate.data(db).origin.is_lang()).collect()
 }
 
-pub fn with_incoherent_inherent_impls(
-    db: &dyn HirDatabase,
+pub fn with_incoherent_inherent_impls<'db>(
+    db: &'db dyn HirDatabase,
     krate: Crate,
-    self_ty: &SimplifiedType,
+    self_ty: &SimplifiedType<'db>,
     mut callback: impl FnMut(&[ImplId]),
 ) {
     let has_incoherent_impls = match self_ty.def() {
@@ -544,7 +549,7 @@ pub fn with_incoherent_inherent_impls(
     }
 }
 
-pub fn simplified_type_module(db: &dyn HirDatabase, ty: &SimplifiedType) -> Option<ModuleId> {
+pub fn simplified_type_module(db: &dyn HirDatabase, ty: &SimplifiedType<'_>) -> Option<ModuleId> {
     match ty.def()? {
         SolverDefId::AdtId(id) => Some(id.module(db)),
         SolverDefId::TypeAliasId(id) => Some(id.module(db)),
@@ -553,15 +558,16 @@ pub fn simplified_type_module(db: &dyn HirDatabase, ty: &SimplifiedType) -> Opti
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct InherentImpls {
-    map: FxHashMap<SimplifiedType, Box<[ImplId]>>,
+#[derive(Debug, PartialEq, Eq, Update)]
+pub struct InherentImpls<'db> {
+    #[update(bounds(SolverDefId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    map: FxHashMap<SimplifiedType<'db>, Box<[ImplId]>>,
 }
 
 #[salsa::tracked]
-impl InherentImpls {
+impl<'db> InherentImpls<'db> {
     #[salsa::tracked(returns(ref))]
-    pub fn for_crate(db: &dyn HirDatabase, krate: Crate) -> Self {
+    pub fn for_crate(db: &'db dyn HirDatabase, krate: Crate) -> InherentImpls<'db> {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
 
         let crate_def_map = crate_def_map(db, krate);
@@ -570,7 +576,10 @@ impl InherentImpls {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn for_block(db: &dyn HirDatabase, block: BlockId) -> Option<Box<Self>> {
+    pub fn for_block(
+        db: &'db dyn HirDatabase,
+        block: BlockIdLt<'db>,
+    ) -> Option<Box<InherentImpls<'db>>> {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
 
         let block_def_map = block_def_map(db, block);
@@ -579,8 +588,8 @@ impl InherentImpls {
     }
 }
 
-impl InherentImpls {
-    fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap) -> Self {
+impl<'db> InherentImpls<'db> {
+    fn collect_def_map(db: &'db dyn HirDatabase, def_map: &'db DefMap) -> Self {
         let mut map = FxHashMap::default();
         collect(db, def_map, &mut map);
         let mut map = map
@@ -590,10 +599,10 @@ impl InherentImpls {
         map.shrink_to_fit();
         return Self { map };
 
-        fn collect(
-            db: &dyn HirDatabase,
+        fn collect<'db>(
+            db: &'db dyn HirDatabase,
             def_map: &DefMap,
-            map: &mut FxHashMap<SimplifiedType, Vec<ImplId>>,
+            map: &mut FxHashMap<SimplifiedType<'db>, Vec<ImplId>>,
         ) {
             for (_module_id, module_data) in def_map.modules() {
                 for impl_id in module_data.scope.inherent_impls() {
@@ -619,36 +628,37 @@ impl InherentImpls {
         }
     }
 
-    pub fn for_self_ty(&self, self_ty: &SimplifiedType) -> &[ImplId] {
+    pub fn for_self_ty(&self, self_ty: &SimplifiedType<'db>) -> &[ImplId] {
         self.map.get(self_ty).map(|it| &**it).unwrap_or_default()
     }
 
     pub fn for_each_crate_and_block(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         krate: Crate,
-        block: Option<BlockId>,
-        for_each: &mut dyn FnMut(&InherentImpls),
+        block: Option<BlockIdLt<'db>>,
+        for_each: &mut dyn FnMut(&InherentImpls<'db>),
     ) {
-        let blocks = std::iter::successors(block, |block| block.loc(db).module.block(db));
+        let blocks = std::iter::successors(block, |block| block.module(db).block(db));
         blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
         for_each(Self::for_crate(db, krate));
     }
 }
 
-#[derive(Debug, PartialEq)]
-struct OneTraitImpls {
-    non_blanket_impls: FxHashMap<SimplifiedType, (Box<[ImplId]>, Box<[BuiltinDeriveImplId]>)>,
+#[derive(Debug, PartialEq, Update)]
+struct OneTraitImpls<'db> {
+    #[update(bounds(SolverDefId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    non_blanket_impls: FxHashMap<SimplifiedType<'db>, (Box<[ImplId]>, Box<[BuiltinDeriveImplId]>)>,
     blanket_impls: Box<[ImplId]>,
 }
 
 #[derive(Default)]
-struct OneTraitImplsBuilder {
-    non_blanket_impls: FxHashMap<SimplifiedType, (Vec<ImplId>, Vec<BuiltinDeriveImplId>)>,
+struct OneTraitImplsBuilder<'db> {
+    non_blanket_impls: FxHashMap<SimplifiedType<'db>, (Vec<ImplId>, Vec<BuiltinDeriveImplId>)>,
     blanket_impls: Vec<ImplId>,
 }
 
-impl OneTraitImplsBuilder {
-    fn finish(self) -> OneTraitImpls {
+impl<'db> OneTraitImplsBuilder<'db> {
+    fn finish(self) -> OneTraitImpls<'db> {
         let mut non_blanket_impls = self
             .non_blanket_impls
             .into_iter()
@@ -662,15 +672,15 @@ impl OneTraitImplsBuilder {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct TraitImpls {
-    map: FxHashMap<TraitId, OneTraitImpls>,
+#[derive(Debug, PartialEq, Update)]
+pub struct TraitImpls<'db> {
+    map: FxHashMap<TraitId, OneTraitImpls<'db>>,
 }
 
 #[salsa::tracked]
-impl TraitImpls {
+impl<'db> TraitImpls<'db> {
     #[salsa::tracked(returns(ref))]
-    pub fn for_crate(db: &dyn HirDatabase, krate: Crate) -> Arc<Self> {
+    pub fn for_crate(db: &'db dyn HirDatabase, krate: Crate) -> Arc<TraitImpls<'db>> {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
 
         let crate_def_map = crate_def_map(db, krate);
@@ -678,8 +688,11 @@ impl TraitImpls {
         Arc::new(result)
     }
 
-    #[salsa::tracked(returns(ref))]
-    pub fn for_block(db: &dyn HirDatabase, block: BlockId) -> Option<Box<Self>> {
+    #[salsa::tracked(returns(as_deref))]
+    pub fn for_block(
+        db: &'db dyn HirDatabase,
+        block: BlockIdLt<'db>,
+    ) -> Option<Box<TraitImpls<'db>>> {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
 
         let block_def_map = block_def_map(db, block);
@@ -687,14 +700,14 @@ impl TraitImpls {
         if result.map.is_empty() { None } else { Some(Box::new(result)) }
     }
 
-    #[salsa::tracked(returns(ref))]
-    pub fn for_crate_and_deps(db: &dyn HirDatabase, krate: Crate) -> Box<[Arc<Self>]> {
+    #[salsa::tracked(returns(deref))]
+    pub fn for_crate_and_deps(db: &'db dyn HirDatabase, krate: Crate) -> Box<[Arc<Self>]> {
         krate.transitive_deps(db).iter().map(|&dep| Self::for_crate(db, dep).clone()).collect()
     }
 }
 
-impl TraitImpls {
-    fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap) -> Self {
+impl<'db> TraitImpls<'db> {
+    fn collect_def_map(db: &'db dyn HirDatabase, def_map: &DefMap) -> Self {
         let lang_items = hir_def::lang_item::lang_items(db, def_map.krate());
         let mut map = FxHashMap::default();
         collect(db, def_map, lang_items, &mut map);
@@ -705,11 +718,11 @@ impl TraitImpls {
         map.shrink_to_fit();
         return Self { map };
 
-        fn collect(
-            db: &dyn HirDatabase,
+        fn collect<'db>(
+            db: &'db dyn HirDatabase,
             def_map: &DefMap,
             lang_items: &LangItems,
-            map: &mut FxHashMap<TraitId, OneTraitImplsBuilder>,
+            map: &mut FxHashMap<TraitId, OneTraitImplsBuilder<'db>>,
         ) {
             for (_module_id, module_data) in def_map.modules() {
                 for impl_id in module_data.scope.trait_impls() {
@@ -728,7 +741,13 @@ impl TraitImpls {
                     {
                         continue;
                     }
+
                     let self_ty = trait_ref.self_ty();
+                    if self_ty_has_error_constructor(self_ty) {
+                        // If we see `impl Foo for NoSuchType`, just ignore it.
+                        continue;
+                    }
+
                     let interner = DbInterner::new_no_crate(db);
                     let entry = map.entry(trait_ref.def_id.0).or_default();
                     match simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer) {
@@ -770,7 +789,7 @@ impl TraitImpls {
     pub fn has_impls_for_trait_and_self_ty(
         &self,
         trait_: TraitId,
-        self_ty: &SimplifiedType,
+        self_ty: &SimplifiedType<'db>,
     ) -> bool {
         self.map.get(&trait_).is_some_and(|trait_impls| {
             trait_impls.non_blanket_impls.contains_key(self_ty)
@@ -779,10 +798,10 @@ impl TraitImpls {
     }
 
     pub fn for_trait_and_self_ty(
-        &self,
+        &'db self,
         trait_: TraitId,
-        self_ty: &SimplifiedType,
-    ) -> (&[ImplId], &[BuiltinDeriveImplId]) {
+        self_ty: &SimplifiedType<'db>,
+    ) -> (&'db [ImplId], &'db [BuiltinDeriveImplId]) {
         self.map
             .get(&trait_)
             .and_then(|map| map.non_blanket_impls.get(self_ty))
@@ -806,7 +825,7 @@ impl TraitImpls {
 
     pub fn for_self_ty(
         &self,
-        self_ty: &SimplifiedType,
+        self_ty: &SimplifiedType<'db>,
         mut callback: impl FnMut(Either<&[ImplId], &[BuiltinDeriveImplId]>),
     ) {
         for for_trait in self.map.values() {
@@ -817,50 +836,84 @@ impl TraitImpls {
         }
     }
 
-    pub fn for_each_crate_and_block(
-        db: &dyn HirDatabase,
+    pub fn for_each_crate_and_block<R: VisitorResult>(
+        db: &'db dyn HirDatabase,
         krate: Crate,
-        block: Option<BlockId>,
-        for_each: &mut dyn FnMut(&TraitImpls),
-    ) {
-        let blocks = std::iter::successors(block, |block| block.loc(db).module.block(db));
-        blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
-        Self::for_crate_and_deps(db, krate).iter().map(|it| &**it).for_each(for_each);
+        block: Option<BlockIdLt<'db>>,
+        for_each: &mut dyn FnMut(&TraitImpls<'db>) -> R,
+    ) -> R {
+        let blocks = std::iter::successors(block, |block| block.module(db).block(db));
+        for impl_ in blocks.filter_map(|block| Self::for_block(db, block)) {
+            ret!(for_each(impl_));
+        }
+        for impl_ in Self::for_crate_and_deps(db, krate) {
+            ret!(for_each(impl_));
+        }
+        R::output()
     }
 
     /// Like [`Self::for_each_crate_and_block()`], but takes in account two blocks, one for a trait and one for a self type.
-    pub fn for_each_crate_and_block_trait_and_type(
-        db: &dyn HirDatabase,
+    pub fn for_each_crate_and_block_trait_and_type<R: VisitorResult>(
+        db: &'db dyn HirDatabase,
         krate: Crate,
-        type_block: Option<BlockId>,
-        trait_block: Option<BlockId>,
-        for_each: &mut dyn FnMut(&TraitImpls),
-    ) {
+        type_block: Option<BlockIdLt<'db>>,
+        trait_block: Option<BlockIdLt<'db>>,
+        for_each: &mut dyn FnMut(&TraitImpls<'db>) -> R,
+    ) -> R {
         let in_self_and_deps = TraitImpls::for_crate_and_deps(db, krate);
-        in_self_and_deps.iter().for_each(|impls| for_each(impls));
+        for impl_ in in_self_and_deps {
+            ret!(for_each(impl_));
+        }
 
         // We must not provide duplicate impls to the solver. Therefore we work with the following strategy:
         // start from each block, and walk ancestors until you meet the other block. If they never meet,
         // that means there can't be duplicate impls; if they meet, we stop the search of the deeper block.
         // This breaks when they are equal (both will stop immediately), therefore we handle this case
         // specifically.
-        let blocks_iter = |block: Option<BlockId>| {
-            std::iter::successors(block, |block| block.loc(db).module.block(db))
+        let blocks_iter = |block: Option<BlockIdLt<'db>>| {
+            std::iter::successors(block, |block| block.module(db).block(db))
         };
-        let for_each_block = |current_block: Option<BlockId>, other_block: Option<BlockId>| {
+        let for_each_block = |current_block: Option<BlockIdLt<'db>>,
+                              other_block: Option<BlockIdLt<'db>>| {
             blocks_iter(current_block)
                 .take_while(move |&block| {
                     other_block.is_none_or(|other_block| other_block != block)
                 })
-                .filter_map(move |block| TraitImpls::for_block(db, block).as_deref())
+                .filter_map(move |block| TraitImpls::for_block(db, block))
         };
         if trait_block == type_block {
-            blocks_iter(trait_block)
-                .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
-                .for_each(for_each);
+            for impl_ in
+                blocks_iter(trait_block).filter_map(|block| TraitImpls::for_block(db, block))
+            {
+                ret!(for_each(impl_));
+            }
         } else {
-            for_each_block(trait_block, type_block).for_each(&mut *for_each);
-            for_each_block(type_block, trait_block).for_each(for_each);
+            for impl_ in for_each_block(trait_block, type_block) {
+                ret!(for_each(impl_));
+            }
+            for impl_ in for_each_block(type_block, trait_block) {
+                ret!(for_each(impl_));
+            }
         }
+        R::output()
+    }
+}
+
+fn self_ty_has_error_constructor<'db>(mut self_ty: Ty<'db>) -> bool {
+    if !self_ty.references_non_lt_error() {
+        return false;
+    }
+
+    loop {
+        self_ty = match self_ty.kind() {
+            TyKind::Error(_) => return true,
+            TyKind::Ref(_, inner, _)
+            | TyKind::RawPtr(inner, _)
+            | TyKind::Array(inner, _)
+            | TyKind::Slice(inner)
+            | TyKind::Pat(inner, _) => inner,
+            TyKind::UnsafeBinder(inner) => inner.skip_binder(),
+            _ => return false,
+        };
     }
 }

@@ -19,9 +19,9 @@
 // ... but pass on 64-bit x86_64 linux.
 //@[alignment_matches] only-x86_64
 //@[alignment_matches] only-linux
+//@[alignment_matches] check-pass
 
 fn main() {
     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
     //[alignment_mismatch]~^ ERROR no associated function or constant named `from_mut` found for struct `Atomic<u64>`
-    //[alignment_matches]~^^ ERROR use of unstable library feature `atomic_from_mut`
 }

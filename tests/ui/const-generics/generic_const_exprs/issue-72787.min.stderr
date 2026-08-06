@@ -6,6 +6,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `LHS`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:11:24
@@ -15,6 +16,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `RHS`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:23:25
@@ -24,6 +26,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `I`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/issue-72787.rs:23:36
@@ -33,6 +36,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `J`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: aborting due to 4 previous errors
 

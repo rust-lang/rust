@@ -9,11 +9,12 @@ use std::fs::{self, OpenOptions, TryLockError};
 use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::Once;
 use std::time::Instant;
 use std::{env, process};
 
 use bootstrap::{
-    Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, Subcommand, debug,
+    Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, StepStack, Subcommand, debug,
     find_recent_config_change_ids, human_readable_changes, t,
 };
 
@@ -26,6 +27,32 @@ fn main() {
     let guard = bootstrap::setup_tracing("BOOTSTRAP_TRACING");
 
     let _start_time = Instant::now();
+
+    let default_panic_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        static BACKTRACE_LOCK: Once = Once::new();
+
+        // Always print backtraces to provide richer errors, to help debug hard-to-reproduce panics
+        // when the user didn't specify RUST_BACKTRACE
+        // Note that we only override this variable in the panic handler, because bootstrap might
+        // manually capture backtraces when a command is executed, and in that case we do not want
+        // to always force backtraces.
+        BACKTRACE_LOCK.call_once(|| {
+            if std::env::var("RUST_BACKTRACE").is_err() {
+                unsafe {
+                    std::env::set_var("RUST_BACKTRACE", "1");
+                }
+            }
+        });
+
+        default_panic_hook(info);
+        StepStack::with_current(|stack| {
+            eprintln!("\nBootstrap has panicked, currently active steps:");
+            for step in stack.get_active_steps() {
+                eprintln!("{} at {}", step.info, step.location);
+            }
+        });
+    }));
 
     let args = env::args().skip(1).collect::<Vec<_>>();
 

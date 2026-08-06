@@ -1,38 +1,38 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:13:35
+  --> $DIR/explicit_anon_consts.rs:13:57
    |
-LL | type Adt4<const N: usize> = Foo<{ 1 + 1 }>;
-   |                                   ^^^^^
+LL | type Adt4<const N: usize> = Foo<core::direct_const_arg!(1 + 1)>;
+   |                                                         ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:21:34
+  --> $DIR/explicit_anon_consts.rs:21:58
    |
-LL | type Arr4<const N: usize> = [(); 1 + 1];
-   |                                  ^^^^^
+LL | type Arr4<const N: usize> = [(); core::direct_const_arg!(1 + 1)];
+   |                                                          ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:30:19
+  --> $DIR/explicit_anon_consts.rs:30:43
    |
-LL |     let _4 = [(); 1 + 1];
-   |                   ^^^^^
+LL |     let _4 = [(); core::direct_const_arg!(1 + 1)];
+   |                                           ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:45:45
+  --> $DIR/explicit_anon_consts.rs:45:67
    |
-LL | type const ITEM4<const N: usize>: usize = { 1 + 1 };
-   |                                             ^^^^^
+LL | type const ITEM4<const N: usize>: usize = core::direct_const_arg!(1 + 1);
+   |                                                                   ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:62:25
+  --> $DIR/explicit_anon_consts.rs:62:49
    |
-LL |     T4: Trait<ASSOC = { 1 + 1 }>,
-   |                         ^^^^^
+LL |     T4: Trait<ASSOC = { core::direct_const_arg!(1 + 1) }>,
+   |                                                 ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/explicit_anon_consts.rs:71:52
+  --> $DIR/explicit_anon_consts.rs:71:76
    |
-LL | struct Default4<const N: usize, const M: usize = { 1 + 1 }>;
-   |                                                    ^^^^^
+LL | struct Default4<const N: usize, const M: usize = { core::direct_const_arg!(1 + 1) }>;
+   |                                                                            ^^^^^
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:42:51
@@ -40,7 +40,7 @@ error: generic parameters may not be used in const operations
 LL | type const ITEM3<const N: usize>: usize = const { N };
    |                                                   ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:60:31
@@ -48,7 +48,7 @@ error: generic parameters may not be used in const operations
 LL |     T3: Trait<ASSOC = const { N }>,
    |                               ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:69:58
@@ -56,7 +56,7 @@ error: generic parameters may not be used in const operations
 LL | struct Default3<const N: usize, const M: usize = const { N }>;
    |                                                          ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:28:27
@@ -64,7 +64,7 @@ error: generic parameters may not be used in const operations
 LL |     let _3 = [(); const { N }];
    |                           ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:33:26
@@ -72,7 +72,7 @@ error: generic parameters may not be used in const operations
 LL |     let _6: [(); const { N }] = todo!();
    |                          ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:11:41
@@ -80,7 +80,7 @@ error: generic parameters may not be used in const operations
 LL | type Adt3<const N: usize> = Foo<const { N }>;
    |                                         ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/explicit_anon_consts.rs:19:42
@@ -88,7 +88,7 @@ error: generic parameters may not be used in const operations
 LL | type Arr3<const N: usize> = [(); const { N }];
    |                                          ^
    |
-   = help: add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items
+   = help: add `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: aborting due to 13 previous errors
 

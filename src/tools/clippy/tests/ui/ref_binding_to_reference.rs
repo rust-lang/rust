@@ -1,7 +1,7 @@
 // FIXME: run-rustfix waiting on multi-span suggestions
 //@no-rustfix
 #![warn(clippy::ref_binding_to_reference)]
-#![allow(clippy::needless_borrowed_reference, clippy::explicit_auto_deref)]
+#![expect(clippy::explicit_auto_deref, clippy::needless_borrowed_reference)]
 
 fn f1(_: &str) {}
 macro_rules! m2 {
@@ -15,7 +15,6 @@ macro_rules! m3 {
     };
 }
 
-#[allow(dead_code)]
 fn main() {
     let x = String::new();
 

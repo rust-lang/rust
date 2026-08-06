@@ -66,7 +66,6 @@ macro_rules! trace_io {
     }
 }
 
-#[cfg(feature = "tracing")]
 pub fn format_location(location: std::panic::Location<'static>) -> String {
     format!("{}:{}", location.file(), location.line())
 }
@@ -351,7 +350,7 @@ mod inner {
                         let field = &values.fields[0];
                         write!(writer, " {{{}}}", field.1)?;
                     }
-                    write_location(writer, span.metadata())?;
+                    write_with_location(writer)?;
                 }
                 // Executed command
                 COMMAND_SPAN_TARGET => {

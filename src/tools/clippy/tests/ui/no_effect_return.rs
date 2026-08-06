@@ -1,5 +1,6 @@
 //@no-rustfix: overlapping suggestions
-#![allow(clippy::unused_unit, dead_code, unused)]
+#![warn(clippy::no_effect)]
+#![expect(clippy::unused_unit)]
 #![no_main]
 
 use std::ops::ControlFlow;

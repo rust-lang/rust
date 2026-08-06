@@ -24,7 +24,7 @@ use rustc_type_ir::{
 };
 
 use crate::{
-    LifetimeElisionKind, Span, TyLoweringContext,
+    LifetimeElisionKind, LifetimeLoweringMode, Span, TyLoweringContext,
     db::HirDatabase,
     generics::Generics,
     lower::LoweringMode,
@@ -61,13 +61,13 @@ pub struct StoredParamEnvAndCrate {
 
 impl StoredParamEnvAndCrate {
     #[inline]
-    pub fn param_env(&self) -> ParamEnv<'_> {
+    pub fn param_env<'db>(&self, _db: &'db dyn HirDatabase) -> ParamEnv<'db> {
         ParamEnv { clauses: self.param_env.as_ref() }
     }
 
     #[inline]
-    pub fn as_ref(&self) -> ParamEnvAndCrate<'_> {
-        ParamEnvAndCrate { param_env: self.param_env(), krate: self.krate }
+    pub fn as_ref<'db>(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
+        ParamEnvAndCrate { param_env: self.param_env(db), krate: self.krate }
     }
 }
 
@@ -175,7 +175,7 @@ pub enum WherePredicateEvaluation {
 pub fn where_predicate_must_hold<'db>(
     db: &'db dyn HirDatabase,
     resolver: &Resolver<'db>,
-    store: &ExpressionStore,
+    store: &'db ExpressionStore,
     def: ExpressionStoreOwnerId,
     generic_def: GenericDefId,
     env: ParamEnvAndCrate<'db>,
@@ -192,6 +192,7 @@ pub fn where_predicate_must_hold<'db>(
         generic_def,
         &generics,
         LifetimeElisionKind::Infer,
+        LifetimeLoweringMode::Bound,
     )
     .with_interning_mode(LoweringMode::Ide);
     let clauses =

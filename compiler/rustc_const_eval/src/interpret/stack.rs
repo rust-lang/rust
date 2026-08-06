@@ -21,7 +21,7 @@ use super::{
     MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
     from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
-use crate::{enter_trace_span, errors};
+use crate::{diagnostics, enter_trace_span};
 
 // The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
 // boundary and dropped in the other thread, it would exit the span in the other thread.
@@ -223,10 +223,10 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
 }
 
 impl<'tcx> FrameInfo<'tcx> {
-    pub(crate) fn as_note(&self, tcx: TyCtxt<'tcx>) -> errors::FrameNote {
+    pub(crate) fn as_note(&self, tcx: TyCtxt<'tcx>) -> diagnostics::FrameNote {
         let span = self.span;
         if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
-            errors::FrameNote {
+            diagnostics::FrameNote {
                 where_: "closure",
                 span,
                 instance: String::new(),
@@ -238,7 +238,13 @@ impl<'tcx> FrameInfo<'tcx> {
             // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
-            errors::FrameNote { where_: "instance", span, instance, times: 0, has_label: false }
+            diagnostics::FrameNote {
+                where_: "instance",
+                span,
+                instance,
+                times: 0,
+                has_label: false,
+            }
         }
     }
 }

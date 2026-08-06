@@ -11,25 +11,13 @@
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
-extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-/// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
-///
-/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
-/// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
-/// https://github.com/rust-lang/cc-rs/issues/1613.
-#[cfg(feature = "jemalloc")]
-// Make sure `--all-features` works: only Linux and macOS actually use jemalloc, and not on arm32.
-#[cfg(all(
-    any(target_os = "linux", target_os = "macos"),
-    any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"),
-))]
-extern crate tikv_jemalloc_sys as _;
+// Override the C allocator in the same way that the `rustc` binary would do.
+rustc_driver::override_c_allocator_in_binary!();
 
 mod log;
 
@@ -48,14 +36,9 @@ use miri::{
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
-use rustc_hir::{self as hir, Node};
 use rustc_interface::interface::Config;
 use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::exported_symbols::{
-    ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
-};
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
@@ -258,58 +241,14 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
         // Queries overridden here affect the data stored in `rmeta` files of dependencies,
         // which will be used later in non-`MIRI_BE_RUSTC` mode.
         config.override_queries = Some(|_, local_providers| {
-            // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
-            // FIXME handle this somehow in rustc itself to avoid this hack.
-            local_providers.queries.exported_non_generic_symbols = |tcx, LocalCrate| {
-                let reachable_set = tcx.with_stable_hashing_context(|mut hcx| {
-                    tcx.reachable_set(()).to_sorted(&mut hcx, true)
-                });
-                tcx.arena.alloc_from_iter(
-                    // This is based on:
-                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
-                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
-                    reachable_set.into_iter().filter_map(|&local_def_id| {
-                        // Do the same filtering that rustc does:
-                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
-                        // Otherwise it may cause unexpected behaviours and ICEs
-                        // (https://github.com/rust-lang/rust/issues/86261).
-                        let is_reachable_non_generic = matches!(
-                            tcx.hir_node_by_def_id(local_def_id),
-                            Node::Item(&hir::Item {
-                                kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn{ .. },
-                                ..
-                            }) | Node::ImplItem(&hir::ImplItem {
-                                kind: hir::ImplItemKind::Fn(..),
-                                ..
-                            })
-                            if !tcx.generics_of(local_def_id).requires_monomorphization(tcx)
-                        );
-                        if !is_reachable_non_generic {
-                            return None;
-                        }
-                        let codegen_fn_attrs = tcx.codegen_fn_attrs(local_def_id);
-                        if codegen_fn_attrs.contains_extern_indicator()
-                            || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
-                            || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-                        {
-                            Some((
-                                ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
-                                // Some dummy `SymbolExportInfo` here. We only use
-                                // `exported_symbols` in shims/foreign_items.rs and the export info
-                                // is ignored.
-                                SymbolExportInfo {
-                                    level: SymbolExportLevel::C,
-                                    kind: SymbolExportKind::Text,
-                                    used: false,
-                                    rustc_std_internal_symbol: false,
-                                },
-                            ))
-                        } else {
-                            None
-                        }
-                    }),
-                )
-            }
+            // `exported_non_generic_symbols` is usually empty because we don't codegen anything.
+            // However, we need it for `lookup_link_section`.
+            // So overwrite the query with a version that dooes something even without codegen.
+            local_providers.queries.exported_non_generic_symbols =
+                |tcx, LocalCrate| rustc_codegen_ssa::back::exported_non_generic_symbols_helper(tcx);
+            // `exported_non_generic_symbols_helper` calls `reachable_non_generics`.
+            local_providers.queries.reachable_non_generics =
+                |tcx, LocalCrate| rustc_codegen_ssa::back::reachable_non_generics_helper(tcx);
         });
 
         // Register our custom extra symbols.
@@ -536,8 +475,6 @@ fn main() -> ExitCode {
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;
             miri_config.collect_leak_backtraces = false;
-        } else if arg == "-Zmiri-force-intrinsic-fallback" {
-            miri_config.force_intrinsic_fallback = true;
         } else if arg == "-Zmiri-deterministic-floats" {
             miri_config.float_nondet = false;
         } else if arg == "-Zmiri-no-extra-rounding-error" {

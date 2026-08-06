@@ -1,12 +1,6 @@
 //@require-annotations-for-level: WARN
-#![allow(
-    unused,
-    clippy::needless_raw_strings,
-    clippy::needless_raw_string_hashes,
-    clippy::needless_borrow,
-    clippy::needless_borrows_for_generic_args
-)]
-#![warn(clippy::invalid_regex, clippy::trivial_regex, clippy::regex_creation_in_loops)]
+#![warn(clippy::invalid_regex, clippy::regex_creation_in_loops, clippy::trivial_regex)]
+#![expect(clippy::needless_borrows_for_generic_args)]
 
 extern crate regex;
 

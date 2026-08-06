@@ -31,10 +31,15 @@ fn parse(_s: &str) -> std::result::Result<Version, Error> {
 
 pub fn error1(lines: &[&str]) -> Result<Vec<Version>> {
     let mut tags = lines.iter().map(|e| parse(e)).collect()?;
-    //~^ ERROR: type annotations needed
-    //~| HELP: consider giving `tags` an explicit type
 
-    tags.sort(); //~ NOTE: type must be known at this point
+    tags.sort();
+    //~^ WARN method call on a diverging inference variable
+    //~| WARN previously accepted
+    //~| NOTE for more information, see issue
+    //~| NOTE `#[warn(method_call_on_diverging_infer_var)]` (part of `#[warn(future_incompatible)]`) on by default
+    //~| ERROR no method named `sort` found for type `!` in the current scope [E0599]
+    //~| HELP consider providing a type annotation
+    //~| NOTE method not found in `!`
 
     Ok(tags)
 }
@@ -59,6 +64,12 @@ pub fn error3(lines: &[&str]) -> Result<Vec<Version>> {
     //~| NOTE: in this expansion of desugaring of operator `?`
     //~| NOTE: in this expansion of desugaring of operator `?`
     tags.sort();
+    //~^ WARN method call on a diverging inference variable
+    //~| WARN previously accepted
+    //~| NOTE for more information, see issue
+    //~| ERROR no method named `sort` found for type `!` in the current scope [E0599]
+    //~| HELP consider providing a type annotation
+    //~| NOTE method not found in `!`
 
     Ok(tags)
 }

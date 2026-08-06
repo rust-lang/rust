@@ -15,20 +15,15 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-extern crate self as rustc_hir;
-
 mod arena;
 pub mod attrs;
 pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
 pub mod diagnostic_items;
-pub use rustc_span::def_id;
 mod hir;
-pub use rustc_hir_id::{self as hir_id, *};
 pub mod intravisit;
 pub mod lang_items;
-pub mod limit;
 pub mod lints;
 pub mod pat_util;
 mod stability;
@@ -42,8 +37,9 @@ mod tests;
 #[doc(no_inline)]
 pub use hir::*;
 pub use lang_items::{LangItem, LanguageItems};
-pub use rustc_ast::attr::version::*;
+pub use rustc_hir_id::*;
+pub use rustc_span::def_id;
 pub use stability::*;
 pub use target::{MethodKind, Target};
 
-arena_types!(rustc_arena::declare_arena);
+pub use crate::arena::Arena;

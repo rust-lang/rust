@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::ops::Deref;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
@@ -10,13 +10,18 @@ use rustc_infer::infer::canonical::{
     QueryRegionConstraint,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
-use rustc_infer::traits::solve::{FetchEligibleAssocItemResponse, Goal};
+use rustc_infer::traits::solve::{
+    ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, SucceededInErased,
+};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt, TypingMode,
+    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
+use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques};
 use rustc_span::{DUMMY_SP, Span};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
@@ -47,6 +52,70 @@ impl<'tcx> SolverDelegate<'tcx> {
     }
 }
 
+/// Create a [`ComputeGoalFastPathOutcome`] signalling the goal is stalled
+/// on a list of [`ty::GenericArg`]
+fn goal_stalled_on_args<'tcx>(
+    stalled_vars: ThinVec<ty::GenericArg<'tcx>>,
+) -> ComputeGoalFastPathOutcome<'tcx> {
+    ComputeGoalFastPathOutcome::TriviallyStalled {
+        stalled_on: GoalStalledOn {
+            stalled_vars,
+            sub_roots: ThinVec::new(),
+            stalled_certainty: Certainty::AMBIGUOUS,
+            opaques: GoalStalledOnOpaques::No,
+        },
+    }
+}
+
+/// Create a [`ComputeGoalFastPathOutcome`] signalling the  goal is stalled
+/// on a list of [`ty::GenericArg`] *or* the opaque type storage being nonempty.
+///
+fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
+    stalled_vars: ThinVec<ty::GenericArg<'tcx>>,
+) -> ComputeGoalFastPathOutcome<'tcx> {
+    ComputeGoalFastPathOutcome::TriviallyStalled {
+        stalled_on: GoalStalledOn {
+            stalled_vars,
+            sub_roots: ThinVec::new(),
+            stalled_certainty: Certainty::AMBIGUOUS,
+            opaques: GoalStalledOnOpaques::Yes {
+                num_opaques_in_storage: 0,
+                // This function should only be called when not in erased mode,
+                // otherwise this is wrong. The `compute_goal_fast_path` does this
+                // through `known_no_opaque_types_in_storage`
+                previously_succeeded_in_erased: SucceededInErased::No,
+            },
+        },
+    }
+}
+
+struct CollectNonRegionInfer<'tcx> {
+    infers: ThinVec<ty::GenericArg<'tcx>>,
+    visited: FxHashSet<Ty<'tcx>>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectNonRegionInfer<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        if self.visited.contains(&ty) {
+            return;
+        }
+
+        match ty.kind() {
+            ty::Infer(_) => self.infers.push(ty.into()),
+            _ => ty.super_visit_with(self),
+        }
+
+        self.visited.insert(ty);
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+        match ct.kind() {
+            ty::ConstKind::Infer(_) => self.infers.push(ct.into()),
+            _ => ct.super_visit_with(self),
+        }
+    }
+}
+
 impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<'tcx> {
     type Infcx = InferCtxt<'tcx>;
     type Interner = TyCtxt<'tcx>;
@@ -73,10 +142,12 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
-    ) -> Option<Certainty> {
+    ) -> ComputeGoalFastPathOutcome<'tcx> {
+        use ComputeGoalFastPathOutcome as Outcome;
+
         // FIXME(-Zassumptions-on-binders): actually handle fast path
         if self.tcx.assumptions_on_binders() {
-            return None;
+            return Outcome::NoFastPath;
         }
 
         let pred = goal.predicate.kind();
@@ -84,22 +155,23 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 let trait_pred = pred.rebind(trait_pred);
 
-                if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
+                let self_ty = self.shallow_resolve(trait_pred.self_ty().skip_binder());
+                if self_ty.is_ty_var()
                 // We don't do this fast path when opaques are defined since we may
                 // eventually use opaques to incompletely guide inference via ty var
                 // self types.
                 // FIXME: Properly consider opaques here.
                 && self.known_no_opaque_types_in_storage()
                 {
-                    Some(Certainty::AMBIGUOUS)
+                    goal_stalled_on_args_or_nonempty_opaques(thin_vec![self_ty.into()])
                 } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
                             let predicate = self.resolve_vars_if_possible(goal.predicate);
                             if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
-                                return Some(Certainty::Yes);
+                                Outcome::TriviallyHolds
                             } else {
-                                None
+                                Outcome::NoFastPath
                             }
                         }
                         Some(LangItem::Copy | LangItem::Clone) => {
@@ -114,23 +186,23 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                                 .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
                                 && self_ty.is_trivially_pure_clone_copy()
                             {
-                                return Some(Certainty::Yes);
+                                Outcome::TriviallyHolds
                             } else {
-                                None
+                                Outcome::NoFastPath
                             }
                         }
-                        _ => None,
+                        _ => Outcome::NoFastPath,
                     }
                 } else {
-                    None
+                    Outcome::NoFastPath
                 }
             }
             ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
-                Some(Certainty::Yes)
+                Outcome::TriviallyHolds
             }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
                 if outlives.has_escaping_bound_vars() {
-                    return None;
+                    return Outcome::NoFastPath;
                 }
 
                 self.0.sub_regions(
@@ -139,11 +211,26 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     outlives.0,
                     ty::VisibleForLeakCheck::Yes,
                 );
-                Some(Certainty::Yes)
+                Outcome::TriviallyHolds
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
                 if outlives.has_escaping_bound_vars() {
-                    return None;
+                    return Outcome::NoFastPath;
+                }
+
+                let ty = self.resolve_vars_if_possible(outlives.0);
+                let mut infer_collector = CollectNonRegionInfer {
+                    infers: Default::default(),
+                    visited: Default::default(),
+                };
+                ty.visit_with(&mut infer_collector);
+                let infers = infer_collector.infers;
+                if !infers.is_empty() {
+                    return goal_stalled_on_args(infers);
+                }
+
+                if ty.has_non_rigid_aliases() {
+                    return Outcome::NoFastPath;
                 }
 
                 self.0.register_type_outlives_constraint(
@@ -152,48 +239,49 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     &ObligationCause::dummy_with_span(span),
                 );
 
-                Some(Certainty::Yes)
+                Outcome::TriviallyHolds
             }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
             | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
                 if a.has_escaping_bound_vars() || b.has_escaping_bound_vars() {
-                    return None;
+                    return Outcome::NoFastPath;
                 }
 
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
-                        Some(Certainty::AMBIGUOUS)
+                        goal_stalled_on_args(thin_vec![a.into(), b.into()])
                     }
-                    _ => None,
+                    _ => Outcome::NoFastPath,
                 }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => {
                 if ct.has_escaping_bound_vars() {
-                    return None;
+                    return Outcome::NoFastPath;
                 }
 
-                if self.shallow_resolve_const(ct).is_ct_infer() {
-                    Some(Certainty::AMBIGUOUS)
+                let arg = self.shallow_resolve_const(ct);
+                if arg.is_ct_infer() {
+                    goal_stalled_on_args(thin_vec![arg.into()])
                 } else {
-                    None
+                    Outcome::NoFastPath
                 }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                 if arg.has_escaping_bound_vars() {
-                    return None;
+                    return Outcome::NoFastPath;
                 }
 
                 let arg = self.shallow_resolve_term(arg);
                 if arg.is_trivially_wf(self.tcx) {
-                    Some(Certainty::Yes)
+                    Outcome::TriviallyHolds
                 } else if arg.is_infer() {
-                    Some(Certainty::AMBIGUOUS)
+                    goal_stalled_on_args(thin_vec![arg.into_arg()])
                 } else {
-                    None
+                    Outcome::NoFastPath
                 }
             }
-            _ => None,
+            _ => Outcome::NoFastPath,
         }
     }
 
@@ -340,6 +428,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 TypingMode::Coherence
                 | TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowck { .. } => false,
                 TypingMode::PostAnalysis | TypingMode::Codegen => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);

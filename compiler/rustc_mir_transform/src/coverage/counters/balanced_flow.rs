@@ -126,6 +126,6 @@ where
             sink_edge = self.sink_edge_nodes.contains(node).then_some(self.sink);
         }
 
-        real_edges.into_iter().flatten().chain(sink_edge)
+        real_edges.into_flat_iter().chain(sink_edge)
     }
 }

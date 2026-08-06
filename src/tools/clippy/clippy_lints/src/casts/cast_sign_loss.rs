@@ -54,8 +54,8 @@ pub(super) fn check<'cx>(
             expr.span,
             format!("casting `{cast_from}` to `{cast_to}` may lose the sign of the value"),
             |diag| {
-                if msrv.meets(cx, msrvs::INTEGER_SIGN_CAST)
-                    && let Some(cast) = utils::is_signedness_cast(cast_from, cast_to)
+                if let Some(cast) = utils::is_signedness_cast(cast_from, cast_to)
+                    && msrv.meets(cx, msrvs::INTEGER_SIGN_CAST)
                 {
                     let method = match cast {
                         utils::CastTo::Signed => "cast_signed()",

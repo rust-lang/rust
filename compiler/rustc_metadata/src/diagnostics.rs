@@ -254,46 +254,6 @@ pub(crate) struct FailedCopyToStdout {
 pub(crate) struct BinaryOutputToTty;
 
 #[derive(Diagnostic)]
-#[diag("could not find native static library `{$libname}`, perhaps an -L flag is missing?")]
-pub(crate) struct MissingNativeLibrary<'a> {
-    libname: &'a str,
-    #[subdiagnostic]
-    suggest_name: Option<SuggestLibraryName<'a>>,
-}
-
-impl<'a> MissingNativeLibrary<'a> {
-    pub(crate) fn new(libname: &'a str, verbatim: bool) -> Self {
-        // if it looks like the user has provided a complete filename rather just the bare lib name,
-        // then provide a note that they might want to try trimming the name
-        let suggested_name = if !verbatim {
-            if let Some(libname) = libname.strip_circumfix("lib", ".a") {
-                // this is a unix style filename so trim prefix & suffix
-                Some(libname)
-            } else if let Some(libname) = libname.strip_suffix(".lib") {
-                // this is a Windows style filename so just trim the suffix
-                Some(libname)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        Self {
-            libname,
-            suggest_name: suggested_name
-                .map(|suggested_name| SuggestLibraryName { suggested_name }),
-        }
-    }
-}
-
-#[derive(Subdiagnostic)]
-#[help("only provide the library name `{$suggested_name}`, not the full filename")]
-pub(crate) struct SuggestLibraryName<'a> {
-    suggested_name: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag("couldn't create a temp dir: {$err}")]
 pub(crate) struct FailedCreateTempdir {
     pub err: Error,
@@ -606,10 +566,16 @@ pub(crate) struct IncompatibleTargetModifiers {
     "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
 )]
 #[note(
-    "unset `{$flag_name_prefixed}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
+    "`{$flag_name_prefixed}` is unset in this crate which is incompatible with {$has_extern_value ->
+        [false]  `{$flag_name_prefixed}` being set
+        *[other] `{$flag_name_prefixed}={$extern_value}`
+    } in dependency `{$extern_crate}`"
 )]
 #[help(
-    "set `{$flag_name_prefixed}={$extern_value}` in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
+    "set {$has_extern_value ->
+        [false]  `{$flag_name_prefixed}`
+        *[other] `{$flag_name_prefixed}={$extern_value}`
+    } in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
 )]
 #[help(
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
@@ -622,6 +588,7 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     pub flag_name: String,
     pub flag_name_prefixed: String,
     pub extern_value: String,
+    pub has_extern_value: bool,
 }
 
 #[derive(Diagnostic)]
@@ -630,10 +597,16 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
 )]
 #[note(
-    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`"
+    "{$has_local_value ->
+        [false]  `{$flag_name_prefixed}` being set
+        *[other] `{$flag_name_prefixed}={$local_value}`
+    } in this crate is incompatible with `{$flag_name_prefixed}` being unset in dependency `{$extern_crate}`"
 )]
 #[help(
-    "unset `{$flag_name_prefixed}` in this crate or set `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
+    "unset `{$flag_name_prefixed}` in this crate or set {$has_local_value ->
+        [false]  `{$flag_name_prefixed}`
+        *[other] `{$flag_name_prefixed}={$local_value}`
+    } in `{$extern_crate}`"
 )]
 #[help(
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
@@ -646,6 +619,7 @@ pub(crate) struct IncompatibleTargetModifiersRMissed {
     pub flag_name: String,
     pub flag_name_prefixed: String,
     pub local_value: String,
+    pub has_local_value: bool,
 }
 
 #[derive(Diagnostic)]
@@ -703,4 +677,19 @@ pub(crate) struct MitigationLessStrictInDependency {
     pub mitigation_name: String,
     pub mitigation_level: String,
     pub extern_crate: Symbol,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum StaticLinkingNotSupported<'a> {
+    #[diag(
+        "static linking of `{$lib_name}` is not supported on `{$target}`; using dynamic linking instead"
+    )]
+    #[help("remove `kind = \"static\"` and ensure a shared library is available")]
+    UserRequested { lib_name: Symbol, target: &'a str },
+
+    #[diag(
+        "library `{$lib_name}` is linked statically by a dependency, but `{$target}` requires dynamic linking; using dynamic linking instead"
+    )]
+    #[help("ensure a shared library is available")]
+    FromDependency { lib_name: Symbol, target: &'a str },
 }

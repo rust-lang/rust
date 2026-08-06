@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 LL |         let x = async move || -> &String { &s };
    |                 ------------------------ ^^^^^^ returning this value requires that `'1` must outlive `'2`
    |                 |                |
-   |                 |                return type of async closure `{async closure body@$DIR/not-lending.rs:12:42: 12:48}` contains a lifetime `'2`
+   |                 |                let's call the lifetime of this reference `'2`
    |                 lifetime `'1` represents this closure's body
    |
    = note: closure implements `AsyncFn`, so references to captured variables can't escape the closure
@@ -15,7 +15,7 @@ error: lifetime may not live long enough
 LL |         let x = async move || { &s };
    |                 ------------- ^^^^^^ returning this value requires that `'1` must outlive `'2`
    |                 |           |
-   |                 |           return type of async closure `{async closure body@$DIR/not-lending.rs:16:31: 16:37}` contains a lifetime `'2`
+   |                 |           return type of async closure is &'2 String
    |                 lifetime `'1` represents this closure's body
    |
    = note: closure implements `AsyncFn`, so references to captured variables can't escape the closure

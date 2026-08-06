@@ -37,8 +37,6 @@
 //!     error: fmt
 //!     float_consts:
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
-//!     fmt_before_1_93_0: fmt
-//!     fmt_before_1_89_0: fmt_before_1_93_0
 //!     fn: sized, tuple
 //!     from: sized, result
 //!     future: pin
@@ -59,6 +57,7 @@
 //!     option: panic
 //!     ord: eq, option
 //!     panic: fmt
+//!     panic_location: panic
 //!     pat: panic
 //!     phantom_data:
 //!     pin:
@@ -1427,111 +1426,8 @@ pub mod fmt {
             Center,
             Unknown,
         }
-
-        // region:fmt_before_1_93_0
-        #[lang = "format_count"]
-        pub enum Count {
-            Is(usize),
-            Param(usize),
-            Implied,
-        }
-
-        #[lang = "format_placeholder"]
-        pub struct Placeholder {
-            pub position: usize,
-            pub fill: char,
-            pub align: Alignment,
-            pub flags: u32,
-            pub precision: Count,
-            pub width: Count,
-        }
-
-        impl Placeholder {
-            pub const fn new(
-                position: usize,
-                fill: char,
-                align: Alignment,
-                flags: u32,
-                precision: Count,
-                width: Count,
-            ) -> Self {
-                Placeholder { position, fill, align, flags, precision, width }
-            }
-        }
-        // endregion:fmt_before_1_93_0
-
-        // region:fmt_before_1_89_0
-        #[lang = "format_unsafe_arg"]
-        pub struct UnsafeArg {
-            _private: (),
-        }
-
-        impl UnsafeArg {
-            pub unsafe fn new() -> Self {
-                UnsafeArg { _private: () }
-            }
-        }
-        // endregion:fmt_before_1_89_0
     }
 
-    // region:fmt_before_1_93_0
-    #[derive(Copy, Clone)]
-    #[lang = "format_arguments"]
-    pub struct Arguments<'a> {
-        pieces: &'a [&'static str],
-        fmt: Option<&'a [rt::Placeholder]>,
-        args: &'a [rt::Argument<'a>],
-    }
-
-    impl<'a> Arguments<'a> {
-        pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
-            Arguments { pieces, fmt: None, args }
-        }
-
-        pub const fn new_const(pieces: &'a [&'static str]) -> Arguments<'a> {
-            Arguments { pieces, fmt: None, args: &[] }
-        }
-
-        // region:fmt_before_1_89_0
-        pub fn new_v1_formatted(
-            pieces: &'a [&'static str],
-            args: &'a [rt::Argument<'a>],
-            fmt: &'a [rt::Placeholder],
-            _unsafe_arg: rt::UnsafeArg,
-        ) -> Arguments<'a> {
-            Arguments { pieces, fmt: Some(fmt), args }
-        }
-        // endregion:fmt_before_1_89_0
-
-        // region:!fmt_before_1_89_0
-        pub unsafe fn new_v1_formatted(
-            pieces: &'a [&'static str],
-            args: &'a [rt::Argument<'a>],
-            fmt: &'a [rt::Placeholder],
-        ) -> Arguments<'a> {
-            Arguments { pieces, fmt: Some(fmt), args }
-        }
-        // endregion:!fmt_before_1_89_0
-
-        pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
-            Self::from_str(s)
-        }
-
-        pub const fn from_str(s: &'static str) -> Arguments<'a> {
-            Arguments { pieces: &[s], fmt: None, args: &[] }
-        }
-
-        pub const fn as_str(&self) -> Option<&'static str> {
-            match (self.pieces, self.args) {
-                ([], []) => Some(""),
-                ([s], []) => Some(s),
-                _ => None,
-            }
-        }
-    }
-    // endregion:fmt_before_1_93_0
-
-    // region:!fmt_before_1_93_0
     #[lang = "format_arguments"]
     #[derive(Copy, Clone)]
     pub struct Arguments<'a> {
@@ -1563,7 +1459,6 @@ pub mod fmt {
             }
         }
     }
-    // endregion:!fmt_before_1_93_0
 
     // region:derive
     pub(crate) mod derive {
@@ -2093,7 +1988,38 @@ pub mod str {
 // endregion:str
 
 // region:panic
-mod panic {
+pub mod panic {
+    // region:panic_location
+    #[rustc_intrinsic]
+    pub const fn caller_location() -> &'static Location<'static>;
+
+    #[lang = "panic_location"]
+    pub struct Location<'a> {
+        file: &'a str,
+        line: u32,
+        col: u32,
+    }
+
+    impl<'a> Location<'a> {
+        #[track_caller]
+        pub const fn caller() -> &'static Location<'static> {
+            caller_location()
+        }
+
+        pub const fn file(&self) -> &str {
+            self.file
+        }
+
+        pub const fn line(&self) -> u32 {
+            self.line
+        }
+
+        pub const fn column(&self) -> u32 {
+            self.col
+        }
+    }
+    // endregion:panic_location
+
     pub macro panic_2021 {
         () => ({
             const fn panic_cold_explicit() -> ! {
@@ -2483,6 +2409,7 @@ macro_rules! matches {
 
 pub mod prelude {
     pub mod v1 {
+        #[rustfmt::skip]
         pub use crate::{
             clone::Clone,                                 // :clone
             cmp::{Eq, PartialEq},                         // :eq
@@ -2509,6 +2436,16 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
+            write, writeln,                               // :write
+            assert,                                       // :assert
+            format_args, format_args_nl, const_format_args, print, // :fmt
+            todo,                                         // :todo
+            unimplemented,                                // :unimplemented
+            include,                                      // :include
+            include_bytes,                                // :include_bytes
+            concat,                                       // :concat
+            env, option_env,                              // :env
+            matches,                                      // :matches
         };
     }
 

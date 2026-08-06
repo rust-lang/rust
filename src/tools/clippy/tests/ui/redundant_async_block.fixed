@@ -1,5 +1,5 @@
-#![allow(unused, clippy::manual_async_fn)]
 #![warn(clippy::redundant_async_block)]
+#![expect(clippy::manual_async_fn)]
 
 use std::future::{Future, IntoFuture};
 

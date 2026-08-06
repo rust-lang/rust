@@ -1,4 +1,5 @@
-// ignore-tidy-tab
+// ignore-tidy-file-tab
+//
 // Staticlibs don't include Rust object files from upstream crates if the same
 // code was already pulled into the lib via LTO. However, the bug described in
 // https://github.com/rust-lang/rust/issues/64153 lead to this exclusion not

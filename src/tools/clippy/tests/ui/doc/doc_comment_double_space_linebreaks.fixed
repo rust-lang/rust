@@ -5,7 +5,7 @@
 #![expect(clippy::empty_docs)]
 
 //~v doc_comment_double_space_linebreaks
-//! Should warn on double space linebreaks\
+//! Should warn on double space line breaks\
 //! in file/module doc comment
 
 /// Should not warn on single-line doc comments
@@ -35,12 +35,12 @@ fn normal_comment() {
 
 //~v doc_comment_double_space_linebreaks
 /// Should warn when doc comment uses double space\
-/// as a line-break, even when there are multiple\
+/// as a line break, even when there are multiple\
 /// in a row
 fn double_space_doc_comment() {}
 
-/// Should not warn when back-slash is used \
-/// as a line-break
+/// Should not warn when backslash is used \
+/// as a line break
 fn back_slash_doc_comment() {}
 
 //~v doc_comment_double_space_linebreaks

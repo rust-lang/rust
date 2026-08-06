@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     impl_item.span,
                     format!("you should consider adding a `Default` implementation for `{self_type_snip}`"),
                     |diag| {
-                        diag.suggest_prepend_item(
+                        diag.suggest_append_item(
                             cx,
                             item.span,
                             "try adding this",

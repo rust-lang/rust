@@ -318,7 +318,7 @@ jobs:
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
     needs: [style]
-    name: Check stdarch-gen-{arm, loongarch, hexagon, hexagon-scalar} output
+    name: Check stdarch-gen-{arm, loongarch, hexagon} output
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -328,13 +328,17 @@ jobs:
       run: |
         cargo run --bin=stdarch-gen-arm --release -- crates/stdarch-gen-arm/spec
         git diff --exit-code
-    - name: Check lsx.spec
+    - name: Check loongarch lsx
+      env:
+        STDARCH_GEN_MODE: check
       run: |
-        cargo run --bin=stdarch-gen-loongarch --release -- crates/stdarch-gen-loongarch/lsx.spec
+        cargo run -p stdarch-gen-loongarch --release -- lsx
         git diff --exit-code
-    - name: Check lasx.spec
+    - name: Check loongarch lasx
+      env:
+        STDARCH_GEN_MODE: check
       run: |
-        cargo run --bin=stdarch-gen-loongarch --release -- crates/stdarch-gen-loongarch/lasx.spec
+        cargo run -p stdarch-gen-loongarch --release -- lasx
         git diff --exit-code
     - name: Check hexagon
       env:
@@ -342,11 +346,7 @@ jobs:
       run: |
         cargo run -p stdarch-gen-hexagon --release
         git diff --exit-code
-    - name: Check hexagon scalar
-      run: |
-        cargo run -p stdarch-gen-hexagon-scalar --release
-        git diff --exit-code
-
+    
   # Run some tests with Miri. Most stdarch functions use platform-specific intrinsics
   # that Miri does not support. Also Miri is reltively slow.
   #

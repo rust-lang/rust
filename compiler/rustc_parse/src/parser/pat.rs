@@ -12,12 +12,12 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
-use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Spanned, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
-use crate::errors::{
+use crate::diagnostics::{
     self, AmbiguousRangePattern, AtDotDotInStructPattern, AtInStructPattern,
     DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed, DotDotDotRestPattern,
     EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt, ExpectedCommaAfterPatternField,
@@ -1474,7 +1474,7 @@ impl<'a> Parser<'a> {
 
         if self.isnt_pattern_start() {
             let descr = super::token_descr(&self.token);
-            self.dcx().emit_err(errors::BoxNotPat {
+            self.dcx().emit_err(diagnostics::BoxNotPat {
                 span: self.token.span,
                 kw: box_span,
                 lo: box_span.shrink_to_lo(),
@@ -1785,6 +1785,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_pat(&self, span: Span, kind: PatKind) -> Pat {
-        Pat { kind, span, id: ast::DUMMY_NODE_ID, tokens: None }
+        Pat { kind, span, id: ast::DUMMY_NODE_ID }
     }
 }

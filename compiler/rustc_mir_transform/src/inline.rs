@@ -24,7 +24,7 @@ use tracing::{debug, instrument, trace, trace_span};
 use crate::cost_checker::{CostChecker, is_call_like};
 use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
-use crate::{check_inline, util};
+use crate::{PassPolicy, check_inline, util};
 
 pub(crate) mod cycle;
 
@@ -44,19 +44,18 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
-            return enabled;
-        }
-
-        match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::More || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
-            _ => true,
-        }
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        let enabled_by_default =
+            sess.opts.unstable_opts.inline_mir.unwrap_or_else(|| match sess.mir_opt_level() {
+                0 | 1 => false,
+                2 => {
+                    (sess.opts.optimize == OptLevel::More
+                        || sess.opts.optimize == OptLevel::Aggressive)
+                        && sess.opts.incremental == None
+                }
+                _ => true,
+            });
+        PassPolicy::optimization(enabled_by_default)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -66,10 +65,6 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -82,16 +77,9 @@ impl ForceInline {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
-    fn is_enabled(&self, _: &rustc_session::Session) -> bool {
-        true
-    }
-
-    fn can_be_overridden(&self) -> bool {
-        false
-    }
-
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Forced inlining is part of MIR semantics.
+        PassPolicy::Required
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -560,7 +548,9 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
             // To resolve an instance its args have to be fully normalized.
             let args = tcx
                 .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
-                .ok()?;
+                .ok()?
+                .no_bound_vars()
+                .unwrap();
             let mut callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
 
@@ -730,7 +720,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             }
         }
         // These have no own callable MIR.
-        InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
+        InstanceKind::Intrinsic(_) | InstanceKind::LlvmIntrinsic(_) | InstanceKind::Virtual(..) => {
             debug!("instance without MIR (intrinsic / virtual)");
             return Err("implementation limitation -- cannot inline intrinsic");
         }

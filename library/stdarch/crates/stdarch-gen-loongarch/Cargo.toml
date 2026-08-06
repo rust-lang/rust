@@ -8,3 +8,4 @@ edition = "2024"
 
 [dependencies]
 rand = "0.9.3"
+stdarch-gen-common = { path = "../stdarch-gen-common" }

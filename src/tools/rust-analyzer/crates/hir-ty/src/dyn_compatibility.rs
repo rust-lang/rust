@@ -122,6 +122,7 @@ where
     ControlFlow::Continue(())
 }
 
+#[salsa::tracked]
 pub fn dyn_compatibility_of_trait_query(
     db: &dyn HirDatabase,
     trait_: TraitId,
@@ -395,7 +396,7 @@ where
 }
 
 fn receiver_is_dispatchable<'db>(
-    db: &dyn HirDatabase,
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
@@ -417,9 +418,7 @@ fn receiver_is_dispatchable<'db>(
         return true;
     }
 
-    let Some(&receiver_ty) = sig.inputs().skip_binder().first() else {
-        return false;
-    };
+    let receiver_ty = interner.liberate_late_bound_regions(func.into(), sig.input(0));
 
     let lang_items = interner.lang_items();
     let traits = (lang_items.Unsize, lang_items.DispatchFromDyn);
@@ -427,15 +426,9 @@ fn receiver_is_dispatchable<'db>(
         return false;
     };
 
-    let meta_sized_did = lang_items.MetaSized;
-
-    // TODO: This is for supporting dyn compatibility for toolchains doesn't contain `MetaSized`
-    // trait. Uncomment and short circuit here once `MINIMUM_SUPPORTED_TOOLCHAIN_VERSION`
-    // become > 1.88.0
-    //
-    // let Some(meta_sized_did) = meta_sized_did else {
-    //     return false;
-    // };
+    let Some(meta_sized_did) = lang_items.MetaSized else {
+        return false;
+    };
 
     // Type `U`
     // FIXME: That seems problematic to fake a generic param like that?
@@ -451,13 +444,13 @@ fn receiver_is_dispatchable<'db>(
             TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
 
         // U: Trait<Arg1, ..., ArgN>
-        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _| {
+        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _, _| {
             if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, kind) }
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
-        let meta_sized_predicate = meta_sized_did
-            .map(|did| TraitRef::new(interner, did.into(), [unsized_self_ty]).upcast(interner));
+        let meta_sized_predicate =
+            TraitRef::new(interner, meta_sized_did.into(), [unsized_self_ty]).upcast(interner);
 
         ParamEnv {
             clauses: Clauses::new_from_iter(
@@ -466,7 +459,7 @@ fn receiver_is_dispatchable<'db>(
                     .iter_identity()
                     .map(Unnormalized::skip_norm_wip)
                     .chain([unsize_predicate.upcast(interner), trait_predicate.upcast(interner)])
-                    .chain(meta_sized_predicate),
+                    .chain(std::iter::once(meta_sized_predicate)),
             ),
         }
     };
@@ -487,9 +480,10 @@ fn receiver_for_self_ty<'db>(
     receiver_ty: Ty<'db>,
     self_ty: Ty<'db>,
 ) -> Ty<'db> {
-    let args = GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _| {
-        if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
-    });
+    let args =
+        GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _, _| {
+            if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
+        });
 
     EarlyBinder::bind(receiver_ty).instantiate(interner, args).skip_norm_wip()
 }
@@ -498,9 +492,9 @@ fn contains_illegal_impl_trait_in_trait<'db>(
     db: &'db dyn HirDatabase,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> Option<MethodViolationCode> {
-    struct OpaqueTypeCollector(FxHashSet<InternedOpaqueTyId>);
+    struct OpaqueTypeCollector<'db>(FxHashSet<InternedOpaqueTyId<'db>>);
 
-    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector {
+    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector<'db> {
         type Result = ControlFlow<()>;
 
         fn visit_ty(

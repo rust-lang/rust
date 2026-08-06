@@ -42211,19 +42211,6 @@ pub fn svtmad_f64<const IMM3: i32>(op1: svfloat64_t, op2: svfloat64_t) -> svfloa
     unsafe { _svtmad_f64(op1, op2, IMM3) }
 }
 #[doc = "Interleave even elements from two inputs"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(trn1))]
-pub fn svtrn1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.nxv16i1")]
-        fn _svtrn1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
-    }
-    unsafe { _svtrn1_b8(op1, op2) }
-}
-#[doc = "Interleave even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -42231,10 +42218,10 @@ pub fn svtrn1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(trn1))]
 pub fn svtrn1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.nxv8i1")]
-        fn _svtrn1_b16(op1: svbool8_t, op2: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.b16")]
+        fn _svtrn1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svtrn1_b16(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svtrn1_b16(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1_b32)"]
@@ -42244,10 +42231,10 @@ pub fn svtrn1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(trn1))]
 pub fn svtrn1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.nxv4i1")]
-        fn _svtrn1_b32(op1: svbool4_t, op2: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.b32")]
+        fn _svtrn1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svtrn1_b32(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svtrn1_b32(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1_b64)"]
@@ -42257,10 +42244,10 @@ pub fn svtrn1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(trn1))]
 pub fn svtrn1_b64(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.nxv2i1")]
-        fn _svtrn1_b64(op1: svbool2_t, op2: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.b64")]
+        fn _svtrn1_b64(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svtrn1_b64(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svtrn1_b64(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1[_f32])"]
@@ -42375,6 +42362,19 @@ pub fn svtrn1_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(trn1))]
 pub fn svtrn1_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svtrn1_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Interleave even elements from two inputs"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(trn1))]
+pub fn svtrn1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn1.nxv16i1")]
+        fn _svtrn1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svtrn1_b8(op1, op2) }
 }
 #[doc = "Interleave even quadwords from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn1q[_f32])"]
@@ -42491,19 +42491,6 @@ pub fn svtrn1q_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svtrn1q_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
 }
 #[doc = "Interleave odd elements from two inputs"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(trn2))]
-pub fn svtrn2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.nxv16i1")]
-        fn _svtrn2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
-    }
-    unsafe { _svtrn2_b8(op1, op2) }
-}
-#[doc = "Interleave odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -42511,10 +42498,10 @@ pub fn svtrn2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(trn2))]
 pub fn svtrn2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.nxv8i1")]
-        fn _svtrn2_b16(op1: svbool8_t, op2: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.b16")]
+        fn _svtrn2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svtrn2_b16(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svtrn2_b16(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2_b32)"]
@@ -42524,10 +42511,10 @@ pub fn svtrn2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(trn2))]
 pub fn svtrn2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.nxv4i1")]
-        fn _svtrn2_b32(op1: svbool4_t, op2: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.b32")]
+        fn _svtrn2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svtrn2_b32(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svtrn2_b32(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2_b64)"]
@@ -42537,10 +42524,10 @@ pub fn svtrn2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(trn2))]
 pub fn svtrn2_b64(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.nxv2i1")]
-        fn _svtrn2_b64(op1: svbool2_t, op2: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.b64")]
+        fn _svtrn2_b64(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svtrn2_b64(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svtrn2_b64(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2[_f32])"]
@@ -42655,6 +42642,19 @@ pub fn svtrn2_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(trn2))]
 pub fn svtrn2_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svtrn2_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Interleave odd elements from two inputs"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(trn2))]
+pub fn svtrn2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.trn2.nxv16i1")]
+        fn _svtrn2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svtrn2_b8(op1, op2) }
 }
 #[doc = "Interleave odd quadwords from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtrn2q[_f32])"]

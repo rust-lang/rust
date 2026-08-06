@@ -1,4 +1,4 @@
-// ignore-tidy-trailing-newlines
+// ignore-tidy-file-trailing-newlines
 //@ pretty-compare-only
 
 /*

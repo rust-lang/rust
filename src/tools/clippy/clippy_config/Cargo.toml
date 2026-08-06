@@ -1,6 +1,6 @@
 [package]
 name = "clippy_config"
-version = "0.1.98"
+version = "0.1.99"
 edition = "2024"
 publish = false
 
@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 clippy_utils = { path = "../clippy_utils" }
-itertools = "0.12"
+itertools = "0.15"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.7.3"
 

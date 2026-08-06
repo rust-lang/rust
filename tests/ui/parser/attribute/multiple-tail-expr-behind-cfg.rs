@@ -14,6 +14,13 @@ fn bar() -> String {
     String::new()
 }
 
+fn baz() -> String {
+    #[cfg(false)]
+    [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() //~ ERROR expected `;`, found `#`
+    #[allow(unused)]
+    String::new()
+}
+
 fn main() {
     println!("{}", foo());
 }

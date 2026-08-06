@@ -1,0 +1,134 @@
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:10:46
+   |
+LL |     legacy_const_generics_bounds::arg0_as_i8(N + 1);
+   |                                              ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_i8<const N: i8>() where [(); (N + 1) as usize]: {
+   |                                     +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:15:47
+   |
+LL |     legacy_const_generics_bounds::arg0_as_i16(N + 1);
+   |                                               ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_i16<const N: i16>() where [(); (N + 1) as usize]: {
+   |                                       +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:20:47
+   |
+LL |     legacy_const_generics_bounds::arg0_as_i32(N + 1);
+   |                                               ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_i32<const N: i32>() where [(); (N + 1) as usize]: {
+   |                                       +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:25:47
+   |
+LL |     legacy_const_generics_bounds::arg0_as_i64(N + 1);
+   |                                               ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_i64<const N: i64>() where [(); (N + 1) as usize]: {
+   |                                       +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:30:48
+   |
+LL |     legacy_const_generics_bounds::arg0_as_i128(N + 1);
+   |                                                ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_i128<const N: i128>() where [(); (N + 1) as usize]: {
+   |                                         +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:35:49
+   |
+LL |     legacy_const_generics_bounds::arg0_as_isize(N + 1);
+   |                                                 ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_isize<const N: isize>() where [(); (N + 1) as usize]: {
+   |                                           +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:43:46
+   |
+LL |     legacy_const_generics_bounds::arg0_as_u8(N + 1);
+   |                                              ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_u8<const N: u8>() where [(); (N + 1) as usize]: {
+   |                                     +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:48:47
+   |
+LL |     legacy_const_generics_bounds::arg0_as_u16(N + 1);
+   |                                               ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_u16<const N: u16>() where [(); (N + 1) as usize]: {
+   |                                       +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:53:47
+   |
+LL |     legacy_const_generics_bounds::arg0_as_u32(N + 1);
+   |                                               ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_u32<const N: u32>() where [(); (N + 1) as usize]: {
+   |                                       +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:58:47
+   |
+LL |     legacy_const_generics_bounds::arg0_as_u64(N + 1);
+   |                                               ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_u64<const N: u64>() where [(); (N + 1) as usize]: {
+   |                                       +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:63:48
+   |
+LL |     legacy_const_generics_bounds::arg0_as_u128(N + 1);
+   |                                                ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_u128<const N: u128>() where [(); (N + 1) as usize]: {
+   |                                         +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/legacy-const-generics-bound-suggestion.rs:68:49
+   |
+LL |     legacy_const_generics_bounds::arg0_as_usize(N + 1);
+   |                                                 ^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn invoke_arg0_as_usize<const N: usize>() where [(); N + 1]: {
+   |                                           ++++++++++++++++++
+
+error: aborting due to 12 previous errors
+

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_ast::AttrStyle;
+use rustc_ast::{AttrStyle, Safety};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
@@ -62,16 +62,13 @@ impl AllowedTargets<'_> {
 
     pub(crate) fn allowed_targets(&self) -> Vec<Target> {
         match self {
-            AllowedTargets::AllowList(list) => list,
-            AllowedTargets::AllowListWarnRest(list) => list,
+            AllowedTargets::AllowList(list) | AllowedTargets::AllowListWarnRest(list) => list,
             AllowedTargets::ManuallyChecked => unreachable!(),
         }
         .iter()
         .filter_map(|target| match target {
             Policy::Allow(target) => Some(*target),
-            Policy::AllowSilent(_) => None, // Not listed in possible targets
-            Policy::Warn(_) => None,
-            Policy::Error(_) => None,
+            Policy::AllowSilent(_) | Policy::Warn(_) | Policy::Error(_) => None,
         })
         .collect()
     }
@@ -132,7 +129,20 @@ impl<'sess> AttributeParser<'sess> {
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
 
         let diag = InvalidTarget {
-            span: cx.attr_span.clone(),
+            span: if attribute_args.is_empty() {
+                // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
+                // and the path span covers `inline` which is just what we want.
+                cx.attr_path.span
+            } else {
+                // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
+                // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
+                //
+                // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
+                // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
+                // exactly but is as close as we can get.
+                cx.inner_span
+            },
+            attr_span: cx.attr_span,
             name: cx.attr_path.clone(),
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },
@@ -163,7 +173,7 @@ impl<'sess> AttributeParser<'sess> {
                     rustc_session::lint::builtin::UNUSED_ATTRIBUTES
                 };
 
-                let attr_span = cx.attr_span.clone();
+                let attr_span = cx.attr_span;
                 cx.emit_lint(lint, diag, attr_span);
             }
             AllowedResult::Error => {
@@ -177,6 +187,15 @@ impl<'sess> AttributeParser<'sess> {
         cx: &AcceptContext<'_, '_>,
     ) -> Option<InvalidTargetHelp> {
         match &*cx.attr_path.segments {
+            [sym::link_name] if cx.target == Target::Static => {
+                let needs_unsafe_wrapper = matches!(cx.attr_safety, Safety::Default);
+
+                Some(InvalidTargetHelp::UseExportName {
+                    unsafe_open: needs_unsafe_wrapper.then(|| cx.inner_span.shrink_to_lo()),
+                    name: cx.attr_path.span,
+                    unsafe_close: needs_unsafe_wrapper.then(|| cx.inner_span.shrink_to_hi()),
+                })
+            }
             [sym::repr] if attribute_args == "(align(...))" => match cx.target {
                 Target::Fn | Target::Method(..) if cx.features().fn_align() => {
                     Some(InvalidTargetHelp::UseRustcAlign)
@@ -463,7 +482,7 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
 /// This is used for:
 /// - `rustc_dummy`, which can be applied to all targets
 /// - Attributes that are not parted to the new target system yet can use this list as a placeholder
-pub(crate) const ALL_TARGETS: &'static [Policy] = {
+pub(crate) const ALL_TARGETS: &[Policy] = {
     use Policy::Allow;
     &[
         Allow(Target::ExternCrate),

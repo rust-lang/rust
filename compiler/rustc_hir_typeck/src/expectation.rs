@@ -76,9 +76,9 @@ impl<'a, 'tcx> Expectation<'tcx> {
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         let span = match ty.kind() {
             ty::Adt(adt_def, _) => fcx.tcx.def_span(adt_def.did()),
-            _ => fcx.tcx.def_span(fcx.body_id),
+            _ => fcx.tcx.def_span(fcx.body_def_id),
         };
-        let cause = ObligationCause::misc(span, fcx.body_id);
+        let cause = ObligationCause::misc(span, fcx.body_def_id);
 
         // FIXME(#155345): Missing normalization call
         match fcx.tcx.struct_tail_raw(ty, &cause, |ty| ty.skip_normalization(), || {}).kind() {

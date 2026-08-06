@@ -13,7 +13,7 @@ help: the trait `PartialEq` is implemented for `i32`
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: in this macro invocation
-   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_partial_eq_for_primitive` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

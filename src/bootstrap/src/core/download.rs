@@ -8,13 +8,16 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::PathFreshness;
+use build_helper::stage0_parser::VersionMetadata;
 use xz2::bufread::XzDecoder;
 
+use crate::core::build_steps::llvm::detect_llvm_freshness;
+use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
 use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, hex_encode, move_file};
-use crate::{Config, t};
+use crate::{Config, exit, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
@@ -170,6 +173,30 @@ impl Config {
         );
     }
 
+    pub(crate) fn download_std_json_docs(
+        &self,
+        target: TargetSelection,
+        commit: &str,
+    ) -> Option<PathBuf> {
+        if self.dry_run() {
+            return None;
+        }
+
+        self.do_if_verbose(|| println!("using downloaded std json docs from CI (commit {commit})"));
+
+        let version = self.artifact_version_part(commit);
+        download_component(
+            DownloadContext::from(self),
+            &self.out,
+            DownloadSource::CI,
+            format!("rust-docs-json-{version}-{target}.tar.xz"),
+            "rust-docs-json-preview",
+            // When using DownloadSource::CI, the key is assumed to end with -llvm-assertions
+            &format!("{commit}-{}", self.llvm_assertions),
+            "ci-docs-json",
+        )
+    }
+
     fn download_toolchain(
         &self,
         version: &str,
@@ -243,16 +270,11 @@ impl Config {
         download_component(dwn_ctx, &self.out, mode, filename, prefix, key, destination);
     }
 
-    #[cfg(test)]
-    pub(crate) fn maybe_download_ci_llvm(&self) {}
-
-    #[cfg(not(test))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
-        use build_helper::exit;
-        use build_helper::git::PathFreshness;
-
-        use crate::core::build_steps::llvm::detect_llvm_freshness;
-        use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
+        // Never try to download CI LLVM during unit tests.
+        if cfg!(test) {
+            return;
+        }
 
         if !self.llvm_from_ci {
             return;
@@ -334,8 +356,10 @@ impl Config {
         };
     }
 
-    #[cfg(not(test))]
     fn download_ci_llvm(&self, llvm_sha: &str) {
+        // For unit tests, downloading should have been blocked by `maybe_download_ci_llvm`.
+        assert!(cfg!(not(test)), "unit tests shouldn't be downloading CI LLVM");
+
         let llvm_assertions = self.llvm_assertions;
 
         let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
@@ -481,6 +505,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
         "powerpc64le-unknown-linux-gnu",
         "powerpc64le-unknown-linux-musl",
         "riscv64gc-unknown-linux-gnu",
+        "riscv64gc-unknown-linux-musl",
         "s390x-unknown-linux-gnu",
         "x86_64-apple-darwin",
         "x86_64-pc-windows-gnu",
@@ -503,22 +528,16 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
     }
 }
 
-#[cfg(test)]
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    out: &Path,
-) -> Option<PathBuf> {
-    Some(PathBuf::new())
-}
-
 /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
 /// reuse target directories or artifacts
-#[cfg(not(test))]
 pub(crate) fn maybe_download_rustfmt<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     out: &Path,
 ) -> Option<PathBuf> {
-    use build_helper::stage0_parser::VersionMetadata;
+    // Don't actually download rustfmt during unit tests.
+    if cfg!(test) {
+        return Some(PathBuf::new());
+    }
 
     let dwn_ctx = dwn_ctx.as_ref();
 
@@ -573,11 +592,12 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     Some(rustfmt_path)
 }
 
-#[cfg(test)]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, out: &Path) {}
-
-#[cfg(not(test))]
 pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, out: &Path) {
+    // Don't actually download a beta toolchain during unit tests.
+    if cfg!(test) {
+        return;
+    }
+
     let dwn_ctx = dwn_ctx.as_ref();
     dwn_ctx.exec_ctx.do_if_verbose(|| {
         println!("downloading stage0 beta artifacts");
@@ -610,6 +630,8 @@ fn download_toolchain<'a>(
     destination: &str,
     mode: DownloadSource,
 ) {
+    assert!(cfg!(not(test)), "unit tests shouldn't be downloading a toolchain");
+
     let dwn_ctx = dwn_ctx.as_ref();
     let host = dwn_ctx.host_target.triple;
     let bin_root = out.join(host).join(sysroot);
@@ -787,11 +809,11 @@ fn download_component<'a>(
     prefix: &str,
     key: &str,
     destination: &str,
-) {
+) -> Option<PathBuf> {
     let dwn_ctx = dwn_ctx.as_ref();
 
     if dwn_ctx.exec_ctx.dry_run() {
-        return;
+        return None;
     }
 
     let cache_dst =
@@ -836,8 +858,7 @@ fn download_component<'a>(
         let sha256 = dwn_ctx.stage0_metadata.checksums_sha256.get(&url).expect(&error);
         if tarball.exists() {
             if verify(dwn_ctx.exec_ctx, &tarball, sha256) {
-                unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
-                return;
+                return Some(unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix));
             } else {
                 dwn_ctx.exec_ctx.do_if_verbose(|| {
                     println!(
@@ -850,8 +871,7 @@ fn download_component<'a>(
         }
         Some(sha256)
     } else if tarball.exists() {
-        unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
-        return;
+        return Some(unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix));
     } else {
         None
     };
@@ -874,7 +894,7 @@ download-rustc = false
         panic!("failed to verify {}", tarball.display());
     }
 
-    unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
+    Some(unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix))
 }
 
 pub(crate) fn verify(exec_ctx: &ExecutionContext, path: &Path, expected: &str) -> bool {
@@ -918,7 +938,7 @@ pub(crate) fn verify(exec_ctx: &ExecutionContext, path: &Path, expected: &str) -
     verified
 }
 
-fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str) {
+fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str) -> PathBuf {
     eprintln!("extracting {} to {}", tarball.display(), dst.display());
     if !dst.exists() {
         t!(fs::create_dir_all(dst));
@@ -981,6 +1001,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
     if dst_dir.exists() {
         t!(fs::remove_dir_all(&dst_dir), format!("failed to remove {}", dst_dir.display()));
     }
+    dst.to_path_buf()
 }
 
 fn download_file<'a>(
@@ -1034,6 +1055,8 @@ fn download_http_with_retries(
     help_on_error: &str,
 ) {
     println!("downloading {url}");
+    assert!(cfg!(not(test)), "unit tests shouldn't be downloading things: {url:?}");
+
     // Try curl. If that fails and we are on windows, fallback to PowerShell.
     // options should be kept in sync with
     // src/bootstrap/src/core/download.rs

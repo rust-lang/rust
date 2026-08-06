@@ -52,7 +52,12 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
                         }
                     }
                 } else {
-                    self.check_bound_args(def_id, args_ref, args, source_info);
+                    self.check_bound_args(
+                        def_id,
+                        args_ref.no_bound_vars().unwrap(),
+                        args,
+                        source_info,
+                    );
                 }
             }
         }
@@ -127,7 +132,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         referent_ty
             .map(|ref_ty| {
                 if let ty::FnDef(def_id, args_ref) = *ref_ty.kind() {
-                    Some((def_id, args_ref))
+                    Some((def_id, args_ref.no_bound_vars().unwrap()))
                 } else {
                     None
                 }

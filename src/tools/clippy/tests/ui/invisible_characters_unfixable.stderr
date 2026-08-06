@@ -1,0 +1,36 @@
+error: invisible character detected
+  --> tests/ui/invisible_characters_unfixable.rs:6:12
+   |
+LL |     print!(r"a ZWS >​< here");
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+   = note: `-D clippy::invisible-characters` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::invisible_characters)]`
+
+error: invisible character detected
+  --> tests/ui/invisible_characters_unfixable.rs:8:12
+   |
+LL |     print!(r"a SHY >­< here");
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+
+error: invisible character detected
+  --> tests/ui/invisible_characters_unfixable.rs:10:12
+   |
+LL |     print!(r"a WJ >⁠< here");
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+
+error: invisible character detected
+  --> tests/ui/invisible_characters_unfixable.rs:12:12
+   |
+LL |     print!(r#"a ZWS >​< between hashes"#);
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+
+error: aborting due to 4 previous errors
+

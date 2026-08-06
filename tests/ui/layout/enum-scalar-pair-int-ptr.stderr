@@ -1,11 +1,11 @@
-error: backend_repr: ScalarPair(Initialized { value: Int(I?, false), valid_range: $VALID_RANGE }, Initialized { value: Pointer(AddressSpace(0)), valid_range: $VALID_RANGE })
-  --> $DIR/enum-scalar-pair-int-ptr.rs:12:1
+error: backend_repr: ScalarPair { a: u?? is 0..=1, b: pointer is $VALID_RANGE, b_offset: Size(? bytes) }
+  --> $DIR/enum-scalar-pair-int-ptr.rs:13:1
    |
 LL | enum ScalarPairPointerWithInt {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: backend_repr: Memory { sized: true }
-  --> $DIR/enum-scalar-pair-int-ptr.rs:21:1
+  --> $DIR/enum-scalar-pair-int-ptr.rs:22:1
    |
 LL | enum NotScalarPairPointerWithSmallerInt {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -16,14 +16,14 @@ use crate::lists::{
 use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
 use crate::pairs::{PairParts, rewrite_pair};
-use crate::patterns::rewrite_range_pat;
+use crate::range::rewrite_range;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
     colon_spaces, extra_offset, first_line_width, format_extern, format_mutability,
-    last_line_extendable, last_line_width, mk_sp, rewrite_ident,
+    format_range_end, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -1014,12 +1014,6 @@ impl Rewrite for ast::Ty {
                 })
             }
             ast::TyKind::CVarArgs => Ok("...".to_owned()),
-            ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
-            ast::TyKind::Pat(ref ty, ref pat) => {
-                let ty = ty.rewrite_result(context, shape)?;
-                let pat = pat.rewrite_result(context, shape)?;
-                Ok(format!("{ty} is {pat}"))
-            }
             ast::TyKind::FieldOf(ref ty, ref variant, ref field) => {
                 let ty = ty.rewrite_result(context, shape)?;
                 if let Some(variant) = variant {
@@ -1054,6 +1048,14 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
+            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::DirectConstArg(..) => {
+                // These don't normally occur in the AST because macros aren't expanded. However,
+                // rustfmt tries to parse macro arguments when formatting macros, so it's not
+                // totally impossible for rustfmt to come across these nodes when formatting a file.
+                // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
+                Err(RewriteError::Unknown)
+            }
+            ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
         }
     }
 }
@@ -1065,9 +1067,13 @@ impl Rewrite for ast::TyPat {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self.kind {
-            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
-            }
+            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => rewrite_range(
+                context,
+                shape,
+                lhs.as_deref().map(|x| x.value.as_ref()),
+                rhs.as_deref().map(|x| x.value.as_ref()),
+                format_range_end(end_kind.node),
+            ),
             ast::TyPatKind::Or(ref variants) => {
                 let mut first = true;
                 let mut s = String::new();

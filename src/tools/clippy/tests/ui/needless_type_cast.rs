@@ -1,5 +1,5 @@
 #![warn(clippy::needless_type_cast)]
-#![allow(clippy::no_effect, clippy::unnecessary_cast, unused)]
+#![allow(clippy::unnecessary_cast)]
 
 fn takes_i32(x: i32) -> i32 {
     x

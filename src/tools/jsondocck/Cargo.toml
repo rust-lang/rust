@@ -10,3 +10,6 @@ regex = "1.4"
 shlex = "1.0"
 serde_json = "1.0"
 fs-err = "2.5.0"
+jaq-core = "3"
+jaq-std = { version = "3", default-features = false }
+jaq-json = { version = "2", features = ["serde"] }

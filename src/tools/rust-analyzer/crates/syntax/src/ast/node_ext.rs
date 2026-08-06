@@ -3,7 +3,7 @@
 //!
 //! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
-use std::{borrow::Cow, fmt, iter::successors};
+use std::{fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
@@ -11,7 +11,7 @@ use rowan::{GreenNodeData, GreenTokenData};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T, TokenText,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T,
     ast::{
         self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
         HasTypeBounds, SyntaxNode, support,
@@ -22,40 +22,20 @@ use crate::{
 use super::{GenericParam, RangeItem, RangeOp};
 
 impl ast::Lifetime {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::Name {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
-    }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
-
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
     }
 }
 
 impl ast::NameRef {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
-    }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
-
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
@@ -67,15 +47,12 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
+fn text_of_first_token(node: &SyntaxNode) -> &str {
     fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
         green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
     }
 
-    match node.green() {
-        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
-        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
-    }
+    first_token(node.green()).text()
 }
 
 fn into_comma(it: NodeOrToken<SyntaxNode, SyntaxToken>) -> Option<SyntaxToken> {
@@ -619,7 +596,7 @@ impl NameLike {
             _ => None,
         }
     }
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             NameLike::NameRef(name_ref) => name_ref.text(),
             NameLike::Name(name) => name.text(),
@@ -691,7 +668,7 @@ impl ast::AstNode for NameOrNameRef {
 }
 
 impl NameOrNameRef {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             NameOrNameRef::Name(name) => name.text(),
             NameOrNameRef::NameRef(name_ref) => name_ref.text(),

@@ -301,8 +301,7 @@ fn check_no_generics<'tcx>(
         // since in that case it looks like a duplicate error: the declaration of the EII already can't contain generics.
         // So, we check here if at least one of the eii impls has ImplResolution::Macro, which indicates it's
         // not generated as part of the declaration.
-        && find_attr!(tcx, external_impl, EiiImpls(impls) if impls.iter().any(|i| matches!(i.resolution, EiiImplResolution::Macro(_)))
-        )
+        && find_attr!(tcx, external_impl, EiiImpl(i) if matches!(i.resolution, EiiImplResolution::Macro(_)))
     {
         tcx.dcx().emit_err(EiiWithGenerics {
             span: tcx.def_span(external_impl),

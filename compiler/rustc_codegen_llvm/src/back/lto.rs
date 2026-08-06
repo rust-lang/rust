@@ -28,7 +28,7 @@ use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, codegen,
     save_temp_bitcode,
 };
-use crate::errors::{LlvmError, LtoBitcodeFromRlib};
+use crate::diagnostics::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 
@@ -617,10 +617,12 @@ pub(crate) fn run_pass_manager(
         );
     }
 
-    if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {
+    if enable_ad && !thin {
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
-        if !config.autodiff.contains(&config::AutoDiff::NoPostopt) {
+        if !config.autodiff.contains(&config::AutoDiff::NoPostopt)
+            && config.autodiff_post_passes.as_deref() != Some("")
+        {
             unsafe {
                 write::llvm_optimize(
                     cgcx, prof, dcx, module, None, None, config, opt_level, opt_stage, stage,

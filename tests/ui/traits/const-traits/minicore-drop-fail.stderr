@@ -30,6 +30,11 @@ LL | const fn drop_arbitrary<T>(_: T) {
 LL |
 LL | }
    | - value is dropped here
+   |
+help: consider restricting type parameter `T` with trait `Destruct`
+   |
+LL | const fn drop_arbitrary<T: [const] Destruct>(_: T) {
+   |                          ++++++++++++++++++
 
 error: aborting due to 4 previous errors
 

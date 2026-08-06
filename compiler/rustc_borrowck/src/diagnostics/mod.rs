@@ -23,7 +23,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -74,12 +74,12 @@ pub(super) struct DescribePlaceOpt {
 
 pub(super) struct IncludingTupleField(pub(super) bool);
 
-enum BufferedDiag<'infcx> {
-    Error(Diag<'infcx>),
-    NonError(Diag<'infcx, ()>),
+pub(crate) enum BufferedDiag<'diag> {
+    Error(Diag<'diag>),
+    NonError(Diag<'diag, ()>),
 }
 
-impl<'infcx> BufferedDiag<'infcx> {
+impl<'diag> BufferedDiag<'diag> {
     fn sort_span(&self) -> Span {
         match self {
             BufferedDiag::Error(diag) => diag.sort_span,
@@ -89,7 +89,7 @@ impl<'infcx> BufferedDiag<'infcx> {
 }
 
 #[derive(Default)]
-pub(crate) struct BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
+pub(crate) struct BorrowckDiagnosticsBuffer<'diag, 'tcx> {
     /// This field keeps track of move errors that are to be reported for given move indices.
     ///
     /// There are situations where many errors can be reported for a single move out (see
@@ -104,25 +104,23 @@ pub(crate) struct BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
     /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
     /// when errors in the map are being re-added to the error buffer so that errors with the
     /// same primary span come out in a consistent order.
-    buffered_move_errors: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, Diag<'infcx>)>,
+    buffered_move_errors: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, Diag<'diag>)>,
 
-    buffered_mut_errors: FxIndexMap<Span, (Diag<'infcx>, usize)>,
+    buffered_mut_errors: FxIndexMap<Span, (Diag<'diag>, usize)>,
 
     /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
-    buffered_diags: Vec<BufferedDiag<'infcx>>,
+    buffered_diags: Vec<BufferedDiag<'diag>>,
 }
 
-impl<'infcx, 'tcx> BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
-    pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
+impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
+    pub(crate) fn buffer_non_error(&mut self, diag: Diag<'diag, ()>) {
         self.buffered_diags.push(BufferedDiag::NonError(diag));
     }
-    pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
+    pub(crate) fn buffer_error(&mut self, diag: Diag<'diag>) {
         self.buffered_diags.push(BufferedDiag::Error(diag));
     }
 
-    pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-        let mut res = None;
-
+    pub(crate) fn emit_errors(&mut self) {
         // Buffer any move errors that we collected and de-duplicated.
         for (_, (_, diag)) in std::mem::take(&mut self.buffered_move_errors) {
             // We have already set tainted for this error, so just buffer it.
@@ -139,29 +137,29 @@ impl<'infcx, 'tcx> BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
             self.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
             for buffered_diag in self.buffered_diags.drain(..) {
                 match buffered_diag {
-                    BufferedDiag::Error(diag) => res = Some(diag.emit()),
+                    BufferedDiag::Error(diag) => {
+                        diag.emit();
+                    }
                     BufferedDiag::NonError(diag) => diag.emit(),
                 }
             }
         }
-
-        res
     }
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
-    pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-        self.diags_buffer.buffer_error(diag);
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
+    pub(crate) fn buffer_error(&mut self, diag: Diag<'_>) {
+        self.diags_buffer.buffer_error(diag.with_dcx(self.dcx()));
     }
 
-    pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
-        self.diags_buffer.buffer_non_error(diag);
+    pub(crate) fn buffer_non_error(&mut self, diag: Diag<'_, ()>) {
+        self.diags_buffer.buffer_non_error(diag.with_dcx(self.dcx()));
     }
 
     pub(crate) fn buffer_move_error(
         &mut self,
         move_out_indices: Vec<MoveOutIndex>,
-        place_and_err: (PlaceRef<'tcx>, Diag<'infcx>),
+        place_and_err: (PlaceRef<'tcx>, Diag<'diag>),
     ) -> bool {
         if let Some((_, diag)) =
             self.diags_buffer.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -174,12 +172,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    pub(crate) fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'infcx>, usize)> {
+    pub(crate) fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'diag>, usize)> {
         // FIXME(#120456) - is `swap_remove` correct?
         self.diags_buffer.buffered_mut_errors.swap_remove(&span)
     }
 
-    pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
+    pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'diag>, count: usize) {
         self.diags_buffer.buffered_mut_errors.insert(span, (diag, count));
     }
 
@@ -190,7 +188,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn has_move_error(
         &self,
         move_out_indices: &[MoveOutIndex],
-    ) -> Option<&(PlaceRef<'tcx>, Diag<'infcx>)> {
+    ) -> Option<&(PlaceRef<'tcx>, Diag<'diag>)> {
         self.diags_buffer.buffered_move_errors.get(move_out_indices)
     }
 
@@ -225,7 +223,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
     /// is moved after being invoked.
     ///
@@ -241,7 +239,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         location: Location,
         place: PlaceRef<'tcx>,
-        diag: &mut Diag<'infcx>,
+        diag: &mut Diag<'_>,
     ) -> bool {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
@@ -985,6 +983,8 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             ty::FnDef(def_id, args) => {
                 let trait_id = tcx.trait_of_assoc(def_id)?;
 
+                let args = args.no_bound_vars().unwrap();
+
                 if tcx.is_lang_item(trait_id, LangItem::Deref)
                     || tcx.is_lang_item(trait_id, LangItem::DerefMut)
                 {
@@ -1020,7 +1020,7 @@ pub(super) enum CloneSuggestion {
     NotEmitted,
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,
@@ -1238,7 +1238,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     fn explain_captures(
         &mut self,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
         span: Span,
         move_span: Span,
         move_spans: UseSpans<'tcx>,

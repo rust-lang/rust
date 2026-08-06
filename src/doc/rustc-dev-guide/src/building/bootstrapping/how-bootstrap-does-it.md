@@ -1,14 +1,16 @@
 # How Bootstrap does it
 
 The core concept in Bootstrap is a build [`Step`],  which are chained together
-by [`Builder::ensure`]. [`Builder::ensure`] takes a [`Step`] as input, and runs
-the [`Step`] if and only if it has not already been run. Let's take a closer
-look at [`Step`].
+by [`Builder::ensure`].
+[`Builder::ensure`] takes a [`Step`] as input, and runs
+the [`Step`] if and only if it has not already been run.
+Let's take a closer look at [`Step`].
 
 ## Synopsis of [`Step`]
 
 A [`Step`] represents a granular collection of actions involved in the process
-of producing some artifact. It can be thought of like a rule in Makefiles.
+of producing some artifact.
+It can be thought of like a rule in Makefiles.
 The [`Step`] trait is defined as:
 
 ```rs,no_run
@@ -30,8 +32,8 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 - `run` is the function that is responsible for doing the work.
   [`Builder::ensure`] invokes `run`.
 - `should_run` is the command-line interface, which determines if an invocation
-  such as `x build foo` should run a given [`Step`]. In a "default" context
-  where no paths are provided, then `make_run` is called directly.
+  such as `x build foo` should run a given [`Step`].
+  In a "default" context where no paths are provided, then `make_run` is called directly.
 - `make_run` is invoked only for things directly asked via the CLI and not
   for steps which are dependencies of other steps.
 

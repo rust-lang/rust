@@ -305,7 +305,12 @@ fn test_fmt() {
     let mut r = 1..=1;
     assert_eq!(format!("{:?}", r), "1..=1");
     r.next().unwrap();
-    assert_eq!(format!("{:?}", r), "1..=1 (exhausted)");
+    assert_eq!(format!("{:?}", r), "2..=1");
+
+    let mut r = 255_u8..=255;
+    assert_eq!(format!("{:?}", r), "255..=255");
+    r.next().unwrap();
+    assert_eq!(format!("{:?}", r), "0..=255 (exhausted)");
 
     assert_eq!(format!("{:?}", 1..1), "1..1");
     assert_eq!(format!("{:?}", 1..), "1..");

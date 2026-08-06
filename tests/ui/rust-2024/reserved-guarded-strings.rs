@@ -1,5 +1,5 @@
 //@ edition:2024
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 macro_rules! demo1 {
     ( $a:tt ) => { println!("one tokens") };

@@ -76,11 +76,13 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
 
             let ctxt = expr.span.ctxt();
             let span = match cx.tcx.parent_hir_node(expr.hir_id) {
-                Node::Block(&Block {
-                    rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
-                    span,
-                    ..
-                }) if span.ctxt() == ctxt && !is_expr_unsafe(cx, self_arg) => span,
+                Node::Block(
+                    block @ &Block {
+                        rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                        span,
+                        ..
+                    },
+                ) if span.ctxt() == ctxt && !is_expr_unsafe(cx, self_arg) && block.stmts.is_empty() => span,
                 _ => expr.span,
             };
 

@@ -58,43 +58,43 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 
 pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
-        SymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
-        SymbolKind::Method => lsp_types::SymbolKind::METHOD,
-        SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
-        SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
-        SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
-        SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
+        SymbolKind::Function => lsp_types::SymbolKind::Function,
+        SymbolKind::Method => lsp_types::SymbolKind::Method,
+        SymbolKind::Struct => lsp_types::SymbolKind::Struct,
+        SymbolKind::Enum => lsp_types::SymbolKind::Enum,
+        SymbolKind::Variant => lsp_types::SymbolKind::EnumMember,
+        SymbolKind::Trait => lsp_types::SymbolKind::Interface,
         SymbolKind::Macro
         | SymbolKind::ProcMacro
         | SymbolKind::BuiltinAttr
         | SymbolKind::Attribute
         | SymbolKind::Derive
-        | SymbolKind::DeriveHelper => lsp_types::SymbolKind::FUNCTION,
-        SymbolKind::CrateRoot => lsp_types::SymbolKind::PACKAGE,
-        SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::MODULE,
+        | SymbolKind::DeriveHelper => lsp_types::SymbolKind::Function,
+        SymbolKind::CrateRoot => lsp_types::SymbolKind::Package,
+        SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::Module,
         SymbolKind::TypeAlias | SymbolKind::TypeParam | SymbolKind::SelfType => {
-            lsp_types::SymbolKind::TYPE_PARAMETER
+            lsp_types::SymbolKind::TypeParameter
         }
-        SymbolKind::Field => lsp_types::SymbolKind::FIELD,
-        SymbolKind::Static => lsp_types::SymbolKind::CONSTANT,
-        SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
-        SymbolKind::ConstParam => lsp_types::SymbolKind::CONSTANT,
-        SymbolKind::Impl => lsp_types::SymbolKind::OBJECT,
+        SymbolKind::Field => lsp_types::SymbolKind::Field,
+        SymbolKind::Static => lsp_types::SymbolKind::Constant,
+        SymbolKind::Const => lsp_types::SymbolKind::Constant,
+        SymbolKind::ConstParam => lsp_types::SymbolKind::Constant,
+        SymbolKind::Impl => lsp_types::SymbolKind::Object,
         SymbolKind::Local
         | SymbolKind::SelfParam
         | SymbolKind::LifetimeParam
         | SymbolKind::ValueParam
-        | SymbolKind::Label => lsp_types::SymbolKind::VARIABLE,
-        SymbolKind::Union => lsp_types::SymbolKind::STRUCT,
-        SymbolKind::InlineAsmRegOrRegClass => lsp_types::SymbolKind::VARIABLE,
+        | SymbolKind::Label => lsp_types::SymbolKind::Variable,
+        SymbolKind::Union => lsp_types::SymbolKind::Struct,
+        SymbolKind::InlineAsmRegOrRegClass => lsp_types::SymbolKind::Variable,
     }
 }
 
 pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolKind {
     match kind {
         StructureNodeKind::SymbolKind(symbol) => symbol_kind(symbol),
-        StructureNodeKind::Region => lsp_types::SymbolKind::NAMESPACE,
-        StructureNodeKind::ExternBlock => lsp_types::SymbolKind::NAMESPACE,
+        StructureNodeKind::Region => lsp_types::SymbolKind::Namespace,
+        StructureNodeKind::ExternBlock => lsp_types::SymbolKind::Namespace,
     }
 }
 
@@ -102,21 +102,21 @@ pub(crate) fn document_highlight_kind(
     category: ReferenceCategory,
 ) -> Option<lsp_types::DocumentHighlightKind> {
     if category.contains(ReferenceCategory::WRITE) {
-        return Some(lsp_types::DocumentHighlightKind::WRITE);
+        return Some(lsp_types::DocumentHighlightKind::Write);
     }
     if category.contains(ReferenceCategory::READ) {
-        return Some(lsp_types::DocumentHighlightKind::READ);
+        return Some(lsp_types::DocumentHighlightKind::Read);
     }
     None
 }
 
 pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
-        Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
-        Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
-        Severity::WeakWarning => lsp_types::DiagnosticSeverity::HINT,
+        Severity::Error => lsp_types::DiagnosticSeverity::Error,
+        Severity::Warning => lsp_types::DiagnosticSeverity::Warning,
+        Severity::WeakWarning => lsp_types::DiagnosticSeverity::Hint,
         // unreachable
-        Severity::Allow => lsp_types::DiagnosticSeverity::INFORMATION,
+        Severity::Allow => lsp_types::DiagnosticSeverity::Information,
     }
 }
 
@@ -130,44 +130,44 @@ pub(crate) fn completion_item_kind(
     completion_item_kind: CompletionItemKind,
 ) -> lsp_types::CompletionItemKind {
     match completion_item_kind {
-        CompletionItemKind::Binding => lsp_types::CompletionItemKind::VARIABLE,
-        CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::STRUCT,
-        CompletionItemKind::InferredType => lsp_types::CompletionItemKind::SNIPPET,
-        CompletionItemKind::Keyword => lsp_types::CompletionItemKind::KEYWORD,
-        CompletionItemKind::Snippet => lsp_types::CompletionItemKind::SNIPPET,
-        CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::REFERENCE,
-        CompletionItemKind::Expression => lsp_types::CompletionItemKind::SNIPPET,
+        CompletionItemKind::Binding => lsp_types::CompletionItemKind::Variable,
+        CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::Struct,
+        CompletionItemKind::InferredType => lsp_types::CompletionItemKind::Snippet,
+        CompletionItemKind::Keyword => lsp_types::CompletionItemKind::Keyword,
+        CompletionItemKind::Snippet => lsp_types::CompletionItemKind::Snippet,
+        CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::Reference,
+        CompletionItemKind::Expression => lsp_types::CompletionItemKind::Snippet,
         CompletionItemKind::SymbolKind(symbol) => match symbol {
-            SymbolKind::Attribute => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::Method => lsp_types::CompletionItemKind::METHOD,
-            SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
-            SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
-            SymbolKind::CrateRoot => lsp_types::CompletionItemKind::MODULE,
-            SymbolKind::Derive => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::DeriveHelper => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::Enum => lsp_types::CompletionItemKind::ENUM,
-            SymbolKind::Field => lsp_types::CompletionItemKind::FIELD,
-            SymbolKind::Function => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::Impl => lsp_types::CompletionItemKind::TEXT,
-            SymbolKind::Label => lsp_types::CompletionItemKind::VARIABLE,
-            SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
-            SymbolKind::Local => lsp_types::CompletionItemKind::VARIABLE,
-            SymbolKind::Macro => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::ProcMacro => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::Module => lsp_types::CompletionItemKind::MODULE,
-            SymbolKind::SelfParam => lsp_types::CompletionItemKind::VALUE,
-            SymbolKind::SelfType => lsp_types::CompletionItemKind::TYPE_PARAMETER,
-            SymbolKind::Static => lsp_types::CompletionItemKind::VALUE,
-            SymbolKind::Struct => lsp_types::CompletionItemKind::STRUCT,
-            SymbolKind::Trait => lsp_types::CompletionItemKind::INTERFACE,
-            SymbolKind::TypeAlias => lsp_types::CompletionItemKind::STRUCT,
-            SymbolKind::TypeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
-            SymbolKind::Union => lsp_types::CompletionItemKind::STRUCT,
-            SymbolKind::ValueParam => lsp_types::CompletionItemKind::VALUE,
-            SymbolKind::Variant => lsp_types::CompletionItemKind::ENUM_MEMBER,
-            SymbolKind::BuiltinAttr => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::ToolModule => lsp_types::CompletionItemKind::MODULE,
-            SymbolKind::InlineAsmRegOrRegClass => lsp_types::CompletionItemKind::KEYWORD,
+            SymbolKind::Attribute => lsp_types::CompletionItemKind::Function,
+            SymbolKind::Method => lsp_types::CompletionItemKind::Method,
+            SymbolKind::Const => lsp_types::CompletionItemKind::Constant,
+            SymbolKind::ConstParam => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::CrateRoot => lsp_types::CompletionItemKind::Module,
+            SymbolKind::Derive => lsp_types::CompletionItemKind::Function,
+            SymbolKind::DeriveHelper => lsp_types::CompletionItemKind::Function,
+            SymbolKind::Enum => lsp_types::CompletionItemKind::Enum,
+            SymbolKind::Field => lsp_types::CompletionItemKind::Field,
+            SymbolKind::Function => lsp_types::CompletionItemKind::Function,
+            SymbolKind::Impl => lsp_types::CompletionItemKind::Text,
+            SymbolKind::Label => lsp_types::CompletionItemKind::Variable,
+            SymbolKind::LifetimeParam => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::Local => lsp_types::CompletionItemKind::Variable,
+            SymbolKind::Macro => lsp_types::CompletionItemKind::Function,
+            SymbolKind::ProcMacro => lsp_types::CompletionItemKind::Function,
+            SymbolKind::Module => lsp_types::CompletionItemKind::Module,
+            SymbolKind::SelfParam => lsp_types::CompletionItemKind::Value,
+            SymbolKind::SelfType => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::Static => lsp_types::CompletionItemKind::Value,
+            SymbolKind::Struct => lsp_types::CompletionItemKind::Struct,
+            SymbolKind::Trait => lsp_types::CompletionItemKind::Interface,
+            SymbolKind::TypeAlias => lsp_types::CompletionItemKind::Struct,
+            SymbolKind::TypeParam => lsp_types::CompletionItemKind::TypeParameter,
+            SymbolKind::Union => lsp_types::CompletionItemKind::Struct,
+            SymbolKind::ValueParam => lsp_types::CompletionItemKind::Value,
+            SymbolKind::Variant => lsp_types::CompletionItemKind::EnumMember,
+            SymbolKind::BuiltinAttr => lsp_types::CompletionItemKind::Function,
+            SymbolKind::ToolModule => lsp_types::CompletionItemKind::Module,
+            SymbolKind::InlineAsmRegOrRegClass => lsp_types::CompletionItemKind::Keyword,
         },
     }
 }
@@ -185,7 +185,7 @@ pub(crate) fn completion_text_edit(
     line_index: &LineIndex,
     insert_replace_support: Option<lsp_types::Position>,
     indel: Indel,
-) -> lsp_types::CompletionTextEdit {
+) -> lsp_types::CompletionItemTextEdit {
     let text_edit = text_edit(line_index, indel);
     match insert_replace_support {
         Some(cursor_pos) => lsp_types::InsertReplaceEdit {
@@ -208,7 +208,7 @@ pub(crate) fn snippet_text_edit(
     let annotation_id = annotation.filter(|_| client_supports_annotations).map(|it| it.to_string());
     let text_edit = text_edit(line_index, indel);
     let insert_text_format =
-        if is_snippet { Some(lsp_types::InsertTextFormat::SNIPPET) } else { None };
+        if is_snippet { Some(lsp_types::InsertTextFormat::Snippet) } else { None };
     lsp_ext::SnippetTextEdit {
         range: text_edit.range,
         new_text: text_edit.new_text,
@@ -250,7 +250,7 @@ pub(crate) fn completion_items(
     fields_to_resolve: &CompletionFieldsToResolve,
     line_index: &LineIndex,
     version: Option<i32>,
-    tdpp: lsp_types::TextDocumentPositionParams,
+    tdpp: &lsp_types::TextDocumentPositionParams,
     completion_trigger_character: Option<char>,
     mut items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
@@ -269,7 +269,7 @@ pub(crate) fn completion_items(
             fields_to_resolve,
             line_index,
             version,
-            &tdpp,
+            tdpp,
             max_relevance,
             completion_trigger_character,
             item,
@@ -340,12 +340,12 @@ fn completion_item(
         Some(text_edit.unwrap())
     };
 
-    let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::SNIPPET);
+    let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::Snippet);
     let tags = if fields_to_resolve.resolve_tags {
         something_to_resolve |= item.deprecated;
         None
     } else {
-        item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED])
+        item.deprecated.then(|| vec![lsp_types::CompletionItemTag::Deprecated])
     };
     let command = if item.trigger_call_info && client_commands.trigger_parameter_hints {
         if fields_to_resolve.resolve_command {
@@ -383,6 +383,7 @@ fn completion_item(
             .not()
             .then_some(additional_text_edits),
         documentation,
+        #[expect(deprecated, reason = "we do use tags")]
         deprecated: item.deprecated.then_some(item.deprecated),
         tags,
         command,
@@ -491,7 +492,7 @@ pub(crate) fn signature_help(
             let params = call_info
                 .parameter_labels()
                 .map(|label| lsp_types::ParameterInformation {
-                    label: lsp_types::ParameterLabel::Simple(label.to_owned()),
+                    label: lsp_types::ParameterInformationLabel::String(label.to_owned()),
                     documentation: None,
                 })
                 .collect::<Vec<_>>();
@@ -513,10 +514,10 @@ pub(crate) fn signature_help(
                             .chars()
                             .map(|c| c.len_utf16())
                             .sum::<usize>() as u32;
-                    [start, end]
+                    (start, end)
                 })
                 .map(|label_offsets| lsp_types::ParameterInformation {
-                    label: lsp_types::ParameterLabel::LabelOffsets(label_offsets),
+                    label: lsp_types::ParameterInformationLabel::Tuple(label_offsets),
                     documentation: None,
                 })
                 .collect::<Vec<_>>();
@@ -535,7 +536,7 @@ pub(crate) fn signature_help(
                 label.push_str(param);
                 let end = label.len() as u32;
                 params.push(lsp_types::ParameterInformation {
-                    label: lsp_types::ParameterLabel::LabelOffsets([start, end]),
+                    label: lsp_types::ParameterInformationLabel::Tuple((start, end)),
                     documentation: None,
                 });
             }
@@ -551,7 +552,8 @@ pub(crate) fn signature_help(
         })
     });
 
-    let active_parameter = call_info.active_parameter.map(|it| it as u32);
+    let active_parameter =
+        call_info.active_parameter.map(|it| lsp_types::ActiveParameter::Int(it as u32));
 
     let signature = lsp_types::SignatureInformation {
         label,
@@ -639,9 +641,9 @@ pub(crate) fn inlay_hint(
         padding_right: Some(inlay_hint.pad_right),
         kind: match inlay_hint.kind {
             InlayKind::Parameter | InlayKind::GenericParameter => {
-                Some(lsp_types::InlayHintKind::PARAMETER)
+                Some(lsp_types::InlayHintKind::Parameter)
             }
-            InlayKind::Type | InlayKind::Chaining => Some(lsp_types::InlayHintKind::TYPE),
+            InlayKind::Type | InlayKind::Chaining => Some(lsp_types::InlayHintKind::Type),
             _ => None,
         },
         text_edits,
@@ -657,7 +659,7 @@ fn inlay_hint_label(
     something_to_resolve: &mut bool,
     needs_resolve: bool,
     mut label: InlayHintLabel,
-) -> Cancellable<(lsp_types::InlayHintLabel, Option<lsp_types::InlayHintTooltip>)> {
+) -> Cancellable<(lsp_types::Label, Option<lsp_types::Tooltip>)> {
     let (label, tooltip) = match &*label.parts {
         [InlayHintLabelPart { linked_location: None, .. }] => {
             let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
@@ -670,16 +672,16 @@ fn inlay_hint_label(
                 }
             });
             let hint_tooltip = match tooltip {
-                Some(ide::InlayTooltip::String(s)) => Some(lsp_types::InlayHintTooltip::String(s)),
+                Some(ide::InlayTooltip::String(s)) => Some(lsp_types::Tooltip::String(s)),
                 Some(ide::InlayTooltip::Markdown(s)) => {
-                    Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+                    Some(lsp_types::Tooltip::MarkupContent(lsp_types::MarkupContent {
                         kind: lsp_types::MarkupKind::Markdown,
                         value: s,
                     }))
                 }
                 None => None,
             };
-            (lsp_types::InlayHintLabel::String(text), hint_tooltip)
+            (lsp_types::Label::String(text), hint_tooltip)
         }
         _ => {
             let parts = label
@@ -694,16 +696,12 @@ fn inlay_hint_label(
                         }
                     });
                     let tooltip = match tooltip {
-                        Some(ide::InlayTooltip::String(s)) => {
-                            Some(lsp_types::InlayHintLabelPartTooltip::String(s))
-                        }
+                        Some(ide::InlayTooltip::String(s)) => Some(lsp_types::Tooltip::String(s)),
                         Some(ide::InlayTooltip::Markdown(s)) => {
-                            Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
-                                lsp_types::MarkupContent {
-                                    kind: lsp_types::MarkupKind::Markdown,
-                                    value: s,
-                                },
-                            ))
+                            Some(lsp_types::Tooltip::MarkupContent(lsp_types::MarkupContent {
+                                kind: lsp_types::MarkupKind::Markdown,
+                                value: s,
+                            }))
                         }
                         None => None,
                     };
@@ -726,7 +724,7 @@ fn inlay_hint_label(
                     })
                 })
                 .collect::<Cancellable<_>>()?;
-            (lsp_types::InlayHintLabel::LabelParts(parts), None)
+            (lsp_types::Label::InlayHintLabelPartList(parts), None)
         }
     };
     Ok((label, tooltip))
@@ -773,11 +771,11 @@ pub(crate) fn semantic_tokens(
 
         if !non_standard_tokens {
             ty = match standard_fallback_type(ty) {
-                Some(ty) => ty,
+                Some(fallback) => fallback,
                 None => continue,
             };
             mods.standard_fallback();
-        }
+        };
         let token_index = semantic_tokens::type_index(ty);
         let modifier_bitset = mods.0;
 
@@ -805,106 +803,106 @@ pub(crate) fn semantic_token_delta(
 
 fn semantic_token_type_and_modifiers(
     highlight: Highlight,
-) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
-    use semantic_tokens::{modifiers as mods, types};
+) -> (semantic_tokens::SupportedType, semantic_tokens::ModifierSet) {
+    use semantic_tokens::{SupportedModifiers, SupportedType};
 
     let mut mods = semantic_tokens::ModifierSet::default();
     let ty = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
-            SymbolKind::Attribute => types::DECORATOR,
-            SymbolKind::Derive => types::DERIVE,
-            SymbolKind::DeriveHelper => types::DERIVE_HELPER,
+            SymbolKind::Attribute => SupportedType::Decorator,
+            SymbolKind::Derive => SupportedType::Derive,
+            SymbolKind::DeriveHelper => SupportedType::DeriveHelper,
             SymbolKind::CrateRoot => {
-                mods |= mods::CRATE_ROOT;
-                types::NAMESPACE
+                mods |= SupportedModifiers::CrateRoot;
+                SupportedType::Namespace
             }
-            SymbolKind::Module => types::NAMESPACE,
-            SymbolKind::Impl => types::TYPE_ALIAS,
-            SymbolKind::Field => types::PROPERTY,
-            SymbolKind::TypeParam => types::TYPE_PARAMETER,
-            SymbolKind::ConstParam => types::CONST_PARAMETER,
-            SymbolKind::LifetimeParam => types::LIFETIME,
-            SymbolKind::Label => types::LABEL,
-            SymbolKind::ValueParam => types::PARAMETER,
-            SymbolKind::SelfParam => types::SELF_KEYWORD,
-            SymbolKind::SelfType => types::SELF_TYPE_KEYWORD,
-            SymbolKind::Local => types::VARIABLE,
-            SymbolKind::Method => types::METHOD,
-            SymbolKind::Function => types::FUNCTION,
-            SymbolKind::Const => types::CONST,
-            SymbolKind::Static => types::STATIC,
-            SymbolKind::Struct => types::STRUCT,
-            SymbolKind::Enum => types::ENUM,
-            SymbolKind::Variant => types::ENUM_MEMBER,
-            SymbolKind::Union => types::UNION,
-            SymbolKind::TypeAlias => types::TYPE_ALIAS,
-            SymbolKind::Trait => types::INTERFACE,
-            SymbolKind::Macro => types::MACRO,
-            SymbolKind::ProcMacro => types::PROC_MACRO,
-            SymbolKind::BuiltinAttr => types::BUILTIN_ATTRIBUTE,
-            SymbolKind::ToolModule => types::TOOL_MODULE,
-            SymbolKind::InlineAsmRegOrRegClass => types::KEYWORD,
+            SymbolKind::Module => SupportedType::Namespace,
+            SymbolKind::Impl => SupportedType::TypeAlias,
+            SymbolKind::Field => SupportedType::Property,
+            SymbolKind::TypeParam => SupportedType::TypeParameter,
+            SymbolKind::ConstParam => SupportedType::ConstParameter,
+            SymbolKind::LifetimeParam => SupportedType::Lifetime,
+            SymbolKind::Label => SupportedType::Label,
+            SymbolKind::ValueParam => SupportedType::Parameter,
+            SymbolKind::SelfParam => SupportedType::SelfKeyword,
+            SymbolKind::SelfType => SupportedType::SelfTypeKeyword,
+            SymbolKind::Local => SupportedType::Variable,
+            SymbolKind::Method => SupportedType::Method,
+            SymbolKind::Function => SupportedType::Function,
+            SymbolKind::Const => SupportedType::Const,
+            SymbolKind::Static => SupportedType::Static,
+            SymbolKind::Struct => SupportedType::Struct,
+            SymbolKind::Enum => SupportedType::Enum,
+            SymbolKind::Variant => SupportedType::EnumMember,
+            SymbolKind::Union => SupportedType::Union,
+            SymbolKind::TypeAlias => SupportedType::TypeAlias,
+            SymbolKind::Trait => SupportedType::Interface,
+            SymbolKind::Macro => SupportedType::Macro,
+            SymbolKind::ProcMacro => SupportedType::ProcMacro,
+            SymbolKind::BuiltinAttr => SupportedType::BuiltinAttribute,
+            SymbolKind::ToolModule => SupportedType::ToolModule,
+            SymbolKind::InlineAsmRegOrRegClass => SupportedType::Keyword,
         },
-        HlTag::AttributeBracket => types::ATTRIBUTE_BRACKET,
-        HlTag::BoolLiteral => types::BOOLEAN,
-        HlTag::BuiltinType => types::BUILTIN_TYPE,
-        HlTag::ByteLiteral | HlTag::NumericLiteral => types::NUMBER,
-        HlTag::CharLiteral => types::CHAR,
-        HlTag::Comment => types::COMMENT,
-        HlTag::EscapeSequence => types::ESCAPE_SEQUENCE,
-        HlTag::InvalidEscapeSequence => types::INVALID_ESCAPE_SEQUENCE,
-        HlTag::FormatSpecifier => types::FORMAT_SPECIFIER,
-        HlTag::Keyword => types::KEYWORD,
-        HlTag::None => types::GENERIC,
+        HlTag::AttributeBracket => SupportedType::AttributeBracket,
+        HlTag::BoolLiteral => SupportedType::Boolean,
+        HlTag::BuiltinType => SupportedType::BuiltinType,
+        HlTag::ByteLiteral | HlTag::NumericLiteral => SupportedType::Number,
+        HlTag::CharLiteral => SupportedType::Char,
+        HlTag::Comment => SupportedType::Comment,
+        HlTag::EscapeSequence => SupportedType::EscapeSequence,
+        HlTag::InvalidEscapeSequence => SupportedType::InvalidEscapeSequence,
+        HlTag::FormatSpecifier => SupportedType::FormatSpecifier,
+        HlTag::Keyword => SupportedType::Keyword,
+        HlTag::None => SupportedType::Generic,
         HlTag::Operator(op) => match op {
-            HlOperator::Bitwise => types::BITWISE,
-            HlOperator::Arithmetic => types::ARITHMETIC,
-            HlOperator::Logical => types::LOGICAL,
-            HlOperator::Negation => types::NEGATION,
-            HlOperator::Comparison => types::COMPARISON,
-            HlOperator::Other => types::OPERATOR,
+            HlOperator::Bitwise => SupportedType::Bitwise,
+            HlOperator::Arithmetic => SupportedType::Arithmetic,
+            HlOperator::Logical => SupportedType::Logical,
+            HlOperator::Negation => SupportedType::Negation,
+            HlOperator::Comparison => SupportedType::Comparison,
+            HlOperator::Other => SupportedType::Operator,
         },
-        HlTag::StringLiteral => types::STRING,
-        HlTag::UnresolvedReference => types::UNRESOLVED_REFERENCE,
+        HlTag::StringLiteral => SupportedType::String,
+        HlTag::UnresolvedReference => SupportedType::UnresolvedReference,
         HlTag::Punctuation(punct) => match punct {
-            HlPunct::Bracket => types::BRACKET,
-            HlPunct::Brace => types::BRACE,
-            HlPunct::Parenthesis => types::PARENTHESIS,
-            HlPunct::Angle => types::ANGLE,
-            HlPunct::Comma => types::COMMA,
-            HlPunct::Dot => types::DOT,
-            HlPunct::Colon => types::COLON,
-            HlPunct::Semi => types::SEMICOLON,
-            HlPunct::Other => types::PUNCTUATION,
-            HlPunct::MacroBang => types::MACRO_BANG,
+            HlPunct::Bracket => SupportedType::Bracket,
+            HlPunct::Brace => SupportedType::Brace,
+            HlPunct::Parenthesis => SupportedType::Parenthesis,
+            HlPunct::Angle => SupportedType::Angle,
+            HlPunct::Comma => SupportedType::Comma,
+            HlPunct::Dot => SupportedType::Dot,
+            HlPunct::Colon => SupportedType::Colon,
+            HlPunct::Semi => SupportedType::Semicolon,
+            HlPunct::Other => SupportedType::Punctuation,
+            HlPunct::MacroBang => SupportedType::MacroBang,
         },
     };
 
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
-            HlMod::Associated => mods::ASSOCIATED,
-            HlMod::Async => mods::ASYNC,
-            HlMod::Attribute => mods::ATTRIBUTE_MODIFIER,
-            HlMod::Callable => mods::CALLABLE,
-            HlMod::Const => mods::CONSTANT,
-            HlMod::Consuming => mods::CONSUMING,
-            HlMod::ControlFlow => mods::CONTROL_FLOW,
-            HlMod::CrateRoot => mods::CRATE_ROOT,
-            HlMod::DefaultLibrary => mods::DEFAULT_LIBRARY,
-            HlMod::Deprecated => mods::DEPRECATED,
-            HlMod::Definition => mods::DECLARATION,
-            HlMod::Documentation => mods::DOCUMENTATION,
-            HlMod::Injected => mods::INJECTED,
-            HlMod::IntraDocLink => mods::INTRA_DOC_LINK,
-            HlMod::Library => mods::LIBRARY,
-            HlMod::Macro => mods::MACRO_MODIFIER,
-            HlMod::ProcMacro => mods::PROC_MACRO_MODIFIER,
-            HlMod::Mutable => mods::MUTABLE,
-            HlMod::Public => mods::PUBLIC,
-            HlMod::Reference => mods::REFERENCE,
-            HlMod::Static => mods::STATIC,
-            HlMod::Trait => mods::TRAIT_MODIFIER,
-            HlMod::Unsafe => mods::UNSAFE,
+            HlMod::Associated => SupportedModifiers::Associated,
+            HlMod::Async => SupportedModifiers::Async,
+            HlMod::Attribute => SupportedModifiers::AttributeModifier,
+            HlMod::Callable => SupportedModifiers::Callable,
+            HlMod::Const => SupportedModifiers::Constant,
+            HlMod::Consuming => SupportedModifiers::Consuming,
+            HlMod::ControlFlow => SupportedModifiers::ControlFlow,
+            HlMod::CrateRoot => SupportedModifiers::CrateRoot,
+            HlMod::DefaultLibrary => SupportedModifiers::DefaultLibrary,
+            HlMod::Deprecated => SupportedModifiers::Deprecated,
+            HlMod::Definition => SupportedModifiers::Declaration,
+            HlMod::Documentation => SupportedModifiers::Documentation,
+            HlMod::Injected => SupportedModifiers::Injected,
+            HlMod::IntraDocLink => SupportedModifiers::IntraDocLink,
+            HlMod::Library => SupportedModifiers::Library,
+            HlMod::Macro => SupportedModifiers::MacroModifier,
+            HlMod::ProcMacro => SupportedModifiers::ProcMacroModifier,
+            HlMod::Mutable => SupportedModifiers::Mutable,
+            HlMod::Public => SupportedModifiers::Public,
+            HlMod::Reference => SupportedModifiers::Reference,
+            HlMod::Static => SupportedModifiers::Static,
+            HlMod::Trait => SupportedModifiers::TraitModifier,
+            HlMod::Unsafe => SupportedModifiers::Unsafe,
         };
         mods |= modifier;
     }
@@ -983,16 +981,16 @@ pub(crate) fn folding_range(
     }
 }
 
-pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> lsp_types::Url {
+pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> lsp_types::Uri {
     snap.file_id_to_url(file_id)
 }
 
-/// Returns a `Url` object from a given path, will lowercase drive letters if present.
+/// Returns a `Uri` object from a given path, will lowercase drive letters if present.
 /// This will only happen when processing windows paths.
 ///
-/// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
-pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
-    let url = lsp_types::Url::from_file_path(path).unwrap();
+/// When processing non-windows path, this is essentially the same as [`lsp_types::Uri::from_file_path`].
+pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Uri {
+    let url = lsp_types::Uri::from_file_path(path).unwrap();
     match path.components().next() {
         Some(Utf8Component::Prefix(prefix))
             if matches!(prefix.kind(), Utf8Prefix::Disk(_) | Utf8Prefix::VerbatimDisk(_)) =>
@@ -1016,16 +1014,19 @@ pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
     // string in place.
     let mut url: String = url.into();
     url[driver_letter_range].make_ascii_lowercase();
-    lsp_types::Url::parse(&url).unwrap()
+    lsp_types::Uri::parse(&url).unwrap()
 }
 
 pub(crate) fn optional_versioned_text_document_identifier(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
 ) -> lsp_types::OptionalVersionedTextDocumentIdentifier {
-    let url = url(snap, file_id);
-    let version = snap.url_file_version(&url);
-    lsp_types::OptionalVersionedTextDocumentIdentifier { uri: url, version }
+    let uri = url(snap, file_id);
+    let version = snap.url_file_version(&uri);
+    lsp_types::OptionalVersionedTextDocumentIdentifier {
+        text_document_identifier: lsp_types::TextDocumentIdentifier { uri },
+        version,
+    }
 }
 
 pub(crate) fn location(
@@ -1042,7 +1043,7 @@ pub(crate) fn location(
 /// Prefer using `location_link`, if the client has the cap.
 pub(crate) fn location_from_nav(
     snap: &GlobalStateSnapshot,
-    nav: NavigationTarget,
+    nav: &NavigationTarget,
 ) -> Cancellable<lsp_types::Location> {
     let url = url(snap, nav.file_id);
     let line_index = snap.file_line_index(nav.file_id)?;
@@ -1077,7 +1078,7 @@ pub(crate) fn location_link(
 fn location_info(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
-) -> Cancellable<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
+) -> Cancellable<(lsp_types::Uri, lsp_types::Range, lsp_types::Range)> {
     let line_index = snap.file_line_index(target.file_id)?;
 
     let target_uri = url(snap, target.file_id);
@@ -1091,23 +1092,88 @@ pub(crate) fn goto_definition_response(
     snap: &GlobalStateSnapshot,
     src: Option<FileRange>,
     targets: Vec<NavigationTarget>,
-) -> Cancellable<lsp_types::GotoDefinitionResponse> {
+) -> Cancellable<lsp_types::DefinitionResponse> {
     if snap.config.location_link() {
-        let links = targets
-            .into_iter()
-            .unique_by(|nav| (nav.file_id, nav.full_range, nav.focus_range))
-            .map(|nav| location_link(snap, src, nav))
-            .collect::<Cancellable<Vec<_>>>()?;
+        let links = targets_to_links(snap, src, targets)?;
         Ok(links.into())
     } else {
-        let locations = targets
-            .into_iter()
-            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
-            .unique()
-            .map(|range| location(snap, range))
-            .collect::<Cancellable<Vec<_>>>()?;
-        Ok(locations.into())
+        let locations = targets_to_locations(snap, targets)?;
+        Ok(lsp_types::DefinitionResponse::Definition(lsp_types::Definition::LocationList(
+            locations,
+        )))
     }
+}
+
+pub(crate) fn goto_declaration_response(
+    snap: &GlobalStateSnapshot,
+    src: Option<FileRange>,
+    targets: Vec<NavigationTarget>,
+) -> Cancellable<lsp_types::DeclarationResponse> {
+    if snap.config.location_link() {
+        let links = targets_to_links(snap, src, targets)?;
+        Ok(links.into())
+    } else {
+        let locations = targets_to_locations(snap, targets)?;
+        Ok(lsp_types::DeclarationResponse::Declaration(lsp_types::Declaration::LocationList(
+            locations,
+        )))
+    }
+}
+
+pub(crate) fn goto_implementation_response(
+    snap: &GlobalStateSnapshot,
+    src: Option<FileRange>,
+    targets: Vec<NavigationTarget>,
+) -> Cancellable<lsp_types::ImplementationResponse> {
+    if snap.config.location_link() {
+        let links = targets_to_links(snap, src, targets)?;
+        Ok(links.into())
+    } else {
+        let locations = targets_to_locations(snap, targets)?;
+        Ok(lsp_types::ImplementationResponse::Definition(lsp_types::Definition::LocationList(
+            locations,
+        )))
+    }
+}
+
+pub(crate) fn goto_type_definition_response(
+    snap: &GlobalStateSnapshot,
+    src: Option<FileRange>,
+    targets: Vec<NavigationTarget>,
+) -> Cancellable<lsp_types::TypeDefinitionResponse> {
+    if snap.config.location_link() {
+        let links = targets_to_links(snap, src, targets)?;
+        Ok(links.into())
+    } else {
+        let locations = targets_to_locations(snap, targets)?;
+        Ok(lsp_types::TypeDefinitionResponse::Definition(lsp_types::Definition::LocationList(
+            locations,
+        )))
+    }
+}
+
+fn targets_to_links(
+    snap: &GlobalStateSnapshot,
+    src: Option<hir::FileRangeWrapper<FileId>>,
+    targets: Vec<NavigationTarget>,
+) -> Result<Vec<lsp_types::LocationLink>, ide_db::base_db::salsa::Cancelled> {
+    targets
+        .into_iter()
+        .unique_by(|nav| (nav.file_id, nav.full_range, nav.focus_range))
+        .map(|nav| location_link(snap, src, nav))
+        .collect::<Cancellable<Vec<_>>>()
+}
+
+fn targets_to_locations(
+    snap: &GlobalStateSnapshot,
+    targets: Vec<NavigationTarget>,
+) -> Result<Vec<lsp_types::Location>, ide_db::base_db::salsa::Cancelled> {
+    targets
+        .into_iter()
+        .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+        .unique()
+        .map(|range| location(snap, range))
+        .collect::<Cancellable<Vec<_>>>()
 }
 
 fn outside_workspace_annotation_id() -> String {
@@ -1318,19 +1384,21 @@ pub(crate) fn snippet_text_document_ops(
     match file_system_edit {
         FileSystemEdit::CreateFile { dst, initial_contents } => {
             let uri = snap.anchored_path(&dst);
-            let create_file = lsp_types::ResourceOp::Create(lsp_types::CreateFile {
+            let create_file = lsp_types::DocumentChange::CreateFile(lsp_types::CreateFile {
                 uri: uri.clone(),
                 options: None,
                 annotation_id: None,
             });
-            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(create_file));
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Change(create_file));
             if !initial_contents.is_empty() {
-                let text_document =
-                    lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version: None };
+                let text_document = lsp_types::OptionalVersionedTextDocumentIdentifier {
+                    text_document_identifier: lsp_types::TextDocumentIdentifier { uri },
+                    version: None,
+                };
                 let text_edit = lsp_ext::SnippetTextEdit {
                     range: lsp_types::Range::default(),
                     new_text: initial_contents,
-                    insert_text_format: Some(lsp_types::InsertTextFormat::PLAIN_TEXT),
+                    insert_text_format: Some(lsp_types::InsertTextFormat::PlainText),
                     annotation_id: None,
                 };
                 let edit_file =
@@ -1348,9 +1416,9 @@ pub(crate) fn snippet_text_document_ops(
             {
                 rename_file.annotation_id = Some(outside_workspace_annotation_id())
             }
-            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(lsp_types::ResourceOp::Rename(
-                rename_file,
-            )))
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Change(
+                lsp_types::DocumentChange::RenameFile(rename_file),
+            ))
         }
         FileSystemEdit::MoveDir { src, src_id, dst } => {
             let old_uri = snap.anchored_path(&src);
@@ -1362,9 +1430,9 @@ pub(crate) fn snippet_text_document_ops(
             {
                 rename_file.annotation_id = Some(outside_workspace_annotation_id())
             }
-            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(lsp_types::ResourceOp::Rename(
-                rename_file,
-            )))
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Change(
+                lsp_types::DocumentChange::RenameFile(rename_file),
+            ))
         }
     }
     Ok(ops)
@@ -1449,42 +1517,38 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
         lsp_types::WorkspaceEdit {
             changes: None,
             document_changes: snippet_workspace_edit.document_changes.map(|changes| {
-                lsp_types::DocumentChanges::Operations(
-                    changes
-                        .into_iter()
-                        .map(|change| match change {
-                            lsp_ext::SnippetDocumentChangeOperation::Op(op) => {
-                                lsp_types::DocumentChangeOperation::Op(op)
-                            }
-                            lsp_ext::SnippetDocumentChangeOperation::Edit(edit) => {
-                                lsp_types::DocumentChangeOperation::Edit(
-                                    lsp_types::TextDocumentEdit {
-                                        text_document: edit.text_document,
-                                        edits: edit.edits.into_iter().map(From::from).collect(),
-                                    },
-                                )
-                            }
-                        })
-                        .collect(),
-                )
+                changes
+                    .into_iter()
+                    .map(|change| match change {
+                        lsp_ext::SnippetDocumentChangeOperation::Change(op) => op,
+                        lsp_ext::SnippetDocumentChangeOperation::Edit(edit) => {
+                            lsp_types::DocumentChange::TextDocumentEdit(
+                                lsp_types::TextDocumentEdit {
+                                    text_document: edit.text_document,
+                                    edits: edit.edits.into_iter().map(From::from).collect(),
+                                },
+                            )
+                        }
+                    })
+                    .collect()
             }),
             change_annotations: snippet_workspace_edit.change_annotations,
         }
     }
 }
 
-impl From<lsp_ext::SnippetTextEdit>
-    for lsp_types::OneOf<lsp_types::TextEdit, lsp_types::AnnotatedTextEdit>
-{
+impl From<lsp_ext::SnippetTextEdit> for lsp_types::Edit {
     fn from(
         lsp_ext::SnippetTextEdit { annotation_id, insert_text_format:_, new_text, range }: lsp_ext::SnippetTextEdit,
     ) -> Self {
         match annotation_id {
-            Some(annotation_id) => lsp_types::OneOf::Right(lsp_types::AnnotatedTextEdit {
-                text_edit: lsp_types::TextEdit { range, new_text },
-                annotation_id,
-            }),
-            None => lsp_types::OneOf::Left(lsp_types::TextEdit { range, new_text }),
+            Some(annotation_id) => {
+                lsp_types::Edit::AnnotatedTextEdit(lsp_types::AnnotatedTextEdit {
+                    text_edit: lsp_types::TextEdit { range, new_text },
+                    annotation_id,
+                })
+            }
+            None => lsp_types::Edit::TextEdit(lsp_types::TextEdit { range, new_text }),
         }
     }
 }
@@ -1495,7 +1559,7 @@ pub(crate) fn call_hierarchy_item(
 ) -> Cancellable<lsp_types::CallHierarchyItem> {
     let name = target.name.to_string();
     let detail = target.description.clone();
-    let kind = target.kind.map(symbol_kind).unwrap_or(lsp_types::SymbolKind::FUNCTION);
+    let kind = target.kind.map(symbol_kind).unwrap_or(lsp_types::SymbolKind::Function);
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem {
         name,
@@ -1511,12 +1575,12 @@ pub(crate) fn call_hierarchy_item(
 
 pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
     match kind {
-        AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
-        AssistKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
-        AssistKind::Refactor => lsp_types::CodeActionKind::REFACTOR,
-        AssistKind::RefactorExtract => lsp_types::CodeActionKind::REFACTOR_EXTRACT,
-        AssistKind::RefactorInline => lsp_types::CodeActionKind::REFACTOR_INLINE,
-        AssistKind::RefactorRewrite => lsp_types::CodeActionKind::REFACTOR_REWRITE,
+        AssistKind::Generate => lsp_types::CodeActionKind::Empty,
+        AssistKind::QuickFix => lsp_types::CodeActionKind::QuickFix,
+        AssistKind::Refactor => lsp_types::CodeActionKind::Refactor,
+        AssistKind::RefactorExtract => lsp_types::CodeActionKind::RefactorExtract,
+        AssistKind::RefactorInline => lsp_types::CodeActionKind::RefactorInline,
+        AssistKind::RefactorRewrite => lsp_types::CodeActionKind::RefactorRewrite,
     }
 }
 
@@ -1761,7 +1825,7 @@ pub(crate) fn code_lens(
 
             let doc_pos = lsp_types::TextDocumentPositionParams::new(id, pos);
 
-            let goto_params = lsp_types::request::GotoImplementationParams {
+            let goto_params = lsp_types::ImplementationParams {
                 text_document_position_params: doc_pos,
                 work_done_progress_params: Default::default(),
                 partial_result_params: Default::default(),
@@ -1891,7 +1955,7 @@ pub(crate) mod command {
 
     pub(crate) fn show_references(
         title: String,
-        uri: &lsp_types::Url,
+        uri: &lsp_types::Uri,
         position: lsp_types::Position,
         locations: Vec<lsp_types::Location>,
     ) -> lsp_types::Command {
@@ -1907,6 +1971,7 @@ pub(crate) mod command {
                 to_value(position).unwrap(),
                 to_value(locations).unwrap(),
             ]),
+            tooltip: None,
         }
     }
 
@@ -1915,6 +1980,7 @@ pub(crate) mod command {
             title: title.to_owned(),
             command: "rust-analyzer.runSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
+            tooltip: None,
         }
     }
 
@@ -1923,6 +1989,7 @@ pub(crate) mod command {
             title: "⚙\u{fe0e} Debug".into(),
             command: "rust-analyzer.debugSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
+            tooltip: None,
         }
     }
 
@@ -1932,6 +1999,7 @@ pub(crate) mod command {
             command: "rust-analyzer.interpretFunction".into(),
             // FIXME: use the `_runnable` here.
             arguments: Some(vec![]),
+            tooltip: None,
         }
     }
 
@@ -1952,6 +2020,7 @@ pub(crate) mod command {
             title: nav.name.to_string(),
             command: "rust-analyzer.gotoLocation".into(),
             arguments: Some(vec![value]),
+            tooltip: None,
         })
     }
 
@@ -1960,6 +2029,7 @@ pub(crate) mod command {
             title: "triggerParameterHints".into(),
             command: "rust-analyzer.triggerParameterHints".into(),
             arguments: None,
+            tooltip: None,
         }
     }
 
@@ -1968,6 +2038,7 @@ pub(crate) mod command {
             title: "rename".into(),
             command: "rust-analyzer.rename".into(),
             arguments: None,
+            tooltip: None,
         }
     }
 }
@@ -3081,7 +3152,7 @@ struct ProcMacro {
         )
     }
 
-    // `Url` is not able to parse windows paths on unix machines.
+    // `Uri` is not able to parse windows paths on unix machines.
     #[test]
     #[cfg(target_os = "windows")]
     fn test_lowercase_drive_letter() {

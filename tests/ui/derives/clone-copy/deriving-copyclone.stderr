@@ -38,7 +38,8 @@ LL | #[derive(Copy, Clone)]
    |                ----- in this derive macro expansion
 LL | struct B<T> {
    |        ^ - type parameter would need to implement `Clone`
-   = help: consider manually implementing `Clone` to avoid undesired bounds
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
+   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 note: required by a bound in `is_clone`
   --> $DIR/deriving-copyclone.rs:19:16
    |

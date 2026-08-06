@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/non-copy-type-moved.rs:14:14
    |
 LL | fn foo(x: D) {
-   |        - move occurs because `x` has type `(..., ..., ..., ...)`, which does not implement the `Copy` trait
+   |        - move occurs because `x` has type `((_, _, _, _), _, _, _)`, which does not implement the `Copy` trait
 LL |     let _a = x;
    |              - value moved here
 LL |     let _b = x;

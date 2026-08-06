@@ -1,7 +1,7 @@
 //@ revisions: debug release
 
 //@[debug] compile-flags: -Zautodiff=Enable,NoTT -C opt-level=0 -Clto=fat
-//@[release] compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3 -Clto=fat
+//@[release] compile-flags: -Zautodiff=Enable,NoTT -Zautodiff_post_passes=function(mem2reg,instsimplify,simplifycfg) -C opt-level=3 -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 
@@ -39,15 +39,15 @@ fn square(x: f32) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr {{.*}}%x, ptr {{.*}}%bx_0)
-// release-NEXT: define internal fastcc float
-// release-SAME: (float %x.0.val, float %x.4.val)
+// release-NEXT: define internal fastcc { float, float }
+// release-SAME: (ptr {{.*}}%x)
 
 // CHECK-LABEL: ; abi_handling::f1
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (ptr {{.*}}%x)
-// release-NEXT: define internal fastcc noundef float
-// release-SAME: (float %x.0.val, float %x.4.val)
+// release-NEXT: define internal noundef float
+// release-SAME: (ptr {{.*}}%x)
 #[autodiff_forward(df1, Dual, Dual)]
 #[inline(never)]
 fn f1(x: &[f32; 2]) -> f32 {
@@ -58,15 +58,15 @@ fn f1(x: &[f32; 2]) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr %f, float %x, float %dret)
-// release-NEXT: define internal fastcc noundef float
+// release-NEXT: define internal fastcc { float, float }
 // release-SAME: (float noundef %x)
 
 // CHECK-LABEL: ; abi_handling::f2
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (ptr %f, float %x)
-// release-NEXT: define internal fastcc noundef float
-// release-SAME: (float noundef %x)
+// release-NEXT: define internal noundef float
+// release-SAME: (ptr {{.*}}%f, float {{.*}}%x)
 #[autodiff_reverse(df2, Const, Active, Active)]
 #[inline(never)]
 fn f2(f: fn(f32) -> f32, x: f32) -> f32 {
@@ -77,15 +77,15 @@ fn f2(f: fn(f32) -> f32, x: f32) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr align 4 %x, ptr align 4 %bx_0, ptr align 4 %y, ptr align 4 %by_0)
-// release-NEXT: define internal fastcc float
-// release-SAME: (float %x.0.val)
+// release-NEXT: define internal fastcc { float, float }
+// release-SAME: (ptr {{.*}}%x)
 
 // CHECK-LABEL: ; abi_handling::f3
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (ptr {{.*}}%x, ptr {{.*}}%y)
-// release-NEXT: define internal fastcc noundef float
-// release-SAME: (float %x.0.val)
+// release-NEXT: define internal noundef float
+// release-SAME: (ptr {{.*}}%y)
 #[autodiff_forward(df3, Dual, Dual, Dual)]
 #[inline(never)]
 fn f3<'a>(x: &'a f32, y: &'a f32) -> f32 {
@@ -103,7 +103,7 @@ fn f3<'a>(x: &'a f32, y: &'a f32) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (float %x.0, float %x.1)
-// release-NEXT: define internal fastcc noundef float
+// release-NEXT: define internal noundef float
 // release-SAME: (float noundef %x.0, float noundef %x.1)
 #[autodiff_forward(df4, Dual, Dual)]
 #[inline(never)]
@@ -122,7 +122,7 @@ fn f4(x: (f32, f32)) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (float %i.0, float %i.1)
-// release-NEXT: define internal fastcc noundef float
+// release-NEXT: define internal noundef float
 // release-SAME: (float noundef %i.0, float noundef %i.1)
 #[autodiff_forward(df5, Dual, Dual)]
 #[inline(never)]
@@ -142,7 +142,7 @@ fn f5(i: Input) -> f32 {
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (float %i.0, float %i.1)
-// release-NEXT: define internal fastcc noundef float
+// release-NEXT: define internal noundef float
 // release-SAME: (float noundef %i.0, float noundef %i.1)
 #[autodiff_forward(df6, Dual, Dual)]
 #[inline(never)]
@@ -155,14 +155,14 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: define internal { float, float }
 // debug-SAME: (ptr align 4 %x.0, ptr align 4 %x.1, ptr align 4 %bx_0.0, ptr align 4 %bx_0.1)
 // release-NEXT: define internal fastcc { float, float }
-// release-SAME: (float %x.0.0.val, float %x.1.0.val)
+// release-SAME: (ptr {{.*}}%x.0, ptr {{.*}}%x.1)
 
 // CHECK-LABEL: ; abi_handling::f7
 // CHECK-NEXT: Function Attrs
 // debug-NEXT: define internal float
 // debug-SAME: (ptr {{.*}}%x.0, ptr {{.*}}%x.1)
-// release-NEXT: define internal fastcc noundef float
-// release-SAME: (float %x.0.0.val, float %x.1.0.val)
+// release-NEXT: define internal noundef float
+// release-SAME: (ptr {{.*}}%x.0, ptr {{.*}}%x.1)
 #[autodiff_forward(df7, Dual, Dual)]
 #[inline(never)]
 fn f7(x: (&f32, &f32)) -> f32 {

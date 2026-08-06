@@ -1,6 +1,5 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::option_env_unwrap)]
-#![allow(clippy::map_flatten)]
 
 extern crate proc_macros;
 use proc_macros::{external, inline_macros};

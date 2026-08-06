@@ -11,7 +11,7 @@
 
 // Tests for different gfx versions that do not fit in gfx11 and 12
 
-#![feature(abi_gpu_kernel, no_core, asm_experimental_arch, repr_simd, f16)]
+#![feature(abi_gpu_kernel, no_core, asm_experimental_arch, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(
@@ -24,54 +24,19 @@
 )]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
 
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
+type i32x9 = Simd<i32, 9>;
+type f32x9 = Simd<f32, 9>;
 
-#[repr(simd)]
-pub struct i32x9([i32; 9]);
-#[repr(simd)]
-pub struct f32x9([f32; 9]);
+type i32x11 = Simd<i32, 11>;
+type f32x11 = Simd<f32, 11>;
 
-#[repr(simd)]
-pub struct i32x11([i32; 11]);
-#[repr(simd)]
-pub struct f32x11([f32; 11]);
-
-#[repr(simd)]
-pub struct i32x12([i32; 12]);
-#[repr(simd)]
-pub struct f32x12([f32; 12]);
-
-#[repr(simd)]
-pub struct i16x32([i16; 32]);
-#[repr(simd)]
-pub struct f16x32([f16; 32]);
-#[repr(simd)]
-pub struct i32x16([i32; 16]);
-#[repr(simd)]
-pub struct f32x16([f32; 16]);
-
-#[repr(simd)]
-pub struct f32x32([f32; 32]);
-
-macro_rules! impl_copy {
-    ($($ty:ident)*) => {
-        $(
-            impl Copy for $ty {}
-        )*
-    };
-}
-
-impl_copy!(
-    i32x4 f32x4 i32x9 f32x9 i32x11 f32x11 i32x12 f32x12 i16x32 f16x32
-    i32x16 f32x16 f32x32
-);
+type i32x12 = Simd<i32, 12>;
+type f32x12 = Simd<f32, 12>;
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {

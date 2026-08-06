@@ -6,6 +6,7 @@ LL | impl <const N: usize> Collatz<{Some(N)}> {}
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: `Option<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/issue-68366.rs:9:25

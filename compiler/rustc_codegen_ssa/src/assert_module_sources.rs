@@ -37,7 +37,7 @@ use rustc_session::Session;
 use rustc_span::{Span, Symbol};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTracker)) {
@@ -90,8 +90,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
     fn check_attrs(&mut self, attrs: &[hir::Attribute]) {
         for &(span, cgu_fields) in find_attr!(attrs,
             RustcCguTestAttr(e) => e)
-        .into_iter()
-        .flatten()
+        .into_flat_iter()
         {
             let (expected_reuse, comp_kind) = match cgu_fields {
                 CguFields::PartitionReused { .. } => (CguReuse::PreLto, ComparisonKind::AtLeast),
@@ -108,7 +107,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             | CguFields::PartitionReused { cfg, module }) = cgu_fields;
 
             if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-                self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span });
+                self.tcx.dcx().emit_fatal(diagnostics::MissingQueryDepGraph { span });
             }
 
             if !self.check_config(cfg) {
@@ -121,7 +120,11 @@ impl<'tcx> AssertModuleSource<'tcx> {
             let crate_name = crate_name.as_str();
 
             if !user_path.starts_with(&crate_name) {
-                self.tcx.dcx().emit_fatal(errors::MalformedCguName { span, user_path, crate_name });
+                self.tcx.dcx().emit_fatal(diagnostics::MalformedCguName {
+                    span,
+                    user_path,
+                    crate_name,
+                });
             }
 
             // Split of the "special suffix" if there is one.
@@ -150,7 +153,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             if !self.available_cgus.contains(&cgu_name) {
                 let cgu_names: Vec<&str> =
                     self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
-                self.tcx.dcx().emit_err(errors::NoModuleNamed {
+                self.tcx.dcx().emit_err(diagnostics::NoModuleNamed {
                     span,
                     user_path,
                     cgu_name,
@@ -274,7 +277,7 @@ impl CguReuseTracker {
 
                     if error {
                         let at_least = if at_least { 1 } else { 0 };
-                        sess.dcx().emit_err(errors::IncorrectCguReuseType {
+                        sess.dcx().emit_err(diagnostics::IncorrectCguReuseType {
                             span: *error_span,
                             cgu_user_name,
                             actual_reuse,
@@ -283,7 +286,7 @@ impl CguReuseTracker {
                         });
                     }
                 } else {
-                    sess.dcx().emit_fatal(errors::CguNotRecorded { cgu_user_name, cgu_name });
+                    sess.dcx().emit_fatal(diagnostics::CguNotRecorded { cgu_user_name, cgu_name });
                 }
             }
         }

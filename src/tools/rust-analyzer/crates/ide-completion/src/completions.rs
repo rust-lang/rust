@@ -222,12 +222,12 @@ impl Completions {
         });
     }
 
-    pub(crate) fn add_path_resolution(
+    pub(crate) fn add_path_resolution<'db>(
         &mut self,
-        ctx: &CompletionContext<'_, '_>,
+        ctx: &CompletionContext<'_, 'db>,
         path_ctx: &PathCompletionCtx<'_>,
         local_name: hir::Name,
-        resolution: hir::ScopeDef,
+        resolution: hir::ScopeDef<'db>,
         doc_aliases: Vec<syntax::SmolStr>,
     ) {
         let is_private_editable = match ctx.def_is_visible(&resolution) {
@@ -244,12 +244,12 @@ impl Completions {
         .add_to(self, ctx.db);
     }
 
-    pub(crate) fn add_pattern_resolution(
+    pub(crate) fn add_pattern_resolution<'db>(
         &mut self,
-        ctx: &CompletionContext<'_, '_>,
+        ctx: &CompletionContext<'_, 'db>,
         pattern_ctx: &PatternContext,
         local_name: hir::Name,
-        resolution: hir::ScopeDef,
+        resolution: hir::ScopeDef<'db>,
     ) {
         let is_private_editable = match ctx.def_is_visible(&resolution) {
             Visible::Yes => false,

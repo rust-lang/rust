@@ -213,7 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use std::borrow::Cow;
-use std::io::{self, Result as IoResult, Write};
+use std::io::{self, Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt};
@@ -325,9 +325,8 @@ impl<'a> CrateLocator<'a> {
                 sess.opts
                     .externs
                     .get(crate_name.as_str())
-                    .into_iter()
-                    .filter_map(|entry| entry.files())
-                    .flatten()
+                    .and_then(|entry| entry.files())
+                    .into_flat_iter()
                     .cloned()
                     .collect()
             } else {
@@ -423,60 +422,52 @@ impl<'a> CrateLocator<'a> {
         // given that `extra_filename` comes from the `-C extra-filename`
         // option and thus can be anything, and the incorrect match will be
         // handled safely in `extract_one`.
-        for search_path in self.filesearch.search_paths(self.path_kind) {
-            debug!("searching {}", search_path.dir.display());
-            let spf = &search_path.files;
-
-            let mut should_check_staticlibs = true;
-            for (prefix, suffix, kind) in [
-                (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
-                (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
-                (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
-                (interface_prefix, interface_suffix, CrateFlavor::SDylib),
-            ] {
-                if prefix == staticlib_prefix && suffix == staticlib_suffix {
-                    should_check_staticlibs = false;
-                }
-                if let Some(matches) = spf.query(prefix, suffix) {
-                    for (hash, spf) in matches {
-                        let spf_path = spf.path(&search_path.dir);
-                        info!("lib candidate: {}", spf_path.display());
-
-                        let (rlibs, rmetas, dylibs, interfaces) =
-                            candidates.entry(hash).or_default();
-                        {
-                            // As a performance optimisation we canonicalize the path and skip
-                            // ones we've already seen. This allows us to ignore crates
-                            // we know are exactual equal to ones we've already found.
-                            // Going to the same crate through different symlinks does not change the result.
-                            let path =
-                                try_canonicalize(&spf_path).unwrap_or_else(|_| spf_path.clone());
-                            if seen_paths.contains(&path) {
-                                continue;
-                            };
-                            seen_paths.insert(path);
-                        }
-                        // Use the original path (potentially with unresolved symlinks),
-                        // filesystem code should not care, but this is nicer for diagnostics.
-                        match kind {
-                            CrateFlavor::Rlib => rlibs.insert(spf_path),
-                            CrateFlavor::Rmeta => rmetas.insert(spf_path),
-                            CrateFlavor::Dylib => dylibs.insert(spf_path),
-                            CrateFlavor::SDylib => interfaces.insert(spf_path),
-                        };
-                    }
-                }
+        let mut should_check_staticlibs = true;
+        for (prefix, suffix, kind) in [
+            (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
+            (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
+            (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
+            (interface_prefix, interface_suffix, CrateFlavor::SDylib),
+        ] {
+            if prefix == staticlib_prefix && suffix == staticlib_suffix {
+                should_check_staticlibs = false;
             }
-            if let Some(static_matches) = should_check_staticlibs
-                .then(|| spf.query(staticlib_prefix, staticlib_suffix))
-                .flatten()
+
+            for (hash, spf_path) in
+                self.filesearch.get_library_candidates(prefix, suffix, self.path_kind)
             {
-                for (_, spf) in static_matches {
-                    crate_rejections.via_kind.push(CrateMismatch {
-                        path: spf.path(&search_path.dir),
-                        got: "static".to_string(),
-                    });
+                info!("lib candidate: {}", spf_path.display());
+
+                let (rlibs, rmetas, dylibs, interfaces) = candidates.entry(hash).or_default();
+                {
+                    // As a performance optimisation we canonicalize the path and skip
+                    // ones we've already seen. This allows us to ignore crates
+                    // we know are exactual equal to ones we've already found.
+                    // Going to the same crate through different symlinks does not change the result.
+                    let path = try_canonicalize(&spf_path).unwrap_or_else(|_| spf_path.clone());
+                    if seen_paths.contains(&path) {
+                        continue;
+                    };
+                    seen_paths.insert(path);
                 }
+                // Use the original path (potentially with unresolved symlinks),
+                // filesystem code should not care, but this is nicer for diagnostics.
+                match kind {
+                    CrateFlavor::Rlib => rlibs.insert(spf_path),
+                    CrateFlavor::Rmeta => rmetas.insert(spf_path),
+                    CrateFlavor::Dylib => dylibs.insert(spf_path),
+                    CrateFlavor::SDylib => interfaces.insert(spf_path),
+                };
+            }
+        }
+
+        if should_check_staticlibs {
+            for (_, path) in self.filesearch.get_library_candidates(
+                staticlib_prefix,
+                staticlib_suffix,
+                self.path_kind,
+            ) {
+                crate_rejections.via_kind.push(CrateMismatch { path, got: "static".to_string() });
             }
         }
 
@@ -963,7 +954,7 @@ pub fn list_file_metadata(
     let flavor = get_flavor_from_path(path);
     match get_metadata_section(target, flavor, path, metadata_loader, cfg_version, None) {
         Ok(metadata) => metadata.list_crate_metadata(out, ls_kinds),
-        Err(msg) => write!(out, "{msg}\n"),
+        Err(msg) => Err(IoError::new(IoErrorKind::Other, msg.to_string())),
     }
 }
 

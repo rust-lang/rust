@@ -1,5 +1,4 @@
 //! Ensure ABI-incompatible features cannot be enabled via `#[target_feature]`.
-// ignore-tidy-linelength
 //@ compile-flags: --crate-type=lib
 //@ revisions: x86 riscv
 //@[x86] compile-flags: --target=x86_64-unknown-linux-gnu
@@ -14,6 +13,7 @@
 extern crate minicore;
 use minicore::*;
 
+// ignore-tidy-linelength
 #[cfg_attr(x86, target_feature(enable = "soft-float"))] #[cfg_attr(riscv, target_feature(enable = "d"))]
 //~^ERROR: cannot be enabled with
 pub unsafe fn my_fun() {}

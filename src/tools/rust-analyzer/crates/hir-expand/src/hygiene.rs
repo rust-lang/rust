@@ -26,12 +26,12 @@ use std::convert::identity;
 
 use span::{Edition, MacroCallId, Span, SyntaxContext};
 
-use crate::db::ExpandDatabase;
+use base_db::SourceDatabase;
 
 pub use span::Transparency;
 
 pub fn span_with_def_site_ctxt(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     expn_id: MacroCallId,
     edition: Edition,
@@ -40,7 +40,7 @@ pub fn span_with_def_site_ctxt(
 }
 
 pub fn span_with_call_site_ctxt(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     expn_id: MacroCallId,
     edition: Edition,
@@ -49,7 +49,7 @@ pub fn span_with_call_site_ctxt(
 }
 
 pub fn span_with_mixed_site_ctxt(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     expn_id: MacroCallId,
     edition: Edition,
@@ -58,7 +58,7 @@ pub fn span_with_mixed_site_ctxt(
 }
 
 fn span_with_ctxt_from_mark(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     expn_id: MacroCallId,
     transparency: Transparency,
@@ -71,7 +71,7 @@ fn span_with_ctxt_from_mark(
 }
 
 pub(super) fn apply_mark(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     ctxt: span::SyntaxContext,
     call_id: span::MacroCallId,
     transparency: Transparency,
@@ -108,7 +108,7 @@ pub(super) fn apply_mark(
 }
 
 fn apply_mark_internal(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     ctxt: SyntaxContext,
     call_id: MacroCallId,
     transparency: Transparency,

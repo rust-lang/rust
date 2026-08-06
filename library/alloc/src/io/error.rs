@@ -55,6 +55,7 @@ impl Error {
     /// originate from the OS itself. It is a shortcut for [`Error::new`][new]
     /// with [`ErrorKind::Other`].
     ///
+    // FIXME(#74481): Hard-links required to link from `alloc` to `std` for incoherent method
     /// [new]: struct.Error.html#method.new
     ///
     /// # Examples
@@ -84,6 +85,7 @@ impl Error {
     /// then this function will return [`Some`],
     /// otherwise it will return [`None`].
     ///
+    // FIXME(#74481): Hard-links required to link from `alloc` to `std` for incoherent method
     /// [new]: struct.Error.html#method.new
     /// [other]: struct.Error.html#method.other
     ///
@@ -141,6 +143,7 @@ impl Error {
     /// `Box<dyn Error + Sync + Send>::downcast` on the custom boxed error, returned by
     /// [`Error::into_inner`][into_inner].
     ///
+    // FIXME(#74481): Hard-links required to link from `alloc` to `std` for incoherent method
     /// [into_inner]: struct.Error.html#method.into_inner
     ///
     /// # Examples
@@ -256,8 +259,7 @@ fn custom_owner_from_box(
         drop(unsafe { Box::from_raw(ptr) })
     }
 
-    // SAFETY: the pointer returned by Box::into_raw is non-null.
-    let error = unsafe { core::ptr::NonNull::new_unchecked(Box::into_raw(error)) };
+    let error = Box::into_non_null(error);
 
     // SAFETY:
     // * `error` is valid up to a static lifetime, and owns its pointee.
@@ -266,8 +268,7 @@ fn custom_owner_from_box(
     //   and will be stored in a `CustomOwner`.
     let custom = unsafe { Custom::from_raw(kind, error, drop_box_raw, drop_box_raw) };
 
-    // SAFETY: the pointer returned by Box::into_raw is non-null.
-    let custom = unsafe { core::ptr::NonNull::new_unchecked(Box::into_raw(Box::new(custom))) };
+    let custom = Box::into_non_null(Box::new(custom));
 
     // SAFETY: the `outer_drop` provided to `custom` is valid for itself.
     unsafe { CustomOwner::from_raw(custom) }

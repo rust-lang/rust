@@ -353,7 +353,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                     let region = self.lower_lifetime(lifetime, RegionInferReason::OutlivesBound);
                     let bound = ty::Binder::bind_with_vars(
-                        ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(param_ty, region)),
+                        ty::ClauseKind::TypeOutlives(ty::OutlivesClause(param_ty, region)),
                         bound_vars,
                     );
                     bounds.push((bound.upcast(self.tcx()), lifetime.ident.span));
@@ -467,6 +467,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     res: Res::Err,
                     args: Some(constraint.gen_args),
                     infer_args: false,
+                    delegation_child_segment: false,
                 };
 
                 let alias_args = self.lower_generic_args_of_assoc_item(

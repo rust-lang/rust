@@ -7,17 +7,19 @@ use cranelift_frontend::FunctionBuilder;
 /// If the given value was produced by the lowering of `Rvalue::Not` return the input and true,
 /// otherwise return the given value and false.
 pub(crate) fn maybe_unwrap_bool_not(bcx: &mut FunctionBuilder<'_>, arg: Value) -> (Value, bool) {
-    if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
-        match bcx.func.dfg.insts[arg_inst] {
-            // This is the lowering of `Rvalue::Not`
-            InstructionData::IntCompareImm {
-                opcode: Opcode::IcmpImm,
-                cond: IntCC::Equal,
-                arg,
-                imm,
-            } if imm.bits() == 0 => (arg, true),
-            _ => (arg, false),
-        }
+    if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg)
+        && let InstructionData::IntCompare {
+            opcode: Opcode::Icmp,
+            cond: IntCC::Equal,
+            args: [icmp_arg, imm],
+        } = bcx.func.dfg.insts[arg_inst]
+        && let ValueDef::Result(imm_inst, 0) = bcx.func.dfg.value_def(imm)
+        && let InstructionData::UnaryImm { opcode: Opcode::Iconst, imm } =
+            bcx.func.dfg.insts[imm_inst]
+        && imm.bits() == 0
+    {
+        // This is the lowering of `Rvalue::Not`
+        (icmp_arg, true)
     } else {
         (arg, false)
     }

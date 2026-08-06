@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*elements` as mutable more than once at a time
-  --> $DIR/iterating-updating-cursor-issue-108704.rs:41:26
+  --> $DIR/iterating-updating-cursor-issue-108704.rs:42:26
    |
 LL |         for (idx, el) in elements.iter_mut().enumerate() {
    |                          ^^^^^^^^

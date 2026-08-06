@@ -96,8 +96,8 @@ pub(super) fn check(
                 .note("for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types");
         }
 
-        if msrv.meets(cx, msrvs::INTEGER_SIGN_CAST)
-            && let Some(cast) = utils::is_signedness_cast(cast_from, cast_to)
+        if let Some(cast) = utils::is_signedness_cast(cast_from, cast_to)
+            && msrv.meets(cx, msrvs::INTEGER_SIGN_CAST)
         {
             let method = match cast {
                 utils::CastTo::Signed => "cast_signed()",

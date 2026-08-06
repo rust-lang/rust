@@ -3,7 +3,7 @@ use std::hash::Hash;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::ty::{Binder, EarlyBinder};
+use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
 use rustc_span::Symbol;
 
 use crate::rmeta::{LazyArray, LazyValue};
@@ -48,6 +48,14 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
     type Value<'tcx> = LazyArray<T::Value<'tcx>>;
 }
 
+impl ParameterizedOverTcx for Region<'static> {
+    type Value<'tcx> = Region<'tcx>;
+}
+
+impl ParameterizedOverTcx for GenericArg<'static> {
+    type Value<'tcx> = GenericArg<'tcx>;
+}
+
 macro_rules! trivially_parameterized_over_tcx {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -61,6 +69,7 @@ macro_rules! trivially_parameterized_over_tcx {
 
 trivially_parameterized_over_tcx! {
     bool,
+    u32,
     u64,
     usize,
     std::string::String,
@@ -115,6 +124,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::Generics,
     rustc_middle::ty::ImplTraitInTraitData,
     rustc_middle::ty::IntrinsicDef,
+    rustc_middle::ty::RestrictionKind,
     rustc_middle::ty::TraitDef,
     rustc_middle::ty::Variance,
     rustc_middle::ty::Visibility<DefIndex>,
@@ -159,7 +169,7 @@ parameterized_over_tcx! {
     rustc_middle::ty::Const,
     rustc_middle::ty::ConstConditions,
     rustc_middle::ty::FnSig,
-    rustc_middle::ty::GenericPredicates,
+    rustc_middle::ty::GenericClauses,
     rustc_middle::ty::ImplTraitHeader,
     rustc_middle::ty::TraitRef,
     rustc_middle::ty::Ty,

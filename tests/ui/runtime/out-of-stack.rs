@@ -6,6 +6,7 @@
 //@ needs-subprocess
 //@ ignore-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
 //@ ignore-nto no stack overflow handler used (no alternate stack available)
+//@ ignore-qnx no stack overflow handler used (no alternate stack available)
 //@ ignore-ios stack overflow handlers aren't enabled
 //@ ignore-tvos stack overflow handlers aren't enabled
 //@ ignore-watchos stack overflow handlers aren't enabled

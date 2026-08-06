@@ -3,6 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_span::def_id::ModId;
 use rustc_span::{ErrorGuaranteed, Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
@@ -82,7 +83,7 @@ impl AssocItem {
     }
 
     #[inline]
-    pub fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility<DefId> {
+    pub fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility<ModId> {
         tcx.visibility(self.def_id)
     }
 

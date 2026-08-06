@@ -8,12 +8,12 @@
 
 use core::arch::global_asm;
 
-// CHECK-LABEL: foo
 // CHECK: module asm
-// CHECK: module asm "{{[[:space:]]+}}jmp baz"
+// CHECK-LABEL: foo
+// CHECK: "{{[[:space:]]+}}jmp baz"
 // any other global_asm will be appended to this first block, so:
 // CHECK-LABEL: bar
-// CHECK: module asm "{{[[:space:]]+}}jmp quux"
+// CHECK: "{{[[:space:]]+}}jmp quux"
 global_asm!(
     r#"
     .global foo

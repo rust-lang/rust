@@ -2,17 +2,25 @@ error: expected type, found `10`
   --> $DIR/range-exclusive-dotdotlt.rs:2:17
    |
 LL |     let _ = 0..<10;
-   |                -^^ expected type
-   |                |
-   |                help: remove the `<` to write an exclusive range
+   |                 ^^ expected type
+   |
+help: remove the `<` to write an exclusive range
+   |
+LL -     let _ = 0..<10;
+LL +     let _ = 0..10;
+   |
 
 error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `;`
   --> $DIR/range-exclusive-dotdotlt.rs:8:20
    |
 LL |     let _ = 0..<foo;
-   |                -   ^ expected one of 7 possible tokens
-   |                |
-   |                help: remove the `<` to write an exclusive range
+   |                    ^ expected one of 7 possible tokens
+   |
+help: remove the `<` to write an exclusive range
+   |
+LL -     let _ = 0..<foo;
+LL +     let _ = 0..foo;
+   |
 
 error: expected `::`, found `;`
   --> $DIR/range-exclusive-dotdotlt.rs:14:18
@@ -24,17 +32,25 @@ error: expected type, found `1`
   --> $DIR/range-exclusive-dotdotlt.rs:19:26
    |
 LL |     let _ = [1, 2, 3][..<1];
-   |                         -^ expected type
-   |                         |
-   |                         help: remove the `<` to write an exclusive range
+   |                          ^ expected type
+   |
+help: remove the `<` to write an exclusive range
+   |
+LL -     let _ = [1, 2, 3][..<1];
+LL +     let _ = [1, 2, 3][..1];
+   |
 
 error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `]`
   --> $DIR/range-exclusive-dotdotlt.rs:25:29
    |
 LL |     let _ = [1, 2, 3][..<foo];
-   |                         -   ^ expected one of 7 possible tokens
-   |                         |
-   |                         help: remove the `<` to write an exclusive range
+   |                             ^ expected one of 7 possible tokens
+   |
+help: remove the `<` to write an exclusive range
+   |
+LL -     let _ = [1, 2, 3][..<foo];
+LL +     let _ = [1, 2, 3][..foo];
+   |
 
 error: expected `::`, found `]`
   --> $DIR/range-exclusive-dotdotlt.rs:31:30

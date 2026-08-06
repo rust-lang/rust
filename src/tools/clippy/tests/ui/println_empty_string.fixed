@@ -1,4 +1,5 @@
-#![allow(clippy::match_single_binding, clippy::unnecessary_trailing_comma)]
+#![warn(clippy::println_empty_string)]
+#![expect(clippy::match_single_binding)]
 
 fn main() {
     println!();

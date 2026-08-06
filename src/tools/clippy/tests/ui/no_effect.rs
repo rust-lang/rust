@@ -1,6 +1,6 @@
 #![feature(fn_traits, unboxed_closures)]
 #![warn(clippy::no_effect_underscore_binding)]
-#![allow(
+#![expect(
     clippy::deref_addrof,
     clippy::redundant_field_names,
     clippy::uninlined_format_args,

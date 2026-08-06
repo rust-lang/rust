@@ -1,5 +1,4 @@
-#![allow(unused)]
-
+#![warn(clippy::non_minimal_cfg)]
 #[cfg(all(windows))]
 //~^ non_minimal_cfg
 fn hermit() {}

@@ -1,5 +1,5 @@
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:12:5
+  --> tests/ui/question_mark.rs:13:5
    |
 LL | /     if a.is_none() {
 LL | |
@@ -11,7 +11,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:58:9
+  --> tests/ui/question_mark.rs:59:9
    |
 LL | /         if (self.opt).is_none() {
 LL | |
@@ -20,7 +20,7 @@ LL | |         }
    | |_________^ help: replace it with: `(self.opt)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:63:9
+  --> tests/ui/question_mark.rs:64:9
    |
 LL | /         if self.opt.is_none() {
 LL | |
@@ -29,7 +29,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:68:17
+  --> tests/ui/question_mark.rs:69:17
    |
 LL |           let _ = if self.opt.is_none() {
    |  _________________^
@@ -41,7 +41,7 @@ LL | |         };
    | |_________^ help: replace it with: `Some(self.opt?)`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:75:17
+  --> tests/ui/question_mark.rs:76:17
    |
 LL |           let _ = if let Some(x) = self.opt {
    |  _________________^
@@ -53,7 +53,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:93:9
+  --> tests/ui/question_mark.rs:94:9
    |
 LL | /         if self.opt.is_none() {
 LL | |
@@ -62,7 +62,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:102:9
+  --> tests/ui/question_mark.rs:103:9
    |
 LL | /         if self.opt.is_none() {
 LL | |
@@ -71,7 +71,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:111:9
+  --> tests/ui/question_mark.rs:112:9
    |
 LL | /         if self.opt.is_none() {
 LL | |
@@ -80,7 +80,7 @@ LL | |         }
    | |_________^ help: replace it with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:119:26
+  --> tests/ui/question_mark.rs:120:26
    |
 LL |           let v: &Vec<_> = if let Some(ref v) = self.opt {
    |  __________________________^
@@ -92,7 +92,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt.as_ref()?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:130:17
+  --> tests/ui/question_mark.rs:131:17
    |
 LL |           let v = if let Some(v) = self.opt {
    |  _________________^
@@ -104,7 +104,7 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:152:5
+  --> tests/ui/question_mark.rs:153:5
    |
 LL | /     if f().is_none() {
 LL | |
@@ -113,7 +113,7 @@ LL | |     }
    | |_____^ help: replace it with: `f()?;`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:157:16
+  --> tests/ui/question_mark.rs:158:16
    |
 LL |       let _val = match f() {
    |  ________________^
@@ -124,7 +124,7 @@ LL | |     };
    | |_____^ help: try instead: `f()?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:163:19
+  --> tests/ui/question_mark.rs:164:19
    |
 LL |       let s: &str = match &Some(String::new()) {
    |  ___________________^
@@ -135,7 +135,7 @@ LL | |     };
    | |_____^ help: try instead: `&Some(String::new())?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:169:5
+  --> tests/ui/question_mark.rs:170:5
    |
 LL | /     match f() {
 LL | |
@@ -145,7 +145,7 @@ LL | |     };
    | |_____^ help: try instead: `f()?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:175:5
+  --> tests/ui/question_mark.rs:176:5
    |
 LL | /     match opt_none!() {
 LL | |
@@ -155,7 +155,7 @@ LL | |     };
    | |_____^ help: try instead: `opt_none!()?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:186:5
+  --> tests/ui/question_mark.rs:187:5
    |
 LL | /     match f() {
 LL | |
@@ -176,13 +176,13 @@ LL ~     };
    |
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:203:13
+  --> tests/ui/question_mark.rs:204:13
    |
 LL |     let _ = if let Ok(x) = x { x } else { return x };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:206:5
+  --> tests/ui/question_mark.rs:207:5
    |
 LL | /     if x.is_err() {
 LL | |
@@ -191,7 +191,7 @@ LL | |     }
    | |_____^ help: replace it with: `x?;`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:211:16
+  --> tests/ui/question_mark.rs:212:16
    |
 LL |       let _val = match func_returning_result() {
    |  ________________^
@@ -202,7 +202,7 @@ LL | |     };
    | |_____^ help: try instead: `func_returning_result()?`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:217:5
+  --> tests/ui/question_mark.rs:218:5
    |
 LL | /     match func_returning_result() {
 LL | |
@@ -212,7 +212,7 @@ LL | |     };
    | |_____^ help: try instead: `func_returning_result()?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:309:5
+  --> tests/ui/question_mark.rs:310:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |
@@ -221,7 +221,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:317:5
+  --> tests/ui/question_mark.rs:318:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |
@@ -230,7 +230,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:400:13
+  --> tests/ui/question_mark.rs:401:13
    |
 LL | /             if a.is_none() {
 LL | |
@@ -240,7 +240,7 @@ LL | |             }
    | |_____________^ help: replace it with: `a?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:461:5
+  --> tests/ui/question_mark.rs:462:5
    |
 LL | /     let Some(v) = bar.foo.owned.clone() else {
 LL | |         return None;
@@ -248,7 +248,7 @@ LL | |     };
    | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:476:5
+  --> tests/ui/question_mark.rs:477:5
    |
 LL | /     let Some(ref x) = foo.opt_x else {
 LL | |         return None;
@@ -256,7 +256,7 @@ LL | |     };
    | |______^ help: replace it with: `let x = foo.opt_x.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:486:5
+  --> tests/ui/question_mark.rs:487:5
    |
 LL | /     let Some(ref mut x) = foo.opt_x else {
 LL | |         return None;

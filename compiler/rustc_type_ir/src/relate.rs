@@ -7,24 +7,12 @@ use tracing::{instrument, trace};
 use crate::error::{ExpectedFound, TypeError};
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 pub mod combine;
 pub mod solver_relating;
 
 pub type RelateResult<I, T> = Result<T, TypeError<I>>;
-
-/// Whether aliases should be related structurally or not. Used
-/// to adjust the behavior of generalization and combine.
-///
-/// This should always be `No` unless in a few special-cases when
-/// instantiating canonical responses and in the new solver. Each
-/// such case should have a comment explaining why it is used.
-#[derive(Debug, Copy, Clone)]
-pub enum StructurallyRelateAliases {
-    Yes,
-    No,
-}
 
 /// Extra information about why we ended up with a particular variance.
 /// This is only used to add more information to error messages, and
@@ -78,8 +66,8 @@ pub trait TypeRelation<I: Interner>: Sized {
         a_ty: I::Ty,
         b_ty: I::Ty,
         ty_def_id: I::DefId,
-        a_arg: I::GenericArgs,
-        b_arg: I::GenericArgs,
+        a_args: I::GenericArgs,
+        b_args: I::GenericArgs,
         mk: impl FnOnce(I::GenericArgs) -> I::Ty,
     ) -> RelateResult<I, I::Ty>;
 
@@ -100,7 +88,7 @@ pub trait TypeRelation<I: Interner>: Sized {
 
     fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty>;
 
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region>;
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>>;
 
     fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const>;
 
@@ -512,12 +500,20 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         (ty::FnDef(a_def_id, a_args), ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
-            if a_args.is_empty() {
+            if a_args.skip_binder().is_empty() {
                 Ok(a)
             } else {
-                relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
-                    Ty::new_fn_def(cx, a_def_id, args)
-                })
+                // FIXME: this behavior is wrong; relations with binders needs fixing.
+                //        need to relate the bound vars first.
+                let x = relation.relate_ty_args(
+                    a,
+                    b,
+                    a_def_id.into(),
+                    a_args.skip_binder(),
+                    b_args.skip_binder(),
+                    |args| Ty::new_fn_def(cx, a_def_id, a_args.rebind(args)),
+                );
+                x
             }
         }
 

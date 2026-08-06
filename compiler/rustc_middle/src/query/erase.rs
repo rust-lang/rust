@@ -13,6 +13,7 @@ use std::mem::MaybeUninit;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_span::def_id::ModId;
 use rustc_span::{ErrorGuaranteed, Spanned};
 
 use crate::mono::{MonoItem, NormalizationErrorInMono};
@@ -241,12 +242,12 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_middle::ty::ClosureTypeInfo<'_>,
     rustc_middle::ty::Const<'_>,
     rustc_middle::ty::ConstConditions<'_>,
-    rustc_middle::ty::GenericPredicates<'_>,
+    rustc_middle::ty::GenericClauses<'_>,
     rustc_middle::ty::ImplTraitHeader<'_>,
     rustc_middle::ty::ParamEnv<'_>,
     rustc_middle::ty::SymbolName<'_>,
     rustc_middle::ty::TypingEnv<'_>,
-    rustc_middle::ty::Visibility<rustc_span::def_id::DefId>,
+    rustc_middle::ty::Visibility<ModId>,
     rustc_middle::ty::inhabitedness::InhabitedPredicate<'_>,
     rustc_session::Limits,
     rustc_session::config::OptLevel,

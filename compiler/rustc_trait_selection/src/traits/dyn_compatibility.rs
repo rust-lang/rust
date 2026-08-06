@@ -40,7 +40,7 @@ pub fn hir_ty_lowering_dyn_compatibility_violations(
 ) -> Vec<DynCompatibilityViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     elaborate::supertrait_def_ids(tcx, trait_def_id)
-        .map(|def_id| predicates_reference_self(tcx, def_id, true))
+        .map(|def_id| clauses_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
         .map(DynCompatibilityViolation::SupertraitSelf)
         .collect()
@@ -98,7 +98,7 @@ fn dyn_compatibility_violations_for_trait(
         violations.push(DynCompatibilityViolation::ExplicitlyDynIncompatible([span].into()));
     }
 
-    let spans = predicates_reference_self(tcx, trait_def_id, false);
+    let spans = clauses_reference_self(tcx, trait_def_id, false);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitSelf(spans));
     }
@@ -106,11 +106,11 @@ fn dyn_compatibility_violations_for_trait(
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitSelf(spans));
     }
-    let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
+    let spans = super_clauses_have_non_lifetime_binders(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans));
     }
-    let spans = super_predicates_are_unconditionally_const(tcx, trait_def_id);
+    let spans = super_clauses_are_unconditionally_const(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitConst(spans));
     }
@@ -168,22 +168,22 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
         .unwrap_or_else(SmallVec::new)
 }
 
-fn predicates_reference_self(
+fn clauses_reference_self(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     supertraits_only: bool,
 ) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
-    let predicates = if supertraits_only {
-        tcx.explicit_super_predicates_of(trait_def_id).skip_binder()
+    let clauses = if supertraits_only {
+        tcx.explicit_super_clauses_of(trait_def_id).skip_binder()
     } else {
-        tcx.predicates_of(trait_def_id).predicates
+        tcx.clauses_of(trait_def_id).clauses
     };
-    predicates
+    clauses
         .iter()
-        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
+        .map(|&(clause, sp)| (clause.instantiate_supertrait(tcx, trait_ref), sp))
         .filter_map(|(clause, sp)| {
-            // Super predicates cannot allow self projections, since they're
+            // Super clauses cannot allow self projections, since they're
             // impossible to make into existential bounds without eager resolution
             // or something.
             // e.g. `trait A: B<Item = Self::Assoc>`.
@@ -278,29 +278,29 @@ fn predicate_references_self<'tcx>(
     }
 }
 
-fn super_predicates_have_non_lifetime_binders(
+fn super_clauses_have_non_lifetime_binders(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
-    tcx.explicit_super_predicates_of(trait_def_id)
+    tcx.explicit_super_clauses_of(trait_def_id)
         .iter_identity_copied()
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
+        .filter_map(|(clause, span)| clause.has_non_region_bound_vars().then_some(span))
         .collect()
 }
 
 /// Checks for `const Trait` supertraits. We're okay with `[const] Trait`,
 /// supertraits since for a non-const instantiation of that trait, the
 /// conditionally-const supertrait is also not required to be const.
-fn super_predicates_are_unconditionally_const(
+fn super_clauses_are_unconditionally_const(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
-    tcx.explicit_super_predicates_of(trait_def_id)
+    tcx.explicit_super_clauses_of(trait_def_id)
         .iter_identity_copied()
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|(pred, span)| {
-            if let ty::ClauseKind::HostEffect(_) = pred.kind().skip_binder() {
+        .filter_map(|(clause, span)| {
+            if let ty::ClauseKind::HostEffect(_) = clause.kind().skip_binder() {
                 Some(span)
             } else {
                 None
@@ -318,15 +318,15 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return false; /* No Sized trait, can't require it! */
     };
 
-    // Search for a predicate like `Self: Sized` amongst the trait bounds.
-    let predicates: Vec<_> = tcx
-        .predicates_of(def_id)
+    // Search for a clause like `Self: Sized` amongst the trait bounds.
+    let clauses: Vec<_> = tcx
+        .clauses_of(def_id)
         .instantiate_identity(tcx)
-        .predicates
+        .clauses
         .into_iter()
         .map(Unnormalized::skip_norm_wip)
         .collect();
-    elaborate(tcx, predicates).any(|pred| match pred.kind().skip_binder() {
+    elaborate(tcx, clauses).any(|clause| match clause.kind().skip_binder() {
         ty::ClauseKind::Trait(ref trait_pred) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
         }
@@ -536,7 +536,7 @@ fn virtual_call_violations_for_method<'tcx>(
 
     // NOTE: This check happens last, because it results in a lint, and not a
     // hard error.
-    if tcx.predicates_of(method.def_id).predicates.iter().any(|&(pred, _span)| {
+    if tcx.clauses_of(method.def_id).clauses.iter().any(|&(clause, _span)| {
         // dyn Trait is okay:
         //
         //     trait Trait {
@@ -546,7 +546,7 @@ fn virtual_call_violations_for_method<'tcx>(
         // because a trait object can't claim to live longer than the concrete
         // type. If the lifetime bound holds on dyn Trait then it's guaranteed
         // to hold as well on the concrete type.
-        if pred.as_type_outlives_clause().is_some() {
+        if clause.as_type_outlives_clause().is_some() {
             return false;
         }
 
@@ -566,7 +566,7 @@ fn virtual_call_violations_for_method<'tcx>(
         if let ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
             polarity: ty::PredicatePolarity::Positive,
-        }) = pred.kind().skip_binder()
+        }) = clause.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
         {
@@ -583,7 +583,7 @@ fn virtual_call_violations_for_method<'tcx>(
             return false;
         }
 
-        contains_illegal_self_type_reference(tcx, trait_def_id, pred, AllowSelfProjections::Yes)
+        contains_illegal_self_type_reference(tcx, trait_def_id, clause, AllowSelfProjections::Yes)
     }) {
         errors.push(MethodViolation::WhereClauseReferencesSelf);
     }
@@ -703,10 +703,10 @@ fn receiver_is_dispatchable<'tcx>(
         //    are not constructing a param-env for "inside" of the body of the defaulted
         //    method, so we don't really care about projecting to a specific RPIT type,
         //    and because RPITITs are not dyn compatible (yet).
-        let mut predicates: Vec<_> = tcx
-            .predicates_of(method.def_id)
+        let mut clauses: Vec<_> = tcx
+            .clauses_of(method.def_id)
             .instantiate_identity(tcx)
-            .predicates
+            .clauses
             .into_iter()
             .map(Unnormalized::skip_norm_wip)
             .collect();
@@ -714,7 +714,7 @@ fn receiver_is_dispatchable<'tcx>(
         // Self: Unsize<U>
         let unsize_predicate =
             ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty]);
-        predicates.push(unsize_predicate.upcast(tcx));
+        clauses.push(unsize_predicate.upcast(tcx));
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_def_id = method.trait_container(tcx).unwrap();
@@ -722,17 +722,17 @@ fn receiver_is_dispatchable<'tcx>(
             if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
         });
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
-        predicates.push(trait_predicate.upcast(tcx));
+        clauses.push(trait_predicate.upcast(tcx));
 
         let meta_sized_predicate = {
             let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);
-            ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty]).upcast(tcx)
+            ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty])
         };
-        predicates.push(meta_sized_predicate);
+        clauses.push(meta_sized_predicate.upcast(tcx));
 
         normalize_param_env_or_error(
             tcx,
-            ty::ParamEnv::new(tcx.mk_clauses(&predicates)),
+            ty::ParamEnv::new(tcx.mk_clauses(&clauses)),
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
         )
     };

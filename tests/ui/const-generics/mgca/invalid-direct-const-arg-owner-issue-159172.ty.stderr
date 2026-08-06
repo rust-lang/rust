@@ -1,0 +1,14 @@
+error: expected type, found `direct_const_arg!()` constant
+  --> $DIR/invalid-direct-const-arg-owner-issue-159172.rs:6:14
+   |
+LL |       const C: core::direct_const_arg!(|| {
+   |  ______________^
+LL | |
+LL | |         use std::io::*;
+LL | |         let mut buffer = std::fs::File::create("foo.txt")?;
+LL | |         write!(buffer, "oh no")?;
+LL | |     }),
+   | |______^
+
+error: aborting due to 1 previous error
+

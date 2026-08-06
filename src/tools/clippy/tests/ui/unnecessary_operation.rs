@@ -163,3 +163,24 @@ fn issue15173_original<MsU>(handler: impl FnOnce() -> MsU + Clone + 'static) {
         None
     }) as Box<dyn Fn(i32) -> Option<i32>>;
 }
+
+mod issue12898 {
+    use futures::future;
+    async fn forever() -> ! {
+        // pretend there is an infinite loop here...
+        future::pending().await
+    }
+    pub async fn definitely_forever() -> ! {
+        future::join(forever(), forever()).await.0;
+    }
+
+    pub async fn no_false_negative() -> ! {
+        fn never() -> ! {
+            unimplemented!()
+        }
+        {
+            never()
+        };
+        //~^^^ unnecessary_operation
+    }
+}

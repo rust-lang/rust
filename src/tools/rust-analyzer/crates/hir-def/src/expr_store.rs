@@ -14,6 +14,7 @@ use std::{
     ops::{Deref, Index},
 };
 
+use base_db::SourceDatabase;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{InFile, MacroCallId, mod_path::ModPath, name::Name};
@@ -27,12 +28,11 @@ use tt::TextRange;
 
 use crate::{
     AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
-    db::DefDatabase,
     expr_store::path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     hir::{
-        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, InlineAsm, Label,
-        LabelId, MatchArm, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
-        Statement,
+        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked,
+        InlineAsm, Label, LabelId, MatchArm, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField,
+        RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
     signatures::VariantFields,
@@ -127,7 +127,7 @@ struct ExpressionOnlyStore {
     ///
     /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
-    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
 
     /// Maps expression roots to their origin.
     ///
@@ -154,9 +154,6 @@ struct ExpressionOnlyStore {
     /// and it does not bother us because we use this list for two things: constructing `ExprScopes`, which
     /// works fine with nested exprs, and retrieving inference results, and we copy the inner const's inference
     /// into the outer const.
-    // FIXME: Array repeat is not problematic indeed, but this could still break with exprs in types,
-    // which we do not visit for `ExprScopes` (they're fine for inference though). We either need to visit them,
-    // or use a more complicated search.
     expr_roots: SmallVec<[ExprRoot; 1]>,
 }
 
@@ -171,10 +168,10 @@ pub struct ExpressionStore {
 struct ExpressionOnlySourceMap {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
+    expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
     expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, ExprOrPatId>,
+    pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
@@ -270,15 +267,15 @@ pub struct ExpressionStoreBuilder {
     pub binding_owners: FxHashMap<BindingId, ExprId>,
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
-    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
     inference_roots: Option<SmallVec<[ExprRoot; 1]>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
+    expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
     expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, ExprOrPatId>,
+    pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
@@ -466,7 +463,7 @@ impl ExpressionStore {
         ExpressionStore::EMPTY
     }
 
-    pub fn of(db: &dyn DefDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
+    pub fn of(db: &dyn SourceDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
         match def {
             ExpressionStoreOwnerId::Signature(def) => {
                 use crate::signatures::{
@@ -494,7 +491,7 @@ impl ExpressionStore {
     }
 
     pub fn with_source_map(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         def: ExpressionStoreOwnerId,
     ) -> (&ExpressionStore, &ExpressionStoreSourceMap) {
         match def {
@@ -589,7 +586,7 @@ impl ExpressionStore {
     /// Returns an iterator over all block expressions in this store that define inner items.
     pub fn blocks<'a>(
         &'a self,
-        db: &'a dyn DefDatabase,
+        db: &'a dyn SourceDatabase,
     ) -> impl Iterator<Item = (BlockId, &'a DefMap)> + 'a {
         self.expr_only
             .as_ref()
@@ -779,7 +776,6 @@ impl ExpressionStore {
             | Expr::Await { expr }
             | Expr::Ref { expr, mutability: _, rawness: _ }
             | Expr::UnaryOp { expr, op: _ }
-            | Expr::Box { expr }
             | Expr::Const(expr) => {
                 visitor.on_expr(*expr);
             }
@@ -874,7 +870,7 @@ impl ExpressionStore {
                 visitor.on_anon_const_expr(*len);
             }
             TypeRef::Fn(fn_type) => {
-                let FnType { params, is_varargs: _, is_unsafe: _, abi: _ } = &**fn_type;
+                let FnType { params, is_varargs: _, is_unsafe: _, abi: _, binder: _ } = &**fn_type;
                 params.iter().for_each(|(_, param_ty)| visitor.on_type(*param_ty));
             }
             TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
@@ -947,7 +943,7 @@ impl ExpressionStore {
     }
 }
 
-pub trait StoreVisitor {
+pub trait StoreVisitor: Sized {
     fn on_expr(&mut self, expr: ExprId) {
         let _ = expr;
     }
@@ -962,6 +958,26 @@ pub trait StoreVisitor {
     }
     fn on_lifetime(&mut self, lifetime: LifetimeRefId) {
         let _ = lifetime;
+    }
+
+    fn on_generic_args(&mut self, args: &GenericArgs) {
+        visit_generic_args(self, args);
+    }
+}
+
+pub(crate) fn visit_generic_args<V: StoreVisitor>(visitor: &mut V, args: &GenericArgs) {
+    let GenericArgs { args, bindings, parenthesized: _, has_self_type: _ } = args;
+    for arg in args {
+        match arg {
+            GenericArg::Type(arg) => visitor.on_type(*arg),
+            GenericArg::Const(ConstRef { expr }) => visitor.on_anon_const_expr(*expr),
+            GenericArg::Lifetime(arg) => visitor.on_lifetime(*arg),
+        }
+    }
+    for AssociatedTypeBinding { name: _, args, type_ref, bounds } in bindings {
+        visitor.on_generic_args_opt(args);
+        visitor.on_type_opt(*type_ref);
+        visitor.on_type_bounds(bounds);
     }
 }
 
@@ -981,25 +997,13 @@ impl<V: StoreVisitor> StoreVisitor for &mut V {
     fn on_lifetime(&mut self, lifetime: LifetimeRefId) {
         V::on_lifetime(self, lifetime);
     }
+
+    fn on_generic_args(&mut self, args: &GenericArgs) {
+        V::on_generic_args(self, args);
+    }
 }
 
 trait StoreVisitorExt: StoreVisitor {
-    fn on_generic_args(&mut self, args: &GenericArgs) {
-        let GenericArgs { args, bindings, parenthesized: _, has_self_type: _ } = args;
-        for arg in args {
-            match arg {
-                GenericArg::Type(arg) => self.on_type(*arg),
-                GenericArg::Const(ConstRef { expr }) => self.on_anon_const_expr(*expr),
-                GenericArg::Lifetime(arg) => self.on_lifetime(*arg),
-            }
-        }
-        for AssociatedTypeBinding { name: _, args, type_ref, bounds } in bindings {
-            self.on_generic_args_opt(args);
-            self.on_type_opt(*type_ref);
-            self.on_type_bounds(bounds);
-        }
-    }
-
     fn on_type_bound(&mut self, bound: &TypeBound) {
         match bound {
             TypeBound::Path(path_id, _) => self.on_type(path_id.type_ref()),
@@ -1167,7 +1171,7 @@ impl ExpressionStoreSourceMap {
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new);
-        self.expr_only()?.expr_map.get(&src).cloned()
+        self.expr_only()?.expr_map.get(&src).cloned().map(ExprOrPatIdPacked::unpack)
     }
 
     pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
@@ -1184,7 +1188,11 @@ impl ExpressionStoreSourceMap {
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<ExprOrPatId> {
-        self.expr_only()?.pat_map.get(&node.map(AstPtr::new)).cloned()
+        self.expr_only()?
+            .pat_map
+            .get(&node.map(AstPtr::new))
+            .cloned()
+            .map(ExprOrPatIdPacked::unpack)
     }
 
     pub fn type_syntax(&self, id: TypeRefId) -> Result<TypeSource, SyntheticSyntax> {
@@ -1218,7 +1226,7 @@ impl ExpressionStoreSourceMap {
 
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::MacroExpr>).map(AstPtr::upcast);
-        self.expr_only()?.expr_map.get(&src).copied()
+        self.expr_only()?.expr_map.get(&src).copied().map(ExprOrPatIdPacked::unpack)
     }
 
     pub fn expansions(&self) -> impl Iterator<Item = (&InFile<MacroCallPtr>, &MacroCallId)> {

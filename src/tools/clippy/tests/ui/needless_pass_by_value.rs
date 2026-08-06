@@ -1,13 +1,5 @@
 #![warn(clippy::needless_pass_by_value)]
-#![allow(dead_code)]
-#![allow(
-    clippy::option_option,
-    clippy::redundant_clone,
-    clippy::redundant_pattern_matching,
-    clippy::single_match,
-    clippy::uninlined_format_args,
-    clippy::needless_lifetimes
-)]
+#![expect(clippy::needless_lifetimes, clippy::single_match)]
 //@no-rustfix
 use std::borrow::Borrow;
 use std::collections::HashSet;

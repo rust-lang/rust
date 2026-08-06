@@ -198,7 +198,6 @@ trivial_impls!(
     usize,
     crate::PredicatePolarity,
     crate::BoundConstness,
-    crate::AliasRelationDirection,
     crate::DebruijnIndex,
     crate::solve::Certainty,
     crate::UniverseIndex,

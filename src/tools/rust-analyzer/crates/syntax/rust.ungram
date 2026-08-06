@@ -468,17 +468,17 @@ AsmRegSpec = '@string' | NameRef
 // reg_operand := [ident "="] dir_spec "(" reg_spec ")" operand_expr
 AsmRegOperand = AsmDirSpec '(' AsmRegSpec ')' AsmOperandExpr
 // clobber_abi := "clobber_abi(" <abi> *("," <abi>) [","] ")"
-AsmClobberAbi = 'clobber_abi' '(' ('@string' (',' '@string')* ','?) ')'
+AsmClobberAbi = Attr* 'clobber_abi' '(' ('@string' (',' '@string')* ','?) ')'
 // option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
 AsmOption = 'pure' | 'nomem' | 'readonly' | 'preserves_flags' | 'noreturn' | 'nostack' | 'att_syntax' | 'raw' | 'may_unwind'
 // options := "options(" option *("," option) [","] ")"
-AsmOptions = 'options' '(' (AsmOption (',' AsmOption)*) ','? ')'
+AsmOptions = Attr* 'options' '(' (AsmOption (',' AsmOption)*) ','? ')'
 AsmLabel = 'label' BlockExpr
 AsmSym = 'sym' Path
 AsmConst = 'const' Expr
 // operand := reg_operand / clobber_abi / options
 AsmOperand = AsmRegOperand | AsmLabel | AsmSym | AsmConst
-AsmOperandNamed = (Name '=')? AsmOperand
+AsmOperandNamed = Attr* (Name '=')? AsmOperand
 AsmPiece = AsmOperandNamed | AsmClobberAbi | AsmOptions
 
 FormatArgsExpr =

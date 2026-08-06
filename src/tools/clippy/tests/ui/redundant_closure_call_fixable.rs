@@ -1,4 +1,4 @@
-#![expect(unused)]
+#![warn(clippy::redundant_closure_call)]
 #![expect(incomplete_features)]
 #![feature(ergonomic_clones)]
 

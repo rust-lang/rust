@@ -3,7 +3,6 @@ error: unopened HTML tag `TD`
    |
 LL |   /// </TD
    |  _____^
-LL | |
 LL | | /// >
    | |_____^
    |
@@ -18,7 +17,6 @@ error: unopened HTML tag `TD`
    |
 LL |   /// </TD
    |  _____^
-LL | |
 LL | | /// >
    | |_____^
 

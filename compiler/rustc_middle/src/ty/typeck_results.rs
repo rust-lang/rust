@@ -8,12 +8,12 @@ use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
+    OwnerId,
 };
 use rustc_index::IndexVec;
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -223,6 +223,9 @@ pub struct TypeckResults<'tcx> {
     /// computation.
     pub transmutes_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>,
 
+    /// Stores the types involved in calls to `offload` intrinsic.
+    pub offloads_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, Ty<'tcx>, HirId)>,
+
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 }
@@ -256,6 +259,7 @@ impl<'tcx> TypeckResults<'tcx> {
             potentially_region_dependent_goals: Default::default(),
             closure_size_eval: Default::default(),
             transmutes_to_check: Default::default(),
+            offloads_to_check: Default::default(),
             offset_of_data: Default::default(),
         }
     }
@@ -537,8 +541,8 @@ impl<'tcx> TypeckResults<'tcx> {
     ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
         self.closure_min_captures
             .get(&closure_def_id)
-            .map(|closure_min_captures| closure_min_captures.values().flat_map(|v| v.iter()))
-            .into_iter()
+            .map(|closure_min_captures| closure_min_captures.values())
+            .into_flat_iter()
             .flatten()
     }
 
@@ -798,7 +802,7 @@ impl<'tcx> UserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -863,24 +867,12 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.bounds.is_empty() {
-            self.kind.fmt(f)
-        } else {
-            self.kind.fmt(f)?;
+        self.kind.fmt(f)?;
+        for b in self.bounds {
             write!(f, " + ")?;
-            std::fmt::Debug::fmt(&self.bounds, f)
+            b.fmt(f)?;
         }
-    }
-}
-
-impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ty(arg0) => {
-                ty::print::with_no_trimmed_paths!(write!(f, "Ty({})", arg0))
-            }
-            Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
-        }
+        Ok(())
     }
 }
 

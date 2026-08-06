@@ -1,5 +1,3 @@
-#![feature(c_variadic)]
-
 // Regression test that covers all 3 cases of https://github.com/rust-lang/rust/issues/130372
 
 unsafe extern "C" fn test_va_copy(_: u64, mut ap: ...) {}

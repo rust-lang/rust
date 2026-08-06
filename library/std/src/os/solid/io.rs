@@ -257,7 +257,8 @@ macro_rules! impl_owned_fd_traits {
 impl_owned_fd_traits! { TcpStream TcpListener UdpSocket }
 
 /// This impl allows implementing traits that require `AsFd` on Arc.
-/// ```
+#[cfg_attr(target_os = "solid", doc = "```")]
+#[cfg_attr(not(target_os = "solid"), doc = "```ignore (needs solid)")]
 /// # #[cfg(target_os = "solid_asp3")] mod group_cfg {
 /// # use std::os::solid::io::AsFd;
 /// use std::net::UdpSocket;

@@ -31,13 +31,15 @@ fn init_compiler_benchmarks(
         "--id",
         "Test",
         "--cargo",
-        env.cargo_stage_0().as_str(),
+        env.cargo_stage_2().as_str(),
         "--profiles",
         profiles.join(",").as_str(),
         "--scenarios",
         scenarios.join(",").as_str(),
         "--exact-match",
         crates.join(",").as_str(),
+        "--jobs",
+        "4",
     ])
     .env("RUSTC", env.rustc_stage_0().as_str())
     .env("RUSTC_BOOTSTRAP", "1")
@@ -107,8 +109,14 @@ pub fn llvm_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
 }
 
+// Here we're profiling the `rustc` frontend, so we also include `Check`.
+// The benchmark set includes various stress tests that put the frontend under pressure.
 pub fn rustc_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
+}
+
+pub fn rustdoc_benchmarks(env: &Environment) -> CmdBuilder {
+    init_compiler_benchmarks(env, &["Doc"], &["Full"], RUSTC_PGO_CRATES)
 }
 
 pub struct LlvmPGOProfile(pub Utf8PathBuf);
@@ -143,35 +151,52 @@ pub fn gather_rustc_profiles(
     profile_root: &Utf8Path,
 ) -> anyhow::Result<RustcPGOProfile> {
     log::info!("Running benchmarks with PGO instrumented rustc");
+    gather_pgo_profiles(env, profile_root, "rustc", rustc_benchmarks(env)).map(RustcPGOProfile)
+}
 
+pub struct RustdocPGOProfile(pub Utf8PathBuf);
+
+pub fn gather_rustdoc_profiles(
+    env: &Environment,
+    profile_root: &Utf8Path,
+) -> anyhow::Result<RustdocPGOProfile> {
+    log::info!("Running benchmarks with PGO instrumented rustdoc");
+    gather_pgo_profiles(env, profile_root, "rustdoc", rustdoc_benchmarks(env))
+        .map(RustdocPGOProfile)
+}
+
+pub fn gather_pgo_profiles(
+    env: &Environment,
+    profile_root: &Utf8Path,
+    name: &str,
+    benchmark_cmd: CmdBuilder,
+) -> anyhow::Result<Utf8PathBuf> {
     // The profile data is written into a single filepath that is being repeatedly merged when each
     // rustc invocation ends. Empirically, this can result in some profiling data being lost. That's
     // why we override the profile path to include the PID. This will produce many more profiling
     // files, but the resulting profile will produce a slightly faster rustc binary.
     let profile_template = profile_root.join("default_%m_%p.profraw");
 
-    // Here we're profiling the `rustc` frontend, so we also include `Check`.
-    // The benchmark set includes various stress tests that put the frontend under pressure.
     with_log_group("Running benchmarks", || {
-        rustc_benchmarks(env)
+        benchmark_cmd
             .env("LLVM_PROFILE_FILE", profile_template.as_str())
             .run()
-            .context("Cannot gather rustc PGO profiles")
+            .with_context(|| format!("Cannot gather {name} PGO profiles"))
     })?;
 
-    let merged_profile = env.artifact_dir().join("rustc-pgo.profdata");
-    log::info!("Merging Rustc PGO profiles to {merged_profile}");
+    let merged_profile = env.artifact_dir().join(format!("{name}-pgo.profdata"));
+    log::info!("Merging {name} PGO profiles to {merged_profile}");
 
     let llvm_profdata = if env.build_llvm() { LlvmProfdata::Target } else { LlvmProfdata::Host };
 
     merge_llvm_profiles(env, &merged_profile, profile_root, llvm_profdata)?;
-    log_profile_stats("Rustc", &merged_profile, profile_root)?;
+    log_profile_stats(name, &merged_profile, profile_root)?;
 
     // We don't need the individual .profraw files now that they have been merged
     // into a final .profdata
     delete_directory(profile_root)?;
 
-    Ok(RustcPGOProfile(merged_profile))
+    Ok(merged_profile)
 }
 
 pub struct BoltProfile(pub Utf8PathBuf);

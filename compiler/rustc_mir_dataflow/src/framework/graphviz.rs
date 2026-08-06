@@ -633,7 +633,7 @@ struct StateDiffCollector<D> {
     after: Vec<String>,
 }
 
-impl<D> StateDiffCollector<D> {
+impl<D: Clone> StateDiffCollector<D> {
     fn run<'tcx, A>(
         body: &Body<'tcx>,
         block: BasicBlock,
@@ -645,7 +645,7 @@ impl<D> StateDiffCollector<D> {
         D: DebugWithContext<A>,
     {
         let mut collector = StateDiffCollector {
-            prev_state: results.analysis.bottom_value(body),
+            prev_state: results.entry_states[block].clone(),
             after: vec![],
             before: (style == OutputStyle::BeforeAndAfter).then_some(vec![]),
         };
@@ -660,18 +660,6 @@ where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
-    fn visit_block_start(&mut self, state: &A::Domain) {
-        if A::Direction::IS_FORWARD {
-            self.prev_state.clone_from(state);
-        }
-    }
-
-    fn visit_block_end(&mut self, state: &A::Domain) {
-        if A::Direction::IS_BACKWARD {
-            self.prev_state.clone_from(state);
-        }
-    }
-
     fn visit_after_early_statement_effect(
         &mut self,
         analysis: &A,

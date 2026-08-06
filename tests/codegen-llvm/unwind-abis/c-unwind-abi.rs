@@ -7,11 +7,11 @@
 
 #![crate_type = "lib"]
 
-// CHECK: @rust_item_that_cannot_unwind() unnamed_addr #0 {
+// CHECK: @rust_item_that_cannot_unwind() unnamed_addr #0
 #[no_mangle]
 pub extern "C" fn rust_item_that_cannot_unwind() {}
 
-// CHECK: @rust_item_that_can_unwind() unnamed_addr #1 {
+// CHECK: @rust_item_that_can_unwind() unnamed_addr #1
 #[no_mangle]
 pub extern "C-unwind" fn rust_item_that_can_unwind() {}
 

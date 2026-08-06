@@ -1,10 +1,10 @@
-warning: `#[deprecated]` attribute cannot be used on expressions
-  --> $DIR/deprecated-expr-precedence.rs:6:5
+warning: the `deprecated` attribute cannot be used on expressions
+  --> $DIR/deprecated-expr-precedence.rs:6:7
    |
 LL |     #[deprecated] 0
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
    |
-   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+   = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 

@@ -1,11 +1,5 @@
 #![warn(clippy::needless_question_mark)]
-#![allow(
-    clippy::needless_return,
-    clippy::unnecessary_unwrap,
-    clippy::upper_case_acronyms,
-    dead_code,
-    unused_must_use
-)]
+#![expect(clippy::needless_return, clippy::unnecessary_unwrap)]
 
 struct TO {
     magic: Option<usize>,

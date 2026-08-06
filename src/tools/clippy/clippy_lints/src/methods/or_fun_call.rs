@@ -161,7 +161,7 @@ fn check_unwrap_or_default(
             let output_ty = cx
                 .tcx
                 .fn_sig(def_id)
-                .instantiate(cx.tcx, args)
+                .instantiate(cx.tcx, args.no_bound_vars().unwrap())
                 .skip_norm_wip()
                 .skip_binder()
                 .output();

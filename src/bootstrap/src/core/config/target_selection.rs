@@ -78,8 +78,16 @@ impl TargetSelection {
         self.contains("msvc")
     }
 
+    pub fn is_pauthtest(&self) -> bool {
+        self.contains("pauthtest")
+    }
+
     pub fn is_windows(&self) -> bool {
         self.contains("windows")
+    }
+
+    pub fn is_apple(&self) -> bool {
+        self.contains("apple")
     }
 
     pub fn is_windows_gnu(&self) -> bool {

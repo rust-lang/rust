@@ -59,6 +59,7 @@ impl ArrayType {
 pub struct AsmClobberAbi {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for AsmClobberAbi {}
 impl AsmClobberAbi {
     #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
@@ -150,6 +151,7 @@ impl AsmOperandExpr {
 pub struct AsmOperandNamed {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for AsmOperandNamed {}
 impl ast::HasName for AsmOperandNamed {}
 impl AsmOperandNamed {
     #[inline]
@@ -193,6 +195,7 @@ impl AsmOption {
 pub struct AsmOptions {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for AsmOptions {}
 impl AsmOptions {
     #[inline]
     pub fn asm_options(&self) -> AstChildren<AsmOption> { support::children(&self.syntax) }
@@ -2193,6 +2196,7 @@ pub enum AsmPiece {
     AsmOperandNamed(AsmOperandNamed),
     AsmOptions(AsmOptions),
 }
+impl ast::HasAttrs for AsmPiece {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
@@ -9096,7 +9100,10 @@ impl AstNode for AnyHasAttrs {
         matches!(
             kind,
             ARRAY_EXPR
+                | ASM_CLOBBER_ABI
                 | ASM_EXPR
+                | ASM_OPERAND_NAMED
+                | ASM_OPTIONS
                 | ASSOC_ITEM_LIST
                 | AWAIT_EXPR
                 | BECOME_EXPR
@@ -9194,9 +9201,21 @@ impl From<ArrayExpr> for AnyHasAttrs {
     #[inline]
     fn from(node: ArrayExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
 }
+impl From<AsmClobberAbi> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmClobberAbi) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
 impl From<AsmExpr> for AnyHasAttrs {
     #[inline]
     fn from(node: AsmExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AsmOperandNamed> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmOperandNamed) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AsmOptions> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmOptions) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
 }
 impl From<AssocItemList> for AnyHasAttrs {
     #[inline]

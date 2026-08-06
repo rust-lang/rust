@@ -99,9 +99,9 @@ pub(crate) unsafe fn codegen(
     );
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod);
+        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod, tcx.sess);
         debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
-        dbg_cx.finalize(tcx.sess);
+        dbg_cx.finalize();
     }
 }
 

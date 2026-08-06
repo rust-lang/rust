@@ -9597,7 +9597,7 @@ pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9622,7 +9622,7 @@ pub fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) ->
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9647,7 +9647,7 @@ pub fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) 
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9672,7 +9672,7 @@ pub fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t)
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9697,7 +9697,7 @@ pub fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9722,7 +9722,7 @@ pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) 
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9747,7 +9747,7 @@ pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9772,7 +9772,7 @@ pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9797,7 +9797,7 @@ pub fn vdotq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x1
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9827,7 +9827,7 @@ pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9863,7 +9863,7 @@ pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9893,7 +9893,7 @@ pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9931,7 +9931,7 @@ pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9961,7 +9961,7 @@ pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9997,7 +9997,7 @@ pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10027,7 +10027,7 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",

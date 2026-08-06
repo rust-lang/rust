@@ -4,11 +4,13 @@ error[E0425]: cannot find type `X` in this scope
 LL | impl X {
    |      ^ not found in this scope
 
-error[E0573]: expected type, found built-in attribute `cfg_attr`
+error[E0573]: cannot find type `cfg_attr` in this scope
   --> $DIR/type_not_in_scope.rs:7:18
    |
 LL | fn getn<const N: cfg_attr>() -> [u8; N] {}
-   |                  ^^^^^^^^ not a type
+   |                  ^^^^^^^^ not found in this scope
+   |
+   = note: a built-in attribute named `cfg_attr` exists in another namespace
 
 error[E0308]: mismatched types
   --> $DIR/type_not_in_scope.rs:7:33

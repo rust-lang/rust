@@ -5,7 +5,7 @@ use rustc_span::Span;
 use rustc_span::source_map::SourceMap;
 
 use super::UnmatchedDelim;
-use crate::errors::MismatchedClosingDelimiter;
+use crate::diagnostics::MismatchedClosingDelimiter;
 use crate::pprust;
 
 #[derive(Default)]

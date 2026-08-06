@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ add-minicore
 //@ revisions: riscv32 riscv64
 //
