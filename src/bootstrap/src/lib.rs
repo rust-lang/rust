@@ -85,9 +85,11 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Rustc), "bootstrap", None),
     (Some(Mode::Codegen), "bootstrap", None),
     (Some(Mode::ToolRustcPrivate), "bootstrap", None),
+    (Some(Mode::RustcDoc), "bootstrap", None),
     (Some(Mode::ToolStd), "bootstrap", None),
     (Some(Mode::ToolRustcPrivate), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
+    (Some(Mode::RustcDoc), "rust_analyzer", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
     // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
     // in the appropriate `library/{std,alloc,core}/Cargo.toml`
@@ -344,6 +346,10 @@ pub enum Mode {
     /// everything that links to rustc as a library, such as rustdoc, clippy,
     /// rustfmt, miri, etc.
     ToolRustcPrivate,
+
+    /// Used only for documentation, places the crate build output in stageN-rustc
+    /// but without the compiler-specific build options.
+    RustcDoc,
 }
 
 impl Mode {
@@ -354,7 +360,8 @@ impl Mode {
             | Mode::ToolRustcPrivate
             | Mode::ToolStd
             | Mode::ToolTarget
-            | Mode::Rustc => false,
+            | Mode::Rustc
+            | Mode::RustcDoc => false,
         }
     }
 }
@@ -937,7 +944,7 @@ impl Build {
             // Std is special, stage N std is built with stage N rustc
             Mode::Std => (Some(build_compiler.stage), "std"),
             // The rest of things are built with stage N-1 rustc
-            Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
+            Mode::Rustc | Mode::RustcDoc => (Some(build_compiler.stage + 1), "rustc"),
             Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
             Mode::ToolBootstrap => bootstrap_tool(),
             Mode::ToolStd | Mode::ToolRustcPrivate => (Some(build_compiler.stage + 1), "tools"),
@@ -1145,6 +1152,7 @@ impl Build {
             // Other things have stage corresponding to their build compiler + 1
             Some(
                 Mode::Rustc
+                | Mode::RustcDoc
                 | Mode::Codegen
                 | Mode::ToolBootstrap
                 | Mode::ToolTarget

@@ -668,9 +668,11 @@ impl Builder<'_> {
             cargo.arg("-Zrustdoc-mergeable-info");
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
-                    self.compiler_doc_out(target)
-                }
+                Mode::Rustc
+                | Mode::RustcDoc
+                | Mode::ToolRustcPrivate
+                | Mode::ToolBootstrap
+                | Mode::ToolTarget => self.compiler_doc_out(target),
                 Mode::Std => {
                     if self.config.cmd.json() {
                         out_dir.join(target).join("json-doc")
@@ -750,7 +752,11 @@ impl Builder<'_> {
         // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
         // library unnecessary. This can be removed when windows-rs enables raw-dylib
         // unconditionally.
-        if let Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget = mode
+        if let Mode::Rustc
+        | Mode::RustcDoc
+        | Mode::ToolRustcPrivate
+        | Mode::ToolBootstrap
+        | Mode::ToolTarget = mode
         {
             rustflags.arg("--cfg=windows_raw_dylib");
         }
@@ -834,7 +840,7 @@ impl Builder<'_> {
 
         match mode {
             Mode::Std | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
-            Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => {
+            Mode::Rustc | Mode::RustcDoc | Mode::Codegen | Mode::ToolRustcPrivate => {
                 // Build proc macros both for the host and the target unless proc-macros are not
                 // supported by the target.
                 if target != compiler.host && cmd_kind != Kind::Check {
@@ -897,7 +903,9 @@ impl Builder<'_> {
                 "binary-dep-depinfo,proc_macro_span,proc_macro_span_shrink,proc_macro_diagnostic"
                     .to_string()
             }
-            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => String::new(),
+            Mode::Std | Mode::Rustc | Mode::RustcDoc | Mode::Codegen | Mode::ToolRustcPrivate => {
+                String::new()
+            }
         };
 
         cargo.arg("-j").arg(self.jobs().to_string());
@@ -1034,7 +1042,7 @@ impl Builder<'_> {
         }
 
         let debuginfo_level = match mode {
-            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
+            Mode::Rustc | Mode::RustcDoc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
             Mode::Std => self.config.rust_debuginfo_level_std,
             Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
                 self.config.rust_debuginfo_level_tools
@@ -1048,7 +1056,7 @@ impl Builder<'_> {
             profile_var("DEBUG_ASSERTIONS"),
             match mode {
                 Mode::Std => self.config.std_debug_assertions,
-                Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
+                Mode::Rustc | Mode::RustcDoc | Mode::Codegen => self.config.rustc_debug_assertions,
                 Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
                     self.config.tools_debug_assertions
                 }
@@ -1081,7 +1089,7 @@ impl Builder<'_> {
             // Any library crate that's part of the sysroot should be marked unstable
             // (including third-party dependencies), unless it uses a staged_api
             // `#![stable(..)]` attribute to explicitly mark itself stable.
-            Mode::Std | Mode::Codegen | Mode::Rustc => {
+            Mode::Std | Mode::Codegen | Mode::Rustc | Mode::RustcDoc => {
                 cargo.env("RUSTC_FORCE_UNSTABLE", "1");
             }
 
@@ -1114,7 +1122,7 @@ impl Builder<'_> {
         // `RUSTC_DEBUGINFO_MAP` is used to pass through to the underlying rustc
         // `--remap-path-prefix`.
         match mode {
-            Mode::Rustc | Mode::Codegen => {
+            Mode::Rustc | Mode::RustcDoc | Mode::Codegen => {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
@@ -1438,7 +1446,8 @@ impl Builder<'_> {
         if matches!(mode, Mode::Std) {
             rustflags.arg("-Cprefer-dynamic");
         }
-        if matches!(mode, Mode::Rustc) && !self.link_std_into_rustc_driver(target) {
+        if matches!(mode, Mode::Rustc | Mode::RustcDoc) && !self.link_std_into_rustc_driver(target)
+        {
             rustflags.arg("-Cprefer-dynamic");
         }
 
