@@ -155,9 +155,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     }
                 });
 
-                // FIXME(nnethercote): for reasons I don't understand, this `new`+`extend`
-                // combination is faster than `variables.clone()`, because it somehow avoids
-                // some allocations.
+                // The obvious thing to do here is `variables.clone()`. But this `new`+`extend`
+                // combination results in the variables having more spare capacity, which avoids
+                // some later allocations and makes things a little faster.
                 let mut variables = ThinVec::new();
                 variables.extend(entry.variables.iter().copied());
                 (
