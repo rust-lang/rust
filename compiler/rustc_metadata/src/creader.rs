@@ -991,18 +991,6 @@ impl CStore {
             if !cdata.is_panic_runtime() {
                 tcx.dcx().emit_err(diagnostics::CrateNotPanicRuntime { crate_name: name });
             }
-
-            // Sanity check the panic strategy is indeed what we thought it was.
-            // Note: Both `panic_unwind` and `panic_abort` might be compiled with
-            // `ImmediateAbort` strategy.
-            if cdata.required_panic_strategy() != Some(PanicStrategy::ImmediateAbort)
-                && cdata.required_panic_strategy() != Some(desired_strategy)
-            {
-                tcx.dcx().emit_err(diagnostics::NoPanicStrategy {
-                    crate_name: name,
-                    strategy: desired_strategy,
-                });
-            }
         };
 
         // Always resolve `panic_abort` as it is a non-optional dependency of `std`.

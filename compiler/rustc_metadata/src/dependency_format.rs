@@ -67,7 +67,8 @@ use tracing::info;
 use crate::diagnostics::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy,
     IncompatibleWithImmediateAbort, IncompatibleWithImmediateAbortCore, LibRequired,
-    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
+    NoPanicStrategy, NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired,
+    TwoPanicRuntimes,
 };
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
@@ -463,6 +464,22 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &DependencyList) {
             sess.dcx().emit_err(BadPanicStrategy {
                 runtime: tcx.crate_name(runtime_cnum),
                 strategy: desired_strategy,
+            });
+        }
+
+        // Sanity check the panic strategy of the panic runtime is indeed what we
+        // thought it was. E.g. `panic_abort` should be compiled with `-Cpanic=abort`.
+        let expected_runtime_strategy = match tcx.crate_name(runtime_cnum) {
+            sym::panic_unwind => Some(PanicStrategy::Unwind),
+            sym::panic_abort => Some(PanicStrategy::Abort),
+            _ => None,
+        };
+        if let Some(expected_runtime_strategy) = expected_runtime_strategy
+            && found_strategy != expected_runtime_strategy
+        {
+            sess.dcx().emit_err(NoPanicStrategy {
+                crate_name: tcx.crate_name(runtime_cnum),
+                strategy: expected_runtime_strategy,
             });
         }
 

@@ -22,6 +22,5 @@ fn main() {
         // Visual Studio 2022 requires that the LIB env var be set so it can
         // find the Windows SDK.
         .env("LIB", std::env::var("LIB").unwrap_or_default())
-        .run_fail()
-        .assert_stderr_contains("the crate `panic_abort` does not have the panic strategy `abort`");
+        .run();
 }

@@ -2022,10 +2022,6 @@ impl CrateMetadata {
         self.used
     }
 
-    pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
-        self.root.required_panic_strategy
-    }
-
     pub(crate) fn is_private_dep(&self) -> bool {
         self.private_dep
     }
