@@ -56,7 +56,6 @@ pub use utils::helpers::{PanicTracker, symlink_dir};
 #[cfg(feature = "tracing")]
 pub use utils::tracing::setup_tracing;
 
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
 const LLVM_TOOLS: &[&str] = &[

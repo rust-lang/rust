@@ -37,6 +37,7 @@ pub struct LlvmOutput {
 
 impl LlvmOutput {
     /// Directory containing the built LLVM artifacts.
+    /// Contains `bin`/`lib` directories.
     pub fn root_dir(&self) -> &Path {
         &self.llvm_root_dir
     }
@@ -320,7 +321,7 @@ impl CommandLineStep for Llvm {
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&output.root_dir()));
+        t!(fs::create_dir_all(output.root_dir()));
 
         // https://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/llvm"));
@@ -348,7 +349,7 @@ impl CommandLineStep for Llvm {
         let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
         let enable_warnings = if builder.config.llvm_enable_warnings { "ON" } else { "OFF" };
 
-        cfg.out_dir(&output.root_dir())
+        cfg.out_dir(output.root_dir())
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
             .define("LLVM_UNREACHABLE_OPTIMIZE", "OFF")
@@ -1983,18 +1984,8 @@ impl Step for FileCheck {
             };
             return filecheck;
         }
-        // We have to take the filecheck from the built LLVM
+        // Here we take the filecheck from LLVM directly
         let llvm_output = builder.ensure(Llvm { target: self.target });
-
-        let base = llvm_output.root_dir().join("build");
-        // FIXME: this should ideally be encoded directly in `LlvmOutput`, rather than use computing
-        // the correct directory here...
-        let base = if !builder.ninja() && self.target.is_msvc() {
-            let profile = get_llvm_profile(&builder.config);
-            base.join(profile)
-        } else {
-            base
-        };
-        base.join("bin").join(exe("FileCheck", self.target))
+        llvm_output.root_dir().join("bin").join(exe("FileCheck", self.target))
     }
 }
