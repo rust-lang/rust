@@ -5,17 +5,16 @@ use hir::def::DefKind;
 use rustc_ast::{self as ast, Delegation, DelegationSource, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty, TypeRelativeDelegationRes};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::delegation::generics::GenericsGenerationResults;
 use crate::delegation::resolution::resolver::DelegationResolver;
 use crate::diagnostics::{
-    CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
-    DelegationAttemptedBlockWithDefsRelowering, DelegationBlockSpecifiedWhenNoParams,
-    UnresolvedDelegationCallee,
+    AmbiguousDelegationToInherentImpl, CycleInDelegationSignatureResolution,
+    DelegationAttemptedBlockWithDefsDeletion, DelegationAttemptedBlockWithDefsRelowering,
+    DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
 };
 
 /// Summary info about function parameters.
@@ -104,10 +103,6 @@ pub(super) mod resolver {
         pub(crate) fn opt_resolution_id(&self, id: NodeId) -> Option<DefId> {
             self.0.get_partial_res(id).and_then(|r| r.full_res()).and_then(|r| r.opt_def_id())
         }
-
-        pub(crate) fn opt_base_res(&self, id: NodeId) -> Option<DefId> {
-            self.0.get_partial_res(id).and_then(|res| res.base_res().opt_def_id())
-        }
     }
 }
 
@@ -122,29 +117,8 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
 
         // Delegation can be missing from the `delegations_resolutions` table
         // in illegal places such as function bodies in extern blocks (see #151356).
-        let sig_id = tcx
-            .resolutions(())
-            .delegation_infos
-            .get(&def_id)
-            .map(|info| {
-                let id = info
-                    .resolution_id
-                    .or_else(|| self.resolve_type_relative(delegation))
-                    .ok_or_else(|| {
-                        tcx.dcx().span_delayed_bug(
-                            span,
-                            format!("failed to resolve type relative delegation {:?}", span),
-                        )
-                    })?;
-
-                self.check_for_cycles(id, span).map(|_| id)
-            })
-            .unwrap_or_else(|| {
-                Err(tcx.dcx().span_delayed_bug(
-                    span,
-                    format!("delegation resolution record was not found for {:?}", def_id),
-                ))
-            })?;
+        let sig_id = self.resolve_delegation_sig(def_id, span)?;
+        self.check_for_cycles(sig_id, span)?;
 
         let is_method = tcx.is_method(sig_id);
         let sig = tcx.fn_sig(sig_id).skip_binder().skip_binder();
@@ -178,25 +152,44 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
 
     fn get_child_res(&self, delegation: &Delegation, span: Span) -> Result<DefId, ErrorGuaranteed> {
         self.opt_resolution_id(delegation.id)
-            .or_else(|| self.resolve_type_relative(delegation))
-            .ok_or_else(|| {
-                self.tcx().dcx().span_delayed_bug(
-                    span,
-                    format!("failed to resolve type relative delegation {:?}", span),
-                )
-            })
+            .map(|id| Ok(id))
+            .unwrap_or_else(|| self.resolve_delegation_sig(self.owner_id(), span))
     }
 
-    fn resolve_type_relative(&self, delegation: &Delegation) -> Option<DefId> {
-        let res = self.opt_base_res(delegation.id);
-        let Some(res) = res.and_then(|res| res.as_local()) else { return None };
-
+    fn resolve_delegation_sig(
+        &self,
+        def_id: LocalDefId,
+        span: Span,
+    ) -> Result<DefId, ErrorGuaranteed> {
         self.tcx()
             .resolutions(())
-            .delegation_inh_functions_map
-            .get(&res)
-            .and_then(|map| map.get(&delegation.path.segments.last().unwrap().ident))
-            .map(|id| id.to_def_id())
+            .delegation_infos
+            .get(&def_id)
+            .and_then(|info| info.resolution_id)
+            .map(|id| Ok(id))
+            .unwrap_or_else(|| self.resolve_type_relative_delegation_sig(def_id, span))
+    }
+
+    fn resolve_type_relative_delegation_sig(
+        &self,
+        def_id: LocalDefId,
+        span: Span,
+    ) -> Result<DefId, ErrorGuaranteed> {
+        let tcx = self.tcx();
+
+        let unresolved_error =
+            || Err(tcx.dcx().span_delayed_bug(span, format!("unresolved delegation {def_id:?}")));
+
+        match tcx.resolve_type_relative_delegations(()).get(&def_id) {
+            Some(res) => match res {
+                TypeRelativeDelegationRes::Ok(sig_id) => Ok(*sig_id),
+                TypeRelativeDelegationRes::Error => unresolved_error(),
+                TypeRelativeDelegationRes::Ambig => {
+                    Err(tcx.dcx().emit_err(AmbiguousDelegationToInherentImpl { span }))
+                }
+            },
+            None => unresolved_error(),
+        }
     }
 
     fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
@@ -210,8 +203,8 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // it means that we refer to another delegation as a callee, so in order to obtain
             // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
             if let Some(local_id) = def_id.as_local()
-                && let Some(info) = tcx.resolutions(()).delegation_infos.get(&local_id)
-                && let Some(id) = info.resolution_id
+                && self.tcx().resolutions(()).delegation_infos.contains_key(&local_id)
+                && let Ok(id) = self.resolve_delegation_sig(local_id, span)
             {
                 def_id = id;
                 if visited.contains(&def_id) {

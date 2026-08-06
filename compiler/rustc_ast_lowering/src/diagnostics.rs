@@ -579,3 +579,10 @@ pub(crate) struct DelegationAttemptedBlockWithDefsRelowering {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("ambigous delegation to inherent impl function")]
+pub(crate) struct AmbiguousDelegationToInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}

@@ -29,7 +29,7 @@ use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRe
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::{AssocTag, DelegationInfo, Visibility};
+use rustc_middle::ty::{AssocTag, DelegationInfo, DelegationInhFuncKind, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::diagnostics::feature_err;
@@ -3697,12 +3697,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
 
                 if let Some(self_type_def_id) = self_type_def_id {
-                    self.r
-                        .delegation_inh_functions_map
-                        .entry(self_type_def_id)
-                        .or_default()
-                        .entry(*ident)
-                        .or_insert(self.r.current_owner.def_id);
+                    self.fill_delegation_inh_functions_map(self_type_def_id, ident);
                 }
 
                 self.resolve_define_opaques(define_opaque);
@@ -3747,6 +3742,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::Function,
                     delegation.path.segments.last().unwrap().ident.span,
                     |this| {
+                        if let Some(self_type_def_id) = self_type_def_id {
+                            this.fill_delegation_inh_functions_map(
+                                self_type_def_id,
+                                &delegation.ident,
+                            );
+                        }
+
                         this.check_trait_item(
                             item.id,
                             delegation.ident,
@@ -3769,6 +3771,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
         self.diag_metadata.current_impl_item = prev;
+    }
+
+    fn fill_delegation_inh_functions_map(&mut self, self_type_def_id: LocalDefId, ident: &Ident) {
+        let map = self.r.delegation_inh_functions_map.entry(self_type_def_id).or_default();
+
+        if let Some(DelegationInhFuncKind::Single(..)) = map.get(ident) {
+            map.insert(*ident, DelegationInhFuncKind::Ambig);
+        } else {
+            map.insert(*ident, DelegationInhFuncKind::Single(self.r.current_owner.def_id));
+        }
     }
 
     fn check_trait_item<F>(
