@@ -17,7 +17,7 @@ pub fn unroll_hint() {
     // CHECK-LABEL: @unroll_hint
     // CHECK: !llvm.loop ![[HINT:[0-9]+]]
     let mut i = 0;
-    #[unroll]
+    #[rustc_unroll]
     loop {
         unsafe { maybe_has_side_effect() }
         i += 1;
@@ -35,7 +35,7 @@ pub fn unroll_full() {
     // CHECK-LABEL: @unroll_full
     // CHECK: !llvm.loop ![[FULL:[0-9]+]]
     let mut i = 0;
-    let _return = (#[unroll(full)]
+    let _return = (#[rustc_unroll(full)]
     loop {
         unsafe { maybe_has_side_effect() }
         i += 1;
@@ -50,7 +50,7 @@ pub fn unroll_never() {
     // CHECK-LABEL: @unroll_never
     // CHECK: !llvm.loop ![[DISABLE:[0-9]+]]
     let mut i = 0;
-    let _return = (1 + #[unroll(never)]
+    let _return = (1 + #[rustc_unroll(never)]
     loop {
         unsafe { maybe_has_side_effect() }
         i += 1;
@@ -65,7 +65,7 @@ pub fn unroll_count() {
     // CHECK-LABEL: @unroll_count
     // CHECK: !llvm.loop ![[COUNT:[0-9]+]]
     let mut i = 0;
-    #[unroll(5)]
+    #[rustc_unroll(5)]
     loop {
         unsafe { maybe_has_side_effect() }
         i += 1;
