@@ -39,6 +39,14 @@ pub(crate) struct ImplFnConst {
 }
 
 #[derive(Diagnostic)]
+#[diag("`-Znext-solver=globally` is disabled because `generic_const_exprs` is enabled")]
+#[note("the old trait solver will be used globally for this crate")]
+pub(crate) struct NextSolverDisabledForGenericConstExprs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("functions in {$in_impl ->
         [true] trait impls
         *[false] traits
