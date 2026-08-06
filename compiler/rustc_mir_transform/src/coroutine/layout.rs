@@ -36,15 +36,13 @@ use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
     always_storage_live_locals,
 };
-use rustc_mir_dataflow::{
-    Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
-};
+use rustc_mir_dataflow::{Analysis, Results, ResultsCursor, ResultsVisitor, visit_results};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::diagnostics::{MustNotSupend, MustNotSuspendReason};
 
@@ -249,13 +247,19 @@ fn compute_storage_conflicts<'mir, 'tcx>(
 
     // Compute the storage conflicts for all eligible locals.
     let mut visitor = StorageConflictVisitor {
-        body,
         saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
         eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
-    visit_reachable_results(body, results, &mut visitor);
+    // Filter out:
+    // - unreachable blocks;
+    // - reachable blocks that end in `Unreachable`, because they never complete execution and
+    //   conflicts within them are spurious.
+    let blocks = traversal::reachable(body).filter_map(|(bb, data)| {
+        (!matches!(data.terminator().kind, TerminatorKind::Unreachable)).then_some(bb)
+    });
+    visit_results(body, blocks, results, &mut visitor);
 
     let local_conflicts = visitor.local_conflicts;
 
@@ -283,8 +287,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'a, 'tcx> {
-    body: &'a Body<'tcx>,
+struct StorageConflictVisitor<'a> {
     saved_locals: &'a CoroutineSavedLocals,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for coroutines.
@@ -293,15 +296,15 @@ struct StorageConflictVisitor<'a, 'tcx> {
     eligible_storage_live: DenseBitSet<Local>,
 }
 
-impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a> {
     fn visit_after_early_statement_effect(
         &mut self,
         _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
-        loc: Location,
+        _loc: Location,
     ) {
-        self.apply_state(state, loc);
+        self.apply_state(state);
     }
 
     fn visit_after_early_terminator_effect(
@@ -309,28 +312,19 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVis
         _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
-        loc: Location,
+        _loc: Location,
     ) {
-        self.apply_state(state, loc);
+        self.apply_state(state);
     }
 }
 
-impl StorageConflictVisitor<'_, '_> {
-    fn apply_state(&mut self, state: &DenseBitSet<Local>, loc: Location) {
-        // Ignore unreachable blocks.
-        if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
-            return;
-        }
-
+impl StorageConflictVisitor<'_> {
+    fn apply_state(&mut self, state: &DenseBitSet<Local>) {
         self.eligible_storage_live.clone_from(state);
         self.eligible_storage_live.intersect(&**self.saved_locals);
 
         for local in self.eligible_storage_live.iter() {
             self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
-        }
-
-        if self.eligible_storage_live.count() > 1 {
-            trace!("at {:?}, eligible_storage_live={:?}", loc, self.eligible_storage_live);
         }
     }
 }

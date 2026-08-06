@@ -148,7 +148,7 @@ impl MaybeRequiresStorage {
             killable_locals: Default::default(),
         };
 
-        for (bb, data) in body.basic_blocks.iter_enumerated() {
+        for (bb, data) in traversal::reachable(body) {
             visitor.visit_basic_block_data(bb, data);
         }
 
