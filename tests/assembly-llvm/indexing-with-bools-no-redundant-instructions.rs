@@ -15,7 +15,7 @@ pub fn bool_index(a: u32, b: bool, c: bool, d: &mut [u128; 2]) {
     // CHECK-LABEL: bool_index:
     // CHECK: testl  %esi, %esi
     // CHECK: je
-    // CHECK: xorb   %dl, %dil
+    // CHECK: xorb   {{%dl, %dil|%dil, %dl}}
     // CHECK: orb    $1, (%rcx)
     // CHECK-NOT: jmp
     // CHECK-NOT: andb $1, %dil

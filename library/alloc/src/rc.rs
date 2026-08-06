@@ -2619,7 +2619,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 pub(crate) trait MarkerEq: PartialEq<Self> {}
 
 impl<T: ?Sized + Eq> MarkerEq for T {}

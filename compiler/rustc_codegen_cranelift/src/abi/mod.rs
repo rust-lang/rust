@@ -141,7 +141,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     ) -> Cow<'_, [Value]> {
         // FIXME any way to reuse the abi adjustment code in rustc_target?
 
-        // Pass i128 arguments by-ref on Windows.
+        // Pass and return f128 indirectly on s390x and x86_64 Windows.
+        let indirect_f128 = self.tcx.sess.target.arch == Arch::S390x
+            || (self.tcx.sess.target.is_like_windows && self.tcx.sess.target.arch == Arch::X86_64);
+
+        // Pass i128 arguments by-ref on s390x and Windows.
         let (params, args): (Vec<_>, Cow<'_, [_]>) =
             if self.tcx.sess.target.is_like_windows || self.tcx.sess.target.arch == Arch::S390x {
                 let (params, args): (Vec<_>, Vec<_>) = params
@@ -149,8 +153,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                     .zip(args)
                     .map(|(param, &arg)| {
                         if param.value_type == types::I128
-                            || (self.tcx.sess.target.arch == Arch::S390x
-                                && param.value_type == types::F128)
+                            || (indirect_f128 && param.value_type == types::F128)
                         {
                             let arg_ptr = self.create_stack_slot(16, 16);
                             arg_ptr.store(self, arg, MemFlagsData::trusted());
@@ -166,19 +169,20 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 (params, args.into())
             };
 
-        if self.tcx.sess.target.is_like_windows
-            && matches!(*returns, [AbiParam { value_type: types::I128, .. }])
-        {
+        let ret_single_i128 = matches!(*returns, [AbiParam { value_type: types::I128, .. }]);
+        let ret_single_f128 = matches!(*returns, [AbiParam { value_type: types::F128, .. }]);
+        if ret_single_i128 && self.tcx.sess.target.is_like_windows {
             // Return i128 using the vector ABI on Windows
             returns[0].value_type = types::I64X2;
 
             let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
 
             Cow::Owned(vec![codegen_bitcast(self, types::I128, ret)])
-        } else if self.tcx.sess.target.arch == Arch::S390x
-            && matches!(*returns, [AbiParam { value_type: types::I128 | types::F128, .. }])
+        } else if (ret_single_i128 && self.tcx.sess.target.arch == Arch::S390x)
+            || (ret_single_f128 && indirect_f128)
         {
-            // Return i128 and f128 using a return area pointer on s390x.
+            // Return x86_64 Windows f128 and s390x i128 indirectly (sret in LLVM terminology).
+            let ret_ty = returns[0].value_type;
             let mut params = params;
             let mut args = args.to_vec();
 
@@ -188,7 +192,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
             self.lib_call_unadjusted(name, params, vec![], &args);
 
-            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlagsData::trusted())])
+            Cow::Owned(vec![ret_ptr.load(self, ret_ty, MemFlagsData::trusted())])
         } else {
             Cow::Borrowed(self.lib_call_unadjusted(name, params, returns, &args))
         }

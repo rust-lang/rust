@@ -8,7 +8,8 @@
 //!
 //! # Examples
 //!
-//! ```no_run
+#![cfg_attr(windows, doc = "```no_run")]
+#![cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 //! use std::fs::File;
 //! use std::os::windows::prelude::*;
 //!

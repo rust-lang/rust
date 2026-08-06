@@ -223,13 +223,6 @@ pub(crate) enum OnDuplicate {
 
     /// Ignore duplicates
     Ignore,
-
-    /// Custom function called when a duplicate attribute is found.
-    ///
-    /// - `unused` is the span of the attribute that was unused or bad because of some
-    ///   duplicate reason
-    /// - `used` is the span of the attribute that was used in favor of the unused attribute
-    Custom(fn(cx: &AcceptContext<'_, '_>, used: Span, unused: Span)),
 }
 
 impl OnDuplicate {
@@ -252,7 +245,6 @@ impl OnDuplicate {
                 });
             }
             OnDuplicate::Ignore => {}
-            OnDuplicate::Custom(f) => f(cx, used, unused),
         }
     }
 }

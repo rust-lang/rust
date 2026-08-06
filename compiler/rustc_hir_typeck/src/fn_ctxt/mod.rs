@@ -220,6 +220,16 @@ impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     }
 }
 
+impl<'tcx> rustc_hir_pretty::PpAnn for FnCtxt<'_, 'tcx> {
+    fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: rustc_hir_pretty::Nested) {
+        rustc_hir_pretty::PpAnn::nested(
+            &(&self.tcx as &dyn rustc_hir::intravisit::HirTyCtxt<'_>),
+            state,
+            nested,
+        )
+    }
+}
+
 impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx

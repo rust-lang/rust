@@ -1068,6 +1068,7 @@ fn copy_src_dirs(
 
         static LLVM_PROJECTS: &[&str] = &[
             "llvm-project/clang",
+            "llvm-project/libc",
             "llvm-project/libunwind",
             "llvm-project/lld",
             "llvm-project/lldb",

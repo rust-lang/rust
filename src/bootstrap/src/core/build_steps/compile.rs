@@ -1369,6 +1369,12 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
     }
 
+    let nightly = builder.config.channel == "nightly" || builder.config.channel == "dev";
+    if nightly {
+        // We want to enable Polonius Alpha by default on nighty
+        cargo.env("CFG_DEFAULT_POLONIUS_NEXT", "1");
+    }
+
     // These conditionals represent a tension between three forces:
     // - For non-check builds, we need to define some LLVM-related environment
     //   variables, requiring LLVM to have been built.
@@ -1486,6 +1492,9 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
     if builder.config.llvm_assertions {
         cargo.env("LLVM_ASSERTIONS", "1");
+    }
+    if builder.cxx_tool(target).is_like_gnu() || builder.cc_tool(target).is_like_gnu() {
+        cargo.env("LLVM_COMPILER_IS_GNU_LIKE", "1");
     }
 }
 

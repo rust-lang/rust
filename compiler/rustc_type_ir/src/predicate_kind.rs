@@ -22,10 +22,10 @@ pub enum ClauseKind<I: Interner> {
     Trait(ty::TraitPredicate<I>),
 
     /// `where 'a: 'r`
-    RegionOutlives(ty::OutlivesPredicate<I, Region<I>>),
+    RegionOutlives(ty::OutlivesClause<I, Region<I>>),
 
     /// `where T: 'r`
-    TypeOutlives(ty::OutlivesPredicate<I, I::Ty>),
+    TypeOutlives(ty::OutlivesClause<I, I::Ty>),
 
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.

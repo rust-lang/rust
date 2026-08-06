@@ -89,7 +89,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, RegionExt, Ty, TyCtxt, TypingMode,
+    self, GenericArgs, GenericArgsRef, OutlivesClause, Region, RegionExt, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
@@ -413,7 +413,7 @@ fn bounds_from_generic_clauses<'tcx>(
             ty::ClauseKind::Projection(projection_pred) => {
                 projections.push(bound_clause.rebind(projection_pred));
             }
-            ty::ClauseKind::RegionOutlives(OutlivesPredicate(a, b)) => {
+            ty::ClauseKind::RegionOutlives(OutlivesClause(a, b)) => {
                 regions.entry(a).or_default().push(b);
             }
             _ => {}

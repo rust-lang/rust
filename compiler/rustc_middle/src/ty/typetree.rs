@@ -62,20 +62,28 @@ fn handle_indirection<'a>(
     let Some(inner_ty) = ty.builtin_deref(true) else {
         bug!("incorrect autodiff typetree handling for type: {}", ty);
     };
-    // slices are represented as `&'{erased} mut [f32]`
-    // This reads as a reference to a slice of f32.
-    // So we'd end up with ptr->RustSlice->f32 without this extra handling
-    if inner_ty.is_slice() {
-        if let ty::Slice(element_ty) = inner_ty.kind() {
-            let element_tree =
-                typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
-            return TypeTree(vec![Type {
-                offset: -1,
-                size: tcx.data_layout.pointer_size().bytes_usize(),
-                kind: Kind::RustSlice,
-                child: element_tree,
-            }]);
-        }
+    // A pointer to a slice-tailed DST is a fat pointer `{data, len}`. `RustSlice` describes both
+    // LLVM arguments, while its child describes the memory reached through `data`.
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    if let ty::Slice(element_ty) = tcx.struct_tail_for_codegen(inner_ty, typing_env).kind() {
+        // `layout.size` here is the sized prefix of `inner_ty`, not the slice element size.
+        // Direct slices, transparent wrappers (`OsStr`), and ZST-prefixed DSTs have no byte
+        // offset to preserve. Nonzero prefixes (e.g. `Header<[f32]>`) keep field offsets.
+        // ZST elements still take this path and yield an empty child TypeTree (size 0).
+        let child = if tcx
+            .layout_of(typing_env.as_query_input(inner_ty))
+            .is_ok_and(|layout| layout.size.bytes() == 0)
+        {
+            typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false)
+        } else {
+            typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true)
+        };
+        return TypeTree(vec![Type {
+            offset: -1,
+            size: tcx.data_layout.pointer_size().bytes_usize(),
+            kind: Kind::RustSlice,
+            child,
+        }]);
     }
 
     let child = typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true);
@@ -105,56 +113,60 @@ fn typetree_from_ty_impl_inner<'tcx>(
     }
     visited.push(ty);
 
-    match ty.kind() {
-        // See handle_indirection for an explanation on why we don't handle it here.
-        ty::Slice(..) => bug!("incorrect autodiff typetree handling for slice: {}", ty),
+    let tree = match ty.kind() {
+        // Direct slices are handled by `handle_indirection`. This arm describes a slice tail while
+        // recursing through a prefixed DST, so its caller can add the field offset.
+        ty::Slice(element_ty) => {
+            typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false)
+        }
         ty::Ref(..) | ty::RawPtr(..) => handle_indirection(ty, tcx, depth, visited),
         ty::Adt(def, _) if def.is_box() => handle_indirection(ty, tcx, depth, visited),
         ty::Array(element_ty, len_const) => {
             let len = len_const.try_to_target_usize(tcx).unwrap_or(0);
             if len == 0 {
-                return TypeTree::new();
-            }
-            let element_tree =
-                typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
-            let mut types = Vec::new();
-            for elem_type in &element_tree.0 {
-                types.push(Type::from_ty(-1, elem_type));
-            }
+                TypeTree::new()
+            } else {
+                let element_tree =
+                    typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
+                let mut types = Vec::new();
+                for elem_type in &element_tree.0 {
+                    types.push(Type::from_ty(-1, elem_type));
+                }
 
-            TypeTree(types)
+                TypeTree(types)
+            }
         }
         ty::Tuple(tuple_types) => {
             if tuple_types.is_empty() {
-                return TypeTree::new();
-            }
+                TypeTree::new()
+            } else {
+                let mut types = Vec::new();
+                let mut current_offset = 0;
 
-            let mut types = Vec::new();
-            let mut current_offset = 0;
+                for tuple_ty in tuple_types.iter() {
+                    let element_tree =
+                        typetree_from_ty_impl_inner(tcx, tuple_ty, depth + 1, visited, false);
 
-            for tuple_ty in tuple_types.iter() {
-                let element_tree =
-                    typetree_from_ty_impl_inner(tcx, tuple_ty, depth + 1, visited, false);
+                    let element_layout = tcx
+                        .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
+                        .ok()
+                        .map(|layout| layout.size.bytes_usize())
+                        .unwrap_or(0);
 
-                let element_layout = tcx
-                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
-                    .ok()
-                    .map(|layout| layout.size.bytes_usize())
-                    .unwrap_or(0);
+                    for elem_type in &element_tree.0 {
+                        let offset = if elem_type.offset == -1 {
+                            current_offset as isize
+                        } else {
+                            current_offset as isize + elem_type.offset
+                        };
+                        types.push(Type::from_ty(offset, elem_type));
+                    }
 
-                for elem_type in &element_tree.0 {
-                    let offset = if elem_type.offset == -1 {
-                        current_offset as isize
-                    } else {
-                        current_offset as isize + elem_type.offset
-                    };
-                    types.push(Type::from_ty(offset, elem_type));
+                    current_offset += element_layout;
                 }
 
-                current_offset += element_layout;
+                TypeTree(types)
             }
-
-            TypeTree(types)
         }
         ty::Adt(adt_def, args) if adt_def.is_struct() => {
             let struct_layout =
@@ -207,5 +219,9 @@ fn typetree_from_ty_impl_inner<'tcx>(
             TypeTree(vec![Type { offset, size, kind: enzyme_ty, child: TypeTree::new() }])
         }
         _ => TypeTree::new(),
-    }
+    };
+
+    let popped = visited.pop();
+    debug_assert_eq!(popped, Some(ty));
+    tree
 }
