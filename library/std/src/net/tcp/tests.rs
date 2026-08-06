@@ -900,13 +900,12 @@ fn ttl() {
 fn hop_limit() {
     let hlim = 100;
 
-    let addr = next_test_ip6();
-    let listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP6));
 
     t!(listener.set_hop_limit_v6(hlim));
     assert_eq!(hlim, t!(listener.hop_limit_v6()));
 
-    let stream = t!(TcpStream::connect(&addr));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     t!(stream.set_hop_limit_v6(hlim));
     assert_eq!(hlim, t!(stream.hop_limit_v6()));
