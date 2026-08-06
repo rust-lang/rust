@@ -28,7 +28,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
                                 scope 26 (inlined std::alloc::Global::deallocate_impl_runtime) {
                                     scope 27 (inlined Layout::size) {
                                     }
-                                    scope 28 (inlined alloc::alloc::dealloc_nonnull) {
+                                    scope 28 (inlined core::alloc::global::dealloc_nonnull) {
                                         scope 29 (inlined Layout::size) {
                                         }
                                         scope 30 (inlined Layout::alignment) {
@@ -72,7 +72,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[u8; 1024]>).0: std::ptr::NonNull<[u8; 1024]>);
         _3 = copy _2 as std::ptr::NonNull<u8> (Transmute);
-        _4 = alloc::alloc::__rust_dealloc(move _3, const 1024_usize, const std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }}) -> [return: bb1, unwind unreachable];
+        _4 = core::alloc::global::__rust_dealloc(move _3, const 1024_usize, const std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }}) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
