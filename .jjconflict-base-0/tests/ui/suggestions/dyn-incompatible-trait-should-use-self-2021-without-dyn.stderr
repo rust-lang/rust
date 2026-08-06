@@ -1,0 +1,87 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:13
+   |
+LL |     fn f(a: A) -> A;
+   |             ^
+   |
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `A`
+   |
+LL -     fn f(a: A) -> A;
+LL +     fn f<T: A>(a: T) -> A;
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(a: impl A) -> A;
+   |             ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:4:19
+   |
+LL |     fn f(a: A) -> A;
+   |                   ^
+   |
+help: `A` is dyn-incompatible, use `impl A` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(a: A) -> impl A;
+   |                   ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:9:13
+   |
+LL |     fn f(b: B) -> B;
+   |             ^
+   |
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `B`
+   |
+LL -     fn f(b: B) -> B;
+LL +     fn f<T: B>(b: T) -> B;
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(b: impl B) -> B;
+   |             ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:9:19
+   |
+LL |     fn f(b: B) -> B;
+   |                   ^
+   |
+help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(b: B) -> impl B;
+   |                   ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:14:20
+   |
+LL |     fn f(&self, c: C) -> C;
+   |                    ^
+   |
+   = note: `C` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `C`
+   |
+LL -     fn f(&self, c: C) -> C;
+LL +     fn f<T: C>(&self, c: T) -> C;
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(&self, c: impl C) -> C;
+   |                    ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:14:26
+   |
+LL |     fn f(&self, c: C) -> C;
+   |                          ^
+   |
+help: `C` is dyn-incompatible, use `impl C` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(&self, c: C) -> impl C;
+   |                          ++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

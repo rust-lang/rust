@@ -1,0 +1,49 @@
+error[E0308]: mismatched types
+  --> $DIR/newlines-in-diagnostic-fix-suggestions-92741.rs:5:5
+   |
+LL |   fn _foo() -> bool {
+   |                ---- expected `bool` because of return type
+LL | /     &
+LL | |     mut
+LL | |     if true { true } else { false }
+   | |___________________________________^ expected `bool`, found `&mut bool`
+   |
+help: consider removing the borrow
+   |
+LL -     &
+LL -     mut
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/newlines-in-diagnostic-fix-suggestions-92741.rs:11:5
+   |
+LL |   fn _bar() -> bool {
+   |                ---- expected `bool` because of return type
+LL | /     &
+LL | |     mut if true { true } else { false }
+   | |_______________________________________^ expected `bool`, found `&mut bool`
+   |
+help: consider removing the borrow
+   |
+LL -     &
+LL -     mut if true { true } else { false }
+LL +     if true { true } else { false }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/newlines-in-diagnostic-fix-suggestions-92741.rs:16:5
+   |
+LL |   fn _baz() -> bool {
+   |                ---- expected `bool` because of return type
+LL | /     & mut
+LL | |     if true { true } else { false }
+   | |___________________________________^ expected `bool`, found `&mut bool`
+   |
+help: consider removing the borrow
+   |
+LL -     & mut
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,14 @@
+error: expected one of `!`, `(`, `+`, `::`, `<`, `where`, or `{`, found `Display`
+  --> $DIR/impl-return.rs:1:19
+   |
+LL | fn code() -> Impl Display {}
+   |                   ^^^^^^^ expected one of 7 possible tokens
+   |
+help: write keyword `impl` in lowercase (notice the capitalization)
+   |
+LL - fn code() -> Impl Display {}
+LL + fn code() -> impl Display {}
+   |
+
+error: aborting due to 1 previous error
+

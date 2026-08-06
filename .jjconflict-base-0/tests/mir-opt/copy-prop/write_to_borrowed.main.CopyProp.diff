@@ -1,0 +1,30 @@
+- // MIR for `main` before CopyProp
++ // MIR for `main` after CopyProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: *const char;
+      let mut _2: char;
+      let mut _3: char;
+      let mut _4: char;
+      let mut _5: char;
+      let mut _6: &char;
+      let mut _7: ();
+  
+      bb0: {
+          _1 = &raw const _2;
+          _3 = const 'b';
+          _5 = copy _3;
+          _6 = &_3;
+-         _4 = copy _5;
+          (*_1) = copy (*_6);
+          _6 = &_5;
+-         _7 = dump_var::<char>(copy _4) -> [return: bb1, unwind unreachable];
++         _7 = dump_var::<char>(copy _5) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          return;
+      }
+  }
+  

@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/bounds-are-checked.rs:10:5
+   |
+LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
+   |        -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+...
+LL |     t
+   |     ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

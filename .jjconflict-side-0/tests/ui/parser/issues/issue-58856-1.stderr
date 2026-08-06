@@ -1,0 +1,12 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-58856-1.rs:2:9
+   |
+LL | impl A {
+   |        - closing delimiter possibly meant for this
+LL |     fn b(self>
+   |         ^ unclosed delimiter
+LL | }
+   | ^ mismatched closing delimiter
+
+error: aborting due to 1 previous error
+

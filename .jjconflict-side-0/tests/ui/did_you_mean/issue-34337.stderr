@@ -1,0 +1,15 @@
+error[E0596]: cannot borrow `key` as mutable, as it is not declared as mutable
+  --> $DIR/issue-34337.rs:6:9
+   |
+LL |     get(&mut key);
+   |         ^^^^^^^^ cannot borrow as mutable
+   |
+help: try removing `&mut` here
+   |
+LL -     get(&mut key);
+LL +     get(key);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

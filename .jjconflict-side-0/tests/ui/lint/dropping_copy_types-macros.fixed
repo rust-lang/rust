@@ -1,0 +1,15 @@
+//@ check-fail
+//@ run-rustfix
+
+#![deny(dropping_copy_types)]
+
+use std::fmt::Write;
+
+fn main() {
+    let mut msg = String::new();
+    let _ = writeln!(&mut msg, "test");
+    //~^ ERROR calls to `std::mem::drop`
+
+    let _ = format_args!("a");
+    //~^ ERROR calls to `std::mem::drop`
+}

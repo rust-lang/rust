@@ -1,0 +1,16 @@
+[package]
+name = "bump-stage0"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.34"
+build_helper = { path = "../../build_helper" }
+curl = "0.4.38"
+hex = "0.4.3"
+indexmap = { version = "2.0.0", features = ["serde"] }
+serde = { version = "1.0.125", features = ["derive"] }
+toml = "0.8.23"
+sha2 = "0.10.1"

@@ -1,0 +1,144 @@
+error[E0053]: method `dummy2` has an incompatible type for trait
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |                     ^^^^^^^ expected `&'a Bar<T>`, found `Bar<T>`
+   |
+note: type in trait
+  --> $DIR/ufcs-explicit-self-bad.rs:31:15
+   |
+LL |     fn dummy2(&self);
+   |               ^^^^^
+   = note: expected signature `fn(&&'a Bar<_>)`
+              found signature `fn(&Bar<_>)`
+help: change the self-receiver type to match the trait
+   |
+LL -     fn dummy2(self: &Bar<T>) {}
+LL +     fn dummy2(&self) {}
+   |
+
+error[E0307]: invalid `self` parameter type: `isize`
+  --> $DIR/ufcs-explicit-self-bad.rs:8:18
+   |
+LL |     fn foo(self: isize, x: isize) -> isize {
+   |                  ^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0307]: invalid `self` parameter type: `Bar<isize>`
+  --> $DIR/ufcs-explicit-self-bad.rs:19:18
+   |
+LL |     fn foo(self: Bar<isize>, x: isize) -> isize {
+   |                  ^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0307]: invalid `self` parameter type: `&Bar<usize>`
+  --> $DIR/ufcs-explicit-self-bad.rs:23:18
+   |
+LL |     fn bar(self: &Bar<usize>, x: isize) -> isize {
+   |                  ^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |                     ^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
+note: the anonymous lifetime defined here...
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |                     ^^^^^^^
+note: ...does not necessarily outlive the lifetime `'a` as defined here
+  --> $DIR/ufcs-explicit-self-bad.rs:35:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |                     ^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
+note: the lifetime `'a` as defined here...
+  --> $DIR/ufcs-explicit-self-bad.rs:35:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime defined here
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |                     ^^^^^^^
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/ufcs-explicit-self-bad.rs:40:21
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |                     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
+note: the anonymous lifetime defined here...
+  --> $DIR/ufcs-explicit-self-bad.rs:40:22
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |                      ^^^^^^^
+note: ...does not necessarily outlive the lifetime `'a` as defined here
+  --> $DIR/ufcs-explicit-self-bad.rs:35:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+
+error[E0308]: mismatched `self` parameter type
+  --> $DIR/ufcs-explicit-self-bad.rs:40:21
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |                     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&'a Bar<_>`
+              found reference `&Bar<_>`
+note: the lifetime `'a` as defined here...
+  --> $DIR/ufcs-explicit-self-bad.rs:35:6
+   |
+LL | impl<'a, T> SomeTrait for &'a Bar<T> {
+   |      ^^
+note: ...does not necessarily outlive the anonymous lifetime defined here
+  --> $DIR/ufcs-explicit-self-bad.rs:40:22
+   |
+LL |     fn dummy3(self: &&Bar<T>) {}
+   |                      ^^^^^^^
+
+error[E0610]: `isize` is a primitive type and therefore doesn't have fields
+  --> $DIR/ufcs-explicit-self-bad.rs:10:14
+   |
+LL |         self.f + x
+   |              ^
+
+error[E0599]: no method named `foo` found for struct `Box<Foo>` in the current scope
+  --> $DIR/ufcs-explicit-self-bad.rs:55:24
+   |
+LL |     println!("{}", foo.foo(2));
+   |                        ^^^ method not found in `Box<Foo>`
+
+error[E0599]: no method named `bar` found for struct `Box<Bar<isize>>` in the current scope
+  --> $DIR/ufcs-explicit-self-bad.rs:60:39
+   |
+LL |     println!("{} {}", bar.foo(2), bar.bar(2));
+   |                                       ^^^ method not found in `Box<Bar<isize>>`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0053, E0307, E0308, E0599, E0610.
+For more information about an error, try `rustc --explain E0053`.

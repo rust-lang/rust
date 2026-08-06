@@ -1,0 +1,14 @@
+error[E0599]: no method named `cloned` found for enum `Option<T>` in the current scope
+  --> $DIR/option-cloned-copied-non-ref-excluded.rs:22:7
+   |
+LL |     x.cloned();
+   |       ^^^^^^ `Option<T>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |     x.into_iter().cloned();
+   |       ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found keyword `impl`
+  --> $DIR/safe-impl-trait.rs:2:6
+   |
+LL | safe impl Bar for () { }
+   |      ^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

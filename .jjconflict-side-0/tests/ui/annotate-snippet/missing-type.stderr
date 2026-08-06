@@ -1,0 +1,21 @@
+error[E0425]: cannot find type `Iter` in this scope
+  --> $DIR/missing-type.rs:5:12
+   |
+LL |     let x: Iter;
+   |            ^^^^ not found in this scope
+   |
+help: consider importing one of these structs
+   |
+LL + use std::collections::binary_heap::Iter;
+   |
+LL + use std::collections::btree_map::Iter;
+   |
+LL + use std::collections::btree_set::Iter;
+   |
+LL + use std::collections::hash_map::Iter;
+   |
+   = and 9 other candidates
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

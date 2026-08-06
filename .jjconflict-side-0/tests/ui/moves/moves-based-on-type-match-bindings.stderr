@@ -1,0 +1,18 @@
+error[E0382]: borrow of partially moved value: `x`
+  --> $DIR/moves-based-on-type-match-bindings.rs:16:11
+   |
+LL |         Foo {f} => {}
+   |              - value partially moved here
+...
+LL |     touch(&x);
+   |           ^^ value borrowed here after partial move
+   |
+   = note: partial move occurs because `x.f` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         Foo {ref f} => {}
+   |              +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
