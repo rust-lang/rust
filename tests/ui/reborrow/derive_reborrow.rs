@@ -14,7 +14,7 @@ struct Named<'a, T> {
 struct Tuple<'a, T>(&'a mut T);
 
 #[derive(Reborrow)]
-struct Generic<'a, T, const N: usize>
+struct Generic<'a, T = (), const N: usize = 1>
 where
     T: 'a,
 {
@@ -26,7 +26,7 @@ struct Marker<'a>(PhantomData<&'a ()>);
 
 fn take_named(_: Named<'_, ()>) {}
 fn take_tuple(_: Tuple<'_, ()>) {}
-fn take_generic(_: Generic<'_, (), 1>) {}
+fn take_generic(_: Generic<'_>) {}
 fn take_marker<'a>(_: Marker<'a>) -> &'a () {
     &()
 }

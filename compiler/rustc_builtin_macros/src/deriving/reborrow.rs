@@ -173,6 +173,9 @@ fn push_marker_impl(
 }
 
 fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {
+    // Rebuild the generic parameter declarations because defaults are allowed on structs but
+    // rejected on impls. Preserve lifetime, type, and const parameters and their bounds, const
+    // parameter types, and the where-clause, while omitting type and const defaults.
     Generics {
         params: generics
             .params
