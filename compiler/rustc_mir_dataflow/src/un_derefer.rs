@@ -29,72 +29,87 @@ impl<'tcx> UnDerefer<'tcx> {
         &self,
         place: PlaceRef<'tcx>,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> {
-        ProjectionIter::new(self.deref_chain(place.local), place)
+        self.co_iter_projections(place).into_iter(self)
+    }
+
+    /// Like [`UnDerefer::iter_projections`], but doesn't capture the self reference in the returned type.
+    /// Instead, getting the next element requires passing a reference to this `UnDerefer` for each iteration.
+    #[inline]
+    pub(crate) fn co_iter_projections(&self, place: PlaceRef<'tcx>) -> ProjectionCoroutine<'tcx> {
+        ProjectionCoroutine::new(self.deref_chain(place.local), place)
     }
 }
 
-/// The iterator returned by [`UnDerefer::iter_projections`].
-struct ProjectionIter<'a, 'tcx> {
-    places: SlicePlusOne<'a, PlaceRef<'tcx>>,
-    proj_idx: usize,
+pub(crate) enum ProjectionCoroutine<'tcx> {
+    InChain { current: PlaceRef<'tcx>, proj_idx: usize, last: PlaceRef<'tcx>, chain_idx: usize },
+    Last { last: PlaceRef<'tcx>, proj_idx: usize },
+    Finished,
 }
 
-impl<'a, 'tcx> ProjectionIter<'a, 'tcx> {
-    #[inline]
-    fn new(deref_chain: &'a [PlaceRef<'tcx>], place: PlaceRef<'tcx>) -> Self {
-        // just return an empty iterator for a bare local
-        let last = if place.as_local().is_none() {
-            Some(place)
+impl<'tcx> ProjectionCoroutine<'tcx> {
+    fn new(deref_chain: &[PlaceRef<'tcx>], place: PlaceRef<'tcx>) -> Self {
+        if let &[first, ..] = deref_chain {
+            Self::InChain { current: first, proj_idx: 0, last: place, chain_idx: 0 }
         } else {
-            debug_assert!(deref_chain.is_empty());
-            None
-        };
-
-        ProjectionIter { places: SlicePlusOne { slice: deref_chain, last }, proj_idx: 0 }
+            if place.as_local().is_none() {
+                Self::Last { last: place, proj_idx: 0 }
+            } else {
+                Self::Finished
+            }
+        }
     }
-}
 
-impl<'tcx> Iterator for ProjectionIter<'_, 'tcx> {
-    type Item = (PlaceRef<'tcx>, PlaceElem<'tcx>);
+    fn advance_chain(&mut self, un_derefer: &UnDerefer<'tcx>) {
+        *self = match self {
+            &mut Self::InChain { last, chain_idx, .. } => {
+                let chain = un_derefer.deref_chain(last.local);
 
-    #[inline]
-    fn next(&mut self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
-        let place = self.places.read()?;
+                if let Some(&next) = chain.get(chain_idx + 1) {
+                    Self::InChain { current: next, proj_idx: 0, last, chain_idx: chain_idx + 1 }
+                } else {
+                    Self::Last { last, proj_idx: 0 }
+                }
+            }
+            &mut Self::Last { .. } => Self::Finished,
+            &mut Self::Finished => unreachable!(),
+        }
+    }
+
+    /// Returns the next `PlaceRef` and `PlaceElem` pair,
+    /// or `None` if the entire place has been iterated through.
+    ///
+    /// `un_derefer` must be the same instance that produced `self`.
+    pub(crate) fn next(
+        &mut self,
+        un_derefer: &UnDerefer<'tcx>,
+    ) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
+        let (place, proj_idx) = match self {
+            &mut Self::InChain { current, ref mut proj_idx, .. } => (current, proj_idx),
+            &mut Self::Last { last, ref mut proj_idx } => (last, proj_idx),
+            &mut Self::Finished => return None,
+        };
 
         // the projection should never be empty except for a bare local which is handled in new
         let partial_place =
-            PlaceRef { local: place.local, projection: &place.projection[..self.proj_idx] };
-        let elem = place.projection[self.proj_idx];
+            PlaceRef { local: place.local, projection: &place.projection[..*proj_idx] };
+        let elem = place.projection[*proj_idx];
 
-        if self.proj_idx == place.projection.len() - 1 {
-            self.proj_idx = 0;
-            self.places.advance();
+        if *proj_idx == place.projection.len() - 1 {
+            self.advance_chain(un_derefer);
         } else {
-            self.proj_idx += 1;
+            *proj_idx += 1;
         }
 
         Some((partial_place, elem))
     }
-}
 
-struct SlicePlusOne<'a, T> {
-    slice: &'a [T],
-    last: Option<T>,
-}
-
-impl<T: Copy> SlicePlusOne<'_, T> {
-    #[inline]
-    fn read(&self) -> Option<T> {
-        self.slice.first().copied().or(self.last)
-    }
-
-    #[inline]
-    fn advance(&mut self) {
-        match self.slice {
-            [_, remainder @ ..] => {
-                self.slice = remainder;
-            }
-            [] => self.last = None,
-        }
+    /// Returns a normal iterator over the remaining elements.
+    ///
+    /// `un_derefer` must be the same instance that produced `self`.
+    pub(crate) fn into_iter(
+        mut self,
+        un_derefer: &UnDerefer<'tcx>,
+    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> {
+        std::iter::from_fn(move || self.next(un_derefer))
     }
 }
