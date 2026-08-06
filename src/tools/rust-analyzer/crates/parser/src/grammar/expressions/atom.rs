@@ -88,7 +88,7 @@ pub(super) fn atom_expr(
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
         T![if] => if_expr(p),
-        T![let] => let_expr(p),
+        T![let] => let_expr(p, r),
         T![_] => {
             // test destructuring_assignment_wildcard_pat
             // fn foo() {
@@ -719,12 +719,12 @@ fn for_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
 //     if let Some(_) = None && true {}
 //     while 1 == 5 && (let None = None) {}
 // }
-fn let_expr(p: &mut Parser<'_>) -> CompletedMarker {
+fn let_expr(p: &mut Parser<'_>, r: Restrictions) -> CompletedMarker {
     let m = p.start();
     p.bump(T![let]);
     patterns::pattern(p);
     p.expect(T![=]);
-    expr_let(p);
+    expr_let(p, r);
     m.complete(p, LET_EXPR)
 }
 
@@ -860,6 +860,12 @@ fn match_guard(p: &mut Parser<'_>) -> CompletedMarker {
     if p.at(T![=]) {
         p.error("expected expression");
     } else {
+        // test guard_let_struct
+        // fn foo() {
+        //     match () {
+        //         () if let Foo {} = Foo {} => {}
+        //     }
+        // }
         expr(p);
     }
     m.complete(p, MATCH_GUARD)
