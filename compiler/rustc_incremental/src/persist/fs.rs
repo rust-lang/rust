@@ -260,7 +260,8 @@ pub(crate) fn prepare_session_directory(
 
     // Lock the new session directory. If this fails, return an
     // error without retrying
-    let directory_lock = lock_directory(sess, &session_dir);
+    let new_directory_lock =
+        lock_directory(sess, &session_dir, true).expect("should emit fatal error on lock fail");
 
     // Now that we have the lock, we can actually create the session
     // directory
@@ -268,20 +269,22 @@ pub(crate) fn prepare_session_directory(
 
     // Find a suitable source directory to copy from. Ignore those that we
     // have already tried before.
-    let source_directory = find_source_directory(&crate_dir);
+    let source_directory = find_source_directory(sess, &crate_dir);
 
-    let old_session_directory = if let Some(source_directory) = source_directory {
-        debug!("attempting to use: {}", source_directory.display());
-        Some(source_directory)
-    } else {
-        debug!("no source directory found. Continuing with empty session directory.");
-        None
-    };
+    let (old_session_directory, old_directory_lock) =
+        if let Some((source_directory, source_directory_lock)) = source_directory {
+            debug!("attempting to use: {}", source_directory.display());
+            (Some(source_directory), Some(source_directory_lock))
+        } else {
+            debug!("no source directory found. Continuing with empty session directory.");
+            (None, None)
+        };
 
     return IncrCompSession {
         old_session_directory,
         new_session_directory: session_dir,
-        _lock_file: directory_lock,
+        _old_lock_file: old_directory_lock,
+        _lock_file: new_directory_lock,
     };
 }
 
@@ -389,7 +392,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) {
 }
 
 /// Allocate the lock-file and lock it.
-fn lock_directory(sess: &Session, session_dir: &Path) -> flock::Lock {
+fn lock_directory(sess: &Session, session_dir: &Path, fatal: bool) -> Option<flock::Lock> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -400,15 +403,21 @@ fn lock_directory(sess: &Session, session_dir: &Path) -> flock::Lock {
         true,
     ) {
         // the lock should be exclusive
-        Ok(lock) => lock,
+        Ok(lock) => Some(lock),
         Err(lock_err) => {
             let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err);
-            sess.dcx().emit_fatal(diagnostics::CreateLock {
+            let diag = diagnostics::CreateLock {
                 lock_err,
                 session_dir,
                 is_unsupported_lock,
                 is_cargo: rustc_session::utils::was_invoked_from_cargo(),
-            });
+            };
+            if fatal {
+                sess.dcx().emit_fatal(diag);
+            } else {
+                sess.dcx().emit_warn(diag);
+                None
+            }
         }
     }
 }
@@ -419,15 +428,17 @@ fn delete_session_dir_lock_file(sess: &Session, lock_file_path: &Path) {
     }
 }
 
-/// Finds the most recent published session directory that is not in the
-/// ignore-list.
-fn find_source_directory(crate_dir: &Path) -> Option<PathBuf> {
+/// Finds the most recent published session directory.
+fn find_source_directory(sess: &Session, crate_dir: &Path) -> Option<(PathBuf, flock::Lock)> {
     let iter = crate_dir
         .read_dir()
         .unwrap() // FIXME
         .filter_map(|e| e.ok().map(|e| e.path()));
 
-    find_source_directory_in_iter(iter)
+    find_source_directory_in_iter(iter).and_then(|session_dir| {
+        let lock = lock_directory(sess, &session_dir, false)?;
+        Some((session_dir, lock))
+    })
 }
 
 fn find_source_directory_in_iter<I>(iter: I) -> Option<PathBuf>
