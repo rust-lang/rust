@@ -19,7 +19,6 @@ cfg_select! {
         // Windows MSVC no extra unwinder support needed
     }
     any(
-        target_os = "l4re",
         target_os = "none",
         target_os = "espidf",
         target_os = "nuttx",
@@ -31,6 +30,7 @@ cfg_select! {
         windows,
         target_os = "psp",
         target_os = "solid_asp3",
+        target_os = "l4re",
         all(target_vendor = "fortanix", target_env = "sgx"),
         all(target_os = "wasi", panic = "unwind"),
         target_os = "xous",
