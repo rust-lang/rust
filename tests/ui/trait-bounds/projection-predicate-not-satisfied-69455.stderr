@@ -7,7 +7,14 @@ LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          type must be known at this point
    |
    = note: cannot satisfy `<u64 as Test<_>>::Output == _`
-   = note: cannot satisfy `u64: Test<_>`
+note: multiple `impl`s satisfying `u64: Test<_>` found
+  --> $DIR/projection-predicate-not-satisfied-69455.rs:11:1
+   |
+LL | impl Test<u32> for u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Test<u64> for u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
    = note: the type must also implement `Sum<&u64>`
 help: consider specifying a concrete type for the type parameter `S`
    |

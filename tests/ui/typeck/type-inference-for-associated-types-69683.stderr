@@ -5,7 +5,14 @@ LL |     0u16.foo(b);
    |          ^^^
    |
    = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
-   = note: cannot satisfy `u8: Element<_>`
+note: multiple `impl`s satisfying `u8: Element<_>` found
+  --> $DIR/type-inference-for-associated-types-69683.rs:6:1
+   |
+LL | impl<T> Element<()> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<T: Element<S>, S> Element<[S; 3]> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a fully qualified path to specify the expected types
    |
 LL -     0u16.foo(b);

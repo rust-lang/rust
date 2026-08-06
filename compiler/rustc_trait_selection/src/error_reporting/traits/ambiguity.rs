@@ -334,34 +334,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .with_long_ty_path(long_ty_path)
                 };
 
-                let mut ambiguities = compute_applicable_impls_for_diagnostics(
-                    self.infcx,
-                    &obligation.with(self.tcx, trait_pred),
-                    false,
-                );
-                let has_non_region_infer = trait_pred
-                    .skip_binder()
-                    .trait_ref
-                    .args
-                    .types()
-                    .any(|t| !t.is_ty_or_numeric_infer());
-                // It doesn't make sense to talk about applicable impls if there are more than a
-                // handful of them. If there are a lot of them, but only a few of them have no type
-                // params, we only show those, as they are more likely to be useful/intended.
-                if ambiguities.len() > 5 {
-                    let infcx = self.infcx;
-                    if !ambiguities.iter().all(|option| match option {
-                        CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
-                        CandidateSource::ParamEnv(_) => true,
-                    }) {
-                        // If not all are blanket impls, we filter blanked impls out.
-                        ambiguities.retain(|option| match option {
-                            CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
-                            CandidateSource::ParamEnv(_) => true,
-                        });
-                    }
-                }
-                if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
+                if let Some(ambiguities) = self.applicable_impls_to_mention(obligation, trait_pred)
+                {
                     if let Some(e) = self.tainted_by_errors()
                         && term.is_none()
                     {
@@ -761,7 +735,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         format!("the type must also implement `{tr}`")
                     } else {
                         let pred = self.tcx.short_string(related_pred, &mut err.long_ty_path());
-                        format!("cannot satisfy `{pred}`")
+                        let note = format!("cannot satisfy `{pred}`");
+                        // The self type is known, so the `impl`s that could have applied to it are
+                        // few and worth pointing at, like the blamed bound does. When it is still
+                        // an inference variable the list is every `impl` of the trait, which is
+                        // why the branch above only names the trait.
+                        //
+                        // `tainted_by_errors` is checked because `annotate_source_of_ambiguity`
+                        // downgrades the whole diagnostic once an error was already emitted.
+                        if !mentioned_strs.contains(&note)
+                            && self.tainted_by_errors().is_none()
+                            && let Some(ambiguities) =
+                                self.applicable_impls_to_mention(&error.obligation, clause)
+                        {
+                            self.annotate_source_of_ambiguity(&mut err, &ambiguities, related_pred);
+                            mentioned_strs.push(note);
+                            mentioned.push(related_pred);
+                            continue;
+                        }
+                        note
                     }
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
@@ -784,6 +776,40 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         self.note_obligation_cause(&mut err, obligation);
         err.emit()
+    }
+
+    /// The `impl`s and `where` clauses that could have satisfied `trait_pred`, when listing them
+    /// is likely to help. `None` means the caller should describe the bound some other way.
+    fn applicable_impls_to_mention(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> Option<Vec<CandidateSource>> {
+        let mut ambiguities = compute_applicable_impls_for_diagnostics(
+            self.infcx,
+            &obligation.with(self.tcx, trait_pred),
+            false,
+        );
+        let has_non_region_infer =
+            trait_pred.skip_binder().trait_ref.args.types().any(|t| !t.is_ty_or_numeric_infer());
+        // It doesn't make sense to talk about applicable impls if there are more than a
+        // handful of them. If there are a lot of them, but only a few of them have no type
+        // params, we only show those, as they are more likely to be useful/intended.
+        if ambiguities.len() > 5 {
+            let infcx = self.infcx;
+            if !ambiguities.iter().all(|option| match option {
+                CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
+                CandidateSource::ParamEnv(_) => true,
+            }) {
+                // If not all are blanket impls, we filter blanked impls out.
+                ambiguities.retain(|option| match option {
+                    CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
+                    CandidateSource::ParamEnv(_) => true,
+                });
+            }
+        }
+        (ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer)
+            .then_some(ambiguities)
     }
 
     fn annotate_source_of_ambiguity(
