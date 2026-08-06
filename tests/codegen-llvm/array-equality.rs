@@ -1,6 +1,6 @@
 //@ revisions: llvm-current llvm-next
-//@[llvm-current] max-llvm-major-version: 22
-//@[llvm-next] min-llvm-version: 23
+//@[llvm-current] llvm-version: <=22
+//@[llvm-next] llvm-version: >=23
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 //@ only-x86_64
 #![crate_type = "lib"]

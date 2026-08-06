@@ -7,10 +7,10 @@
 //@ [x86] needs-llvm-components: x86
 //@ [aarch64-llvm22] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64-llvm22] needs-llvm-components: aarch64
-//@ [aarch64-llvm22] max-llvm-major-version: 22
+//@ [aarch64-llvm22] llvm-version: <=22
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
-//@ [aarch64] min-llvm-version: 23
+//@ [aarch64] llvm-version: >=23
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 

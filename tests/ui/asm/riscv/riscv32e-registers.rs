@@ -7,24 +7,24 @@
 //@ compile-flags: --crate-type=rlib
 //@ [riscv32e_llvm23] needs-llvm-components: riscv
 //@ [riscv32e_llvm23] compile-flags: --target=riscv32e-unknown-none-elf
-//@ [riscv32e_llvm23] max-llvm-major-version: 23
+//@ [riscv32e_llvm23] llvm-version: <=23
 //@ [riscv32e_llvm24] needs-llvm-components: riscv
 //@ [riscv32e_llvm24] compile-flags: --target=riscv32e-unknown-none-elf
-//@ [riscv32e_llvm24] min-llvm-version: 24
+//@ [riscv32e_llvm24] llvm-version: >=24
 
 //@ [riscv32em_llvm23] needs-llvm-components: riscv
 //@ [riscv32em_llvm23] compile-flags: --target=riscv32em-unknown-none-elf
-//@ [riscv32em_llvm23] max-llvm-major-version: 23
+//@ [riscv32em_llvm23] llvm-version: <=23
 //@ [riscv32em_llvm24] needs-llvm-components: riscv
 //@ [riscv32em_llvm24] compile-flags: --target=riscv32em-unknown-none-elf
-//@ [riscv32em_llvm24] min-llvm-version: 24
+//@ [riscv32em_llvm24] llvm-version: >=24
 
 //@ [riscv32emc_llvm23] needs-llvm-components: riscv
 //@ [riscv32emc_llvm23] compile-flags: --target=riscv32emc-unknown-none-elf
-//@ [riscv32emc_llvm23] max-llvm-major-version: 23
+//@ [riscv32emc_llvm23] llvm-version: <=23
 //@ [riscv32emc_llvm24] needs-llvm-components: riscv
 //@ [riscv32emc_llvm24] compile-flags: --target=riscv32emc-unknown-none-elf
-//@ [riscv32emc_llvm24] min-llvm-version: 24
+//@ [riscv32emc_llvm24] llvm-version: >=24
 //@ ignore-backends: gcc
 
 // Unlike bad-reg.rs, this tests if the assembler can reject invalid registers

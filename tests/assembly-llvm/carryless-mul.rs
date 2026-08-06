@@ -6,7 +6,7 @@
 //
 //@revisions: x86_64 aarch64 riscv64
 //@assembly-output: emit-asm
-//@min-llvm-version: 23
+//@llvm-version: >=23
 //@compile-flags: -C opt-level=3
 //
 //@[x86_64] compile-flags: -C target-feature=+pclmulqdq,+avx2 -Cllvm-args=-x86-asm-syntax=intel

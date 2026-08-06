@@ -2,7 +2,7 @@
 // `f == FrameType::Inter || f == FrameType::Switch`.
 
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 23
+//@ llvm-version: >=23
 
 #![crate_type = "lib"]
 

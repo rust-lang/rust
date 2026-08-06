@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ needs-llvm-components: xtensa
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ compile-flags: --target=xtensa-esp32-none-elf --crate-type=rlib
 //@ ignore-backends: gcc
 #![no_core]

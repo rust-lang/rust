@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ revisions: win linux
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //
 //@ compile-flags: -Copt-level=3
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu

@@ -1,8 +1,8 @@
 //@ compile-flags: -Copt-level=1
 //@ only-64bit
 //@ revisions: LLVM22 LLVM23
-//@ [LLVM22] max-llvm-major-version: 22
-//@ [LLVM23] min-llvm-version: 23
+//@ [LLVM22] llvm-version: <=22
+//@ [LLVM23] llvm-version: >=23
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
