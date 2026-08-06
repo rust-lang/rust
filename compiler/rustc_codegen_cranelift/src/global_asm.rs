@@ -30,6 +30,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        _target_features: &[String],
     ) {
         codegen_global_asm_inner(self.tcx, self.global_asm, template, operands, options);
     }
