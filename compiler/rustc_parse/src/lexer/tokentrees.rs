@@ -90,6 +90,15 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     self.diag_info.matching_block_spans.push((pre_span, close_delimiter_span));
                 }
 
+                // A brace-delimited block whose first token is `&&`/`||` usually means
+                // the user meant to continue an if-let chain, e.g. `if let P = e { && cond {`.
+                if Delimiter::Brace == open_delim
+                    && let Some(TokenTree::Token(tok, _)) = tts.iter().next()
+                    && matches!(tok.kind, token::AndAnd | token::OrOr)
+                {
+                    self.diag_info.if_let_chain_hint_spans.push(tok.span);
+                }
+
                 // Move past the closing delimiter.
                 self.bump_minimal()
             } else {
