@@ -270,24 +270,16 @@ pub(crate) fn prepare_session_directory(
     // have already tried before.
     let source_directory = find_source_directory(&crate_dir);
 
-    let Some(source_directory) = source_directory else {
-        // There's nowhere to copy from, we're done
-        debug!(
-            "no source directory found. Continuing with empty session \
-                    directory."
-        );
-
-        return IncrCompSession {
-            old_session_directory: None,
-            new_session_directory: session_dir,
-            _lock_file: directory_lock,
-        };
+    let old_session_directory = if let Some(source_directory) = source_directory {
+        debug!("attempting to use: {}", source_directory.display());
+        Some(source_directory)
+    } else {
+        debug!("no source directory found. Continuing with empty session directory.");
+        None
     };
 
-    debug!("attempting to use: {}", source_directory.display());
-
     return IncrCompSession {
-        old_session_directory: Some(source_directory),
+        old_session_directory,
         new_session_directory: session_dir,
         _lock_file: directory_lock,
     };
