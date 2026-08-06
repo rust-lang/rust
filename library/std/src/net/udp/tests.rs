@@ -358,9 +358,7 @@ fn ttl() {
 fn hop_limit() {
     let hlim = 100;
 
-    let addr = next_test_ip6();
-
-    let stream = t!(UdpSocket::bind(&addr));
+    let stream = t!(UdpSocket::bind(LOCALHOST_IP6));
 
     t!(stream.set_hop_limit_v6(hlim));
     assert_eq!(hlim, t!(stream.hop_limit_v6()));
