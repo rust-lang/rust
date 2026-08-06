@@ -47,15 +47,14 @@ impl LlvmOutput {
     }
 }
 
-pub struct Meta {
+pub struct LlvmBuildInfo {
     stamp: BuildStamp,
-    res: LlvmOutput,
-    out_dir: PathBuf,
+    output: LlvmOutput,
 }
 
 pub enum LlvmBuildStatus {
     AlreadyBuilt(LlvmOutput),
-    ShouldBuild(Meta),
+    ShouldBuild(LlvmBuildInfo),
 }
 
 impl LlvmBuildStatus {
@@ -70,7 +69,7 @@ impl LlvmBuildStatus {
     pub fn llvm_result(&self) -> &LlvmOutput {
         match self {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
-            LlvmBuildStatus::ShouldBuild(meta) => &meta.res,
+            LlvmBuildStatus::ShouldBuild(meta) => &meta.output,
         }
     }
 }
@@ -194,7 +193,7 @@ pub fn prebuilt_llvm_config(
         return LlvmBuildStatus::AlreadyBuilt(res);
     }
 
-    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir })
+    LlvmBuildStatus::ShouldBuild(LlvmBuildInfo { stamp, output: res })
 }
 
 /// Paths whose changes invalidate LLVM downloads.
@@ -309,7 +308,7 @@ impl CommandLineStep for Llvm {
         };
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
-        let Meta { stamp, res, out_dir } = match prebuilt_llvm_config(builder, target, true) {
+        let LlvmBuildInfo { stamp, output } = match prebuilt_llvm_config(builder, target, true) {
             LlvmBuildStatus::AlreadyBuilt(p) => return p,
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
@@ -321,7 +320,7 @@ impl CommandLineStep for Llvm {
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs::create_dir_all(&output.root_dir()));
 
         // https://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/llvm"));
@@ -349,7 +348,7 @@ impl CommandLineStep for Llvm {
         let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
         let enable_warnings = if builder.config.llvm_enable_warnings { "ON" } else { "OFF" };
 
-        cfg.out_dir(&out_dir)
+        cfg.out_dir(&output.root_dir())
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
             .define("LLVM_UNREACHABLE_OPTIMIZE", "OFF")
@@ -562,14 +561,14 @@ impl CommandLineStep for Llvm {
         }
 
         if builder.config.dry_run() {
-            return res;
+            return output;
         }
 
         cfg.build();
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let major = get_llvm_version_major(builder, &res.host_llvm_config);
+            let major = get_llvm_version_major(builder, &output.host_llvm_config);
             match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
@@ -582,7 +581,7 @@ impl CommandLineStep for Llvm {
         // link to make llvm-config happy.
         if builder.llvm_link_shared() && target.contains("apple-darwin") {
             let lib_name = find_llvm_lib_name("dylib");
-            let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
+            let lib_llvm = output.root_dir().join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
                 t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
             }
@@ -603,18 +602,18 @@ impl CommandLineStep for Llvm {
             crate::core::build_steps::compile::strip_debug(
                 builder,
                 target,
-                &out_dir.join("lib").join(&lib_name),
+                &output.root_dir().join("lib").join(&lib_name),
             );
             crate::core::build_steps::compile::strip_debug(
                 builder,
                 target,
-                &out_dir.join("build").join("lib").join(&lib_name),
+                &output.root_dir().join("build").join("lib").join(&lib_name),
             );
         }
 
         t!(stamp.write());
 
-        res
+        output
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
