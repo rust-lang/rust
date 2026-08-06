@@ -949,3 +949,31 @@ fn test2<T: FooFactory>(factory: T) {
         "#]],
     );
 }
+
+#[test]
+fn infer_method_call_recovery_hrtb_does_not_panic() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn, fn, option, phantom_data, sized
+use core::marker::PhantomData;
+
+trait Any {}
+
+impl<T: 'static> Any for T {}
+
+struct Bar<'a>(PhantomData<&'a ()>);
+
+type FooFn = for<'a> fn(&'a dyn Any) -> Option<Bar<'a>>;
+
+struct Foo {
+    bar: FooFn,
+}
+
+impl Foo {
+    fn baz<'a, T: 'static>(&self, x: &'a T) -> Option<Bar<'a>> {
+        self.bar(x)
+    }
+}
+"#,
+    );
+}

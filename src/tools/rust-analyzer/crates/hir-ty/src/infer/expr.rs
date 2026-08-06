@@ -1900,7 +1900,12 @@ impl<'db> InferenceContext<'db> {
                     )),
                     None => field_with_same_name_exists.and_then(|field_ty| {
                         let callable_sig = field_ty.callable_sig(self.interner())?;
-                        Some((field_ty, callable_sig.skip_binder(), false))
+                        let callable_sig = self.infcx().instantiate_binder_with_fresh_vars(
+                            tgt_expr.into(),
+                            BoundRegionConversionTime::FnCall,
+                            callable_sig,
+                        );
+                        Some((field_ty, callable_sig, false))
                     }),
                 };
                 match recovered {
