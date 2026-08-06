@@ -1856,6 +1856,8 @@ symbols! {
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_trivial_field_reads,
+        // FIXME(#159429): temporary rename to avoid `#[unroll]` nameres ambiguity
+        rustc_unroll,
         rustc_unsafe_specialization_marker,
         rustdoc,
         rustdoc_internals,
@@ -2236,7 +2238,6 @@ symbols! {
         unreachable_display,
         unreachable_macro,
         unrestricted_attribute_tokens,
-        unroll,
         unsafe_attributes,
         unsafe_binders,
         unsafe_block_in_unsafe_fn,

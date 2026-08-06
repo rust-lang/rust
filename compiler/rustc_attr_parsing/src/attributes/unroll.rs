@@ -6,7 +6,8 @@ use super::prelude::*;
 
 pub(crate) struct UnrollParser;
 impl SingleAttributeParser for UnrollParser {
-    const PATH: &[Symbol] = &[sym::unroll];
+    // FIXME(#159429): temporarily renamed to mitigate `#[unroll]` nameres ambiguity.
+    const PATH: &[Symbol] = &[sym::rustc_unroll];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Loop),
         Allow(Target::ForLoop),
