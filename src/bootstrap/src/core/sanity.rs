@@ -310,17 +310,6 @@ than building it.
     if !skip_tools_checks {
         for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-
-            if build.config.llvm_enabled(*host) {
-                // Externally configured LLVM requires FileCheck to exist
-                let filecheck = build.llvm_filecheck(build.host_target);
-                if !filecheck.starts_with(&build.out)
-                    && !filecheck.exists()
-                    && build.config.codegen_tests
-                {
-                    panic!("FileCheck executable {filecheck:?} does not exist");
-                }
-            }
         }
     }
 

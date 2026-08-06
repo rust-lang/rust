@@ -2888,7 +2888,8 @@ impl CommandLineStep for RustDev {
             }
         }
 
-        tarball.add_file(builder.llvm_filecheck(target), "bin", FileType::Executable);
+        let filecheck = builder.ensure(llvm::FileCheck { target });
+        tarball.add_file(filecheck, "bin", FileType::Executable);
 
         // Copy the include directory as well; needed mostly to build
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also

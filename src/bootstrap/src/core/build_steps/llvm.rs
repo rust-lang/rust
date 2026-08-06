@@ -17,7 +17,7 @@ use std::{env, fs};
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
-use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun, StepMetadata};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -1937,5 +1937,64 @@ impl CommandLineStep for Libunwind {
 
         cc_cfg.compile("unwind");
         out_dir
+    }
+}
+
+/// Returns the path to `FileCheck` LLVM binary for the specified target.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FileCheck {
+    pub target: TargetSelection,
+}
+
+impl Step for FileCheck {
+    type Output = PathBuf;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let target_config = builder.config.target_config.get(&self.target);
+
+        // The target configured filecheck, prefer it
+        if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
+            return s.clone();
+        };
+
+        // There is a LLVM config set, take filecheck from it
+        // Note: because `download-ci-llvm` currently overrides `llvm-config`, when the LLVM is
+        // downloaded, we go through this branch. Ideally, this should be changed so that
+        // `download-ci-llvm` doesn't override the config.
+        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(builder).stdout();
+            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
+            let filecheck = if filecheck.exists() {
+                filecheck
+            } else {
+                // On Fedora the system LLVM installs FileCheck in the
+                // llvm subdirectory of the libdir.
+                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(builder).stdout();
+                let lib_filecheck =
+                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", self.target));
+                if lib_filecheck.exists() {
+                    lib_filecheck
+                } else {
+                    // Return the most normal file name, even though
+                    // it doesn't exist, so that any error message
+                    // refers to that.
+                    filecheck
+                }
+            };
+            return filecheck;
+        }
+        // We have to take the filecheck from the built LLVM
+        let llvm_output = builder.ensure(Llvm { target: self.target });
+
+        let base = llvm_output.root_dir().join("build");
+        // FIXME: this should ideally be encoded directly in `LlvmOutput`, rather than use computing
+        // the correct directory here...
+        let base = if !builder.ninja() && self.target.is_msvc() {
+            let profile = get_llvm_profile(&builder.config);
+            base.join(profile)
+        } else {
+            base
+        };
+        base.join("bin").join(exe("FileCheck", self.target))
     }
 }
