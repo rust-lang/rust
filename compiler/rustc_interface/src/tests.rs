@@ -851,7 +851,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(mir_preserve_ub, true);
     tracked!(move_size_limit, Some(4096));
-    tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
+    tracked!(next_solver, NextSolverConfig { coherence: true, globally: false });
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
