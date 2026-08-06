@@ -891,7 +891,8 @@ mod desc {
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
     pub(crate) const parse_linker_features: &str =
         "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`";
-    pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
+    pub(crate) const parse_polonius: &str =
+        "either no value or one of `legacy` (the default), `off`, or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
     pub(crate) const parse_stack_protector: &str =
@@ -983,6 +984,10 @@ pub mod parse {
             }
             Some("next") => {
                 *slot = Polonius::Next;
+                true
+            }
+            Some("off") | Some("no") => {
+                *slot = Polonius::Off;
                 true
             }
             _ => false,

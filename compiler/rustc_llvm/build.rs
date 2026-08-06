@@ -251,8 +251,11 @@ fn main() {
     // for this platform. See https://github.com/rust-lang/rust/pull/145031#issuecomment-3162677202.
     // Moreover, LLVM generally guarantees warning-freedom only when building with Clang, as other
     // compilers have too many false positives. This is typically the case for MSVC, which throws
-    // many false-positive warnings. We keep it excluded, for these reasons.
-    if std::env::var_os("CI").is_some() && !target.contains("msvc") {
+    // many false-positive warnings, and also GCC. We keep these excluded, for these reasons.
+    let is_msvc = target.contains("msvc");
+    let compiler_is_gcc =
+        tracked_env_var_os("LLVM_COMPILER_IS_GNU_LIKE").as_deref() == Some(OsStr::new("1"));
+    if std::env::var_os("CI").is_some() && !is_msvc && !compiler_is_gcc {
         cfg.warnings_into_errors(true);
     }
     for flag in &cxxflags {

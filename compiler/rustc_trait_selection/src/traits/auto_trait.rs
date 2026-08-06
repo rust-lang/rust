@@ -844,7 +844,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 &dummy_cause,
                             );
                         }
-                        (Some(ty::OutlivesPredicate(t_a, r_b)), _) => {
+                        (Some(ty::OutlivesClause(t_a, r_b)), _) => {
                             selcx.infcx.register_type_outlives_constraint(t_a, r_b, &dummy_cause);
                         }
                         _ => {}

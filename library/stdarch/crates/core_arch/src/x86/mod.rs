@@ -39,7 +39,11 @@ types! {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), doc = "```")]
+    #[cfg_attr(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        doc = "```ignore (only works on x86 targets)",
+    )]
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -82,7 +86,11 @@ types! {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), doc = "```")]
+    #[cfg_attr(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        doc = "```ignore (only works on x86 targets)",
+    )]
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -125,7 +133,11 @@ types! {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), doc = "```")]
+    #[cfg_attr(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        doc = "```ignore (only works on x86 targets)",
+    )]
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -172,7 +184,11 @@ types! {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), doc = "```")]
+    #[cfg_attr(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        doc = "```ignore (only works on x86 targets)",
+    )]
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -215,7 +231,11 @@ types! {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), doc = "```")]
+    #[cfg_attr(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        doc = "```ignore (only works on x86 targets)",
+    )]
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -258,7 +278,11 @@ types! {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), doc = "```")]
+    #[cfg_attr(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        doc = "```ignore (only works on x86 targets)",
+    )]
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]

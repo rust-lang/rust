@@ -35,12 +35,12 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
-use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
+use rustc_session::{IncrCompSession, Session};
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
@@ -930,7 +930,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     compiler: &Compiler,
     krate: rustc_ast::Crate,
     f: F,
-) -> T {
+) -> (T, Option<IncrCompSession>) {
     let sess = &compiler.sess;
 
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
@@ -952,7 +952,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
 
-    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id);
+    let (dep_graph, incr_comp_session) = setup_dep_graph(sess, crate_name, stable_crate_id);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -967,7 +967,8 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
+    let query_result_on_disk_cache =
+        rustc_incremental::load_query_result_cache(sess, incr_comp_session.as_ref());
 
     let codegen_backend = &compiler.codegen_backend;
     let mut providers = *DEFAULT_QUERY_PROVIDERS;
@@ -994,7 +995,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let arena = WorkerLocal::new(|_| Arena::default());
     let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
 
-    TyCtxt::create_global_ctxt(
+    let res = TyCtxt::create_global_ctxt(
         &gcx_cell,
         &compiler.sess,
         crate_types,
@@ -1002,6 +1003,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         &arena,
         &hir_arena,
         untracked,
+        incr_comp_session.as_ref(),
         dep_graph,
         rustc_query_impl::make_dep_kind_vtables(&arena),
         rustc_query_impl::query_system(
@@ -1047,7 +1049,9 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             tcx.finish();
             res
         },
-    )
+    );
+
+    (res, incr_comp_session)
 }
 
 struct DiagCallback<'tcx> {

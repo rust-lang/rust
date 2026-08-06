@@ -18,12 +18,11 @@ fn main() {
         .run();
     assert!(parts_out_dir.join("dep1.json").exists());
 
-    let output = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .run();
-    output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     rustdoc()
         .input("dep2.rs")
@@ -33,12 +32,11 @@ fn main() {
         .run();
     assert!(parts_out_dir.join("dep2.json").exists());
 
-    let output2 = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .run();
-    output2.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     rustdoc()
         .input("dep1.rs")
@@ -48,12 +46,11 @@ fn main() {
         .run();
     assert!(parts_out_dir.join("dep1.json").exists());
 
-    let output3 = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .run();
-    output3.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     // dep_missing is different, because --write-doc-meta-dir is not supplied
     rustdoc().input("dep_missing.rs").out_dir(&out_dir).run();
@@ -67,12 +64,11 @@ fn main() {
         .run();
     assert!(parts_out_dir.join("dep1.json").exists());
 
-    let output4 = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .run();
-    output4.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     htmldocck().arg(&out_dir).arg("dep1.rs").run();
     htmldocck().arg(&out_dir).arg("dep2.rs").run();
