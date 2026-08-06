@@ -51,7 +51,6 @@ pub struct Meta {
     stamp: BuildStamp,
     res: LlvmOutput,
     out_dir: PathBuf,
-    root: String,
 }
 
 pub enum LlvmBuildStatus {
@@ -153,7 +152,6 @@ pub fn prebuilt_llvm_config(
         builder.config.update_submodule("src/llvm-project");
     }
 
-    let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
 
     let build_llvm_config = if let Some(build_llvm_config) = builder
@@ -196,7 +194,7 @@ pub fn prebuilt_llvm_config(
         return LlvmBuildStatus::AlreadyBuilt(res);
     }
 
-    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
+    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir })
 }
 
 /// Paths whose changes invalidate LLVM downloads.
@@ -311,7 +309,7 @@ impl CommandLineStep for Llvm {
         };
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
-        let Meta { stamp, res, out_dir, root } = match prebuilt_llvm_config(builder, target, true) {
+        let Meta { stamp, res, out_dir } = match prebuilt_llvm_config(builder, target, true) {
             LlvmBuildStatus::AlreadyBuilt(p) => return p,
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
@@ -326,7 +324,7 @@ impl CommandLineStep for Llvm {
         t!(fs::create_dir_all(&out_dir));
 
         // https://llvm.org/docs/CMake.html
-        let mut cfg = cmake::Config::new(builder.src.join(root));
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/llvm"));
         let mut ldflags = LdFlags::default();
 
         let profile = get_llvm_profile(&builder.config);
