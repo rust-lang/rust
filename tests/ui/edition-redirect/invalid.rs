@@ -1,64 +1,68 @@
 #![feature(edition_redirect)]
 
+pub struct NotAUse;
+
+#[rustc_edition_redirect = "2024"]
+//~^ ERROR the `rustc_edition_redirect` attribute cannot be used on structs
+pub struct AlsoNotAUse;
+
 mod source {
     pub struct Old;
     pub struct Current;
 }
 
-#[rustc_edition_redirect(before = "2024", target(source::Old))]
+#[rustc_edition_redirect = "2024"]
 //~^ ERROR `#[rustc_edition_redirect]` can only be applied to a single import
 pub use source::{Current};
 
-#[rustc_edition_redirect(before = "2024", target(source::Old))]
+#[rustc_edition_redirect = "2024"]
 //~^ ERROR `#[rustc_edition_redirect]` can only be applied to a single import
 pub use source::*;
 
 mod private {
-    pub(crate) struct Old {
-        _private: (),
-    }
+    pub(crate) struct Old;
 }
 
-#[rustc_edition_redirect(before = "2024", target(private::Old))]
-//~^ ERROR edition redirect target `private::Old` is less visible than the redirected item
-pub struct Public {
-    _private: (),
-}
+#[rustc_edition_redirect = "2024"]
+//~^ ERROR edition redirect for `Public` must have the same visibility as its default item
+pub use private::Old as Public;
+//~^ ERROR `Old` is only public within the crate, and cannot be re-exported outside
 
-#[rustc_edition_redirect(before = "2024", target(private::Missing))]
-//~^ ERROR cannot find `Missing` in `private`
-pub struct Unresolved {
-    _private: (),
-}
+pub struct Public;
 
-struct DuplicateTarget;
+#[rustc_edition_redirect = "2024"]
+pub use source::Missing as Unresolved;
+//~^ ERROR unresolved import `source::Missing`
 
-#[rustc_edition_redirect(before = "2024", target(DuplicateTarget))]
-#[rustc_edition_redirect(before = "2024", target(DuplicateTarget))]
-//~^ ERROR multiple edition redirects before edition 2024
-struct Duplicate;
+pub struct Unresolved;
 
-mod ambiguous_target {
-    mod first {
-        pub struct Old {
-            _private: (),
-        }
-    }
+pub type DuplicateTargetA = ();
+pub type DuplicateTargetB = ();
 
-    mod second {
-        pub struct Old {
-            _private: (),
-        }
-    }
+#[rustc_edition_redirect = "2024"]
+pub use DuplicateTargetA as Duplicate;
+#[rustc_edition_redirect = "2024"]
+//~^ ERROR multiple edition redirects before edition 2024 for `Duplicate`
+pub use DuplicateTargetB as Duplicate;
 
-    use self::first::*;
-    use self::second::*;
+pub type Duplicate = ();
 
-    #[rustc_edition_redirect(before = "2024", target(Old))]
-    //~^ ERROR `Old` is ambiguous
-    pub struct Ambiguous {
-        _private: (),
-    }
-}
+pub struct RestrictedTarget;
+
+#[rustc_edition_redirect = "2024"]
+//~^ ERROR edition redirect for `Restricted` must have the same visibility as its default item
+pub(crate) use RestrictedTarget as Restricted;
+
+pub struct Restricted;
+
+pub struct MissingDefaultTarget;
+
+#[rustc_edition_redirect = "2024"]
+//~^ ERROR edition redirect for `MissingDefault` has no default item
+pub use MissingDefaultTarget as MissingDefault;
+
+#[rustc_edition_redirect = "not an edition"]
+//~^ ERROR invalid edition in edition redirect
+pub use source::Old as InvalidEdition;
 
 fn main() {}

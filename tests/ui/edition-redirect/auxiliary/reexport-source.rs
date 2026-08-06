@@ -4,7 +4,8 @@
 
 pub struct Old;
 
-#[rustc_edition_redirect(before = "2024", target(Old))]
+#[rustc_edition_redirect = "2024"]
+pub use Old as Current;
 pub struct Current;
 
 pub fn old() -> Old {
@@ -19,7 +20,8 @@ pub mod old_module {
     pub struct Child;
 }
 
-#[rustc_edition_redirect(before = "2024", target(old_module))]
+#[rustc_edition_redirect = "2024"]
+pub use old_module as redirected_module;
 pub mod redirected_module {
     pub struct Child;
 }

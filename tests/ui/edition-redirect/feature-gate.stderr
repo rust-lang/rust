@@ -1,7 +1,7 @@
 error[E0658]: the `rustc_edition_redirect` attribute is an experimental feature
   --> $DIR/feature-gate.rs:7:3
    |
-LL | #[rustc_edition_redirect(before = "2024", target(Old))]
+LL | #[rustc_edition_redirect = "2024"]
    |   ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(edition_redirect)]` to the crate attributes to enable
