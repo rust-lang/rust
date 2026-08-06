@@ -132,9 +132,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // globally cached. We don't rely on any additional information when canonicalizing
         // placeholders.
         if !param_env.has_non_region_infer() {
-            delegate.cx().canonical_param_env_cache_get_or_insert(
-                param_env,
-                || {
+            delegate.cx().with_canonical_param_env_cache(|cache| {
+                let entry = cache.0.entry(param_env).or_insert_with(|| {
                     let mut env_canonicalizer = Canonicalizer {
                         delegate,
                         canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
@@ -154,21 +153,20 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         var_kinds: env_canonicalizer.var_kinds,
                         variables: env_canonicalizer.variables,
                     }
-                },
-                |&CanonicalParamEnvCacheEntry {
-                     param_env,
-                     variables: ref cache_variables,
-                     ref variable_lookup_table,
-                     ref var_kinds,
-                 }| {
-                    // FIXME(nnethercote): for reasons I don't understand, this `new`+`extend`
-                    // combination is faster than `variables.clone()`, because it somehow avoids
-                    // some allocations.
-                    let mut variables = ThinVec::new();
-                    variables.extend(cache_variables.iter().copied());
-                    (param_env, variables, var_kinds.clone(), variable_lookup_table.clone())
-                },
-            )
+                });
+
+                // FIXME(nnethercote): for reasons I don't understand, this `new`+`extend`
+                // combination is faster than `variables.clone()`, because it somehow avoids
+                // some allocations.
+                let mut variables = ThinVec::new();
+                variables.extend(entry.variables.iter().copied());
+                (
+                    entry.param_env,
+                    variables,
+                    entry.var_kinds.clone(),
+                    entry.variable_lookup_table.clone(),
+                )
+            })
         } else {
             let mut env_canonicalizer = Canonicalizer {
                 delegate,

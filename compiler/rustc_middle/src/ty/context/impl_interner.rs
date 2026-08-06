@@ -146,15 +146,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         f(&mut *self.new_solver_evaluation_cache.lock())
     }
 
-    fn canonical_param_env_cache_get_or_insert<R>(
+    fn with_canonical_param_env_cache<R>(
         self,
-        param_env: ty::ParamEnv<'tcx>,
-        f: impl FnOnce() -> ty::CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&ty::CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce(&mut ty::CanonicalParamEnvCache<Self>) -> R,
     ) -> R {
-        let mut cache = self.new_solver_canonical_param_env_cache.lock();
-        let entry = cache.entry(param_env).or_insert_with(f);
-        from_entry(entry)
+        f(&mut *self.new_solver_canonical_param_env_cache.lock())
     }
 
     fn assert_evaluation_is_concurrent(&self) {
