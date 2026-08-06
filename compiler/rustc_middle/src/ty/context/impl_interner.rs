@@ -1,6 +1,5 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
-use std::ops::ControlFlow;
 use std::{debug_assert_matches, fmt};
 
 use rustc_data_structures::Limit;
@@ -14,7 +13,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{
     BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, Unnormalized, VisitorResult,
-    search_graph,
+    search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -560,10 +559,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> R {
         let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
-            match f(impl_def_id).branch() {
-                ControlFlow::Break(b) => return R::from_residual(b),
-                ControlFlow::Continue(()) => {}
-            }
+            try_visit!(f(impl_def_id));
         }
 
         R::output()
