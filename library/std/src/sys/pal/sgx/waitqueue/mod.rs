@@ -79,6 +79,27 @@ pub struct WaitGuard<'a, T: 'a> {
 /// safe because the waiting thread will not return from that stack frame until
 /// after it is notified. The notifying thread ensures to clean up any
 /// references to the list entries before sending the wakeup event.
+// The safety requirements of `UnsafeList` are upheld as follows:
+//
+// * All list operations are performed while holding the lock of the
+//   `SpinMutex` around the `WaitVariable` containing the list.
+// * A waiting thread pushes a stack-allocated entry and does not invalidate
+//   it while it is in the list: it only accesses the entry through the
+//   reference `push` returned, reading `wake` under the `WaitEntry`'s own
+//   `SpinMutex`.
+// * `push` -> `pop`: a notifying thread pops the entry and sets `wake` under
+//   the `WaitEntry`'s `SpinMutex`; when that mutex is released, the thread
+//   will no longer access the entry (guaranteed by the mutex guard). The
+//   waiting thread only returns from the stack frame containing the entry
+//   once it observes `wake == true` under that same mutex, so the entry is
+//   only deallocated after the notifying thread's last access to it.
+// * `push` -> `remove`: on a timeout, `wait_timeout` re-acquires the queue
+//   lock and checks `wake`: the entry is still in the list if and only if
+//   `wake` is not set, because notifying threads always `pop` an entry
+//   before setting its `wake`. Only if the entry is still in the list is it
+//   removed.
+// * Besides as described, no other exclusive references to the entry are
+//   taken.
 pub struct WaitQueue {
     // We use an inner Mutex here to protect the data in the face of spurious
     // wakeups.
