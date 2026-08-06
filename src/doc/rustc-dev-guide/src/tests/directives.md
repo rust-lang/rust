@@ -217,15 +217,15 @@ The following directives will check rustc build settings and target settings:
 
 The following directives will check LLVM support:
 
-- `exact-llvm-major-version: 19` — ignores if the llvm major version does not
-  match the specified llvm major version.
-- `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given value
-- `min-system-llvm-version: 12.0` — ignored if using a system LLVM and its
-  version is less than the given value
-- `max-llvm-major-version: 19` — ignored if the LLVM major version is higher
-  than the given major version
-- `ignore-llvm-version: 9.0` — ignores a specific LLVM version
-- `ignore-llvm-version: 7.0 - 9.9.9` — ignores LLVM versions in a range (inclusive)
+- `llvm-version: cmp` — ignore if the LLVM version doesn't match the comparator; examples of comparators that can be used:
+  - `=22` — ignored if the LLVM major version does not match the given value
+  - `>=22` — ignored if the LLVM major version is less than the given value
+  - `<=22` — ignored if the LLVM major version is higher than the given major version
+  - `>=22, <=23` — ignored if the LLVM major version is outside the given range
+  - all of the above can specify minor and patch version too, `=22.1`, `<=22.1`, `>=22.1`
+  - for a full list see [`semver` crate documentation](https://docs.rs/semver/latest/semver/struct.Comparator.html)
+- `system-llvm-version: cmp` — ignored if using a system LLVM and its version does not match the comparator; see above for examples of comparators
+- `ignore-llvm-version: cmp` — ignored if LLVM version **matches** the comparator; see above for examples of comparators
 - `needs-llvm-components: powerpc` — ignores if the specific LLVM component was not built.
   Note: The test will fail on CI (when
   `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not exist.

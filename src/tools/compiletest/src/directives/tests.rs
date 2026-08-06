@@ -319,16 +319,16 @@ fn revisions() {
 #[test]
 fn llvm_version() {
     let config: Config = cfg().llvm_version("8.1.2").build();
-    assert!(check_ignore(&config, "//@ min-llvm-version: 9.0"));
+    assert!(check_ignore(&config, "//@ llvm-version: >=9.0"));
 
     let config: Config = cfg().llvm_version("9.0.1").build();
-    assert!(check_ignore(&config, "//@ min-llvm-version: 9.2"));
+    assert!(check_ignore(&config, "//@ llvm-version: >=9.2"));
 
     let config: Config = cfg().llvm_version("9.3.1").build();
-    assert!(!check_ignore(&config, "//@ min-llvm-version: 9.2"));
+    assert!(!check_ignore(&config, "//@ llvm-version: >=9.2"));
 
     let config: Config = cfg().llvm_version("10.0.0").build();
-    assert!(!check_ignore(&config, "//@ min-llvm-version: 9.0"));
+    assert!(!check_ignore(&config, "//@ llvm-version: >=9.0"));
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(check_ignore(&config, "//@ exact-llvm-major-version: 9.0"));
@@ -346,13 +346,13 @@ fn llvm_version() {
     assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
 
     let config: Config = cfg().llvm_version("19.0.0").build();
-    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+    assert!(!check_ignore(&config, "//@ llvm-version: <=19"));
 
     let config: Config = cfg().llvm_version("19.1.2").build();
-    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+    assert!(!check_ignore(&config, "//@ llvm-version: <=19"));
 
     let config: Config = cfg().llvm_version("20.0.0").build();
-    assert!(check_ignore(&config, "//@ max-llvm-major-version: 19"));
+    assert!(check_ignore(&config, "//@ llvm-version: <=19"));
 }
 
 #[test]

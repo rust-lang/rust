@@ -1233,87 +1233,50 @@ fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
             };
         }
     }
-    if let Some(actual_version) = &config.llvm_version {
-        // Note that these `min` versions will check for not just major versions.
 
-        if let Some(version_string) = config.parse_name_value_directive(line, "min-llvm-version") {
-            let min_version = extract_llvm_version(&version_string);
-            // Ignore if actual version is smaller than the minimum required version.
-            if *actual_version < min_version {
+    if let Some(llvm_version) = &config.llvm_version {
+        if let Some(version_req) = config.parse_name_value_directive(line, "llvm-version") {
+            let version_req = semver::VersionReq::parse(&version_req)
+                .expect("malformed llvm version requirement");
+
+            if !version_req.matches(llvm_version) {
                 return IgnoreDecision::Ignore {
                     reason: format!(
-                        "ignored when the LLVM version {actual_version} is older than {min_version}"
+                        "ignored when the LLVM version {llvm_version} does not match requirement {version_req}"
                     ),
                 };
             }
-        } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "max-llvm-major-version")
+        } else if let Some(version_req) =
+            config.parse_name_value_directive(line, "system-llvm-version")
         {
-            let max_version = extract_llvm_version(&version_string);
-            // Ignore if actual major version is larger than the maximum required major version.
-            if actual_version.major > max_version.major {
+            let version_req = semver::VersionReq::parse(&version_req)
+                .expect("malformed llvm version requirement");
+
+            // Ignore if using system LLVM and its version doesn't match the requirement
+            if config.system_llvm && !version_req.matches(llvm_version) {
                 return IgnoreDecision::Ignore {
                     reason: format!(
-                        "ignored when the LLVM version ({actual_version}) is newer than major\
-                        version {}",
-                        max_version.major
+                        "ignored when the system LLVM version {llvm_version} does not match requirement {version_req}"
                     ),
                 };
             }
-        } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "min-system-llvm-version")
-        {
-            let min_version = extract_llvm_version(&version_string);
-            // Ignore if using system LLVM and actual version
-            // is smaller the minimum required version
-            if config.system_llvm && *actual_version < min_version {
-                return IgnoreDecision::Ignore {
-                    reason: format!(
-                        "ignored when the system LLVM version {actual_version} is older than {min_version}"
-                    ),
-                };
-            }
-        } else if let Some(version_range) =
+        } else if let Some(version_req) =
             config.parse_name_value_directive(line, "ignore-llvm-version")
         {
-            // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
-            let (v_min, v_max) =
-                extract_version_range(&version_range, |s| Some(extract_llvm_version(s)))
-                    .unwrap_or_else(|| {
-                        panic!("couldn't parse version range: \"{version_range}\"");
-                    });
-            if v_max < v_min {
-                panic!("malformed LLVM version range where {v_max} < {v_min}")
-            }
-            // Ignore if version lies inside of range.
-            if *actual_version >= v_min && *actual_version <= v_max {
-                if v_min == v_max {
-                    return IgnoreDecision::Ignore {
-                        reason: format!("ignored when the LLVM version is {actual_version}"),
-                    };
-                } else {
-                    return IgnoreDecision::Ignore {
-                        reason: format!(
-                            "ignored when the LLVM version is between {v_min} and {v_max}"
-                        ),
-                    };
-                }
-            }
-        } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "exact-llvm-major-version")
-        {
-            // Syntax is "exact-llvm-major-version: <version>"
-            let version = extract_llvm_version(&version_string);
-            if actual_version.major != version.major {
+            let version_req = semver::VersionReq::parse(&version_req)
+                .expect("malformed llvm version requirement");
+
+            // Ignore if version matches the requirement
+            if version_req.matches(llvm_version) {
                 return IgnoreDecision::Ignore {
                     reason: format!(
-                        "ignored when the actual LLVM major version is {}, but the test only targets major version {}",
-                        actual_version.major, version.major
+                        "ignored when the system LLVM version {llvm_version} matches requirement {version_req}"
                     ),
                 };
             }
         }
     }
+
     IgnoreDecision::Continue
 }
 
