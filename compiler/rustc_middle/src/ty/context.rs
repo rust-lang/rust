@@ -64,7 +64,6 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
-use crate::ty::region::RegionExt;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FnSigKind, GenericArg,
     GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
@@ -2632,8 +2631,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     let new_parent = self.local_parent(lbv);
                     return ty::Region::new_late_param(
                         self,
-                        new_parent.to_def_id(),
-                        ty::LateParamRegionKind::Named(lbv.to_def_id()),
+                        ty::LateParamRegion {
+                            scope: new_parent.to_def_id(),
+                            kind: ty::LateParamRegionKind::Named(lbv.to_def_id()),
+                        },
                     );
                 }
                 resolve_bound_vars::ResolvedArg::Error(guar) => {

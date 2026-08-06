@@ -2,7 +2,6 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_type_ir::data_structures::DelayedMap;
 
-use crate::ty::region::RegionExt;
 use crate::ty::{
     self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -282,7 +281,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         self.instantiate_bound_regions_uncached(value, |br| {
             let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
-            ty::Region::new_late_param(self, all_outlive_scope, kind)
+            ty::Region::new_late_param(self, ty::LateParamRegion { scope: all_outlive_scope, kind })
         })
     }
 

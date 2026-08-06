@@ -65,8 +65,8 @@ use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionExt, RegionVid, Ty,
-    TyCtxt, TypeVisitableExt, eager_resolve_vars,
+    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
+    TypeVisitableExt, eager_resolve_vars,
 };
 use rustc_span::Span;
 use smallvec::smallvec;

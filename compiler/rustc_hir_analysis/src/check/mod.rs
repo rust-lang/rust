@@ -89,7 +89,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, OutlivesClause, Region, RegionExt, Ty, TyCtxt, TypingMode,
+    self, GenericArgs, GenericArgsRef, OutlivesClause, Region, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;

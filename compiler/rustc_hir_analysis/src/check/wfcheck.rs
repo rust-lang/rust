@@ -22,9 +22,9 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgs, GenericParamDefKind, RegionExt, Ty, TyCtxt, TypeFlags,
-    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Unnormalized, Upcast,
+    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
@@ -2424,7 +2424,10 @@ fn lint_redundant_lifetimes<'tcx>(
         {
             let ty::BoundVariableKind::Region(kind) = var else { continue };
             let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
-            lifetimes.push(ty::Region::new_late_param(tcx, owner_id.to_def_id(), kind));
+            lifetimes.push(ty::Region::new_late_param(
+                tcx,
+                ty::LateParamRegion { scope: owner_id.to_def_id(), kind },
+            ));
         }
     }
     lifetimes.retain(|candidate| candidate.is_named(tcx));

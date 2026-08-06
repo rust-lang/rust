@@ -26,8 +26,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::RETURN_PLACE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionExt, RegionVid,
-    Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty,
+    TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, kw, sym};
@@ -524,7 +524,10 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         for (idx, bound_var) in bound_inputs_and_output.bound_vars().iter().enumerate() {
             if let ty::BoundVariableKind::Region(kind) = bound_var {
                 let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
-                let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
+                let r = ty::Region::new_late_param(
+                    self.infcx.tcx,
+                    ty::LateParamRegion { scope: self.mir_def.to_def_id(), kind },
+                );
                 let region_vid = {
                     let name = r.get_name_or_anon(self.infcx.tcx);
                     self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
@@ -893,8 +896,10 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         let (value, _map) = self.tcx.instantiate_bound_regions(value, |br| {
             debug!(?br);
             let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
-            let liberated_region =
-                ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), kind);
+            let liberated_region = ty::Region::new_late_param(
+                self.tcx,
+                ty::LateParamRegion { scope: all_outlive_scope.to_def_id(), kind },
+            );
             ty::Region::new_var(self.tcx, indices.to_region_vid(liberated_region))
         });
         value
@@ -1003,7 +1008,10 @@ fn for_each_late_bound_region_in_item<'tcx>(
     for (idx, bound_var) in bound_vars.iter().enumerate() {
         if let ty::BoundVariableKind::Region(kind) = bound_var {
             let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
-            let liberated_region = ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), kind);
+            let liberated_region = ty::Region::new_late_param(
+                tcx,
+                ty::LateParamRegion { scope: mir_def_id.to_def_id(), kind },
+            );
             f(liberated_region);
         }
     }

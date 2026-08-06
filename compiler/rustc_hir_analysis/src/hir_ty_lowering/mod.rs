@@ -39,7 +39,7 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    RegionExt, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
     const_lit_matches_ty, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
@@ -608,8 +608,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             rbv::ResolvedArg::Free(scope, id) => {
                 ty::Region::new_late_param(
                     tcx,
-                    scope.to_def_id(),
-                    ty::LateParamRegionKind::Named(id.to_def_id()),
+                    ty::LateParamRegion {
+                        scope: scope.to_def_id(),
+                        kind: ty::LateParamRegionKind::Named(id.to_def_id()),
+                    },
                 )
 
                 // (*) -- not late-bound, won't change

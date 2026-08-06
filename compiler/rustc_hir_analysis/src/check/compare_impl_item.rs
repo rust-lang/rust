@@ -14,9 +14,9 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, RegionExt, Ty, TyCtxt,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, Span};
@@ -414,8 +414,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'tcx> {
         if let ty::ReLateParam(fr) = r.kind() {
             ty::Region::new_late_param(
                 self.tcx,
-                fr.scope,
-                self.mapping.get(&fr.kind).copied().unwrap_or(fr.kind),
+                ty::LateParamRegion {
+                    scope: fr.scope,
+                    kind: self.mapping.get(&fr.kind).copied().unwrap_or(fr.kind),
+                },
             )
         } else {
             r
