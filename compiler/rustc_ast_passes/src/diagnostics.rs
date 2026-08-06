@@ -737,6 +737,13 @@ pub(crate) struct UnsafeItem {
 pub(crate) struct MissingUnsafeOnExtern {
     #[primary_span]
     pub span: Span,
+
+    #[suggestion(
+        "needs `unsafe` before the extern keyword",
+        code = "unsafe ",
+        applicability = "machine-applicable"
+    )]
+    pub unsafe_span: Span,
 }
 
 #[derive(Diagnostic)]
