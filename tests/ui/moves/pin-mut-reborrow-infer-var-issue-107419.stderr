@@ -8,7 +8,7 @@ LL |     foo(r.get_mut());
 LL |     foo(r.get_mut());
    |         ^ value used here after move
    |
-note: `Pin::<&'a mut T>::get_mut` takes ownership of the receiver `self`, which moves `r`
+note: `std::pin::Pin::<&'a mut T>::get_mut` takes ownership of the receiver `self`, which moves `r`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 help: consider reborrowing the `Pin` instead of moving it
    |

@@ -238,6 +238,7 @@ symbols! {
         Input,
         Int,
         Into,
+        IntoAsyncIterator,
         IntoFuture,
         IntoIterator,
         IntoIteratorItem,

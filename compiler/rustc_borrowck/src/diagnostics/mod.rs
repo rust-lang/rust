@@ -18,7 +18,7 @@ use rustc_middle::mir::{
     LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
     StatementKind, Terminator, TerminatorKind, VarDebugInfoContents, find_self_call,
 };
-use rustc_middle::ty::print::Print;
+use rustc_middle::ty::print::{Print, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
@@ -1374,12 +1374,21 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             &move_spans,
                         );
 
-                        let func = tcx.def_path_str(method_did);
-                        err.subdiagnostic(CaptureReasonNote::FuncTakeSelf {
-                            func,
-                            place_name: place_name.clone(),
-                            span: self_arg.span,
-                        });
+                        let func = with_no_trimmed_paths!(tcx.def_path_str(method_did));
+                        if let Some((kind, _)) = desugaring {
+                            err.subdiagnostic(CaptureReasonNote::DesugaringFuncTakeSelf {
+                                func,
+                                desugar_name: kind.name(),
+                                place_name: place_name.clone(),
+                                span: self_arg.span,
+                            });
+                        } else {
+                            err.subdiagnostic(CaptureReasonNote::FuncTakeSelf {
+                                func,
+                                place_name: place_name.clone(),
+                                span: self_arg.span,
+                            });
+                        }
                     }
                     let parent_did = tcx.parent(method_did);
                     let parent_self_ty =
@@ -1400,17 +1409,20 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             var_span: var_span.shrink_to_hi(),
                         });
                     }
-                    if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
+                    if let Some((
+                        kind @ (CallDesugaringKind::ForLoopIntoIter
+                        | CallDesugaringKind::ForLoopIntoAsyncIter),
+                        _,
+                    )) = desugaring
+                    {
                         let ty = moved_place.ty(self.body, tcx).ty;
-                        let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
-                            Some(def_id) => type_known_to_meet_bound_modulo_regions(
-                                self.infcx,
-                                self.infcx.param_env,
-                                Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
-                                def_id,
-                            ),
-                            _ => false,
-                        };
+                        let def_id = kind.trait_def_id(tcx);
+                        let suggest = type_known_to_meet_bound_modulo_regions(
+                            self.infcx,
+                            self.infcx.param_env,
+                            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
+                            def_id,
+                        );
                         if suggest {
                             err.subdiagnostic(CaptureReasonSuggest::IterateSlice {
                                 ty,
@@ -1418,12 +1430,25 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             });
                         }
 
-                        err.subdiagnostic(CaptureReasonLabel::ImplicitCall {
-                            fn_call_span,
-                            place_name: &place_name,
-                            is_partial,
-                            is_loop_message,
-                        });
+                        match kind {
+                            CallDesugaringKind::ForLoopIntoIter => {
+                                err.subdiagnostic(CaptureReasonLabel::ImplicitCall {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            CallDesugaringKind::ForLoopIntoAsyncIter => {
+                                err.subdiagnostic(CaptureReasonLabel::ImplicitAsyncCall {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            _ => {}
+                        }
                         // If the moved place was a `&mut` ref, then we can
                         // suggest to reborrow it where it was moved, so it
                         // will still be valid by the time we get to the usage.
@@ -1451,20 +1476,31 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             }
                         }
                     } else {
-                        if let Some((CallDesugaringKind::Await, _)) = desugaring {
-                            err.subdiagnostic(CaptureReasonLabel::Await {
-                                fn_call_span,
-                                place_name: &place_name,
-                                is_partial,
-                                is_loop_message,
-                            });
-                        } else {
-                            err.subdiagnostic(CaptureReasonLabel::MethodCall {
-                                fn_call_span,
-                                place_name: &place_name,
-                                is_partial,
-                                is_loop_message,
-                            });
+                        match desugaring {
+                            Some((CallDesugaringKind::Await, _)) => {
+                                err.subdiagnostic(CaptureReasonLabel::Await {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            Some((CallDesugaringKind::QuestionBranch, _)) => {
+                                err.subdiagnostic(CaptureReasonLabel::QuestionMark {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            _ => {
+                                err.subdiagnostic(CaptureReasonLabel::MethodCall {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
                         }
                         // Erase and shadow everything that could be passed to the new infcx.
                         let ty = moved_place.ty(self.body, tcx).ty;

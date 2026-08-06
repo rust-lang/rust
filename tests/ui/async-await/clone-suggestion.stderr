@@ -8,7 +8,7 @@ LL |     f.await;
 LL |     f.await;
    |     ^ value used here after move
    |
-note: `into_future` takes ownership of the receiver `self`, which moves `f`
+note: the `await` is desugared into a call to `std::future::IntoFuture::into_future`, which takes ownership of the receiver `self`, which moves `f`
   --> $SRC_DIR/core/src/future/into_future.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
