@@ -1020,50 +1020,6 @@ impl Build {
         if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
     }
 
-    /// Returns the path to `FileCheck` binary for the specified target
-    fn llvm_filecheck(&self, target: TargetSelection) -> PathBuf {
-        let target_config = self.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
-            s.to_path_buf()
-        } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
-            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
-            if filecheck.exists() {
-                filecheck
-            } else {
-                // On Fedora the system LLVM installs FileCheck in the
-                // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
-                let lib_filecheck =
-                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
-                if lib_filecheck.exists() {
-                    lib_filecheck
-                } else {
-                    // Return the most normal file name, even though
-                    // it doesn't exist, so that any error message
-                    // refers to that.
-                    filecheck
-                }
-            }
-        } else {
-            let base = self.llvm_out(target).join("build");
-            let base = if !self.ninja() && target.is_msvc() {
-                if self.config.llvm_optimize {
-                    if self.config.llvm_release_debuginfo {
-                        base.join("RelWithDebInfo")
-                    } else {
-                        base.join("Release")
-                    }
-                } else {
-                    base.join("Debug")
-                }
-            } else {
-                base
-            };
-            base.join("bin").join(exe("FileCheck", target))
-        }
-    }
-
     /// Directory for libraries built from C/C++ code and shared between stages.
     fn native_dir(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("native")
