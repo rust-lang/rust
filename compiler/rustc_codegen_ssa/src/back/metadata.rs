@@ -207,7 +207,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Big => Endianness::Big,
     };
     let Some((architecture, sub_architecture)) =
-        sess.target.object_architecture(&sess.unstable_target_features)
+        sess.target.object_architecture(&sess.internal_target_features)
     else {
         return None;
     };
@@ -328,12 +328,12 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             let mut e_flags: u32 = 0x0;
 
             // Check if compression is enabled
-            if sess.target_features.contains(&sym::zca) {
+            if sess.internal_target_features.contains(&sym::zca) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
 
             // Check if RVTSO is enabled
-            if sess.target_features.contains(&sym::ztso) {
+            if sess.internal_target_features.contains(&sym::ztso) {
                 e_flags |= elf::EF_RISCV_TSO;
             }
 

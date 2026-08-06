@@ -39,6 +39,7 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
+use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
@@ -170,8 +171,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             },
             _ => vec![],
         };
-        // FIXME do `unstable_target_features` properly
-        let unstable_target_features = target_features.clone();
 
         // FIXME(f16_f128): `rustc_codegen_llvm` currently disables support on Windows GNU
         // targets due to GCC using a different ABI than LLVM. Therefore `f16` and `f128`
@@ -186,8 +185,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
 
         TargetConfig {
-            target_features,
-            unstable_target_features,
+            internal_target_features: UnordSet::from_iter(target_features),
             // `rustc_codegen_cranelift` polyfills functionality not yet
             // available in Cranelift.
             has_reliable_f16: has_reliable_f16_f128,
