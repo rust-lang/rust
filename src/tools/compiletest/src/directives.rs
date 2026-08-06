@@ -1246,9 +1246,9 @@ fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
                     ),
                 };
             }
-        } else if let Some(version_req) =
-            config.parse_name_value_directive(line, "system-llvm-version")
-        {
+        }
+
+        if let Some(version_req) = config.parse_name_value_directive(line, "system-llvm-version") {
             let version_req = semver::VersionReq::parse(&version_req)
                 .expect("malformed llvm version requirement");
 
