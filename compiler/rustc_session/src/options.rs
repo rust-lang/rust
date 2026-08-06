@@ -70,8 +70,8 @@ pub struct ExtendedTargetModifierInfo {
     /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags). And empty string
     /// indicates a synthetic target modifier, which does not correspond directly to a flag.
     pub prefix: String,
-    /// Flag name. For synthetic features, this is still relevant as the name used to suppress
-    /// the error for mismatches involving this target modifier.
+    /// Flag name. For synthetic target modifiers, this is still relevant as the name is used with
+    /// `-Cunsafe-allow-abi-mismatch`.
     pub name: String,
     /// Flag parsed technical value
     pub tech_value: String,
