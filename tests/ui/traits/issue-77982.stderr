@@ -12,7 +12,11 @@ LL |     opts.get(opt.as_ref());
              where T: ?Sized;
    = note: the type must also implement `Hash`
    = note: the type must also implement `Eq`
-   = note: cannot satisfy `String: AsRef<_>`
+   = note: multiple `impl`s satisfying `String: AsRef<_>` found in the following crates: `alloc`, `std`:
+           - impl AsRef<OsStr> for String;
+           - impl AsRef<Path> for String;
+           - impl AsRef<[u8]> for String;
+           - impl AsRef<str> for String;
 note: required by a bound in `HashMap::<K, V, S, A>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 help: consider specifying a concrete type for the type parameter `Q`

@@ -18,7 +18,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:15:9
@@ -29,7 +34,12 @@ LL |     |x| String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed for `&_`
   --> $DIR/infer-unwrap-none-issue-120786.rs:20:9
@@ -57,7 +67,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:32:5
@@ -68,7 +83,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:41:5
@@ -79,7 +99,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:50:5
@@ -90,7 +115,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:57:5
@@ -101,7 +131,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:66:5
@@ -112,7 +147,12 @@ LL |     String::from("x".as_ref());
    = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
            - impl From<&String> for String;
            - impl From<&str> for String;
-   = note: cannot satisfy `str: AsRef<_>`
+   = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
+           - impl AsRef<OsStr> for str;
+           - impl AsRef<Path> for str;
+           - impl AsRef<[u8]> for str;
+           - impl AsRef<str> for str;
 
 error: aborting due to 10 previous errors
 

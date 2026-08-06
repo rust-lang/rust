@@ -11,7 +11,9 @@ LL |     let _foo = 0 + [1, 2, 3][bad_idx.into()];
    |                                      ^^^^ cannot infer type
    |
    = note: cannot satisfy `<i32 as Add<_>>::Output == _`
-   = note: cannot satisfy `i32: Add<_>`
+   = note: multiple `impl`s satisfying `i32: Add<_>` found in the `core` crate:
+           - impl Add for i32;
+           - impl Add<&i32> for i32;
 
 error[E0283]: type annotations needed
   --> $DIR/index-expr-ambiguous-type.rs:21:34
@@ -44,7 +46,9 @@ LL |     let _foo = 0u64 + [1i32, 2, 3][bad_idx.into()];
    |                     ^ cannot infer type
    |
    = note: cannot satisfy `<u64 as Add<_>>::Output == _`
-   = note: cannot satisfy `u64: Add<_>`
+   = note: multiple `impl`s satisfying `u64: Add<_>` found in the `core` crate:
+           - impl Add for u64;
+           - impl Add<&u64> for u64;
 
 error[E0284]: type annotations needed
   --> $DIR/index-expr-ambiguous-type.rs:44:38
