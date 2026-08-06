@@ -210,7 +210,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Reading the discriminant of an uninhabited variant is UB. This is the basis for the
         // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
         // `write_discriminant`.
-        if op.layout().for_variant(self, index).is_uninhabited() {
+        if op.layout().is_variant_uninhabited(index) {
             throw_ub!(UninhabitedEnumVariantRead(Some(index)))
         }
         interp_ok(index)
@@ -252,7 +252,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Therefore, there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their
         // discriminant, so we have to bail out here.
-        if layout.for_variant(self, variant_index).is_uninhabited() {
+        if layout.is_variant_uninhabited(variant_index) {
             throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 
