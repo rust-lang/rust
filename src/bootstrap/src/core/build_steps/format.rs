@@ -9,7 +9,8 @@ use std::sync::mpsc::SyncSender;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::{Builder, Kind, Step};
+use crate::core::download::{DownloadContext, maybe_download_rustfmt};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -58,7 +59,8 @@ fn rustfmt(
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, BuildStamp)> {
     let stamp_file = BuildStamp::new(&build.out).with_prefix("rustfmt");
 
-    let mut cmd = command(build.config.initial_rustfmt.as_ref()?);
+    let rustfmt = build.ensure(InternalRustfmt);
+    let mut cmd = command(rustfmt.as_ref()?);
     cmd.arg("--version");
 
     let output = cmd.allow_failure().run_capture(build);
@@ -99,6 +101,25 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
     }
 
     get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &["rs"]).map(Some)
+}
+
+/// Rustfmt set via the config, or downloaded from CI, used to format local Rust code.
+///
+/// This is separate from the in-tree rustfmt.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct InternalRustfmt;
+
+impl Step for InternalRustfmt {
+    type Output = Option<PathBuf>;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        // Rustfmt configured through the config
+        if let Some(initial_rustfmt) = &builder.config.external_rustfmt {
+            return Some(initial_rustfmt.clone());
+        }
+        // No rustfmt was configured, try to download it
+        maybe_download_rustfmt(DownloadContext::from(&builder.config), &builder.config.out)
+    }
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -243,7 +264,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
 
     let override_ = override_builder.build().unwrap(); // `override` is a reserved keyword
 
-    let rustfmt_path = build.config.initial_rustfmt.clone().unwrap_or_else(|| {
+    let rustfmt_path = build.ensure(InternalRustfmt).unwrap_or_else(|| {
         eprintln!("fmt error: `x fmt` is not supported on this channel");
         crate::exit!(1);
     });

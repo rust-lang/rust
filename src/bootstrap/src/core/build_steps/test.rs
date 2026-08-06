@@ -17,6 +17,7 @@ use build_helper::git::get_closest_upstream_commit;
 
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
+use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
@@ -1095,7 +1096,7 @@ impl CommandLineStep for IntrinsicTest {
         cmd.env("CFLAGS", cflags);
         // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
         // managed binaries findable by prepending their dirs to PATH.
-        let Some(rustfmt_path) = builder.config.initial_rustfmt.clone() else {
+        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
             eprintln!(
                 "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
             );
@@ -1629,7 +1630,11 @@ impl CommandLineStep for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
                 builder.info("fmt check");
-                if builder.config.initial_rustfmt.is_none() {
+
+                // Note: this actually sets up or downloads rustfmt, so running this step here is
+                // load-bearing
+                let rustfmt = builder.ensure(InternalRustfmt);
+                if rustfmt.is_none() {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
