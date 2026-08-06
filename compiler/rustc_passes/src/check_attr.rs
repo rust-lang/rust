@@ -239,8 +239,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Linkage(_linkage, span) => {
                 self.check_linkage(*span, hir_id, target, item)
             }
-            AttributeKind::RustcEditionRedirect(redirects) => {
-                self.check_rustc_edition_redirect(item, redirects)
+            AttributeKind::RustcEditionRedirect(redirect) => {
+                self.check_rustc_edition_redirect(item, redirect)
             }
 
             // All of the following attributes have no specific checks.
@@ -471,17 +471,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Rejects the use of edition redirect on non-single use statements.
-    fn check_rustc_edition_redirect(&self, item: Option<&Item<'_>>, redirects: &[EditionRedirect]) {
+    fn check_rustc_edition_redirect(&self, item: Option<&Item<'_>>, redirect: &EditionRedirect) {
         let Some(Item { kind: ItemKind::Use(_, use_kind), .. }) = item else {
             return;
         };
         if matches!(use_kind, hir::UseKind::Single(_)) {
             return;
         }
-        if let Some(redirect) = redirects.first() {
-            self.dcx()
-                .emit_err(diagnostics::EditionRedirectNonSingleUse { attr_span: redirect.span });
-        }
+        self.dcx().emit_err(diagnostics::EditionRedirectNonSingleUse { attr_span: redirect.span });
     }
 
     fn check_rustc_must_implement_one_of(

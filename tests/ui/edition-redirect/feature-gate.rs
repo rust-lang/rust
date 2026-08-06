@@ -2,10 +2,12 @@
 
 #![feature(rustc_attrs)]
 
-struct Old;
+pub struct Old;
 
-#[rustc_edition_redirect(before = "2024", target(Old))]
+#[rustc_edition_redirect = "2024"]
 //~^ ERROR the `rustc_edition_redirect` attribute is an experimental feature
-struct Current;
+pub use Old as Current;
+
+pub struct Current;
 
 fn main() {}

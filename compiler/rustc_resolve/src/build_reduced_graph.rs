@@ -18,7 +18,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
+use rustc_hir::attrs::{AttributeKind, EditionRedirect, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -41,9 +41,9 @@ use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
-    ExternPreludeEntry, Finalize, IdentKey, LocalEditionRedirect, LocalModule, Module, ModuleKind,
-    ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used,
-    VisResolutionError, diagnostics,
+    ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
+    ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used, VisResolutionError,
+    diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -575,10 +575,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         root_span: Span,
         root_id: NodeId,
         vis: Visibility,
+        edition_redirect: Option<EditionRedirect>,
     ) {
         let current_module = self.parent_scope.module.expect_local();
         let import = self.r.arenas.alloc_import(ImportData {
             kind,
+            edition_redirect,
             parent_scope: self.parent_scope,
             module_path,
             imported_module: CmCell::new(None),
@@ -598,7 +600,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ImportKind::Single { target, .. } => {
                 // Don't add underscore imports to `single_imports`
                 // because they cannot define any usable names.
-                if target.name != kw::Underscore {
+                //
+                // Same with edition redirects: these redirects are attached to
+                // an existing name and don't introduce one themselves.
+                if target.name != kw::Underscore && import.edition_redirect.is_none() {
                     self.r.per_ns_mut(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
                         this.resolution_or_default(current_module.to_module(), key, target.span)
@@ -764,13 +769,44 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     def_id: feed.def_id(),
                 };
 
-                self.add_import(module_path, kind, use_tree.span(), item, root_span, item.id, vis);
+                let edition_redirect = if !nested
+                    && ast::attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
+                    && let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(redirect))) =
+                        AttributeParser::parse_limited_sym(
+                            self.r.tcx.sess,
+                            &item.attrs,
+                            &[sym::rustc_edition_redirect],
+                        ) {
+                    Some(redirect)
+                } else {
+                    None
+                };
+
+                self.add_import(
+                    module_path,
+                    kind,
+                    use_tree.span(),
+                    item,
+                    root_span,
+                    item.id,
+                    vis,
+                    edition_redirect,
+                );
             }
             ast::UseTreeKind::Glob(_) => {
                 if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
                     let kind =
                         ImportKind::Glob { max_vis: CmCell::new(None), id, def_id: feed.def_id() };
-                    self.add_import(prefix, kind, use_tree.span(), item, root_span, item.id, vis);
+                    self.add_import(
+                        prefix,
+                        kind,
+                        use_tree.span(),
+                        item,
+                        root_span,
+                        item.id,
+                        vis,
+                        None,
+                    );
                 } else {
                     // Resolve the prelude import early.
                     let path_res =
@@ -1072,6 +1108,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 id: item.id,
                 def_id: local_def_id,
             },
+            edition_redirect: None,
             root_id: item.id,
             parent_scope,
             imported_module: CmCell::new(module),
@@ -1204,6 +1241,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let macro_use_import = |this: &Self, span, warn_private| {
             this.r.arenas.alloc_import(ImportData {
                 kind: ImportKind::MacroUse { warn_private },
+                edition_redirect: None,
                 root_id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: CmCell::new(Some(ModuleOrUniformRoot::Module(module))),
@@ -1382,6 +1420,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(ImportData {
                     kind: ImportKind::MacroExport,
+                    edition_redirect: None,
                     root_id: item.id,
                     parent_scope: ParentScope {
                         module: self.r.graph_root.to_module(),
@@ -1439,40 +1478,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     pub(crate) fn brg_visit_item(&mut self, item: &'a Item, feed: TyCtxtFeed<'tcx, LocalDefId>) {
-        // The resolver runs before these attributes are available through HIR.
-        // Parse and retain them here, but leave their target paths unresolved
-        // until ordinary imports have settled.
-        if ast::attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
-            && let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(mut redirects))) =
-                AttributeParser::parse_limited_sym(
-                    self.r.tcx.sess,
-                    &item.attrs,
-                    &[sym::rustc_edition_redirect],
-                )
-        {
-            redirects.sort_by_key(|redirect| redirect.before);
-            let edition_redirects = redirects
-                .into_iter()
-                .map(|redirect| LocalEditionRedirect {
-                    before: redirect.before,
-                    // Attribute path segments have dummy node IDs and are not lowered as paths, so
-                    // resolution must not try to record per-segment results for them.
-                    target: Segment::from_path(&redirect.target)
-                        .into_iter()
-                        .map(|mut segment| {
-                            segment.id = None;
-                            segment
-                        })
-                        .collect(),
-                    // Attribute paths use the lexical and hygiene context of the marked item.
-                    parent_scope: self.parent_scope,
-                    node_id: item.id,
-                    span: redirect.span,
-                })
-                .collect();
-            self.r.local_edition_redirects.insert(feed.key(), edition_redirects);
-        }
-
         let orig_module_scope = self.parent_scope.module;
         self.parent_scope.macro_rules = match item.kind {
             ItemKind::MacroDef(..) => {

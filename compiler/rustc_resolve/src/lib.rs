@@ -1041,17 +1041,14 @@ struct EditionRedirectDecl<'ra> {
     target: Decl<'ra>,
 }
 
-/// A redirect declared in the current crate, before it is resolved and converted to crate metadata.
-/// Redirects for each item are stored in ascending order of `before`.
+/// A resolved redirect import waiting to be attached to the default item with the same name.
 #[derive(Clone)]
 struct LocalEditionRedirect<'ra> {
+    module: LocalModule<'ra>,
+    key: BindingKey,
     before: Edition,
-    /// The parsed target path, resolved when module children are finalized.
-    target: Vec<Segment>,
-    /// The scope of the item carrying the attribute, in which `target` must be resolved.
-    parent_scope: ParentScope<'ra>,
-    /// The item carrying the attribute, used when finalizing target-path diagnostics.
-    node_id: NodeId,
+    import_decl: Decl<'ra>,
+    default_decl: Option<Decl<'ra>>,
     span: Span,
 }
 
@@ -1406,11 +1403,8 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    /// Current-crate redirects indexed by the item carrying the attribute.
-    /// Their targets are resolved lazily while producing the item's `ModChild`s,
-    /// after ordinary imports have reached a fixed point.
-    local_edition_redirects: FxHashMap<LocalDefId, Vec<LocalEditionRedirect<'ra>>> =
-        default::fx_hash_map(),
+    /// Resolved redirect imports waiting to be combined with their default module children.
+    local_edition_redirects: Vec<LocalEditionRedirect<'ra>> = Vec::new(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items

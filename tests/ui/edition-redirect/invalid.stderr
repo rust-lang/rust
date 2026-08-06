@@ -1,68 +1,78 @@
-error: edition redirect target `private::Old` is less visible than the redirected item
-  --> $DIR/invalid.rs:22:50
+error: edition redirect for `Public` must have the same visibility as its default item
+  --> $DIR/invalid.rs:26:1
    |
-LL |     pub(crate) struct Old {
-   |     --------------------- target is defined here
-...
-LL | #[rustc_edition_redirect(before = "2024", target(private::Old))]
-   |                                                  ^^^^^^^^^^^^ target has more restricted visibility
-LL |
-LL | pub struct Public {
-   | ----------------- redirected item is defined here
-   |
-   = help: make the target at least as visible as the redirected item
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0433]: cannot find `Missing` in `private`
-  --> $DIR/invalid.rs:28:59
+error: multiple edition redirects before edition 2024 for `Duplicate`
+  --> $DIR/invalid.rs:44:1
    |
-LL | #[rustc_edition_redirect(before = "2024", target(private::Missing))]
-   |                                                           ^^^^^^^ could not find `Missing` in `private`
-   |
-   = note: while resolving edition redirect target `private::Missing`
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0659]: `Old` is ambiguous
-  --> $DIR/invalid.rs:57:54
+error: edition redirect for `Restricted` must have the same visibility as its default item
+  --> $DIR/invalid.rs:52:1
    |
-LL |     #[rustc_edition_redirect(before = "2024", target(Old))]
-   |                                                      ^^^ ambiguous name
-   |
-   = note: ambiguous because of multiple glob imports of a name in the same module
-note: `Old` could refer to the struct imported here
-  --> $DIR/invalid.rs:54:9
-   |
-LL |     use self::first::*;
-   |         ^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `Old` to disambiguate
-note: `Old` could also refer to the struct imported here
-  --> $DIR/invalid.rs:55:9
-   |
-LL |     use self::second::*;
-   |         ^^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `Old` to disambiguate
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: multiple edition redirects before edition 2024
-  --> $DIR/invalid.rs:37:1
+error: edition redirect for `MissingDefault` has no default item
+  --> $DIR/invalid.rs:60:1
    |
-LL | #[rustc_edition_redirect(before = "2024", target(DuplicateTarget))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0364]: `Old` is only public within the crate, and cannot be re-exported outside
+  --> $DIR/invalid.rs:28:9
+   |
+LL | pub use private::Old as Public;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider marking `Old` as `pub` in the imported module
+  --> $DIR/invalid.rs:28:9
+   |
+LL | pub use private::Old as Public;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0432]: unresolved import `source::Missing`
+  --> $DIR/invalid.rs:34:9
+   |
+LL | pub use source::Missing as Unresolved;
+   |         ^^^^^^^^-------^^^^^^^^^^^^^^
+   |                 |
+   |                 no `Missing` in `source`
+
+error: the `rustc_edition_redirect` attribute cannot be used on structs
+  --> $DIR/invalid.rs:5:3
+   |
+LL | #[rustc_edition_redirect = "2024"]
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `rustc_edition_redirect` attribute can only be applied to use statements
+
+error: invalid edition in edition redirect
+  --> $DIR/invalid.rs:64:1
+   |
+LL | #[rustc_edition_redirect = "not an edition"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[rustc_edition_redirect]` can only be applied to a single import
-  --> $DIR/invalid.rs:8:1
+  --> $DIR/invalid.rs:14:1
    |
-LL | #[rustc_edition_redirect(before = "2024", target(source::Old))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use a separate, non-braced `use` item
 
 error: `#[rustc_edition_redirect]` can only be applied to a single import
-  --> $DIR/invalid.rs:12:1
+  --> $DIR/invalid.rs:18:1
    |
-LL | #[rustc_edition_redirect(before = "2024", target(source::Old))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_edition_redirect = "2024"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use a separate, non-braced `use` item
 
-error: aborting due to 6 previous errors
+error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0433, E0659.
-For more information about an error, try `rustc --explain E0433`.
+Some errors have detailed explanations: E0364, E0432.
+For more information about an error, try `rustc --explain E0364`.

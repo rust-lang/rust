@@ -117,10 +117,9 @@ pub enum InstrumentFnAttr {
     Off,
 }
 
-#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct EditionRedirect {
     pub before: Edition,
-    pub target: Path,
     pub span: Span,
 }
 
@@ -1272,8 +1271,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dyn_incompatible_trait]`.
     RustcDynIncompatibleTrait(Span),
 
-    /// Represents `#[rustc_edition_redirect(before = "...", target(...))]`.
-    RustcEditionRedirect(ThinVec<EditionRedirect>),
+    /// Represents `#[rustc_edition_redirect = "..."]`.
+    RustcEditionRedirect(EditionRedirect),
 
     /// Represents `#[rustc_effective_visibility]`.
     RustcEffectiveVisibility,
