@@ -1006,7 +1006,7 @@ impl CommandLineStep for OmpOffload {
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own folder, instead of
         // using the llvm build dir.
-        let out_dir = builder.offload_out(target);
+        let out_dir = builder.out.join(self.target.triple).join("offload");
 
         let mut files = vec![];
         let lib_ext = std::env::consts::DLL_EXTENSION;
@@ -1194,7 +1194,7 @@ impl CommandLineStep for Enzyme {
             )
         });
 
-        let out_dir = builder.enzyme_out(target);
+        let out_dir = builder.out.join(self.target.triple).join("enzyme");
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
         let llvm_version_major =
@@ -1322,7 +1322,7 @@ impl CommandLineStep for Lld {
             }
         }
 
-        let out_dir = builder.lld_out(target);
+        let out_dir = builder.out.join(target).join("lld");
 
         let lld_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
         if lld_stamp.path().exists() {

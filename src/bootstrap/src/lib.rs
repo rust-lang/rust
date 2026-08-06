@@ -56,6 +56,7 @@ pub use utils::helpers::{PanicTracker, symlink_dir};
 #[cfg(feature = "tracing")]
 pub use utils::tracing::setup_tracing;
 
+use crate::core::build_steps::llvm;
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
 const LLVM_TOOLS: &[&str] = &[
@@ -977,18 +978,6 @@ impl Build {
         } else {
             self.out.join(target).join("llvm")
         }
-    }
-
-    fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("enzyme")
-    }
-
-    fn offload_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("offload")
-    }
-
-    fn lld_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("lld")
     }
 
     /// Output directory for all documentation for a target
