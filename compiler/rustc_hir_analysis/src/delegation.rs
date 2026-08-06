@@ -538,10 +538,10 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                     }
                 }
 
-                let new_clause = match self.fold_clauses {
-                    true => clause.0.fold_with(&mut self.folder),
-                    false => clause.0,
-                };
+                let new_clause = self
+                    .fold_clauses
+                    .then(|| clause.0.fold_with(&mut self.folder))
+                    .unwrap_or(clause.0);
 
                 let inst_clause = EarlyBinder::bind(self.tcx, new_clause)
                     .instantiate(self.tcx, args)
@@ -678,28 +678,41 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let caller_sig = EarlyBinder::bind(tcx, caller_sig.skip_binder().fold_with(&mut folder));
 
     let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
-    let mut sig_vec =
-        sig.inputs().iter().cloned().chain(std::iter::once(sig.output())).collect::<Vec<_>>();
+    let output = std::iter::once(sig.output());
+    let mut sig = sig.inputs().iter().cloned().chain(output).collect::<Vec<_>>();
 
-    if tcx.is_method(sig_id) {
-        sig_vec[0] = match (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)) {
-            (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
-                tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
-            }
-            (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
-                let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
-                    unreachable!()
-                };
+    adjust_sig_in_inherent_impl_cases(tcx, sig_id, def_id, parent_args, &mut sig);
 
-                let new_adt = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+    tcx.arena.alloc_from_iter(sig)
+}
 
-                sig_vec[0].replace(tcx, new_adt, Ty::new_param(tcx, 0, kw::SelfUpper))
-            }
-            _ => sig_vec[0],
-        };
+fn adjust_sig_in_inherent_impl_cases<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig_id: DefId,
+    def_id: LocalDefId,
+    parent_args: &[ty::GenericArg<'tcx>],
+    sig: &mut [Ty<'tcx>],
+) {
+    if !tcx.is_method(sig_id) {
+        return;
     }
 
-    tcx.arena.alloc_from_iter(sig_vec)
+    let first_input = sig[0];
+
+    sig[0] = match (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)) {
+        (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
+            tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
+        }
+        (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
+            let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+                unreachable!("delegation is supported only to struct or enums")
+            };
+
+            let new_adt = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+            first_input.replace(tcx, new_adt, Ty::new_param(tcx, 0, kw::SelfUpper))
+        }
+        _ => first_input,
+    };
 }
 
 // Creates user-specified generic arguments from delegation path,
