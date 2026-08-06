@@ -805,36 +805,14 @@ fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     Some((regex, replacement))
 }
 
-/// Given an llvm version string that looks like `1.2.3-rc1`, extract as semver. Note that this
-/// accepts more than just strict `semver` syntax (as in `major.minor.patch`); this permits omitting
-/// minor and patch version components so users can write e.g. `//@ min-llvm-version: 19` instead of
-/// having to write `//@ min-llvm-version: 19.0.0`.
+/// Given an llvm version string that looks like `1.2.3-rc1`, extract as semver.
 ///
 /// Currently panics if the input string is malformed, though we really should not use panic as an
 /// error handling strategy.
 ///
 /// FIXME(jieyouxu): improve error handling
 pub(crate) fn extract_llvm_version(version: &str) -> Version {
-    // The version substring we're interested in usually looks like the `1.2.3`, without any of the
-    // fancy suffix like `-rc1` or `meow`.
-    let version = version.trim();
-    let uninterested = |c: char| !c.is_ascii_digit() && c != '.';
-    let version_without_suffix = match version.split_once(uninterested) {
-        Some((prefix, _suffix)) => prefix,
-        None => version,
-    };
-
-    let components: Vec<u64> = version_without_suffix
-        .split('.')
-        .map(|s| s.parse().expect("llvm version component should consist of only digits"))
-        .collect();
-
-    match &components[..] {
-        [major] => Version::new(*major, 0, 0),
-        [major, minor] => Version::new(*major, *minor, 0),
-        [major, minor, patch] => Version::new(*major, *minor, *patch),
-        _ => panic!("malformed llvm version string, expected only 1-3 components: {version}"),
-    }
+    version.parse().expect("malformed LLVM version")
 }
 
 pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Version> {
@@ -844,7 +822,7 @@ pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Vers
     }
     let version = String::from_utf8(output.stdout).ok()?;
     for line in version.lines() {
-        if let Some(version) = line.split("LLVM version ").nth(1) {
+        if let Some((_, version)) = line.split_once("LLVM version ") {
             return Some(extract_llvm_version(version));
         }
     }
