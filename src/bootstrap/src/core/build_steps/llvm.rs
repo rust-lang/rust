@@ -32,13 +32,17 @@ pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
-    /// Directory containing the built LLVM artifacts.
-    pub llvm_root_dir: PathBuf,
+    llvm_root_dir: PathBuf,
 }
 
 impl LlvmOutput {
+    /// Directory containing the built LLVM artifacts.
+    pub fn root_dir(&self) -> &Path {
+        &self.llvm_root_dir
+    }
+
     /// Path to LLVM cmake directory.
-    pub fn llvm_cmake_dir(&self) -> PathBuf {
+    pub fn cmake_dir(&self) -> PathBuf {
         self.llvm_root_dir.join("lib").join("cmake").join("llvm")
     }
 }
@@ -1095,7 +1099,7 @@ impl CommandLineStep for OmpOffload {
                 .define("LLVM_INCLUDE_TESTS", "OFF")
                 .define("OFFLOAD_INCLUDE_TESTS", "OFF")
                 .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
-                .define("LLVM_DIR", llvm_output.llvm_cmake_dir())
+                .define("LLVM_DIR", llvm_output.cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
             if let Some(p) = clang_dir.clone() {
                 cfg.define("Clang_DIR", p);
@@ -1220,7 +1224,7 @@ impl CommandLineStep for Enzyme {
             return BuiltEnzyme { enzyme: dylib };
         }
 
-        let llvm_cmake_dir = llvm_output.llvm_cmake_dir();
+        let llvm_cmake_dir = llvm_output.cmake_dir();
         if !builder.config.dry_run() && !llvm_cmake_dir.is_dir() {
             builder.info(&format!(
                 "WARNING: {:?} does not exist, Enzyme build will likely fail",
@@ -1392,7 +1396,7 @@ impl CommandLineStep for Lld {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .define("LLVM_CMAKE_DIR", llvm_output.llvm_cmake_dir())
+            .define("LLVM_CMAKE_DIR", llvm_output.cmake_dir())
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
         if !builder.config.is_host_target(target) {
