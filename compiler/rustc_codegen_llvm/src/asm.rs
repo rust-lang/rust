@@ -414,6 +414,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        target_features: &[String],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -499,14 +500,11 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        let target_features = self.tcx.global_backend_features(()).join(",");
-        let target_cpu = llvm_util::target_cpu(self.tcx.sess);
-
         llvm::append_module_inline_asm(
             self.llmod,
             template_str.as_bytes(),
-            &target_features,
-            target_cpu,
+            &target_features.join(","),
+            llvm_util::target_cpu(self.tcx.sess),
         );
     }
 
