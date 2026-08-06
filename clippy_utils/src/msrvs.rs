@@ -1,11 +1,12 @@
-use crate::sym;
+use crate::{is_in_const_context, sym};
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
 use rustc_hir::attrs::RustcVersion;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, StabilityLevel, StableSince};
+use rustc_hir::{Constness, HirId, StabilityLevel, StableSince};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -157,8 +158,46 @@ impl Msrv {
     }
 
     pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
-        cx.tcx.lookup_stability(def_id).is_none_or(|stability| {
-            if let StabilityLevel::Stable { since, .. } = stability.level {
+        self.stability_met(cx, cx.tcx.lookup_stability(def_id).map(|stability| stability.level))
+    }
+
+    /// Checks whether `def_id` is `const` and const-stable since a version met by the MSRV.
+    ///
+    /// `def_id` must identify a function-like definition or an impl.
+    ///
+    /// Nothing in the crate being linted carries a const-stability attribute, so `const` fns and
+    /// impls defined there are treated as meeting any MSRV, mirroring
+    /// [`is_stable`](Self::is_stable).
+    pub fn is_const_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        let constness = match cx.tcx.def_kind(def_id) {
+            // The constness of a trait impl is not encoded in crate metadata, where `constness`
+            // would decode as its default of `Const`. It is only available from the impl header.
+            DefKind::Impl { of_trait: true } => cx.tcx.impl_trait_header(def_id).constness,
+            _ => cx.tcx.constness(def_id),
+        };
+
+        matches!(constness, Constness::Const { .. })
+            && self.stability_met(
+                cx,
+                cx.tcx.lookup_const_stability(def_id).map(|stability| stability.level),
+            )
+    }
+
+    /// Checks the stability relevant to where we are: const-stability inside a `const` context,
+    /// regular stability everywhere else.
+    ///
+    /// Like [`is_in_const_context`], this requires the `LateContext` to have an enclosing body.
+    pub fn is_stable_or_const_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        if is_in_const_context(cx) {
+            self.is_const_stable(cx, def_id)
+        } else {
+            self.is_stable(cx, def_id)
+        }
+    }
+
+    fn stability_met(self, cx: &LateContext<'_>, level: Option<StabilityLevel>) -> bool {
+        level.is_none_or(|level| {
+            if let StabilityLevel::Stable { since, .. } = level {
                 let version = match since {
                     StableSince::Version(version) => version,
                     StableSince::Current => RustcVersion::CURRENT,

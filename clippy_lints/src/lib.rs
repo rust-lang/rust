@@ -382,6 +382,7 @@ mod unnecessary_box_returns;
 mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
 mod unnecessary_mut_passed;
+mod unnecessary_nonzero_get;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
 mod unnecessary_semicolon;
@@ -871,6 +872,7 @@ rustc_lint::late_lint_methods!(
         RestWhenDestructuringStruct: rest_when_destructuring_struct::RestWhenDestructuringStruct = rest_when_destructuring_struct::RestWhenDestructuringStruct,
         BlockScrutinee: block_scrutinee::BlockScrutinee = block_scrutinee::BlockScrutinee,
         NonnullUncheckedOnBoxPtr: nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr = nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr::new(conf),
+        UnnecessaryNonzeroGet: unnecessary_nonzero_get::UnnecessaryNonzeroGet = unnecessary_nonzero_get::UnnecessaryNonzeroGet::new(conf),
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
