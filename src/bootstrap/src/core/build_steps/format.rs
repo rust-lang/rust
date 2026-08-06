@@ -142,7 +142,13 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
     }
 }
 
-pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
+pub fn format(
+    build: &Builder<'_>,
+    rustfmt_path: PathBuf,
+    check: bool,
+    all: bool,
+    paths: &[PathBuf],
+) {
     if build.kind == Kind::Format && build.top_stage != 0 {
         eprintln!("ERROR: `x fmt` only supports stage 0.");
         eprintln!("HELP: Use `x run rustfmt` to run in-tree rustfmt.");
@@ -264,10 +270,6 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
 
     let override_ = override_builder.build().unwrap(); // `override` is a reserved keyword
 
-    let rustfmt_path = build.ensure(InternalRustfmt).unwrap_or_else(|| {
-        eprintln!("fmt error: `x fmt` is not supported on this channel");
-        crate::exit!(1);
-    });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);

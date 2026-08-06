@@ -1633,8 +1633,7 @@ impl CommandLineStep for Tidy {
 
                 // Note: this actually sets up or downloads rustfmt, so running this step here is
                 // load-bearing
-                let rustfmt = builder.ensure(InternalRustfmt);
-                if rustfmt.is_none() {
+                let Some(rustfmt) = builder.ensure(InternalRustfmt) else {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
@@ -1646,10 +1645,11 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                         CHAN = builder.config.channel,
                     );
                     crate::exit!(1);
-                }
+                };
                 let all = false;
                 crate::core::build_steps::format::format(
                     builder,
+                    rustfmt,
                     !builder.config.cmd.bless(),
                     all,
                     &[],
