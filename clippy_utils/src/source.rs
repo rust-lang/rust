@@ -1,6 +1,6 @@
 //! Utils for extracting, inspecting or transforming source code
 
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::module_name_repetitions)]
 
 use std::sync::Arc;
 

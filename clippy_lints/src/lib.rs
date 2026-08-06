@@ -11,15 +11,11 @@
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
-    clippy::literal_string_with_formatting_args
-)]
+#![expect(clippy::literal_string_with_formatting_args, clippy::must_use_candidate)]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal

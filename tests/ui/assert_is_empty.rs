@@ -1,6 +1,6 @@
 #![warn(clippy::assert_is_empty)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::const_is_empty, clippy::needless_ifs)]
+#![expect(clippy::needless_ifs, clippy::useless_vec)]
+#![allow(clippy::const_is_empty)]
 
 fn main() {
     let vec = vec![1, 2, 3];

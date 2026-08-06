@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 //@aux-build:non-exhaustive-struct.rs
 #![warn(clippy::rest_pattern_accessible_field)]
-#![warn(clippy::unneeded_wildcard_pattern)]
+#![deny(clippy::unneeded_wildcard_pattern)]
 
 use non_exhaustive_struct::{NonExhaustiveStruct, NonExhaustiveStructNoPrivateFields};
 

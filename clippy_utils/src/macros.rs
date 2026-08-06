@@ -1,4 +1,4 @@
-#![allow(clippy::similar_names)] // `expr` and `expn`
+#![expect(clippy::similar_names)] // `expr` and `expn`
 
 use std::cell::Cell;
 use std::sync::{Arc, OnceLock};

@@ -1,4 +1,4 @@
-#![allow(clippy::match_same_arms)]
+#![expect(clippy::match_same_arms)]
 
 use std::cmp::Ordering;
 
