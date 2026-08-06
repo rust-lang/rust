@@ -200,17 +200,24 @@ fn compile_module(mlir_module: &mut MlirModule<'static>) -> Result<(), MlirError
     Ok(())
 }
 
-/// Logs each MLIR pipeline stage's IR (ttir, ttgpuir, llir, llvmir, ptx/asm)
-/// at `debug` level, once per stage. Per-pass IR within ttir/ttgpuir/llir is
-/// controlled separately by `CompileOptions::debug` (see
+/// Logs each MLIR pipeline stage's IR (mlir, ttir, ttgpuir, llir, llvmir,
+/// ptx/asm) at `debug` level, once per stage. Per-pass IR within
+/// ttir/ttgpuir/llir is controlled separately by `CompileOptions::debug` (see
 /// `MlirModule::new_with_capability`), which the C++ backend consults at
 /// `trace` level.
+///
+/// `mlir` is `mlir_module.mlir_source` — the generic-dialect MLIR this
+/// backend's own codegen produced from the mono items (post canonicalizer /
+/// symbol-dce cleanup), captured before `compiler.compile()` below converts
+/// it to Triton IR. It's the earliest IR snapshot available: the state right
+/// before ttir, rather than ttir itself.
 ///
 /// A caller turns this on via `RUSTC_LOG=rustc_codegen_llvm::mlir=debug` (or
 /// `=trace` for the per-pass detail too).
 fn log_pipeline_stages(mlir_module: &MlirModule<'static>, ptx: &str) {
     let compiler = &mlir_module.compiler;
 
+    tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "mlir", "{}", mlir_module.mlir_source.as_deref().unwrap_or_default());
     tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "ttir", "{}", compiler.get_ttir().unwrap_or_default());
     tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "ttgir", "{}", compiler.get_ttgir().unwrap_or_default());
     tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "llir", "{}", compiler.get_llir().unwrap_or_default());
