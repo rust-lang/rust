@@ -42,8 +42,7 @@ pub(super) struct DelegationResolution {
     pub is_method: bool,
     pub param_info: ParamInfo,
     pub span: Span,
-    pub child_res: DefId,
-    pub parent_res: DefId,
+    pub call_path_res: DefId,
     pub source: DelegationSource,
     pub parent: LocalDefId,
     pub sig_mapping: SigMapping,
@@ -163,8 +162,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // FIXME(splat): use `sig.splatted()` once FnSig has it
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
-            parent_res: self.get_parent_res(delegation.id, span)?,
-            child_res: self.get_child_res(delegation, span)?,
+            call_path_res: self.get_child_res(delegation, span)?,
             sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
@@ -176,12 +174,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         };
 
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
-    }
-
-    fn get_parent_res(&self, id: NodeId, span: Span) -> Result<DefId, ErrorGuaranteed> {
-        self.opt_base_res(id).ok_or_else(|| {
-            self.tcx().dcx().span_delayed_bug(span, format!("failed to get base res {:?}", span))
-        })
     }
 
     fn get_child_res(&self, delegation: &Delegation, span: Span) -> Result<DefId, ErrorGuaranteed> {

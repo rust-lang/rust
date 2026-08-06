@@ -1265,11 +1265,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_method(self, id: DefId) -> bool {
-        match self.def_kind(id) {
-            DefKind::Fn => false,
-            DefKind::AssocFn => self.associated_item(id).is_method(),
-            _ => false,
-        }
+        self.opt_associated_item(id).is_some_and(|item| item.is_method())
     }
 }
 
