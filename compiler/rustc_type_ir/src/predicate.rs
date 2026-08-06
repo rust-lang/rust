@@ -137,7 +137,13 @@ impl<I: Interner> TraitRef<I> {
 
     pub fn from_assoc(interner: I, trait_id: I::TraitId, args: I::GenericArgs) -> TraitRef<I> {
         let generics = interner.generics_of(trait_id.into());
-        TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
+        if generics.count() == args.len() {
+            // Can reuse `args` in its entirety.
+            TraitRef::new_from_args(interner, trait_id, args)
+        } else {
+            // Need only some of `args`.
+            TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
+        }
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
