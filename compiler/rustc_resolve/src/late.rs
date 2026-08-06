@@ -3776,11 +3776,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn fill_delegation_inh_functions_map(&mut self, self_type_def_id: LocalDefId, ident: &Ident) {
         let map = self.r.delegation_inh_functions_map.entry(self_type_def_id).or_default();
 
-        if let Some(DelegationInhFuncKind::Single(..)) = map.get(ident) {
-            map.insert(*ident, DelegationInhFuncKind::Ambig);
-        } else {
-            map.insert(*ident, DelegationInhFuncKind::Single(self.r.current_owner.def_id));
-        }
+        match map.get(ident) {
+            None => {
+                map.insert(*ident, DelegationInhFuncKind::Single(self.r.current_owner.def_id));
+            }
+            Some(DelegationInhFuncKind::Single(..)) => {
+                map.insert(*ident, DelegationInhFuncKind::Ambig);
+            }
+            _ => {}
+        };
     }
 
     fn check_trait_item<F>(
