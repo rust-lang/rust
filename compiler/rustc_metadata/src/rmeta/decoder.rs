@@ -133,6 +133,10 @@ pub(crate) struct CrateMetadata {
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
     private_dep: bool,
+    /// Whether or not this is direct public dependency, specifically whether
+    /// `--extern` contained `priv:`. This is not negation of `private_dep` as some
+    /// dependencies might not be public directly but may be public transitively.
+    direct_public_dep: bool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
     /// The crate was used non-speculatively.
@@ -802,14 +806,23 @@ impl MetadataBlob {
                     let dylib_dependency_formats =
                         root.dylib_dependency_formats.decode(self).collect::<Vec<_>>();
                     for (i, dep) in root.crate_deps.decode(self).enumerate() {
-                        let CrateDep { name, extra_filename, hash, host_hash, kind, is_private } =
-                            dep;
+                        let CrateDep {
+                            name,
+                            extra_filename,
+                            hash,
+                            host_hash,
+                            kind,
+                            is_private,
+                            is_direct_public,
+                        } = dep;
                         let number = i + 1;
 
                         writeln!(
                             out,
-                            "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?} {privacy}{linkage}",
+                            "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?} {privacy}{direct_privacy}{linkage}",
                             privacy = if is_private { "private" } else { "public" },
+                            direct_privacy =
+                                if is_direct_public { "/direct public" } else { "direct private" },
                             linkage = if dylib_dependency_formats.is_empty() {
                                 String::new()
                             } else {
@@ -1950,6 +1963,7 @@ impl CrateMetadata {
         dep_kind: CrateDepKind,
         source: CrateSource,
         private_dep: bool,
+        direct_public_dep: bool,
         host_hash: Option<Svh>,
     ) -> CrateMetadata {
         let trait_impls = root
@@ -1979,6 +1993,7 @@ impl CrateMetadata {
             dep_kind,
             source: Arc::new(source),
             private_dep,
+            direct_public_dep,
             host_hash,
             used: false,
             extern_crate: None,

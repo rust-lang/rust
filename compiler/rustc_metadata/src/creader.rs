@@ -586,6 +586,10 @@ impl CStore {
         }
     }
 
+    fn is_direct_public_dep(&self, externs: &Externs, name: Symbol) -> bool {
+        !externs.get(name.as_str()).map(|e| e.is_private_dep).unwrap_or_default()
+    }
+
     fn register_crate<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -602,6 +606,7 @@ impl CStore {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
+        let direct_public_dep = self.is_direct_public_dep(&tcx.sess.opts.externs, name);
         let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
@@ -660,6 +665,7 @@ impl CStore {
             dep_kind,
             source,
             private_dep,
+            direct_public_dep,
             host_hash,
         );
 
