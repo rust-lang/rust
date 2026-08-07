@@ -7,9 +7,10 @@ LL |     let b = method(a);
    |                    - borrow of `a` occurs here
 LL |     let c = method(a);
 LL |     let _ = (a, b, c);
-   |              ^  - borrow later used here
+   |              ^
    |              |
    |              move out of `a` occurs here
+   |              borrow later used here
 
 error: aborting due to 1 previous error
 

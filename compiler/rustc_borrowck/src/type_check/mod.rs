@@ -18,7 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -34,6 +34,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
@@ -2535,6 +2536,24 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         // FIXME: copy in code from coercion.rs to re-check CoerceShared lifetime relations.
         if mutability.is_not() {
+            let Some(coerce_shared_trait_did) = self.tcx().lang_items().coerce_shared() else {
+                bug!("HIR type check passed CoerceShared but MIR found no such lang item");
+            };
+            let coerce_shared_trait_ref =
+                ty::TraitRef::new(self.tcx(), coerce_shared_trait_did, [borrowed_ty, dest_ty]);
+            let obligation = Obligation::new(
+                self.tcx(),
+                ObligationCause::dummy(),
+                self.infcx.param_env,
+                ty::Binder::dummy(coerce_shared_trait_ref),
+            );
+            let ocx = ObligationCtxt::new(&self.infcx);
+            ocx.register_obligation(obligation);
+            let errs = ocx.evaluate_obligations_error_on_ambiguity();
+            if !errs.no_errors() {
+                bug!("HIR type check passed CoerceShared but MIR found an issue");
+            }
+
             // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
             // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
