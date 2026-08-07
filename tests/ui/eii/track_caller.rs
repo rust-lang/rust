@@ -1,6 +1,7 @@
 //@ run-pass
 //@ ignore-backends: gcc
-//@ ignore-windows
+// FIXME(#125418): linking on Windows GNU targets is not yet supported.
+//@ ignore-windows-gnu
 // Tests that `#[track_caller]` on an EII declaration is threaded through both
 // the default impl (no override) and an explicit override (which does not
 // repeat `#[track_caller]` — it is derived during codegen so the shim ABI matches).

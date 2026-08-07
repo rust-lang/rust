@@ -3,7 +3,8 @@
 //@ aux-build: track_caller_cross_other_crate.rs
 //@ compile-flags: -O
 //@ ignore-backends: gcc
-//@ ignore-windows
+// FIXME(#125418): linking on Windows GNU targets is not yet supported.
+//@ ignore-windows-gnu
 // Tests that `#[track_caller]` on an EII declaration in one crate is derived
 // onto an explicit implementation in another crate.
 
