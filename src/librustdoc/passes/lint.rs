@@ -4,6 +4,7 @@
 mod bare_urls;
 mod check_code_block_syntax;
 mod html_tags;
+mod invalid_markdown_table;
 mod redundant_explicit_links;
 mod unescaped_backticks;
 
@@ -34,6 +35,7 @@ impl DocVisitor<'_> for Linter<'_, '_> {
         if !dox.is_empty() {
             let may_have_link = dox.contains(&[':', '['][..]);
             let may_have_block_comment_or_html = dox.contains(['<', '>']);
+            let may_have_table = dox.contains(&['|'][..]);
             // ~~~rust
             // // This is a real, supported commonmark syntax for block code
             // ~~~
@@ -48,6 +50,9 @@ impl DocVisitor<'_> for Linter<'_, '_> {
             }
             if may_have_block_comment_or_html {
                 html_tags::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if may_have_table {
+                invalid_markdown_table::visit_item(self.cx, item, hir_id, &dox);
             }
         }
 
