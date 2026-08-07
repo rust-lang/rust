@@ -2174,6 +2174,7 @@ symbols! {
         type_id_field_representing_type,
         type_id_fields,
         type_id_generics,
+        type_id_is_signed,
         type_id_variants,
         type_id_vtable,
         type_info,
