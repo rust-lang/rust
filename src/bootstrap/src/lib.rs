@@ -983,8 +983,12 @@ impl Build {
         self.out.join(&*target.triple).join("enzyme")
     }
 
-    fn offload_out(&self, target: TargetSelection) -> PathBuf {
+    fn omp_offload_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("offload")
+    }
+
+    fn rust_offload_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("rust-offload")
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
