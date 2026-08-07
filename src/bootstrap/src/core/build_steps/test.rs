@@ -23,7 +23,7 @@ use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::{
-    SyntheticTargetWithPanicStrategy, get_target_specs,
+    PanicStrategy, SyntheticTargetWithPanicStrategy, get_target_specs,
 };
 use crate::core::build_steps::test::compiletest::CompiletestMode;
 use crate::core::build_steps::test::failed_tests::{RecordFailedTests, SetupFailedTestsFile};
@@ -2193,6 +2193,31 @@ impl CommandLineStep for MirOpt {
         // - Bit-width: 32-bit and 64-bit
         // - Panic strategy: unwind and abort
 
+        // Return the bitwidth and panic strategy of the default (usually host) target
+        let get_bitwidth_and_panic_strategy = || -> (u64, PanicStrategy) {
+            if run.builder.config.dry_run() {
+                return (64, PanicStrategy::Unwind);
+            }
+
+            let specs = get_target_specs(run.builder, compiler, run.target);
+            let specs = specs.as_object();
+            let bitwidth = specs
+                .and_then(|obj| obj.get("target-pointer-width"))
+                .and_then(|v| v.as_i64())
+                .map(|v| v as u64)
+                .unwrap_or(64);
+            let panic_strategy = specs
+                .and_then(|obj| obj.get("panic-strategy"))
+                .and_then(|v| v.as_str())
+                .map(|v| match v {
+                    "unwind" => PanicStrategy::Unwind,
+                    _ => PanicStrategy::Abort,
+                })
+                // The default panic strategy is unwind
+                .unwrap_or(PanicStrategy::Unwind);
+            (bitwidth, panic_strategy)
+        };
+
         // Here we generate several configurations of this step to evaluate multiple targets.
         let targets = if run.builder.config.cmd.bless() {
             // When blessing, we generate a fixed set of 4 targets that cover all the
@@ -2202,22 +2227,32 @@ impl CommandLineStep for MirOpt {
             // We also include the host target, since some tests use very specific `only` clauses
             // that are not covered by the target set below.
 
-            let mut targets = vec![run.target];
+            let (bitwidth, strategy) = get_bitwidth_and_panic_strategy();
+            let mut targets = vec![(bitwidth, strategy, run.target)];
 
             // 64-bit and 32-bit panic=unwind
-            for target in ["aarch64-unknown-linux-gnu", "i686-pc-windows-msvc"] {
-                targets.push(TargetSelection::from_user(target));
+            for (bitwidth, target) in
+                [(64, "aarch64-unknown-linux-gnu"), (32, "i686-pc-windows-msvc")]
+            {
+                targets.push((bitwidth, PanicStrategy::Unwind, TargetSelection::from_user(target)));
             }
 
             // 64-bit and 32-bit panic=abort
-            for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
+            for (bitwidth, target) in [(64, "x86_64-apple-darwin"), (32, "i686-unknown-linux-musl")]
+            {
                 let target = TargetSelection::from_user(target);
                 let panic_abort_target = run
                     .builder
                     .ensure(SyntheticTargetWithPanicStrategy::panic_abort(compiler, target));
-                targets.push(panic_abort_target);
+                targets.push((bitwidth, PanicStrategy::Abort, panic_abort_target));
             }
-            targets
+            // This is a small optimization for local blessing.
+            // If we figure out that the host target already has a given bitwidth/panic strategy
+            // combination, we do not add the fixed targets to the list.
+            let mut unique = HashSet::new();
+            targets.retain(|(bitwidth, strategy, _)| unique.insert((*bitwidth, *strategy)));
+
+            targets.into_iter().map(|(_, _, target)| target).collect()
         } else {
             // When not blessing, we could also test all four configurations. But that would make
             // local tests quite slow. So instead, we check the current target, and then the
@@ -2230,33 +2265,15 @@ impl CommandLineStep for MirOpt {
             // panic=unwind, and force generation of panic=abort. But to ensure that we do this
             // properly, we actually query the compiler to figure out the panic strategy, and then
             // generate a synthetic target with the opposite strategy.
-            if !run.builder.config.dry_run() {
-                let target_specs = get_target_specs(run.builder, compiler, run.target);
-                let panic_strategy = target_specs
-                    .as_object()
-                    .and_then(|obj| obj.get("panic-strategy"))
-                    .and_then(|v| v.as_str())
-                    // The default panic strategy is unwind
-                    .unwrap_or("unwind");
-                let synthetic_target = if panic_strategy == "unwind" {
-                    run.builder
-                        .ensure(SyntheticTargetWithPanicStrategy::panic_abort(compiler, run.target))
-                } else {
-                    run.builder.ensure(SyntheticTargetWithPanicStrategy::panic_unwind(
-                        compiler, run.target,
-                    ))
-                };
-                vec![run.target, synthetic_target]
+            let panic_strategy = get_bitwidth_and_panic_strategy().1;
+            let synthetic_target = if panic_strategy == PanicStrategy::Unwind {
+                run.builder
+                    .ensure(SyntheticTargetWithPanicStrategy::panic_abort(compiler, run.target))
             } else {
-                // Note: in a dry run, we just hardcode the other target to be panic=abort,
-                // so that we still see two targets in snapshot tests.
-                vec![
-                    run.target,
-                    run.builder.ensure(SyntheticTargetWithPanicStrategy::panic_abort(
-                        compiler, run.target,
-                    )),
-                ]
-            }
+                run.builder
+                    .ensure(SyntheticTargetWithPanicStrategy::panic_unwind(compiler, run.target))
+            };
+            vec![run.target, synthetic_target]
         };
 
         for target in targets {
