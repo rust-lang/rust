@@ -2414,23 +2414,28 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             prepare_test_config(&ctx)
-                .path("tests/mir-opt")
                 .arg("--bless")
                 .targets(&[TEST_TRIPLE_1])
-                .render_steps(), @"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 0 <host> -> Compiletest 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
+                .path("tests/mir-opt")
+                .get_steps()
+                // When blessing, the step executes for a pinned set of targets, so we cannot
+                // normalize here.
+                .render_with(RenderConfig {
+                    normalize_host: false
+                }), @"
+        [build] llvm <x86_64-unknown-linux-gnu>
+        [build] rustc 0 <x86_64-unknown-linux-gnu> -> rustc 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 0 <x86_64-unknown-linux-gnu> -> Compiletest 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <target1>
         [test] compiletest-mir-opt 1 <target1>
-        [build] rustc 1 <host> -> std 1 <aarch64-unknown-linux-gnu>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <aarch64-unknown-linux-gnu>
         [test] compiletest-mir-opt 1 <aarch64-unknown-linux-gnu>
-        [build] rustc 1 <host> -> std 1 <i686-pc-windows-msvc>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <i686-pc-windows-msvc>
         [test] compiletest-mir-opt 1 <i686-pc-windows-msvc>
-        [build] rustc 1 <host> -> std 1 <x86_64-apple-darwin-synthetic-miropt-abort>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <x86_64-apple-darwin-synthetic-miropt-abort>
         [test] compiletest-mir-opt 1 <x86_64-apple-darwin-synthetic-miropt-abort>
-        [build] rustc 1 <host> -> std 1 <i686-unknown-linux-musl-synthetic-miropt-abort>
+        [build] rustc 1 <x86_64-unknown-linux-gnu> -> std 1 <i686-unknown-linux-musl-synthetic-miropt-abort>
         [test] compiletest-mir-opt 1 <i686-unknown-linux-musl-synthetic-miropt-abort>
         ");
     }
