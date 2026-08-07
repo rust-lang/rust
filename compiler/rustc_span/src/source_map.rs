@@ -174,6 +174,18 @@ struct SourceMapFiles {
     stable_id_to_source_file: UnhashMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
+impl std::fmt::Debug for SourceMapFiles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let SourceMapFiles { source_files, stable_id_to_source_file: _ } = self;
+
+        f.debug_list()
+            .entries(
+                source_files.iter().map(|f| f.name.prefer_remapped_unconditionally().to_string()),
+            )
+            .finish()
+    }
+}
+
 /// Used to construct a `SourceMap` with `SourceMap::with_inputs`.
 pub struct SourceMapInputs {
     pub file_loader: Box<dyn FileLoader + Send + Sync>,
@@ -201,6 +213,28 @@ pub struct SourceMap {
     ///
     /// If this is equal to `hash_kind` then the checksum won't be computed twice.
     checksum_hash_kind: Option<SourceFileHashAlgorithm>,
+}
+
+impl std::fmt::Debug for SourceMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let SourceMap {
+            files,
+            file_loader,
+            path_mapping,
+            working_dir,
+            hash_kind,
+            checksum_hash_kind,
+        } = self;
+
+        f.debug_struct("SourceMap")
+            .field("files", files)
+            .field("file_loader", &format_args!("<file_loader@{file_loader:p}>"))
+            .field("path_mapping", path_mapping)
+            .field("working_dir", working_dir)
+            .field("hash_kind", hash_kind)
+            .field("checksum_hash_kind", checksum_hash_kind)
+            .finish()
+    }
 }
 
 impl SourceMap {
@@ -1117,7 +1151,7 @@ pub fn get_source_map() -> Option<Arc<SourceMap>> {
     with_session_globals(|session_globals| session_globals.source_map.clone())
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FilePathMapping {
     mapping: Vec<(PathBuf, PathBuf)>,
     filename_remapping_scopes: RemapPathScopeComponents,
