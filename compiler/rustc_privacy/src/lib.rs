@@ -1361,7 +1361,7 @@ impl<'tcx> DefIdVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
 /// SearchInterfaceForPrivateItemsVisitor traverses an item's interface and
 /// finds any private components in it.
 ///
-/// PrivateItemsInPublicInterfacesVisitor ensures there are no private types
+/// PrivateItemsInPublicInterfacesChecker ensures there are no private types
 /// and traits in public interfaces.
 struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
