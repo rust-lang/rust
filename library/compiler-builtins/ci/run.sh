@@ -13,6 +13,11 @@ if [ -z "$target" ]; then
     target="$host_target"
 fi
 
+# Print machine information
+uname -a
+lscpu || true
+rustc -Vv
+
 if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
     # Install nonstandard components if we have control of the environment
     rustup target list --installed |
