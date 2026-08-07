@@ -13,7 +13,7 @@ use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt};
 use rustc_hir::lang_items::LangItem;
@@ -1764,7 +1764,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // If we didn't return early here, we would instead suggest `&&str::from("")`.
                         return false;
                     } else if let hir::ExprKind::Call(_, args) = expr.kind {
-                        if let Some(pred) = self
+                        // The `def_id` can point at a struct, which has no fn sig.
+                        if matches!(
+                            self.tcx.def_kind(*def_id),
+                            DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+                        ) && let Some(pred) = self
                                 .tcx
                                 .clauses_of(*def_id)
                                 .instantiate_identity(self.tcx)
@@ -1799,6 +1803,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             c @ ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx)
                 if let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
                     && let hir::ExprKind::MethodCall(_segment, rcvr, args, ..) = expr.kind
+                    // The `def_id` can also point at the impl, which has no fn sig.
+                    && matches!(
+                        self.tcx.def_kind(*def_id),
+                        DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+                    )
                     && let Some(pred) = self
                         .tcx
                         .clauses_of(*def_id)
