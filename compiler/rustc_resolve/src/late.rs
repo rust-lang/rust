@@ -1510,6 +1510,10 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             self.resolve_anon_const(v, AnonConstKind::FieldDefaultValue);
         }
     }
+
+    fn visit_nested_use_tree(&mut self, use_tree: &'ast UseTree, id: NodeId) {
+        with_owner(self, id, |this| visit::walk_use_tree(this, use_tree))
+    }
 }
 
 impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
@@ -5019,7 +5023,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 // Fix up partial res of segment from `resolve_path` call.
                 if let Some(id) = path[0].id {
-                    self.r.partial_res_map.insert(id, PartialRes::new(Res::PrimTy(prim)));
+                    let res = PartialRes::new(Res::PrimTy(prim));
+                    self.r.partial_res_map.insert(id, res);
+                    self.r.current_owner.partial_res_map.insert(id, res);
+                    assert_ne!(self.r.current_owner.id, DUMMY_NODE_ID);
                 }
 
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
@@ -5308,7 +5315,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             ExprKind::Call(ref callee, ref arguments) => {
                 self.resolve_expr(callee, Some(expr));
-                let const_args = self.r.legacy_const_generic_args(callee).unwrap_or_default();
+                let const_args = self
+                    .r
+                    .current_owner
+                    .legacy_const_generic_args(callee, self.r.tcx)
+                    .unwrap_or_default();
                 for (idx, argument) in arguments.iter().enumerate() {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
