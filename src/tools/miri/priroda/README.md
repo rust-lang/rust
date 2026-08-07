@@ -38,6 +38,18 @@ from `miri/priroda/`:
 cargo run -- ../tests/pass/empty_main.rs
 ```
 
+## DAP Prototype
+
+Priroda's `--dap` mode speaks a bounded Debug Adapter Protocol prototype over
+stdio. It currently supports the startup handshake, stops at the first
+user-relevant source location after `configurationDone`, reports one current
+stack frame, exposes one flat Locals scope, and maps `list_locals()` into DAP
+variables with no child expansion.
+
+The `next` and `stepIn` requests are wired to Priroda's existing source-line
+step so VS Code can drive one visible step. They are not true DAP step-over or
+step-in semantics yet.
+
 ## Test
 
 Priroda's CLI tests also need `MIRI_SYSROOT`. Run them from `miri/priroda/`:

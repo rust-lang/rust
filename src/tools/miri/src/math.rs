@@ -462,7 +462,7 @@ pub(crate) fn sqrt<F: Float>(x: F) -> F {
 pub fn sqrt_op<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
     this: &mut MiriInterpCx<'tcx>,
     f: &OpTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let f: F = this.read_scalar(f)?.to_float()?;
     // Sqrt is specified to be fully precise.
@@ -536,7 +536,7 @@ pub fn host_unary_float_op<'tcx, S: Semantics>(
     this: &mut MiriInterpCx<'tcx>,
     f: &OpTy<'tcx>,
     op: HostUnaryFloatOp,
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx>
 where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,

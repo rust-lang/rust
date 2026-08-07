@@ -372,10 +372,7 @@ pub fn report_result<'tcx>(
                 ..
             }) => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!(
-                    "This validation error should be impossible in Miri: {}",
-                    res.to_string()
-                );
+                bug!("This validation error should be impossible in Miri: {}", res.to_string());
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",
