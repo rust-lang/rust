@@ -9,6 +9,6 @@
 extern crate reexport;
 
 pub fn leaks_priv() -> reexport::Shared {
-    //~^ ERROR type `Shared` from private dependency 'shared' in public interface
+    //~^ ERROR type `Shared` from private dependency 'reexport' in public interface
     reexport::Shared
 }
