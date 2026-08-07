@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
@@ -113,68 +115,80 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         Canonical { max_universe, var_kinds, value }
     }
 
-    fn canonicalize_param_env(
-        delegate: &'a D,
-        param_env: I::ParamEnv,
-    ) -> (
-        I::ParamEnv,
-        ThinVec<I::GenericArg>,
-        Vec<CanonicalVarKind<I>>,
-        HashMap<I::GenericArg, usize>,
-    ) {
+    // The return value is the canonicalized `param_env`, plus a canonicalizer suitable for
+    // canonicalizing the rest of the input. (For efficiency, and when appropriate, the returned
+    // canonicalizer will be the same one used on `param_env`, with suitable modifications.)
+    fn canonicalize_param_env(delegate: &'a D, param_env: I::ParamEnv) -> (I::ParamEnv, Self) {
         if !param_env.has_type_flags(NEEDS_CANONICAL) {
-            return (param_env, ThinVec::new(), Vec::new(), Default::default());
+            let rest_canonicalizer = Canonicalizer::new(
+                delegate,
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
+            );
+
+            return (param_env, rest_canonicalizer);
         }
 
-        // Check whether we can use the global cache for this param_env. As we only use
-        // the `param_env` itself as the cache key, considering any additional information
-        // durnig its canonicalization would be incorrect. We always canonicalize region
-        // inference variables in a separate universe, so these are fine. However, we do
-        // track the universe of type and const inference variables so these must not be
-        // globally cached. We don't rely on any additional information when canonicalizing
-        // placeholders.
-        if !param_env.has_non_region_infer() {
-            delegate.cx().with_canonical_param_env_cache(|cache| {
-                let entry = cache.0.entry(param_env).or_insert_with(|| {
-                    let mut env_canonicalizer = Canonicalizer::new(
-                        delegate,
-                        CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
-                    );
-                    let param_env = param_env.fold_with(&mut env_canonicalizer);
-                    debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
-                    CanonicalParamEnvCacheEntry {
-                        param_env,
-                        variable_lookup_table: env_canonicalizer.variable_lookup_table,
-                        var_kinds: env_canonicalizer.var_kinds,
-                        variables: env_canonicalizer.variables,
-                    }
-                });
-
-                // The obvious thing to do here is `variables.clone()`. But this `new`+`extend`
-                // combination results in the variables having more spare capacity, which avoids
-                // some later allocations and makes things a little faster.
-                let mut variables = ThinVec::new();
-                variables.extend(entry.variables.iter().copied());
-                (
-                    entry.param_env,
-                    variables,
-                    entry.var_kinds.clone(),
-                    entry.variable_lookup_table.clone(),
-                )
-            })
-        } else {
+        // Do the `env` canonicalization, and then convert the canonicalizer to `rest` form for
+        // subsequent use.
+        let do_env_and_make_rest = || {
             let mut env_canonicalizer = Canonicalizer::new(
                 delegate,
                 CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
             );
             let param_env = param_env.fold_with(&mut env_canonicalizer);
+
+            // We do not reuse the cache as it may contain entries whose canonicalized
+            // value contains `'static`. While we could alternatively handle this by
+            // checking for `'static` when using cached entries, this does not
+            // feel worth the effort. I do not expect that a `ParamEnv` will ever
+            // contain large enough types for caching to be necessary.
             debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
-            (
-                param_env,
-                env_canonicalizer.variables,
-                env_canonicalizer.var_kinds,
-                env_canonicalizer.variable_lookup_table,
-            )
+            let rest_canonicalizer = Canonicalizer {
+                canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
+                cache: Default::default(),
+                ..env_canonicalizer
+            };
+
+            (param_env, rest_canonicalizer)
+        };
+
+        // Check whether we can use the global cache for this param_env. As we only use
+        // the `param_env` itself as the cache key, considering any additional information
+        // during its canonicalization would be incorrect. We always canonicalize region
+        // inference variables in a separate universe, so these are fine. However, we do
+        // track the universe of type and const inference variables so these must not be
+        // globally cached. We don't rely on any additional information when canonicalizing
+        // placeholders.
+        if !param_env.has_non_region_infer() {
+            delegate.cx().with_canonical_param_env_cache(|cache| match cache.0.entry(param_env) {
+                Entry::Vacant(e) => {
+                    // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, and
+                    // fill in the cache entry.
+                    let (param_env, rest_canonicalizer) = do_env_and_make_rest();
+                    e.insert(CanonicalParamEnvCacheEntry {
+                        param_env,
+                        variables: rest_canonicalizer.variables.clone(),
+                        var_kinds: rest_canonicalizer.var_kinds.clone(),
+                        variable_lookup_table: rest_canonicalizer.variable_lookup_table.clone(),
+                    });
+                    (param_env, rest_canonicalizer)
+                }
+                Entry::Occupied(e) => {
+                    // Cache hit; no canonicalization required. Just set up `rest_canonicalizer`.
+                    let e = e.get();
+                    let mut rest_canonicalizer = Canonicalizer::new(
+                        delegate,
+                        CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
+                    );
+                    rest_canonicalizer.variables.extend(e.variables.iter().copied());
+                    rest_canonicalizer.var_kinds.clone_from(&e.var_kinds);
+                    rest_canonicalizer.variable_lookup_table.clone_from(&e.variable_lookup_table);
+                    (e.param_env, rest_canonicalizer)
+                }
+            })
+        } else {
+            // Do `env` canonicalization and get `rest_canonicalizer`.
+            do_env_and_make_rest()
         }
     }
 
@@ -190,27 +204,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         delegate: &'a D,
         input: QueryInput<I, P>,
     ) -> (ThinVec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
-        // First canonicalize the `param_env` while keeping `'static`
-        let (param_env, variables, var_kinds, variable_lookup_table) =
-            Canonicalizer::canonicalize_param_env(delegate, input.goal.param_env);
-
-        // Then canonicalize the rest of the input without keeping `'static`
-        // while *mostly* reusing the canonicalizer from above.
-        //
-        // We do not reuse the cache as it may contain entries whose canonicalized
-        // value contains `'static`. While we could alternatively handle this by
-        // checking for `'static` when using cached entries, this does not
-        // feel worth the effort. I do not expect that a `ParamEnv` will ever
-        // contain large enough types for caching to be necessary.
-        let mut rest_canonicalizer = Canonicalizer {
-            variables,
-            variable_lookup_table,
-            var_kinds,
-            ..Canonicalizer::new(
-                delegate,
-                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
-            )
-        };
+        // First canonicalize the `param_env` while keeping `'static`. This produces a
+        // canonicalizer that can canonicalize the rest of the input without keeping `'static`.
+        let (param_env, mut rest_canonicalizer) =
+            Self::canonicalize_param_env(delegate, input.goal.param_env);
 
         let predicate = input.goal.predicate;
         let predicate = predicate.fold_with(&mut rest_canonicalizer);
