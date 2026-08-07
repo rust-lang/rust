@@ -1903,8 +1903,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// behavior) and should be avoided. If the memory should eventually be freed, prefer to use
     /// [`Box::into_raw`] or [`Box::into_non_null`] instead.
     ///
-    /// However, "unleaking" as per the above via [`Box::from_raw_in`] is only sound
-    /// for the global allocator.
+    /// Notably, soundly "unleaking" a box requires that the allocator is `Global`.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
@@ -2068,6 +2067,8 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
+// NB: This is not `AllocatorClone` since we don't care about allocator
+// equivalence when cloning boxes.
 impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// Returns a new box with a `clone()` of this box's contents.
     ///
