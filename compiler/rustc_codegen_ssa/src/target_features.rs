@@ -5,7 +5,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::span_bug;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
@@ -130,7 +131,7 @@ pub(crate) fn from_target_feature_attr(
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
+pub(crate) fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
@@ -567,5 +568,66 @@ pub(crate) fn provide(providers: &mut Providers) {
         },
         asm_target_features,
         ..*providers
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum TargetFeatureAvailableAtCallSite {
+    /// The feature's presence is known immediately, including `false` for error conditions.
+    Known(bool),
+    /// It's not known if the feature is available at the call site. It's safe to return `false`,
+    /// but the backend may be able to refine the answer (e.g. the LLVM post-inline pass)
+    CheckBackend(Symbol),
+}
+
+/// Implementation for the `target_feature_available_at_call_site` intrinsic.
+///
+/// This function performs the backend-independent implementation:
+/// * If the feature is enabled for the current function, we can immediately return true.
+/// * If the feature is not enabled for the current function, defer to the backend to account
+///   for inlining.
+/// * If an error occurs, emit the diagnostic and return false.
+///
+/// When deferred to the backend, it's always safe to return false, but optimization opportunities
+/// are lost.
+/// The LLVM backend, for example, emits a marker function that is replaced with true or false
+/// with a post-inlining pass.
+pub fn target_feature_available_at_call_site_intrinsic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: Span,
+    did: DefId,
+    generic_args: ty::GenericArgsRef<'tcx>,
+) -> TargetFeatureAvailableAtCallSite {
+    let Some(feature_bytes) =
+        generic_args.const_at(0).try_to_value().and_then(|feature| feature.try_to_raw_bytes(tcx))
+    else {
+        span_bug!(span, "wrong const argument for target_feature_available_at_call_site");
+    };
+
+    let feature_len =
+        feature_bytes.iter().position(|&byte| byte == 0).unwrap_or(feature_bytes.len());
+    let Some(feature_name) = std::str::from_utf8(&feature_bytes[..feature_len]).ok() else {
+        tcx.dcx().span_err(
+            span,
+            "`target_feature_available_at_call_site` requires a UTF-8 feature name",
+        );
+        return TargetFeatureAvailableAtCallSite::Known(false);
+    };
+    let feature = Symbol::intern(feature_name);
+
+    let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
+    let Some(&stability) = rust_target_features.get(feature_name) else {
+        tcx.dcx().span_err(span, format!("unknown target feature `{feature}`"));
+        return TargetFeatureAvailableAtCallSite::Known(false);
+    };
+    if let Err(reason) = stability.toggle_allowed() {
+        tcx.dcx().span_err(span, format!("cannot use target feature `{feature}`: {reason}"));
+        return TargetFeatureAvailableAtCallSite::Known(false);
+    }
+
+    if asm_target_features(tcx, did).contains(&feature) {
+        TargetFeatureAvailableAtCallSite::Known(true)
+    } else {
+        TargetFeatureAvailableAtCallSite::CheckBackend(feature)
     }
 }

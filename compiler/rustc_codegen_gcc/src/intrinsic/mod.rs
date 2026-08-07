@@ -24,7 +24,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
@@ -195,6 +195,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         &mut self,
         instance: Instance<'tcx>,
         args: &[OperandRef<'tcx, RValue<'gcc>>],
+        _: &[mir::Operand<'tcx>],
         result_layout: ty::layout::TyAndLayout<'tcx>,
         result_place: Option<PlaceValue<RValue<'gcc>>>,
         span: Span,
@@ -582,6 +583,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             self.store_to_place(value, result.val);
         }
         IntrinsicResult::WroteIntoPlace
+    }
+
+    fn codegen_target_feature_available_at_call_site(
+        &mut self,
+        _rust_feature_name: &str,
+    ) -> RValue<'gcc> {
+        // SSA already handles the easy case where the caller function has the feature enabled.
+        // GCC doesn't (yet) have the equivalent LLVM pass to replace a marker post-inlining,
+        // so report that the feature is unavailable at the call site.
+        self.const_bool(false)
     }
 
     fn codegen_llvm_intrinsic_call(

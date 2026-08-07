@@ -944,7 +944,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMFloatTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMFP128TypeInContext(C: &Context) -> &Type;
-
     // Operations on non-IEEE real types
     pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;
 
@@ -2417,6 +2416,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
     pub(crate) fn LLVMRustTargetHasMnemonic(T: &TargetMachine, s: *const c_char) -> bool;
+    pub(crate) fn LLVMRustFunctionHasTargetFeature(
+        TM: &TargetMachine,
+        F: &Value,
+        Feature: *const c_char,
+        FeatureLen: size_t,
+    ) -> bool;
 
     pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
     pub(crate) fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;

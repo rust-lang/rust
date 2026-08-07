@@ -1,0 +1,12 @@
+error: no rules expected `feature`
+  --> $DIR/target-feature-available-at-call-site-nonconst.rs:12:52
+   |
+LL |     let _ = target_feature_available_at_call_site!(feature);
+   |                                                    ^^^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$feature:literal`
+  --> $SRC_DIR/core/src/intrinsics/simd/mod.rs:LL:COL
+   = note: this macro expects a string literal target feature name, like `target_feature_available_at_call_site!("avx")`
+
+error: aborting due to 1 previous error
+

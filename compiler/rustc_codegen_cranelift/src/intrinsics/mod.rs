@@ -20,6 +20,8 @@ mod simd;
 use cranelift_codegen::ir::{
     AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag,
 };
+use rustc_codegen_ssa::target_features;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -857,6 +859,29 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let caller_location = fx.get_caller_location(source_info);
             ret.write_cvalue(fx, caller_location);
+        }
+
+        sym::target_feature_available_at_call_site => {
+            intrinsic_args!(fx, args => (); intrinsic);
+
+            let enabled = match target_features::target_feature_available_at_call_site_intrinsic(
+                fx.tcx,
+                source_info.span,
+                fx.instance.def_id(),
+                generic_args,
+            ) {
+                target_features::TargetFeatureAvailableAtCallSite::Known(enabled) => enabled,
+                // SSA already handles the easy case where the caller function has the feature enabled.
+                // Cranelift doesn't (yet) have the equivalent LLVM pass to replace a marker post-inlining,
+                // so report that the feature is unavailable at the call site.
+                target_features::TargetFeatureAvailableAtCallSite::CheckBackend(_) => false,
+            };
+
+            let ret_val = CValue::by_val(
+                fx.bcx.ins().iconst(types::I8, i64::from(enabled)),
+                fx.layout_of(fx.tcx.types.bool),
+            );
+            ret.write_cvalue(fx, ret_val);
         }
 
         _ if intrinsic.as_str().starts_with("atomic_fence") => {
