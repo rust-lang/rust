@@ -1,7 +1,7 @@
-use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::{env, str};
 
 use assert_cmd::assert::Assert;
 use assert_cmd::cargo::cargo_bin_cmd;
@@ -148,10 +148,7 @@ mod exe_stack {
 
         let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
-        if (t.is_ppc64be() && t.is_glibc())
-            || t.no_os()
-            || t.binary_obj_format() != BinaryFormat::Elf
-        {
+        if t.is_ppc64_elfv1() || t.no_os() || t.binary_obj_format() != BinaryFormat::Elf {
             // Ppc64be ELFv1 doesn't emit `.note.GNU-stack`, not relevant without an OS, and non-elf
             // targets don't use `.note.GNU-stack`.
             assert.success();
@@ -183,7 +180,7 @@ mod exe_stack {
 
         let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
-        if (t.is_ppc64be() && t.is_glibc()) || t.no_os() {
+        if t.is_ppc64_elfv1() || t.no_os() {
             // Ppc64be ELFv1 doesn't emit `.note.GNU-stack`, not relevant without an OS.
             assert.success();
             return;
@@ -352,12 +349,16 @@ impl TestTarget {
         self.triple.contains("-windows-msvc")
     }
 
-    fn is_ppc64be(&self) -> bool {
-        self.triple.starts_with("powerpc64-")
-    }
-
-    fn is_glibc(&self) -> bool {
-        self.triple.contains("-linux-gnu")
+    fn is_ppc64_elfv1(&self) -> bool {
+        let output = Command::new("rustc")
+            .arg("--target")
+            .arg(&self.triple)
+            .arg("--print=cfg")
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let stdout = str::from_utf8(&output.stdout).unwrap();
+        self.triple.starts_with("powerpc64") && stdout.contains(r#"target_abi="elfv1""#)
     }
 
     /// True if the target needs `--no-os` passed to symcheck.
