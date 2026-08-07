@@ -138,7 +138,6 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
     }
 
     fn inspect_evaluated_obligation(
-        &self,
         infcx: &InferCtxt<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         result: &Result<GoalEvaluation<TyCtxt<'tcx>>, NoSolution>,
@@ -196,22 +195,39 @@ where
     fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         loop {
             let mut any_changed = false;
-            for (mut obligation, stalled_on) in mem::take(&mut self.obligations.pending) {
-                let goal = obligation.as_goal();
-                let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+            let mut overflowed = false;
 
-                let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
-                self.inspect_evaluated_obligation(infcx, &obligation, &result);
+            self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
+                if overflowed {
+                    return false;
+                }
+
+                // Common case: still stalled; keep the obligation. This path is extremely hot in
+                // some cases; there can be thousands of pending obligations.
+                if let Some(stalled_on) = opt_stalled_on
+                    && let Some(certainty) = delegate.goal_remains_stalled(stalled_on)
+                    && matches!(certainty, Certainty::Maybe(_))
+                {
+                    return true;
+                }
+
+                let result = delegate.evaluate_root_goal(
+                    obligation.as_goal(),
+                    obligation.cause.span,
+                    opt_stalled_on.take(),
+                );
+                Self::inspect_evaluated_obligation(infcx, &obligation, &result);
                 let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(E::from_solver_error(
                             infcx,
-                            NextSolverError::TrueError(obligation),
+                            NextSolverError::TrueError(obligation.clone()),
                         ));
-                        continue;
+                        return false;
                     }
                 };
 
@@ -229,9 +245,11 @@ where
                     obligation.recursion_depth += 1;
 
                     if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
-                        self.obligations.on_fulfillment_overflow(infcx);
-                        // Only return true errors that we have accumulated while processing.
-                        return errors;
+                        // At this point we want to stop evaluating goals. We can't break out of
+                        // `retain_mut`, so instead we set this flag which causes all other
+                        // elements to be skipped.
+                        overflowed = true;
+                        return false;
                     } else {
                         any_changed = true;
                     }
@@ -253,11 +271,24 @@ where
                         if infcx.in_hir_typeck
                             && (obligation.has_non_region_infer() || obligation.has_free_regions())
                         {
-                            infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
+                            infcx.push_hir_typeck_potentially_region_dependent_goal(
+                                obligation.clone(),
+                            );
                         }
+                        false
                     }
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
+                    Certainty::Maybe(_) => {
+                        // Update `opt_stalled_on` goal, for the next retain_mut, because we are
+                        // running until a fixpoint.
+                        *opt_stalled_on = stalled_on;
+                        true
+                    }
                 }
+            });
+            if overflowed {
+                self.obligations.on_fulfillment_overflow(infcx);
+                // Only return true errors that we have accumulated while processing.
+                return errors;
             }
 
             if !any_changed {

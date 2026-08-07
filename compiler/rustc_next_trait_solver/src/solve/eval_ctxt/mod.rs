@@ -179,6 +179,11 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
+    /// Checks whether a stalled goal would remain stalled if re-evaluated, without consuming
+    /// `stalled_on`.
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>)
+    -> Option<Certainty>;
+
     /// Checks whether evaluating `goal` may hold while treating not-yet-defined
     /// opaque types as being kind of rigid.
     ///
@@ -257,6 +262,16 @@ where
             Err(NoSolutionOrRerunNonErased::RerunNonErased(_)) => {
                 unreachable!("this never happens at the root, we're never in erased mode here");
             }
+        }
+    }
+
+    fn goal_remains_stalled(
+        &self,
+        stalled_on: &GoalStalledOn<Self::Interner>,
+    ) -> Option<Certainty> {
+        match rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
+            RerunStalled::WontMakeProgress(certainty) => Some(certainty),
+            RerunStalled::MayMakeProgress => None,
         }
     }
 
