@@ -7,7 +7,7 @@ members = [
     "crates/libm-macros",
     "crates/musl-math-sys",
     "crates/panic-handler",
-    "crates/symbol-check",
+    "crates/symcheck",
     "crates/update-api-list",
     "crates/util",
     "libm",

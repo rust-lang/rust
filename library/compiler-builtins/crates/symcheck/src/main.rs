@@ -29,8 +29,8 @@ const GNU_STACK: &str = ".note.GNU-stack";
 
 const USAGE: &str = "Usage:
 
-    symbol-check --build-and-check [--target TARGET] [--no-os] -- CARGO_BUILD_ARGS ...
-    symbol-check --check [--target TARGET] PATHS ...\
+    symcheck --build-and-check [--target TARGET] [--no-os] -- CARGO_BUILD_ARGS ...
+    symcheck --check [--target TARGET] PATHS ...\
 ";
 
 fn main() {
@@ -87,7 +87,7 @@ fn main() {
     for arg in &free_args {
         assert!(
             !arg.contains("--target"),
-            "target must be passed to symbol-check"
+            "target must be passed to symcheck"
         );
     }
 
