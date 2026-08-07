@@ -1161,9 +1161,13 @@ impl Builder<'_> {
         //
         // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
         // `try_to_translate_virtual_to_real`.
-        //
-        // `RUSTC_DEBUGINFO_MAP` is used to pass through to the underlying rustc
-        // `--remap-path-prefix`.
+        let trim_paths = |cargo: &mut BootstrapCommand, ws_remap: &str| {
+            cargo.arg("-Ztrim-paths");
+            cargo.arg("--config").arg("profile.release.trim-paths='all'");
+            cargo.arg("--config").arg("profile.dev.trim-paths='all'");
+            cargo.env("__CARGO_RUSTC_BOOTSTRAP_WS_REMAP", ws_remap);
+        };
+
         match mode {
             Mode::Rustc | Mode::Codegen => {
                 if let Some(ref map_to) =
@@ -1179,24 +1183,7 @@ impl Builder<'_> {
                     // Tell the compiler which prefix was used for remapping the compiler it-self
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
 
-                    // When building compiler sources, we want to apply the compiler remap scheme.
-                    let map = [
-                        // Cargo use relative paths for workspace members, so let's remap those.
-                        format!("compiler/={map_to}/compiler"),
-                        // rustc creates absolute paths (in part bc of the `rust-src` unremap
-                        // and for working directory) so let's remap the build directory as well.
-                        format!("{}={map_to}", self.build.src.display()),
-                        // remap OUT_DIR so they don't leak into artifacts.
-                        format!("{}={map_to}/out", self.build.out.display()),
-                        // on windows, rustc may use forward slashes internally
-                        #[cfg(windows)]
-                        format!(
-                            "{}={map_to}\\out",
-                            self.build.out.display().to_string().replace('/', "\\")
-                        ),
-                    ]
-                    .join("\t");
-                    cargo.env("RUSTC_DEBUGINFO_MAP", map);
+                    trim_paths(&mut cargo, map_to);
                 }
             }
             Mode::Std
@@ -1207,44 +1194,9 @@ impl Builder<'_> {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
-                    // When building the standard library sources, we want to apply the std remap scheme.
-                    let map = [
-                        // Cargo use relative paths for workspace members, so let's remap those.
-                        format!("library/={map_to}/library"),
-                        // rustc creates absolute paths (in part bc of the `rust-src` unremap
-                        // and for working directory) so let's remap the build directory as well.
-                        format!("{}={map_to}", self.build.src.display()),
-                        // remap OUT_DIR so they don't leak into artifacts.
-                        format!("{}={map_to}/out", self.build.out.display()),
-                        // on windows, rustc may use forward slashes internally
-                        #[cfg(windows)]
-                        format!(
-                            "{}={map_to}\\out",
-                            self.build.out.display().to_string().replace('/', "\\")
-                        ),
-                    ]
-                    .join("\t");
-                    cargo.env("RUSTC_DEBUGINFO_MAP", map);
+                    trim_paths(&mut cargo, map_to);
                 }
             }
-        }
-
-        if self.config.rust_remap_debuginfo {
-            let mut env_var = OsString::new();
-            if let Some(vendor) = self.build.vendored_crates_path() {
-                env_var.push(vendor);
-                env_var.push("=/rust/deps");
-            } else {
-                let registry_src = t!(home::cargo_home()).join("registry").join("src");
-                for entry in t!(std::fs::read_dir(registry_src)) {
-                    if !env_var.is_empty() {
-                        env_var.push("\t");
-                    }
-                    env_var.push(t!(entry).path());
-                    env_var.push("=/rust/deps");
-                }
-            }
-            cargo.env("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP", env_var);
         }
 
         // Enable usage of unstable features
