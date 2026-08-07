@@ -391,9 +391,9 @@ fn packed_stack_attr<'ll>(
         return None;
     }
 
-    // The backchain and softfloat flags can be set via -Ctarget-features=...
+    // The backchain and softfloat flags can be set via -Ctarget-feature=...
     // or via #[target_features(enable = ...)] so we have to check both possibilities
-    let have_backchain = sess.unstable_target_features.contains(&sym::backchain)
+    let have_backchain = sess.target_features.contains(&sym::backchain)
         || function_attributes.iter().any(|feature| feature.name == sym::backchain);
     let have_softfloat = sess.unstable_target_features.contains(&sym::soft_float)
         || function_attributes.iter().any(|feature| feature.name == sym::soft_float);
