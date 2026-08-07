@@ -4,7 +4,7 @@ use super::common::*;
 use crate::io;
 use crate::num::NonZero;
 use crate::process::StdioPipes;
-use crate::sys::pal::unsupported::*;
+use crate::sys::pal::{unsupported, unsupported_err};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

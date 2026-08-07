@@ -29,19 +29,20 @@ use libc::{
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
+    target_os = "l4re",
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "l4re",
-    target_os = "hurd"
-))]
+#[cfg(target_os = "l4re")]
+use libc::{
+    dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64, lstat as lstat64,
+    off_t as off64_t, open as open64, stat as stat64,
+};
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 use crate::ffi::{CStr, OsStr, OsString};
@@ -272,6 +273,7 @@ cfg_select! {
         target_os = "nto",
         target_os = "qnx",
         target_os = "vxworks",
+        target_os = "l4re",
     ) => {
         pub use crate::sys::fs::common::Dir;
     }
@@ -560,7 +562,8 @@ impl FileAttr {
     target_os = "nto",
     target_os = "qnx",
     target_os = "aix",
-    target_os = "wasi"
+    target_os = "wasi",
+    target_os = "l4re"
 )))]
 impl FileAttr {
     #[cfg(not(any(
@@ -686,7 +689,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi"))]
+#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi", target_os = "l4re"))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec.into())
@@ -1066,6 +1069,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "qnx",
         target_os = "vita",
+        target_os = "l4re",
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.metadata().map(|m| m.file_type())
@@ -1080,6 +1084,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "qnx",
         target_os = "vita",
+        target_os = "l4re",
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
@@ -1289,6 +1294,7 @@ impl File {
             target_os = "nto",
             target_os = "qnx",
             target_os = "hurd",
+            target_os = "l4re",
         ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fdatasync(fd)
@@ -1304,6 +1310,7 @@ impl File {
             target_os = "nto",
             target_os = "qnx",
             target_os = "hurd",
+            target_os = "l4re",
             target_vendor = "apple",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
@@ -1550,7 +1557,7 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_select! {
-            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
+            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "l4re") => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
@@ -1940,6 +1947,7 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             // Other misc platforms
             target_os = "horizon",
             target_os = "vita",
+            target_os = "l4re",
             target_env = "nto70",
         ) => {
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
@@ -2308,6 +2316,7 @@ pub use remove_dir_impl::remove_dir_all;
     target_os = "nto",
     target_os = "qnx",
     target_os = "vxworks",
+    target_os = "l4re",
     miri
 ))]
 mod remove_dir_impl {
@@ -2323,6 +2332,7 @@ mod remove_dir_impl {
     target_os = "nto",
     target_os = "qnx",
     target_os = "vxworks",
+    target_os = "l4re",
     miri
 )))]
 mod remove_dir_impl {

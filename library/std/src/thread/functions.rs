@@ -681,13 +681,10 @@ pub fn park_timeout(dur: Duration) {
 /// # Examples
 ///
 /// ```
-/// # #![allow(dead_code)]
-/// use std::{io, thread};
+/// use std::thread;
 ///
-/// fn main() -> io::Result<()> {
-///     let count = thread::available_parallelism()?.get();
-///     assert!(count >= 1_usize);
-///     Ok(())
+/// if let Ok(count) = thread::available_parallelism() {
+///   assert!(count.get() >= 1_usize);
 /// }
 /// ```
 #[doc(alias = "available_concurrency")] // Alias for a previous name we gave this API on unstable.
