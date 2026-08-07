@@ -669,7 +669,6 @@ dependencies = [
  "clippy_utils",
  "color-print",
  "declare_clippy_lint",
- "filetime",
  "itertools",
  "pulldown-cmark",
  "regex",
@@ -677,8 +676,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "termize",
- "toml 0.9.8",
+ "toml 1.1.0+spec-1.1.0",
  "ui_test",
  "walkdir",
 ]
@@ -687,10 +685,10 @@ dependencies = [
 name = "clippy_config"
 version = "0.1.99"
 dependencies = [
+ "arrayvec",
  "clippy_utils",
  "itertools",
- "serde",
- "toml 0.7.8",
+ "toml 1.1.0+spec-1.1.0",
  "walkdir",
 ]
 
@@ -717,15 +715,15 @@ dependencies = [
  "clippy_utils",
  "declare_clippy_lint",
  "itertools",
+ "memchr",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
  "serde",
- "toml 0.9.8",
+ "toml 1.1.0+spec-1.1.0",
  "unicode-normalization",
  "unicode-script",
  "url",
- "walkdir",
 ]
 
 [[package]]
@@ -736,7 +734,6 @@ dependencies = [
  "clippy_utils",
  "itertools",
  "regex",
- "rustc-semver",
 ]
 
 [[package]]
@@ -746,7 +743,6 @@ dependencies = [
  "arrayvec",
  "itertools",
  "rustc_apfloat",
- "serde",
 ]
 
 [[package]]
@@ -3571,12 +3567,6 @@ dependencies = [
  "tikv-jemalloc-sys",
  "wasi 0.14.2+wasi-0.2.4",
 ]
-
-[[package]]
-name = "rustc-semver"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5be1bdc7edf596692617627bbfeaba522131b18e06ca4df2b6b689e3c5d5ce84"
 
 [[package]]
 name = "rustc-stable-hash"
