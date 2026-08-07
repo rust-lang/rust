@@ -459,6 +459,29 @@ fn main() {
 }
 
 #[test]
+fn region_infer_var_does_not_escape_impl_lookup() {
+    check_pass(
+        r#"
+//- minicore: fn, sized
+
+trait Bound<T> {}
+trait Trait { fn f(self); }
+
+struct S;
+
+impl<'a> Bound<&'a ()> for S {}
+impl<'a, T: Bound<&'a ()>> Trait for T {
+    fn f(self) { make::<'a>(); }
+}
+
+fn make<'a>() -> impl Fn(&'a ()) { |_| {} }
+
+fn main() { S.f(); }
+"#,
+    );
+}
+
+#[test]
 fn index_of_slice_should_preserve_len() {
     check_pass(
         r#"

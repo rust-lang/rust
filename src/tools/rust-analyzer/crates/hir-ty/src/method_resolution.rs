@@ -31,7 +31,7 @@ use hir_def::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    TypeVisitableExt, VisitorResult,
+    TypeFoldable, TypeVisitableExt, VisitorResult,
     fast_reject::{TreatParams, simplify_type},
     inherent::{BoundExistentialPredicates, IntoKind},
     try_visit,
@@ -49,6 +49,7 @@ use crate::{
         SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode, Unnormalized,
         infer::{
             BoundRegionConversionTime, DbInternerInferExt, InferCtxt, InferOk,
+            resolve::ReplaceInferWithError,
             select::ImplSource,
             traits::{Obligation, ObligationCause, PredicateObligations},
         },
@@ -510,8 +511,15 @@ pub(crate) fn find_matching_impl<'db>(
         return None;
     }
 
+    // Selection may leave region inference variables unresolved; replace them before they escape
+    // this inference context.
+    //
+    // FIXME: decide whether inferred regions should be replaced with error or erased.
     match impl_source {
-        ImplSource::UserDefined(impl_source) => Some((impl_source.impl_def_id, impl_source.args)),
+        ImplSource::UserDefined(impl_source) => Some((
+            impl_source.impl_def_id,
+            impl_source.args.fold_with(&mut ReplaceInferWithError::new(infcx.interner)),
+        )),
         ImplSource::Param(_) | ImplSource::Builtin(..) => None,
     }
 }
