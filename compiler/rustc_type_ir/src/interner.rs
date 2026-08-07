@@ -19,7 +19,7 @@ use crate::solve::{
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, BoundRegion, BoundVar, CanonicalParamEnvCacheEntry, DebruijnIndex, Region,
-    RegionKind, TraitRef, search_graph,
+    RegionKind, RegionVid, TraitRef, search_graph,
 };
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
@@ -184,8 +184,8 @@ pub trait Interner:
     type ScalarInt: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
-    type EarlyParamRegion: ParamLike;
-    type LateParamRegion: Copy + Debug + Hash + Eq;
+    type EarlyParamRegion: RegionName<Self> + ParamLike;
+    type LateParamRegion: RegionName<Self> + DefIdGetter<Self>;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
 
@@ -441,6 +441,7 @@ pub trait Interner:
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
+    fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> Self::ErrorGuaranteed;
 
     fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool;
     fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool;
@@ -479,6 +480,8 @@ pub trait Interner:
     fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<Self>>;
 
     fn get_re_static_lifetime(self) -> Region<Self>;
+
+    fn intern_re_var(self, rv: RegionVid) -> Region<Self>;
 
     fn intern_region(self, region_kind: RegionKind<Self>) -> Region<Self>;
 

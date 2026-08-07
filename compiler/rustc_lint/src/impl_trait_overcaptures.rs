@@ -16,7 +16,7 @@ use rustc_middle::ty::relate::{
     structurally_relate_tys,
 };
 use rustc_middle::ty::{
-    self, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
@@ -320,8 +320,10 @@ where
                         ),
                         ParamKind::Free(def_id) => ty::Region::new_late_param(
                             self.tcx,
-                            self.parent_def_id.to_def_id(),
-                            ty::LateParamRegionKind::Named(def_id),
+                            ty::LateParamRegion {
+                                scope: self.parent_def_id.to_def_id(),
+                                kind: ty::LateParamRegionKind::Named(def_id),
+                            },
                         ),
                         // Totally ignore late bound args from binders.
                         ParamKind::Late => return true,
