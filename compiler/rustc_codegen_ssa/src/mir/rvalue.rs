@@ -101,26 +101,115 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         true
     }
 
-    /// Applies pointer-authentication-aware semantic transmute, that is ensuring that when a
-    /// function pointer is transmuted between two types that map to different type
-    /// discriminators, the resulting pointer is re-signed appropriately.
+    /// Lowers a transmute of an SSA operand while preserving pointer authentication semantics. It
+    /// ensuring that when a function pointer is transmuted between two types that map to
+    /// different discriminators, the resulting pointer is re-signed.
     ///
-    /// Only SSA `OperandValue::Immediate` values are eligible for this path.
+    /// A normal operand transmute treats the aggregate as an opaque value, which loses the Rust
+    /// type information needed to identify embedded function pointers. Such cases are instead
+    /// lowered through the recursive place-based path.
     fn ptrauth_codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
     ) -> OperandValue<Bx::Value> {
+        if self.ptrauth_transmute_operand_needs_place_path(operand.layout, cast) {
+            return self.ptrauth_transmute_operand_via_place(bx, operand, cast);
+        }
+
         let val = self.codegen_transmute_operand(bx, operand, cast);
 
         let OperandValue::Immediate(ptr) = val else {
             return val;
         };
 
-        let info = TransmuteInfo { src_ty: operand.layout.ty, dst_ty: cast.ty };
+        let src_semantic = self.ptrauth_canonicalize_fn_ptr_layout(operand.layout);
+        let dst_semantic = self.ptrauth_canonicalize_fn_ptr_layout(cast);
 
-        OperandValue::Immediate(self.resign_transmuted_fn_ptr(bx, ptr, info))
+        let info = TransmuteInfo {
+            src_ty: src_semantic.map_or(operand.layout.ty, |(ty, _)| ty),
+            dst_ty: dst_semantic.map_or(cast.ty, |(ty, _)| ty),
+        };
+
+        let nullable = src_semantic.is_some_and(|(_, n)| n) || dst_semantic.is_some_and(|(_, n)| n);
+
+        let ptr = if nullable {
+            self.ptrauth_resign_transmuted_nullable_fn_ptr(bx, ptr, info)
+        } else {
+            self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info)
+        };
+
+        OperandValue::Immediate(ptr)
+    }
+
+    /// Returns whether a transmute must be lowered through the recursive place-based
+    /// implementation (`ptrauth_transmute_operand_via_place`).
+    ///
+    /// Direct operand lowering is sufficient when the entire value is itself a function pointer.
+    /// Aggregates containing function pointers must be traversed field-by-field because treating
+    /// them as an opaque SSA value loses the embedded function pointer type information.
+    fn ptrauth_transmute_operand_needs_place_path(
+        &self,
+        src: TyAndLayout<'tcx>,
+        dst: TyAndLayout<'tcx>,
+    ) -> bool {
+        let src_has_fn_ptr = self.ptrauth_transmute_contains_fn_ptr(src);
+        let dst_has_fn_ptr = self.ptrauth_transmute_contains_fn_ptr(dst);
+
+        // Only spill when the aggregate transformation can hide a discriminator change.
+        (src_has_fn_ptr || dst_has_fn_ptr)
+            && self.ptrauth_canonicalize_fn_ptr_layout(src).is_none()
+            && self.ptrauth_canonicalize_fn_ptr_layout(dst).is_none()
+    }
+
+    /// Lowers an operand transmute through temporary stack storage.
+    ///
+    /// This path is used for aggregate transmutes containing function pointers. Spilling both
+    /// operands to memory allows the transmute to recurse over the Rust type structure, applying
+    /// resign to individual function pointer fields before reconstructing the destination value.
+    fn ptrauth_transmute_operand_via_place(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst_layout: TyAndLayout<'tcx>,
+    ) -> OperandValue<Bx::Value> {
+        let src_place = PlaceRef::alloca(bx, src.layout);
+        src.store_with_annotation(bx, src_place);
+
+        let dst_place = PlaceRef::alloca(bx, dst_layout);
+
+        self.ptrauth_codegen_transmute_place(
+            bx,
+            OperandRef {
+                val: OperandValue::Ref(src_place.val),
+                layout: src.layout,
+                move_annotation: None,
+            },
+            dst_place,
+        );
+
+        bx.load_operand(dst_place.val.with_type(dst_layout)).val
+    }
+
+    /// Returns whether `layout` contains a function pointer.
+    ///
+    /// This differs from `ptrauth_canonicalize_fn_ptr_layout`, which only recognizes values that
+    /// are themselves function pointers (after peeling wrappers).
+    /// Aggregates must be recursively inspected so embedded function pointers are not lost.
+    fn ptrauth_transmute_contains_fn_ptr(&self, layout: TyAndLayout<'tcx>) -> bool {
+        if self.ptrauth_canonicalize_fn_ptr_layout(layout).is_some() {
+            return true;
+        }
+
+        match layout.ty.kind() {
+            ty::Tuple(_) | ty::Adt(..) => (0..layout.fields.count())
+                .any(|i| self.ptrauth_transmute_contains_fn_ptr(layout.field(self.cx, i))),
+
+            ty::Array(..) => self.ptrauth_transmute_contains_fn_ptr(layout.field(self.cx, 0)),
+
+            _ => false,
+        }
     }
 
     /// Applies pointer-authentication type discriminator correction for a function pointer value
@@ -136,7 +225,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///   ... = mem::transmute::<*const u8, unsafe extern "C" fn()>(CPTR);
     /// ```
     /// where the source has no type discriminator.
-    fn resign_transmuted_fn_ptr(
+    ///
+    /// `TransmuteInfo` carries the source and destination types used to compute type
+    /// discriminators. These may differ from the original operand layouts after transparent
+    /// wrapper or nullable normalization.
+    fn ptrauth_resign_transmuted_fn_ptr(
         &mut self,
         bx: &mut Bx,
         val: Bx::Value,
@@ -154,26 +247,79 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return val;
         }
 
-        debug!("resign_transmuted_fn_ptr\t{:#x} -> {:#x}", src_disc, dst_disc);
-
         let key = self.cx.tcx().sess.pointer_authentication_fn_ptr_key().unwrap() as u32;
         bx.ptrauth_resign(val, key, src_disc.into(), key, dst_disc.into())
     }
 
-    /// Walks through `#[repr(transparent)]` wrappers to find an underlying
-    /// function pointer or function definition.
+    /// Resigns a nullable function pointer.
     ///
-    /// Returns the corresponding layout if one is found, otherwise `None`.
-    fn transparent_fn_ptr_layout(
+    /// `llvm.ptrauth.resign` performs an authenticate-and-resign operation on an already signed
+    /// pointer. A null function pointer carries no authentication signature, so it must bypass the
+    /// intrinsic and remain null.
+    fn ptrauth_resign_transmuted_nullable_fn_ptr(
+        &mut self,
+        bx: &mut Bx,
+        ptr: Bx::Value,
+        info: TransmuteInfo<'tcx>,
+    ) -> Bx::Value {
+        let ptrtoint = bx.ptrtoint(ptr, bx.type_isize());
+
+        // Fast path for compile time known null value.
+        if bx.const_to_opt_u128(ptrtoint, false) == Some(0) {
+            return bx.const_null(bx.type_ptr());
+        }
+
+        let pointer_align = bx.tcx().data_layout.pointer_align().abi;
+        let pointer_size = bx.tcx().data_layout.pointer_size();
+        let result = bx.alloca(pointer_size, pointer_align);
+
+        let null_bb = bx.append_sibling_block("ptrauth.null");
+        let resign_bb = bx.append_sibling_block("ptrauth.resign");
+        let end_bb = bx.append_sibling_block("ptrauth.end");
+
+        let is_null = bx.icmp(IntPredicate::IntEQ, ptrtoint, bx.const_usize(0));
+        bx.cond_br(is_null, null_bb, resign_bb);
+
+        bx.switch_to_block(null_bb);
+        bx.store(bx.const_null(bx.type_ptr()), result, pointer_align);
+        bx.br(end_bb);
+
+        bx.switch_to_block(resign_bb);
+        let resigned = self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info);
+        bx.store(resigned, result, pointer_align);
+        bx.br(end_bb);
+
+        bx.switch_to_block(end_bb);
+        bx.load(bx.type_ptr(), result, pointer_align)
+    }
+
+    /// Returns the underlying function pointer type represented by `layout`.
+    ///
+    /// Transparent wrappers and `Option<T>` are peeled until either a function pointer is reached
+    /// or a non-wrapper type is encountered.
+    ///
+    /// The returned boolean indicates whether an `Option<T>` wrapper was seen, meaning the
+    /// function pointer uses a nullable representation.
+    fn ptrauth_canonicalize_fn_ptr_layout(
         &self,
         mut layout: TyAndLayout<'tcx>,
-    ) -> Option<TyAndLayout<'tcx>> {
+    ) -> Option<(Ty<'tcx>, bool)> {
+        let mut nullable = false;
         loop {
             match layout.ty.kind() {
-                ty::FnPtr(..) | ty::FnDef(..) => return Some(layout),
+                ty::FnPtr(..) | ty::FnDef(..) => {
+                    return Some((layout.ty, nullable));
+                }
 
                 ty::Adt(def, _) if def.repr().transparent() => {
                     layout = layout.field(self.cx, 0);
+                }
+
+                ty::Adt(def, args)
+                    if self.cx.tcx().lang_items().option_type() == Some(def.did()) =>
+                {
+                    nullable = true;
+                    layout = self.cx.layout_of(args.type_at(0));
                 }
 
                 _ => return None,
@@ -181,44 +327,218 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    /// Applies pointer-authentication resign for a function pointer encountered during recursive
+    /// transmute lowering and stores the resigned value into the destination place.
+    ///
+    /// The source operand may already reside in memory due to recursive aggregate traversal.
+    fn ptrauth_resign_fn_ptr(
+        this: &mut FunctionCx<'a, 'tcx, Bx>,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+        src_ty: Ty<'tcx>,
+        dst_ty: Ty<'tcx>,
+        nullable: bool,
+    ) {
+        let val = match src.val {
+            OperandValue::Immediate(v) => v,
+
+            OperandValue::Ref(place) => bx.load_operand(place.with_type(src.layout)).immediate(),
+
+            _ => {
+                bug!(
+                    "unexpected operand representation for function pointer transmute: {:?}",
+                    src.val
+                );
+            }
+        };
+
+        let info = TransmuteInfo { src_ty, dst_ty };
+
+        let val = if nullable {
+            this.ptrauth_resign_transmuted_nullable_fn_ptr(bx, val, info)
+        } else {
+            this.ptrauth_resign_transmuted_fn_ptr(bx, val, info)
+        };
+
+        OperandRef { val: OperandValue::Immediate(val), layout: dst.layout, move_annotation: None }
+            .store_with_annotation(bx, dst);
+    }
+
     /// Applies pointer-authentication type discriminator change during a transmute into a
     /// memory-backed place.
     ///
-    /// Unlike the operand version, this path handles values stored in memory
-    /// and therefore must unwrap #[repr(transparent)] wrapper types so that pointer
-    /// authentication is based on the underlying function pointer type.
-    ///
-    /// Only immediate values are subject to ptrauth adjustment; other
-    /// representations are passed through unchanged.
+    /// Aggregate transmutes are recursively traversed because ordinary memcpy lowering would erase
+    /// the semantic function pointer types needed to compute discriminator changes.
     fn ptrauth_codegen_transmute_place(
         &mut self,
         bx: &mut Bx,
         src: OperandRef<'tcx, Bx::Value>,
         dst: PlaceRef<'tcx, Bx::Value>,
     ) {
-        debug!(
-            "ptrauth_codegen_transmute_place\tsrc={:?}, dst={:?}",
-            src.layout.ty.kind(),
-            dst.layout.ty.kind()
+        self.ptrauth_transmute_place_recursive(bx, src, dst);
+    }
+
+    /// Recursively lowers a transmute while applying ptrauth discriminator corrections to
+    /// function pointer values.
+    ///
+    /// The recursion follows the Rust type structure rather than the LLVM value representation.
+    /// This is necessary because two aggregates can have identical layouts while containing
+    /// function pointers with different type discriminators.
+    ///
+    /// Function pointer leaves are resigned directly. Structs, tuples and arrays recurse into
+    /// their elements, while all other types are lowered as ordinary memory copies.
+    fn ptrauth_transmute_place_recursive(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        if let (Some((src_fn, src_nullable)), Some((dst_fn, dst_nullable))) = (
+            self.ptrauth_canonicalize_fn_ptr_layout(src.layout),
+            self.ptrauth_canonicalize_fn_ptr_layout(dst.layout),
+        ) {
+            Self::ptrauth_resign_fn_ptr(
+                self,
+                bx,
+                src,
+                dst,
+                src_fn,
+                dst_fn,
+                src_nullable || dst_nullable,
+            );
+            return;
+        }
+
+        match (src.layout.ty.kind(), dst.layout.ty.kind()) {
+            // Structs and tuples have field projections.
+            (ty::Adt(..), ty::Adt(..)) | (ty::Tuple(_), ty::Tuple(_)) => {
+                if self.ptrauth_transmute_contains_fn_ptr(src.layout)
+                    || self.ptrauth_transmute_contains_fn_ptr(dst.layout)
+                {
+                    self.ptrauth_transmute_aggregate_fields(bx, src, dst);
+                } else {
+                    src.store_with_annotation(bx, dst.val.with_type(src.layout));
+                }
+            }
+
+            // Arrays require index projection.
+            (ty::Array(..), ty::Array(..)) => {
+                self.ptrauth_transmute_array_elements(bx, src, dst);
+            }
+
+            // Everything else is just a normal transmute copy.
+            _ => {
+                src.store_with_annotation(bx, dst.val.with_type(src.layout));
+            }
+        }
+    }
+
+    /// Materializes an operand into stack storage.
+    fn ptrauth_spill_operand_to_place(
+        &mut self,
+        bx: &mut Bx,
+        operand: OperandRef<'tcx, Bx::Value>,
+    ) -> PlaceRef<'tcx, Bx::Value> {
+        match operand.val {
+            OperandValue::Ref(place) => place.with_type(operand.layout),
+
+            val @ (OperandValue::Immediate(_) | OperandValue::Pair(_, _)) => {
+                let tmp = bx.alloca(operand.layout.size, *operand.layout.align);
+                let tmp = PlaceRef::new_sized(tmp, operand.layout);
+
+                OperandRef { val, layout: operand.layout, move_annotation: None }
+                    .store_with_annotation(bx, tmp);
+
+                tmp
+            }
+
+            OperandValue::ZeroSized => {
+                bug!("cannot spill zero-sized operand")
+            }
+        }
+    }
+
+    /// Recursively transmute corresponding fields of two aggregate values.
+    ///
+    /// This helper assumes that the source and destination aggregate layouts are structurally
+    /// compatible. MIR validation already guarantees that the overall transmute is
+    /// size-preserving, and this routine is only reached for matching aggregate categories.
+    fn ptrauth_transmute_aggregate_fields(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        if src.layout.is_zst() {
+            src.store_with_annotation(bx, dst.val.with_type(src.layout));
+            return;
+        }
+
+        let src_place = self.ptrauth_spill_operand_to_place(bx, src);
+
+        let src_fields = src.layout.fields.count();
+        let dst_fields = dst.layout.fields.count();
+
+        assert_eq!(
+            src_fields, dst_fields,
+            "aggregate transmute field count mismatch: {:?} -> {:?}",
+            src.layout.ty, dst.layout.ty,
         );
 
-        let info = TransmuteInfo {
-            src_ty: self.transparent_fn_ptr_layout(src.layout).map_or(src.layout.ty, |l| l.ty),
-            dst_ty: self.transparent_fn_ptr_layout(dst.layout).map_or(dst.layout.ty, |l| l.ty),
-        };
+        for index in 0..src_fields {
+            let src_field_layout = src.layout.field(self.cx, index);
 
-        let dest = dst.val.with_type(src.layout);
+            let src_field = src_place.project_field(bx, index);
+            let dst_field = dst.project_field(bx, index);
 
-        let val = match src.val {
-            OperandValue::Immediate(v) => {
-                let v = self.resign_transmuted_fn_ptr(bx, v, info);
-                OperandValue::Immediate(v)
-            }
-            other => other,
-        };
+            let src_operand = OperandRef {
+                val: OperandValue::Ref(src_field.val),
+                layout: src_field_layout,
+                move_annotation: None,
+            };
 
-        OperandRef { val, layout: src.layout, move_annotation: None }
-            .store_with_annotation(bx, dest);
+            self.ptrauth_transmute_place_recursive(bx, src_operand, dst_field);
+        }
+    }
+
+    /// Recursively transmute each element of an array.
+    ///
+    /// Arrays are traversed element-by-element so that nested function pointers are individually
+    /// resigned when required.
+    fn ptrauth_transmute_array_elements(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        let src_place = self.ptrauth_spill_operand_to_place(bx, src);
+
+        let src_fields = src.layout.fields.count();
+        let dst_fields = dst.layout.fields.count();
+
+        assert_eq!(
+            src_fields, dst_fields,
+            "array transmute length mismatch: {:?} -> {:?}",
+            src.layout.ty, dst.layout.ty,
+        );
+
+        for index in 0..src_fields {
+            let src_field_layout = src.layout.field(self.cx, index);
+
+            let idx = bx.cx().const_usize(index as u64);
+
+            let src_elem = src_place.project_index(bx, idx);
+            let dst_elem = dst.project_index(bx, idx);
+
+            let src_operand = OperandRef {
+                val: OperandValue::Ref(src_elem.val),
+                layout: src_field_layout,
+                move_annotation: None,
+            };
+
+            self.ptrauth_transmute_place_recursive(bx, src_operand, dst_elem);
+        }
     }
 
     fn is_entirely_uninit_const(&self, operand: &mir::Operand<'tcx>) -> bool {
