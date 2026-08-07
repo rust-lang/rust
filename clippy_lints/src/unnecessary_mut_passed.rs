@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, intravisit};
+use rustc_hir_pretty::PpAnn;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
@@ -53,7 +54,13 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                         cx,
                         &mut arguments.iter(),
                         cx.typeck_results().expr_ty(fn_expr),
-                        &|| rustc_hir_pretty::qpath_to_string(&cx.tcx, path),
+                        #[allow(trivial_casts)]
+                        &|| {
+                            rustc_hir_pretty::qpath_to_string(
+                                &(&cx.tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn,
+                                path,
+                            )
+                        },
                         "function",
                     );
                 }

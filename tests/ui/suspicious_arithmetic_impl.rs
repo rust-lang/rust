@@ -1,5 +1,5 @@
 #![warn(clippy::suspicious_arithmetic_impl)]
-#![expect(clippy::legacy_numeric_constants)]
+#![expect(deprecated, clippy::legacy_numeric_constants)]
 use std::ops::{
     Add, AddAssign, BitAnd, BitOr, BitOrAssign, BitXor, Div, DivAssign, Mul, MulAssign, Rem, Shl, Shr, Sub,
 };
