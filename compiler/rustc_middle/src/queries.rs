@@ -2359,6 +2359,13 @@ rustc_queries! {
         desc { "checking whether crate `{}` is a private dependency", c }
         separate_provide_extern
     }
+    /// Returns whether or not the crate with CrateNum 'cnum'
+    /// is marked as a direct public dependency
+    query is_extern_private_dep(c: CrateNum) -> bool {
+        eval_always
+        desc { "checking whether crate `{}` is a direct public dependency", c }
+        separate_provide_extern
+    }
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "getting the allocator kind for the current crate" }
