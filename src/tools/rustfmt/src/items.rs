@@ -814,7 +814,7 @@ pub(crate) fn format_impl(
     let open_pos = snippet.find_uncommented("{").unknown_error()? + 1;
     if !contains_comment(&snippet[open_pos..])
         && items.is_empty()
-        && generics.where_clause.predicates.len() == 1
+        && generics.where_clause.predicates().len() == 1
         && !result.contains('\n')
     {
         option.suppress_comma();
@@ -838,7 +838,7 @@ pub(crate) fn format_impl(
 
     // If there is no where-clause, we may have missing comments between the trait name and
     // the opening brace.
-    if generics.where_clause.predicates.is_empty() {
+    if generics.where_clause.predicates().is_empty() {
         if let Some(hi) = where_span_end {
             match recover_missing_comment_in_span(
                 mk_sp(self_ty.span.hi(), hi),
@@ -860,7 +860,7 @@ pub(crate) fn format_impl(
             // If there is only one where-clause predicate
             // and the where-clause spans multiple lines,
             // then recover the suppressed comma in single line where-clause formatting
-            if generics.where_clause.predicates.len() == 1 {
+            if generics.where_clause.predicates().len() == 1 {
                 result.push(',');
             }
         }
@@ -890,7 +890,11 @@ pub(crate) fn format_impl(
 
     result.push('{');
     // this is an impl body snippet(impl SampleImpl { /* here */ })
-    let lo = max(self_ty.span.hi(), generics.where_clause.span.hi());
+    let lo = self_ty.span.hi();
+    let lo = max(
+        lo,
+        generics.where_clause.span().map(|sp| sp.hi()).unwrap_or(lo),
+    );
     let snippet = context.snippet(mk_sp(lo, item.span.hi()));
     let open_pos = snippet.find_uncommented("{").unknown_error()? + 1;
 
@@ -995,7 +999,7 @@ fn format_impl_ref_and_type(
     }
 
     // Try to put the self type in a single line.
-    let curly_brace_overhead = if generics.where_clause.predicates.is_empty() {
+    let curly_brace_overhead = if generics.where_clause.predicates().is_empty() {
         // If there is no where-clause adapt budget for type formatting to take space and curly
         // brace into account.
         match context.config.brace_style() {
@@ -1200,12 +1204,16 @@ pub(crate) fn format_trait(
     }
 
     // Rewrite where-clause.
-    if !generics.where_clause.predicates.is_empty() {
+    if !generics.where_clause.predicates().is_empty() {
         let where_on_new_line = context.config.indent_style() != IndentStyle::Block;
 
         let where_budget = context.budget(last_line_width(&result));
         let pos_before_where = if bounds.is_empty() {
-            generics.where_clause.span.lo()
+            generics
+                .where_clause
+                .span()
+                .expect("where clause with predicates but no span")
+                .lo()
         } else {
             bounds[bounds.len() - 1].span().hi()
         };
@@ -1259,7 +1267,13 @@ pub(crate) fn format_trait(
         }
     }
 
-    let block_span = mk_sp(generics.where_clause.span.hi(), item.span.hi());
+    let block_lo = generics
+        .where_clause
+        .span()
+        .or_else(|| bounds.last().map(|b| b.span()))
+        .unwrap_or(generics.span)
+        .hi();
+    let block_span = mk_sp(block_lo, item.span.hi());
     let snippet = context.snippet(block_span);
     let open_pos = snippet.find_uncommented("{").unknown_error()? + 1;
 
@@ -1283,7 +1297,7 @@ pub(crate) fn format_trait(
         BraceStyle::PreferSameLine => result.push(' '),
         BraceStyle::SameLineWhere => {
             if result.contains('\n')
-                || (!generics.where_clause.predicates.is_empty() && !items.is_empty())
+                || (!generics.where_clause.predicates().is_empty() && !items.is_empty())
             {
                 result.push_str(&offset.to_string_with_newline(context.config));
             } else {
@@ -1335,6 +1349,13 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
         let mut option = WhereClauseOption::new(true, WhereClauseSpace::None);
         option.allow_single_line();
 
+        let hi = self
+            .generics
+            .where_clause
+            .span()
+            .map(|sp| sp.lo())
+            .or_else(|| self.generic_bounds.last().map(|b| b.span().hi()))
+            .unwrap_or(self.generics.span.hi());
         let where_str = rewrite_where_clause(
             context,
             &self.generics.where_clause,
@@ -1343,7 +1364,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
             false,
             ";",
             None,
-            self.generics.where_clause.span.lo(),
+            hi,
             option,
         )?;
 
@@ -1429,9 +1450,12 @@ pub(crate) fn format_struct_struct(
     result.push_str(&header_str);
 
     let header_hi = struct_parts.ident.span.hi();
-    let body_lo = if let Some(generics) = struct_parts.generics {
+    let where_sp_hi = struct_parts
+        .generics
+        .map(|g| g.where_clause.span().unwrap_or(g.span).hi());
+    let body_lo = if let Some(where_sp_hi) = where_sp_hi {
         // Adjust the span to start at the end of the generic arguments before searching for the '{'
-        let span = span.with_lo(generics.where_clause.span.hi());
+        let span = span.with_lo(where_sp_hi);
         context.snippet_provider.span_after(span, "{")
     } else {
         context.snippet_provider.span_after(span, "{")
@@ -1701,7 +1725,11 @@ pub(crate) fn rewrite_type_alias<'a>(
     let ty_opt = ty.as_ref();
     let rhs_hi = ty
         .as_ref()
-        .map_or(generics.where_clause.span.hi(), |ty| ty.span.hi());
+        .map(|ty| ty.span)
+        .or_else(|| generics.where_clause.span())
+        .or_else(|| bounds.last().map(|b| b.span()))
+        .unwrap_or(generics.span)
+        .hi();
     let rw_info = &TyAliasRewriteInfo(context, indent, generics, after_where_clause, ident, span);
     let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
@@ -1796,9 +1824,9 @@ fn rewrite_ty<R: Rewrite>(
         // If there are any where clauses, add a newline before the assignment.
         // If there is a before where clause, do not indent, but if there is
         // only an after where clause, additionally indent the type.
-        if !generics.where_clause.predicates.is_empty() {
+        if !generics.where_clause.predicates().is_empty() {
             result.push_str(&indent.to_string_with_newline(context.config));
-        } else if !after_where_clause.predicates.is_empty() {
+        } else if !after_where_clause.predicates().is_empty() {
             result.push_str(
                 &indent
                     .block_indent(context.config)
@@ -1808,10 +1836,16 @@ fn rewrite_ty<R: Rewrite>(
             result.push(' ');
         }
 
+        let comment_lo = generics
+            .where_clause
+            .span()
+            .or_else(|| generic_bounds_opt.and_then(|bounds| bounds.last().map(|b| b.span())))
+            .unwrap_or(generics.span)
+            .hi();
         let comment_span = context
             .snippet_provider
             .opt_span_before(span, "=")
-            .map(|op_lo| mk_sp(generics.where_clause.span.hi(), op_lo));
+            .map(|op_lo| mk_sp(comment_lo, op_lo));
 
         let lhs = match comment_span {
             Some(comment_span)
@@ -1822,7 +1856,7 @@ fn rewrite_ty<R: Rewrite>(
                         .unknown_error()?,
                 ) =>
             {
-                let comment_shape = if !generics.where_clause.predicates.is_empty() {
+                let comment_shape = if !generics.where_clause.predicates().is_empty() {
                     Shape::indented(indent, context.config)
                 } else {
                     let shape = Shape::indented(indent, context.config);
@@ -1843,7 +1877,7 @@ fn rewrite_ty<R: Rewrite>(
 
         // 1 = `;` unless there's a trailing where clause
         let shape = Shape::indented(indent, context.config);
-        let shape = if after_where_clause.predicates.is_empty() {
+        let shape = if after_where_clause.predicates().is_empty() {
             Shape::indented(indent, context.config).sub_width(1, span)?
         } else {
             shape
@@ -1853,7 +1887,7 @@ fn rewrite_ty<R: Rewrite>(
         result
     };
 
-    if !after_where_clause.predicates.is_empty() {
+    if !after_where_clause.predicates().is_empty() {
         let option = WhereClauseOption::new(true, WhereClauseSpace::Newline);
         let after_where_clause_str = rewrite_where_clause(
             context,
@@ -2109,7 +2143,7 @@ fn rewrite_static(
     // For now, if this static (or const) has generics, then bail.
     if static_parts
         .generics
-        .is_some_and(|g| !g.params.is_empty() || !g.where_clause.is_empty())
+        .is_some_and(|g| !g.params.is_empty() || g.where_clause.has_where_token())
     {
         return None;
     }
@@ -2619,7 +2653,7 @@ fn rewrite_fn_base(
 
                 // If there is no where-clause, take into account the space after the return type
                 // and the brace.
-                if where_clause.predicates.is_empty() {
+                if where_clause.predicates().is_empty() {
                     sig_length += 2;
                 }
 
@@ -2690,7 +2724,7 @@ fn rewrite_fn_base(
 
         // Comment between return type and the end of the decl.
         let snippet_lo = fd.output.span().hi();
-        if where_clause.predicates.is_empty() {
+        if where_clause.predicates().is_empty() {
             let snippet_hi = span.hi();
             let snippet = context.snippet(mk_sp(snippet_lo, snippet_hi));
             // Try to preserve the layout of the original snippet.
@@ -2961,7 +2995,7 @@ fn compute_budgets_for_params(
 }
 
 fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> FnBraceStyle {
-    let predicate_count = where_clause.predicates.len();
+    let predicate_count = where_clause.predicates().len();
 
     if config.where_single_line() && predicate_count == 1 {
         return FnBraceStyle::SameLine;
@@ -3174,11 +3208,7 @@ fn rewrite_where_clause(
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
 ) -> RewriteResult {
-    let ast::WhereClause {
-        ref predicates,
-        span: where_span,
-        has_where_token: _,
-    } = *where_clause;
+    let predicates = where_clause.predicates();
 
     if predicates.is_empty() {
         return Ok(String::new());
@@ -3188,7 +3218,9 @@ fn rewrite_where_clause(
         return rewrite_where_clause_rfc_style(
             context,
             predicates,
-            where_span,
+            where_clause
+                .span()
+                .expect("where clause with predicates but no span"),
             shape,
             terminator,
             span_end,
@@ -3358,7 +3390,7 @@ fn format_generics(
     } else {
         span.lo()
     };
-    let (same_line_brace, missed_comments) = if !generics.where_clause.predicates.is_empty() {
+    let (same_line_brace, missed_comments) = if !generics.where_clause.predicates().is_empty() {
         let budget = context.budget(last_line_used_width(&result, offset.width()));
         let mut option = WhereClauseOption::snuggled(&result);
         if brace_pos == BracePos::None {
