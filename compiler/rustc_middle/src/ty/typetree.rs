@@ -122,7 +122,16 @@ fn typetree_from_ty_impl_inner<'tcx>(
         ty::Ref(..) | ty::RawPtr(..) => handle_indirection(ty, tcx, depth, visited),
         ty::Adt(def, _) if def.is_box() => handle_indirection(ty, tcx, depth, visited),
         ty::Array(element_ty, len_const) => {
-            let len = len_const.try_to_target_usize(tcx).unwrap_or(0);
+            // Lengths are normalized by callers (struct fields via
+            // `normalize_erasing_regions`); keep a graceful fallback rather
+            // than asserting when evaluation still fails.
+            let len = len_const.try_to_target_usize(tcx).unwrap_or_else(|| {
+                trace!(
+                    "autodiff typetree: array length {len_const:?} not evaluable; \
+                     emitting empty TypeTree"
+                );
+                0
+            });
             if len == 0 {
                 TypeTree::new()
             } else {
@@ -169,20 +178,19 @@ fn typetree_from_ty_impl_inner<'tcx>(
             }
         }
         ty::Adt(adt_def, args) if adt_def.is_struct() => {
-            let struct_layout =
-                tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
+            let typing_env = ty::TypingEnv::fully_monomorphized();
+            let struct_layout = tcx.layout_of(typing_env.as_query_input(ty));
             if let Ok(layout) = struct_layout {
                 let mut types = Vec::new();
 
                 for (field_idx, field_def) in adt_def.all_fields().enumerate() {
-                    let field_ty = field_def.ty(tcx, args);
-                    let field_tree = typetree_from_ty_impl_inner(
-                        tcx,
-                        field_ty.skip_norm_wip(),
-                        depth + 1,
-                        visited,
-                        false,
-                    );
+                    // `FieldDef::ty` returns `Unnormalized`; normalize before recursion so
+                    // array lengths / projections are concrete for `struct_tail_for_codegen`
+                    // and `try_to_target_usize` (see #160635).
+                    let field_ty =
+                        tcx.normalize_erasing_regions(typing_env, field_def.ty(tcx, args));
+                    let field_tree =
+                        typetree_from_ty_impl_inner(tcx, field_ty, depth + 1, visited, false);
 
                     let field_offset = layout.fields.offset(field_idx).bytes_usize();
 
