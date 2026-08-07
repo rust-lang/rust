@@ -2,9 +2,9 @@
 
 const BAR::promoted[0]: &[&i32; 1] = {
     let mut _0: &[&i32; 1];
-    let mut _1: [&i32; 1];
+    let _1: [&i32; 1];
     let mut _2: &i32;
-    let mut _3: &i32;
+    let _3: &i32;
 
     bb0: {
         _3 = const {ALLOC0: &i32};
