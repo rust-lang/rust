@@ -1503,30 +1503,6 @@ pub(crate) struct RedundantImportVisibility {
     pub max_vis: String,
 }
 
-#[derive(Diagnostic)]
-#[diag("unknown diagnostic attribute")]
-pub(crate) struct UnknownDiagnosticAttribute {
-    #[subdiagnostic]
-    pub help: Option<UnknownDiagnosticAttributeHelp>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnknownDiagnosticAttributeHelp {
-    #[suggestion(
-        "an attribute with a similar name exists",
-        style = "verbose",
-        code = "{typo_name}",
-        applicability = "machine-applicable"
-    )]
-    Typo {
-        #[primary_span]
-        span: Span,
-        typo_name: Symbol,
-    },
-    #[help("add `#![feature({$feature})]` to the crate attributes to enable")]
-    UseFeature { feature: Symbol },
-}
-
 // FIXME: Make this properly translatable.
 pub(crate) struct Ambiguity {
     pub ident: Ident,
