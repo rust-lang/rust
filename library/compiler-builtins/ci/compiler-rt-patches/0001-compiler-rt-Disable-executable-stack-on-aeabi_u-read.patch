@@ -1,0 +1,95 @@
+From 849c51e082b0958524246a0a880f46d468a55147 Mon Sep 17 00:00:00 2001
+From: Trevor Gross <tg@trevorgross.com>
+Date: Thu, 6 Aug 2026 09:08:27 -0400
+Subject: [PATCH] [compiler-rt] Disable executable stack on
+ `aeabi_u{read,write}*.S` (#214465)
+
+These were missing `NO_EXEC_STACK_DIRECTIVE` to add `.note.GNU-stack`;
+without it, a binary including any of these files will have the stack
+marked executable. Add the directive here, matching other similar files.
+
+Symtab diff before:
+
+$ clang compiler-rt/lib/builtins/arm/aeabi_uread4.S
+--target=arm-unknown-linux-gnueabi -c
+    $ llvm-readelf aeabi_uread4.o -S
+    There are 5 section headers, starting at offset 0xe4:
+
+    Section Headers:
+[Nr] Name Type Address Off Size ES Flg Lk Inf Al
+[ 0] NULL 00000000 000000 000000 00 0 0 0
+[ 1] .strtab STRTAB 00000000 0000a8 000039 00 0 0 1
+[ 2] .text PROGBITS 00000000 000034 000020 00 AX 0 0 4
+[ 3] .ARM.attributes ARM_ATTRIBUTES 00000000 000054 000022 00 0 0 1
+[ 4] .symtab SYMTAB 00000000 000078 000030 10 1 2 4
+
+After:
+
+$ clang compiler-rt/lib/builtins/arm/aeabi_uread4.S
+--target=arm-unknown-linux-gnueabi -c
+    $ llvm-readelf aeabi_uread4.o -S
+    There are 6 section headers, starting at offset 0xf4:
+
+    Section Headers:
+[Nr] Name Type Address Off Size ES Flg Lk Inf Al
+[ 0] NULL 00000000 000000 000000 00 0 0 0
+[ 1] .strtab STRTAB 00000000 0000a8 000049 00 0 0 1
+[ 2] .text PROGBITS 00000000 000034 000020 00 AX 0 0 4
+[ 3] .note.GNU-stack PROGBITS 00000000 000054 000000 00 0 0 1
+[ 4] .ARM.attributes ARM_ATTRIBUTES 00000000 000054 000022 00 0 0 1
+[ 5] .symtab SYMTAB 00000000 000078 000030 10 1 2 4
+
+Fixes: 39413af931a7 ("[Compiler-rt] Implement AEABI Unaligned Read/Write
+       Helpers in compiler-rt (#167913)")
+---
+
+Add this patch to avoid a symcheck failure until the LLVM update can work
+through.
+
+ compiler-rt/lib/builtins/arm/aeabi_uread4.S  | 1 +
+ compiler-rt/lib/builtins/arm/aeabi_uread8.S  | 2 ++
+ compiler-rt/lib/builtins/arm/aeabi_uwrite4.S | 2 ++
+ compiler-rt/lib/builtins/arm/aeabi_uwrite8.S | 2 ++
+ 4 files changed, 7 insertions(+)
+
+diff --git a/compiler-rt/lib/builtins/arm/aeabi_uread4.S b/compiler-rt/lib/builtins/arm/aeabi_uread4.S
+index 4a54890fdf83..05e476a17905 100644
+--- a/compiler-rt/lib/builtins/arm/aeabi_uread4.S
++++ b/compiler-rt/lib/builtins/arm/aeabi_uread4.S
+@@ -61,3 +61,4 @@ DEFINE_COMPILERRT_FUNCTION(__aeabi_uread4)
+ #endif
+ END_COMPILERRT_FUNCTION(__aeabi_uread4)
+
++NO_EXEC_STACK_DIRECTIVE
+diff --git a/compiler-rt/lib/builtins/arm/aeabi_uread8.S b/compiler-rt/lib/builtins/arm/aeabi_uread8.S
+index 32844b8b3c7e..0b12c48ae46f 100644
+--- a/compiler-rt/lib/builtins/arm/aeabi_uread8.S
++++ b/compiler-rt/lib/builtins/arm/aeabi_uread8.S
+@@ -98,3 +98,5 @@ DEFINE_COMPILERRT_FUNCTION(__aeabi_uread8)
+ #endif
+
+ END_COMPILERRT_FUNCTION(__aeabi_uread8)
++
++NO_EXEC_STACK_DIRECTIVE
+diff --git a/compiler-rt/lib/builtins/arm/aeabi_uwrite4.S b/compiler-rt/lib/builtins/arm/aeabi_uwrite4.S
+index 9f749695910b..7e9a0337b781 100644
+--- a/compiler-rt/lib/builtins/arm/aeabi_uwrite4.S
++++ b/compiler-rt/lib/builtins/arm/aeabi_uwrite4.S
+@@ -33,3 +33,5 @@ DEFINE_COMPILERRT_FUNCTION(__aeabi_uwrite4)
+ #endif
+         bx      lr
+ END_COMPILERRT_FUNCTION(__aeabi_uwrite4)
++
++NO_EXEC_STACK_DIRECTIVE
+diff --git a/compiler-rt/lib/builtins/arm/aeabi_uwrite8.S b/compiler-rt/lib/builtins/arm/aeabi_uwrite8.S
+index 8188032fc3bd..763f42ff7ed0 100644
+--- a/compiler-rt/lib/builtins/arm/aeabi_uwrite8.S
++++ b/compiler-rt/lib/builtins/arm/aeabi_uwrite8.S
+@@ -49,3 +49,5 @@ DEFINE_COMPILERRT_FUNCTION(__aeabi_uwrite8)
+ #endif
+         bx      lr
+ END_COMPILERRT_FUNCTION(__aeabi_uwrite8)
++
++NO_EXEC_STACK_DIRECTIVE
+--
+2.50.1 (Apple Git-155)

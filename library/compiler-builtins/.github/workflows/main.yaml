@@ -172,7 +172,7 @@ jobs:
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: compiler-rt
-        key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh') }}
+        key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh', 'ci/compiler-rt-patches') }}
     - name: Download compiler-rt reference sources
       if: steps.cache-compiler-rt.outputs.cache-hit != 'true'
       run: ./ci/download-compiler-rt.sh
