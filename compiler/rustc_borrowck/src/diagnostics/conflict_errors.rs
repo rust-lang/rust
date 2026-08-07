@@ -1881,6 +1881,14 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     issued_borrow.borrowed_place,
                     &issued_spans,
                 );
+                self.explain_iterator_invalidation_in_for_loop_if_applicable(
+                    &mut err,
+                    &issued_spans,
+                    place,
+                    issued_borrow.borrowed_place,
+                    issued_borrow.kind,
+                    span,
+                );
                 err
             }
 
@@ -1903,6 +1911,14 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     issued_borrow.borrowed_place,
                     span,
                     issued_span,
+                );
+                self.explain_iterator_invalidation_in_for_loop_if_applicable(
+                    &mut err,
+                    &issued_spans,
+                    place,
+                    issued_borrow.borrowed_place,
+                    issued_borrow.kind,
+                    span,
                 );
                 self.suggest_using_closure_argument_instead_of_capture(
                     &mut err,
@@ -2616,6 +2632,50 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             } else {
                 err.help(msg);
             }
+        }
+    }
+
+    /// Explain iterator invalidation when mutating a collection in a for loop.
+    ///
+    /// For example:
+    /// ```compile_fail
+    /// let mut values = vec![1, 2, 3];
+    /// for value in &values {
+    ///     values.push(4);
+    /// }
+    /// ```
+    fn explain_iterator_invalidation_in_for_loop_if_applicable(
+        &self,
+        err: &mut Diag<'_>,
+        issued_spans: &UseSpans<'tcx>,
+        place: Place<'tcx>,
+        borrowed_place: Place<'tcx>,
+        borrow_kind: BorrowKind,
+        gen_span: Span,
+    ) {
+        let issue_span = issued_spans.args_or_use();
+        let tcx = self.infcx.tcx;
+
+        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+
+        if let Some(for_span) = find_for_loop_span(tcx, body_id, issue_span)
+            && place.local == borrowed_place.local
+            && for_span.contains(gen_span)
+        {
+            let place_desc = self.describe_any_place(place.as_ref());
+            let borrow_kind_str =
+                if matches!(borrow_kind, BorrowKind::Mut { .. }) { "mutably" } else { "immutably" };
+            err.span_label(
+                for_span,
+                format!(
+                    "this for loop borrows {place_desc} {borrow_kind_str}, \
+                     preventing mutation within its body"
+                ),
+            );
+            err.help(
+                "consider using an index-based loop instead, or collecting \
+                 modifications into a separate collection",
+            );
         }
     }
 
@@ -4656,6 +4716,38 @@ enum AnnotatedBorrowFnSignature<'tcx> {
         argument_ty: Ty<'tcx>,
         argument_span: Span,
     },
+}
+
+/// Find the `Match` expression desugared from a for loop, whose
+/// `IntoIter::into_iter` argument contains `issue_span`.
+/// Returns the for-loop match expression span.
+fn find_for_loop_span<'hir>(
+    tcx: TyCtxt<'hir>,
+    body_id: hir::BodyId,
+    issue_span: Span,
+) -> Option<Span> {
+    struct ExprFinder<'hir> {
+        tcx: TyCtxt<'hir>,
+        issue_span: Span,
+        result: Option<Span>,
+    }
+    impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
+        fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+            if let hir::ExprKind::Match(scrutinee, _, hir::MatchSource::ForLoopDesugar) = ex.kind
+                && let hir::ExprKind::Call(path, [arg]) = scrutinee.kind
+                && let hir::ExprKind::Path(qpath) = path.kind
+                && self.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
+                && arg.span.contains(self.issue_span)
+            {
+                self.result = Some(ex.span);
+                return;
+            }
+            hir::intravisit::walk_expr(self, ex);
+        }
+    }
+    let mut finder = ExprFinder { tcx, issue_span, result: None };
+    finder.visit_expr(tcx.hir_body(body_id).value);
+    finder.result
 }
 
 impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {

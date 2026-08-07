@@ -404,7 +404,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let abi_clobber = InlineAsmClobberAbi::parse(
             self.arch,
             &self.tcx.sess.target,
-            &self.tcx.sess.unstable_target_features,
+            &self.tcx.sess.internal_target_features,
             sym::C,
         )
         .unwrap()

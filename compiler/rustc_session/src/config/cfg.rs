@@ -304,7 +304,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         }
     }
 
-    if !sess.target.singlethread(&sess.target_features) {
+    if !sess.target.singlethread(&sess.internal_target_features) {
         ins_none!(sym::target_has_threads);
     }
 

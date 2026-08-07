@@ -40,7 +40,9 @@ impl GitHubContext {
     fn get_run_type(&self) -> Option<RunType> {
         match (self.event_name.as_str(), self.branch_ref.as_str()) {
             ("pull_request", _) => Some(RunType::PullRequest),
-            ("push", "refs/heads/try-perf") => Some(RunType::TryJob { job_patterns: None }),
+            ("push", "refs/heads/automation/bors/try-perf" | "refs/heads/try-perf") => {
+                Some(RunType::TryJob { job_patterns: None })
+            }
             ("push", "refs/heads/automation/bors/try") => {
                 let patterns = self.get_try_job_patterns();
                 let patterns = if !patterns.is_empty() { Some(patterns) } else { None };

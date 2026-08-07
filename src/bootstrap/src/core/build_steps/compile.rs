@@ -2281,10 +2281,18 @@ impl CommandLineStep for Assemble {
 
         if builder.config.llvm_offload && !builder.config.dry_run() {
             debug!("`llvm_offload` requested");
+            let rust_offload = builder.ensure(llvm::RustOffload { target: build_compiler.host });
             let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+                let rust_offload_dst_lib = target_libdir.join(rust_offload.rust_offload_filename());
+                builder.copy_link(
+                    &rust_offload.rust_offload_path(),
+                    &rust_offload_dst_lib,
+                    FileType::NativeLibrary,
+                );
+
                 for p in offload_install.offload_paths() {
                     let libname = p.file_name().unwrap();
                     let dst_lib = target_libdir.join(libname);

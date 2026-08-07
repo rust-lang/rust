@@ -943,6 +943,96 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
 }
 
 #[derive(Clone)]
+pub struct BuiltRustOffload {
+    /// Path to the rust offload dylib
+    offload: PathBuf,
+}
+
+impl BuiltRustOffload {
+    pub fn rust_offload_path(&self) -> PathBuf {
+        self.offload.clone()
+    }
+
+    pub fn rust_offload_filename(&self) -> String {
+        self.offload.file_name().unwrap().to_str().unwrap().to_owned()
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustOffload {
+    pub target: TargetSelection,
+}
+
+impl CommandLineStep for RustOffload {
+    type Output = BuiltRustOffload;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rust-offload")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustOffload { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.config.dry_run() {
+            return BuiltRustOffload {
+                offload: builder.config.tempdir().join("rust-offload-dry-run"),
+            };
+        }
+
+        let target = self.target;
+
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+
+        let out_dir = builder.rust_offload_out(target);
+
+        let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
+        let lib_ext = std::env::consts::DLL_EXTENSION;
+        let lib_rust_offload = format!("libRustOffload-{llvm_version_major}");
+        let build_dir = out_dir.join(libdir(target));
+        let dylib = build_dir.join(&lib_rust_offload).with_extension(lib_ext);
+
+        let mut cfg =
+            cmake::Config::new(builder.src.join("compiler/rustc_llvm/llvm-wrapper/offload/"));
+
+        // Logic copied from `configure_llvm`
+        // ThinLTO is only available when building with LLVM, enabling LLD is required.
+        // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+        let mut ldflags = LdFlags::default();
+        if builder.config.llvm_thin_lto && !target.contains("apple") {
+            ldflags.push_all("-fuse-ld=lld");
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
+
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", &host_llvm_config)
+            .define("LLVM_DIR", llvm_cmake_dir);
+
+        cfg.build();
+
+        if !dylib.exists() {
+            eprintln!(
+                "`{lib_rust_offload}` not found in `{}`. Either the build has failed or RustOffload was built with a wrong version of LLVM",
+                build_dir.display()
+            );
+            exit!(1);
+        }
+
+        BuiltRustOffload { offload: dylib }
+    }
+}
+
+#[derive(Clone)]
 pub struct BuiltOmpOffload {
     /// Path to the omp and offload dylibs.
     offload: Vec<PathBuf>,
@@ -998,7 +1088,7 @@ impl CommandLineStep for OmpOffload {
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own folder, instead of
         // using the llvm build dir.
-        let out_dir = builder.offload_out(target);
+        let out_dir = builder.omp_offload_out(target);
 
         let mut files = vec![];
         let lib_ext = std::env::consts::DLL_EXTENSION;
