@@ -180,7 +180,7 @@ decl_derive!(
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [Diagnostic, attributes(
-        // struct attributes
+        // struct and field attributes
         diag,
         help,
         help_once,
@@ -194,7 +194,9 @@ decl_derive!(
         suggestion,
         suggestion_short,
         suggestion_hidden,
-        suggestion_verbose)] => diagnostics::diagnostic_derive
+        suggestion_verbose)] =>
+        #[doc = "See <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#derivediagnostic>"]
+        diagnostics::diagnostic_derive
 );
 decl_derive!(
     [Subdiagnostic, attributes(
