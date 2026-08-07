@@ -4626,7 +4626,6 @@ dependencies = [
  "rustc_middle",
  "rustc_span",
  "rustc_ty_walk",
- "tracing",
 ]
 
 [[package]]

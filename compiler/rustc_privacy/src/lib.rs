@@ -36,7 +36,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Ident, Span, Symbol, sym};
-use tracing::debug;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Generic infrastructure used to implement specific visitors below.
@@ -1424,19 +1423,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     }
 
     fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
-        if self.leaks_private_dep(def_id) {
-            self.tcx.emit_node_span_lint(
-                EXPORTED_PRIVATE_DEPENDENCIES,
-                self.tcx.local_def_id_to_hir_id(self.item_def_id),
-                self.tcx.def_span(self.item_def_id.to_def_id()),
-                FromPrivateDependencyInPublicInterface {
-                    kind,
-                    descr: descr.into(),
-                    krate: self.tcx.crate_name(def_id.krate),
-                },
-            );
-        }
-
         let Some(local_def_id) = def_id.as_local() else {
             return false;
         };
@@ -1500,17 +1486,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         }
 
         false
-    }
-
-    /// An item is 'leaked' from a private dependency if all
-    /// of the following are true:
-    /// 1. It's contained within a public type
-    /// 2. It comes from a private crate
-    fn leaks_private_dep(&self, item_id: DefId) -> bool {
-        let ret = self.required_visibility.is_public() && self.tcx.is_private_dep(item_id.krate);
-
-        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
-        ret
     }
 }
 
