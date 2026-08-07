@@ -749,8 +749,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
-    pub new_solver_canonical_param_env_cache:
-        Lock<FxHashMap<ty::ParamEnv<'tcx>, ty::CanonicalParamEnvCacheEntry<TyCtxt<'tcx>>>>,
+    pub new_solver_canonical_param_env_cache: Lock<ty::CanonicalParamEnvCache<TyCtxt<'tcx>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
