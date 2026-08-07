@@ -226,16 +226,15 @@ pub fn test_5_mixed_fnptr_cast_resign() {
 // CHECK-DAG: test_6_mixed_layout_cast
 pub fn test_6_mixed_layout_cast() {
     let x = (A(f), NotFn(999));
-    // DISC: [[Y:%.*]] = alloca [16 x i8]
-    // DISC: store ptr ptrauth (ptr @{{.*}}f, i32 0, i64 18983), ptr [[Y]]
+    // DISC: store ptr ptrauth (ptr @{{.*}}f, i32 0, i64 18983), ptr
     // NO_DISC: [[Y:%.*]] = alloca [16 x i8]
     // NO_DISC: store ptr ptrauth (ptr @{{.*}}f, i32 0), ptr [[Y]]
     let y: (B, AlsoNotFn) = unsafe { mem::transmute(x) };
 
     unsafe {
         ptr::read_volatile(&y);
-        // DISC: [[Y_LOAD:%.*]] = load ptr, ptr [[Y]]
-        // DISC: call void [[Y_LOAD]](i32 42) {{.*}} [ "ptrauth"(i32 0, i64 2712) ]
+        // DISC: call i64 @llvm.ptrauth.resign(i64 %{{.*}}, i32 0, i64 18983, i32 0, i64 2712)
+        // DISC: call void %{{.*}}(i32 42) {{.*}} [ "ptrauth"(i32 0, i64 2712) ]
         // NO_DISC: [[Y_LOAD:%.*]] = load ptr, ptr [[Y]]
         // NO_DISC: call void [[Y_LOAD]](i32 42) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         (y.0.0)(42);
