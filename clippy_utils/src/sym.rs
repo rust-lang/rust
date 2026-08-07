@@ -1,4 +1,4 @@
-#![allow(non_upper_case_globals)]
+#![expect(non_upper_case_globals)]
 
 use rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT;
 
@@ -364,6 +364,7 @@ generate! {
     into_bytes,
     into_ok,
     into_owned,
+    into_raw,
     intrinsics_unaligned_volatile_load,
     intrinsics_unaligned_volatile_store,
     io,

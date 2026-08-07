@@ -7,7 +7,7 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_parent_expr, higher, is_in_test, span_contains_comment};
@@ -15,7 +15,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_session::impl_lint_pass;
 use rustc_span::{DesugaringKind, Span};
 
@@ -50,7 +50,7 @@ impl UselessVec {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             too_large_for_stack: conf.too_large_for_stack,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             span_to_state: BTreeMap::new(),
             allow_in_test: conf.allow_useless_vec_in_tests,
         }

@@ -1,5 +1,5 @@
 #![warn(clippy::size_of_in_element_count)]
-#![allow(clippy::ptr_offset_with_cast)]
+#![expect(clippy::ptr_offset_with_cast)]
 
 use std::mem::{size_of, size_of_val};
 use std::ptr::{

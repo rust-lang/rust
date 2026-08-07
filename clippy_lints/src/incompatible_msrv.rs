@@ -119,7 +119,7 @@ pub struct IncompatibleMsrv {
 impl IncompatibleMsrv {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             availability_cache: FxHashMap::default(),
             check_in_tests: conf.check_incompatible_msrv_in_tests,
             std_crates: StdCrates::new(tcx),

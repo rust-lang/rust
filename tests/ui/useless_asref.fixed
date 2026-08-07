@@ -1,11 +1,5 @@
-#![deny(clippy::useless_asref)]
-#![allow(
-    clippy::explicit_auto_deref,
-    clippy::uninlined_format_args,
-    clippy::map_clone,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_closure
-)]
+#![warn(clippy::useless_asref)]
+#![expect(clippy::redundant_closure)]
 
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -83,7 +77,7 @@ fn not_ok() {
         //~^ useless_asref
         foo_rslice(mrrrrrslice);
     }
-    #[allow(unused_parens, clippy::double_parens, clippy::needless_borrow)]
+    #[allow(clippy::double_parens, clippy::needless_borrow)]
     foo_rrrrmr((&&&&MoreRef));
     //~^ useless_asref
 
