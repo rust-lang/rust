@@ -4,12 +4,17 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::intrinsics;
+
+unsafe extern "Rust" {
+    // This is defined in std::rt
+    #[rustc_std_internal_symbol]
+    safe fn __rust_abort() -> !;
+}
 
 pub(crate) unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
-    intrinsics::abort()
+    __rust_abort()
 }
 
 pub(crate) unsafe fn panic(_data: Box<dyn Any + Send>) -> u32 {
-    intrinsics::abort()
+    __rust_abort()
 }
