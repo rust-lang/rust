@@ -83,23 +83,25 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
+    fn new(delegate: &'a D, canonicalize_mode: CanonicalizeMode) -> Self {
+        Canonicalizer {
+            delegate,
+            canonicalize_mode,
+            variables: Default::default(),
+            variable_lookup_table: Default::default(),
+            sub_root_lookup_table: Default::default(),
+            var_kinds: Default::default(),
+            cache: Default::default(),
+        }
+    }
+
     pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
         delegate: &'a D,
         max_input_universe: ty::UniverseIndex,
         value: T,
     ) -> ty::Canonical<I, T> {
-        let mut canonicalizer = Canonicalizer {
-            delegate,
-            canonicalize_mode: CanonicalizeMode::Response { max_input_universe },
-
-            variables: Default::default(),
-            variable_lookup_table: Default::default(),
-            sub_root_lookup_table: Default::default(),
-            var_kinds: Default::default(),
-
-            cache: Default::default(),
-        };
-
+        let mut canonicalizer =
+            Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
         let value = if value.has_type_flags(NEEDS_CANONICAL) {
             value.fold_with(&mut canonicalizer)
         } else {
@@ -134,17 +136,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         if !param_env.has_non_region_infer() {
             delegate.cx().with_canonical_param_env_cache(|cache| {
                 let entry = cache.0.entry(param_env).or_insert_with(|| {
-                    let mut env_canonicalizer = Canonicalizer {
+                    let mut env_canonicalizer = Canonicalizer::new(
                         delegate,
-                        canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
-
-                        variables: Default::default(),
-                        variable_lookup_table: Default::default(),
-                        sub_root_lookup_table: Default::default(),
-                        var_kinds: Default::default(),
-
-                        cache: Default::default(),
-                    };
+                        CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
+                    );
                     let param_env = param_env.fold_with(&mut env_canonicalizer);
                     debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
                     CanonicalParamEnvCacheEntry {
@@ -168,17 +163,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 )
             })
         } else {
-            let mut env_canonicalizer = Canonicalizer {
+            let mut env_canonicalizer = Canonicalizer::new(
                 delegate,
-                canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
-
-                variables: Default::default(),
-                variable_lookup_table: Default::default(),
-                sub_root_lookup_table: Default::default(),
-                var_kinds: Default::default(),
-
-                cache: Default::default(),
-            };
+                CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
+            );
             let param_env = param_env.fold_with(&mut env_canonicalizer);
             debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
             (
@@ -205,23 +193,23 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // First canonicalize the `param_env` while keeping `'static`
         let (param_env, variables, var_kinds, variable_lookup_table) =
             Canonicalizer::canonicalize_param_env(delegate, input.goal.param_env);
+
         // Then canonicalize the rest of the input without keeping `'static`
         // while *mostly* reusing the canonicalizer from above.
+        //
+        // We do not reuse the cache as it may contain entries whose canonicalized
+        // value contains `'static`. While we could alternatively handle this by
+        // checking for `'static` when using cached entries, this does not
+        // feel worth the effort. I do not expect that a `ParamEnv` will ever
+        // contain large enough types for caching to be necessary.
         let mut rest_canonicalizer = Canonicalizer {
-            delegate,
-            canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
-
             variables,
             variable_lookup_table,
-            sub_root_lookup_table: Default::default(),
             var_kinds,
-
-            // We do not reuse the cache as it may contain entries whose canonicalized
-            // value contains `'static`. While we could alternatively handle this by
-            // checking for `'static` when using cached entries, this does not
-            // feel worth the effort. I do not expect that a `ParamEnv` will ever
-            // contain large enough types for caching to be necessary.
-            cache: Default::default(),
+            ..Canonicalizer::new(
+                delegate,
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
+            )
         };
 
         let predicate = input.goal.predicate;
