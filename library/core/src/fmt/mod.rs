@@ -1049,7 +1049,6 @@ impl Display for Arguments<'_> {
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
-#[rustc_trivial_field_reads]
 pub trait Debug: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
@@ -1090,6 +1089,7 @@ pub(crate) mod macros {
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive)]
+    #[rustc_trivial_field_reads]
     pub macro Debug($item:item) {
         /* compiler built-in */
     }

@@ -189,7 +189,6 @@ mod uninit;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
-#[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 pub const trait Clone: Sized {
     /// Returns a duplicate of the value.
@@ -286,6 +285,7 @@ pub const unsafe trait TrivialClone: [const] Clone {}
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_clone_copy_internals, trivial_clone)]
+#[rustc_trivial_field_reads]
 pub macro Clone($item:item) {
     /* compiler built-in */
 }
