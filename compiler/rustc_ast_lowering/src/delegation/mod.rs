@@ -439,7 +439,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let ident = Ident::new(kw::SelfUpper, span);
-            let path = self.create_resolved_path(res, ident, span);
+            let path = self.create_resolved_qpath(res, ident, span);
 
             // FIXME(fn_delegation): add default `..` for all other fields.
             let initializer = hir::ExprKind::Struct(
@@ -454,7 +454,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::StructTailExpr::None,
             );
 
-            self.arena.alloc(self.mk_expr(initializer, span))
+            let expr = self.mk_expr(initializer, span);
+
+            let path = self.make_lang_item_qpath(hir::LangItem::FromFn, span, None);
+            let path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(path), span));
+
+            let call = hir::ExprKind::Call(path, self.arena.alloc_slice(&[expr]));
+
+            self.arena.alloc(self.mk_expr(call, span))
         } else {
             self.arena.alloc(call)
         };
