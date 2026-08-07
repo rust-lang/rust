@@ -171,6 +171,9 @@ jobs:
       - name: build Priroda
         working-directory: priroda
         run: cargo build --locked
+      - name: clippy Priroda
+        working-directory: priroda
+        run: cargo clippy --all-targets --locked -- -D warnings
       - name: test Priroda
         working-directory: priroda
         run: |

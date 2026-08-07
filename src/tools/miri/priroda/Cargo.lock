@@ -352,6 +352,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
+name = "emmy_dap_types"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2310ff06ab812a0332ffa037bbda9d994b3721a7f8a308ff38c28bdb20c37f56"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "encode_unicode"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -891,6 +902,7 @@ dependencies = [
 name = "priroda"
 version = "0.1.0"
 dependencies = [
+ "emmy_dap_types",
  "miri",
  "regex",
  "ui_test",

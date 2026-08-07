@@ -1,5 +1,5 @@
 error: unsupported operation: extern static `FOO` is not supported by Miri
-  --> tests/fail/extern_static.rs:LL:CC
+  --> tests/fail/extern_static/unsupported.rs:LL:CC
    |
 LL |     let _val = std::ptr::addr_of!(FOO);
    |                                   ^^^ unsupported operation occurred here
