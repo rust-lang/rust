@@ -3138,3 +3138,13 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn dyn_trait_binder_inside_fn_ptr() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+fn f<'a>(_: fn() -> &'a dyn Trait<'a>) {}
+    "#,
+    );
+}
