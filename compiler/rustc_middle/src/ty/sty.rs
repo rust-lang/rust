@@ -1191,6 +1191,15 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_self_param(self) -> bool {
+        if let Param(param) = self.kind() {
+            param.index == 0 && param.name == kw::SelfUpper
+        } else {
+            false
+        }
+    }
+
+    #[inline]
     pub fn is_ref(self) -> bool {
         matches!(self.kind(), Ref(..))
     }
