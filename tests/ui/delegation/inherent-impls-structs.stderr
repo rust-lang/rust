@@ -1,0 +1,242 @@
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:35:14
+   |
+LL | trait Trait<'a, AA, BB> where Self: Sized {
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found type parameter `Self`
+   |              arguments to this function are incorrect
+   |
+   = note:      expected struct `S<A, C>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:38:14
+   |
+LL | trait Trait<'a, AA, BB> where Self: Sized {
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found type parameter `Self`
+   |              arguments to this function are incorrect
+   |
+   = note:      expected struct `S<A, C>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:41:22
+   |
+LL | trait Trait<'a, AA, BB> where Self: Sized {
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                      ^^^^^^^^
+   |                      |
+   |                      expected `S<A, 1>`, found type parameter `Self`
+   |                      arguments to this function are incorrect
+   |
+   = note:      expected struct `S<A, 1>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0107]: associated function takes at most 2 generic arguments but 4 generic arguments were supplied
+  --> $DIR/inherent-impls-structs.rs:48:14
+   |
+LL |     reuse S::foo_static;
+   |              ^^^^^^^^^^
+   |              |
+   |              expected at most 2 generic arguments
+   |              help: remove the unnecessary generic arguments
+   |
+note: associated function defined here, with at most 2 generic parameters: `T`, `B`
+  --> $DIR/inherent-impls-structs.rs:8:8
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ^^^^^^^^^^             -  -------------
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-structs.rs:51:14
+   |
+LL |     reuse S::foo_static::<'static, (), true> as foo_static_2;
+   |              ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |
+note: required by a const generic parameter in `S`
+  --> $DIR/inherent-impls-structs.rs:3:13
+   |
+LL | struct S<A, const C: usize> {
+   |             ^^^^^^^^^^^^^^ required by this const generic parameter in `S`
+help: consider specifying the generic arguments
+   |
+LL |     reuse S::<A, C>::foo_static::<'static, (), true> as foo_static_2;
+   |            ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-structs.rs:51:14
+   |
+LL |     reuse S::foo_static::<'static, (), true> as foo_static_2;
+   |              ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-structs.rs:7:21
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+   |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |     reuse S::<A, C>::foo_static::<'static, (), true> as foo_static_2;
+   |            ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-structs.rs:55:22
+   |
+LL |     reuse S::<_, 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                      ^^^^^^^^^^ cannot infer the value of const parameter `B` declared on the associated function `foo_static`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-structs.rs:8:34
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+
+error[E0107]: method takes at most 2 generic arguments but 4 generic arguments were supplied
+  --> $DIR/inherent-impls-structs.rs:58:14
+   |
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected at most 2 generic arguments
+   |              help: remove the unnecessary generic arguments
+   |
+note: method defined here, with at most 2 generic parameters: `T`, `B`
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^             -  -------------
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:58:14
+   |
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<_, _>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<_, _>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:62:14
+   |
+LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<_, _>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<_, _>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:65:22
+   |
+LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                      ^^^^^^^^
+   |                      |
+   |                      expected `S<_, 1>`, found `X`
+   |                      arguments to this function are incorrect
+   |
+   = note: expected struct `S<_, 1>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:80:14
+   |
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<A, C>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:83:14
+   |
+LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<A, C>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:86:22
+   |
+LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                      ^^^^^^^^
+   |                      |
+   |                      expected `S<A, 1>`, found `X`
+   |                      arguments to this function are incorrect
+   |
+   = note: expected struct `S<A, 1>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0107, E0284, E0308.
+For more information about an error, try `rustc --explain E0107`.

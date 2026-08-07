@@ -14,7 +14,8 @@ use crate::delegation::resolution::resolver::DelegationResolver;
 use crate::diagnostics::{
     AmbiguousDelegationToInherentImpl, CycleInDelegationSignatureResolution,
     DelegationAttemptedBlockWithDefsDeletion, DelegationAttemptedBlockWithDefsRelowering,
-    DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
+    DelegationBlockSpecifiedWhenNoParams, DelegationGenericsMismatchInInherentImpl,
+    UnresolvedDelegationCallee,
 };
 
 /// Summary info about function parameters.
@@ -118,6 +119,8 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // Delegation can be missing from the `delegations_resolutions` table
         // in illegal places such as function bodies in extern blocks (see #151356).
         let sig_id = self.resolve_delegation_sig(def_id, span)?;
+
+        self.check_inherent_impl_generic_args(sig_id, span)?;
         self.check_for_cycles(sig_id, span)?;
 
         let is_method = tcx.is_method(sig_id);
@@ -136,7 +139,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // FIXME(splat): use `sig.splatted()` once FnSig has it
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
-            call_path_res: self.get_child_res(delegation, span)?,
+            call_path_res: self.get_call_path_res(delegation, span)?,
             sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
@@ -150,7 +153,38 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
     }
 
-    fn get_child_res(&self, delegation: &Delegation, span: Span) -> Result<DefId, ErrorGuaranteed> {
+    fn check_inherent_impl_generic_args(
+        &self,
+        sig_id: DefId,
+        span: Span,
+    ) -> Result<(), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        if !matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false }) {
+            return Ok(());
+        }
+
+        let ty::Adt(def, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+            unreachable!("parent of inherent function can be only struct or enum")
+        };
+
+        let adt_params = &tcx.generics_of(def.did()).own_params;
+        let adt_params_types = adt_params.iter().map(|p| p.kind.is_ty_or_const());
+
+        let actual_args = args.iter().flat_map(|a| a.opt_param_info().map(|a| a.1));
+
+        if !itertools::equal(actual_args, adt_params_types) {
+            let err = tcx.dcx().emit_err(DelegationGenericsMismatchInInherentImpl { span });
+            Err(err)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn get_call_path_res(
+        &self,
+        delegation: &Delegation,
+        span: Span,
+    ) -> Result<DefId, ErrorGuaranteed> {
         self.opt_resolution_id(delegation.id)
             .map(|id| Ok(id))
             .unwrap_or_else(|| self.resolve_delegation_sig(self.owner_id(), span))
