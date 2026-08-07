@@ -105,27 +105,6 @@ impl<'tcx> TyCtxt<'tcx> {
         kinds
     }
 
-    fn create_self_param_position_kind(
-        self,
-        def_id: LocalDefId,
-        sig_id: DefId,
-    ) -> SelfPositionKind {
-        match self.fn_kinds(def_id, sig_id) {
-            (FnKind::AssocInherentImpl, FnKind::AssocTrait)
-            | (FnKind::AssocTraitImpl, FnKind::AssocTrait)
-            | (FnKind::AssocTrait, FnKind::AssocTrait)
-            | (FnKind::AssocTrait, FnKind::Free)
-            | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => SelfPositionKind::Zero,
-
-            (FnKind::Free, FnKind::AssocTrait) => {
-                let kind = self.hir_delegation_info(def_id).self_ty_propagation_kind;
-                SelfPositionKind::AfterLifetimes(kind)
-            }
-
-            _ => SelfPositionKind::None,
-        }
-    }
-
     fn get_delegation_parent_args_count_without_self(
         self,
         delegation_id: LocalDefId,
@@ -180,6 +159,27 @@ impl<'tcx> TyCtxt<'tcx> {
             // For trait impl's `sig_id` is always equal to the corresponding trait method.
             // For inherent methods delegation is not yet supported.
             (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
+        }
+    }
+
+    fn create_self_param_position_kind(
+        self,
+        def_id: LocalDefId,
+        sig_id: DefId,
+    ) -> SelfPositionKind {
+        match self.fn_kinds(def_id, sig_id) {
+            (FnKind::AssocInherentImpl, FnKind::AssocTrait)
+            | (FnKind::AssocTraitImpl, FnKind::AssocTrait)
+            | (FnKind::AssocTrait, FnKind::AssocTrait)
+            | (FnKind::AssocTrait, FnKind::Free)
+            | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => SelfPositionKind::Zero,
+
+            (FnKind::Free, FnKind::AssocTrait) => {
+                let kind = self.hir_delegation_info(def_id).self_ty_propagation_kind;
+                SelfPositionKind::AfterLifetimes(kind)
+            }
+
+            _ => SelfPositionKind::None,
         }
     }
 
@@ -716,9 +716,11 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
             matches!(tcx.def_kind(*def_id), DefKind::Trait | DefKind::Struct | DefKind::Enum)
         })
         .map(|(segment, def_id)| {
-            let self_ty = tcx
-                .get_delegation_self_ty(delegation_id)
-                .filter(|_| tcx.def_kind(def_id) == DefKind::Trait);
+            let self_ty = (tcx.def_kind(def_id) == DefKind::Trait).then_some(Ty::new_param(
+                tcx,
+                0,
+                kw::SelfUpper,
+            ));
 
             lowerer
                 .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
