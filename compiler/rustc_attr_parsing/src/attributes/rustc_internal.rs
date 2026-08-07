@@ -474,7 +474,7 @@ pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
 }
