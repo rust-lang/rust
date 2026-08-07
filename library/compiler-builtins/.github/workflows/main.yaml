@@ -140,8 +140,13 @@ jobs:
       run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_CHANNEL" "$RUN_IN_DOCKER"
 
     - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+      continue-on-error: true
       with:
         tool: nextest@0.9.131
+        # On platforms without prebuilts, nextest can be installed system-wide
+        # or omitted. Building it probably takes longer than running tests
+        # without it
+        fallback: none
 
     - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       with:
