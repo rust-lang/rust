@@ -22,7 +22,7 @@ use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
-use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
+use crate::core::build_steps::synthetic_targets::SyntheticTargetWithPanicStrategy;
 use crate::core::build_steps::test::compiletest::CompiletestMode;
 use crate::core::build_steps::test::failed_tests::{RecordFailedTests, SetupFailedTestsFile};
 use crate::core::build_steps::tool::{
@@ -2212,10 +2212,8 @@ impl CommandLineStep for MirOpt {
 
             for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
                 let target = TargetSelection::from_user(target);
-                let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
-                    compiler: self.compiler,
-                    base: target,
-                });
+                let panic_abort_target = builder
+                    .ensure(SyntheticTargetWithPanicStrategy::panic_abort(self.compiler, target));
                 run(panic_abort_target);
             }
         }
