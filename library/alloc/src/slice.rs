@@ -639,7 +639,9 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
-        self.iter().map(|b| b.to_ascii_uppercase()).collect()
+        let mut me = self.to_vec();
+        me.make_ascii_uppercase();
+        me
     }
 
     /// Returns a vector containing a copy of this slice where each byte
@@ -658,7 +660,9 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
-        self.iter().map(|b| b.to_ascii_lowercase()).collect()
+        let mut me = self.to_vec();
+        me.make_ascii_lowercase();
+        me
     }
 }
 

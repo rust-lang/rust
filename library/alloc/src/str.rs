@@ -844,10 +844,9 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {
-        let bytes = self.as_bytes().to_ascii_uppercase();
-        // SAFETY: ASCII case conversion only maps a-z to A-Z and leaves
-        // all other bytes unchanged as valid UTF-8
-        unsafe { String::from_utf8_unchecked(bytes) }
+        let mut s = self.to_owned();
+        s.make_ascii_uppercase();
+        s
     }
 
     /// Returns a copy of this string where each character is mapped to its
@@ -877,10 +876,9 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> String {
-        let bytes = self.as_bytes().to_ascii_lowercase();
-        // SAFETY: ASCII case conversion only maps A-Z to a-z and leaves
-        // all other bytes unchanged as valid UTF-8
-        unsafe { String::from_utf8_unchecked(bytes) }
+        let mut s = self.to_owned();
+        s.make_ascii_lowercase();
+        s
     }
 }
 
