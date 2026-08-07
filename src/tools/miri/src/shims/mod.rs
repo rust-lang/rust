@@ -43,7 +43,7 @@ impl EmulateItemResult {
     pub fn jump_to_next_block<'tcx, T: Default>(
         self,
         ecx: &mut crate::MiriInterpCx<'tcx>,
-        dest: &crate::MPlaceTy<'tcx>,
+        dest: &crate::PlaceTy<'tcx>,
         ret: Option<rustc_middle::mir::BasicBlock>,
         unwind: Option<rustc_middle::mir::UnwindAction>,
         not_supported: impl FnOnce(&mut crate::MiriInterpCx<'tcx>) -> crate::InterpResult<'tcx, T>,
@@ -52,7 +52,7 @@ impl EmulateItemResult {
 
         match self {
             EmulateItemResult::NeedsReturn => {
-                trace!("{:?}", ecx.dump_place(&dest.clone().into()));
+                trace!("{:?}", ecx.dump_place(dest));
                 ecx.return_to_block(ret)?;
                 interp_ok(T::default())
             }

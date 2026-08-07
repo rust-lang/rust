@@ -18,6 +18,7 @@ name = "cli"
 harness = false
 
 [dependencies]
+emmy_dap_types = "0.2.0"
 miri = { path = ".." }
 
 [package.metadata.rust-analyzer]
