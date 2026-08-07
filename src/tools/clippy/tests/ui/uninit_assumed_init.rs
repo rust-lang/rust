@@ -1,5 +1,6 @@
 #![feature(stmt_expr_attributes)]
-#![allow(clippy::let_unit_value, invalid_value)]
+#![warn(clippy::uninit_assumed_init)]
+#![expect(invalid_value)]
 
 use std::mem::MaybeUninit;
 

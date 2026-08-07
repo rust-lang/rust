@@ -1,17 +1,17 @@
-use clippy_utils::res::MaybeDef as _;
 use hir::FnSig;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath, find_attr};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::unused::must_use::MustUsePath;
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_indent;
-use clippy_utils::ty::is_must_use_ty;
+use clippy_utils::ty::{describe_must_use_type, opt_must_use_path};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{is_entrypoint_fn, return_ty, trait_ref_of_method};
 use rustc_span::Symbol;
@@ -161,11 +161,13 @@ fn check_needless_must_use(
                 }
             },
         );
-    } else if reason.is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
+    } else if reason.is_none()
+        && let Some(return_must_use_path) = opt_must_use_path(cx, return_ty(cx, item_id))
+    {
         // Ignore async functions unless Future::Output type is a must_use type
         if sig.header.is_async()
             && let Some(future_ty) = cx.tcx.get_impl_future_output_ty(return_ty(cx, item_id))
-            && !is_must_use_ty(cx, future_ty)
+            && opt_must_use_path(cx, future_ty).is_none()
         {
             return;
         }
@@ -174,8 +176,18 @@ fn check_needless_must_use(
             cx,
             DOUBLE_MUST_USE,
             fn_header_span,
-            "this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`",
+            "this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`",
             |diag| {
+                // Add info about the reason why the return type is `#[must_use]` if it is a compound type.
+                if !matches!(return_must_use_path, MustUsePath::Def(..)) {
+                    diag.span_note(
+                        sig.decl.output.span(),
+                        format!(
+                            "the return type is {}",
+                            describe_must_use_type(cx, &return_must_use_path)
+                        ),
+                    );
+                }
                 // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
                 // issue #12320.
                 // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
@@ -206,7 +218,7 @@ fn check_must_use_candidate<'tcx>(
         || item_span.in_external_macro(cx.sess().source_map())
         || returns_unit(decl)
         || !cx.effective_visibilities.is_exported(item_id.def_id)
-        || is_must_use_ty(cx, return_ty(cx, item_id))
+        || opt_must_use_path(cx, return_ty(cx, item_id)).is_some()
         || item_span.from_expansion()
         || is_entrypoint_fn(cx, item_id.def_id.to_def_id())
     {
@@ -220,13 +232,6 @@ fn check_must_use_candidate<'tcx>(
             format!("#[must_use]\n{indent}"),
             Applicability::MachineApplicable,
         );
-        if let Some(msg) = match return_ty(cx, item_id).opt_diag_name(cx) {
-            Some(sym::ControlFlow) => Some("`ControlFlow<B, C>` as `C` when `B` is uninhabited"),
-            Some(sym::Result) => Some("`Result<T, E>` as `T` when `E` is uninhabited"),
-            _ => None,
-        } {
-            diag.note(format!("a future version of Rust will treat {msg} wrt `#[must_use]`"));
-        }
     });
 }
 

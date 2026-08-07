@@ -1,11 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use rustc_ast::ast::{Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::iter;

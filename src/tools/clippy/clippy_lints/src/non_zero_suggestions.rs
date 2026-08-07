@@ -52,7 +52,13 @@ impl<'tcx> LateLintPass<'tcx> for NonZeroSuggestions {
         if let ExprKind::Binary(op, _, rhs) = expr.kind
             && matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
         {
-            check_non_zero_conversion(cx, rhs, Applicability::MachineApplicable);
+            // `Div<NonZero<T>>` and `Rem<NonZero<T>>` are only implemented for unsigned
+            // integer types; signed integer types do not have these impls, so suggesting
+            // `NonZeroI*::from(x)` as the divisor produces code that won't compile.
+            let rhs_ty = cx.typeck_results().expr_ty(rhs);
+            if matches!(rhs_ty.kind(), ty::Uint(_)) {
+                check_non_zero_conversion(cx, rhs, Applicability::MachineApplicable);
+            }
         } else {
             // Check if the parent expression is a binary operation
             let parent_is_binary = cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, node)| {
