@@ -23,7 +23,7 @@ use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind, find_attr};
+use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, Node, OwnerId, PatKind, find_attr};
 use rustc_lint_defs::builtin::{
     EXPORTED_PRIVATE_DEPENDENCIES, PRIVATE_BOUNDS, PRIVATE_INTERFACES, UNNAMEABLE_TYPES,
 };
@@ -1896,4 +1896,72 @@ fn check_private_in_public(tcx: TyCtxt<'_>, mod_id: LocalModId) {
     let crate_items = tcx.hir_module_items(mod_id);
     let _ = crate_items.par_items(|id| Ok(checker.check_item(id)));
     let _ = crate_items.par_foreign_items(|id| Ok(checker.check_foreign_item(id)));
+
+    let mut private_in_public_visitor =
+        SearchInterfaceForImportedItemsVisitor { tcx, effective_visibilities };
+
+    tcx.hir_visit_item_likes_in_module(mod_id, &mut private_in_public_visitor);
+}
+
+struct SearchInterfaceForImportedItemsVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    effective_visibilities: &'a EffectiveVisibilities,
+}
+
+impl<'a, 'tcx> SearchInterfaceForImportedItemsVisitor<'a, 'tcx> {
+    fn check_path(&mut self, path: &hir::Path<'_>, kind: &'static str, hir_id: hir::HirId) {
+        let Some(crate_num) = self.tcx.path_pointing_to_private_crate(hir_id) else {
+            return;
+        };
+
+        let Some(enclosing_def) =
+            self.tcx.hir_parent_iter(hir_id).find_map(|(_, node)| match node {
+                Node::Field(field) => Some(field.def_id),
+                Node::Item(item) => Some(item.owner_id.def_id),
+                Node::ImplItem(impl_item) => Some(impl_item.owner_id.def_id),
+                Node::TraitItem(trait_item) => Some(trait_item.owner_id.def_id),
+                Node::ForeignItem(foreign_item) => Some(foreign_item.owner_id.def_id),
+                _ => None,
+            })
+        else {
+            return;
+        };
+
+        let Some(effective_visibility) =
+            self.effective_visibilities.effective_vis(enclosing_def).copied()
+        else {
+            return;
+        };
+
+        if !effective_visibility.is_public_at_level(Level::Reachable) {
+            return;
+        }
+
+        self.tcx.emit_node_span_lint(
+            EXPORTED_PRIVATE_DEPENDENCIES,
+            hir_id,
+            path.span,
+            FromPrivateDependencyInPublicInterface {
+                kind,
+                descr: (&path.segments.last().unwrap().ident.name.as_str()).into(),
+                krate: self.tcx.crate_name(crate_num),
+            },
+        );
+    }
+}
+
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for SearchInterfaceForImportedItemsVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v, AmbigArg>) -> Self::Result {
+        if let hir::TyKind::Path(hir::QPath::Resolved(_hir_ty, path)) = t.kind {
+            self.check_path(path, "type", t.hir_id);
+        }
+
+        intravisit::walk_ty(self, t)
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &'v rustc_hir::TraitRef<'v>) {
+        self.check_path(trait_ref.path, "trait", trait_ref.hir_ref_id);
+
+        intravisit::walk_trait_ref(self, trait_ref);
+    }
 }
