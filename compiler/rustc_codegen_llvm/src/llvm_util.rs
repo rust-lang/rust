@@ -252,6 +252,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "allows-misaligned-mem-access" if major < 22 => None,
             s => Some(LLVMFeature::new(s)),
         },
+        Arch::Nvptx64 => match s {
+            "sm_101" if major >= 24 => Some(LLVMFeature::new("sm_110")),
+            "sm_101a" if major >= 24 => Some(LLVMFeature::new("sm_110a")),
+            "sm_101f" if major >= 24 => Some(LLVMFeature::new("sm_110f")),
+            s => Some(LLVMFeature::new(s)),
+        },
         // Filter out features that are not supported by the current LLVM version
         Arch::PowerPC | Arch::PowerPC64 => match s {
             "power8-crypto" => Some(LLVMFeature::new("crypto")),
