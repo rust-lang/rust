@@ -349,6 +349,20 @@ pub enum Mode {
 
     /// Used only for documentation, places the crate build output in stageN-rustc
     /// but without the compiler-specific build options.
+    ///
+    /// `/build/[your arch]/compiler-docs/`, a.k.a.
+    /// <https://doc.rust-lang.org/nightly/nightly-rustc/>, is a documentation
+    /// bundle of the non-stdlib code in rust-lang/rust. It's built for the
+    /// benefit of compiler devs (including `--document-private-items`), so we
+    /// want intra-doc links, search, and impls across the entire codebase,
+    /// including tools like Bootstrap, Rustdoc, and Clippy.
+    ///
+    /// Some Rustdoc features rely on intermediate build artifacts for
+    /// cross-crate information, especially when that information flows
+    /// "upstream" from dependency crates to appear on the dependent's page.
+    /// That metadata is stored in the build directory, so any crates that
+    /// want to appear in the compiler-docs bundle need to share a build dir.
+    /// These metadata formats are also unstable, so we need a single version.
     RustcDoc,
 }
 
