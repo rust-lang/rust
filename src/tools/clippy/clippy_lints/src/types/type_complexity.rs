@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_abi::ExternAbi;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt as _, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;

@@ -96,6 +96,9 @@ fn main() {
     let _ = if true { Ok(()) } else { Err(()) };
     //~^ let_underscore_must_use
 
+    let _: Result<(), ()> = if true { Ok(()) } else { Err(()) };
+    //~^ let_underscore_must_use
+
     let a = Result::<(), ()>::Ok(());
 
     let _ = a.is_ok();

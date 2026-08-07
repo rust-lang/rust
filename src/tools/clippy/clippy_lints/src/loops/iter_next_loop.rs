@@ -1,6 +1,6 @@
 use super::ITER_NEXT_LOOP;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_span::sym;

@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use crate::internal_paths::MAYBE_DEF;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet_indent, snippet_with_applicability};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, if_sequence, sym};

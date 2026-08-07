@@ -181,3 +181,11 @@ struct BlockDocComment;
 #[doc = ""]
 /// ```
 struct DocAttribute;
+
+// Should not trigger when given simply an image which is also a link.
+/// [![git]](https://github.com/rust-lang/rust)
+///
+/// [git]: https://rustfoundation.org/wp-content/uploads/2024/07/cropped-rust-lang-logo-black-270x270.png
+fn rust_is_cool() ->i32{
+    1
+}

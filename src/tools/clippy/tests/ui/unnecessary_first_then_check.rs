@@ -1,5 +1,6 @@
 #![warn(clippy::unnecessary_first_then_check)]
-#![allow(clippy::useless_vec, clippy::const_is_empty)]
+#![allow(clippy::const_is_empty)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     let s = [1, 2, 3];

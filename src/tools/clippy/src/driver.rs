@@ -1,8 +1,9 @@
 #![feature(rustc_private)]
-// warn on lints, that are included in `rust-lang/rust`s bootstrap
-#![warn(rust_2018_idioms, unused_lifetimes)]
-// warn on rustc internal lints
-#![warn(rustc::internal)]
+#![warn(
+    // warn on lints, that are included in `rust-lang/rust`s bootstrap
+    rust_2018_idioms, unused_lifetimes,
+    // and on rustc internal lints
+    rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -54,7 +55,7 @@ fn is_arg(argument: &str, key: &str) -> bool {
 
 #[test]
 fn test_arg_value() {
-    use std::ops::Not;
+    use std::ops::Not as _;
 
     let args = &["--bar=bar", "--foobar", "123", "--foo"].map(String::from);
 
@@ -137,7 +138,6 @@ struct ClippyCallbacks {
 impl rustc_driver::Callbacks for ClippyCallbacks {
     #[expect(rustc::bad_opt_access, reason = "necessary in clippy driver to set `mir_opt_level`")]
     fn config(&mut self, config: &mut interface::Config) {
-        let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
         config.track_state = Some(Box::new(move |sess| {
@@ -162,7 +162,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             list_builder.insert(clippy_lints::declared_lints::LINTS);
             list_builder.register(lint_store);
 
-            let conf = clippy_config::Conf::read(sess, &conf_path);
+            let conf = clippy_config::Conf::load(sess);
             clippy_lints::register_lint_passes(lint_store, conf);
 
             #[cfg(feature = "internal")]

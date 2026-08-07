@@ -1,7 +1,7 @@
 //@aux-build:macro_rules.rs
 
-#![allow(clippy::needless_raw_string_hashes, dead_code, unused_variables)]
 #![warn(clippy::string_lit_as_bytes)]
+#![expect(clippy::needless_raw_string_hashes)]
 
 #[macro_use]
 extern crate macro_rules;
