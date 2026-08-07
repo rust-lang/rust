@@ -1,9 +1,16 @@
+//@ add-minicore
 //@ revisions: x86_64 aarch64
-//@ needs-asm-support
-//@[x86_64] only-x86_64
-//@[aarch64] only-aarch64
-#![deny(unused)]
+//@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64] needs-llvm-components: x86
+//@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@[aarch64] needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 #![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+#![deny(unused)]
+
+extern crate minicore;
 
 pub trait Trait {
     extern "C" fn trait_associated(a: usize, b: usize) -> usize;
@@ -11,7 +18,7 @@ pub trait Trait {
 }
 
 pub mod normal {
-    use std::arch::asm;
+    use minicore::asm;
 
     pub extern "C" fn function(a: usize, b: usize) -> usize {
         //~^ ERROR unused variable: `a`
@@ -61,7 +68,7 @@ pub mod normal {
 }
 
 pub mod naked {
-    use std::arch::naked_asm;
+    use minicore::naked_asm;
 
     #[unsafe(naked)]
     pub extern "C" fn function(a: usize, b: usize) -> usize {
