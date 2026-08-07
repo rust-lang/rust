@@ -1540,7 +1540,8 @@ impl<'a> TritonCodegen<'a> {
     // args[0] = a: Tensor<D>
     // args[1] = b: Tensor<D>
     // args[2] = acc: Option<Tensor<O>>
-    // args[3] = input_precision: Option<InputPrecision>
+    // args[3] = input_precision: InputPrecision (required, no Option — see the comment
+    //           below where it's read)
     // args[4] = max_num_imprecise_acc: Option<i32>
     // -------------------------------------------------------------------------
     pub fn codegen_dot_call<'tcx>(
@@ -1637,30 +1638,21 @@ impl<'a> TritonCodegen<'a> {
             }
         };
 
-        // Extract input_precision integer (Option<InputPrecision> → default IEEE for correctness).
-        let precision_int = self.codegen_option_operand(
-            tcx, instance, mir, &args[3].node, location, mlir_block, state,
-        )?;
-        eprintln!("[DOT-PREC] precision_int={}", precision_int.as_ref().map(|v| v.to_string()).unwrap_or("None".to_string()));
-        let precision = precision_int
-            .and_then(|v| {
-                // v is an arith.constant i32; extract the integer discriminant.
-                use melior::ir::attribute::IntegerAttribute;
-                use melior::ir::operation::{OperationLike, OperationResult};
-                OperationResult::try_from(v).ok()
-                    .and_then(|res| res.owner().attribute("value").ok())
-                    .and_then(|attr| IntegerAttribute::try_from(attr).ok())
-                    .and_then(|int_attr| match int_attr.value() as i32 {
-                        0 => Some(InputPrecision::TF32),
-                        1 => Some(InputPrecision::TF32x3),
-                        2 => Some(InputPrecision::IEEE),
-                        3 => Some(InputPrecision::BF16x3),
-                        4 => Some(InputPrecision::BF16x6),
-                        _ => None,
-                    })
-            })
-            .unwrap_or(InputPrecision::IEEE);
-        eprintln!("[DOT-PREC] final precision={:?}", precision as i32);
+        // Read InputPrecision discriminant (args[3]): a required, non-Option arg on the
+        // teenygrad side now — every call site must pick a precision explicitly, so there's
+        // no "default" to fall back to here. Same fieldless-enum-via-scalar-int pattern as
+        // DotFormat/fast_math in codegen_dot_scaled_call below.
+        let precision_int = self.to_scalar_int(tcx, instance, &args[3].node)
+            .map(|s| s.to_bits_unchecked() as i32)
+            .unwrap_or(2); // IEEE, matching tt.dot's own default, only if malformed input slips through.
+        let precision = match precision_int {
+            0 => InputPrecision::TF32,
+            1 => InputPrecision::TF32x3,
+            2 => InputPrecision::IEEE,
+            3 => InputPrecision::BF16x3,
+            4 => InputPrecision::BF16x6,
+            _ => InputPrecision::IEEE,
+        };
 
         // max_num_imprecise_acc (Option<i32> → default 0).
         let _max_imprecise_opt = self.codegen_option_operand(
