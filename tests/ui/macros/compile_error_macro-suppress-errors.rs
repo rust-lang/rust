@@ -15,6 +15,9 @@ pub mod some_module {
             error: self::MissingType, //~ ERROR: cannot find type `MissingType` in module `self`
         }
     }
+
+    type Missing = inner_module::MissingType;
+    //~^ ERROR: cannot find type `MissingType` in module `inner_module`
 }
 
 pub mod another_module {

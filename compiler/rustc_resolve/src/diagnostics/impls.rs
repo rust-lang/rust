@@ -147,14 +147,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         glob_error: bool,
     ) {
         errors.retain(|(_import, err)| match err.module {
-            // Skip `use` errors for `use foo::Bar;` if `foo.rs` has unrecovered parse errors.
-            Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
+            // Skip `use` errors for `use foo::Bar;` if `foo` has unrecovered parse errors or
+            // contains a `compile_error!`.
+            Some(def_id)
+                if self.mods_with_parse_errors.contains(&def_id)
+                    || self.mods_with_compile_errors.contains(&def_id) =>
+            {
+                false
+            }
             // If we've encountered something like `use _;`, we've already emitted an error stating
             // that `_` is not a valid identifier, so we ignore that resolve error.
             _ => err.segment.map(|s| s.name) != Some(kw::Underscore),
         });
         if errors.is_empty() {
-            self.tcx.dcx().delayed_bug("expected a parse or \"`_` can't be an identifier\" error");
+            self.tcx.dcx().delayed_bug(
+                "expected a parse error, `compile_error!`, or \"`_` can't be an identifier\" error",
+            );
             return;
         }
 

@@ -1777,6 +1777,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         res
     }
 
+    // Unlike parse errors, `compile_error!` only suppresses failures in the module containing it,
+    // not failures in modules reached from that module.
+    fn module_has_compile_error(
+        &self,
+        module: Option<ModuleOrUniformRoot<'ra>>,
+        parent_scope: &ParentScope<'ra>,
+    ) -> bool {
+        let module = match module {
+            Some(ModuleOrUniformRoot::Module(module))
+            | Some(ModuleOrUniformRoot::ModuleAndExternPrelude(module)) => module,
+            Some(ModuleOrUniformRoot::CurrentScope) | None => parent_scope.module,
+            Some(ModuleOrUniformRoot::ExternPrelude | ModuleOrUniformRoot::OpenModule(_)) => {
+                return false;
+            }
+        };
+        self.mods_with_compile_errors
+            .contains(&module.nearest_parent_mod().to_def_id())
+    }
+
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn maybe_resolve_path<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
@@ -1883,11 +1902,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let current_module = self.resolve_self(&mut ctxt, parent_scope.module);
                     let current_module_path = module_to_string(current_module)
                         .map_or_else(|| "crate".to_string(), |path| format!("crate::{path}"));
+                    let suppress_error = module_had_parse_errors
+                        || self.module_has_compile_error(module, parent_scope);
                     return PathResult::failed(
                         ident,
                         false,
                         finalize.is_some(),
-                        module_had_parse_errors,
+                        suppress_error,
                         module,
                         || {
                             (
@@ -1940,11 +1961,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 && !allow_trailing_self {
+                let suppress_error =
+                    module_had_parse_errors || self.module_has_compile_error(module, parent_scope);
                 return PathResult::failed(
                     ident,
                     false,
                     finalize.is_some(),
-                    module_had_parse_errors,
+                    suppress_error,
                     module,
                     || {
                         let name_str = if name == kw::PathRoot {
@@ -2080,11 +2103,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             path.len() - segment_idx - 1,
                         ));
                     } else {
+                        let suppress_error = module_had_parse_errors
+                            || self.module_has_compile_error(module, parent_scope);
                         return PathResult::failed(
                             ident,
                             is_last,
                             finalize.is_some(),
-                            module_had_parse_errors,
+                            suppress_error,
                             module,
                             || {
                                 let import_inherent_item_error_flag =
@@ -2147,12 +2172,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         ));
                     }
 
+                    let suppress_error = module_had_parse_errors
+                        || self.module_has_compile_error(module, parent_scope);
                     let mut this = self.reborrow();
                     return PathResult::failed(
                         ident,
                         is_last,
                         finalize.is_some(),
-                        module_had_parse_errors,
+                        suppress_error,
                         module,
                         || {
                             let (message, label, suggestion) =

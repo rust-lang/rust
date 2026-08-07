@@ -184,7 +184,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         if let Some(id) = self.owners.get(&id).map(|i| i.def_id)
             && self.tcx.def_kind(id).is_module_like()
         {
-            self.mods_with_parse_errors.insert(id.to_def_id());
+            self.mods_with_compile_errors.insert(id.to_def_id());
         }
     }
 

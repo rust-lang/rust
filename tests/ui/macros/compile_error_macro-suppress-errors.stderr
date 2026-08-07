@@ -5,7 +5,7 @@ LL |     compile_error!("Error in a module");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Error in a function
-  --> $DIR/compile_error_macro-suppress-errors.rs:23:9
+  --> $DIR/compile_error_macro-suppress-errors.rs:26:9
    |
 LL |         compile_error!("Error in a function");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |         use crate::another_module::NotExist;
    |                                    no `NotExist` in `another_module`
 
 error[E0433]: cannot find `Hello` in `another_module`
-  --> $DIR/compile_error_macro-suppress-errors.rs:37:55
+  --> $DIR/compile_error_macro-suppress-errors.rs:40:55
    |
 LL |     let _: another_module::SomeType = another_module::Hello::new();
    |                                                       ^^^^^ could not find `Hello` in `another_module`
@@ -30,19 +30,25 @@ error[E0425]: cannot find type `MissingType` in module `self`
 LL |             error: self::MissingType,
    |                          ^^^^^^^^^^^ not found in `self`
 
+error[E0425]: cannot find type `MissingType` in module `inner_module`
+  --> $DIR/compile_error_macro-suppress-errors.rs:19:34
+   |
+LL |     type Missing = inner_module::MissingType;
+   |                                  ^^^^^^^^^^^ not found in `inner_module`
+
 error[E0425]: cannot find function `some_function` in module `another_module`
-  --> $DIR/compile_error_macro-suppress-errors.rs:35:29
+  --> $DIR/compile_error_macro-suppress-errors.rs:38:29
    |
 LL |     let _ = another_module::some_function();
    |                             ^^^^^^^^^^^^^ not found in `another_module`
 
 error[E0425]: cannot find type `SomeType` in module `another_module`
-  --> $DIR/compile_error_macro-suppress-errors.rs:37:28
+  --> $DIR/compile_error_macro-suppress-errors.rs:40:28
    |
 LL |     let _: another_module::SomeType = another_module::Hello::new();
    |                            ^^^^^^^^ not found in `another_module`
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0425, E0432, E0433.
 For more information about an error, try `rustc --explain E0425`.

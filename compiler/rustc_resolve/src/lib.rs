@@ -1534,6 +1534,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
 
+    mods_with_compile_errors: FxHashSet<DefId> = default::fx_hash_set(),
     mods_with_parse_errors: FxHashSet<DefId> = default::fx_hash_set(),
 
     /// Whether `Resolver::register_macros_for_all_crates` has been called once already, as we
