@@ -1,10 +1,11 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
+use std::fmt::Debug;
 use std::ops;
 
 use rustc_data_structures::outline;
 use thin_vec::ThinVec;
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use super::interpret::GlobalAlloc;
 use super::*;
@@ -186,48 +187,46 @@ impl<'tcx> PlaceTy<'tcx> {
     /// Convenience wrapper around `projection_ty_core` for `PlaceElem`,
     /// where we can just use the `Ty` that is already stored inline on
     /// field projection elems.
-    pub fn projection_ty<V: ::std::fmt::Debug>(
+    pub fn projection_ty<V: Debug>(
         self,
         tcx: TyCtxt<'tcx>,
         elem: ProjectionElem<V, Ty<'tcx>>,
     ) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, &elem, |ty| ty.skip_norm_wip(), |ty| Some(ty), |ty| ty)
+        self.projection_ty_core(tcx, &elem, |_, _, _, ty| ty, |ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
     /// projects `place_ty` onto `elem`, returning the appropriate
     /// `Ty` or downcast variant corresponding to that projection.
-    /// `trivial_field_ty` is used for when `T` = `Ty`, otherwise,
-    /// `PlaceTy::field_ty` is used to map a `FieldIdx` to its `Ty`.
+    /// The `handle_field` callback must map a `FieldIdx` to its `Ty`,
+    /// (which should be trivial when `T` = `Ty`).
+    #[instrument(level = "debug", skip(tcx, handle_field, handle_opaque_cast_and_subtype), ret)]
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
         elem: &ProjectionElem<V, T>,
-        // FIXME(#155345): This should only normalize when actually required.
-        mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
-        trivial_field_ty: impl Fn(T) -> Option<Ty<'tcx>>,
+        mut handle_field: impl FnMut(Ty<'tcx>, Option<VariantIdx>, FieldIdx, T) -> Ty<'tcx>,
         mut handle_opaque_cast_and_subtype: impl FnMut(T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
-        V: ::std::fmt::Debug,
-        T: ::std::fmt::Debug + Copy,
+        V: Debug,
+        T: Debug + Copy,
     {
         if self.variant_index.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
             bug!("cannot use non field projection on downcasted place")
         }
-        let answer = match *elem {
+        match *elem {
             ProjectionElem::Deref => {
-                let ty =
-                    normalize(Unnormalized::new_wip(self.ty)).builtin_deref(true).unwrap_or_else(
-                        || bug!("deref projection of non-dereferenceable ty {:?}", self),
-                    );
+                let ty = self.ty.builtin_deref(true).unwrap_or_else(|| {
+                    bug!("deref projection of non-dereferenceable ty {:?}", self)
+                });
                 PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                PlaceTy::from_ty(normalize(Unnormalized::new_wip(self.ty)).builtin_index().unwrap())
+                PlaceTy::from_ty(self.ty.builtin_index().unwrap())
             }
             ProjectionElem::Subslice { from, to, from_end } => {
-                PlaceTy::from_ty(match normalize(Unnormalized::new_wip(self.ty)).kind() {
+                PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
@@ -243,22 +242,16 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(_name, index) => {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
-            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(match trivial_field_ty(fty) {
-                Some(ty) => ty,
-                None => {
-                    let self_ty = normalize(Unnormalized::new_wip(self.ty));
-                    normalize(PlaceTy::field_ty(tcx, self_ty, self.variant_index, f))
-                }
-            }),
+            ProjectionElem::Field(f, fty) => {
+                PlaceTy::from_ty(handle_field(self.ty, self.variant_index, f, fty))
+            }
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
 
             // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
                 PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty))
             }
-        };
-        debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
-        answer
+        }
     }
 }
 
