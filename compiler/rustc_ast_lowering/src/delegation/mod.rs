@@ -553,7 +553,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             NewArgsCreationKind::Propagate(ids_to_reuse) => {
                 let consumed_args = args_iter.consume_all(self, ids_to_reuse);
                 match consumed_args.is_empty() {
-                    true => segment.args.map(|args| args.args).expect("args must be Some"),
+                    true => segment.args.map(|args| args.args).unwrap_or_default(),
                     false => self.arena.alloc_from_iter(consumed_args),
                 }
             }
