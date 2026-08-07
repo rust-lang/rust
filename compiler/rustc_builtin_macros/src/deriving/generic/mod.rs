@@ -190,7 +190,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, ReprPacked};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
@@ -498,14 +498,22 @@ impl<'a> TraitDef<'a> {
                 );
 
                 let newitem = match &item.kind {
-                    ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
-                        cx,
-                        struct_def,
-                        *ident,
-                        generics,
-                        from_scratch,
-                        is_packed,
-                    ),
+                    ast::ItemKind::Struct(ident, generics, struct_def) => {
+                        let where_sp = if struct_def.requires_semi() {
+                            item.span.with_hi(item.span.hi() - BytePos(1)).shrink_to_hi()
+                        } else {
+                            generics.span.shrink_to_hi()
+                        };
+                        self.expand_struct_def(
+                            cx,
+                            struct_def,
+                            *ident,
+                            generics,
+                            where_sp,
+                            from_scratch,
+                            is_packed,
+                        )
+                    }
                     ast::ItemKind::Enum(ident, generics, enum_def) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
@@ -521,6 +529,7 @@ impl<'a> TraitDef<'a> {
                                 struct_def,
                                 *ident,
                                 generics,
+                                generics.span.shrink_to_hi(),
                                 from_scratch,
                                 is_packed,
                             )
@@ -595,6 +604,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
+        where_insert_span: Span,
         field_tys: Vec<&ast::Ty>,
         methods: Vec<Box<ast::AssocItem>>,
         is_packed: bool,
@@ -623,8 +633,6 @@ impl<'a> TraitDef<'a> {
             })
         });
 
-        let mut where_clause = ast::WhereClause::default();
-        where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
         let span = generics.span.with_ctxt(ctxt);
 
@@ -694,15 +702,18 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         // and similarly for where clauses
-        where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
-            ast::WherePredicate {
+        let mut where_clause_predicates: ThinVec<_> = generics
+            .where_clause
+            .predicates()
+            .iter()
+            .map(|clause| ast::WherePredicate {
                 attrs: clause.attrs.clone(),
                 kind: clause.kind.clone(),
                 id: ast::DUMMY_NODE_ID,
                 span: clause.span.with_ctxt(ctxt),
                 is_placeholder: false,
-            }
-        }));
+            })
+            .collect();
 
         let ty_param_names: Vec<Symbol> = params
             .iter()
@@ -762,12 +773,16 @@ impl<'a> TraitDef<'a> {
                             span: self.span,
                             is_placeholder: false,
                         };
-                        where_clause.predicates.push(predicate);
+                        where_clause_predicates.push(predicate);
                     }
                 }
             }
         }
 
+        let where_clause = ast::WhereClause::new_synthetic(
+            generics.where_clause.span().unwrap_or(where_insert_span),
+            where_clause_predicates,
+        );
         let trait_generics = Generics { params, where_clause, span };
 
         // Create the reference to the trait.
@@ -860,6 +875,7 @@ impl<'a> TraitDef<'a> {
         struct_def: &'a VariantData,
         type_ident: Ident,
         generics: &Generics,
+        where_sp: Span,
         from_scratch: bool,
         is_packed: bool,
     ) -> Box<ast::Item> {
@@ -904,7 +920,7 @@ impl<'a> TraitDef<'a> {
             })
             .collect();
 
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
+        self.create_derived_impl(cx, type_ident, generics, where_sp, field_tys, methods, is_packed)
     }
 
     fn expand_enum_def(
@@ -962,7 +978,8 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         let is_packed = false; // enums are never packed
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
+        let where_sp = generics.span.shrink_to_hi();
+        self.create_derived_impl(cx, type_ident, generics, where_sp, field_tys, methods, is_packed)
     }
 }
 

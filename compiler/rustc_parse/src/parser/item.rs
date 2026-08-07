@@ -750,7 +750,11 @@ impl<'a> Parser<'a> {
             None
         };
 
+        let where_sp = self.prev_token.span.shrink_to_hi();
         generics.where_clause = self.parse_where_clause()?;
+        if generics.where_clause.span().is_none() {
+            generics.where_clause = WhereClause::new_synthetic(where_sp, ThinVec::new());
+        }
 
         let impl_items = if is_reuse {
             Default::default()
@@ -1711,19 +1715,19 @@ impl<'a> Parser<'a> {
         // Provide a nice error message if the user placed a where-clause before the item body.
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
-        if before_where_clause.has_where_token
+        if let Some(span) = before_where_clause.span()
             && let Some(rhs) = &rhs
         {
             self.dcx().emit_err(diagnostics::WhereClauseBeforeConstBody {
-                span: before_where_clause.span,
+                span,
                 name: ident.span,
                 body: rhs.span,
-                sugg: if !after_where_clause.has_where_token {
+                sugg: if !after_where_clause.has_where_token() {
                     self.psess.source_map().span_to_snippet(rhs.span).ok().map(|body_s| {
                         diagnostics::WhereClauseBeforeConstBodySugg {
-                            left: before_where_clause.span.shrink_to_lo(),
+                            left: span.shrink_to_lo(),
                             snippet: body_s,
-                            right: before_where_clause.span.shrink_to_hi().to(rhs.span),
+                            right: span.shrink_to_hi().to(rhs.span),
                         }
                     })
                 } else {
@@ -1740,21 +1744,10 @@ impl<'a> Parser<'a> {
         // in `after_where_clause`. Further, both of them might contain predicates iff two
         // where-clauses were provided which is syntactically ill-formed but we want to recover from
         // it and treat them as one large where-clause.
-        let mut predicates = before_where_clause.predicates;
-        predicates.extend(after_where_clause.predicates);
-        let where_clause = WhereClause {
-            has_where_token: before_where_clause.has_where_token
-                || after_where_clause.has_where_token,
-            predicates,
-            span: if after_where_clause.has_where_token {
-                after_where_clause.span
-            } else {
-                before_where_clause.span
-            },
-        };
-
-        if where_clause.has_where_token {
-            self.psess.gated_spans.gate(sym::generic_const_items, where_clause.span);
+        let mut where_clause = before_where_clause;
+        where_clause.merge_from(&after_where_clause, false);
+        if let Some(span) = where_clause.span() {
+            self.psess.gated_spans.gate(sym::generic_const_items, span);
         }
 
         generics.where_clause = where_clause;
@@ -1984,7 +1977,7 @@ impl<'a> Parser<'a> {
                 let (fields, recovered) = self.parse_record_struct_body(
                     "struct",
                     ident.span,
-                    generics.where_clause.has_where_token,
+                    generics.where_clause.has_where_token(),
                 )?;
                 VariantData::Struct { fields, recovered }
             }
@@ -1996,7 +1989,7 @@ impl<'a> Parser<'a> {
             let (fields, recovered) = self.parse_record_struct_body(
                 "struct",
                 ident.span,
-                generics.where_clause.has_where_token,
+                generics.where_clause.has_where_token(),
             )?;
             VariantData::Struct { fields, recovered }
         // Tuple-style struct definition with optional where-clause.
@@ -2024,14 +2017,14 @@ impl<'a> Parser<'a> {
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 ident.span,
-                generics.where_clause.has_where_token,
+                generics.where_clause.has_where_token(),
             )?;
             VariantData::Struct { fields, recovered }
         } else if self.token == token::OpenBrace {
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 ident.span,
-                generics.where_clause.has_where_token,
+                generics.where_clause.has_where_token(),
             )?;
             VariantData::Struct { fields, recovered }
         } else {
