@@ -1203,14 +1203,14 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if attrs
             .target_features
             .iter()
-            .any(|feature| !ecx.tcx.sess.target_features.contains(&feature.name))
+            .any(|feature| !ecx.tcx.sess.internal_target_features.contains(&feature.name))
         {
             let unavailable = attrs
                 .target_features
                 .iter()
                 .filter(|&feature| {
                     feature.kind != TargetFeatureKind::Implied
-                        && !ecx.tcx.sess.target_features.contains(&feature.name)
+                        && !ecx.tcx.sess.internal_target_features.contains(&feature.name)
                 })
                 .fold(String::new(), |mut s, feature| {
                     if !s.is_empty() {

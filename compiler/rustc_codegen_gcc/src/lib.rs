@@ -85,7 +85,7 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::target_features::cfg_target_feature;
+use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -532,7 +532,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
-    let (unstable_target_features, target_features) = cfg_target_feature(
+    let internal_target_features = internal_target_features(
         sess,
         |feature| to_gcc_features(sess, feature),
         |feature| {
@@ -556,8 +556,7 @@ fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig
     let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);
 
     TargetConfig {
-        target_features,
-        unstable_target_features,
+        internal_target_features,
         // There are no known bugs with GCC support for f16 or f128
         has_reliable_f16,
         has_reliable_f16_math: has_reliable_f16,
