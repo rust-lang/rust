@@ -805,6 +805,7 @@ impl<'a> Builder<'a> {
                 tool::CargoMiri,
                 llvm::Lld,
                 llvm::Enzyme,
+                llvm::RustOffload,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
