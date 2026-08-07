@@ -1,90 +1,90 @@
-error: `#[splat]` attribute cannot be used on functions
+error: `#[rustc_splat]` attribute cannot be used on functions
   --> $DIR/splat-non-fn-arg.rs:6:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on traits
+error: `#[rustc_splat]` attribute cannot be used on traits
   --> $DIR/splat-non-fn-arg.rs:9:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on inherent impl blocks
+error: `#[rustc_splat]` attribute cannot be used on inherent impl blocks
   --> $DIR/splat-non-fn-arg.rs:18:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on inherent methods
+error: `#[rustc_splat]` attribute cannot be used on inherent methods
   --> $DIR/splat-non-fn-arg.rs:24:5
    |
-LL |     #[splat]
-   |     ^^^^^^^^
+LL |     #[rustc_splat]
+   |     ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on inherent methods
+error: `#[rustc_splat]` attribute cannot be used on inherent methods
   --> $DIR/splat-non-fn-arg.rs:27:5
    |
-LL |     #[splat]
-   |     ^^^^^^^^
+LL |     #[rustc_splat]
+   |     ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on trait impl blocks
+error: `#[rustc_splat]` attribute cannot be used on trait impl blocks
   --> $DIR/splat-non-fn-arg.rs:33:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on foreign modules
+error: `#[rustc_splat]` attribute cannot be used on foreign modules
   --> $DIR/splat-non-fn-arg.rs:40:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on foreign functions
+error: `#[rustc_splat]` attribute cannot be used on foreign functions
   --> $DIR/splat-non-fn-arg.rs:46:5
    |
-LL |     #[splat]
-   |     ^^^^^^^^
+LL |     #[rustc_splat]
+   |     ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on modules
+error: `#[rustc_splat]` attribute cannot be used on modules
   --> $DIR/splat-non-fn-arg.rs:50:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on use statements
+error: `#[rustc_splat]` attribute cannot be used on use statements
   --> $DIR/splat-non-fn-arg.rs:53:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
-error: `#[splat]` attribute cannot be used on structs
+error: `#[rustc_splat]` attribute cannot be used on structs
   --> $DIR/splat-non-fn-arg.rs:56:1
    |
-LL | #[splat]
-   | ^^^^^^^^
+LL | #[rustc_splat]
+   | ^^^^^^^^^^^^^^
    |
-   = help: `#[splat]` can only be applied to function params
+   = help: `#[rustc_splat]` can only be applied to function params
 
 error: aborting due to 11 previous errors
 

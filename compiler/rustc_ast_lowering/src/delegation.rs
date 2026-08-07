@@ -362,7 +362,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
-    /// Returns function parameter info, including C variadic `...` and `#[splat]` if present.
+    /// Returns function parameter info, including C variadic `...` and `#[rustc_splat]` if present.
     fn param_info(&self, def_id: DefId) -> ParamInfo {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
 

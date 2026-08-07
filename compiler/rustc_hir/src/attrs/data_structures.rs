@@ -1665,7 +1665,7 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
-    /// Represents `#[splat]`
+    /// Represents `#[rustc_splat]`
     Splat(Span),
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
@@ -1697,7 +1697,8 @@ pub enum AttributeKind {
         limit: Limit,
     },
 
-    /// Represents `#[unroll]`
+    /// Represents `#[rustc_unroll]`
+    // FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity
     Unroll(UnrollAttr),
 
     /// Represents `#[unstable_feature_bound]`.

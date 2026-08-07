@@ -50,7 +50,7 @@ rustc_index::newtype_index! {
     pub(crate) struct GenericIdx {}
 }
 
-/// Outcome of checking arguments that are tupled by "rust-call" or `#[splat]`.
+/// Outcome of checking arguments that are tupled by "rust-call" or `#[rustc_splat]`.
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct TupledArgCheckOutcome<'tcx> {
     /// The error code to emit if the arguments are not compatible.
@@ -560,7 +560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Check arguments that are tupled by "rust-call" or `#[splat]`.
+    /// Check arguments that are tupled by "rust-call" or `#[rustc_splat]`.
     fn check_tupled_arguments(
         &self,
         // Span enclosing the call site
@@ -596,10 +596,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The argument difference can range from -1 to u16::MAX - 1, so we count the number
         // of tupled arguments instead.
         // (An empty argument list becomes a unit tuple in the callee.)
-        // 0: f() -> f(#[splat] _: ())
-        // 1: f(a) -> f(#[splat] _: (A,))
-        // 2: f(a, b) -> f(#[splat] _: (A, B))
-        // The Fn* traits ensure this by construction, and `#[splat]` can only be applied to
+        // 0: f() -> f(#[rustc_splat] _: ())
+        // 1: f(a) -> f(#[rustc_splat] _: (A,))
+        // 2: f(a, b) -> f(#[rustc_splat] _: (A, B))
+        // The Fn* traits ensure this by construction, and `#[rustc_splat]` can only be applied to
         // an actual argument.
         let tupled_args_count = (1 + provided_args.len()).checked_sub(formal_input_tys.len());
         debug!(

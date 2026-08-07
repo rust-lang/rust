@@ -124,27 +124,27 @@ pub(crate) struct FnParamCVarArgsNotLast {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[splat]` is not supported on argument index {$splatted_arg_index}")]
-#[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
+#[diag("`#[rustc_splat]` is not supported on argument index {$splatted_arg_index}")]
+#[help("remove `#[rustc_splat]`, or use it on an argument closer to the start of the argument list")]
 pub(crate) struct InvalidSplattedArg {
     pub splatted_arg_index: u16,
 
     #[primary_span]
-    #[label("`#[splat]` is not supported here")]
+    #[label("`#[rustc_splat]` is not supported here")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple `#[splat]`s are not allowed in the same function")]
-#[help("remove `#[splat]` from all but one argument")]
+#[diag("multiple `#[rustc_splat]`s are not allowed in the same function")]
+#[help("remove `#[rustc_splat]` from all but one argument")]
 pub(crate) struct DuplicateSplattedArgs {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`...` and `#[splat]` are not allowed in the same function")]
-#[help("remove `#[splat]` or remove `...`")]
+#[diag("`...` and `#[rustc_splat]` are not allowed in the same function")]
+#[help("remove `#[rustc_splat]` or remove `...`")]
 pub(crate) struct CVarArgsAndSplat {
     #[primary_span]
     pub spans: Vec<Span>,
