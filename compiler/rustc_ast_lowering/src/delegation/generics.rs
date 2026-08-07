@@ -147,9 +147,12 @@ impl<'hir> DelegationGenericArgsIterator<'hir> {
     pub(super) fn consume_all(
         mut self,
         ctx: &mut LoweringContext<'_, 'hir>,
+        ids_to_reuse: Vec<hir::HirId>,
     ) -> Vec<hir::GenericArg<'hir>> {
         let mut args = vec![];
-        while let Some(arg) = self.next(ctx, |ctx| ctx.next_id()) {
+        let mut ids_iter = ids_to_reuse.into_iter();
+        while let Some(arg) = self.next(ctx, |ctx| ids_iter.next().unwrap_or_else(|| ctx.next_id()))
+        {
             args.push(arg);
         }
 
@@ -242,6 +245,7 @@ impl<'hir> GenericsGenerationResult<'hir> {
     }
 }
 
+#[derive(Debug)]
 enum ParentSegmentArgs<'a> {
     /// Parent segment is valid and generic args are specified:
     /// `reuse Trait::<'static, ()>::foo;`.

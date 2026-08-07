@@ -9,7 +9,7 @@ help: indicate the anonymous lifetime
 LL | impl<'a, 'b, 'c, A, const C: usize> S<'_, A, C> {
    |                                       +++
 
-error: mismatch in ADT generics and provided args in impl
+error: failed to generate delegation: mismatch between provided generic args in inherent impl and declared generics
   --> $DIR/inherent-impls-wrong-header-args-ice.rs:14:14
    |
 LL |     reuse S::foo_self;
