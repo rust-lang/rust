@@ -106,10 +106,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // paths to match it against.
     let steps = step_descs
         .iter()
-        .map(|desc| StepExtra {
-            desc,
-            should_run: (desc.should_run)(ShouldRun::new(builder, desc.kind)),
-        })
+        .map(|desc| StepExtra { desc, should_run: (desc.should_run)(ShouldRun::new(builder)) })
         .collect::<Vec<_>>();
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
