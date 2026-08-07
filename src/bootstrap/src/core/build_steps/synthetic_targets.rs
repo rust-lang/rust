@@ -12,17 +12,37 @@ use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct MirOptPanicAbortSyntheticTarget {
-    pub(crate) compiler: Compiler,
-    pub(crate) base: TargetSelection,
+pub(crate) enum PanicStrategy {
+    Unwind,
+    Abort,
 }
 
-impl Step for MirOptPanicAbortSyntheticTarget {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct SyntheticTargetWithPanicStrategy {
+    pub(crate) compiler: Compiler,
+    pub(crate) base: TargetSelection,
+    pub(crate) strategy: PanicStrategy,
+}
+
+impl SyntheticTargetWithPanicStrategy {
+    pub(crate) fn panic_abort(compiler: Compiler, base: TargetSelection) -> Self {
+        Self { compiler, base, strategy: PanicStrategy::Abort }
+    }
+    pub(crate) fn panic_unwind(compiler: Compiler, base: TargetSelection) -> Self {
+        Self { compiler, base, strategy: PanicStrategy::Unwind }
+    }
+}
+
+impl Step for SyntheticTargetWithPanicStrategy {
     type Output = TargetSelection;
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let strategy = match self.strategy {
+            PanicStrategy::Unwind => "unwind",
+            PanicStrategy::Abort => "abort",
+        };
         create_synthetic_target(builder, self.compiler, "miropt-abort", self.base, |spec| {
-            spec.insert("panic-strategy".into(), "abort".into());
+            spec.insert("panic-strategy".into(), strategy.into());
         })
     }
 }
