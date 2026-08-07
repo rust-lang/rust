@@ -15,7 +15,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
-  BENCHMARK_RUSTC: nightly-2026-05-23 # Pin the toolchain for reproducable results
+  BENCHMARK_RUSTC: nightly-2026-05-24 # Pin the toolchain for reproducable results
 
 defaults:
   run:
