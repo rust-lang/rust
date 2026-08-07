@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{DelegationSelfTyPropagationKind, PathSegment};
+use rustc_macros::extension;
 use rustc_middle::ty::{
     self, EarlyBinder, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -73,27 +74,6 @@ enum SelfPositionKind {
     None,
 }
 
-fn create_self_param_position_kind(
-    tcx: TyCtxt<'_>,
-    delegation_id: LocalDefId,
-    sig_id: DefId,
-) -> SelfPositionKind {
-    match (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id)) {
-        (FnKind::AssocInherentImpl, FnKind::AssocTrait)
-        | (FnKind::AssocTraitImpl, FnKind::AssocTrait)
-        | (FnKind::AssocTrait, FnKind::AssocTrait)
-        | (FnKind::AssocTrait, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => SelfPositionKind::Zero,
-
-        (FnKind::Free, FnKind::AssocTrait) => {
-            let kind = tcx.hir_delegation_info(delegation_id).self_ty_propagation_kind;
-            SelfPositionKind::AfterLifetimes(kind)
-        }
-
-        _ => SelfPositionKind::None,
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum FnKind {
     Free,
@@ -102,17 +82,154 @@ enum FnKind {
     AssocTraitImpl,
 }
 
-fn fn_kind<'tcx>(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> FnKind {
-    let def_id = def_id.into();
+#[extension(trait DelegationTyCtxtExt<'tcx>)]
+impl<'tcx> TyCtxt<'tcx> {
+    fn fn_kind(self, def_id: impl Into<DefId>) -> FnKind {
+        let def_id = def_id.into();
 
-    debug_assert_matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
 
-    let parent = tcx.parent(def_id);
-    match tcx.def_kind(parent) {
-        DefKind::Trait => FnKind::AssocTrait,
-        DefKind::Impl { of_trait: true } => FnKind::AssocTraitImpl,
-        DefKind::Impl { of_trait: false } => FnKind::AssocInherentImpl,
-        _ => FnKind::Free,
+        let parent = self.parent(def_id);
+        match self.def_kind(parent) {
+            DefKind::Trait => FnKind::AssocTrait,
+            DefKind::Impl { of_trait: true } => FnKind::AssocTraitImpl,
+            DefKind::Impl { of_trait: false } => FnKind::AssocInherentImpl,
+            _ => FnKind::Free,
+        }
+    }
+
+    fn fn_kinds(self, def_id: LocalDefId, sig_id: DefId) -> (FnKind, FnKind) {
+        let kinds = (self.fn_kind(def_id), self.fn_kind(sig_id));
+        assert!(!matches!(kinds, (_, FnKind::AssocTraitImpl)));
+
+        kinds
+    }
+
+    fn create_self_param_position_kind(
+        self,
+        def_id: LocalDefId,
+        sig_id: DefId,
+    ) -> SelfPositionKind {
+        match self.fn_kinds(def_id, sig_id) {
+            (FnKind::AssocInherentImpl, FnKind::AssocTrait)
+            | (FnKind::AssocTraitImpl, FnKind::AssocTrait)
+            | (FnKind::AssocTrait, FnKind::AssocTrait)
+            | (FnKind::AssocTrait, FnKind::Free)
+            | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => SelfPositionKind::Zero,
+
+            (FnKind::Free, FnKind::AssocTrait) => {
+                let kind = self.hir_delegation_info(def_id).self_ty_propagation_kind;
+                SelfPositionKind::AfterLifetimes(kind)
+            }
+
+            _ => SelfPositionKind::None,
+        }
+    }
+
+    fn get_delegation_parent_args_count_without_self(
+        self,
+        delegation_id: LocalDefId,
+        sig_id: DefId,
+    ) -> usize {
+        let delegation_parent_args_count = self.generics_of(delegation_id).parent_count;
+
+        match self.fn_kinds(delegation_id, sig_id) {
+            (FnKind::Free, _) => 0,
+            (FnKind::AssocTraitImpl, FnKind::AssocTrait) => 0,
+            (FnKind::AssocTrait, _) => delegation_parent_args_count - 1,
+
+            (FnKind::AssocInherentImpl, FnKind::Free)
+            | (FnKind::AssocInherentImpl, FnKind::AssocTrait)
+            | (_, FnKind::AssocInherentImpl) => {
+                delegation_parent_args_count /* No Self in AssocInherentImpl */
+            }
+
+            // For trait impl's `sig_id` is always equal to the corresponding trait method.
+            // For inherent methods delegation is not yet supported.
+            (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
+        }
+    }
+
+    fn get_parent_and_inheritance_kind(
+        self,
+        def_id: LocalDefId,
+        sig_id: DefId,
+    ) -> (Option<DefId>, InheritanceKind) {
+        match self.fn_kinds(def_id, sig_id) {
+            (FnKind::Free, FnKind::Free) | (FnKind::Free, FnKind::AssocTrait) => {
+                (None, InheritanceKind::WithParent(true))
+            }
+
+            (FnKind::Free, FnKind::AssocInherentImpl)
+            | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
+                (None, InheritanceKind::WithParent(false))
+            }
+
+            (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
+                (Some(self.parent(def_id.to_def_id())), InheritanceKind::Own)
+            }
+
+            (FnKind::AssocInherentImpl, FnKind::AssocTrait)
+            | (FnKind::AssocTrait, FnKind::AssocTrait)
+            | (FnKind::AssocInherentImpl, FnKind::Free)
+            | (FnKind::AssocTrait, FnKind::Free)
+            | (_, FnKind::AssocInherentImpl) => {
+                (Some(self.parent(def_id.to_def_id())), InheritanceKind::WithParent(false))
+            }
+
+            // For trait impl's `sig_id` is always equal to the corresponding trait method.
+            // For inherent methods delegation is not yet supported.
+            (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
+        }
+    }
+
+    fn get_delegation_self_ty(self, delegation_id: LocalDefId) -> Option<Ty<'tcx>> {
+        let sig_id = self.hir_opt_delegation_sig_id(delegation_id).expect("processing delegation");
+        let (caller_kind, callee_kind) = self.fn_kinds(delegation_id, sig_id);
+
+        match (caller_kind, callee_kind) {
+            (FnKind::Free, FnKind::AssocTrait)
+            | (FnKind::AssocInherentImpl, FnKind::Free)
+            | (FnKind::Free, FnKind::Free)
+            | (FnKind::AssocTrait, FnKind::Free)
+            | (FnKind::AssocTrait, FnKind::AssocTrait)
+            | (_, FnKind::AssocInherentImpl) => {
+                match self.create_self_param_position_kind(delegation_id, sig_id) {
+                    SelfPositionKind::None => None,
+                    SelfPositionKind::AfterLifetimes(propagation_kind) => {
+                        Some(match propagation_kind {
+                            Some(kind) => match kind {
+                                DelegationSelfTyPropagationKind::SelfTy(self_ty_id) => {
+                                    let ctx = ItemCtxt::new(self, delegation_id);
+                                    ctx.lower_ty(self.hir_node(self_ty_id).expect_ty())
+                                }
+                                DelegationSelfTyPropagationKind::SelfParam => {
+                                    let index =
+                                        self.generics_of(delegation_id).own_counts().lifetimes;
+                                    Ty::new_param(self, index as u32, kw::SelfUpper)
+                                }
+                            },
+                            None => Ty::new_error_with_message(
+                                self,
+                                self.def_span(delegation_id),
+                                "self propagation kind must be specified for `AfterLifetimes` variant",
+                            ),
+                        })
+                    }
+                    SelfPositionKind::Zero => Some(Ty::new_param(self, 0, kw::SelfUpper)),
+                }
+            }
+
+            (FnKind::AssocTraitImpl, FnKind::AssocTrait) | (FnKind::AssocInherentImpl, _) => Some(
+                self.type_of(self.local_parent(delegation_id))
+                    .instantiate_identity()
+                    .skip_norm_wip(),
+            ),
+
+            // For trait impl's `sig_id` is always equal to the corresponding trait method.
+            // For inherent methods delegation is not yet supported.
+            (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
+        }
     }
 }
 
@@ -152,7 +269,7 @@ fn create_mapping<'tcx>(
 ) -> FxHashMap<u32, u32> {
     let mut mapping: FxHashMap<u32, u32> = Default::default();
 
-    let self_pos_kind = create_self_param_position_kind(tcx, def_id, sig_id);
+    let self_pos_kind = tcx.create_self_param_position_kind(def_id, sig_id);
     let is_self_at_zero = matches!(self_pos_kind, SelfPositionKind::Zero);
 
     // Is self at zero? If so insert mapping, self in sig parent is always at 0.
@@ -163,9 +280,9 @@ fn create_mapping<'tcx>(
     let mut args_index = 0;
 
     args_index += is_self_at_zero as usize;
-    args_index += get_delegation_parent_args_count_without_self(tcx, def_id, sig_id);
+    args_index += tcx.get_delegation_parent_args_count_without_self(def_id, sig_id);
 
-    let parent_kind = fn_kind(tcx, sig_id);
+    let parent_kind = tcx.fn_kind(sig_id);
     let process_parent = matches!(parent_kind, FnKind::AssocTrait | FnKind::AssocInherentImpl);
     let parent_generics = process_parent.then(|| tcx.generics_of(tcx.parent(sig_id)));
 
@@ -237,109 +354,6 @@ fn create_mapping<'tcx>(
     mapping
 }
 
-fn get_delegation_parent_args_count_without_self<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    delegation_id: LocalDefId,
-    sig_id: DefId,
-) -> usize {
-    let delegation_parent_args_count = tcx.generics_of(delegation_id).parent_count;
-
-    match (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id)) {
-        (FnKind::Free, _) => 0,
-        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => 0,
-        (FnKind::AssocTrait, _) => delegation_parent_args_count - 1,
-
-        (FnKind::AssocInherentImpl, FnKind::Free)
-        | (FnKind::AssocInherentImpl, FnKind::AssocTrait)
-        | (_, FnKind::AssocInherentImpl) => {
-            delegation_parent_args_count /* No Self in AssocInherentImpl */
-        }
-
-        // For trait impl's `sig_id` is always equal to the corresponding trait method.
-        // For inherent methods delegation is not yet supported.
-        (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
-    }
-}
-
-fn get_parent_and_inheritance_kind<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    sig_id: DefId,
-) -> (Option<DefId>, InheritanceKind) {
-    match (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)) {
-        (FnKind::Free, FnKind::Free) | (FnKind::Free, FnKind::AssocTrait) => {
-            (None, InheritanceKind::WithParent(true))
-        }
-
-        (FnKind::Free, FnKind::AssocInherentImpl)
-        | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
-            (None, InheritanceKind::WithParent(false))
-        }
-
-        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            (Some(tcx.parent(def_id.to_def_id())), InheritanceKind::Own)
-        }
-
-        (FnKind::AssocInherentImpl, FnKind::AssocTrait)
-        | (FnKind::AssocTrait, FnKind::AssocTrait)
-        | (FnKind::AssocInherentImpl, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::Free)
-        | (_, FnKind::AssocInherentImpl) => {
-            (Some(tcx.parent(def_id.to_def_id())), InheritanceKind::WithParent(false))
-        }
-
-        // For trait impl's `sig_id` is always equal to the corresponding trait method.
-        // For inherent methods delegation is not yet supported.
-        (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
-    }
-}
-
-fn get_delegation_self_ty<'tcx>(tcx: TyCtxt<'tcx>, delegation_id: LocalDefId) -> Option<Ty<'tcx>> {
-    let sig_id = tcx.hir_opt_delegation_sig_id(delegation_id).expect("Delegation must have sig_id");
-    let (caller_kind, callee_kind) = (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id));
-
-    match (caller_kind, callee_kind) {
-        (FnKind::Free, FnKind::AssocTrait)
-        | (FnKind::AssocInherentImpl, FnKind::Free)
-        | (FnKind::Free, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::AssocTrait)
-        | (_, FnKind::AssocInherentImpl) => {
-            match create_self_param_position_kind(tcx, delegation_id, sig_id) {
-                SelfPositionKind::None => None,
-                SelfPositionKind::AfterLifetimes(propagation_kind) => {
-                    Some(match propagation_kind {
-                        Some(kind) => match kind {
-                            DelegationSelfTyPropagationKind::SelfTy(self_ty_id) => {
-                                let ctx = ItemCtxt::new(tcx, delegation_id);
-                                ctx.lower_ty(tcx.hir_node(self_ty_id).expect_ty())
-                            }
-                            DelegationSelfTyPropagationKind::SelfParam => {
-                                let index = tcx.generics_of(delegation_id).own_counts().lifetimes;
-                                Ty::new_param(tcx, index as u32, kw::SelfUpper)
-                            }
-                        },
-                        None => Ty::new_error_with_message(
-                            tcx,
-                            tcx.def_span(delegation_id),
-                            "self propagation kind must be specified for `AfterLifetimes` variant",
-                        ),
-                    })
-                }
-                SelfPositionKind::Zero => Some(Ty::new_param(tcx, 0, kw::SelfUpper)),
-            }
-        }
-
-        (FnKind::AssocTraitImpl, FnKind::AssocTrait) | (FnKind::AssocInherentImpl, _) => Some(
-            tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity().skip_norm_wip(),
-        ),
-
-        // For trait impl's `sig_id` is always equal to the corresponding trait method.
-        // For inherent methods delegation is not yet supported.
-        (FnKind::AssocTraitImpl, _) | (_, FnKind::AssocTraitImpl) => unreachable!(),
-    }
-}
-
 /// Creates generic arguments for further delegation signature and predicates instantiation.
 /// Arguments can be user-specified (in this case they are in `parent_args` and `child_args`)
 /// or propagated. User can specify either both `parent_args` and `child_args`, one of them or none,
@@ -373,7 +387,7 @@ fn create_generic_args<'tcx>(
 
     let delegation_args = &delegation_args[delegation_generics.parent_count..];
 
-    let kinds @ (_, parent_kind) = (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id));
+    let kinds @ (_, parent_kind) = tcx.fn_kinds(delegation_id, sig_id);
     if matches!(kinds, (FnKind::AssocTraitImpl, FnKind::AssocTrait | FnKind::AssocInherentImpl)) {
         // Special case, as user specifies Trait args in trait impl header, we want to treat
         // them as parent args. We always generate a function whose generics match
@@ -389,7 +403,7 @@ fn create_generic_args<'tcx>(
         delegation_parent_args = &[];
     }
 
-    let self_type = get_delegation_self_ty(tcx, delegation_id).map(|t| t.into());
+    let self_type = tcx.get_delegation_self_ty(delegation_id).map(ty::GenericArg::from);
 
     if self_type.is_some() && !parent_args.is_empty() {
         parent_args = match parent_kind {
@@ -402,7 +416,7 @@ fn create_generic_args<'tcx>(
     }
 
     let (zero_self, after_lifetimes_self) =
-        match create_self_param_position_kind(tcx, delegation_id, sig_id) {
+        match tcx.create_self_param_position_kind(delegation_id, sig_id) {
             SelfPositionKind::AfterLifetimes(_) => {
                 assert!(self_type.is_some());
                 (None, self_type)
@@ -532,7 +546,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
 
     let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
-    let self_pos_kind = create_self_param_position_kind(tcx, def_id, sig_id);
+    let self_pos_kind = tcx.create_self_param_position_kind(def_id, sig_id);
     let filter_self_clauses = matches!(
         self_pos_kind,
         SelfPositionKind::AfterLifetimes(Some(DelegationSelfTyPropagationKind::SelfTy(..)))
@@ -547,7 +561,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
         fold_clauses: true,
     };
 
-    let (parent, inh_kind) = get_parent_and_inheritance_kind(tcx, def_id, sig_id);
+    let (parent, inh_kind) = tcx.get_parent_and_inheritance_kind(def_id, sig_id);
 
     // `explicit_clauses_of` is used here to avoid copying `Self: Trait` clause.
     // Note: `clauses_of` query can also add inferred outlives clauses, but that
@@ -565,10 +579,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
     };
 
     if tcx.is_method(sig_id)
-        && matches!(
-            (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)),
-            (FnKind::AssocTrait, FnKind::AssocInherentImpl)
-        )
+        && matches!(tcx.fn_kinds(def_id, sig_id), (FnKind::AssocTrait, FnKind::AssocInherentImpl))
     {
         collector.fold_clauses = false;
         collector.filter_self_clauses = false;
@@ -664,7 +675,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
 
     let self_input = sig[0];
 
-    sig[0] = match (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)) {
+    sig[0] = match tcx.fn_kinds(def_id, sig_id) {
         (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
             tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
         }
@@ -673,8 +684,9 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
                 unreachable!("delegation is supported only to struct or enums")
             };
 
-            let new_adt = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
-            self_input.replace_inside(tcx, new_adt, Ty::new_param(tcx, 0, kw::SelfUpper))
+            let sig_self_type = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+            let self_param = Ty::new_param(tcx, 0, kw::SelfUpper);
+            self_input.replace_inside(tcx, sig_self_type, self_param)
         }
         _ => self_input,
     };
@@ -704,7 +716,8 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
             matches!(tcx.def_kind(*def_id), DefKind::Trait | DefKind::Struct | DefKind::Enum)
         })
         .map(|(segment, def_id)| {
-            let self_ty = get_delegation_self_ty(tcx, delegation_id)
+            let self_ty = tcx
+                .get_delegation_self_ty(delegation_id)
                 .filter(|_| tcx.def_kind(def_id) == DefKind::Trait);
 
             lowerer
