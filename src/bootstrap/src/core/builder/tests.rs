@@ -5,7 +5,6 @@ use build_helper::stage0_parser::parse_stage0_file;
 use llvm::prebuilt_llvm_config;
 
 use super::*;
-use crate::core::builder::cli_paths::PATH_REMAP;
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
@@ -48,43 +47,6 @@ fn test_valid() {
 fn test_invalid() {
     // make sure that invalid paths are caught, even when combined with valid paths
     check_cli(["test", "library/std", "x"]);
-}
-
-#[test]
-fn validate_path_remap() {
-    let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-    PATH_REMAP
-        .iter()
-        .flat_map(|(_, paths)| paths.iter())
-        .map(|path| build.src.join(path))
-        .for_each(|path| {
-            assert!(path.exists(), "{} should exist.", path.display());
-        });
-}
-
-#[test]
-fn check_missing_paths_for_x_test_tests() {
-    let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-    let (_, tests_remap_paths) =
-        PATH_REMAP.iter().find(|(target_path, _)| *target_path == "tests").unwrap();
-
-    let tests_dir = fs::read_dir(build.src.join("tests")).unwrap();
-    for dir in tests_dir {
-        let path = dir.unwrap().path();
-
-        // Skip if not a test directory.
-        if path.ends_with("tests/auxiliary") || !path.is_dir() {
-            continue;
-        }
-
-        assert!(
-            tests_remap_paths.iter().any(|item| path.ends_with(*item)),
-            "{} is missing in PATH_REMAP tests list.",
-            path.display()
-        );
-    }
 }
 
 #[test]

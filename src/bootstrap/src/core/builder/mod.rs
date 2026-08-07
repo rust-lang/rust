@@ -609,6 +609,19 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
+    /// Registers a path, and an alias that is treated as equivalent to that path.
+    pub fn path_with_alias(mut self, path: &str, alias: &str) -> Self {
+        self.assert_valid_path(path);
+        self.assert_valid_alias(alias);
+
+        let set = [path, alias]
+            .into_iter()
+            .map(|p| TaskPath { path: PathBuf::from(p) })
+            .collect::<BTreeSet<_>>();
+        self.paths.insert(PathSet::Set(set));
+        self
+    }
+
     /// Multiple on-disk paths that should select the same unit of work.
     pub fn multi_path(mut self, paths: &[&str]) -> Self {
         let mut set = BTreeSet::new();
