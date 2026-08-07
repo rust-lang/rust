@@ -4,12 +4,12 @@ use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
-use clippy_utils::{higher, is_expn_of, sym};
+use clippy_utils::{get_parent_expr, higher, is_expn_of, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
+use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol, kw};
@@ -312,11 +312,28 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 if let Some(guard) = maybe_guard {
                     let guard = Sugg::hir_with_context(cx, guard, ctxt, "..", &mut app);
                     let _ = write!(sugg, " && {}", guard.maybe_paren());
+                    if guard_sugg_needs_parens(cx, expr) {
+                        sugg = format!("({sugg})");
+                    }
                 }
 
                 diag.span_suggestion_verbose(expr_span, format!("consider using `{good_method}`"), sugg, app);
             },
         );
+    }
+}
+
+/// Whether the appended `&& guard` makes the suggestion bind looser than `expr`'s
+/// parent, so the whole `recv.method() && guard` must be wrapped in parentheses.
+fn guard_sugg_needs_parens(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let Some(parent) = get_parent_expr(cx, expr) else {
+        return false;
+    };
+    match parent.kind {
+        ExprKind::Binary(op, ..) => !matches!(op.node, BinOpKind::And | BinOpKind::Or),
+        ExprKind::Unary(..) | ExprKind::AddrOf(..) | ExprKind::Cast(..) => true,
+        ExprKind::MethodCall(_, receiver, ..) => receiver.hir_id == expr.hir_id,
+        _ => false,
     }
 }
 
