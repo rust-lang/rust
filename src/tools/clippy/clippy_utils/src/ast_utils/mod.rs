@@ -601,7 +601,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
             eq_defaultness(*ld, *rd)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
-                && over(&lw.predicates, &rw.predicates, eq_where_predicate)
+                && over(lw.predicates(), rw.predicates(), eq_where_predicate)
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
@@ -690,7 +690,7 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
-                && over(&lw.predicates, &rw.predicates, eq_where_predicate)
+                && over(lw.predicates(), rw.predicates(), eq_where_predicate)
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
@@ -768,7 +768,7 @@ fn eq_opt_fn_contract(l: &Option<Box<FnContract>>, r: &Option<Box<FnContract>>) 
 
 fn eq_generics(l: &Generics, r: &Generics) -> bool {
     over(&l.params, &r.params, eq_generic_param)
-        && over(&l.where_clause.predicates, &r.where_clause.predicates, |l, r| {
+        && over(l.where_clause.predicates(), r.where_clause.predicates(), |l, r| {
             eq_where_predicate(l, r)
         })
 }
