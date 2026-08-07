@@ -579,3 +579,19 @@ pub(crate) struct DelegationAttemptedBlockWithDefsRelowering {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("ambiguous delegation to inherent impl function")]
+pub(crate) struct AmbiguousDelegationToInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "failed to generate delegation: mismatch between provided generic args in inherent impl and declared generics"
+)]
+pub(crate) struct DelegationGenericsMismatchInInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}

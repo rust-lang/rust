@@ -66,7 +66,10 @@ use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{
+    DelegationInhFuncKind, PerOwnerResolverData, ResolverAstLowering, TyCtxt,
+    TypeRelativeDelegationRes,
+};
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -98,6 +101,7 @@ pub mod stability;
 pub fn provide(providers: &mut Providers) {
     providers.index_ast = index_ast;
     providers.lower_to_hir = lower_to_hir;
+    providers.resolve_type_relative_delegations = resolve_type_relative_delegations;
 }
 
 #[cfg(debug_assertions)]
@@ -651,8 +655,69 @@ fn index_ast<'tcx>(
     }
 }
 
+fn resolve_type_relative_delegations(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> FxIndexMap<LocalDefId, TypeRelativeDelegationRes> {
+    let ast_index = tcx.index_ast(());
+    let resolutions = tcx.resolutions(());
+
+    let infos = &resolutions.delegation_infos;
+    let inh_methods = &resolutions.delegation_inh_functions_map;
+
+    let mut type_relative_resolutions: FxIndexMap<LocalDefId, TypeRelativeDelegationRes> =
+        Default::default();
+
+    for (&def_id, res) in infos {
+        if res.resolution_id.is_none() {
+            let Some(r_and_owner) = ast_index.get(def_id).map(Steal::borrow) else {
+                unreachable!("ast index must contain delegations");
+            };
+
+            let (r, owner) = &*r_and_owner;
+
+            let delegation = match owner {
+                AstOwner::Item(Item { kind: ItemKind::Delegation(d), .. })
+                | AstOwner::TraitItem(Item { kind: AssocItemKind::Delegation(d), .. })
+                | AstOwner::ImplItem(Item { kind: AssocItemKind::Delegation(d), .. }) => d,
+                _ => unreachable!("we are processing only delegations"),
+            };
+
+            let res = r
+                .partial_res_map
+                .get(&delegation.id)
+                .and_then(|res| res.base_res().opt_def_id().and_then(|id| id.as_local()));
+
+            let res = match res {
+                Some(res) => {
+                    let res = inh_methods
+                        .get(&res)
+                        .and_then(|map| map.get(&delegation.path.segments.last().unwrap().ident));
+
+                    match res {
+                        Some(res) => match res {
+                            DelegationInhFuncKind::Ambig => TypeRelativeDelegationRes::Ambig,
+                            DelegationInhFuncKind::Single(res) => {
+                                TypeRelativeDelegationRes::Ok(res.to_def_id())
+                            }
+                        },
+                        _ => TypeRelativeDelegationRes::Error,
+                    }
+                }
+                None => TypeRelativeDelegationRes::Error,
+            };
+
+            type_relative_resolutions.insert(def_id, res);
+        }
+    }
+
+    type_relative_resolutions
+}
+
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
+    tcx.ensure_done().resolve_type_relative_delegations(());
+
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 

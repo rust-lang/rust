@@ -26,7 +26,7 @@ LL |     reuse <F as Trait>::baz;
    |     not a member of trait `Trait`
 
 error[E0407]: method `foo2` is not a member of trait `Trait`
-  --> $DIR/bad-resolve.rs:37:5
+  --> $DIR/bad-resolve.rs:36:5
    |
 LL |     reuse Trait::foo2 { self.0 }
    |     ^^^^^^^^^^^^^----^^^^^^^^^^^
@@ -69,37 +69,13 @@ error[E0425]: cannot find function `foo` in this scope
 LL |     reuse foo { &self.0 }
    |           ^^^ not found in this scope
 
-error[E0425]: cannot find function `foo2` in trait `Trait`
-  --> $DIR/bad-resolve.rs:37:18
-   |
-LL |     fn foo(&self, x: i32) -> i32 { x }
-   |     ---------------------------- similarly named associated function `foo` defined here
-...
-LL |     reuse Trait::foo2 { self.0 }
-   |                  ^^^^
-   |
-help: an associated function with a similar name exists
-   |
-LL -     reuse Trait::foo2 { self.0 }
-LL +     reuse Trait::foo { self.0 }
-   |
-
 error[E0423]: cannot find function `self` in module `prefix`
-  --> $DIR/bad-resolve.rs:44:16
+  --> $DIR/bad-resolve.rs:45:16
    |
 LL | reuse prefix::{self, super, crate};
    |                ^^^^ not found in `prefix`
    |
    = note: a module named `prefix::self` exists in another namespace
-
-error[E0186]: method `foo` has a `&self` declaration in the trait, but not in the impl
-  --> $DIR/bad-resolve.rs:34:11
-   |
-LL |     fn foo(&self, x: i32) -> i32 { x }
-   |     ---------------------------- `&self` used in trait
-...
-LL |     reuse foo { &self.0 }
-   |           ^^^ expected `&self` in impl
 
 error[E0046]: not all trait items implemented, missing: `Type`
   --> $DIR/bad-resolve.rs:21:1
@@ -110,8 +86,54 @@ LL |     type Type;
 LL | impl Trait for S {
    | ^^^^^^^^^^^^^^^^ missing `Type` in implementation
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bad-resolve.rs:36:11
+   |
+LL |     reuse Trait::foo2 { self.0 }
+   |           ^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     reuse <dyn Trait>::foo2 { self.0 }
+   |           ++++      +
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/bad-resolve.rs:36:11
+   |
+LL |     reuse Trait::foo2 { self.0 }
+   |           ^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/bad-resolve.rs:4:11
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     const C: u32 = 0;
+   |           ^ ...because it contains associated const `C`
+LL |     type Type;
+LL |     fn bar() {}
+   |        ^^^ ...because associated function `bar` has no `self` parameter
+   = help: consider moving `C` to another trait
+   = help: the following types implement `Trait`:
+             F
+             S
+           consider defining an enum where each variant holds one of these types,
+           implementing `Trait` for this new enum and using it instead
+help: consider turning `bar` into a method by giving it a `&self` argument
+   |
+LL |     fn bar(&self) {}
+   |            +++++
+help: alternatively, consider constraining `bar` so it does not apply to trait objects
+   |
+LL |     fn bar() where Self: Sized {}
+   |              +++++++++++++++++
+
 error[E0433]: cannot find module or crate `unresolved_prefix` in this scope
-  --> $DIR/bad-resolve.rs:43:7
+  --> $DIR/bad-resolve.rs:44:7
    |
 LL | reuse unresolved_prefix::{a, b, c};
    |       ^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `unresolved_prefix`
@@ -119,12 +141,12 @@ LL | reuse unresolved_prefix::{a, b, c};
    = help: you might be missing a crate named `unresolved_prefix`
 
 error[E0433]: `crate` in paths can only be used in start position
-  --> $DIR/bad-resolve.rs:44:29
+  --> $DIR/bad-resolve.rs:45:29
    |
 LL | reuse prefix::{self, super, crate};
    |                             ^^^^^ can only be used in path start position
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0046, E0186, E0324, E0407, E0423, E0425, E0433, E0575, E0576.
-For more information about an error, try `rustc --explain E0046`.
+Some errors have detailed explanations: E0038, E0046, E0324, E0407, E0423, E0425, E0433, E0575, E0576.
+For more information about an error, try `rustc --explain E0038`.

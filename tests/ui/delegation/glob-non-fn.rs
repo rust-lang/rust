@@ -31,7 +31,9 @@ impl Trait for Bad { //~ ERROR not all trait items implemented, missing: `CONST`
     //~| ERROR item `Type` is an associated method, which doesn't match its trait `Trait`
     //~| ERROR duplicate definitions with name `method`
     //~| ERROR expected function, found associated constant `Trait::CONST`
-    //~| ERROR cannot find function `Type` in trait `Trait`
+    //~| ERROR the trait `Trait` is not dyn compatible
+    //~| WARN trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
 }
 
 fn main() {}

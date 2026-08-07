@@ -33,10 +33,11 @@ impl Trait for S {
 
     reuse foo { &self.0 }
     //~^ ERROR cannot find function `foo` in this scope
-    //~| ERROR: method `foo` has a `&self` declaration in the trait, but not in the impl
     reuse Trait::foo2 { self.0 }
-    //~^ ERROR cannot find function `foo2` in trait `Trait`
-    //~| ERROR method `foo2` is not a member of trait `Trait`
+    //~^ ERROR: method `foo2` is not a member of trait `Trait`
+    //~| WARN: trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+    //~| ERROR: the trait `Trait` is not dyn compatible [E0038]
 }
 
 mod prefix {}
