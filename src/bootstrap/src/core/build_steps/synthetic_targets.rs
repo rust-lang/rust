@@ -11,7 +11,7 @@ use crate::core::builder::{Builder, Step};
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PanicStrategy {
     Unwind,
     Abort,
