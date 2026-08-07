@@ -1076,7 +1076,7 @@ impl Config {
             llvm_assertions,
         );
         let is_host_system_llvm =
-            is_system_llvm(&target_config, llvm_from_ci, host_target, host_target);
+            target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
         if llvm_from_ci {
             let warn = |option: &str| {
@@ -1111,17 +1111,15 @@ impl Config {
                     "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                 );
             }
-        }
 
-        if llvm_from_ci {
             let triple = &host_target.triple;
             let ci_llvm_bin = ci_llvm_root(&dwn_ctx, llvm_from_ci, &out).join("bin");
             let build_target =
                 target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
+            // FIXME: Do not overwrite the LLVM config here
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", host_target)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
         }
 
         for (target, linker_override) in default_linux_linker_overrides() {
