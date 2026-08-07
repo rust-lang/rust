@@ -1,14 +1,18 @@
 error[E0499]: cannot borrow `chars` as mutable more than once at a time
   --> $DIR/issue-102972.rs:6:9
    |
-LL |     for _c in chars.by_ref() {
-   |               --------------
-   |               |
-   |               first mutable borrow occurs here
-   |               first borrow later used here
-LL |         chars.next();
-   |         ^^^^^ second mutable borrow occurs here
+LL |       for _c in chars.by_ref() {
+   |       -         --------------
+   |       |         |
+   |       |         first mutable borrow occurs here
+   |  _____|         first borrow later used here
+   | |
+LL | |         chars.next();
+   | |         ^^^^^ second mutable borrow occurs here
+LL | |     }
+   | |_____- this for loop borrows `chars` mutably, preventing mutation within its body
    |
+   = help: consider using an index-based loop instead, or collecting modifications into a separate collection
    = note: a for loop advances the iterator for you, the result is stored in `_c`
 help: if you want to call `next` on a iterator within the loop, consider using `while let`
    |
@@ -39,14 +43,18 @@ LL +     while let Some(_i) = iter.next() {
 error[E0499]: cannot borrow `i` as mutable more than once at a time
   --> $DIR/issue-102972.rs:22:9
    |
-LL |     for () in i.by_ref() {
-   |               ----------
-   |               |
-   |               first mutable borrow occurs here
-   |               first borrow later used here
-LL |         i.next();
-   |         ^ second mutable borrow occurs here
+LL |       for () in i.by_ref() {
+   |       -         ----------
+   |       |         |
+   |       |         first mutable borrow occurs here
+   |  _____|         first borrow later used here
+   | |
+LL | |         i.next();
+   | |         ^ second mutable borrow occurs here
+LL | |     }
+   | |_____- this for loop borrows `i` mutably, preventing mutation within its body
    |
+   = help: consider using an index-based loop instead, or collecting modifications into a separate collection
    = note: a for loop advances the iterator for you, the result is stored in its pattern
 help: if you want to call `next` on a iterator within the loop, consider using `while let`
    |
