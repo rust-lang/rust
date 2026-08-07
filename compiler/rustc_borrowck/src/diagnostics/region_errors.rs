@@ -1181,7 +1181,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             )
         }));
 
-        if ocx.evaluate_obligations_error_on_ambiguity().is_empty() && count > 0 {
+        if ocx.evaluate_obligations_error_on_ambiguity().no_errors() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir_body(*body).value.peel_blocks().span.shrink_to_lo(),
                 msg!("dereference the return value"),

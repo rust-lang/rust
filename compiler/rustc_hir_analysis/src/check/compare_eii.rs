@@ -13,7 +13,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode, TraitErrors};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
@@ -138,7 +138,7 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -207,7 +207,7 @@ pub(crate) fn compare_eii_statics<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }

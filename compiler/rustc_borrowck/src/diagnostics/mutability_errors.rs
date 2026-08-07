@@ -1630,7 +1630,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             match self
                 .infcx
                 .type_implements_trait_shallow(clone_trait, ty.peel_refs(), self.infcx.param_env)
-                .as_deref()
+                .as_ref()
+                .map(|it| it.as_slice())
             {
                 Some([]) => {
                     // FIXME: This error message isn't useful, since we're just

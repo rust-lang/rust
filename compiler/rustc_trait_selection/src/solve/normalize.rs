@@ -2,7 +2,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
@@ -11,6 +11,7 @@ use rustc_middle::ty::{
 };
 use rustc_next_trait_solver::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
+use thin_vec::ThinVec;
 
 use super::{FulfillmentCtxt, NextSolverError};
 use crate::solve::{Certainty, SolverDelegate};
@@ -170,7 +171,7 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
 pub fn deeply_normalize<'tcx, T, E>(
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
-) -> Result<T, Vec<E>>
+) -> Result<T, ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -189,7 +190,7 @@ pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-) -> Result<T, Vec<E>>
+) -> Result<T, ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -216,7 +217,7 @@ pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tc
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), Vec<E>>
+) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -229,7 +230,7 @@ where
     }
 
     let errors = fulfill_cx.try_evaluate_obligations(at.infcx);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(errors);
     }
 
@@ -240,7 +241,7 @@ where
         .collect();
 
     let errors = fulfill_cx.collect_remaining_errors(at.infcx);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(errors);
     }
 
@@ -269,7 +270,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.at.infcx;
-        let result: Result<_, Vec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
+        let result: Result<_, ThinVec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
             deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 self.at,
                 Unnormalized::new_wip(ty),
@@ -284,7 +285,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let infcx = self.at.infcx;
-        let result: Result<_, Vec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
+        let result: Result<_, ThinVec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
             deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 self.at,
                 Unnormalized::new_wip(ct),

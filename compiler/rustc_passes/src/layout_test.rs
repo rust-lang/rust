@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{self, TraitErrors};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs() {
@@ -50,7 +50,7 @@ pub fn ensure_wf<'tcx>(
     );
     ocx.register_obligation(obligation);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         infcx.err_ctxt().report_fulfillment_errors(errors);
         false
     } else {

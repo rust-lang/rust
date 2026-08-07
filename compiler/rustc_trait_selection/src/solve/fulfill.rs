@@ -4,7 +4,7 @@ use std::mem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
-    FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
+    FromSolverError, PredicateObligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
@@ -182,31 +182,20 @@ where
         }
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        #[allow(clippy::iter_skip_zero)]
-        self.obligations
-            .pending
-            .drain(..)
-            .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
-            .chain(
-                self.obligations
-                    .overflowed
-                    .drain(..)
-                    .map(|obligation| NextSolverError::Overflow(obligation)),
-            )
-            .map(|e| E::from_solver_error(infcx, e))
-            // Skip doesn't implement TrustedLen, so we use it to
-            // avoid Vec::from_iter specialization that seems
-            // to optimize poorly in combination with ThinVec::drain
-            // on this particular sequence.
-            // See https://github.com/rust-lang/rust/pull/160073
-            .skip(0)
-            .collect()
+    #[inline]
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+        if self.obligations.pending.is_empty() && self.obligations.overflowed.is_empty() {
+            // Typically in more than 99.9% of cases this condition is true, therefore we outline
+            // the other case.
+            TraitErrors::NoErrors
+        } else {
+            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
+        }
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        let mut errors = Vec::new();
+        let mut errors = TraitErrors::NoErrors;
         loop {
             let mut any_changed = false;
             for (mut obligation, stalled_on) in mem::take(&mut self.obligations.pending) {
@@ -371,6 +360,29 @@ where
             .map(|(o, _)| o)
             .collect()
     }
+}
+
+#[cold]
+#[inline(never)]
+fn collect_remaining_errors_impl<'tcx, E>(
+    cx: &mut FulfillmentCtxt<'tcx, E>,
+    infcx: &InferCtxt<'tcx>,
+) -> ThinVec<E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
+    cx.obligations
+        .pending
+        .drain(..)
+        .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
+        .chain(
+            cx.obligations
+                .overflowed
+                .drain(..)
+                .map(|obligation| NextSolverError::Overflow(obligation)),
+        )
+        .map(|e| E::from_solver_error(infcx, e))
+        .collect()
 }
 
 pub enum NextSolverError<'tcx> {

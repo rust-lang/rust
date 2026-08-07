@@ -3,6 +3,7 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
 };
@@ -21,6 +22,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
+use rustc_infer::traits::TraitErrors;
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
@@ -719,9 +721,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(crate) fn report_ambiguity_errors(&self) {
-        let mut errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors(self);
+        let errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors(self);
 
-        if !errors.is_empty() {
+        if let TraitErrors::HasErrors(mut errors) = errors {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
             self.err_ctxt().report_fulfillment_errors(errors);
         }
@@ -730,10 +732,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Select as many obligations as we can at present.
     pub(crate) fn select_obligations_where_possible(
         &self,
-        mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+        mutate_fulfillment_errors: impl Fn(&mut ThinVec<traits::FulfillmentError<'tcx>>),
     ) {
-        let mut result = self.fulfillment_cx.borrow_mut().try_evaluate_obligations(self);
-        if !result.is_empty() {
+        let result = self.fulfillment_cx.borrow_mut().try_evaluate_obligations(self);
+        if let TraitErrors::HasErrors(mut result) = result {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
             self.err_ctxt().report_fulfillment_errors(result);

@@ -29,6 +29,7 @@ use rustc_errors::pluralize;
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec};
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, Ty, TyCtxt, TypingMode};
@@ -509,7 +510,7 @@ fn check_field_tys_sized<'tcx>(
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 }

@@ -118,7 +118,7 @@ impl Qualif for HasMutInterior {
         );
         ocx.register_obligation(obligation);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        !errors.is_empty()
+        !errors.no_errors()
     }
 
     fn is_structural_in_adt_value<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
@@ -195,7 +195,7 @@ impl Qualif for NeedsNonConstDrop {
                     },
                 ),
         ));
-        !ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        !ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 
     fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {

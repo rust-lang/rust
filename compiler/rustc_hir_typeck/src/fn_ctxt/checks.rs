@@ -4,6 +4,7 @@ use std::{fmt, iter};
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
 use rustc_hir as hir;
@@ -269,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
-                    if !ocx.try_evaluate_obligations().is_empty() {
+                    if !ocx.try_evaluate_obligations().no_errors() {
                         return Err(TypeError::Mismatch);
                     }
 
@@ -653,7 +654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let type_errors = ocx.try_evaluate_obligations();
-                if type_errors.is_empty() {
+                if type_errors.no_errors() {
                     new_tupled_type
                 } else {
                     let guar = struct_span_code_err!(
@@ -1544,7 +1545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// have been created with different [`ObligationCause`][traits::ObligationCause]s.
     pub(super) fn adjust_fulfillment_errors_for_expr_obligation(
         &self,
-        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        errors: &mut ThinVec<traits::FulfillmentError<'tcx>>,
     ) {
         // Store a mapping from `(Span, Predicate) -> ObligationCause`, so that
         // other errors that have the same span and predicate can also get fixed,

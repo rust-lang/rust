@@ -128,7 +128,7 @@ where
             )
         })?;
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if errors.is_empty() {
+        if errors.no_errors() {
             Ok(value)
         } else if let Err(guar) = infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
             Err(guar)

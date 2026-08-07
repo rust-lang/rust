@@ -8,7 +8,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{
     FromSolverError, PolyTraitObligation, PredicateObligations, ProjectionCacheKey, SelectionError,
-    TraitEngine,
+    TraitEngine, TraitErrors,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -104,7 +104,7 @@ where
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> Vec<E> {
+    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> TraitErrors<E> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
         let infcx = selcx.infcx;
@@ -116,11 +116,9 @@ where
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
 
-        let errors: Vec<E> = outcome
-            .errors
-            .into_iter()
-            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
-            .collect();
+        let errors = TraitErrors::from_iter(
+            outcome.errors.into_iter().map(|err| E::from_solver_error(infcx, OldSolverError(err))),
+        );
 
         debug!(
             "select({} predicates remaining, {} errors) done",
@@ -154,15 +152,16 @@ where
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        self.predicates
-            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
-            .into_iter()
-            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
-            .collect()
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+        TraitErrors::from_iter(
+            self.predicates
+                .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
+                .into_iter()
+                .map(|err| E::from_solver_error(infcx, OldSolverError(err))),
+        )
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         let selcx = SelectionContext::new(infcx);
         self.select(selcx)
     }

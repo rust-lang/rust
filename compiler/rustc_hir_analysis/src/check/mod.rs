@@ -83,7 +83,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, TraitErrors};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -694,7 +694,7 @@ pub fn check_function_signature<'tcx>(
     match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
         Ok(()) => {
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if !errors.is_empty() {
+            if let TraitErrors::HasErrors(errors) = errors {
                 return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
             }
         }
