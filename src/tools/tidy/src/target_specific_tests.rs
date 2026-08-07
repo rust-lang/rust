@@ -10,13 +10,21 @@ use crate::walk::filter_not_rust;
 
 const LLVM_COMPONENTS_HEADER: &str = "needs-llvm-components:";
 const COMPILE_FLAGS_HEADER: &str = "compile-flags:";
+const IGNORE_BACKENDS_HEADER: &str = "ignore-backends:";
+const TEST_BUILD_HEADERS: &[&str; 4] = &["run-pass", "run-fail", "build-pass", "build-fail"];
 
 #[derive(Default, Debug)]
 struct RevisionInfo<'a> {
+    /// Target triple specified with `--target=`
+    target_triple: Option<Option<&'a str>>,
     /// Target architecture specified with `--target=`
     target_arch: Option<Option<&'a str>>,
     /// LLVM components configured with `//@ needs-llvm-components: ...`
     llvm_components: Option<Vec<&'a str>>,
+    /// Backends ignored with `//@ ignored-backends: ...`
+    ignored_backends: Option<Vec<&'a str>>,
+    /// Whether the test will be built as either  `//@ build-pass` or `//@ build-fail`
+    build: bool,
 }
 
 pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
@@ -39,14 +47,32 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
                         comp_vec.push(component);
                     }
                 }
+            } else if let Some(value) = directive.strip_prefix(IGNORE_BACKENDS_HEADER) {
+                let info = header_map.entry(revision).or_insert(RevisionInfo::default());
+                let backend_vec = info.ignored_backends.get_or_insert(Vec::new());
+                for backend in value.split(' ') {
+                    let backend = backend.trim();
+                    if !backend.is_empty() {
+                        backend_vec.push(backend);
+                    }
+                }
+            } else if TEST_BUILD_HEADERS.contains(&directive) {
+                let info = header_map.entry(revision).or_insert(RevisionInfo::default());
+                info.build = true;
             } else if let Some(compile_flags) = directive.strip_prefix(COMPILE_FLAGS_HEADER)
                 && let Some((_, v)) = compile_flags.split_once("--target")
             {
                 let v = v.trim_start_matches([' ', '=']);
                 let info = header_map.entry(revision).or_insert(RevisionInfo::default());
                 if v.starts_with("{{") {
+                    info.target_triple.replace(None);
                     info.target_arch.replace(None);
                 } else if let Some((arch, _)) = v.split_once("-") {
+                    if let Some((triple, _rest)) = v.split_once(" ") {
+                        info.target_triple.replace(Some(triple));
+                    } else {
+                        info.target_triple.replace(Some(v));
+                    }
                     info.target_arch.replace(Some(arch));
                 } else {
                     check.error(format!("{file}: seems to have a malformed --target value"));
@@ -72,15 +98,27 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
         } else {
             // Make all revisions inherit global directives.
             for info in header_map.values_mut() {
+                info.target_triple = info.target_triple.or(global.target_triple);
                 info.target_arch = info.target_arch.or(global.target_arch);
                 if let Some(components) = &global.llvm_components {
                     info.llvm_components.get_or_insert_with(Vec::new).extend(components);
                 }
+                if let Some(backends) = &global.ignored_backends {
+                    info.ignored_backends.get_or_insert_with(Vec::new).extend(backends);
+                }
             }
         }
 
-        for (rev, RevisionInfo { target_arch, llvm_components }) in &header_map {
+        for (rev, info) in &header_map {
             let rev = rev.unwrap_or("[unspecified]");
+            let RevisionInfo {
+                target_triple,
+                target_arch,
+                llvm_components,
+                ignored_backends,
+                build,
+            } = info;
+
             match (target_arch, llvm_components) {
                 (None, None) => {}
                 (Some(target_arch), None) => {
@@ -105,6 +143,23 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
                         }
                     }
                 }
+            }
+
+            // Error when the test will be built with the GCC backend with a target it does not
+            // support.
+            let ignores_gcc = ignored_backends.iter().flatten().any(|b| *b == "gcc");
+            let is_ui_test =
+                entry.path().strip_prefix(tests_path).is_ok_and(|p| p.starts_with("ui"));
+
+            if let Some(Some(target_triple)) = target_triple
+                && *build
+                && !ignores_gcc
+                && is_ui_test
+                && !is_target_supported_gcc(target_triple)
+            {
+                check.error(format!(
+                        "{file}: revision {rev} target `{target_triple}` cannot be built with the GCC backend, use `//@ ignore-backends: gcc` to ignore"
+                    ));
             }
         }
     });
@@ -134,5 +189,13 @@ fn arch_to_llvm_component(arch: &str) -> String {
         _ if arch.starts_with("powerpc") => "powerpc".into(),
         _ if arch.starts_with("riscv") => "riscv".into(),
         _ => arch.to_ascii_lowercase(),
+    }
+}
+
+/// Targets supported by the GCC backend *in CI*.
+fn is_target_supported_gcc(triple: &str) -> bool {
+    match triple {
+        "x86_64-unknown-linux-gnu" => true,
+        _ => false,
     }
 }
