@@ -73,7 +73,7 @@ enum SelfPositionKind {
     None,
 }
 
-fn create_self_position_kind(
+fn create_self_param_position_kind(
     tcx: TyCtxt<'_>,
     delegation_id: LocalDefId,
     sig_id: DefId,
@@ -152,7 +152,7 @@ fn create_mapping<'tcx>(
 ) -> FxHashMap<u32, u32> {
     let mut mapping: FxHashMap<u32, u32> = Default::default();
 
-    let self_pos_kind = create_self_position_kind(tcx, def_id, sig_id);
+    let self_pos_kind = create_self_param_position_kind(tcx, def_id, sig_id);
     let is_self_at_zero = matches!(self_pos_kind, SelfPositionKind::Zero);
 
     // Is self at zero? If so insert mapping, self in sig parent is always at 0.
@@ -165,64 +165,35 @@ fn create_mapping<'tcx>(
     args_index += is_self_at_zero as usize;
     args_index += get_delegation_parent_args_count_without_self(tcx, def_id, sig_id);
 
-    let sig_child_generics = tcx.generics_of(sig_id);
+    let parent_kind = fn_kind(tcx, sig_id);
+    let process_parent = matches!(parent_kind, FnKind::AssocTrait | FnKind::AssocInherentImpl);
+    let parent_generics = process_parent.then(|| tcx.generics_of(tcx.parent(sig_id)));
 
-    let (has_self, parent_generics) = if matches!(fn_kind(tcx, sig_id), FnKind::AssocInherentImpl) {
-        let ty::Adt(_, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
-            unreachable!()
-        };
+    let parent_params = match parent_kind {
+        FnKind::AssocInherentImpl => {
+            let ty::Adt(_, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+                unreachable!("parent of inherent function can be only struct or enum")
+            };
 
-        let generics = args
-            .iter()
-            .flat_map(|a| match a.kind() {
-                ty::GenericArgKind::Type(t) => {
-                    if let ty::Param(param) = t.kind() {
-                        Some((param.index, true))
-                    } else {
-                        None
-                    }
-                }
-                ty::GenericArgKind::Lifetime(lt) => {
-                    if let ty::RegionKind::ReEarlyParam(param) = lt.kind() {
-                        Some((param.index, false))
-                    } else {
-                        None
-                    }
-                }
-                ty::GenericArgKind::Const(c) => {
-                    if let ty::ConstKind::Param(param) = c.kind() {
-                        Some((param.index, true))
-                    } else {
-                        None
-                    }
-                }
-            })
-            .collect::<Vec<_>>();
-
-        (false, generics)
-    } else {
-        if !matches!(fn_kind(tcx, sig_id), FnKind::AssocTrait) {
-            (false, vec![])
-        } else {
-            let generics = tcx.generics_of(tcx.parent(sig_id));
-
-            (
-                generics.has_self,
-                generics
-                    .own_params
-                    .iter()
-                    .map(|p| (p.index, p.kind.is_ty_or_const()))
-                    .collect::<Vec<_>>(),
-            )
+            args.iter().flat_map(|a| a.opt_param_info()).collect::<Vec<_>>()
         }
+        FnKind::AssocTrait => parent_generics
+            .expect("trait must have generics")
+            .own_params
+            .iter()
+            .map(|p| (p.index as u32, p.kind.is_ty_or_const()))
+            .collect::<Vec<_>>(),
+        _ => vec![],
     };
 
-    let process_sig_parent_generics =
-        matches!(fn_kind(tcx, sig_id), FnKind::AssocTrait | FnKind::AssocInherentImpl);
+    let has_self = match parent_kind {
+        FnKind::AssocTrait => parent_generics.expect("trait must have generics").has_self,
+        _ => false,
+    };
 
-    if process_sig_parent_generics {
-        for i in (has_self as usize)..parent_generics.len() {
-            let (index, is_ty_or_const) = parent_generics[i];
+    if process_parent {
+        for i in (has_self as usize)..parent_params.len() {
+            let (index, is_ty_or_const) = parent_params[i];
             if !is_ty_or_const {
                 mapping.insert(index, args_index as u32);
                 args_index += 1;
@@ -230,7 +201,8 @@ fn create_mapping<'tcx>(
         }
     }
 
-    for param in &sig_child_generics.own_params {
+    let child_generics = tcx.generics_of(sig_id);
+    for param in &child_generics.own_params {
         if !param.kind.is_ty_or_const() {
             mapping.insert(param.index, args_index as u32);
             args_index += 1;
@@ -245,9 +217,9 @@ fn create_mapping<'tcx>(
         args_index += 1;
     }
 
-    if process_sig_parent_generics {
-        for i in (has_self as usize)..parent_generics.len() {
-            let (index, is_ty_or_const) = parent_generics[i];
+    if process_parent {
+        for i in (has_self as usize)..parent_params.len() {
+            let (index, is_ty_or_const) = parent_params[i];
             if is_ty_or_const {
                 mapping.insert(index, args_index as u32);
                 args_index += 1;
@@ -255,7 +227,7 @@ fn create_mapping<'tcx>(
         }
     }
 
-    for param in &sig_child_generics.own_params {
+    for param in &child_generics.own_params {
         if param.kind.is_ty_or_const() {
             mapping.insert(param.index, args_index as u32);
             args_index += 1;
@@ -273,16 +245,9 @@ fn get_delegation_parent_args_count_without_self<'tcx>(
     let delegation_parent_args_count = tcx.generics_of(delegation_id).parent_count;
 
     match (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id)) {
-        (FnKind::Free, FnKind::Free)
-        | (FnKind::Free, FnKind::AssocTrait)
-        | (FnKind::AssocTraitImpl, FnKind::AssocTrait)
-        | (FnKind::Free, FnKind::AssocInherentImpl) => 0,
-
-        (FnKind::AssocTrait, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::AssocTrait)
-        | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
-            delegation_parent_args_count - 1 /* Without Self */
-        }
+        (FnKind::Free, _) => 0,
+        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => 0,
+        (FnKind::AssocTrait, _) => delegation_parent_args_count - 1,
 
         (FnKind::AssocInherentImpl, FnKind::Free)
         | (FnKind::AssocInherentImpl, FnKind::AssocTrait)
@@ -340,7 +305,7 @@ fn get_delegation_self_ty<'tcx>(tcx: TyCtxt<'tcx>, delegation_id: LocalDefId) ->
         | (FnKind::AssocTrait, FnKind::Free)
         | (FnKind::AssocTrait, FnKind::AssocTrait)
         | (_, FnKind::AssocInherentImpl) => {
-            match create_self_position_kind(tcx, delegation_id, sig_id) {
+            match create_self_param_position_kind(tcx, delegation_id, sig_id) {
                 SelfPositionKind::None => None,
                 SelfPositionKind::AfterLifetimes(propagation_kind) => {
                     Some(match propagation_kind {
@@ -437,7 +402,7 @@ fn create_generic_args<'tcx>(
     }
 
     let (zero_self, after_lifetimes_self) =
-        match create_self_position_kind(tcx, delegation_id, sig_id) {
+        match create_self_param_position_kind(tcx, delegation_id, sig_id) {
             SelfPositionKind::AfterLifetimes(_) => {
                 assert!(self_type.is_some());
                 (None, self_type)
@@ -567,7 +532,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
 
     let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
-    let self_pos_kind = create_self_position_kind(tcx, def_id, sig_id);
+    let self_pos_kind = create_self_param_position_kind(tcx, def_id, sig_id);
     let filter_self_clauses = matches!(
         self_pos_kind,
         SelfPositionKind::AfterLifetimes(Some(DelegationSelfTyPropagationKind::SelfTy(..)))
@@ -697,7 +662,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
         return;
     }
 
-    let first_input = sig[0];
+    let self_input = sig[0];
 
     sig[0] = match (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)) {
         (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
@@ -709,9 +674,9 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
             };
 
             let new_adt = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
-            first_input.replace(tcx, new_adt, Ty::new_param(tcx, 0, kw::SelfUpper))
+            self_input.replace_inside(tcx, new_adt, Ty::new_param(tcx, 0, kw::SelfUpper))
         }
-        _ => first_input,
+        _ => self_input,
     };
 }
 
