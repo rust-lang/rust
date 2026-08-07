@@ -12,7 +12,7 @@ use crate::utils::build_stamp;
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags};
 use crate::{
     BootstrapCommand, CLang, Compiler, Config, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
-    RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
+    RemapScheme, Subcommand, TargetSelection, command, prepare_behaviour_dump_dir, t,
 };
 
 /// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.
@@ -704,6 +704,13 @@ impl Builder<'_> {
             {
                 cargo.env("RUST_CHECK", "1");
             }
+        }
+
+        // Forward `./x fix --allow-dirty` from bootstrap to cargo.
+        if let Subcommand::Fix { allow_dirty } = self.config.cmd
+            && allow_dirty
+        {
+            cargo.arg("--allow-dirty");
         }
 
         let build_compiler_stage = if compiler.stage == 0 && self.local_rebuild {

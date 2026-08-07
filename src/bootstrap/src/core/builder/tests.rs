@@ -2789,9 +2789,9 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 0 <host> -> clippy-driver 1 <host>
         [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
         [clippy] rustc 1 <host> -> miri 2 <host>
         ");
     }

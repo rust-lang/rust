@@ -671,4 +671,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The `override-allocator` option has been renamed: The global setting is now `build.allocator` and the per-target setting is `target.<target>.allocator`. It can now be set to 'system' to explicitly request the system allocator.",
     },
+    ChangeInfo {
+        change_id: 160417,
+        severity: ChangeSeverity::Info,
+        summary: "`./x fix` should now work properly on compiler crates, and now understands the `--allow-dirty` flag.",
+    },
 ];
