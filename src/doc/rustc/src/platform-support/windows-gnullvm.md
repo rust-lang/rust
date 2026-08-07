@@ -19,7 +19,7 @@ Target triples available so far:
 ## Requirements
 
 Building those targets requires an LLVM-based C toolchain, for example, [llvm-mingw][1] or [MSYS2][2] with CLANG*
-environment.
+environment, with static libunwind library available.
 
 Binaries for this target should be at least on par with `*-windows-gnu` in terms of requirements and functionality,
 except for implicit self-contained mode (explained in [the section below](#building-rust-programs)).
