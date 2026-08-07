@@ -227,7 +227,7 @@ where
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
         if let RerunStalled::WontMakeProgress(stalled_certainty) =
-            rerunning_stalled_goal_may_make_progress(self, stalled_on.as_ref())
+            rerunning_stalled_goal_may_make_progress(&**self, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
@@ -594,7 +594,7 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         if let RerunStalled::WontMakeProgress(stalled_certainty) =
-            rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
+            rerunning_stalled_goal_may_make_progress(&**self.delegate, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,

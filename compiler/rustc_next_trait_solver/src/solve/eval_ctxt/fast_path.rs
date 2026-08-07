@@ -17,7 +17,7 @@ use crate::solve::eval_ctxt::{RerunDecision, should_rerun_after_erased_canonical
 use crate::solve::{GoalEvaluation, HasChanged};
 
 #[derive(Debug, Clone, Copy)]
-pub(super) enum RerunStalled {
+pub enum RerunStalled {
     WontMakeProgress(Certainty),
     MayMakeProgress,
 }
@@ -27,18 +27,18 @@ pub(super) enum RerunStalled {
 /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
 /// Therefore, we can skip this rerun
 #[inline]
-pub(super) fn rerunning_stalled_goal_may_make_progress<D, I>(
-    delegate: &D,
+pub fn rerunning_stalled_goal_may_make_progress<Infcx, I>(
+    infcx: &Infcx,
     stalled_on: Option<&GoalStalledOn<I>>,
 ) -> RerunStalled
 where
-    D: SolverDelegate<Interner = I>,
+    Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
 {
     use RerunStalled::*;
 
     // If fast paths are turned off, then we assume all goals can always make progress
-    if delegate.disable_trait_solver_fast_paths() {
+    if infcx.disable_trait_solver_fast_paths() {
         return MayMakeProgress;
     }
 
@@ -51,13 +51,13 @@ where
 
     // If any of the stalled goal's generic arguments changed,
     // rerunning might make progress so we should rerun.
-    if stalled_vars.iter().any(|value| delegate.is_changed_arg(*value)) {
+    if stalled_vars.iter().any(|value| infcx.is_changed_arg(*value)) {
         return MayMakeProgress;
     }
 
     // If some inference took place in any of the sub roots,
     // rerunning might make progress so we should rerun.
-    if sub_roots.iter().any(|&vid| delegate.sub_unification_table_root_var(vid) != vid) {
+    if sub_roots.iter().any(|&vid| infcx.sub_unification_table_root_var(vid) != vid) {
         return MayMakeProgress;
     }
 
@@ -69,10 +69,7 @@ where
         } => {
             // If any opaques changed in the opaque type storage,
             // rerunning might make progress so we should rerun.
-            if delegate
-                .opaque_types_storage_num_entries()
-                .needs_reevaluation(num_opaques_in_storage)
-            {
+            if infcx.opaque_types_storage_num_entries().needs_reevaluation(num_opaques_in_storage) {
                 // Unless this goal previously succeeded in erased mode.
                 // If the stalled goal successfully evaluated while erasing opaque types,
                 // and the current state of the opaque type storage is not different in a way that is
@@ -83,8 +80,8 @@ where
                 {
                     match should_rerun_after_erased_canonicalization(
                         accessed_opaques,
-                        delegate.typing_mode_raw(),
-                        &delegate.clone_opaque_types_lookup_table(),
+                        infcx.typing_mode_raw(),
+                        &infcx.clone_opaque_types_lookup_table(),
                     ) {
                         RerunDecision::Yes => {}
                         RerunDecision::EagerlyPropagateToParent => {
