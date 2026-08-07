@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, higher, sym};
 use rustc_errors::{Applicability, MultiSpan};

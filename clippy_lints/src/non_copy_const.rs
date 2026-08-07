@@ -31,12 +31,12 @@ use rustc_hir::{
     ConstArgKind, ConstItemRhs, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, StructTailExpr,
     TraitItem, TraitItemKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeckResults,
-    TypingEnv, Unnormalized,
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable as _,
+    TypeckResults, TypingEnv, Unnormalized,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
@@ -323,7 +323,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                         IsFreeze::from_fields(tys.iter().map(|ty| self.is_ty_freeze(tcx, typing_env, ty)))
                     },
                     // Treat type parameters as though they were `Freeze`.
-                    ty::Param(_) | ty::Alias(_, ..) => return IsFreeze::Yes,
+                    ty::Param(_) | ty::Alias(..) => return IsFreeze::Yes,
                     // TODO: check other types.
                     _ => {
                         *e = IsFreeze::No;

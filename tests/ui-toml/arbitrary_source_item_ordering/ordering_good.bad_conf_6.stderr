@@ -1,4 +1,8 @@
-error: error reading Clippy's configuration file: unknown ordering group: `entirely garbled` was not specified in `module-items-ordered-within-groupings`, expected one of: `modules`, `use`, `macros`, `global_asm`, `UPPER_SNAKE_CASE`, `PascalCase`, `lower_snake_case`
+error: unknown ordering group: `entirely garbled` was not specified in `module-items-ordered-within-groupings`, expected one of: `modules`, `use`, `macros`, `global_asm`, `UPPER_SNAKE_CASE`, `PascalCase`, `lower_snake_case`
+  --> $DIR/tests/ui-toml/arbitrary_source_item_ordering/bad_conf_6/clippy.toml:1:42
+   |
+LL | module-items-ordered-within-groupings = ["entirely garbled"]
+   |                                          ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

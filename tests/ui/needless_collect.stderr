@@ -122,7 +122,7 @@ LL |         baz((0..10), (), ('a'..='z').collect::<Vec<_>>())
    |                                     ^^^^^^^^^^^^^^^^^^^^ help: remove this call
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/needless_collect.rs:224:26
+  --> tests/ui/needless_collect.rs:220:26
    |
 LL |         let mut v = iter.collect::<Vec<_>>();
    |                          ^^^^^^^
@@ -139,7 +139,7 @@ LL ~         iter.chain([1]).map(|x| x + 1).collect()
    |
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/needless_collect.rs:236:26
+  --> tests/ui/needless_collect.rs:232:26
    |
 LL |         let mut v = iter.collect::<Vec<_>>();
    |                          ^^^^^^^
@@ -157,7 +157,7 @@ LL ~         iter.chain([1, 2]).map(|x| x + 1).collect()
    |
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/needless_collect.rs:244:26
+  --> tests/ui/needless_collect.rs:240:26
    |
 LL |         let mut v = iter.collect::<LinkedList<_>>();
    |                          ^^^^^^^
@@ -174,7 +174,7 @@ LL ~         iter.chain([1]).map(|x| x + 1).collect()
    |
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/needless_collect.rs:264:27
+  --> tests/ui/needless_collect.rs:260:27
    |
 LL |         let mut ll = iter.collect::<LinkedList<_>>();
    |                           ^^^^^^^
@@ -191,7 +191,7 @@ LL ~         iter.chain(s).map(|x| x + 1).collect()
    |
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/needless_collect.rs:271:26
+  --> tests/ui/needless_collect.rs:267:26
    |
 LL |         let mut v = iter.collect::<VecDeque<_>>();
    |                          ^^^^^^^
@@ -209,7 +209,7 @@ LL ~         [1, 2].into_iter().chain(iter).map(|x| x + 1).collect()
    |
 
 error: avoid using `collect()` when not needed
-  --> tests/ui/needless_collect.rs:282:26
+  --> tests/ui/needless_collect.rs:278:26
    |
 LL |         let mut v = iter.collect::<LinkedList<_>>();
    |                          ^^^^^^^
