@@ -22,6 +22,24 @@ pub(crate) fn opts() -> TargetOptions {
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
     add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
 
+    // LLD doesn't support push/pop
+    let dynamic_unwind_libs = &["-lunwind"];
+    let mut late_link_args_dynamic =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
+    add_link_args(
+        &mut late_link_args_dynamic,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        dynamic_unwind_libs,
+    );
+    let static_unwind_libs = &["-l:libunwind.a"];
+    let mut late_link_args_static =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
+    add_link_args(
+        &mut late_link_args_static,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        static_unwind_libs,
+    );
+
     TargetOptions {
         os: Os::Windows,
         env: Env::Gnu,
@@ -40,6 +58,8 @@ pub(crate) fn opts() -> TargetOptions {
         pre_link_objects_self_contained: pre_mingw_self_contained(),
         link_self_contained: LinkSelfContainedDefault::InferredForMingw,
         late_link_args,
+        late_link_args_dynamic,
+        late_link_args_static,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,

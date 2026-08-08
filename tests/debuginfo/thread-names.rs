@@ -4,7 +4,6 @@
 //@[macos] only-macos
 //@[win] only-windows
 //@ ignore-sgx
-//@ ignore-windows-gnu: gdb on windows-gnu does not print thread names
 
 // === GDB TESTS ==================================================================================
 //

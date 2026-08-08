@@ -1,4 +1,3 @@
-//@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
 
 //@ min-cdb-version: 10.0.18317.1001

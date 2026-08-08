@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-windows-gnu: only statics marked with used can be GC-ed on windows-gnu
 //@ ignore-wasm: wasm, for better or worse, exports all #[no_mangle]
 
 // Regression test for <https://github.com/rust-lang/rust/issues/139744>.

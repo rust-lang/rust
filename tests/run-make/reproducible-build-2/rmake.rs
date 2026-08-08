@@ -8,9 +8,6 @@
 
 //@ ignore-cross-compile
 
-//@ ignore-windows-gnu
-// GNU Linker for Windows is non-deterministic.
-
 use run_make_support::{bin_name, is_windows_msvc, rfs, rust_lib_name, rustc};
 
 fn main() {

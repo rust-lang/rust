@@ -26,7 +26,6 @@
 //! backtrace becomes `<unknown>`.
 
 //@ ignore-cross-compile (exercising ICE dump on host)
-//@ ignore-i686-pc-windows-gnu (unwind mechanism produces unpredictable backtraces)
 //@ ignore-i686-pc-windows-msvc (sometimes partial backtrace becomes `<unknown>`)
 
 use std::cell::OnceCell;

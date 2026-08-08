@@ -5,8 +5,6 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 
-//@ ignore-windows-gnu: #128973
-
 // === GDB TESTS ===================================================================================
 
 //@ gdb-command:run
