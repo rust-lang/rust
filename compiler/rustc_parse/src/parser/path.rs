@@ -880,6 +880,7 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_unambiguous_unbraced_const_arg()?
         };
+        self.suspicious_attribute(&value, "AnonConst::value const_arg");
         Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 
