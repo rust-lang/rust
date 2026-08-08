@@ -5,9 +5,11 @@ use rustc_infer::infer::{
     InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt, TypeOutlivesConstraint,
 };
 use rustc_macros::extension;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode, Unnormalized, elaborate};
 use rustc_span::DUMMY_SP;
 
+use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
 
 #[extension(pub trait OutlivesEnvironmentBuildExt<'tcx>)]
@@ -31,8 +33,19 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         let mut bounds = vec![];
 
         for bound in param_env.caller_bounds() {
-            if let Some(type_outlives) = bound.as_type_outlives_clause() {
-                debug_assert!(!infcx.next_trait_solver() || !type_outlives.has_non_rigid_aliases());
+            if let Some(mut type_outlives) = bound.as_type_outlives_clause() {
+                if infcx.next_trait_solver() {
+                    match crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
+                        infcx.at(&ObligationCause::dummy(), param_env),
+                        Unnormalized::new_wip(type_outlives),
+                    ) {
+                        Ok(normalized) => type_outlives = normalized,
+                        Err(_) => {
+                            infcx.dcx().delayed_bug(format!("could not normalize `{bound}`"));
+                        }
+                    }
+                }
+
                 bounds.push(type_outlives);
             }
         }
