@@ -31,7 +31,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                                 scope 26 (inlined std::alloc::Global::deallocate_impl_runtime) {
                                     scope 27 (inlined Layout::size) {
                                     }
-                                    scope 28 (inlined alloc::alloc::dealloc_nonnull) {
+                                    scope 28 (inlined core::alloc::global::dealloc_nonnull) {
                                         scope 29 (inlined Layout::size) {
                                         }
                                         scope 30 (inlined Layout::alignment) {
@@ -95,7 +95,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         _7 = copy _3 as *mut u8 (PtrToPtr);
         _8 = copy _7 as std::ptr::NonNull<u8> (Transmute);
         StorageDead(_7);
-        _9 = alloc::alloc::__rust_dealloc(move _8, move _5, move _6) -> [return: bb3, unwind unreachable];
+        _9 = core::alloc::global::__rust_dealloc(move _8, move _5, move _6) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {

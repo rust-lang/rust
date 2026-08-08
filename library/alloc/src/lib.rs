@@ -117,6 +117,7 @@
 #![feature(const_result_trait_fn)]
 #![feature(const_try)]
 #![feature(copied_into_inner)]
+#![feature(core_global_alloc)]
 #![feature(core_intrinsics)]
 #![feature(core_io)]
 #![feature(core_io_borrowed_buf)]

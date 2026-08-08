@@ -28,7 +28,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
                                 scope 26 (inlined std::alloc::Global::deallocate_impl_runtime) {
                                     scope 27 (inlined Layout::size) {
                                     }
-                                    scope 28 (inlined alloc::alloc::dealloc_nonnull) {
+                                    scope 28 (inlined core::alloc::global::dealloc_nonnull) {
                                         scope 29 (inlined Layout::size) {
                                         }
                                         scope 30 (inlined Layout::alignment) {
@@ -82,7 +82,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     }
 
     bb2: {
-        _5 = alloc::alloc::__rust_dealloc(move _4, const <T as std::mem::SizedTypeProperties>::SIZE, move _3) -> [return: bb3, unwind unreachable];
+        _5 = core::alloc::global::__rust_dealloc(move _4, const <T as std::mem::SizedTypeProperties>::SIZE, move _3) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {

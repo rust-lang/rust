@@ -114,6 +114,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_ub_checks)]
 #![feature(const_closures)]
+#![feature(const_heap)]
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
