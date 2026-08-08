@@ -1,0 +1,26 @@
+error[E0425]: cannot find type `T` in this scope
+ --> bar.rs:9:13
+  |
+9 |     Variant(T),
+  |             ^ not found in this scope
+
+error[E0107]: missing generics for enum `A`
+ --> bar.rs:8:6
+  |
+7 | #[derive(A)]
+  |          - it looks like this derive macro might not support annotating items with type parameters
+8 | enum A<T> {
+  |      ^
+
+error[E0107]: missing generics for enum `A`
+ --> bar.rs:8:6
+  |
+7 | #[derive(A)]
+  |          - it looks like this derive macro might not support annotating items with type parameters
+8 | enum A<T> {
+  |      ^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0425.
+For more information about an error, try `rustc --explain E0107`.
