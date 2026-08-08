@@ -2536,38 +2536,78 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
+        if !trait_pred.self_ty().skip_binder().is_unit() {
+            return false;
+        }
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_def_id);
-        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn {sig, body: body_id, .. }, .. }) = node
+        if let hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn { sig, body: body_id, .. }, ..
+        }) = node
             && let hir::ExprKind::Block(blk, _) = &self.tcx.hir_body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
-            && blk.expr.is_none()
-            && trait_pred.self_ty().skip_binder().is_unit()
-            && let Some(stmt) = blk.stmts.last()
-            && let hir::StmtKind::Semi(expr) = stmt.kind
-            // Only suggest this if the expression behind the semicolon implements the predicate
-            && let Some(typeck_results) = &self.typeck_results
-            && let Some(ty) = typeck_results.expr_ty_opt(expr)
-            && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
-                obligation.param_env, trait_pred.map_bound(|trait_pred| (trait_pred, ty))
-            ))
+            && let Some(candidate) = self.removable_trailing_semicolon(blk, obligation, trait_pred)
         {
-            err.span_label(
-                expr.span,
-                format!(
-                    "this expression has type `{}`, which implements `{}`",
-                    ty,
-                    trait_pred.print_modifiers_and_trait_path()
-                ),
-            );
-            err.span_suggestion(
-                self.tcx.sess.source_map().end_point(stmt.span),
-                "remove this semicolon",
-                "",
+            // A function body has a single return type, so keeping the value can't break any
+            // other use of it.
+            self.suggest_removing_semicolon(
+                err,
+                trait_pred,
+                candidate,
                 Applicability::MachineApplicable,
             );
             return true;
         }
         self.suggest_semicolon_removal_in_closure_arg(obligation, err, trait_pred)
+    }
+
+    /// If the value of `block` is discarded by a trailing semicolon and keeping it would satisfy
+    /// `trait_pred`, return that statement, its expression and the type of that expression.
+    fn removable_trailing_semicolon(
+        &self,
+        block: &hir::Block<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> Option<(&'tcx hir::Stmt<'tcx>, &'tcx hir::Expr<'tcx>, Ty<'tcx>)> {
+        if block.expr.is_none()
+            && let Some(stmt) = block.stmts.last()
+            && let hir::StmtKind::Semi(expr) = stmt.kind
+            && !stmt.span.from_expansion()
+            && !matches!(expr.kind, hir::ExprKind::Err(_))
+            // Only suggest this if the expression behind the semicolon implements the predicate
+            && let Some(typeck_results) = &self.typeck_results
+            && let Some(ty) =
+                typeck_results.expr_ty_opt(expr).map(|ty| self.resolve_vars_if_possible(ty))
+            && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
+                obligation.param_env, trait_pred.map_bound(|trait_pred| (trait_pred, ty))
+            ))
+        {
+            Some((stmt, expr, ty))
+        } else {
+            None
+        }
+    }
+
+    fn suggest_removing_semicolon(
+        &self,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        (stmt, expr, ty): (&hir::Stmt<'_>, &hir::Expr<'_>, Ty<'tcx>),
+        applicability: Applicability,
+    ) {
+        err.span_label(
+            expr.span,
+            format!(
+                "this expression has type `{}`, which implements `{}`",
+                ty,
+                trait_pred.print_modifiers_and_trait_path()
+            ),
+        );
+        err.span_suggestion(
+            self.tcx.sess.source_map().end_point(stmt.span),
+            "remove this semicolon",
+            "",
+            applicability,
+        );
     }
 
     /// Detect when a closure argument returns `()` because of a trailing semicolon and that makes
@@ -2584,10 +2624,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        if !trait_pred.self_ty().skip_binder().is_unit() {
-            return false;
-        }
-        let &ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _) =
+        let &ObligationCauseCode::WhereClauseInExpr(callee_def_id, _, hir_id, idx) =
             obligation.cause.code().peel_derives()
         else {
             return false;
@@ -2612,15 +2649,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     _ => return false,
                 },
             };
-        let mut candidates = args.into_iter().filter_map(|arg| {
+        // Work with the callee's own clauses and signature, where the failing bound is still
+        // written in terms of the generic param it was declared on.
+        let clauses = self.tcx.clauses_of(callee_def_id).instantiate_identity(self.tcx);
+        let Some(ty::ClauseKind::Trait(failed)) = clauses
+            .clauses
+            .get(idx)
+            .map(|clause| clause.as_ref().skip_norm_wip().kind().skip_binder())
+        else {
+            return false;
+        };
+        let sig =
+            self.tcx.fn_sig(callee_def_id).instantiate_identity().skip_norm_wip().skip_binder();
+        let mut candidates = args.into_iter().enumerate().filter_map(|(i, arg)| {
+            // The bound has to be on what the closure returns. A bound on an unrelated param that
+            // also happened to be inferred as `()` would not be satisfied by removing a semicolon.
+            let declared = sig.inputs().get(i)?.peel_refs();
+            if !clauses.clauses.iter().any(|clause| {
+                matches!(
+                    clause.as_ref().skip_norm_wip().kind().skip_binder(),
+                    ty::ClauseKind::Projection(proj)
+                        if self.tcx.is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
+                            && proj.projection_term.self_ty() == declared
+                            && proj.term.as_type() == Some(failed.self_ty())
+                )
+            }) {
+                return None;
+            }
             // The error can be reported while the closure argument is still being checked, before
             // its own type is recorded, so identify closures syntactically and only fall back to
             // the argument's type (e.g. for a closure bound to a variable and passed by path).
             let closure_def_id = match arg.kind {
                 hir::ExprKind::Closure(closure) => closure.def_id,
-                _ => match typeck_results.expr_ty_adjusted_opt(arg).map(|ty| {
-                    *self.resolve_vars_if_possible(ty).peel_refs().kind()
-                }) {
+                _ => match typeck_results
+                    .expr_ty_adjusted_opt(arg)
+                    .map(|ty| *self.resolve_vars_if_possible(ty).peel_refs().kind())
+                {
                     Some(ty::Closure(def_id, _)) => def_id.as_local()?,
                     _ => return None,
                 },
@@ -2630,48 +2694,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             else {
                 return None;
             };
-            let body_value = self.tcx.hir_body(closure.body).value;
-            if let hir::ExprKind::Block(block @ hir::Block { expr: None, .. }, None) =
-                body_value.kind
-                && let [.., stmt] = block.stmts
-                && !stmt.span.from_expansion()
-                && let hir::StmtKind::Semi(tail_expr) = stmt.kind
-                && !matches!(tail_expr.kind, hir::ExprKind::Err(_))
-                // Tie the failing `(): Trait` predicate to this closure through its return type.
-                // The already-checked body is in the typeck results even when the closure isn't.
-                && let Some(ret_ty) = typeck_results.expr_ty_opt(body_value)
-                && self.resolve_vars_if_possible(ret_ty).is_unit()
-                // Only suggest this if the expression behind the semicolon implements the predicate
-                && let Some(ty) =
-                    typeck_results.expr_ty_opt(tail_expr).map(|ty| self.resolve_vars_if_possible(ty))
-                && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
-                    obligation.param_env,
-                    trait_pred.map_bound(|trait_pred| (trait_pred, ty)),
-                ))
-            {
-                Some((stmt, tail_expr, ty))
-            } else {
-                None
-            }
+            let hir::ExprKind::Block(block, None) = self.tcx.hir_body(closure.body).value.kind
+            else {
+                return None;
+            };
+            self.removable_trailing_semicolon(block, obligation, trait_pred)
         });
         // Only emit the suggestion when a single closure argument matches, to avoid pointing at
         // an unrelated closure.
-        if let Some((stmt, tail_expr, ty)) = candidates.next()
+        if let Some(candidate) = candidates.next()
             && candidates.next().is_none()
         {
-            err.span_label(
-                tail_expr.span,
-                format!(
-                    "this expression has type `{}`, which implements `{}`",
-                    ty,
-                    trait_pred.print_modifiers_and_trait_path()
-                ),
-            );
-            err.span_suggestion(
-                self.tcx.sess.source_map().end_point(stmt.span),
-                "remove this semicolon",
-                "",
-                Applicability::MachineApplicable,
+            // The same closure can be passed to somewhere else that expects it to return `()`,
+            // where keeping the value would introduce a new error.
+            self.suggest_removing_semicolon(
+                err,
+                trait_pred,
+                candidate,
+                Applicability::MaybeIncorrect,
             );
             return true;
         }
