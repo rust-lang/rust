@@ -49,13 +49,13 @@ where
 
 pub fn on_lookup_result_bits<'tcx, F>(
     move_data: &MoveData<'tcx>,
-    lookup_result: LookupResult,
+    lookup_result: LookupResult<'tcx>,
     each_child: F,
 ) where
     F: FnMut(MovePathIndex),
 {
     match lookup_result {
-        LookupResult::Parent(..) => {
+        LookupResult::Parent { .. } | LookupResult::None => {
             // access to untracked value - do not touch children
         }
         LookupResult::Exact(e) => on_all_children_bits(move_data, e, each_child),
