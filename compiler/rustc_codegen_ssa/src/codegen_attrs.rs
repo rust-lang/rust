@@ -173,12 +173,11 @@ fn process_builtin_attrs(
                 UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                 UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
                 UsedBy::Default => {
-                    let used_form = if tcx.sess.target.os == Os::Illumos {
-                        // illumos' `ld` doesn't support a section header that would represent
-                        // `#[used(linker)]`, see
-                        // https://github.com/rust-lang/rust/issues/146169. For that target,
-                        // downgrade as if `#[used(compiler)]` was requested and hope for the
-                        // best.
+                    let used_form = if matches!(tcx.sess.target.os, Os::Illumos | Os::None) {
+                        // `#[used(linker)]` needs an OS-specific retained-section flag on ELF.
+                        // illumos' linker does not support its flag (#146169), while OS-less
+                        // ELF targets would get SHF_GNU_RETAIN and thus ELFOSABI_GNU (#158957).
+                        // Fall back to compiler-level retention for those targets.
                         CodegenFnAttrFlags::USED_COMPILER
                     } else {
                         CodegenFnAttrFlags::USED_LINKER
