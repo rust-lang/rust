@@ -1938,6 +1938,12 @@ impl_tuple!(a0:T, a1:T, a2:T, a3:T, a4:T, a5:T, a6:T, a7:T, a8:T, a9:T, a10:T, a
 ///
 /// assert_eq!(cmp::smallest(Equal("v1"), Equal("v2")).0, "v1");
 /// ```
+///
+/// # Stability
+///
+/// This function is added in its current form as an experiment in variadic functions.
+/// In a future iteration of the feature, this function may be removed in favour of
+/// making [`min`] itself variadic instead.
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_splat", issue = "160728")]
@@ -1982,6 +1988,12 @@ pub const fn smallest<T: [const] Ord + [const] Destruct>(
 ///
 /// assert_eq!(cmp::largest(Equal("v1"), Equal("v2")).0, "v2");
 /// ```
+///
+/// # Stability
+///
+/// This function is added in its current form as an experiment in variadic functions.
+/// In a future iteration of the feature, this function may be removed in favour of
+/// making [`min`] itself variadic instead.
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_splat", issue = "160728")]
