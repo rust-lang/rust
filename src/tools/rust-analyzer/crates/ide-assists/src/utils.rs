@@ -13,6 +13,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
+    traits::IsRequiredAssocItem,
 };
 use itertools::Itertools;
 use syntax::{
@@ -162,14 +163,14 @@ pub enum DefaultMethods {
 
 pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
-    items: &[hir::AssocItem],
+    items: &[(hir::AssocItem, IsRequiredAssocItem)],
     default_methods: DefaultMethods,
     ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
-    return items
+    items
         .iter()
         .copied()
-        .filter(|assoc_item| {
+        .filter(|(assoc_item, is_required)| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).is_doc_hidden()
             {
@@ -181,10 +182,10 @@ pub fn filter_assoc_items(
                 return false;
             }
 
-            true
+            is_required.0 == (default_methods == DefaultMethods::No)
         })
         // Note: This throws away items with no source.
-        .filter_map(|assoc_item| {
+        .filter_map(|(assoc_item, _)| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
                 hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
@@ -192,33 +193,7 @@ pub fn filter_assoc_items(
             };
             Some(item)
         })
-        .filter(has_def_name)
-        .filter(|it| match &it.value {
-            ast::AssocItem::Fn(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::Const(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::TypeAlias(def) => matches!(
-                (default_methods, def.ty()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::MacroCall(_) => unreachable!(),
-        })
-        .collect();
-
-    fn has_def_name(item: &InFile<ast::AssocItem>) -> bool {
-        match &item.value {
-            ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::Const(def) => def.name(),
-            ast::AssocItem::MacroCall(_) => None,
-        }
-        .is_some()
-    }
+        .collect()
 }
 
 /// Given `original_items` retrieved from the trait definition (usually by
