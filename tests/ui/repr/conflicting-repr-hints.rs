@@ -43,7 +43,7 @@ struct I(i32); //~ ERROR type has conflicting packed representation hints
 #[repr(packed)]
 struct J(i32); //~ ERROR type has conflicting packed representation hints
 
-#[repr(packed, packed(1))]
+#[repr(packed, packed(1))] //~ WARN attribute is specified more than once
 struct K(i32);
 
 #[repr(packed, align(8))]

@@ -172,7 +172,19 @@ impl OptimizeAttr {
     }
 }
 
-#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, StableHash, PrintAttribute)]
+#[derive(
+    PartialEq,
+    Eq,
+    Debug,
+    PartialOrd,
+    Ord,
+    Encodable,
+    Decodable,
+    Copy,
+    Clone,
+    StableHash,
+    PrintAttribute
+)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
@@ -188,7 +200,7 @@ pub enum TransparencyError {
     MultipleTransparencyAttrs(Span, Span),
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, PartialOrd, Ord)]
 #[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum IntType {
     SignedInt(ast::IntTy),
