@@ -1,4 +1,4 @@
-use core::borrow::Borrow;
+use core::cmp::Comparable;
 use core::ops::RangeBounds;
 use core::{hint, ptr};
 
@@ -267,7 +267,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     ) -> LeafRange<BorrowType, K, V>
     where
         Q: Ord,
-        K: Borrow<Q>,
+        K: for<'a> Comparable<&'a Q>,
         R: RangeBounds<Q>,
     {
         match self.search_tree_for_bifurcation(&range) {
@@ -316,7 +316,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     pub(super) fn range_search<Q, R>(self, range: R) -> LeafRange<marker::Immut<'a>, K, V>
     where
         Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        K: for<'b> Comparable<&'b Q>,
         R: RangeBounds<Q>,
     {
         // SAFETY: our borrow type is immutable.
@@ -342,7 +342,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     pub(super) fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
     where
         Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        K: for<'b> Comparable<&'b Q>,
         R: RangeBounds<Q>,
     {
         unsafe { self.find_leaf_edges_spanning_range(range) }
@@ -741,13 +741,12 @@ impl<BorrowType: marker::BorrowType, K, V>
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Returns the leaf edge corresponding to the first point at which the
     /// given bound is true.
-    pub(super) fn lower_bound<Q: ?Sized>(
+    pub(super) fn lower_bound<Q: Clone>(
         self,
-        mut bound: SearchBound<&Q>,
+        mut bound: SearchBound<Q>,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let mut node = self;
         loop {
@@ -764,13 +763,12 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
 
     /// Returns the leaf edge corresponding to the last point at which the
     /// given bound is true.
-    pub(super) fn upper_bound<Q: ?Sized>(
+    pub(super) fn upper_bound<Q: Clone>(
         self,
-        mut bound: SearchBound<&Q>,
+        mut bound: SearchBound<Q>,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let mut node = self;
         loop {
