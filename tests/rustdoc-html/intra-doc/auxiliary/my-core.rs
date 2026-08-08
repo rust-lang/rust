@@ -5,7 +5,7 @@
 
 #[rustc_doc_primitive = "char"]
 /// Some char docs
-mod char {}
+const _: () = ();
 
 impl char {
     pub fn len_utf8(self) -> usize {

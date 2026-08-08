@@ -178,11 +178,11 @@ pub enum AnEnum {
 
 #[doc(keyword = "for")]
 /// Some keyword.
-pub mod keyword {}
+const _: () = ();
 
 #[doc(attribute = "forbid")]
 /// Some attribute.
-pub mod repr {}
+const _: () = ();
 
 /// Just some type alias.
 pub type SomeType = u32;

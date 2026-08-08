@@ -6,4 +6,4 @@
 
 /// dox
 #[rustc_doc_primitive = "pointer"]
-pub mod ptr {}
+const _: () = ();
