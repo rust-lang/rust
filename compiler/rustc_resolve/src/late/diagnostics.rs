@@ -1531,11 +1531,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 err.span_label(*fn_span, format!("this function has {self_from_macro}"));
             } else {
                 let doesnt = if is_assoc_fn {
+                    // If `self` is being mutated on the left-hand side of an
+                    // assignment, a `&self` receiver would not compile, so
+                    // suggest `&mut self` instead.
+                    let (self_param, self_receiver) = if self.should_suggest_mut_self() {
+                        ("&mut self, ", "&mut self")
+                    } else {
+                        ("&self, ", "&self")
+                    };
                     let (span, sugg) = fn_kind
                         .decl()
                         .inputs
                         .get(0)
-                        .map(|p| (p.span.shrink_to_lo(), "&self, "))
+                        .map(|p| (p.span.shrink_to_lo(), self_param))
                         .unwrap_or_else(|| {
                             // Try to look for the "(" after the function name, if possible.
                             // This avoids placing the suggestion into the visibility specifier.
@@ -1549,7 +1557,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     .source_map()
                                     .span_through_char(span, '(')
                                     .shrink_to_hi(),
-                                "&self",
+                                self_receiver,
                             )
                         });
                     err.span_suggestion_verbose(
@@ -1581,6 +1589,43 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         }
         true
+    }
+
+    /// Whether the `self` that failed to resolve is the base of a place
+    /// being assigned to, e.g., `self.field = ...`, `*self = ...`,
+    /// `self[i] = ...`, or `self.count += 1`.
+    ///
+    /// In those cases suggesting a plain `&self` receiver would not compile
+    /// (the assignment then trips E0594), so the caller suggests
+    /// `&mut self` instead.
+    ///
+    /// `self` merely read on the left-hand side (`arr[self] = ...`) and a
+    /// bare `self = ...` (which would need `mut self`) are excluded.
+    fn should_suggest_mut_self(&self) -> bool {
+        fn is_self_place(expr: &Expr) -> bool {
+            match &expr.peel_parens().kind {
+                ExprKind::Path(None, path) => {
+                    path.segments.len() == 1 && path.segments[0].ident.name == kw::SelfLower
+                }
+                ExprKind::Field(base, _)
+                | ExprKind::Index(base, _, _)
+                | ExprKind::Unary(ast::UnOp::Deref, base) => is_self_place(base),
+                _ => false,
+            }
+        }
+
+        // `in_assignment` is only set while the left-hand side is being
+        // visited, so a `self` read from the right-hand side cannot reach here.
+        let Some(Expr { kind: ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, ..), .. }) =
+            self.diag_metadata.in_assignment
+        else {
+            return false;
+        };
+
+        // `lhs` is peeled, so a bare path here means the target *is* `self`,
+        // which would need `mut self` rather than `&mut self`.
+        let lhs = lhs.peel_parens();
+        is_self_place(lhs) && !matches!(lhs.kind, ExprKind::Path(None, _))
     }
 
     fn detect_missing_binding_available_from_pattern(

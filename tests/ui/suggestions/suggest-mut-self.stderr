@@ -1,0 +1,143 @@
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:16:9
+   |
+LL |     fn set(field: bool) {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.field = field;
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn set(&mut self, field: bool) {
+   |            ++++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:22:9
+   |
+LL |     fn clear() {
+   |        ----- this function doesn't have a `self` parameter
+LL |         self.field = false;
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn clear(&mut self) {
+   |              +++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:28:10
+   |
+LL |     fn set_paren() {
+   |        --------- this function doesn't have a `self` parameter
+LL |         (self).field = true;
+   |          ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn set_paren(&mut self) {
+   |                  +++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:34:10
+   |
+LL |     fn replace(other: S) {
+   |        ------- this function doesn't have a `self` parameter
+LL |         *self = other;
+   |          ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn replace(&mut self, other: S) {
+   |                ++++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:40:9
+   |
+LL |     fn set_flag() {
+   |        -------- this function doesn't have a `self` parameter
+LL |         self.flags[0] = true;
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn set_flag(&mut self) {
+   |                 +++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:46:9
+   |
+LL |     fn bump() {
+   |        ---- this function doesn't have a `self` parameter
+LL |         self.count += 1;
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn bump(&mut self) {
+   |             +++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:52:9
+   |
+LL |     fn dup() {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.field = self.flags[0];
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn dup(&mut self) {
+   |            +++++++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:52:22
+   |
+LL |     fn dup() {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.field = self.flags[0];
+   |                      ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn dup(&self) {
+   |            +++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:59:9
+   |
+LL |     fn get() -> bool {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.field
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn get(&self) -> bool {
+   |            +++++
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/suggest-mut-self.rs:65:13
+   |
+LL |     fn store(arr: &mut [bool; 4]) {
+   |        ----- this function doesn't have a `self` parameter
+LL |         arr[self] = true;
+   |             ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn store(&self, arr: &mut [bool; 4]) {
+   |              ++++++
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0424`.
