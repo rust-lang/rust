@@ -7,7 +7,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::LangItem;
 use rustc_hir::attrs::AttributeKind;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use super::*;
@@ -18,23 +18,31 @@ impl SwitchTargets {
     /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
     /// `goto otherwise;`.
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
-        let (values, mut targets): (SmallVec<_>, SmallVec<_>) =
-            targets.map(|(v, t)| (Pu128(v), t)).unzip();
+        let mut targets = targets.map(|(v, t)| (Pu128(v), t));
+
+        let Some(first) = targets.next() else { return Self::Otherwise(otherwise) };
+
+        let Some(second) = targets.next() else {
+            return Self::Single { values: [first.0], targets: [first.1, otherwise] };
+        };
+
+        let (values, mut targets): (ThinVec<_>, ThinVec<_>) =
+            [first, second].into_iter().chain(targets).unzip();
         targets.push(otherwise);
-        Self { values, targets }
+        Self::Many { values, targets }
     }
 
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
     /// and to `else_` if not.
     pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
-        Self { values: smallvec![Pu128(value)], targets: smallvec![then, else_] }
+        Self::Single { values: [Pu128(value)], targets: [then, else_] }
     }
 
     /// Inverse of `SwitchTargets::static_if`.
     #[inline]
     pub fn as_static_if(&self) -> Option<(u128, BasicBlock, BasicBlock)> {
-        if let &[value] = &self.values[..]
-            && let &[then, else_] = &self.targets[..]
+        if let &[value] = &self.all_values()[..]
+            && let &[then, else_] = &self.all_targets()[..]
         {
             Some((value.get(), then, else_))
         } else {
@@ -45,7 +53,7 @@ impl SwitchTargets {
     /// Returns the fallback target that is jumped to when none of the values match the operand.
     #[inline]
     pub fn otherwise(&self) -> BasicBlock {
-        *self.targets.last().unwrap()
+        *self.all_targets().last().unwrap()
     }
 
     /// Returns an iterator over the switch targets.
@@ -56,29 +64,45 @@ impl SwitchTargets {
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
     #[inline]
     pub fn iter(&self) -> SwitchTargetsIter<'_> {
-        SwitchTargetsIter { inner: iter::zip(&self.values, &self.targets) }
+        SwitchTargetsIter { inner: iter::zip(self.all_values(), self.all_targets()) }
     }
 
     /// Returns a slice with all possible jump targets (including the fallback target).
     #[inline]
     pub fn all_targets(&self) -> &[BasicBlock] {
-        &self.targets
+        match self {
+            SwitchTargets::Otherwise(target) => slice::from_ref(target),
+            SwitchTargets::Single { targets, values: _ } => &targets[..],
+            SwitchTargets::Many { targets, values: _ } => &targets[..],
+        }
     }
 
     #[inline]
     pub fn all_targets_mut(&mut self) -> &mut [BasicBlock] {
-        &mut self.targets
+        match self {
+            SwitchTargets::Otherwise(target) => slice::from_mut(target),
+            SwitchTargets::Single { targets, values: _ } => &mut targets[..],
+            SwitchTargets::Many { targets, values: _ } => &mut targets[..],
+        }
     }
 
     /// Returns a slice with all considered values (not including the fallback).
     #[inline]
     pub fn all_values(&self) -> &[Pu128] {
-        &self.values
+        match self {
+            SwitchTargets::Otherwise(_) => &[],
+            SwitchTargets::Single { targets: _, values } => &values[..],
+            SwitchTargets::Many { targets: _, values } => &values[..],
+        }
     }
 
     #[inline]
     pub fn all_values_mut(&mut self) -> &mut [Pu128] {
-        &mut self.values
+        match self {
+            SwitchTargets::Otherwise(_) => &mut [],
+            SwitchTargets::Single { targets: _, values } => &mut values[..],
+            SwitchTargets::Many { targets: _, values } => &mut values[..],
+        }
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
@@ -93,17 +117,30 @@ impl SwitchTargets {
     #[inline]
     pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
         let value = Pu128(value);
-        if self.values.contains(&value) {
+        if self.all_values().contains(&value) {
             bug!("target value {:?} already present", value);
         }
-        self.values.push(value);
-        self.targets.insert(self.targets.len() - 1, bb);
+        match self {
+            SwitchTargets::Otherwise(prev_target) => {
+                *self = SwitchTargets::Single { values: [value], targets: [*prev_target, bb] }
+            }
+            SwitchTargets::Single { values, targets } => {
+                *self = SwitchTargets::Many {
+                    values: ThinVec::from_iter(values.iter().copied().chain(iter::once(value))),
+                    targets: ThinVec::from_iter(targets.iter().copied().chain(iter::once(bb))),
+                }
+            }
+            SwitchTargets::Many { values, targets } => {
+                values.push(value);
+                targets.insert(targets.len() - 1, bb);
+            }
+        }
     }
 
     /// Returns true if all targets (including the fallback target) are distinct.
     #[inline]
     pub fn is_distinct(&self) -> bool {
-        self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
+        self.all_targets().iter().collect::<FxHashSet<_>>().len() == self.all_targets().len()
     }
 }
 
@@ -548,7 +585,7 @@ mod helper {
                     mk_successors(targets, Some(u), None)
                 }
                 InlineAsm { ref targets, unwind: _, .. } => mk_successors(targets, None, None),
-                SwitchInt { ref targets, .. } => mk_successors(&targets.targets, None, None),
+                SwitchInt { ref targets, .. } => mk_successors(targets.all_targets(), None, None),
                 // FalseEdge
                 FalseEdge { ref real_target, imaginary_target } => {
                     mk_successors(slice::from_ref(real_target), Some(imaginary_target), None)
@@ -607,7 +644,7 @@ mod helper {
                     }
                 }
                 SwitchInt { targets, .. } => {
-                    for target in &mut targets.targets {
+                    for target in targets.all_targets_mut() {
                         f(target);
                     }
                 }

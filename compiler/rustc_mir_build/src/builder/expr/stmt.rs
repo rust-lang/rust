@@ -1,3 +1,4 @@
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -117,7 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
                     let fun = unpack!(block = this.as_local_operand(block, fun));
-                    let args: Box<[_]> = args
+                    let args: ThinVec<_> = args
                         .into_iter()
                         .copied()
                         .map(|arg| Spanned {
