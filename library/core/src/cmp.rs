@@ -1873,6 +1873,137 @@ where
     if f(&v2) < f(&v1) { [v2, v1] } else { [v1, v2] }
 }
 
+/// Implementation detail for [`smallest`] and [`largest`].
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a homogeneous tuple of type `{T}`")]
+#[unstable(feature = "cmp_splat", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat", issue = "160728")]
+pub impl(self) const trait TupleReduce<T>: crate::marker::Tuple {
+    /// Reduces all elements of a homogeneous non-empty tuple by repeatedly calling
+    /// the provided function `f` on successive pairs.
+    fn reduce<F: [const] Destruct + [const] FnMut(T, T) -> T>(self, f: F) -> T;
+}
+
+macro_rules! impl_tuple {
+    ($($_:ident: $T:ident, $($y:ident: $U:ident,)*)?) => {$(
+        impl_tuple! { $($y: $U,)* }
+
+        #[unstable(feature = "cmp_splat", issue = "160728")]
+        #[rustc_const_unstable(feature = "cmp_splat", issue = "160728")]
+        const impl<T> TupleReduce<T> for ($T, $($U,)*)
+        where
+            Self: [const] Destruct,
+        {
+            fn reduce<F: [const] Destruct + [const] FnMut(T, T) -> T>(self, mut _f: F) -> T {
+                let (x, $($y,)*) = self;
+                $(let x = _f(x, $y);)*
+                x
+            }
+        }
+    )?};
+}
+
+impl_tuple!(a0:T, a1:T, a2:T, a3:T, a4:T, a5:T, a6:T, a7:T, a8:T, a9:T, a10:T, a11:T,);
+
+/// Compares and returns the minimum of the provided values.
+///
+/// Returns the first argument if the comparison determines them to be equal.
+///
+/// Internally uses [`Ord::min`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::smallest(1, 2, 3), 1);
+/// assert_eq!(cmp::smallest(2, 2), 2);
+/// ```
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp::{self, Ordering};
+///
+/// #[derive(Eq)]
+/// struct Equal(&'static str);
+///
+/// impl PartialEq for Equal {
+///     fn eq(&self, other: &Self) -> bool { true }
+/// }
+/// impl PartialOrd for Equal {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(Ordering::Equal) }
+/// }
+/// impl Ord for Equal {
+///     fn cmp(&self, other: &Self) -> Ordering { Ordering::Equal }
+/// }
+///
+/// assert_eq!(cmp::smallest(Equal("v1"), Equal("v2")).0, "v1");
+/// ```
+///
+/// # Stability
+///
+/// This function is added in its current form as an experiment in variadic functions.
+/// In a future iteration of the feature, this function may be removed in favour of
+/// making [`min`] itself variadic instead.
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_splat", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat", issue = "160728")]
+pub const fn smallest<T: [const] Ord + [const] Destruct>(
+    #[rustc_splat] vals: impl [const] TupleReduce<T>,
+) -> T {
+    vals.reduce(Ord::min)
+}
+
+/// Compares and returns the maximum of the provided values.
+///
+/// Returns the first argument if the comparison determines them to be equal.
+///
+/// Internally uses [`Ord::max`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::largest(1, 2, 3), 3);
+/// assert_eq!(cmp::largest(2, 2), 2);
+/// ```
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp::{self, Ordering};
+///
+/// #[derive(Eq)]
+/// struct Equal(&'static str);
+///
+/// impl PartialEq for Equal {
+///     fn eq(&self, other: &Self) -> bool { true }
+/// }
+/// impl PartialOrd for Equal {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(Ordering::Equal) }
+/// }
+/// impl Ord for Equal {
+///     fn cmp(&self, other: &Self) -> Ordering { Ordering::Equal }
+/// }
+///
+/// assert_eq!(cmp::largest(Equal("v1"), Equal("v2")).0, "v2");
+/// ```
+///
+/// # Stability
+///
+/// This function is added in its current form as an experiment in variadic functions.
+/// In a future iteration of the feature, this function may be removed in favour of
+/// making [`min`] itself variadic instead.
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_splat", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat", issue = "160728")]
+pub const fn largest<T: [const] Ord + [const] Destruct>(
+    #[rustc_splat] vals: impl [const] TupleReduce<T>,
+) -> T {
+    vals.reduce(Ord::max)
+}
+
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
     use crate::cmp::Ordering::{self, Equal, Greater, Less};
