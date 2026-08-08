@@ -400,7 +400,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && let b = cx.typeck_results().expr_ty(recv)
                     && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
-                    && let Some(a_type) = args.iter().filter_map(GenericArg::as_type).nth(0)
+                    && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                     && same_type_modulo_regions(a_type, b)
                 {
                     span_lint_and_help(
@@ -425,7 +425,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if name == sym::try_from_fn
                         && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
-                        && let Some(a_type) = args.iter().filter_map(GenericArg::as_type).nth(0)
+                        && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                         && same_type_modulo_regions(a_type, b)
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));

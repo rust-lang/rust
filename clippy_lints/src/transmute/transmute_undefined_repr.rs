@@ -332,7 +332,7 @@ fn same_except_params<'tcx>(subs1: GenericArgsRef<'tcx>, subs2: GenericArgsRef<'
             },
             // FIXME: check const parameters better as well. Currently this will consider `Array<5>` the same as
             // `Array<6>`
-            (ty::TermKind::Const(c1), ty::TermKind::Const(c2)) if c1 == c2 => todo!(),
+            (ty::TermKind::Const(_), ty::TermKind::Const(_)) => {},
             _ => return false,
         }
     }
