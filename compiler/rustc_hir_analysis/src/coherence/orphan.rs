@@ -465,13 +465,21 @@ fn emit_orphan_check_error<'tcx>(
                         });
                     }
                     ty::Adt(adt_def, _) => {
-                        diag.subdiagnostic(diagnostics::OnlyCurrentTraitsAdt {
-                            span,
-                            name: tcx.def_path_str(adt_def.did()),
-                        });
+                        if is_foreign {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsForeign { span });
+                        } else {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsAdt {
+                                span,
+                                name: tcx.def_path_str(adt_def.did()),
+                            });
+                        }
                     }
                     _ => {
-                        diag.subdiagnostic(diagnostics::OnlyCurrentTraitsTy { span, ty });
+                        if is_foreign {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsForeign { span });
+                        } else {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsTy { span, ty });
+                        }
                     }
                 }
             }
