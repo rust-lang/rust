@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{Span, sym};
 
-use crate::lints::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
+use crate::diagnostics::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
