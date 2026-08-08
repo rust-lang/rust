@@ -53,10 +53,7 @@ pub struct Command {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        let mut env = CommandEnv::default();
-        env.remove(OsStr::new(moto_rt::process::STDIO_IS_TERMINAL_ENV_KEY));
-
-        Command { program: program.as_str().to_owned(), env, ..Default::default() }
+        Command { program: program.as_str().to_owned(), ..Default::default() }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
@@ -125,7 +122,7 @@ impl Command {
         } else {
             default.try_clone()?.into_rt()
         };
-        let stderr = if let Some(stderr) = self.stdout.as_ref() {
+        let stderr = if let Some(stderr) = self.stderr.as_ref() {
             stderr.try_clone()?.into_rt()
         } else {
             default.try_clone()?.into_rt()
@@ -146,11 +143,11 @@ impl Command {
             stderr,
         };
 
-        let (handle, stdin, stdout, stderr) =
-            moto_rt::process::spawn(args).map_err(map_motor_error)?;
+        let res = moto_rt::process::spawn(args).map_err(map_motor_error)?;
+        let (handle, stdin, stdout, stderr) = (res.handle, res.stdin, res.stdout, res.stderr);
 
         Ok((
-            Process { handle },
+            Process { handle, pid: res.pid as u32 },
             StdioPipes {
                 stdin: if stdin >= 0 {
                     Some(unsafe { ChildPipe::from_raw_fd(stdin) })
@@ -170,6 +167,29 @@ impl Command {
             },
         ))
     }
+}
+
+pub fn output(cmd: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    let (mut process, mut pipes) = cmd.spawn(Stdio::MakePipe, false)?;
+
+    drop(pipes.stdin.take());
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    crate::thread::scope(|scope| {
+        let waiter = scope.spawn(move || {
+            let status = process.wait();
+            drop(process);
+            status
+        });
+        let read_result = match (pipes.stdout.take(), pipes.stderr.take()) {
+            (None, None) => Ok(()),
+            (Some(out), None) => out.read_to_end(&mut stdout).map(|_| ()),
+            (None, Some(err)) => err.read_to_end(&mut stderr).map(|_| ()),
+            (Some(out), Some(err)) => read_output(out, &mut stdout, err, &mut stderr),
+        };
+        let status = waiter.join().expect("child wait thread panicked");
+        read_result?;
+        Ok((status?, stdout, stderr))
+    })
 }
 
 impl From<crate::sys::fd::FileDesc> for Stdio {
@@ -255,6 +275,7 @@ impl From<u8> for ExitCode {
 
 pub struct Process {
     handle: u64,
+    pid: u32,
 }
 
 impl Drop for Process {
@@ -265,7 +286,9 @@ impl Drop for Process {
 
 impl Process {
     pub fn id(&self) -> u32 {
-        0
+        // The kernel bounds pids to the i32-positive range, so the pid the
+        // runtime reported at spawn is exact (pid-refactoring-design.md).
+        self.pid
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
@@ -324,14 +347,32 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 pub type ChildPipe = crate::sys::pipe::Pipe;
 
 pub fn read_output(
-    _out: ChildPipe,
-    _stdout: &mut Vec<u8>,
-    _err: ChildPipe,
-    _stderr: &mut Vec<u8>,
+    out: ChildPipe,
+    stdout: &mut Vec<u8>,
+    err: ChildPipe,
+    stderr: &mut Vec<u8>,
 ) -> io::Result<()> {
-    Err(io::Error::from_raw_os_error(moto_rt::E_NOT_IMPLEMENTED.into()))
+    // Drain both pipes concurrently so the child can't deadlock filling one
+    // pipe while we block reading the other.
+    crate::thread::scope(|s| {
+        let err_reader = s.spawn(move || err.read_to_end(stderr));
+        let out_res = out.read_to_end(stdout);
+        let err_res = err_reader.join().expect("stderr reader thread panicked");
+        out_res?;
+        err_res?;
+        Ok(())
+    })
 }
 
 pub fn getpid() -> u32 {
-    panic!("Pids on Motor OS are u64.")
+    // Motor pids are u64 in the ABI, but the kernel bounds them to the
+    // i32-positive range, so the cast below is exact (pid-refactoring-design.md).
+    // The pid lives in the kernel-provided read-only ProcessStaticPage; its
+    // address and layout are part of the kernel ABI (see ProcessStaticPage in
+    // Motor OS's moto-sys crate).
+    const PROCESS_STATIC_PAGE_VADDR: usize = 0x3F7F_FFC0_0000;
+    const PID_OFFSET: usize = 8;
+    unsafe {
+        *crate::ptr::with_exposed_provenance::<u64>(PROCESS_STATIC_PAGE_VADDR + PID_OFFSET) as u32
+    }
 }

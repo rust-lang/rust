@@ -7,8 +7,14 @@ pub(crate) fn map_motor_error(err: moto_rt::Error) -> io::Error {
     io::Error::from_raw_os_error(error_code.into())
 }
 
+// Weak: when a program is linked with mlibc (e.g. via the Motor clang
+// driver, which always links mlibc's crt1.o), crt1.o's strong motor_start
+// must win. mlibc's entry initializes the VDSO vtable and the C runtime
+// (TCB, stdio, .init_array constructors) and then calls the C `main`
+// that rustc generates, so Rust std works identically in both flows.
 #[cfg(not(test))]
 #[unsafe(no_mangle)]
+#[linkage = "weak"]
 pub extern "C" fn motor_start() -> ! {
     // Initialize the runtime.
     moto_rt::start();
