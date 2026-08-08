@@ -1494,7 +1494,12 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn find<P: Pattern>(&self, pat: P) -> Option<usize> {
-        pat.into_searcher(self).next_match().map(|(i, _)| i)
+        let result = pat.into_searcher(self).next_match().map(|(i, _)| i);
+        if let Some(index) = result {
+            // SAFETY: `Searcher` implementations must return ranges within the haystack.
+            unsafe { assert_unchecked(index <= self.len()) };
+        }
+        result
     }
 
     /// Returns the byte index for the first character of the last match of the pattern in
@@ -1543,7 +1548,12 @@ impl str {
     where
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
     {
-        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
+        let result = pat.into_searcher(self).next_match_back().map(|(i, _)| i);
+        if let Some(index) = result {
+            // SAFETY: `Searcher` implementations must return ranges within the haystack.
+            unsafe { assert_unchecked(index <= self.len()) };
+        }
+        result
     }
 
     /// Returns an iterator over substrings of this string slice, separated by
