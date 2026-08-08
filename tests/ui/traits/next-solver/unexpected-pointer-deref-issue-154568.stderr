@@ -5,6 +5,8 @@ LL |     let handshake = Handshake(callback.0.clone());
    |         ^^^^^^^^^   ----------------------------- type must be known at this point
    |
    = note: the type must implement `Role`
+   = note: cannot satisfy `<_ as Role>::Inner == ()`
+   = note: cannot satisfy `<_ as Role>::Inner == _`
 note: required by a bound in `Handshake`
   --> $DIR/unexpected-pointer-deref-issue-154568.rs:9:21
    |

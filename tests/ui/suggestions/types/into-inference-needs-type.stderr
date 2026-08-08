@@ -5,6 +5,9 @@ LL |         .into()?;
    |          ^^^^
    |
    = note: the type must implement `From<FilterMap<Map<std::slice::Iter<'_, &str>, {closure@$DIR/into-inference-needs-type.rs:10:14: 10:17}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>>`
+   = note: cannot satisfy `<_ as Try>::Residual == _`
+   = note: the type must also implement `Try`
+   = note: cannot satisfy `<_ as Try>::Output == ()`
    = note: required for `FilterMap<Map<std::slice::Iter<'_, &str>, {closure@$DIR/into-inference-needs-type.rs:10:14: 10:17}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>` to implement `Into<_>`
 help: try using a fully qualified path to specify the expected types
    |

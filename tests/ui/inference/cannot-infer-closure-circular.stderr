@@ -7,6 +7,7 @@ LL |         let v = r?;
 LL |         Ok(v)
    |         ----- type must be known at this point
    |
+   = note: the type must also implement `From<_>`
 help: consider giving this closure parameter an explicit type, where the type for type parameter `E` is specified
    |
 LL |     let x = |r: Result<_, E>| {

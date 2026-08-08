@@ -7,6 +7,7 @@ LL |
 LL |     [a, b] = Default::default();
    |      - type must be known at this point
    |
+   = note: the type must also implement `Default`
 help: consider giving `b` an explicit type, where the placeholder `_` is specified
    |
 LL |     let b: [_; 3];

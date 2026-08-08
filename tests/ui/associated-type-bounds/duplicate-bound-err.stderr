@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
+   = note: the type must also implement `Copy`
+   = note: the type must also implement `Send`
 help: consider specifying a concrete type for the type parameter `T`
    |
 LL |     iter::empty::</* Type */>()
@@ -15,6 +17,7 @@ error[E0282]: type annotations needed
 LL |     iter::empty()
    |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
    |
+   = note: the type must also implement `Copy`
 help: consider specifying a concrete type for the type parameter `T`
    |
 LL |     iter::empty::</* Type */>()
