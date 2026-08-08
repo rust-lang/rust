@@ -1,0 +1,69 @@
+error[E0603]: struct import `One` is private
+  --> $DIR/private-import-grouped-suggestion-157453.rs:11:22
+   |
+LL |     use crate::two::{One, Two};
+   |                      ^^^ private struct import
+   |
+note: the struct import `One` is defined here...
+  --> $DIR/private-import-grouped-suggestion-157453.rs:6:9
+   |
+LL |     use crate::one::One;
+   |         ^^^^^^^^^^^^^^^
+note: ...and refers to the struct `One` which is defined here
+  --> $DIR/private-import-grouped-suggestion-157453.rs:2:5
+   |
+LL |     pub struct One();
+   |     ^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `One` directly
+   |
+LL ~     use crate::one::One;
+LL ~     use crate::two::Two;
+   |
+
+error[E0603]: struct import `One` is private
+  --> $DIR/private-import-grouped-suggestion-157453.rs:15:22
+   |
+LL |     use crate::two::{One};
+   |                      ^^^ private struct import
+   |
+note: the struct import `One` is defined here...
+  --> $DIR/private-import-grouped-suggestion-157453.rs:6:9
+   |
+LL |     use crate::one::One;
+   |         ^^^^^^^^^^^^^^^
+note: ...and refers to the struct `One` which is defined here
+  --> $DIR/private-import-grouped-suggestion-157453.rs:2:5
+   |
+LL |     pub struct One();
+   |     ^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `One` directly
+   |
+LL -     use crate::two::{One};
+LL +     use crate::one::One;
+   |
+
+error[E0603]: struct import `MyPath` is private
+  --> $DIR/private-import-grouped-suggestion-157453.rs:29:27
+   |
+LL |     use crate::reexport::{MyPath};
+   |                           ^^^^^^ private struct import
+   |
+note: the struct import `MyPath` is defined here...
+  --> $DIR/private-import-grouped-suggestion-157453.rs:25:9
+   |
+LL |     use crate::outer::inner::MyPath;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct `MyPath` which is defined here
+  --> $DIR/private-import-grouped-suggestion-157453.rs:20:9
+   |
+LL |         pub struct MyPath;
+   |         ^^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `MyPath` directly
+   |
+LL -     use crate::reexport::{MyPath};
+LL +     use crate::outer::inner::MyPath;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
