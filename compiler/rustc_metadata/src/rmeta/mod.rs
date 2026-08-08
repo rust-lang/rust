@@ -339,6 +339,7 @@ pub(crate) struct CrateDep {
     pub kind: CrateDepKind,
     pub extra_filename: String,
     pub is_private: bool,
+    pub is_direct_public: bool,
 }
 
 #[derive(MetadataEncodable, LazyDecodable)]
