@@ -1,9 +1,12 @@
+use std::hash::{Hash, Hasher};
+use std::{iter, mem};
+
 use super::NEEDLESS_RANGE_LOOP;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_literal, peel_hir_expr_while, sugg};
+use clippy_utils::{SpanlessEq, SpanlessHash, contains_name, higher, is_integer_literal, peel_hir_expr_while, sugg};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -14,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{Symbol, sym};
-use std::{iter, mem};
+use rustc_span::{Span, SyntaxContext};
 
 /// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
@@ -53,14 +56,10 @@ pub(super) fn check<'tcx>(
         if visitor.indexed_indirectly.is_empty()
             && !visitor.unnamed_indexed_indirectly
             && !visitor.unnamed_indexed_directly
-            && visitor.indexed_directly.len() == 1
+            && let mut indexed_directly_iter = visitor.indexed_directly.into_iter()
+            && let Some(((indexed, indexed_extended), (indexed_extent, indexed_span))) = indexed_directly_iter.next()
+            && indexed_directly_iter.next().is_none()
         {
-            let (indexed, (indexed_extent, indexed_ty)) = visitor
-                .indexed_directly
-                .into_iter()
-                .next()
-                .expect("already checked that we have exactly 1 element");
-
             // ensure that the indexed variable was declared before the loop, see #601
             if let Some(indexed_extent) = indexed_extent {
                 let parent_def_id = cx.tcx.hir_get_parent_item(expr.hir_id);
@@ -72,6 +71,7 @@ pub(super) fn check<'tcx>(
             }
 
             // don't lint if the container that is indexed does not have .iter() method
+            let indexed_ty = cx.typeck_results().expr_ty(indexed_extended.expr);
             let has_iter = has_iter_method(cx, indexed_ty);
             if has_iter.is_none() {
                 return;
@@ -147,44 +147,50 @@ pub(super) fn check<'tcx>(
                 mem::swap(&mut method_1, &mut method_2);
             }
 
-            if visitor.nonindex {
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_RANGE_LOOP,
-                    span,
-                    format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
-                    |diag| {
+            let indexed_extended_snippet = snippet(cx, indexed_extended.expr.span, "..");
+            span_lint_and_then(
+                cx,
+                NEEDLESS_RANGE_LOOP,
+                span,
+                if visitor.nonindex {
+                    format!(
+                        "the loop variable `{}` is used to index `{indexed_extended_snippet}`",
+                        ident.name
+                    )
+                } else {
+                    format!(
+                        "the loop variable `{}` is only used to index `{indexed_extended_snippet}`",
+                        ident.name
+                    )
+                },
+                |diag| {
+                    diag.span_note(indexed_span, "for this index operation");
+                    if visitor.nonindex {
                         diag.multipart_suggestion(
                             "consider using an iterator and enumerate()",
                             vec![
                                 (pat.span, format!("({}, <item>)", ident.name)),
-                                (span, format!("{indexed}.{method}().enumerate(){method_1}{method_2}")),
+                                (
+                                    span,
+                                    format!("{indexed_extended_snippet}.{method}().enumerate(){method_1}{method_2}"),
+                                ),
                             ],
                             Applicability::HasPlaceholders,
                         );
-                    },
-                );
-            } else {
-                let repl = if starts_at_zero && take_is_empty {
-                    format!("&{ref_mut}{indexed}")
-                } else {
-                    format!("{indexed}.{method}(){method_1}{method_2}")
-                };
-
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_RANGE_LOOP,
-                    span,
-                    format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
-                    |diag| {
+                    } else {
+                        let repl = if starts_at_zero && take_is_empty {
+                            format!("&{ref_mut}{indexed_extended_snippet}")
+                        } else {
+                            format!("{indexed_extended_snippet}.{method}(){method_1}{method_2}")
+                        };
                         diag.multipart_suggestion(
                             "consider using an iterator",
                             vec![(pat.span, "<item>".to_string()), (span, repl)],
                             Applicability::HasPlaceholders,
                         );
-                    },
-                );
-            }
+                    }
+                },
+            );
         }
     }
 }
@@ -236,7 +242,7 @@ struct VarVisitor<'a, 'tcx> {
     unnamed_indexed_indirectly: bool,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: FxIndexMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
+    indexed_directly: FxIndexMap<(Symbol, SpanlessExpr<'a, 'tcx>), (Option<region::Scope>, Span)>,
     /// directly indexed literals, like `[1, 2, 3][i]`
     unnamed_indexed_directly: bool,
     /// Any names that are used outside an index operation.
@@ -262,13 +268,24 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
             index_used_directly &= matches!(idx.kind, ExprKind::Path(_));
         }
         // Handle nested indices
-        let seqexpr = peel_hir_expr_while(seqexpr, |e| {
-            if let ExprKind::Index(e, idx, _) = e.kind {
-                if is_local_used(self.cx, idx, self.var) {
-                    used_cnt += 1;
-                    index_used_directly &= matches!(idx.kind, ExprKind::Path(_));
-                }
-                Some(e)
+        // For example, in `a.b[0][i][i]`, we will have `nested_seqexpr` be `a.b[0]`, with the corresponding
+        // `nested_seqexpr_index_span` be the span of `a.b[0][i]`, and `seqexpr` be `a.b`.
+        let mut nested_seqexpr_index_span = expr.span;
+        let nested_seqexpr = peel_hir_expr_while(seqexpr, |e| {
+            if let ExprKind::Index(inner, idx, _) = e.kind
+                && is_local_used(self.cx, idx, self.var)
+            {
+                used_cnt += 1;
+                index_used_directly &= matches!(idx.kind, ExprKind::Path(_));
+                nested_seqexpr_index_span = e.span;
+                Some(inner)
+            } else {
+                None
+            }
+        });
+        let seqexpr = peel_hir_expr_while(nested_seqexpr, |e| {
+            if let ExprKind::Index(inner, _, _) | ExprKind::Field(inner, _) = e.kind {
+                Some(inner)
             } else {
                 None
             }
@@ -300,8 +317,15 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                         .unwrap();
                     if index_used_directly {
                         self.indexed_directly.insert(
-                            seqvar.segments[0].ident.name,
-                            (Some(extent), self.cx.typeck_results().node_type(seqexpr.hir_id)),
+                            (
+                                seqvar.segments[0].ident.name,
+                                SpanlessExpr {
+                                    cx: self.cx,
+                                    expr: nested_seqexpr,
+                                    ctxt: seqexpr.span.ctxt(),
+                                },
+                            ),
+                            (Some(extent), nested_seqexpr_index_span),
                         );
                     } else {
                         self.indexed_indirectly
@@ -312,8 +336,15 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                 Res::Def(DefKind::Static { .. } | DefKind::Const { .. }, ..) => {
                     if index_used_directly {
                         self.indexed_directly.insert(
-                            seqvar.segments[0].ident.name,
-                            (None, self.cx.typeck_results().node_type(seqexpr.hir_id)),
+                            (
+                                seqvar.segments[0].ident.name,
+                                SpanlessExpr {
+                                    cx: self.cx,
+                                    expr: nested_seqexpr,
+                                    ctxt: seqexpr.span.ctxt(),
+                                },
+                            ),
+                            (None, nested_seqexpr_index_span),
                         );
                     } else {
                         self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
@@ -423,5 +454,28 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
             _ => walk_expr(self, expr),
         }
         self.prefer_mutable = old;
+    }
+}
+
+struct SpanlessExpr<'cx, 'tcx> {
+    cx: &'cx LateContext<'tcx>,
+    expr: &'cx Expr<'tcx>,
+    ctxt: SyntaxContext,
+}
+
+impl PartialEq for SpanlessExpr<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        let mut eq = SpanlessEq::new(self.cx);
+        eq.eq_expr(self.ctxt, self.expr, other.expr)
+    }
+}
+
+impl Eq for SpanlessExpr<'_, '_> {}
+
+impl Hash for SpanlessExpr<'_, '_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let mut hash = SpanlessHash::new(self.cx);
+        hash.hash_expr(self.expr);
+        state.write_u64(hash.finish());
     }
 }

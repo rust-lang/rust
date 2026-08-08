@@ -4,6 +4,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:14:24
+   |
+LL |         println!("{}", vec[i]);
+   |                        ^^^^^^
    = note: `-D clippy::needless-range-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_range_loop)]`
 help: consider using an iterator
@@ -18,6 +23,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:25:17
+   |
+LL |         let _ = vec[i];
+   |                 ^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 0..vec.len() {
@@ -30,6 +40,11 @@ error: the loop variable `j` is only used to index `STATIC`
 LL |     for j in 0..4 {
    |              ^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:32:26
+   |
+LL |         println!("{:?}", STATIC[j]);
+   |                          ^^^^^^^^^
 help: consider using an iterator
    |
 LL -     for j in 0..4 {
@@ -42,6 +57,11 @@ error: the loop variable `j` is only used to index `CONST`
 LL |     for j in 0..4 {
    |              ^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:38:26
+   |
+LL |         println!("{:?}", CONST[j]);
+   |                          ^^^^^^^^
 help: consider using an iterator
    |
 LL -     for j in 0..4 {
@@ -54,6 +74,11 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:44:27
+   |
+LL |         println!("{} {}", vec[i], i);
+   |                           ^^^^^^
 help: consider using an iterator and enumerate()
    |
 LL -     for i in 0..vec.len() {
@@ -66,6 +91,11 @@ error: the loop variable `i` is only used to index `vec2`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:54:24
+   |
+LL |         println!("{}", vec2[i]);
+   |                        ^^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 0..vec.len() {
@@ -78,6 +108,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:60:24
+   |
+LL |         println!("{}", vec[i]);
+   |                        ^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 5..vec.len() {
@@ -90,6 +125,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 0..MAX_LEN {
    |              ^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:66:24
+   |
+LL |         println!("{}", vec[i]);
+   |                        ^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 0..MAX_LEN {
@@ -102,6 +142,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 0..=MAX_LEN {
    |              ^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:72:24
+   |
+LL |         println!("{}", vec[i]);
+   |                        ^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 0..=MAX_LEN {
@@ -114,6 +159,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 5..10 {
    |              ^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:78:24
+   |
+LL |         println!("{}", vec[i]);
+   |                        ^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 5..10 {
@@ -126,6 +176,11 @@ error: the loop variable `i` is only used to index `vec`
 LL |     for i in 5..=10 {
    |              ^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:84:24
+   |
+LL |         println!("{}", vec[i]);
+   |                        ^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 5..=10 {
@@ -138,6 +193,11 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:90:27
+   |
+LL |         println!("{} {}", vec[i], i);
+   |                           ^^^^^^
 help: consider using an iterator and enumerate()
    |
 LL -     for i in 5..vec.len() {
@@ -150,6 +210,11 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 5..10 {
    |              ^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:96:27
+   |
+LL |         println!("{} {}", vec[i], i);
+   |                           ^^^^^^
 help: consider using an iterator and enumerate()
    |
 LL -     for i in 5..10 {
@@ -162,6 +227,11 @@ error: the loop variable `i` is used to index `vec`
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:103:9
+   |
+LL |         vec[i] = Some(1).unwrap_or_else(|| panic!("error on {}", i));
+   |         ^^^^^^
 help: consider using an iterator and enumerate()
    |
 LL -     for i in 0..vec.len() {
@@ -174,23 +244,101 @@ error: the loop variable `i` is used to index `a`
 LL |     for i in 0..MAX_LEN {
    |              ^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:232:17
+   |
+LL |         let _ = a[i][i];
+   |                 ^^^^
 help: consider using an iterator and enumerate()
    |
 LL -     for i in 0..MAX_LEN {
 LL +     for (i, <item>) in a.iter().enumerate().take(MAX_LEN) {
    |
 
-error: the loop variable `i` is only used to index `a`
+error: the loop variable `i` is only used to index `a[0]`
   --> tests/ui/needless_range_loop.rs:235:14
    |
 LL |     for i in 0..MAX_LEN {
    |              ^^^^^^^^^^
    |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:237:17
+   |
+LL |         let _ = a[0][i];
+   |                 ^^^^^^^
 help: consider using an iterator
    |
 LL -     for i in 0..MAX_LEN {
-LL +     for <item> in a.iter().take(MAX_LEN) {
+LL +     for <item> in a[0].iter().take(MAX_LEN) {
    |
 
-error: aborting due to 16 previous errors
+error: the loop variable `i` is used to index `matrix`
+  --> tests/ui/needless_range_loop.rs:243:14
+   |
+LL |     for i in 0..=2 {
+   |              ^^^^^
+   |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:245:9
+   |
+LL |         matrix[i][i] = true;
+   |         ^^^^^^^^^
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 0..=2 {
+LL +     for (i, <item>) in matrix.iter_mut().enumerate().take(2 + 1) {
+   |
+
+error: the loop variable `i` is only used to index `values`
+  --> tests/ui/needless_range_loop.rs:250:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:252:17
+   |
+LL |         let _ = values[i][col];
+   |                 ^^^^^^^^^
+help: consider using an iterator
+   |
+LL -     for i in 0..4 {
+LL +     for <item> in &values {
+   |
+
+error: the loop variable `j` is only used to index `colors[0]`
+  --> tests/ui/needless_range_loop.rs:268:14
+   |
+LL |     for j in 0..3 {
+   |              ^^^^
+   |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:270:17
+   |
+LL |         let _ = colors[0][j];
+   |                 ^^^^^^^^^^^^
+help: consider using an iterator
+   |
+LL -     for j in 0..3 {
+LL +     for <item> in &colors[0] {
+   |
+
+error: the loop variable `i` is only used to index `wrapper.0`
+  --> tests/ui/needless_range_loop.rs:275:14
+   |
+LL |     for i in 0..3 {
+   |              ^^^^
+   |
+note: for this index operation
+  --> tests/ui/needless_range_loop.rs:277:17
+   |
+LL |         let _ = wrapper.0[i];
+   |                 ^^^^^^^^^^^^
+help: consider using an iterator
+   |
+LL -     for i in 0..3 {
+LL +     for <item> in &wrapper.0 {
+   |
+
+error: aborting due to 20 previous errors
 
