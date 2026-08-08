@@ -658,7 +658,7 @@ impl<'tcx> AdtDef<'tcx> {
                     Ok(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    let guar = tcx.dcx().emit_err(crate::error::ConstEvalNonIntError {
+                    let guar = tcx.dcx().emit_err(crate::diagnostics::ConstEvalNonIntError {
                         span: tcx.def_span(expr_did),
                     });
                     Err(guar)
