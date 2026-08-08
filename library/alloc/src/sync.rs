@@ -55,8 +55,10 @@ use crate::vec::Vec;
 /// See comment in `Arc::clone`.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-/// The error in case either counter reaches above `MAX_REFCOUNT`, and we can `panic` safely.
-const INTERNAL_OVERFLOW_ERROR: &str = "Arc counter overflow";
+#[inline(always)]
+fn enforce_overflow_limit(n: usize) {
+    assert!(n <= MAX_REFCOUNT, "Arc counter overflow");
+}
 
 #[cfg(not(sanitize = "thread"))]
 macro_rules! acquire {
@@ -1954,7 +1956,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
             }
 
             // We can't allow the refcount to increase much past `MAX_REFCOUNT`.
-            assert!(cur <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
+            enforce_overflow_limit(cur);
 
             // NOTE: this code currently ignores the possibility of overflow
             // into usize::MAX; in general both Rc and Arc need to be adjusted
@@ -3311,7 +3313,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
                 return None;
             }
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-            assert!(n <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
+            enforce_overflow_limit(n);
             Some(n + 1)
         }
 
