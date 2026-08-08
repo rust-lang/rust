@@ -14,6 +14,7 @@
 mod assembly;
 mod effect_goals;
 mod eval_ctxt;
+pub mod fulfill;
 pub mod inspect;
 mod normalizes_to;
 mod project_goals;

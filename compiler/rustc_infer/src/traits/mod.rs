@@ -18,6 +18,7 @@ use rustc_middle::traits::solve::Certainty;
 pub use rustc_middle::traits::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
+use rustc_type_ir::solve::fulfill::FulfillmentObligation;
 use thin_vec::ThinVec;
 
 pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine, TraitErrors};
@@ -91,6 +92,28 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitPredicate<'tcx>>;
 pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 pub type PredicateObligations<'tcx> = ThinVec<PredicateObligation<'tcx>>;
+
+impl<'tcx> FulfillmentObligation<TyCtxt<'tcx>> for PredicateObligation<'tcx> {
+    fn as_goal(&self) -> solve::Goal<'tcx, ty::Predicate<'tcx>> {
+        Obligation::as_goal(self)
+    }
+
+    fn span(&self) -> Span {
+        self.cause.span
+    }
+
+    fn recursion_depth(&self) -> usize {
+        self.recursion_depth
+    }
+
+    fn set_recursion_depth(&mut self, depth: usize) {
+        self.recursion_depth = depth;
+    }
+
+    fn set_predicate(&mut self, predicate: ty::Predicate<'tcx>) {
+        self.predicate = predicate;
+    }
+}
 
 impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.
