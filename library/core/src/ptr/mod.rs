@@ -553,7 +553,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
-        and the specified memory ranges do not overlap",
+        and the specified memory ranges do not overlap, and that the copy size does not exceed \
+        `isize::MAX`",
         (
             src: *const () = src as *const (),
             dst: *mut () = dst as *mut (),
@@ -562,15 +563,21 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
             count: usize = count,
         ) => {
             let zero_size = count == 0 || size == 0;
-            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
+            ub_checks::is_valid_allocation_size(size, count)
+                && ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
                 && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
                 && ub_checks::maybe_is_nonoverlapping(src, dst, size, count)
         }
     );
 
-    // SAFETY: the safety contract for `copy_nonoverlapping` must be
-    // upheld by the caller.
-    unsafe { crate::intrinsics::copy_nonoverlapping(src, dst, count) }
+    // SAFETY: The caller guarantees that both memory regions are valid for `count` elements.
+    // A Rust allocation cannot exceed `isize::MAX` bytes.
+    unsafe {
+        // Use `assume` directly because the precondition check above already checks this when
+        // UB checks are enabled.
+        crate::intrinsics::assume(ub_checks::is_valid_allocation_size(size_of::<T>(), count));
+        crate::intrinsics::copy_nonoverlapping(src, dst, count)
+    }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source

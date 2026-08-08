@@ -1,7 +1,7 @@
 //@ run-crash
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
 //@ error-pattern: unsafe precondition(s) violated: ptr::copy_nonoverlapping requires
-//@ revisions: null_src null_dst misaligned_src misaligned_dst overlapping
+//@ revisions: null_src null_dst misaligned_src misaligned_dst overlapping oversized
 
 #![allow(invalid_null_arguments)]
 
@@ -23,5 +23,12 @@ fn main() {
         ptr::copy_nonoverlapping(src, dst.byte_add(1), 1);
         #[cfg(overlapping)]
         ptr::copy_nonoverlapping(dst, dst.add(1), 2);
+        #[cfg(oversized)]
+        {
+            let count = isize::MAX as usize + 1;
+            let src = ptr::without_provenance::<u8>(1);
+            let dst = ptr::without_provenance_mut::<u8>(1 + count);
+            ptr::copy_nonoverlapping(src, dst, count);
+        }
     }
 }
