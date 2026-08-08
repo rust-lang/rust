@@ -2973,7 +2973,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let scope = match &path[..failed_segment_idx] {
             [.., prev] => {
-                if prev.ident.name == kw::PathRoot {
+                if prev.ident.name == kw::PathRoot && self.tcx.sess.edition() > Edition::Edition2015
+                {
+                    format!("the list of imported crates")
+                } else if prev.ident.name == kw::PathRoot || prev.ident.name == kw::Crate {
                     format!("the crate root")
                 } else {
                     format!("`{}`", prev.ident)
