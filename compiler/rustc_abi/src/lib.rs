@@ -101,11 +101,13 @@ bitflags! {
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
         const PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS = 1 << 5;
         const IS_SCALABLE        = 1 << 6;
+        const IS_SWIFT           = 1 << 7;
          // Any of these flags being set prevent field reordering optimisation.
         const FIELD_ORDER_UNOPTIMIZABLE = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
                                  | ReprFlags::IS_SCALABLE.bits()
-                                 | ReprFlags::IS_LINEAR.bits();
+                                 | ReprFlags::IS_LINEAR.bits()
+                                 | ReprFlags::IS_SWIFT.bits();
         const ABI_UNOPTIMIZABLE = ReprFlags::IS_C.bits() | ReprFlags::IS_SIMD.bits();
     }
 }
@@ -182,6 +184,11 @@ impl ReprOptions {
     #[inline]
     pub fn c(&self) -> bool {
         self.flags.contains(ReprFlags::IS_C)
+    }
+
+    #[inline]
+    pub fn swift(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_SWIFT)
     }
 
     #[inline]
@@ -2162,7 +2169,12 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// especially in the case of by-pointer struct returns, which allocate stack even when unused.
     pub uninhabited: bool,
 
+    /// The alignment of the type in memory.
     pub align: AbiAlign,
+    /// The amount of memory occupied by this type, this excludes padding.
+    pub size_without_padding: Size,
+    /// The stride of the type is its size including padding. Or how much you need to move in
+    /// memory to get from one element to the next.
     pub size: Size,
 
     /// The largest alignment explicitly requested with `repr(align)` on this type or any field.
@@ -2226,6 +2238,7 @@ where
         // `Interned<LayoutData>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
         let LayoutData {
+            size_without_padding: min_size,
             size,
             align,
             backend_repr,
@@ -2238,6 +2251,7 @@ where
             randomization_seed,
         } = self;
         f.debug_struct("Layout")
+            .field("min_size", min_size)
             .field("size", size)
             .field("align", align)
             .field("backend_repr", backend_repr)
@@ -2388,6 +2402,7 @@ pub enum AbiFromStrErr {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct VariantLayout<FieldIdx: Idx> {
     pub size: Size,
+    pub size_without_padding: Size,
     pub backend_repr: BackendRepr,
     pub field_offsets: IndexVec<FieldIdx, Size>,
     fields_in_memory_order: IndexVec<u32, FieldIdx>,
@@ -2403,6 +2418,7 @@ impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
 
         Self {
             size: layout.size,
+            size_without_padding: layout.size_without_padding,
             backend_repr: layout.backend_repr,
             field_offsets: offsets,
             fields_in_memory_order: in_memory_order,

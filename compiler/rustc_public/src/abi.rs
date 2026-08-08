@@ -496,6 +496,7 @@ pub enum CallConvention {
 pub struct ReprFlags {
     pub is_simd: bool,
     pub is_c: bool,
+    pub is_swift: bool,
     pub is_transparent: bool,
     pub is_linear: bool,
 }

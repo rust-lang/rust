@@ -127,7 +127,7 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
             CanonAbi::RustPreserveNone => CallConvention::PreserveNone,
             CanonAbi::RustTail => CallConvention::Tail,
             CanonAbi::Custom => CallConvention::Custom,
-            CanonAbi::Swift => CallConvention::Swift,
+            CanonAbi::Swift { .. } => CallConvention::Swift,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => CallConvention::ArmAapcs,
                 ArmCall::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
@@ -414,6 +414,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ReprFlags {
         ReprFlags {
             is_simd: self.intersects(Self::IS_SIMD),
             is_c: self.intersects(Self::IS_C),
+            is_swift: self.intersects(Self::IS_SWIFT),
             is_transparent: self.intersects(Self::IS_TRANSPARENT),
             is_linear: self.intersects(Self::IS_LINEAR),
         }

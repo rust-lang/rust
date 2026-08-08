@@ -76,7 +76,7 @@ pub(crate) fn conv_to_call_conv(
             _ => default_call_conv,
         },
 
-        CanonAbi::Interrupt(_) | CanonAbi::Arm(_) | CanonAbi::Swift => {
+        CanonAbi::Interrupt(_) | CanonAbi::Arm(_) | CanonAbi::Swift { .. } => {
             sess.dcx().fatal(format!("call conv {c:?} is not yet implemented"))
         }
         CanonAbi::GpuKernel => {

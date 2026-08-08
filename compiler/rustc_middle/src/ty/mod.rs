@@ -1725,6 +1725,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
+                    attr::ReprSwift => ReprFlags::IS_SWIFT,
                     attr::ReprPacked(pack) => {
                         min_pack = Some(if let Some(min_pack) = min_pack {
                             min_pack.min(pack)

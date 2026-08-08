@@ -194,6 +194,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             largest_niche: element.largest_niche.filter(|_| count != 0),
             uninhabited: element.uninhabited && count != 0,
             align: element.align,
+            size_without_padding: size,
             size,
             max_repr_align: None,
             unadjusted_abi_align: element.align.abi,
@@ -512,6 +513,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             largest_niche: None,
             uninhabited: false,
             align: AbiAlign::new(align),
+            size_without_padding: size,
             size: size.align_to(align),
             max_repr_align,
             unadjusted_abi_align,
@@ -742,6 +744,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 backend_repr: abi,
                 largest_niche,
                 uninhabited,
+                size_without_padding: size,
                 size,
                 align: AbiAlign::new(align),
                 max_repr_align,
@@ -1051,6 +1054,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             uninhabited,
             backend_repr: abi,
             align: AbiAlign::new(align),
+            size_without_padding: size,
             size,
             max_repr_align,
             unadjusted_abi_align,
@@ -1294,8 +1298,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
             }
 
+            let field_size = if repr.swift() { field.size_without_padding } else { field.size };
             offset =
-                offset.checked_add(field.size, dl).ok_or(LayoutCalculatorError::SizeOverflow)?;
+                offset.checked_add(field_size, dl).ok_or(LayoutCalculatorError::SizeOverflow)?;
         }
 
         // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
@@ -1417,6 +1422,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             largest_niche,
             uninhabited,
             align: AbiAlign::new(align),
+            size_without_padding: min_size,
             size,
             max_repr_align,
             unadjusted_abi_align,
@@ -1516,6 +1522,7 @@ where
         backend_repr: repr,
         largest_niche: elt.largest_niche,
         uninhabited: false,
+        size_without_padding: size,
         size,
         align: AbiAlign::new(align),
         max_repr_align: None,

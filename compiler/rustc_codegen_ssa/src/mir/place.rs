@@ -228,7 +228,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let unaligned_offset = bx.cx().const_usize(offset.bytes());
 
         // Get the alignment of the field
-        let (_, mut unsized_align) = size_of_val::size_and_align_of_dst(bx, field.ty, meta);
+        let (_, _, mut unsized_align) = size_of_val::size_and_align_of_dst(bx, field.ty, meta);
 
         // For packed types, we need to cap alignment.
         if let ty::Adt(def, _) = self.layout.ty.kind()

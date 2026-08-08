@@ -430,7 +430,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if layout.is_sized() {
-            return interp_ok(Some((layout.size, layout.align.abi)));
+            return interp_ok(Some((layout.size_without_padding, layout.align.abi)));
         }
         match layout.ty.kind() {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -473,7 +473,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // # Then compute the dynamic size
 
                 let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
-                let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
+                let full_size = unsized_offset_adjusted + unsized_size;
 
                 // Just for our sanitiy's sake, assert that this is equal to what codegen would compute.
                 assert_eq!(
@@ -511,6 +511,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => span_bug!(self.cur_span(), "size_and_align_of::<{}> not supported", layout.ty),
         }
     }
+
     #[inline]
     pub fn size_and_align_of_val(
         &self,

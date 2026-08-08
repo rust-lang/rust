@@ -35,7 +35,7 @@ pub enum CanonAbi {
 
     /// Swift calling convention, exposed via LLVM's `swiftcc`. Cross-platform
     /// and not tied to a specific target architecture.
-    Swift,
+    Swift { tail: bool },
 
     /// ABIs relevant to 32-bit Arm targets
     Arm(ArmCall),
@@ -66,7 +66,7 @@ impl CanonAbi {
             | CanonAbi::RustTail => true,
             CanonAbi::C
             | CanonAbi::Custom
-            | CanonAbi::Swift
+            | CanonAbi::Swift { .. }
             | CanonAbi::Arm(_)
             | CanonAbi::GpuKernel
             | CanonAbi::Interrupt(_)
@@ -87,7 +87,7 @@ impl fmt::Display for CanonAbi {
             CanonAbi::RustPreserveNone => ExternAbi::RustPreserveNone,
             CanonAbi::RustTail => ExternAbi::RustTail,
             CanonAbi::Custom => ExternAbi::Custom,
-            CanonAbi::Swift => ExternAbi::Swift,
+            CanonAbi::Swift { .. } => ExternAbi::Swift,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
                 ArmCall::CCmseNonSecureCall => ExternAbi::CmseNonSecureCall,

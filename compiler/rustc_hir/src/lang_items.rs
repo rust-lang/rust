@@ -163,6 +163,7 @@ language_item_table! {
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     AlignOf,                 sym::mem_align_const,     align_const,                Target::AssocConst,     GenericRequirement::Exact(0);
     SizeOf,                  sym::mem_size_const,      size_const,                 Target::AssocConst,     GenericRequirement::Exact(0);
+    StrideOf,                sym::mem_stride_const,    stride_const,               Target::AssocConst,     GenericRequirement::Exact(0);
     OffsetOf,                sym::offset_of,           offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;

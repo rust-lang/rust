@@ -1184,6 +1184,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprC => {
                     is_c = true;
                 }
+                ReprAttr::ReprSwift => {},
                 ReprAttr::ReprAlign(..) => {}
                 ReprAttr::ReprPacked(_) => {}
                 ReprAttr::ReprSimd => {

@@ -743,6 +743,38 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
     }
 
+    pub fn adjust_for_swift_abi<C>(&mut self, _cx: &C)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
+    {
+        for arg in self.args.iter_mut() {
+            if arg.is_ignore() {
+                continue;
+            }
+            // Small structs get their innards splattered inline
+            if arg.layout.layout.size.bytes() <= 24 {
+                let mut prefix: ArrayVec<Reg, 8> = ArrayVec::new();
+                let mut size = arg.layout.size;
+                for _i in 0..8 {
+                    let reg_size = match size.bytes() {
+                        8.. => 8,
+                        4.. => 4,
+                        2.. => 2,
+                        1.. => 1,
+                        0 => break,
+                    };
+                    prefix.push(Reg { kind: RegKind::Integer, size: Size::from_bytes(reg_size) });
+                    size = Size::from_bytes(size.bytes() - reg_size);
+                }
+                arg.cast_to(CastTarget::prefixed(
+                    prefix,
+                    Uniform::new(Reg::i8(), Size::from_bytes(0)),
+                ));
+            }
+        }
+    }
+
     pub fn adjust_for_rust_abi<C>(&mut self, cx: &C)
     where
         Ty: TyAbiInterface<'a, C> + Copy,

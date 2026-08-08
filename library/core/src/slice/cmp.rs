@@ -153,7 +153,7 @@ where
         // for reading `len` values, which also means the size is guaranteed
         // not to overflow because it exists in memory;
         unsafe {
-            let size = crate::intrinsics::unchecked_mul(len, Self::SIZE);
+            let size = crate::intrinsics::unchecked_mul(len, Self::STRIDE);
             compare_bytes(lhs as _, rhs as _, size) == 0
         }
     }

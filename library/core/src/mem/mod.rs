@@ -383,6 +383,15 @@ pub const fn size_of<T>() -> usize {
     <T as SizedTypeProperties>::SIZE
 }
 
+/// See [`size_of`].
+#[inline(always)]
+#[must_use]
+#[unstable(feature = "stride", issue = "none")]
+#[rustc_diagnostic_item = "mem_stride_of"]
+pub const fn stride_of<T>() -> usize {
+    <T as SizedTypeProperties>::STRIDE
+}
+
 /// Returns the size of the pointed-to value in bytes.
 ///
 /// This is usually the same as [`size_of::<T>()`]. However, when `T` *has* no
@@ -466,6 +475,26 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
+}
+
+/// See [`size_of_val`].
+#[inline]
+#[must_use]
+#[unstable(feature = "stride", issue = "none")]
+#[rustc_diagnostic_item = "mem_stride_of_val"]
+pub const fn stride_of_val<T: ?Sized>(val: &T) -> usize {
+    // SAFETY: `val` is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::stride_of_val(val) }
+}
+
+/// See [`size_of_val`].
+#[inline]
+#[must_use]
+#[unstable(feature = "stride", issue = "none")]
+#[rustc_diagnostic_item = "mem_stride_without_padding_of_val_raw"]
+pub const unsafe fn stride_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    // SAFETY: the caller must provide a valid raw pointer
+    unsafe { intrinsics::stride_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of a type in bytes.
@@ -1219,7 +1248,7 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
         b: ManuallyDrop<B>,
     }
 
-    match const { Ord::cmp(&Src::SIZE, &Dst::SIZE) } {
+    match const { Ord::cmp(&Src::STRIDE, &Dst::STRIDE) } {
         // SAFETY: When Dst is bigger, the union is the size of Dst
         Ordering::Less => unsafe {
             let a = transmute_neo(src);
@@ -1263,7 +1292,7 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 #[inline]
 #[rustc_no_writable]
 pub const unsafe fn transmute_neo<Src, Dst>(src: Src) -> Dst {
-    const { assert!(Src::SIZE == Dst::SIZE) };
+    const { assert!(Src::STRIDE == Dst::STRIDE) };
 
     // SAFETY: the const-assert just checked that they're the same size,
     // and any other safety invariants need to be upheld by the caller.
@@ -1465,6 +1494,11 @@ pub trait SizedTypeProperties: Sized {
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
+    #[lang = "mem_stride_const"]
+    const STRIDE: usize = intrinsics::stride_of::<Self>();
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
     #[lang = "mem_align_const"]
     const ALIGN: usize = intrinsics::align_of::<Self>();
 
@@ -1502,7 +1536,7 @@ pub trait SizedTypeProperties: Sized {
     /// ```
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
-    const IS_ZST: bool = Self::SIZE == 0;
+    const IS_ZST: bool = Self::STRIDE == 0;
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
@@ -1510,7 +1544,7 @@ pub trait SizedTypeProperties: Sized {
         // SAFETY: if the type is instantiated, rustc already ensures that its
         // layout is valid. Use the unchecked constructor to avoid inserting a
         // panicking codepath that needs to be optimized out.
-        unsafe { Layout::from_size_align_unchecked(Self::SIZE, Self::ALIGN) }
+        unsafe { Layout::from_size_align_unchecked(Self::STRIDE, Self::ALIGN) }
     };
 
     /// The largest safe length for a `[Self]`.
@@ -1519,7 +1553,7 @@ pub trait SizedTypeProperties: Sized {
     /// which is never allowed for a single object.
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
-    const MAX_SLICE_LEN: usize = match Self::SIZE {
+    const MAX_SLICE_LEN: usize = match Self::STRIDE {
         0 => usize::MAX,
         n => (isize::MAX as usize) / n,
     };
