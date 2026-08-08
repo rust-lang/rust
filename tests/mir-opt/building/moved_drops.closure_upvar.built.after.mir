@@ -1,0 +1,45 @@
+// MIR for `closure_upvar` after built
+
+fn closure_upvar() -> () {
+    let mut _0: ();
+    let _1: std::string::String;
+    scope 1 {
+        debug x => _1;
+        let _2: {closure@$DIR/moved_drops.rs:42:14: 42:21};
+        scope 2 {
+            debug _c => _2;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = String::new() -> [return: bb1, unwind: bb5];
+    }
+
+    bb1: {
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        _2 = {closure@$DIR/moved_drops.rs:42:14: 42:21} { x: move _1 };
+        FakeRead(ForLet(None), _2);
+        _0 = const ();
+        drop(_2) -> [return: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        StorageDead(_2);
+        drop(_1) -> [return: bb3, unwind: bb5];
+    }
+
+    bb3: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb4 (cleanup): {
+        drop(_1) -> [return: bb5, unwind terminate(cleanup)];
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}
