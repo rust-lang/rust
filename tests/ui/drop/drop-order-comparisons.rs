@@ -102,8 +102,6 @@ fn t_tailexpr_tuples() {
         (e.ok(2), e.ok(6).is_ok(), e.ok(3), e.ok(5).is_ok())
         //[e2021]~^ WARN relative drop order changing in Rust 2024
         //[e2021]~| WARN this changes meaning in Rust 2024
-        //[e2021]~| WARN relative drop order changing in Rust 2024
-        //[e2021]~| WARN this changes meaning in Rust 2024
     }, e.mark(1), e.ok(4));
     e.assert(6);
 }
