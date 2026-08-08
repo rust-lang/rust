@@ -9,8 +9,15 @@ impl Bar for u8 {}
 //~^ HELP the trait `Bar` is implemented for `u8`
 //~| HELP the trait `Bar` is implemented for `u8`
 //~| HELP the trait `Bar` is implemented for `u8`
+//~| HELP the trait `Bar` is implemented for `u8`
 
 fn bar<R: Bar>(_: impl Fn() -> R) {}
+
+fn two<R: Bar>(_: impl Fn() -> (), _: impl Fn() -> R) {}
+
+fn unrelated<R: Bar>(_: impl Fn() -> ()) -> R {
+    loop {}
+}
 
 struct S;
 impl S {
@@ -41,5 +48,15 @@ fn main() {
 
     // No suggestion: the closure body is empty.
     bar(|| {});
+    //~^ ERROR the trait bound `(): Bar` is not satisfied
+
+    // Only the second closure returns the type the failing bound is on.
+    two(|| { 5u8; }, || { 7u8; });
+    //~^ ERROR the trait bound `(): Bar` is not satisfied
+    //~| HELP remove this semicolon
+
+    // No suggestion: `R` is the return type of `unrelated` and is inferred as `()` from the
+    // expected type, so keeping the closure's value would not satisfy the bound.
+    let _: () = unrelated(|| { 5u8; });
     //~^ ERROR the trait bound `(): Bar` is not satisfied
 }
