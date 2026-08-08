@@ -1,0 +1,30 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-last-field-overlapping-impls-83097.rs:11:16
+   |
+LL | struct Unsized([u8], ());
+   |                ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last field of a struct may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL | struct Unsized(&[u8], ());
+   |                +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL | struct Unsized(Box<[u8]>, ());
+   |                ++++    +
+
+error[E0119]: conflicting implementations of trait `Trait` for type `Foo<Unsized>`
+  --> $DIR/unsized-non-last-field-overlapping-impls-83097.rs:17:1
+   |
+LL | impl<T> Trait for Foo<T> {}
+   | ------------------------ first implementation here
+LL | impl Trait for Foo<Unsized> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Foo<Unsized>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0277.
+For more information about an error, try `rustc --explain E0119`.
