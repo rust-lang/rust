@@ -1,14 +1,12 @@
 //! Definition of `InferCtxtLike` from the librarified type layer.
-use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
-use rustc_type_ir::{TypeSuperFoldable, TypeVisitableExt};
+use rustc_type_ir::lower_universe;
 
-use super::type_variable::TypeVariableValue;
 use super::{
     BoundRegionConversionTime, ConstVariableValue, InferCtxt, OpaqueTypeStorageEntries,
     RegionVariableOrigin, SubregionOrigin,
@@ -98,6 +96,58 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             Err(universe) => Some(universe),
             Ok(_) => None,
         }
+    }
+
+    fn universe_of_region(&self, region: ty::Region<'tcx>) -> ty::UniverseIndex {
+        InferCtxt::universe_of_region(self, region)
+    }
+
+    fn lower_ty_var_to_universe(&self, vid: ty::TyVid, universe: ty::UniverseIndex) -> Ty<'tcx> {
+        let vid = self.root_var(vid);
+        let mut inner = self.inner.borrow_mut();
+        let origin = inner.type_variables().var_origin(vid);
+        let new_var_id = inner.type_variables().new_var(universe, origin);
+        inner.type_variables().equate(vid, new_var_id);
+
+        Ty::new_var(self.tcx, new_var_id)
+    }
+
+    fn lower_const_var_to_universe(
+        &self,
+        vid: ty::ConstVid,
+        universe: ty::UniverseIndex,
+    ) -> ty::Const<'tcx> {
+        let vid = self.root_const_var(vid);
+        let origin = self.const_var_origin(vid).unwrap();
+
+        let mut inner = self.inner.borrow_mut();
+        let new_var_id = inner
+            .const_unification_table()
+            .new_key(ConstVariableValue::Unknown { origin, universe })
+            .vid;
+
+        inner.const_unification_table().union(vid, new_var_id);
+
+        ty::Const::new_var(self.tcx, new_var_id)
+    }
+
+    fn lower_region_to_universe(
+        &self,
+        region: ty::Region<'tcx>,
+        universe: ty::UniverseIndex,
+    ) -> ty::Region<'tcx> {
+        let new_region =
+            self.next_region_var_in_universe(RegionVariableOrigin::Misc(DUMMY_SP), universe);
+
+        InferCtxt::equate_regions(
+            self,
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            region,
+            new_region,
+            ty::VisibleForLeakCheck::Yes,
+        );
+
+        new_region
     }
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -435,151 +485,5 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn reset_opaque_types(&self) {
         let _ = self.take_opaque_types();
-    }
-}
-
-fn lower_universe<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
-    infcx: &InferCtxt<'tcx>,
-    for_universe: ty::UniverseIndex,
-    value: T,
-) -> T {
-    let value = value.fold_with(&mut LowerUniverseFolder {
-        infcx,
-        for_universe,
-        cache: Default::default(),
-    });
-
-    // This assertion is needed because we don't lower the universes of placeholders
-    // in the folder.
-    #[cfg(debug_assertions)]
-    {
-        let value_universe = ty::max_universe(infcx, value);
-        assert!(
-            for_universe.can_name(value_universe),
-            "variable in universe {:?} can't name value in universe {:?}",
-            for_universe,
-            value_universe,
-        );
-    }
-
-    value
-}
-
-/// Canonicalizing inputs puts all inference variables and placeholders
-/// into the root universe.
-///
-/// This means when instantiating the query response we need to pull
-/// down the universe of returned `var_values` to the universe of
-/// the inference variable in `orig_values`.
-///
-/// This folder is similar to the `Generalizer`, except that it simply
-/// structurally folds non-rigid aliases as these should have already
-/// been generalized in the query so we shouldn't try to do it again.
-struct LowerUniverseFolder<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
-    for_universe: ty::UniverseIndex,
-    cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
-}
-impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !(t.has_free_regions() || t.has_infer()) {
-            return t;
-        }
-
-        if let Some(&answer) = self.cache.get(&t) {
-            return answer;
-        }
-
-        let folded = match t.kind() {
-            ty::Infer(ty::TyVar(vid)) => {
-                let vid = self.infcx.root_var(*vid);
-                let probe = self.infcx.inner.borrow_mut().type_variables().probe(vid);
-                match probe {
-                    TypeVariableValue::Known { value: u } => u.super_fold_with(self),
-                    TypeVariableValue::Unknown { universe } => {
-                        if self.for_universe.can_name(universe) {
-                            t
-                        } else {
-                            let mut inner = self.infcx.inner.borrow_mut();
-                            let origin = inner.type_variables().var_origin(vid);
-                            let new_var_id =
-                                inner.type_variables().new_var(self.for_universe, origin);
-                            inner.type_variables().equate(vid, new_var_id);
-                            Ty::new_var(self.cx(), new_var_id)
-                        }
-                    }
-                }
-            }
-            _ => t.super_fold_with(self),
-        };
-
-        self.cache.insert(t, folded);
-        folded
-    }
-
-    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !(c.has_free_regions() || c.has_infer()) {
-            return c;
-        }
-
-        match c.kind() {
-            ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let vid = self.infcx.root_const_var(vid);
-                let universe = match self.infcx.try_resolve_const_var(vid) {
-                    Ok(value) => return value.fold_with(self),
-                    Err(universe) => universe,
-                };
-                if self.for_universe.can_name(universe) {
-                    c
-                } else {
-                    let origin = self.infcx.const_var_origin(vid).unwrap();
-                    let new_var_id = self
-                        .infcx
-                        .inner
-                        .borrow_mut()
-                        .const_unification_table()
-                        .new_key(ConstVariableValue::Unknown {
-                            origin,
-                            universe: self.for_universe,
-                        })
-                        .vid;
-
-                    self.infcx.inner.borrow_mut().const_unification_table().union(vid, new_var_id);
-
-                    ty::Const::new_var(self.cx(), new_var_id)
-                }
-            }
-            _ => c.super_fold_with(self),
-        }
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r.kind() {
-            ty::ReBound(..) | ty::ReErased => r,
-            _ => {
-                let r_universe = self.infcx.universe_of_region(r);
-                if self.for_universe.can_name(r_universe) {
-                    r
-                } else {
-                    // FIXME: unfortunately we lose the relating span here unless we take another
-                    // argument.
-                    let new_region = self.infcx.next_region_var_in_universe(
-                        RegionVariableOrigin::Misc(DUMMY_SP),
-                        self.for_universe,
-                    );
-                    self.infcx.equate_regions(
-                        SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
-                        r,
-                        new_region,
-                        ty::VisibleForLeakCheck::Yes,
-                    );
-                    new_region
-                }
-            }
-        }
     }
 }

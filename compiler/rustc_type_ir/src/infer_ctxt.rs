@@ -405,6 +405,26 @@ pub trait InferCtxtLike: Sized {
     fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
     fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
+    fn universe_of_region(&self, region: Region<Self::Interner>) -> ty::UniverseIndex;
+
+    fn lower_ty_var_to_universe(
+        &self,
+        vid: ty::TyVid,
+        universe: ty::UniverseIndex,
+    ) -> <Self::Interner as Interner>::Ty;
+
+    fn lower_const_var_to_universe(
+        &self,
+        vid: ty::ConstVid,
+        universe: ty::UniverseIndex,
+    ) -> <Self::Interner as Interner>::Const;
+
+    fn lower_region_to_universe(
+        &self,
+        region: Region<Self::Interner>,
+        universe: ty::UniverseIndex,
+    ) -> Region<Self::Interner>;
+
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
