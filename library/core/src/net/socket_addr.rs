@@ -1,6 +1,7 @@
 use super::display_buffer::DisplayBuffer;
 use crate::fmt::{self, Write};
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use crate::num::NonZero;
 
 /// An internet socket address, either IPv4 or IPv6.
 ///
@@ -622,6 +623,20 @@ const impl<I: [const] Into<IpAddr>> From<(I, u16)> for SocketAddr {
     /// `u16` is treated as port of the newly created [`SocketAddr`].
     fn from(pieces: (I, u16)) -> SocketAddr {
         SocketAddr::new(pieces.0.into(), pieces.1)
+    }
+}
+
+#[stable(feature = "nonzerou16_to_socket_addrs", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<I: [const] Into<IpAddr>> const From<(I, NonZero<u16>)> for SocketAddr {
+    /// Converts a tuple struct (Into<[`IpAddr`]>, [`NonZero<u16>`]) into a [`SocketAddr`].
+    ///
+    /// This conversion creates a [`SocketAddr::V4`] for an [`IpAddr::V4`]
+    /// and creates a [`SocketAddr::V6`] for an [`IpAddr::V6`].
+    ///
+    /// `u16` is treated as port of the newly created [`SocketAddr`].
+    fn from(pieces: (I, NonZero<u16>)) -> SocketAddr {
+        SocketAddr::new(pieces.0.into(), pieces.1.get())
     }
 }
 
