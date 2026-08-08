@@ -46,8 +46,8 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: 
                 cx.typeck_results()
                     .node_args(count_func.hir_id)
                     .iter()
-                    .filter_map(ty::GenericArg::as_type)
-                    .nth(0)
+                    .next()
+                    .and_then(ty::GenericArg::as_type)
             } else {
                 None
             }
@@ -96,7 +96,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         ))
 
         // Get the pointee type
-        && let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).iter().filter_map(ty::GenericArg::as_type).nth(0)
+        && let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next()
     {
         return Some((pointee_ty, count));
     }

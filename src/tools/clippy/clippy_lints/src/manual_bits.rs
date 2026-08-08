@@ -101,8 +101,9 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
     {
         cx.typeck_results()
             .node_args(count_func.hir_id)
-            .types()
-            .nth(0) // the `T` in `size_of::<T>`
+            .iter()
+            .next() // the `T` in `size_of::<T>`
+            .and_then(ty::GenericArg::as_type)
             .map(|resolved_ty| (real_ty_span, resolved_ty))
     } else {
         None
