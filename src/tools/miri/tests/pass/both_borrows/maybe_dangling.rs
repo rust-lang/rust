@@ -13,6 +13,7 @@ fn main() {
     boxy();
     reference();
     write_through_shared_ref();
+    closure();
 }
 
 fn boxy() {
@@ -57,4 +58,16 @@ fn write_through_shared_ref() {
             y.write(1);
         }
     }
+}
+
+// A closure acts like MaybeDangling.
+fn closure() {
+    fn invoke(f: impl FnOnce()) {
+        f()
+    }
+
+    let p = Box::leak(Box::new(0i32));
+    invoke(move || {
+        drop(unsafe { Box::from_raw(p) });
+    });
 }
