@@ -1,4 +1,6 @@
 //@ check-pass
+//@ reference: expr.tuple-index.intro
+//@ reference: expr.tuple-index.syntax
 
 fn main() {
     let tuple = (((),),);

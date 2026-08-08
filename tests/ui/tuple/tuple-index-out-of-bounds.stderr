@@ -1,5 +1,5 @@
 error[E0609]: no field `2` on type `Point`
-  --> $DIR/tuple-index-out-of-bounds.rs:7:12
+  --> $DIR/tuple-index-out-of-bounds.rs:9:12
    |
 LL |     origin.2;
    |            ^ unknown field
@@ -7,7 +7,7 @@ LL |     origin.2;
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `2` on type `({integer}, {integer})`
-  --> $DIR/tuple-index-out-of-bounds.rs:12:11
+  --> $DIR/tuple-index-out-of-bounds.rs:14:11
    |
 LL |     tuple.2;
    |           ^ unknown field

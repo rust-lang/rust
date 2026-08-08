@@ -1,5 +1,5 @@
 error[E0609]: no field `1` on type `(((),),)`
-  --> $DIR/index-invalid.rs:2:22
+  --> $DIR/index-invalid.rs:3:22
    |
 LL |     let _ = (((),),).1.0;
    |                      ^ unknown field
@@ -7,7 +7,7 @@ LL |     let _ = (((),),).1.0;
    = note: available field is: `0`
 
 error[E0609]: no field `1` on type `((),)`
-  --> $DIR/index-invalid.rs:4:24
+  --> $DIR/index-invalid.rs:5:24
    |
 LL |     let _ = (((),),).0.1;
    |                        ^ unknown field
@@ -15,7 +15,7 @@ LL |     let _ = (((),),).0.1;
    = note: available field is: `0`
 
 error[E0609]: no field `000` on type `(((),),)`
-  --> $DIR/index-invalid.rs:6:22
+  --> $DIR/index-invalid.rs:7:22
    |
 LL |     let _ = (((),),).000.000;
    |                      ^^^ unknown field
