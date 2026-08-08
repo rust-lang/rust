@@ -1,0 +1,52 @@
+// MIR for `array_aggregate` after built
+
+fn array_aggregate() -> () {
+    let mut _0: ();
+    let _1: [std::string::String; 2];
+    let mut _2: std::string::String;
+    let mut _3: std::string::String;
+    scope 1 {
+        debug _arr => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = String::new() -> [return: bb1, unwind: bb7];
+    }
+
+    bb1: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb2, unwind: bb6];
+    }
+
+    bb2: {
+        _1 = [move _2, move _3];
+        drop(_3) -> [return: bb3, unwind: bb6];
+    }
+
+    bb3: {
+        StorageDead(_3);
+        drop(_2) -> [return: bb4, unwind: bb7];
+    }
+
+    bb4: {
+        StorageDead(_2);
+        FakeRead(ForLet(None), _1);
+        _0 = const ();
+        drop(_1) -> [return: bb5, unwind: bb7];
+    }
+
+    bb5: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb6 (cleanup): {
+        drop(_2) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        resume;
+    }
+}
