@@ -396,10 +396,7 @@ impl Socket {
                 } else {
                     dur.as_secs() as libc::time_t
                 };
-                let mut timeout = libc::timeval {
-                    tv_sec: secs,
-                    tv_usec: dur.subsec_micros() as libc::suseconds_t,
-                };
+                let mut timeout = libc::timeval { tv_sec: secs, tv_usec: dur.subsec_micros() as _ };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;
                 }
