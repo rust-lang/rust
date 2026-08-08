@@ -1,12 +1,18 @@
-//@ revisions: expanded hir
+//@ revisions: expanded hir harness
 //@[expanded]compile-flags: -Zunpretty=expanded
 //@[expanded]check-pass
 //@[hir]compile-flags: -Zunpretty=hir
 //@[hir]check-fail
+//@[harness]compile-flags: -Zunpretty=expanded --test
+//@[harness]check-pass
 //@ edition:2024
 
 // Note: the HIR revision includes a `.stderr` file because there are some
 // errors that only occur once we get past the AST.
+// The `harness` revision runs test-harness expansion (`--test`) over this
+// file, so the `InnerItemLinter` and `EntryPointCleaner` visitors in
+// rustc_builtin_macros walk the complete AST. `-Zunpretty=expanded` stops
+// before the analyses that make the `hir` revision fail.
 
 #![feature(auto_traits)]
 #![feature(box_patterns)]
