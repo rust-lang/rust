@@ -1,0 +1,48 @@
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:3:45
+   |
+LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
+   |                                             -^^^^^
+   |                                             |
+   |                                             help: if it should not be a footnote, escape it: `\`
+   |
+note: the lint level is defined here
+  --> $DIR/broken-footnote.rs:1:9
+   |
+LL | #![deny(rustdoc::broken_footnote)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:3:35
+   |
+LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
+   |                                   -^^^
+   |                                   |
+   |                                   help: if it should not be a footnote, escape it: `\`
+
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:39:5
+   |
+LL | /// [^1\.2]
+   |     -^^^^^^
+   |     |
+   |     help: if it should not be a footnote, escape it: `\`
+
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:42:5
+   |
+LL | /// [^*]
+   |     -^^^
+   |     |
+   |     help: if it should not be a footnote, escape it: `\`
+
+error: no footnote definition matching this footnote
+  --> $DIR/broken-footnote.rs:36:5
+   |
+LL | /// [^a b]
+   |     -^^^^^
+   |     |
+   |     help: if it should not be a footnote, escape it: `\`
+
+error: aborting due to 5 previous errors
+
