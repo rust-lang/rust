@@ -1425,6 +1425,18 @@ pub(crate) enum ConsiderAddingAwait {
         #[suggestion_part(code = ".await")]
         spans: Vec<Span>,
     },
+    #[multipart_suggestion(
+        "consider making the function `async` and `await`ing on the `Future`",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    MakeFunctionAsync {
+        #[suggestion_part(code = "{async_prefix}")]
+        async_span: Span,
+        async_prefix: String,
+        #[suggestion_part(code = ".await")]
+        await_span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
