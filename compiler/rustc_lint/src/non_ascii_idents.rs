@@ -1,8 +1,10 @@
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
-use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::Symbol;
+use rustc_session::lint::{Level, UnstableLintExpectationId};
+use rustc_session::{declare_lint, impl_lint_pass};
+use rustc_span::{Ident, Symbol};
 use unicode_security::general_security_profile::IdentifierType;
 
 use crate::lints::{
@@ -36,8 +38,7 @@ declare_lint! {
     /// [RFC 2457]: https://github.com/rust-lang/rfcs/blob/master/text/2457-non-ascii-idents.md
     pub NON_ASCII_IDENTS,
     Allow,
-    "detects non-ASCII identifiers",
-    crate_level_only
+    "detects non-ASCII identifiers"
 }
 
 declare_lint! {
@@ -149,25 +150,81 @@ declare_lint! {
     crate_level_only
 }
 
-declare_lint_pass!(NonAsciiIdents => [NON_ASCII_IDENTS, UNCOMMON_CODEPOINTS, CONFUSABLE_IDENTS, MIXED_SCRIPT_CONFUSABLES]);
+#[derive(Default)]
+pub(crate) struct NonAsciiIdents {
+    seen_non_ascii_idents: FxHashSet<(Symbol, Level, Option<UnstableLintExpectationId>)>,
+}
+
+impl_lint_pass!(
+    NonAsciiIdents => [
+        NON_ASCII_IDENTS,
+        UNCOMMON_CODEPOINTS,
+        CONFUSABLE_IDENTS,
+        MIXED_SCRIPT_CONFUSABLES,
+    ]
+);
+
+impl NonAsciiIdents {
+    fn check_token_stream(&mut self, cx: &EarlyContext<'_>, tokens: &TokenStream) {
+        for tt in tokens.iter() {
+            match tt {
+                TokenTree::Token(token, _) => {
+                    if let Some((ident, _)) = token.ident() {
+                        self.check_ident_token(cx, ident);
+                    }
+                }
+                TokenTree::Delimited(.., tts) => self.check_token_stream(cx, tts),
+            }
+        }
+    }
+
+    fn check_ident_token(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
+        let symbol = ident.name;
+        let symbol_str = symbol.as_str();
+        if symbol_str.is_ascii() || symbol_str.starts_with('\'') {
+            return;
+        }
+
+        let level_spec = cx.builder.lint_level_spec(NON_ASCII_IDENTS);
+        if level_spec.is_allow()
+            || !self.seen_non_ascii_idents.insert((
+                symbol,
+                level_spec.level(),
+                level_spec.lint_id(),
+            ))
+        {
+            return;
+        }
+
+        cx.emit_span_lint(NON_ASCII_IDENTS, ident.span, IdentifierNonAsciiChar);
+    }
+}
 
 impl EarlyLintPass for NonAsciiIdents {
+    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
+        self.check_token_stream(cx, &mac_def.body.tokens);
+    }
+
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
+        self.check_token_stream(cx, &mac.args.tokens);
+    }
+
+    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: &Ident) {
+        self.check_ident_token(cx, *ident);
+    }
+
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         use std::collections::BTreeMap;
 
         use rustc_span::Span;
         use unicode_security::GeneralSecurityProfile;
 
-        let check_non_ascii_idents = !cx.builder.lint_level_spec(NON_ASCII_IDENTS).is_allow();
         let check_uncommon_codepoints = !cx.builder.lint_level_spec(UNCOMMON_CODEPOINTS).is_allow();
         let check_confusable_idents = !cx.builder.lint_level_spec(CONFUSABLE_IDENTS).is_allow();
         let check_mixed_script_confusables =
             !cx.builder.lint_level_spec(MIXED_SCRIPT_CONFUSABLES).is_allow();
 
-        if !check_non_ascii_idents
-            && !check_uncommon_codepoints
-            && !check_confusable_idents
-            && !check_mixed_script_confusables
+        if !check_uncommon_codepoints && !check_confusable_idents && !check_mixed_script_confusables
         {
             return;
         }
@@ -187,7 +244,6 @@ impl EarlyLintPass for NonAsciiIdents {
                 continue;
             }
             has_non_ascii_idents = true;
-            cx.emit_span_lint(NON_ASCII_IDENTS, sp, IdentifierNonAsciiChar);
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
