@@ -18,11 +18,6 @@ extern "C" {
     fn puts(s: *const u8) -> i32;
 }
 
-#[panic_handler]
-fn panic_handler(_: &core::panic::PanicInfo<'_>) -> ! {
-    core::intrinsics::abort();
-}
-
 #[alloc_error_handler]
 fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
     core::intrinsics::abort();

@@ -301,10 +301,6 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[panic_handler]` function required, but not found")]
-pub(crate) struct MissingPanicHandler;
-
-#[derive(Diagnostic)]
 #[diag("unwinding panics are not supported without std")]
 #[help("using nightly cargo, use -Zbuild-std with panic=\"abort\" to avoid unwinding")]
 #[note(

@@ -257,7 +257,6 @@ pub(crate) struct CrateRoot {
     edition: Edition,
     has_global_allocator: bool,
     has_alloc_error_handler: bool,
-    has_panic_handler: bool,
     has_default_lib_allocator: bool,
     externally_implementable_items: LazyArray<EiiMapEncodedKeyValue>,
 
