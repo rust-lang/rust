@@ -669,4 +669,13 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);
+
+    fn ptrauth_resign(
+        &mut self,
+        value: Self::Value,
+        old_key: u32,
+        old_discriminator: u64,
+        new_key: u32,
+        new_discriminator: u64,
+    ) -> Self::Value;
 }
