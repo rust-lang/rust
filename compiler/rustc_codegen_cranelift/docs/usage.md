@@ -38,7 +38,7 @@ $ $cg_clif_dir/dist/cargo-clif jit
 or
 
 ```bash
-$ $cg_clif_dir/dist/rustc-clif -Cllvm-args=jit-mode -Cprefer-dynamic my_crate.rs
+$ $cg_clif_dir/dist/rustc-clif -Zjit-mode -Cprefer-dynamic my_crate.rs
 ```
 
 ## Shell
@@ -47,7 +47,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | $cg_clif_dir/dist/rustc-clif - -Zunstable-options -Cllvm-args=jit-mode -Cprefer-dynamic
+    echo "$@" | $cg_clif_dir/dist/rustc-clif - -Zunstable-options -Zjit-mode -Cprefer-dynamic
 }
 
 function jit() {
