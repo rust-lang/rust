@@ -1,0 +1,29 @@
+error[E0605]: non-primitive cast: `String` as `i32`
+  --> $DIR/string-to-number-with-as.rs:3:19
+   |
+LL |     let number1 = text as i32;
+   |                   ^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+help: consider parsing the string into a numeric type instead
+   |
+LL -     let number1 = text as i32;
+LL +     let number1 = text.parse::<i32>().unwrap_or_default();
+   |
+
+error[E0606]: casting `&str` as `u16` is invalid
+  --> $DIR/string-to-number-with-as.rs:6:19
+   |
+LL |     let number2 = slice as u16;
+   |                   ^^^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+help: consider parsing the string into a numeric type instead
+   |
+LL -     let number2 = slice as u16;
+LL +     let number2 = slice.parse::<u16>().unwrap_or_default();
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0605, E0606.
+For more information about an error, try `rustc --explain E0605`.
