@@ -1,0 +1,107 @@
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:31:8
+   |
+LL |     f1(ReprRustUnionU64 { _unused: 1 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+   = note: `#[warn(cmse_uninitialized_leak)]` on by default
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:34:8
+   |
+LL |     f2(ReprCUnionU64 { _unused: 1 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:37:8
+   |
+LL |     f3(MaybeUninit::uninit());
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:40:8
+   |
+LL |     f4(MaybeUninit::uninit());
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:62:8
+   |
+LL |     f5((0, MaybeUninit::uninit()));
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:65:8
+   |
+LL |     f6(ReprCAggregate { a: 0, b: ReprCUnionU64 { _unused: 1 } });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:68:8
+   |
+LL |     f7(ReprRustUnionPartiallyUninit { _unused1: 0 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:77:9
+   |
+LL |     f12(Some(MaybeUninit::uninit()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:80:9
+   |
+LL |     f13(Ok(MaybeUninit::new(42)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:83:9
+   |
+LL |     f13(Err(ReprCUnionU64 { _unused1: 0 }));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:94:8
+   |
+LL |     f0(ArrayVec([MaybeUninit::uninit(); 8]));
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:97:8
+   |
+LL |     f0(ArrayVec([MaybeUninit::new(0xAA); 8]));
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: value crossing a secure boundary contains a union which may leak secure information
+  --> $DIR/params-uninitialized.rs:100:8
+   |
+LL |     f1(ArrayVec([MaybeUninit::uninit(); 0]));
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: union values can have variant-dependent padding that may contain stale secure data
+
+warning: 13 warnings emitted
+

@@ -34,6 +34,7 @@ mod async_fn_in_trait;
 mod autorefs;
 pub mod builtin;
 mod c_void_returns;
+mod cmse_uninitialized_leak;
 mod context;
 mod dangling;
 mod default_could_be_derived;
@@ -90,6 +91,7 @@ use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
 use builtin::*;
 use c_void_returns::*;
+use cmse_uninitialized_leak::CmseUninitializedLeak;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
@@ -273,6 +275,7 @@ late_lint_methods!(
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
+            CmseUninitializedLeak: CmseUninitializedLeak,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
             CVoidReturns: CVoidReturns,
             RawBorrowsViaReferences: RawBorrowsViaReferences,
