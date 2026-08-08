@@ -1,0 +1,63 @@
+// MIR for `slice_match` after built
+
+fn slice_match(_1: &[u8]) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: &[u8];
+    let mut _3: bool;
+    let mut _4: usize;
+    let mut _5: usize;
+    let mut _6: usize;
+    let mut _7: bool;
+    scope 1 {
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        _5 = PtrMetadata(copy _1);
+        _4 = move _5;
+        _6 = const 4_usize;
+        _7 = Eq(move _4, move _6);
+        switchInt(move _7) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb9;
+    }
+
+    bb2: {
+        _2 = &(*_1);
+        _3 = <[u8] as PartialEq>::eq(copy _2, const b"ABCD") -> [return: bb6, unwind unreachable];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        falseEdge -> [real: bb8, imaginary: bb1];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        switchInt(move _3) -> [0: bb3, otherwise: bb4];
+    }
+
+    bb7: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb8: {
+        _0 = const true;
+        goto -> bb9;
+    }
+
+    bb9: {
+        return;
+    }
+}

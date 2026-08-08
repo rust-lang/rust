@@ -1248,6 +1248,10 @@ enum PatConstKind {
     Float,
     /// Constant string values, tested via string equality.
     String,
+    /// Constant array or slice values that array/slice patterns were expanded
+    /// from. Tested by calling `PartialEq::eq` on the whole aggregate at once,
+    /// rather than comparing element by element.
+    Aggregate,
     /// Any other constant-pattern is usually tested via some kind of equality
     /// check. Types that might be encountered here include:
     /// - raw pointers derived from integer values
@@ -1332,6 +1336,10 @@ enum TestKind<'tcx> {
 
     /// Tests the place against a constant using scalar equality.
     ScalarEq { value: ty::Value<'tcx> },
+
+    /// Tests the place against a constant array or slice using `PartialEq::eq`,
+    /// comparing the whole aggregate at once rather than element by element.
+    AggregateEq { value: ty::Value<'tcx> },
 
     /// Test whether the value falls within an inclusive or exclusive range.
     Range(Arc<PatRange<'tcx>>),
