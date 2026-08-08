@@ -908,6 +908,7 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 /// probably not suitable for being made `pub` as-is.
 #[must_use]
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 pub(crate) unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
     v: Box<[u8], A>,
 ) -> Box<str, A> {
