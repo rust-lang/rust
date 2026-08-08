@@ -7,7 +7,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt;
 
-use crate::lints::RedefiningRuntimeSymbolsDiag;
+use crate::diagnostics::RedefiningRuntimeSymbolsDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

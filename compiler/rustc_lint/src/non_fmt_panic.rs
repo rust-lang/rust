@@ -10,7 +10,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
+use crate::diagnostics::{NonFmtPanicBraces, NonFmtPanicUnused};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
