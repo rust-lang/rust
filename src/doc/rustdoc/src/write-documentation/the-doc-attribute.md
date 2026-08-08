@@ -78,6 +78,17 @@ your docs, where the string for the attribute goes into the `{}`.
 
 If you don't use this attribute, there will be no logo.
 
+You can also provide a distinct logo for the dark theme (which is also used by
+the `ayu` theme) by using a list with `light` and `dark` values. The `light`
+value is required and is used for the light theme, while the `dark` value is
+optional and is used for the dark themes. If the `dark` value is not given, the
+`light` logo is used for all themes.
+
+```rust,no_run
+#![doc(html_logo_url(light = "https://example.com/logo-light.jpg",
+    dark = "https://example.com/logo-dark.jpg"))]
+```
+
 ### `html_playground_url`
 
 This form of the `doc` attribute lets you control where the "run" buttons

@@ -533,6 +533,20 @@ img {
 	filter: var(--rust-logo-filter);
 }
 
+.logo-container .logo-dark {
+	display: none;
+}
+
+:root[data-theme="dark"] .logo-container.has-dark-logo .logo-light,
+:root[data-theme="ayu"] .logo-container.has-dark-logo .logo-light {
+	display: none;
+}
+
+:root[data-theme="dark"] .logo-container.has-dark-logo .logo-dark,
+:root[data-theme="ayu"] .logo-container.has-dark-logo .logo-dark {
+	display: inline;
+}
+
 .sidebar {
 	font-size: 0.875rem;
 	flex: 0 0 var(--desktop-sidebar-width);

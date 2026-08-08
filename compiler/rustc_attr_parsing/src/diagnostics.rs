@@ -255,6 +255,11 @@ pub(crate) struct DocUnknownAny {
 }
 
 #[derive(Diagnostic)]
+#[diag("`html_logo_url` requires a `light` logo")]
+#[help("consider providing a light theme logo, e.g. `#[doc(html_logo_url(light = \"...\"))]`")]
+pub(crate) struct DocLogoUrlMissingLight;
+
+#[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
 pub(crate) struct DocAutoCfgWrongLiteral;
 

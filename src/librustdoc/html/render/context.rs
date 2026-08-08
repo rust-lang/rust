@@ -547,6 +547,7 @@ impl<'tcx> Context<'tcx> {
         let krate_version = cache.crate_version.as_deref().unwrap_or_default();
         let mut layout = layout::Layout {
             logo: String::new(),
+            logo_dark: String::new(),
             favicon: String::new(),
             external_html,
             default_settings,
@@ -565,8 +566,11 @@ impl<'tcx> Context<'tcx> {
             if let Some((html_favicon_url, _)) = d.html_favicon_url {
                 layout.favicon = html_favicon_url.to_string();
             }
-            if let Some((html_logo_url, _)) = d.html_logo_url {
-                layout.logo = html_logo_url.to_string();
+            if let Some((html_logo_url, _)) = &d.html_logo_url {
+                layout.logo = html_logo_url.light.to_string();
+                if let Some(dark) = html_logo_url.dark {
+                    layout.logo_dark = dark.to_string();
+                }
             }
             if let Some((html_playground_url, _)) = d.html_playground_url {
                 playground = Some(markdown::Playground {

@@ -575,6 +575,14 @@ pub struct CfgHideShow {
     pub values: FxIndexMap<Symbol, DocCfgHideShow>,
 }
 
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub struct LogoUrls {
+    /// Light theme logo.
+    pub light: Symbol,
+    /// Dark theme logo; falls back to `light`.
+    pub dark: Option<Symbol>,
+}
+
 #[derive(Clone, Debug, Default, StableHash, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub first_span: Span,
@@ -601,7 +609,7 @@ pub struct DocAttribute {
 
     // valid on crate
     pub html_favicon_url: Option<(Symbol, Span)>,
-    pub html_logo_url: Option<(Symbol, Span)>,
+    pub html_logo_url: Option<(LogoUrls, Span)>,
     pub html_playground_url: Option<(Symbol, Span)>,
     pub html_root_url: Option<(Symbol, Span)>,
     pub html_no_source: Option<Span>,

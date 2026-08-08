@@ -51,8 +51,16 @@ LL | #![doc(html_logo_url = 2)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
+error: `html_logo_url` requires a `light` logo
+  --> $DIR/bad-render-options.rs:22:8
+   |
+LL | #![doc(html_logo_url(dark = "https://example.com/logo-dark.png"))]
+   |        ^^^^^^^^^^^^^
+   |
+   = help: consider providing a light theme logo, e.g. `#[doc(html_logo_url(light = "..."))]`
+
 error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:22:30
+  --> $DIR/bad-render-options.rs:25:30
    |
 LL | #![doc(html_playground_url = 3)]
    |                              ^
@@ -60,7 +68,7 @@ LL | #![doc(html_playground_url = 3)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:25:33
+  --> $DIR/bad-render-options.rs:28:33
    |
 LL | #![doc(issue_tracker_base_url = 4)]
    |                                 ^
@@ -68,12 +76,12 @@ LL | #![doc(issue_tracker_base_url = 4)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: didn't expect any arguments here
-  --> $DIR/bad-render-options.rs:28:23
+  --> $DIR/bad-render-options.rs:31:23
    |
 LL | #![doc(html_no_source = "asdf")]
    |                       ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

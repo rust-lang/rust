@@ -5,7 +5,7 @@ use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
-    DocInline, HideOrShow,
+    DocInline, HideOrShow, LogoUrls,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
@@ -17,9 +17,10 @@ use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocTestLiteral, DocTestTakesList,
-    DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
-    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocLogoUrlMissingLight, DocTestLiteral,
+    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
+    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
+    IllFormedAttributeInput, MalformedDoc,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -513,6 +514,79 @@ impl DocParser {
         }
     }
 
+    // Parses the `doc(html_logo_url(light = "...", dark = "..."))` attribute.
+    fn parse_html_logo_url(
+        &mut self,
+        cx: &mut AcceptContext<'_, '_>,
+        path: &OwnedPathParser,
+        args: &ArgParser,
+    ) {
+        let (light, dark) = match args {
+            ArgParser::NameValue(nv) => {
+                let Some(s) = nv.value_as_str() else {
+                    expected_string_literal(cx, nv.value_span, Some(nv.value_as_lit()));
+                    return;
+                };
+                if !check_attr_crate_level(cx, path.span()) {
+                    return;
+                }
+                (Some(s), None)
+            }
+            ArgParser::List(list) => {
+                if !check_attr_crate_level(cx, path.span()) {
+                    return;
+                }
+                let mut light = None;
+                let mut dark = None;
+                for item in list.mixed() {
+                    let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
+                        expected_name_value(cx, item.span(), None);
+                        continue;
+                    };
+                    let Some(name) = sub_item.path().word_sym() else {
+                        expected_name_value(cx, sub_item.span(), sub_item.path().word_sym());
+                        continue;
+                    };
+                    let ArgParser::NameValue(nv) = sub_item.args() else {
+                        expected_name_value(cx, sub_item.span(), Some(name));
+                        continue;
+                    };
+                    let Some(s) = nv.value_as_str() else {
+                        expected_string_literal(cx, nv.value_span, Some(nv.value_as_lit()));
+                        continue;
+                    };
+                    if name == sym::light {
+                        light = Some(s);
+                    } else if name == sym::dark {
+                        dark = Some(s);
+                    } else {
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            DocUnknownAny { name },
+                            sub_item.span(),
+                        );
+                    }
+                }
+                if light.is_none() {
+                    cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                        DocLogoUrlMissingLight,
+                        path.span(),
+                    );
+                    return;
+                }
+                (light, dark)
+            }
+            ArgParser::NoArgs => {
+                expected_name_value(cx, args.span().unwrap_or(path.span()), path.word_sym());
+                return;
+            }
+        };
+
+        self.attribute.html_logo_url =
+            Some((LogoUrls { light: light.unwrap(), dark }, path.span()));
+    }
+
     fn parse_single_doc_attr_item(&mut self, cx: &mut AcceptContext<'_, '_>, mip: &MetaItemParser) {
         let path = mip.path();
         let args = mip.args();
@@ -599,7 +673,7 @@ impl DocParser {
             Some(sym::alias) => self.parse_alias(cx, path, args),
             Some(sym::hidden) => no_args!(hidden),
             Some(sym::html_favicon_url) => string_arg_and_crate_level!(html_favicon_url),
-            Some(sym::html_logo_url) => string_arg_and_crate_level!(html_logo_url),
+            Some(sym::html_logo_url) => self.parse_html_logo_url(cx, path, args),
             Some(sym::html_no_source) => no_args_and_crate_level!(html_no_source),
             Some(sym::html_playground_url) => string_arg_and_crate_level!(html_playground_url),
             Some(sym::html_root_url) => string_arg_and_crate_level!(html_root_url),

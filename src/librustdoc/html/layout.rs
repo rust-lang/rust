@@ -13,6 +13,8 @@ mod tests;
 
 pub(crate) struct Layout {
     pub(crate) logo: String,
+    /// Dark theme logo; empty falls back to `logo`.
+    pub(crate) logo_dark: String,
     pub(crate) favicon: String,
     pub(crate) external_html: ExternalHtml,
     pub(crate) default_settings: FxIndexMap<String, String>,

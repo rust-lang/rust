@@ -1,0 +1,40 @@
+// This test ensures that the light and dark logos switch correctly with the theme.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/dark_logo/index.html"
+
+define-function: (
+    "check-logos",
+    [theme, visible, hidden],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        // The logo for the current theme is displayed.
+        assert-css: ("." + |visible|, {"display": "inline"})
+        // The logo for the other theme is hidden.
+        assert-css: ("." + |hidden|, {"display": "none"})
+    },
+)
+
+call-function: (
+    "check-logos",
+    {
+        "theme": "light",
+        "visible": "logo-light",
+        "hidden": "logo-dark",
+    },
+)
+call-function: (
+    "check-logos",
+    {
+        "theme": "dark",
+        "visible": "logo-dark",
+        "hidden": "logo-light",
+    },
+)
+call-function: (
+    "check-logos",
+    {
+        "theme": "ayu",
+        "visible": "logo-dark",
+        "hidden": "logo-light",
+    },
+)

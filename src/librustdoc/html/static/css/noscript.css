@@ -265,5 +265,16 @@ nav.sub {
 		--notable-badge-blue: oklch(0.55 0.21 240);
 		--notable-badge-violet: oklch(0.55 0.21 300);
 	}
+
+	/* Only swap the logo for crates that provide a dark one. */
+	:root .logo-container.has-dark-logo .logo-light,
+	:root:not([data-theme]) .logo-container.has-dark-logo .logo-light {
+		display: none;
+	}
+
+	:root .logo-container.has-dark-logo .logo-dark,
+	:root:not([data-theme]) .logo-container.has-dark-logo .logo-dark {
+		display: inline;
+	}
 /* End theme: dark */
 }
