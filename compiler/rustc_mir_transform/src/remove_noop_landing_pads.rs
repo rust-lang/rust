@@ -128,7 +128,7 @@ impl RemoveNoopLandingPads {
                         extra.typing_env,
                         ty::EarlyBinder::bind(extra.tcx, ty),
                     );
-                    let drop_fn = Instance::resolve_drop_glue(extra.tcx, ty);
+                    let drop_fn = Instance::resolve_drop_in_place(extra.tcx, ty);
                     if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
                         // no need to drop anything, if all of our successors are also no-op then we
                         // can be skipped.

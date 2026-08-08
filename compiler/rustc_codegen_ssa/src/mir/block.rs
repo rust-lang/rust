@@ -641,7 +641,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
-        let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
+        let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
             // we don't actually need to drop anything.
