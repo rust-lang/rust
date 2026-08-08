@@ -34,13 +34,13 @@
           StorageLive(_3);
           _3 = const 12_i32;
           StorageLive(_4);
-          _4 = String::new() -> [return: bb2, unwind: bb11];
+          _4 = String::new() -> [return: bb2, unwind: bb10];
       }
   
       bb2: {
 +         _8 = const true;
           StorageLive(_5);
-          _5 = String::new() -> [return: bb3, unwind: bb10];
+          _5 = String::new() -> [return: bb3, unwind: bb9];
       }
   
       bb3: {
@@ -54,12 +54,12 @@
       bb4: {
           StorageDead(_7);
           StorageDead(_6);
-          drop(_5) -> [return: bb5, unwind: bb10];
+          drop(_5) -> [return: bb5, unwind: bb9];
       }
   
       bb5: {
           StorageDead(_5);
--         drop(_4) -> [return: bb6, unwind: bb11];
+-         drop(_4) -> [return: bb6, unwind: bb10];
 +         goto -> bb6;
       }
   
@@ -67,7 +67,7 @@
 +         _8 = const false;
           StorageDead(_4);
 -         drop(_2) -> [return: bb7, unwind continue];
-+         drop(_2) -> [return: bb7, unwind: bb12];
++         drop(_2) -> [return: bb7, unwind: bb11];
       }
   
       bb7: {
@@ -76,33 +76,28 @@
       }
   
       bb8 (cleanup): {
--         drop(_7) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb9;
+          drop(_5) -> [return: bb9, unwind terminate(cleanup)];
       }
   
       bb9 (cleanup): {
-          drop(_5) -> [return: bb10, unwind terminate(cleanup)];
+-         drop(_4) -> [return: bb10, unwind terminate(cleanup)];
++         goto -> bb13;
       }
   
       bb10 (cleanup): {
--         drop(_4) -> [return: bb11, unwind terminate(cleanup)];
-+         goto -> bb14;
+          drop(_2) -> [return: bb11, unwind terminate(cleanup)];
       }
   
       bb11 (cleanup): {
-          drop(_2) -> [return: bb12, unwind terminate(cleanup)];
-      }
-  
-      bb12 (cleanup): {
           resume;
 +     }
 + 
-+     bb13 (cleanup): {
-+         drop(_4) -> [return: bb11, unwind terminate(cleanup)];
++     bb12 (cleanup): {
++         drop(_4) -> [return: bb10, unwind terminate(cleanup)];
 +     }
 + 
-+     bb14 (cleanup): {
-+         switchInt(copy _8) -> [0: bb11, otherwise: bb13];
++     bb13 (cleanup): {
++         switchInt(copy _8) -> [0: bb10, otherwise: bb12];
       }
   }
   
