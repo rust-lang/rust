@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
@@ -361,6 +361,61 @@ impl CStore {
                 return;
             }
             let extern_crate = data.name();
+
+            if prefix.is_empty() {
+                // A synthetic target modifier, does not correspond to an actual flag.
+                match opt_name.as_str() {
+                    "target-feature" => {
+                        // Compute the features we have locally that don't exist in the other crate,
+                        // and the features the other crate has that are missing locally.
+                        let mut local_features = FxHashSet::from_iter(
+                            flag_local_value.unwrap().split(",").filter(|s| !s.is_empty()),
+                        );
+                        let mut extern_features = FxHashSet::from_iter(
+                            flag_extern_value.unwrap().split(",").filter(|s| !s.is_empty()),
+                        );
+                        #[allow(rustc::potential_query_instability)] // we are sorting below
+                        let both_features = FxHashSet::from_iter(
+                            local_features.intersection(&extern_features).copied(),
+                        );
+                        #[allow(rustc::potential_query_instability)] // we are sorting below
+                        for feature in both_features {
+                            local_features.remove(feature);
+                            extern_features.remove(feature);
+                        }
+                        let local_features =
+                            UnordSet::from(local_features).into_sorted_stable_ord();
+                        let extern_features =
+                            UnordSet::from(extern_features).into_sorted_stable_ord();
+                        assert!(local_features.len() > 0 || extern_features.len() > 0);
+
+                        let diag = format!(
+                            "mixing target features will cause an ABI mismatch in crate `{local_crate}`"
+                        );
+                        let mut diag = tcx.dcx().struct_warn(diag);
+                        diag.help("some target features modify the ABI so Rust crates compiled with different values for these target features cannot be used together safely");
+                        if local_features.len() > 0 {
+                            let features = local_features.join(", ");
+                            let before =
+                                if local_features.len() == 1 { "feature" } else { "features" };
+                            let after = if local_features.len() == 1 { "is" } else { "are" };
+                            diag.help(format!("the target {before} {features} {after} enabled in this crate but disabled in `{extern_crate}`"));
+                        }
+                        if extern_features.len() > 0 {
+                            let features = extern_features.join(", ");
+                            let before =
+                                if extern_features.len() == 1 { "feature" } else { "features" };
+                            let after = if extern_features.len() == 1 { "is" } else { "are" };
+                            diag.help(format!("the target {before} {features} {after} enabled in `{extern_crate}` but disabled in this crate"));
+                        }
+                        diag.help("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=target-feature` to silence this warning");
+                        diag.emit();
+                    }
+                    _ => panic!("unhandled synthetic target feature {opt_name}"),
+                }
+                return;
+            }
+
             let flag_name = opt_name.clone();
             let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
 
