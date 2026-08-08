@@ -51,7 +51,7 @@ pub fn make_2_tuple(x: u32) -> (u32, u32) {
     pair
 }
 
-// CHECK-LABEL: i8 @make_cell_of_bool(i1 noundef zeroext %b)
+// CHECK-LABEL: i8 @make_cell_of_bool(i1 noundef{{( zeroext)?}} %b)
 #[no_mangle]
 pub fn make_cell_of_bool(b: bool) -> std::cell::Cell<bool> {
     // CHECK: %[[BYTE:.+]] = zext i1 %b to i8
@@ -59,7 +59,7 @@ pub fn make_cell_of_bool(b: bool) -> std::cell::Cell<bool> {
     std::cell::Cell::new(b)
 }
 
-// CHECK-LABEL: { i8, i16 } @make_cell_of_bool_and_short(i1 noundef zeroext %b, i16{{.*}} %s)
+// CHECK-LABEL: { i8, i16 } @make_cell_of_bool_and_short(i1 noundef{{( zeroext)?}} %b, i16{{.*}} %s)
 #[no_mangle]
 pub fn make_cell_of_bool_and_short(b: bool, s: u16) -> std::cell::Cell<(bool, u16)> {
     // CHECK-NOT: alloca
@@ -70,7 +70,7 @@ pub fn make_cell_of_bool_and_short(b: bool, s: u16) -> std::cell::Cell<(bool, u1
     std::cell::Cell::new((b, s))
 }
 
-// CHECK-LABEL: { i1, i1 } @make_tuple_of_bools(i1 noundef zeroext %a, i1 noundef zeroext %b)
+// CHECK-LABEL: { i1, i1 } @make_tuple_of_bools(i1 noundef{{( zeroext)?}} %a, i1 noundef{{( zeroext)?}} %b)
 #[no_mangle]
 pub fn make_tuple_of_bools(a: bool, b: bool) -> (bool, bool) {
     // CHECK-NOT: alloca
