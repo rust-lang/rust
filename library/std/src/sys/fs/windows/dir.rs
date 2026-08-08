@@ -30,7 +30,7 @@ fn to_u16s_without_nul(path: &Path) -> io::Result<Vec<u16>> {
 unsafe fn nt_create_file(
     opts: &OpenOptions,
     object_attributes: &c::OBJECT_ATTRIBUTES,
-    create_options: c::NTCREATEFILE_CREATE_OPTIONS,
+    create_options: u32,
 ) -> io::Result<Handle> {
     let mut handle = ptr::null_mut();
     let mut io_status = c::IO_STATUS_BLOCK::PENDING;
@@ -116,7 +116,8 @@ impl Dir {
         let name = UnicodeStrRef::from_slice(path);
         let object_attributes = c::OBJECT_ATTRIBUTES {
             RootDirectory: self.handle.as_raw_handle(),
-            ObjectName: name.as_ptr(),
+            // Note: the ptr is only mutable for API reasons, it's never actually written to.
+            ObjectName: name.as_ptr().cast_mut(),
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
         let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };

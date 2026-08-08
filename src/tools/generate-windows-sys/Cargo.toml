@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies.windows-bindgen]
-version = "0.66.0"
+#version = "0.66.0"
+git = "https://github.com/microsoft/windows-rs.git"
+rev = "a40eb11994aabb4e989a04f8817f57f86ab7940e"

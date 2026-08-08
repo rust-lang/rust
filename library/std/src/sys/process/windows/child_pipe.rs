@@ -1,3 +1,4 @@
+use crate::ffi::c_void;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::ops::Neg;
 use crate::os::windows::prelude::*;
@@ -85,7 +86,7 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
             handle
         } else {
             let path = api::unicode_str!(r"\Device\NamedPipe\");
-            object_attributes.ObjectName = path.as_ptr();
+            object_attributes.ObjectName = path.as_ptr().cast_mut();
             let mut pipe_fs = ptr::null_mut();
             let status = c::NtOpenFile(
                 &mut pipe_fs,
@@ -115,7 +116,7 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
         // There's no difference to the OS itself but it's possible that third party
         // DLLs which hook in to processes could be relying on the exact form of this string.
         let empty = c::UNICODE_STRING::default();
-        object_attributes.ObjectName = &raw const empty;
+        object_attributes.ObjectName = (&raw const empty).cast_mut();
 
         // Create our side of the pipe for async access.
         let ours = {
@@ -243,7 +244,7 @@ impl ChildPipe {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
-            let ptr = buf.as_mut_ptr();
+            let ptr = buf.as_mut_ptr().cast::<c_void>();
             self.alertable_io_internal(|overlapped, callback| {
                 c::ReadFileEx(self.inner.as_raw_handle(), ptr, len, overlapped, callback)
             })
@@ -262,7 +263,7 @@ impl ChildPipe {
     pub fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let result = unsafe {
             let len = crate::cmp::min(buf.capacity(), u32::MAX as usize) as u32;
-            let ptr = buf.as_mut().as_mut_ptr().cast::<u8>();
+            let ptr = buf.as_mut().as_mut_ptr().cast::<c_void>();
             self.alertable_io_internal(|overlapped, callback| {
                 c::ReadFileEx(self.inner.as_raw_handle(), ptr, len, overlapped, callback)
             })
@@ -301,7 +302,13 @@ impl ChildPipe {
         unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             self.alertable_io_internal(|overlapped, callback| {
-                c::WriteFileEx(self.inner.as_raw_handle(), buf.as_ptr(), len, overlapped, callback)
+                c::WriteFileEx(
+                    self.inner.as_raw_handle(),
+                    buf.as_ptr().cast::<c_void>(),
+                    len,
+                    overlapped,
+                    callback,
+                )
             })
         }
     }
