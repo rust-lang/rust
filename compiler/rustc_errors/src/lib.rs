@@ -3,14 +3,11 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![allow(rustc::direct_use_of_rustc_type_ir)]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(rustc_attrs)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;

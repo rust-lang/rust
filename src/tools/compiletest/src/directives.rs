@@ -851,6 +851,30 @@ pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Vers
     None
 }
 
+pub(crate) fn find_gcc_supported_targets(sysroot_base: &Utf8Path, host: &str) -> Vec<String> {
+    // E.g. `lib/rustlib/x86_64-unknown-linux-gnu/codegen-backends/lib`.
+    let backends_dir =
+        sysroot_base.join("lib").join("rustlib").join(host).join("codegen-backends").join("lib");
+
+    match std::fs::read_dir(&backends_dir) {
+        Ok(entries) => {
+            // Search for `aarch64-unknown-linux-gnu/libgccjit.so` et cetera.
+            let target_tuples: Vec<_> = entries
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.path().join("libgccjit.so").exists())
+                .filter_map(|entry| entry.file_name().into_string().ok())
+                .collect();
+
+            if target_tuples.is_empty() {
+                panic!("did not find `libgccjit.so` for any target in {backends_dir}");
+            }
+
+            target_tuples
+        }
+        Err(e) => panic!("unable to find `libgccjit.so` for any target in {backends_dir}: {e:?}",),
+    }
+}
+
 /// Takes a directive of the form `"<version1> [- <version2>]"`, returns the numeric representation
 /// of `<version1>` and `<version2>` as tuple: `(<version1>, <version2>)`.
 ///
@@ -958,6 +982,7 @@ pub(crate) fn make_test_description(
                 decision!(ignore_llvm(config, ln));
                 decision!(ignore_backends(config, ln));
                 decision!(needs_backends(config, ln));
+                decision!(ignore_unsupported_backend_target(config, ln));
                 decision!(ignore_cdb(config, variant, ln));
                 decision!(ignore_gdb(config, variant, ln));
                 decision!(ignore_lldb(config, variant, ln));
@@ -1210,6 +1235,36 @@ fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         }
     }
     IgnoreDecision::Continue
+}
+
+/// When using the GCC backend, ignore tests for which we did not find a libgccjit.so.
+fn ignore_unsupported_backend_target(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if config.default_codegen_backend != crate::CodegenBackend::Gcc {
+        return IgnoreDecision::Continue;
+    }
+
+    let Some(compile_flags) = config.parse_name_value_directive(line, "compile-flags") else {
+        return IgnoreDecision::Continue;
+    };
+
+    // See if this line sets a `--target=...`
+    let Some((_, rest)) = compile_flags.split_once("--target") else {
+        return IgnoreDecision::Continue;
+    };
+    let Some(target) = rest.trim_start_matches([' ', '=']).split_whitespace().next() else {
+        return IgnoreDecision::Continue;
+    };
+
+    if !config.gcc_supported_target_tuples.iter().any(|t| t == target) {
+        IgnoreDecision::Ignore {
+            reason: format!(
+                "backend `{}` cannot build for target `{target}`",
+                config.default_codegen_backend.as_str()
+            ),
+        }
+    } else {
+        IgnoreDecision::Continue
+    }
 }
 
 fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {

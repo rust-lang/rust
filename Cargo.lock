@@ -3701,6 +3701,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_attr_ir"
+version = "0.0.0"
+dependencies = [
+ "rustc_abi",
+ "rustc_ast",
+ "rustc_ast_pretty",
+ "rustc_data_structures",
+ "rustc_error_messages",
+ "rustc_macros",
+ "rustc_serialize",
+ "rustc_span",
+ "rustc_target",
+ "smallvec",
+ "thin-vec",
+ "tracing",
+]
+
+[[package]]
 name = "rustc_attr_parsing"
 version = "0.0.0"
 dependencies = [
@@ -4077,7 +4095,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
- "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_errors",
@@ -4089,8 +4107,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "smallvec",
- "thin-vec",
  "tracing",
 ]
 

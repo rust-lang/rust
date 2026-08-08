@@ -10,11 +10,11 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_macros::{BlobDecodable, Encodable, PrintAttribute, StableHash};
+use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, kw, sym};
 
-use crate::attrs::PrintAttribute;
-use crate::def_id::DefId;
-use crate::{MethodKind, Target};
+use crate::PrintAttribute;
+use crate::target::{MethodKind, Target};
 
 /// All of the lang items, defined or not.
 /// Defined lang items can come from the current crate or its dependencies.
