@@ -1,6 +1,6 @@
 #![feature(alloc_error_hook, allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout, System, set_alloc_error_hook};
+use std::alloc::{AllocError, Allocator, Layout, System, set_alloc_error_hook_unwinding};
 use std::collections::VecDeque;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::ptr::NonNull;
@@ -36,7 +36,9 @@ fn test_shrink_to_unwind() {
         }
     }
 
-    set_alloc_error_hook(|_| panic!("alloc error"));
+    unsafe {
+        set_alloc_error_hook_unwinding(|_| panic!("alloc error"));
+    }
 
     let mut v = VecDeque::with_capacity_in(15, BadAlloc);
     v.push_back(1);
