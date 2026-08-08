@@ -59,6 +59,66 @@ fn bitset_clone_from() {
 }
 
 #[test]
+fn dense_storage_boundaries() {
+    for domain in [0, 1, WORD_BITS - 1, WORD_BITS, WORD_BITS + 1, WORD_BITS * 2 + 3] {
+        let empty = DenseBitSet::<usize>::new_empty(domain);
+        assert_eq!(empty.domain_size(), domain);
+        assert!(empty.is_empty());
+        assert_eq!(empty.count(), 0);
+        assert_eq!(empty.iter().collect::<Vec<_>>(), []);
+
+        let mut filled = DenseBitSet::<usize>::new_filled(domain);
+        assert_eq!(filled.domain_size(), domain);
+        assert_eq!(filled.count(), domain);
+        assert_eq!(filled.iter().collect::<Vec<_>>(), (0..domain).collect::<Vec<_>>());
+
+        filled.clear();
+        assert!(filled.is_empty());
+        if domain != 0 {
+            assert!(filled.insert(domain - 1));
+            assert!(filled.contains(domain - 1));
+        }
+    }
+}
+
+#[test]
+fn dense_clone_from_crosses_storage_boundaries() {
+    let mut inline = DenseBitSet::<usize>::new_empty(WORD_BITS);
+    inline.insert(WORD_BITS - 1);
+
+    let mut large = DenseBitSet::<usize>::new_empty(WORD_BITS + 1);
+    large.insert(WORD_BITS);
+
+    inline.clone_from(&large);
+    assert_eq!(inline.domain_size(), WORD_BITS + 1);
+    assert_eq!(inline.iter().collect::<Vec<_>>(), [WORD_BITS]);
+
+    large.clone_from(&DenseBitSet::new_empty(WORD_BITS * 2 + 1));
+    assert_eq!(large.domain_size(), WORD_BITS * 2 + 1);
+    assert!(large.is_empty());
+
+    large.clone_from(&DenseBitSet::new_filled(WORD_BITS - 1));
+    assert_eq!(large.domain_size(), WORD_BITS - 1);
+    assert_eq!(large.count(), WORD_BITS - 1);
+}
+
+#[test]
+fn dense_relations_handle_lazy_empty_large_sets() {
+    let domain = WORD_BITS + 5;
+    let empty = DenseBitSet::<usize>::new_empty(domain);
+    let mut set = DenseBitSet::<usize>::new_empty(domain);
+    let mut other = DenseBitSet::<usize>::new_empty(domain);
+    other.insert(WORD_BITS + 4);
+
+    assert!(!set.subtract(&empty));
+    assert!(set.union(&other));
+    assert!(set.contains(WORD_BITS + 4));
+    assert!(!set.union(&other));
+    assert!(set.intersect(&empty));
+    assert!(set.is_empty());
+}
+
+#[test]
 fn union_two_sets() {
     let mut set1: DenseBitSet<usize> = DenseBitSet::new_empty(65);
     let mut set2: DenseBitSet<usize> = DenseBitSet::new_empty(65);
@@ -549,6 +609,30 @@ fn grow() {
 }
 
 #[test]
+fn growable_crosses_inline_to_heap_boundary() {
+    let mut set: GrowableBitSet<usize> = GrowableBitSet::with_capacity(1);
+    assert!(!set.contains(WORD_BITS + 3));
+
+    assert!(set.insert(WORD_BITS + 3));
+    assert!(set.contains(WORD_BITS + 3));
+    assert_eq!(set.count(), 1);
+
+    assert!(set.remove(WORD_BITS + 3));
+    assert!(set.is_empty());
+
+    set.insert_range((WORD_BITS - 1)..(WORD_BITS + 4));
+    assert_eq!(
+        set.iter().collect::<Vec<_>>(),
+        ((WORD_BITS - 1)..(WORD_BITS + 4)).collect::<Vec<_>>()
+    );
+
+    set.ensure(WORD_BITS * 4 + 1);
+    assert!(set.contains(WORD_BITS + 3));
+    assert!(!set.contains(WORD_BITS * 4));
+    assert!(set.insert(WORD_BITS * 4));
+}
+
+#[test]
 fn matrix_intersection() {
     let mut matrix: BitMatrix<usize, usize> = BitMatrix::new(200, 200);
 
@@ -635,6 +719,31 @@ fn matrix_iter() {
     if let Some(i) = matrix.iter(7).next() {
         panic!("expected no elements in row, but contains element {:?}", i);
     }
+}
+
+#[test]
+fn matrix_from_row_and_union_with_lazy_dense_rows() {
+    let domain = WORD_BITS + 3;
+    let empty = DenseBitSet::<usize>::new_empty(domain);
+    let matrix = BitMatrix::<usize, usize>::from_row_n(&empty, 3);
+    for row in 0..3 {
+        assert_eq!(matrix.iter(row).collect::<Vec<_>>(), []);
+    }
+
+    let mut row = DenseBitSet::<usize>::new_empty(domain);
+    row.insert(0);
+    row.insert(WORD_BITS + 2);
+    let matrix = BitMatrix::<usize, usize>::from_row_n(&row, 2);
+    for matrix_row in 0..2 {
+        assert!(matrix.contains(matrix_row, 0));
+        assert!(matrix.contains(matrix_row, WORD_BITS + 2));
+    }
+
+    let mut matrix = BitMatrix::<usize, usize>::new(1, domain);
+    assert!(!matrix.union_row_with(&empty, 0));
+    assert!(matrix.union_row_with(&row, 0));
+    assert!(!matrix.union_row_with(&row, 0));
+    assert_eq!(matrix.iter(0).collect::<Vec<_>>(), [0, WORD_BITS + 2]);
 }
 
 #[test]
