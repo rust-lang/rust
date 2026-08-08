@@ -1312,7 +1312,7 @@ pub(crate) fn start_codegen<'tcx>(
             // Skip crate items and just output metadata in -Z no-codegen mode.
             tcx.sess.dcx().abort_if_errors();
 
-            // Linker::link will skip join_codegen in case of a CodegenResults Any value.
+            // Linker::link will skip join_codegen in case of a `CompiledModules` Any value.
             Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
             codegen_backend.codegen_crate(tcx)
