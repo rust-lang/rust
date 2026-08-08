@@ -268,10 +268,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 Some(InhabitedPredicate::True) => Some(InhabitedPredicate::True),
                 Some(a) => Some(a.or(tcx, b.instantiate_opt(tcx, args).unwrap_or(b))),
             },
-            Self::True | Self::False | Self::NotInModule(_) => None,
-            Self::OpaqueType(_) => {
-                bug!("unexpected OpaqueType in InhabitedPredicate");
-            }
+            Self::True | Self::False | Self::NotInModule(_) | Self::OpaqueType(_) => None,
         }
     }
 }
