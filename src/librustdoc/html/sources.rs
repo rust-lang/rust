@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 use std::{fmt, fs};
@@ -193,31 +193,28 @@ impl SourceCollector<'_, '_> {
         let shared = &self.cx.shared;
         // Create the intermediate directories
         let cur = RefCell::new(PathBuf::new());
-        let root_path = RefCell::new(PathBuf::new());
+        // Tracks the extra directory depth accumulated during path traversal.
+        // Starts at 0; `PathBuf::pop()` on empty is a no-op, so we mirror that
+        // with `saturating_sub`. The base depth of 2 (for `src/<crate>/`) is added after.
+        let extra_depth = Cell::new(0usize);
 
         clean_path(
             &shared.src_root,
             &p,
             |component| {
                 cur.borrow_mut().push(component);
-                root_path.borrow_mut().push("..");
+                extra_depth.set(extra_depth.get() + 1);
             },
             || {
                 cur.borrow_mut().pop();
-                root_path.borrow_mut().pop();
+                extra_depth.set(extra_depth.get().saturating_sub(1));
             },
         );
 
+        let jump_to_def_path_depth = 2 + extra_depth.get();
+
         let src_fname = p.file_name().expect("source has no filename").to_os_string();
         let mut fname = src_fname.clone();
-
-        let root_path = PathBuf::from("../../").join(root_path.into_inner());
-        let mut root_path = root_path.to_string_lossy();
-        if let Some(c) = root_path.as_bytes().last()
-            && *c != b'/'
-        {
-            root_path += "/";
-        }
         let mut file_path = Path::new(&self.crate_name).join(&*cur.borrow());
         file_path.push(&fname);
         fname.push(".html");
@@ -228,6 +225,7 @@ impl SourceCollector<'_, '_> {
 
         let title = format!("{} - source", src_fname.to_string_lossy());
         let desc = format!("Source of the Rust file `{}`.", p.to_string_lossy());
+        let root_path = "../".repeat(jump_to_def_path_depth);
         let page = layout::Page {
             title: &title,
             short_title: &src_fname.to_string_lossy(),
@@ -251,7 +249,7 @@ impl SourceCollector<'_, '_> {
                     contents,
                     file_span,
                     self.cx,
-                    &root_path,
+                    jump_to_def_path_depth,
                     &highlight::DecorationInfo::default(),
                     &source_context,
                 )
@@ -330,7 +328,7 @@ pub(crate) fn print_src(
     s: &str,
     file_span: rustc_span::Span,
     context: &Context<'_>,
-    root_path: &str,
+    jump_to_def_path_depth: usize,
     decoration_info: &highlight::DecorationInfo,
     source_context: &SourceContext<'_>,
 ) -> fmt::Result {
@@ -359,7 +357,7 @@ pub(crate) fn print_src(
             Some(highlight::HrefContext {
                 context,
                 file_span: file_span.into(),
-                root_path,
+                jump_to_def_path_depth,
                 current_href,
             }),
             Some(decoration_info),
