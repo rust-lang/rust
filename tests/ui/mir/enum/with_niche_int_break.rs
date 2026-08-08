@@ -17,5 +17,5 @@ enum Nested {
 }
 
 fn main() {
-    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(u32::MAX) };
+    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(2) };
 }
