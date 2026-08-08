@@ -1,8 +1,13 @@
+use rustc_ast::attr::{AttrIdGenerator, mk_attr_from_item};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{Expr, ast};
+use rustc_ast::{
+    AttrItem, AttrItemKind, EarlyParsedAttribute, Expr, Path, Safety, ast, tokenstream as tts,
+};
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{CfgSelectBranches, EvalConfigResult, parse_cfg_select};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult};
+use rustc_expand::expand::DeclaredIdents;
+use rustc_hir::attrs::CfgEntry;
 use rustc_span::{Ident, Span, sym};
 use smallvec::SmallVec;
 
@@ -17,6 +22,7 @@ struct CfgSelectResult<'cx, 'sess> {
     selected_tts: TokenStream,
     selected_span: Span,
     other_branches: CfgSelectBranches,
+    cfg_entry: CfgEntry,
 }
 
 fn tts_to_mac_result<'cx, 'sess>(
@@ -33,23 +39,78 @@ fn tts_to_mac_result<'cx, 'sess>(
 }
 
 macro_rules! forward_to_parser_any_macro {
-    ($method_name:ident, $ret_ty:ty) => {
+    ($method_name:ident, $ret_ty:ty, $other:expr, $selected:expr) => {
         fn $method_name(self: Box<Self>) -> Option<$ret_ty> {
-            let CfgSelectResult { ecx, site_span, selected_tts, selected_span, .. } = *self;
+            let CfgSelectResult { ecx, site_span, selected_tts, selected_span, cfg_entry, .. } =
+                *self;
 
-            for (tts, span) in self.other_branches.into_iter_tts() {
-                let _ = tts_to_mac_result(ecx, site_span, tts, span).$method_name();
+            for (cfg_entry, tts, span) in self.other_branches.into_iter_tts() {
+                let result = tts_to_mac_result(ecx, site_span, tts, span).$method_name();
+                $other(&mut *ecx, cfg_entry, span, result);
             }
 
-            tts_to_mac_result(ecx, site_span, selected_tts, selected_span).$method_name()
+            tts_to_mac_result(ecx, site_span, selected_tts, selected_span)
+                .$method_name()
+                .map(|elements| $selected(&mut *ecx, cfg_entry, elements))
         }
     };
+
+    ($method_name:ident, $ret_ty:ty) => {
+        forward_to_parser_any_macro!($method_name, $ret_ty, |_, _, _, _| {}, |_, _, elements| {
+            elements
+        });
+    };
+}
+
+/// Construct a `#[<cfg_trace>]` attribute from a `CfgEntry`. This allows us to keep track of items
+/// that were behind a `cfg_select!`, which is relevant for some diagnostics.
+fn mk_attr(g: &AttrIdGenerator, cfg_entry: CfgEntry) -> ast::Attribute {
+    let cfg_span = cfg_entry.span();
+    let args = AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg_entry));
+    // This makes the trace attributes unobservable to token-based proc macros.
+    let tokens = Some(tts::LazyAttrTokenStream::new_direct(tts::AttrTokenStream::default()));
+    let attr_item = AttrItem {
+        unsafety: Safety::Default,
+        path: Path::from_ident(Ident::new(sym::cfg_trace, cfg_span)),
+        args,
+        tokens: None,
+    };
+    mk_attr_from_item(g, attr_item, tokens, ast::AttrStyle::Outer, cfg_span)
 }
 
 impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
     forward_to_parser_any_macro!(make_expr, Box<Expr>);
     forward_to_parser_any_macro!(make_stmts, SmallVec<[ast::Stmt; 1]>);
-    forward_to_parser_any_macro!(make_items, SmallVec<[Box<ast::Item>; 1]>);
+    forward_to_parser_any_macro!(
+        make_items,
+        SmallVec<[Box<ast::Item>; 1]>,
+        |ecx: &mut ExtCtxt<'_>,
+         cfg_entry: CfgEntry,
+         span: Span,
+         items: Option<SmallVec<[Box<ast::Item>; 1]>>| if let Some(items) = items {
+            // Register item names that were not selected for error reporting. We do this
+            // for `#[cfg]` too.
+            for item in items {
+                for name in item.declared_idents() {
+                    ecx.resolver.append_stripped_cfg_item(
+                        ecx.current_expansion.lint_node_id,
+                        name,
+                        cfg_entry.clone(),
+                        span,
+                    );
+                }
+            }
+        },
+        |ecx: &mut ExtCtxt<'_>, cfg_entry: CfgEntry, items: SmallVec<[Box<ast::Item>; 1]>| {
+            items
+                .into_iter()
+                .map(|mut item| {
+                    item.attrs.push(mk_attr(&ecx.sess.psess.attr_id_generator, cfg_entry.clone()));
+                    item
+                })
+                .collect()
+        }
+    );
 
     forward_to_parser_any_macro!(make_impl_items, SmallVec<[Box<ast::AssocItem>; 1]>);
     forward_to_parser_any_macro!(make_trait_impl_items, SmallVec<[Box<ast::AssocItem>; 1]>);
@@ -73,15 +134,18 @@ pub(super) fn expand_cfg_select<'cx>(
             ecx.current_expansion.lint_node_id,
         ) {
             Ok(mut branches) => {
-                if let Some((selected_tts, selected_span)) = branches.pop_first_match(|cfg| {
-                    matches!(attr::eval_config_entry(&ecx.sess, cfg), EvalConfigResult::True)
-                }) {
+                if let Some((cfg_entry, selected_tts, selected_span)) =
+                    branches.pop_first_match(|cfg| {
+                        matches!(attr::eval_config_entry(&ecx.sess, cfg), EvalConfigResult::True)
+                    })
+                {
                     let mac = CfgSelectResult {
                         ecx,
                         selected_tts,
                         selected_span,
                         other_branches: branches,
                         site_span: sp,
+                        cfg_entry,
                     };
                     return ExpandResult::Ready(Box::new(mac));
                 } else {
