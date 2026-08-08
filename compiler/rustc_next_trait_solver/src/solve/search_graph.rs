@@ -1,7 +1,6 @@
 use std::convert::Infallible;
 use std::marker::PhantomData;
 
-use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, CanonicalInput, Certainty, NoSolution, QueryResult, RerunResultExt,
@@ -133,14 +132,12 @@ where
         input: CanonicalInput<I>,
         inspect: &mut Self::ProofTreeBuilder,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
-        ensure_sufficient_stack(|| {
-            EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
-                // if we're in `RerunNonErased`, don't even bother with inspect, and immediately return
-                let result = ecx.compute_goal(goal).map_err_to_rerun()?;
+        EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
+            // if we're in `RerunNonErased`, don't even bother with inspect, and immediately return
+            let result = ecx.compute_goal(goal).map_err_to_rerun()?;
 
-                ecx.inspect.query_result(result);
-                result.map_err(Into::into)
-            })
+            ecx.inspect.query_result(result);
+            result.map_err(Into::into)
         })
     }
 }

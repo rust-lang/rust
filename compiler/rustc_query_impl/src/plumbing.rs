@@ -1,7 +1,6 @@
 use std::num::NonZero;
 
 use rustc_data_structures::Limit;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
@@ -169,7 +168,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
         tcx.dep_graph.data().expect("should always be present in incremental mode");
 
     let prof_timer = tcx.prof.incr_cache_loading();
-    let value = ensure_sufficient_stack(|| (query.try_load_from_disk_fn)(tcx, prev_index));
+    let value = (query.try_load_from_disk_fn)(tcx, prev_index);
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     let Some(value) = value else {

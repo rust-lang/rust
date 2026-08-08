@@ -3,7 +3,6 @@
 use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
@@ -48,10 +47,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let block_and = match expr.kind {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, source_info);
-                ensure_sufficient_stack(|| {
-                    this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
-                        this.expr_into_dest(destination, block, value)
-                    })
+                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                    this.expr_into_dest(destination, block, value)
                 })
             }
             ExprKind::Block { block: ast_block } => {

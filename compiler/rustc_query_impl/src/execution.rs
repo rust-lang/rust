@@ -3,7 +3,6 @@ use std::mem::ManuallyDrop;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::hash_table::{Entry, HashTable};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
@@ -628,7 +627,7 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    try_execute_query::<C, false>(query, tcx, span, key, None).0
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
@@ -650,9 +649,8 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
         return None;
     }
 
-    let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
-    });
+    let (result, dep_node_index) =
+        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node));
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
     }
@@ -674,9 +672,7 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
         return false;
     };
 
-    ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
-    });
+    try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node));
 
     // We did manage to recover a key and force the node, though it's up to
     // the caller to check whether the node ended up marked red or green.
