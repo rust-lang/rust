@@ -20,10 +20,11 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
-pub use crate::attrs::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
-use crate::attrs::diagnostic::*;
-use crate::attrs::pretty_printing::PrintAttribute;
-use crate::{DefaultBodyStability, LangItem, PartialConstStability, Stability};
+pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
+use crate::diagnostic::*;
+use crate::lang_items::LangItem;
+use crate::pretty_printing::PrintAttribute;
+use crate::stability::{DefaultBodyStability, PartialConstStability, Stability};
 
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {

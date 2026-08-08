@@ -1,8 +1,3 @@
-// tidy-alphabetical-start
-#![allow(internal_features)]
-#![feature(rustc_attrs)]
-// tidy-alphabetical-end
-
 use std::borrow::Cow;
 
 pub use fluent_bundle::types::FluentType;
@@ -29,7 +24,6 @@ pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-#[rustc_diagnostic_item = "DiagMessage"]
 pub enum DiagMessage {
     /// Non-translatable diagnostic message or a message that has been translated eagerly.
     ///

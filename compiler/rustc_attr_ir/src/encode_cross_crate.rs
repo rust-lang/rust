@@ -1,4 +1,4 @@
-use crate::attrs::AttributeKind;
+use crate::AttributeKind;
 
 #[derive(PartialEq)]
 pub enum EncodeCrossCrate {

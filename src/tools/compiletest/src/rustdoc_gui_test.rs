@@ -139,6 +139,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         default_codegen_backend: CodegenBackend::Llvm,
         override_codegen_backend: None,
         bypass_ignore_backends: Default::default(),
+        gcc_supported_target_tuples: vec![],
         jobs: Default::default(),
         parallel_frontend_threads: Config::DEFAULT_PARALLEL_FRONTEND_THREADS,
         iteration_count: Config::DEFAULT_ITERATION_COUNT,
