@@ -141,6 +141,19 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.expect_no_args(param.args())?;
             Some(ReprC)
         }
+        Some(sym::Swift) => {
+            cx.check_target(
+                "(Swift)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Enum),
+                    Allow(Target::Union),
+                    Warn(Target::MacroCall),
+                ]),
+            );
+            cx.expect_no_args(param.args())?;
+            Some(ReprSwift)
+        }
         Some(sym::simd) => {
             if cx.features.is_some_and(|feats| !feats.repr_simd()) {
                 feature_err(

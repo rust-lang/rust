@@ -754,9 +754,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             // Small structs get their innards splattered inline
             if arg.layout.layout.size.bytes() <= 24 {
-                let mut prefix: [Option<Reg>; 8] = [None; 8];
+                let mut prefix: ArrayVec<Reg, 8> = ArrayVec::new();
                 let mut size = arg.layout.size;
-                for i in 0..8 {
+                for _i in 0..8 {
                     let reg_size = match size.bytes() {
                         8.. => 8,
                         4.. => 4,
@@ -764,8 +764,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                         1.. => 1,
                         0 => break,
                     };
-                    prefix[i] =
-                        Some(Reg { kind: RegKind::Integer, size: Size::from_bytes(reg_size) });
+                    prefix.push(Reg { kind: RegKind::Integer, size: Size::from_bytes(reg_size) });
                     size = Size::from_bytes(size.bytes() - reg_size);
                 }
                 arg.cast_to(CastTarget::prefixed(

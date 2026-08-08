@@ -184,6 +184,7 @@
 #![feature(s390x_target_feature)]
 #![feature(wasm_target_feature)]
 #![feature(x86_amx_intrinsics)]
+#![feature(stride)]
 // tidy-alphabetical-end
 
 // allow using `core::` in intra-doc links

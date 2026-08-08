@@ -2965,7 +2965,7 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_comptime]
-pub const fn size_of<T>() -> usize;
+pub fn size_of<T>() -> usize;
 
 /// See [`size_of`].
 #[rustc_nounwind]
@@ -2973,7 +2973,7 @@ pub const fn size_of<T>() -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_comptime]
-pub const fn stride_of<T>() -> usize;
+pub fn stride_of<T>() -> usize;
 
 /// The minimum alignment of a type.
 ///
