@@ -340,15 +340,22 @@ pub struct MovePathLookup<'tcx> {
 mod builder;
 
 #[derive(Copy, Clone, Debug)]
-pub enum LookupResult {
+pub enum LookupResult<'tcx> {
     /// This exact thing has a move path. E.g. we looked up `x` or `x.m` and it has been moved.
     Exact(MovePathIndex),
 
-    /// - If the field is `None`, neither the exact thing nor any ancestor of it has a move path.
-    ///   E.g. we looked up `x.m` and neither it nor `x` have a move path.
-    /// - If the field is `Some`, the exact thing has no move path, but an ancestor does. E.g. we
-    ///   looked up `x.m` which has no move path but `x` has one. Not possible for locals.
-    Parent(Option<MovePathIndex>),
+    /// The exact thing has no move path, but an ancestor does.
+    /// E.g. we looked up `x.m` which has no move path but `x` has one. Not possible for locals.
+    Parent {
+        mpi: MovePathIndex,
+
+        /// The PlaceElem in the place immediately projecting from the parent move path.
+        next_elem: PlaceElem<'tcx>,
+    },
+
+    /// Neither the exact thing nor any ancestor of it has a move path.
+    /// E.g. we looked up `x.m` and neither it nor `x` have a move path.
+    None,
 }
 
 impl<'tcx> MovePathLookup<'tcx> {
@@ -356,10 +363,10 @@ impl<'tcx> MovePathLookup<'tcx> {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
+    pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult<'tcx> {
         // Look first in the locals (roots).
         let Some(mut result) = self.find_local(place.local) else {
-            return LookupResult::Parent(None);
+            return LookupResult::None;
         };
 
         // Look for a projection through the found local.
@@ -372,7 +379,7 @@ impl<'tcx> MovePathLookup<'tcx> {
             };
 
             let Some(&subpath) = subpath else {
-                return LookupResult::Parent(Some(result));
+                return LookupResult::Parent { mpi: result, next_elem: elem };
             };
             result = subpath;
         }
