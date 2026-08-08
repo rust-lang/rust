@@ -9,7 +9,7 @@ use rustc_span::sym;
 use tracing::debug;
 
 use crate::EarlyLintPass;
-use crate::lints::MacroExprFragment2024;
+use crate::diagnostics::MacroExprFragment2024;
 
 declare_lint! {
     /// The `edition_2024_expr_fragment_specifier` lint detects the use of

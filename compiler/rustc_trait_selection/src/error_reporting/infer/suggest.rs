@@ -159,8 +159,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// ```
     ///
     /// This routine checks if the found type `T` implements `Future<Output=U>` where `U` is the
-    /// expected type. If this is the case, and we are inside of an async body, it suggests adding
-    /// `.await` to the tail of the expression.
+    /// expected type. In an async body, it suggests adding `.await` to the expression. For a
+    /// return expression in a synchronous function, it suggests making the function async and
+    /// awaiting the expression together.
     pub(super) fn suggest_await_on_expect_found(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -178,11 +179,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
                 _,
             )) => (),
-            None
-            | Some(
+            Some(
                 hir::CoroutineKind::Coroutine(_)
                 | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _),
             ) => return,
+            None => {
+                self.suggest_add_async_for_tail_return_expr(cause, exp_span, exp_found, diag);
+                return;
+            }
         }
 
         if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
@@ -265,6 +269,64 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
         if let Some(subdiag) = subdiag {
             diag.subdiagnostic(subdiag);
+        }
+    }
+
+    fn suggest_add_async_for_tail_return_expr(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diag<'_>,
+    ) {
+        let (ObligationCauseCode::BlockTailExpression(return_hir_id, ..)
+        | ObligationCauseCode::ReturnValue(return_hir_id)) = cause.code()
+        else {
+            return;
+        };
+
+        let body_def_id = cause.body_def_id;
+        if !self.tcx.sess.at_least_rust_2018() || self.tcx.is_entrypoint(body_def_id.to_def_id()) {
+            return;
+        }
+
+        let node = self.tcx.hir_node_by_def_id(body_def_id);
+        let (item_span, vis_span) = match node {
+            Node::Item(item) if matches!(item.kind, hir::ItemKind::Fn { .. }) => {
+                (item.span, item.vis_span)
+            }
+            Node::ImplItem(item) if matches!(item.kind, hir::ImplItemKind::Fn(..)) => {
+                let Some(vis_span) = item.vis_span() else { return };
+                (item.span, vis_span)
+            }
+            _ => return,
+        };
+        let Some(sig) = node.fn_sig() else {
+            return;
+        };
+        if sig.header.asyncness.is_async()
+            || sig.header.constness != hir::Constness::NotConst
+            || item_span.from_expansion()
+        {
+            return;
+        }
+
+        let (async_span, async_prefix) = if vis_span.is_empty() {
+            (item_span.shrink_to_lo(), "async ".to_string())
+        } else {
+            (vis_span.shrink_to_hi(), " async".to_string())
+        };
+        let body_hir_id = self.tcx.local_def_id_to_hir_id(body_def_id);
+        if self.tcx.hir_get_fn_id_for_return_block(*return_hir_id) == Some(body_hir_id)
+            && let Some(found) = self.tcx.get_impl_future_output_ty(exp_found.found)
+            && self.same_type_modulo_infer(exp_found.expected, found)
+            && exp_span.can_be_used_for_suggestions()
+        {
+            diag.subdiagnostic(ConsiderAddingAwait::MakeFunctionAsync {
+                async_span,
+                async_prefix,
+                await_span: exp_span.shrink_to_hi(),
+            });
         }
     }
 

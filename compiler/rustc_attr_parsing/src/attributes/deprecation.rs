@@ -5,9 +5,7 @@ use rustc_hir::attrs::{DeprecatedSince, Deprecation, RustcVersion};
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{
-    DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
-};
+use crate::diagnostics::{DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince};
 
 fn get(
     cx: &mut AcceptContext<'_, '_>,

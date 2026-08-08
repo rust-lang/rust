@@ -253,7 +253,12 @@ mod macro_export {
 
 #[path = "3800"]
 mod path {
-    mod inner { #![path="3800"] }
+    mod inner {
+        #![path="3800"]
+        //~^ WARN unused attribute
+        //~| NOTE `#[path]` is unused on this inline module
+        //~| HELP remove this attribute
+    }
 
     #[path = "3800"] fn f() { }
     //~^ WARN attribute cannot be used on

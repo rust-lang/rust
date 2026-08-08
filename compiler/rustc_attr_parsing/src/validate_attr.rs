@@ -18,7 +18,7 @@ use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::{AttributeParser, AttributeTemplate, session_diagnostics as errors, template};
+use crate::{AttributeParser, AttributeTemplate, diagnostics as errors, template};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     use ast::SyntheticAttr::*;

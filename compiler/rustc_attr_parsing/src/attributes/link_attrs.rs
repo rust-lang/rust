@@ -13,7 +13,7 @@ use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
     ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
     InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,

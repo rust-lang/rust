@@ -10,7 +10,7 @@ use rustc_session::declare_lint;
 use rustc_span::{Span, Symbol};
 use tracing::{debug, instrument};
 
-use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
+use crate::diagnostics::{BuiltinClashingExtern, BuiltinClashingExternSub};
 use crate::{LintVec, types};
 
 pub(crate) fn provide(providers: &mut Providers) {

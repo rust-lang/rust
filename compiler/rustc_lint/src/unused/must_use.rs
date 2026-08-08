@@ -10,7 +10,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
 
-use crate::lints::{
+use crate::diagnostics::{
     UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion, UnusedOp, UnusedOpSuggestion,
     UnusedResult,
 };

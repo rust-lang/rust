@@ -4,7 +4,7 @@ use rustc_feature::AttributeStability;
 
 use super::macro_attrs::check_macro_only;
 use super::prelude::*;
-use crate::session_diagnostics;
+use crate::diagnostics;
 
 pub(crate) struct AllowInternalUnstableParser;
 impl CombineAttributeParser for AllowInternalUnstableParser {
@@ -92,7 +92,7 @@ fn parse_unstable(
     let mut res = Vec::new();
 
     let Some(list) = args.as_list() else {
-        cx.emit_err(session_diagnostics::ExpectsFeatureList {
+        cx.emit_err(diagnostics::ExpectsFeatureList {
             span: cx.attr_span,
             name: symbol.to_ident_string(),
         });
@@ -104,7 +104,7 @@ fn parse_unstable(
         if let Some(ident) = param.meta_item_no_args().and_then(|i| i.path().word()) {
             res.push(ident.name);
         } else {
-            cx.emit_err(session_diagnostics::ExpectsFeatures {
+            cx.emit_err(diagnostics::ExpectsFeatures {
                 span: param_span,
                 name: symbol.to_ident_string(),
             });
