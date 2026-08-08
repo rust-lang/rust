@@ -7,16 +7,22 @@
 
 fn main() {
     let (a: bool,) = (true,);
-    //~^ ERROR expected one of
+    //~^ ERROR the elements of a tuple pattern cannot be given types individually
 
     let (b: bool, c: u8) = (true, 1);
-    //~^ ERROR expected one of
+    //~^ ERROR the elements of a tuple pattern cannot be given types individually
 
     let (d: bool, e) = (true, 1);
-    //~^ ERROR expected one of
+    //~^ ERROR the elements of a tuple pattern cannot be given types individually
 
     let (f: Option<u8>,) = (Some(1),);
-    //~^ ERROR expected one of
+    //~^ ERROR the elements of a tuple pattern cannot be given types individually
 
     let _ = (a, b, c, d, e, f);
+
+    // With no whitespace after the colon we keep the existing "maybe write a
+    // path separator here" suggestion instead, since `m::C` is the likelier
+    // intent.
+    let (m:C,) = (0,);
+    //~^ ERROR expected one of
 }
