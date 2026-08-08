@@ -1607,6 +1607,7 @@ infra-ci = [
     "@marcoieni",
     "@jdno",
     "@jieyouxu",
+    "@ubiratansoares"
 ]
 docs = [
     "@GuillaumeGomez",
