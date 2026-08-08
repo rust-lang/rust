@@ -25,6 +25,7 @@ mod auto_trait;
 mod blanket_impl;
 pub(crate) mod cfg;
 pub(crate) mod inline;
+pub(crate) mod paths;
 mod render_macro_matchers;
 mod simplify;
 pub(crate) mod types;
