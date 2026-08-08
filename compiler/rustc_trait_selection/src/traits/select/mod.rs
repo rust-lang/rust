@@ -1558,7 +1558,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             //
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
-            TypingMode::PostAnalysis | TypingMode::Codegen => true,
+            TypingMode::PostAnalysis => true,
+            TypingMode::Codegen => false,
         }
     }
 
