@@ -136,10 +136,7 @@ impl ThreadInit {
         // so that it may call std::thread::current() in its implementation. This is also
         // why we take Box<Self>, to ensure the Box is not destroyed until after this point.
         // Cloning the handle does not invoke the global allocator, it is an Arc.
-        if let Err(_thread) = set_current(self.handle.clone()) {
-            // The current thread should not have set yet. Use an abort to save binary size (see #123356).
-            rtabort!("current thread handle already set during thread spawn");
-        }
+        set_current(self.handle.clone());
 
         if let Some(name) = self.handle.cname() {
             imp::set_name(name);
