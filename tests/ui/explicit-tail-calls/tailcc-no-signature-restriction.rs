@@ -1,6 +1,6 @@
 //@ run-pass
 //@ ignore-backends: gcc
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ revisions: x86_64 aarch64
 //
 // FIXME: enable x86 on LLVM 23.

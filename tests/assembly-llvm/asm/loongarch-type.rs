@@ -8,7 +8,7 @@
 
 //@[loongarch32r] compile-flags: --target loongarch32-unknown-none
 //@[loongarch32r] needs-llvm-components: loongarch
-//@[loongarch32r] min-llvm-version: 22
+//@[loongarch32r] llvm-version: >=22
 
 //@[loongarch64] compile-flags: --target loongarch64-unknown-none
 //@[loongarch64] needs-llvm-components: loongarch

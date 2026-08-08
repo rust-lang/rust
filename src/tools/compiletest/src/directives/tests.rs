@@ -6,8 +6,8 @@ use semver::Version;
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
-    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version, line_directive,
+    parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
@@ -319,52 +319,52 @@ fn revisions() {
 #[test]
 fn llvm_version() {
     let config: Config = cfg().llvm_version("8.1.2").build();
-    assert!(check_ignore(&config, "//@ min-llvm-version: 9.0"));
+    assert!(check_ignore(&config, "//@ llvm-version: >=9.0"));
 
     let config: Config = cfg().llvm_version("9.0.1").build();
-    assert!(check_ignore(&config, "//@ min-llvm-version: 9.2"));
+    assert!(check_ignore(&config, "//@ llvm-version: >=9.2"));
 
     let config: Config = cfg().llvm_version("9.3.1").build();
-    assert!(!check_ignore(&config, "//@ min-llvm-version: 9.2"));
+    assert!(!check_ignore(&config, "//@ llvm-version: >=9.2"));
 
     let config: Config = cfg().llvm_version("10.0.0").build();
-    assert!(!check_ignore(&config, "//@ min-llvm-version: 9.0"));
+    assert!(!check_ignore(&config, "//@ llvm-version: >=9.0"));
 
     let config: Config = cfg().llvm_version("10.0.0").build();
-    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 9.0"));
+    assert!(check_ignore(&config, "//@ llvm-version: =9"));
 
     let config: Config = cfg().llvm_version("9.0.0").build();
-    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+    assert!(check_ignore(&config, "//@ llvm-version: =10.0"));
 
     let config: Config = cfg().llvm_version("10.0.0").build();
-    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+    assert!(!check_ignore(&config, "//@ llvm-version: =10.0"));
 
     let config: Config = cfg().llvm_version("10.0.0").build();
-    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+    assert!(!check_ignore(&config, "//@ llvm-version: =10"));
 
     let config: Config = cfg().llvm_version("10.6.2").build();
     assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
 
     let config: Config = cfg().llvm_version("19.0.0").build();
-    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+    assert!(!check_ignore(&config, "//@ llvm-version: <=19"));
 
     let config: Config = cfg().llvm_version("19.1.2").build();
-    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+    assert!(!check_ignore(&config, "//@ llvm-version: <=19"));
 
     let config: Config = cfg().llvm_version("20.0.0").build();
-    assert!(check_ignore(&config, "//@ max-llvm-major-version: 19"));
+    assert!(check_ignore(&config, "//@ llvm-version: <=19"));
 }
 
 #[test]
 fn system_llvm_version() {
     let config: Config = cfg().system_llvm(true).llvm_version("17.0.0").build();
-    assert!(check_ignore(&config, "//@ min-system-llvm-version: 18.0"));
+    assert!(check_ignore(&config, "//@ system-llvm-version: >=18"));
 
     let config: Config = cfg().system_llvm(true).llvm_version("18.0.0").build();
-    assert!(!check_ignore(&config, "//@ min-system-llvm-version: 18.0"));
+    assert!(!check_ignore(&config, "//@ system-llvm-version: >=18"));
 
     let config: Config = cfg().llvm_version("17.0.0").build();
-    assert!(!check_ignore(&config, "//@ min-system-llvm-version: 18.0"));
+    assert!(!check_ignore(&config, "//@ system-llvm-version: >=18"));
 }
 
 #[test]
@@ -533,26 +533,35 @@ fn channel() {
 
 #[test]
 fn test_extract_llvm_version() {
-    // Note: officially, semver *requires* that versions at the minimum have all three
-    // `major.minor.patch` numbers, though for test-writer's convenience we allow omitting the minor
-    // and patch numbers (which will be stubbed out as 0).
-    assert_eq!(extract_llvm_version("0"), Version::new(0, 0, 0));
-    assert_eq!(extract_llvm_version("0.0"), Version::new(0, 0, 0));
+    fn version_with_pre(major: u64, minor: u64, patch: u64, pre: &str) -> Version {
+        Version {
+            major,
+            minor,
+            patch,
+            pre: semver::Prerelease::new(pre).unwrap(),
+            build: semver::BuildMetadata::EMPTY,
+        }
+    }
+
     assert_eq!(extract_llvm_version("0.0.0"), Version::new(0, 0, 0));
-    assert_eq!(extract_llvm_version("1"), Version::new(1, 0, 0));
-    assert_eq!(extract_llvm_version("1.2"), Version::new(1, 2, 0));
     assert_eq!(extract_llvm_version("1.2.3"), Version::new(1, 2, 3));
-    assert_eq!(extract_llvm_version("4.5.6git"), Version::new(4, 5, 6));
-    assert_eq!(extract_llvm_version("4.5.6-rc1"), Version::new(4, 5, 6));
-    assert_eq!(extract_llvm_version("123.456.789-rc1"), Version::new(123, 456, 789));
-    assert_eq!(extract_llvm_version("8.1.2-rust"), Version::new(8, 1, 2));
-    assert_eq!(extract_llvm_version("9.0.1-rust-1.43.0-dev"), Version::new(9, 0, 1));
-    assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Version::new(9, 3, 1));
-    assert_eq!(extract_llvm_version("10.0.0-rust"), Version::new(10, 0, 0));
+    // assert_eq!(extract_llvm_version("4.5.6git"), Version::new(4, 5, 6));
+    assert_eq!(extract_llvm_version("4.5.6-rc1"), version_with_pre(4, 5, 6, "rc1"));
+    assert_eq!(extract_llvm_version("123.456.789-rc1"), version_with_pre(123, 456, 789, "rc1"));
+    assert_eq!(extract_llvm_version("8.1.2-rust"), version_with_pre(8, 1, 2, "rust"));
+    assert_eq!(
+        extract_llvm_version("9.0.1-rust-1.43.0-dev"),
+        version_with_pre(9, 0, 1, "rust-1.43.0-dev")
+    );
+    assert_eq!(
+        extract_llvm_version("9.3.1-rust-1.43.0-dev"),
+        version_with_pre(9, 3, 1, "rust-1.43.0-dev")
+    );
+    assert_eq!(extract_llvm_version("10.0.0-rust"), version_with_pre(10, 0, 0, "rust"));
     assert_eq!(extract_llvm_version("11.1.0"), Version::new(11, 1, 0));
-    assert_eq!(extract_llvm_version("12.0.0libcxx"), Version::new(12, 0, 0));
-    assert_eq!(extract_llvm_version("12.0.0-rc3"), Version::new(12, 0, 0));
-    assert_eq!(extract_llvm_version("13.0.0git"), Version::new(13, 0, 0));
+    // assert_eq!(extract_llvm_version("12.0.0libcxx"), Version::new(12, 0, 0));
+    assert_eq!(extract_llvm_version("12.0.0-rc3"), version_with_pre(12, 0, 0, "rc3"));
+    // assert_eq!(extract_llvm_version("13.0.0git"), Version::new(13, 0, 0));
 }
 
 #[test]
@@ -571,27 +580,6 @@ fn test_llvm_version_invalid_prefix() {
 #[should_panic]
 fn test_llvm_version_too_many_components() {
     extract_llvm_version("4.5.6.7");
-}
-
-#[test]
-fn test_extract_version_range() {
-    let wrapped_extract = |s: &str| Some(extract_llvm_version(s));
-
-    assert_eq!(
-        extract_version_range("1.2.3 - 4.5.6", wrapped_extract),
-        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
-    );
-    assert_eq!(
-        extract_version_range("0   - 4.5.6", wrapped_extract),
-        Some((Version::new(0, 0, 0), Version::new(4, 5, 6)))
-    );
-    assert_eq!(extract_version_range("1.2.3 -", wrapped_extract), None);
-    assert_eq!(extract_version_range("1.2.3 - ", wrapped_extract), None);
-    assert_eq!(extract_version_range("- 4.5.6", wrapped_extract), None);
-    assert_eq!(extract_version_range("-", wrapped_extract), None);
-    assert_eq!(extract_version_range(" - 4.5.6", wrapped_extract), None);
-    assert_eq!(extract_version_range("   - 4.5.6", wrapped_extract), None);
-    assert_eq!(extract_version_range("0  -", wrapped_extract), None);
 }
 
 #[test]

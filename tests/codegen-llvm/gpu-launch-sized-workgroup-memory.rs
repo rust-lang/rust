@@ -9,10 +9,10 @@
 
 //@ [nvptx-pre-llvm-23] compile-flags: --target nvptx64-nvidia-cuda
 //@ [nvptx-pre-llvm-23] needs-llvm-components: nvptx
-//@ [nvptx-pre-llvm-23] max-llvm-major-version: 22
+//@ [nvptx-pre-llvm-23] llvm-version: <=22
 //@ [nvptx-post-llvm-23] compile-flags: --target nvptx64-nvidia-cuda
 //@ [nvptx-post-llvm-23] needs-llvm-components: nvptx
-//@ [nvptx-post-llvm-23] min-llvm-version: 23
+//@ [nvptx-post-llvm-23] llvm-version: >=23
 //@ add-minicore
 #![feature(intrinsics, no_core, rustc_attrs)]
 #![no_core]

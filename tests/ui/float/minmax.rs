@@ -1,7 +1,7 @@
 //FIXME(llvm21) This should be a library test, but old LLVM miscompiles things so we can't just
 // test this properly everywhere. Once we require LLVM 22, remove this test and enable the
 // commented-out tests in `library/coretests/tests/floats/mod.rs` instead.
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ run-pass
 
 use std::hint::black_box;

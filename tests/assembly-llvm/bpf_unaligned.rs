@@ -1,7 +1,7 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target bpfel-unknown-none -C target_feature=+allows-misaligned-mem-access
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ needs-llvm-components: bpf
 #![feature(no_core)]
 #![crate_type = "rlib"]
