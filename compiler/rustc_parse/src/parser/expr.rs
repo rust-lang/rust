@@ -107,8 +107,37 @@ impl<'a> Parser<'a> {
 
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
-            .map(|(r, _)| r)
+        let start = self.create_snapshot_for_diagnostic();
+        let err_count = self.dcx().err_count();
+        let err = match self
+            .parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
+        {
+            Ok((args, _)) => return Ok(args),
+            Err(err) => err,
+        };
+
+        // The attempt above can emit diagnostics before it fails (like in
+        // `tests/ui/parser/attribute/attr-stmt-expr-attr-bad.rs`), and parsing again the same
+        // tokens would emit them a second time.
+        if self.dcx().err_count() != err_count {
+            return Err(err);
+        }
+        let failed = self.create_snapshot_for_diagnostic();
+        self.restore_snapshot(start);
+        match self.parse_paren_comma_seq(|p| {
+            let expr = p.parse_expr_catch_underscore(Restrictions::empty())?;
+            Ok(p.recover_fn_call_arg_missing_turbofish(expr))
+        }) {
+            Ok((args, _)) => {
+                err.cancel();
+                Ok(args)
+            }
+            Err(retry_err) => {
+                retry_err.cancel();
+                self.restore_snapshot(failed);
+                Err(err)
+            }
+        }
     }
 
     /// Parses an expression, subject to the given restrictions.
