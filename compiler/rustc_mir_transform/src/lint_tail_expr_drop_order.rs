@@ -186,8 +186,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         // A synthetic coroutine has no HIR body and it is enough to just analyse the original body
         return;
     }
-    if body.span.edition().at_least_rust_2024()
-        || tcx.skippable_lints(()).contains(&lint::LintId::of(TAIL_EXPR_DROP_ORDER))
+    if body.span.edition().at_least_rust_2024() || tcx.lint_should_be_skipped(TAIL_EXPR_DROP_ORDER)
     {
         return;
     }

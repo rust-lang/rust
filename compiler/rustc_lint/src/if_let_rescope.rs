@@ -11,7 +11,7 @@ use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::{LintId, fcw};
+use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
@@ -268,8 +268,7 @@ impl_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.edition().at_least_rust_2024()
-            || cx.tcx.skippable_lints(()).contains(&LintId::of(IF_LET_RESCOPE))
+        if expr.span.edition().at_least_rust_2024() || cx.tcx.lint_should_be_skipped(IF_LET_RESCOPE)
         {
             return;
         }
