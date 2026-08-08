@@ -2511,8 +2511,11 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("doc")
                 .path("cargo")
-                .render_steps(), @r"
+                .render_steps(), @"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
         [doc] rustc 0 <host> -> Cargo 1 <host>
         ");
     }
@@ -2523,11 +2526,13 @@ mod snapshot {
             ctx.config("doc")
                 .path("cargo")
                 .stage(2)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> rustc 2 <host>
         [doc] rustc 1 <host> -> Cargo 2 <host>
         ");
     }
@@ -2643,8 +2648,11 @@ mod snapshot {
             ctx.config("doc")
                 .path("src/tools/compiletest")
                 .stage(1)
-                .render_steps(), @r"
+                .render_steps(), @"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
         [doc] rustc 0 <host> -> Compiletest 1 <host>
         ");
     }
@@ -2656,11 +2664,13 @@ mod snapshot {
             ctx.config("doc")
                 .path("src/tools/compiletest")
                 .stage(2)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> rustc 2 <host>
         [doc] rustc 1 <host> -> Compiletest 2 <host>
         ");
     }
