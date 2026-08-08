@@ -1,0 +1,24 @@
+; Check that array TypeTree metadata is correctly generated for the iter/window case
+; We check all three relevant cases. The metadata generated for extractvalue, 
+; the metadata for the memcpy call,
+; and the metadata for the function definition. 
+; At the time of writing, at least the first two where necessary to make compilation succeed in debug mode.
+
+CHECK-LABEL: ; <core::slice::iter::Windows<f64> as core::iter::traits::iterator::Iterator>::fold
+CHECK:   extractvalue { ptr, i64 } %[[IN:[0-9]+]], 0, !enzyme_type ![[DATA_TT:[0-9]+]]
+CHECK:   extractvalue { ptr, i64 } %[[IN]], 1, !enzyme_type ![[LEN_TT:[0-9]+]]
+
+CHECK-LABEL: ; window::main
+CHECK:  call void @llvm.memcpy.p0.p0.i64(ptr align 8 "enzyme_type"="{[0]:Pointer, [0,-1]:Float@double}" %vjp, ptr align 8 "enzyme_type"="{[0]:Pointer, [0,-1]:Float@double}" {{.*}}, i64 24, i1 false)
+
+
+CHECK: define {{.*}}void @f(ptr align 8 "enzyme_type"="{[-1]:Pointer, [-1,-1]:Float@double}" %x, ptr align 8 "enzyme_type"="{[-1]:Pointer, [-1,-1]:Float@double}" %0, ptr writeonly align 8 captures(none) "enzyme_type"="{[-1]:Pointer, [-1,-1]:Float@double}" %y)
+
+
+CHECK-DAG: ![[DATA_TT]] = !{!"Unknown", i32 -1, ![[PTR_TT:[0-9]+]]}
+CHECK-DAG: ![[PTR_TT]] = !{!"Pointer", i32 -1, ![[FLOAT_TT:[0-9]+]]}
+CHECK-DAG: ![[FLOAT_TT]] = !{!"Float@double"}
+
+CHECK-DAG: ![[LEN_TT]] = !{!"Unknown", i32 0, ![[INT_TT:[0-9]+]], i32 1, ![[INT_TT]], i32 2, ![[INT_TT]], i32 3, ![[INT_TT]], i32 4, ![[INT_TT]], i32 5, ![[INT_TT]], i32 6, ![[INT_TT]], i32 7, ![[INT_TT]]}
+CHECK-DAG: ![[INT_TT]] = !{!"Integer"}
+
