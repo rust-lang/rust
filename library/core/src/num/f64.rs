@@ -1088,7 +1088,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f64) -> f64 {
-        intrinsics::maximum_number_nsz_f64(self, other)
+        intrinsics::maximum_number_f64(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -1115,7 +1115,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f64) -> f64 {
-        intrinsics::minimum_number_nsz_f64(self, other)
+        intrinsics::minimum_number_f64(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1581,7 +1581,7 @@ impl f64 {
     #[stable(feature = "clamp", since = "1.50.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
-    pub const fn clamp(mut self, min: f64, max: f64) -> f64 {
+    pub const fn clamp(self, min: f64, max: f64) -> f64 {
         const_assert!(
             min <= max,
             "min > max, or either was NaN",
@@ -1589,14 +1589,7 @@ impl f64 {
             min: f64,
             max: f64,
         );
-
-        if self < min {
-            self = min;
-        }
-        if self > max {
-            self = max;
-        }
-        self
+        self.max(min).min(max)
     }
 
     /// Clamps this number to a symmetric range centered around zero.
