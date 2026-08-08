@@ -23,7 +23,7 @@ use rustc_type_ir::{
 use tracing::instrument;
 use ty::util::IntTypeExt;
 
-use super::GenericParamDefKind;
+use super::{AdtFlags, GenericParamDefKind};
 use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
@@ -2197,6 +2197,22 @@ impl<'tcx> Ty<'tcx> {
     /// ```
     pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
         TypeWalker::new(self.into())
+    }
+
+    /// Returns `true` if this is a `MaybeDangling<T>`-like type, i.e., a type whose inner
+    /// references are not required to be dereferenceable and are not reborrowed.
+    #[inline]
+    pub fn is_like_maybe_dangling(self) -> bool {
+        match self.kind() {
+            ty::Adt(def, _) => {
+                // ManuallyDrop is "natively" like maybe-dangling so that we don't have
+                // to nest field types even deeper.
+                def.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
+                    || def.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+            }
+            ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineClosure(..) => true,
+            _ => false,
+        }
     }
 }
 

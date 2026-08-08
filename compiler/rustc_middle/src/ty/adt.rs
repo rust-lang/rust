@@ -64,6 +64,8 @@ bitflags::bitflags! {
         /// Indicates whether the type is `FieldRepresentingType`.
         const IS_FIELD_REPRESENTING_TYPE    = 1 << 13;
         /// Indicates whether the type is `MaybeDangling<_>`.
+        /// Note that this is not the only type with "maybe dangling" semantics!
+        /// Use `ty.is_like_maybe_dangling()` to check for that.
         const IS_MAYBE_DANGLING             = 1 << 14;
     }
 }
@@ -525,12 +527,6 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
-    }
-
-    /// Returns `true` if this is `MaybeDangling<T>`.
-    #[inline]
-    pub fn is_maybe_dangling(self) -> bool {
-        self.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
     }
 
     /// Returns `true` if this is `Pin<T>`.

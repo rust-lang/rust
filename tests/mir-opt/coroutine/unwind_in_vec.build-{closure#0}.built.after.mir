@@ -91,7 +91,7 @@ yields ()
 
     bb6: {
         StorageDead(_19);
-        ((((*_5).1: std::mem::ManuallyDrop<[std::string::String; 5]>).0: std::mem::MaybeDangling<[std::string::String; 5]>).0: [std::string::String; 5]) = [move _6, move _9, move _12, move _15, move _18];
+        (((*_5).1: std::mem::ManuallyDrop<[std::string::String; 5]>).0: [std::string::String; 5]) = [move _6, move _9, move _12, move _15, move _18];
         drop(_18) -> [return: bb7, unwind: bb25, drop: bb15];
     }
 
