@@ -14,12 +14,7 @@ fn main() {
         .arg("-Clto=fat")
         .run_fail()
         .assert_stderr_contains("Enzyme: Cannot deduce type of copy");
-    rustc()
-        .input("window.rs")
-        .arg("-Zautodiff=Enable")
-        .arg("-Clto=fat")
-        .emit("llvm-ir")
-        .run_fail()
-        .assert_stderr_contains("Enzyme: Cannot deduce type of extract");
+    rustc().input("window.rs").arg("-Zautodiff=Enable").arg("-Clto=fat").emit("llvm-ir").run();
     rustc().input("window.rs").arg("-Zautodiff=Enable,NoTT").arg("-Clto=fat").arg("-O").run();
+    llvm_filecheck().patterns("window.check").stdin_buf(rfs::read("window.ll")).run();
 }
