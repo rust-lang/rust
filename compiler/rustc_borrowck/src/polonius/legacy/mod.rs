@@ -90,7 +90,7 @@ fn emit_move_facts(
                 let block_data = &body[location.block];
                 let is_terminator = location.statement_index == block_data.statements.len();
 
-                if is_terminator && init.kind == InitKind::NonPanicPathOnly {
+                if is_terminator && init.kind == InitKind::OnReturn {
                     // We are at the terminator of an init that has a panic path,
                     // and where the init should not happen on panic
 

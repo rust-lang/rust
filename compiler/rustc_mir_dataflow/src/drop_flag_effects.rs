@@ -141,12 +141,8 @@ where
     for ii in &move_data.init_loc_map[loc] {
         let init = move_data.inits[*ii];
         match init.kind {
-            InitKind::Deep => {
-                let path = init.path;
-
-                on_all_children_bits(move_data, path, &mut callback)
-            }
-            InitKind::NonPanicPathOnly => (),
+            InitKind::Unconditional => on_all_children_bits(move_data, init.path, &mut callback),
+            InitKind::OnReturn => (),
         }
     }
 }

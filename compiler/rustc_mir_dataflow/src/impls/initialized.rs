@@ -663,10 +663,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         // Record inits of locals. Projections can be ignored.
         state.gen_all(init_loc_map[location].iter().copied().filter_map(|ii| {
             let init = &move_data.inits[ii];
-            if init.kind != InitKind::NonPanicPathOnly {
-                move_data.move_paths[init.path].place.as_local()
-            } else {
-                None
+            match init.kind {
+                InitKind::Unconditional => move_data.move_paths[init.path].place.as_local(),
+                InitKind::OnReturn => None,
             }
         }));
     }
@@ -684,10 +683,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let call_loc = self.body.terminator_loc(block);
         state.gen_all(init_loc_map[call_loc].iter().copied().filter_map(|ii| {
             let init = &move_data.inits[ii];
-            if init.kind == InitKind::NonPanicPathOnly {
-                move_data.move_paths[init.path].place.as_local()
-            } else {
-                None
+            match init.kind {
+                InitKind::Unconditional => None,
+                InitKind::OnReturn => move_data.move_paths[init.path].place.as_local(),
             }
         }));
     }
@@ -717,7 +715,7 @@ impl EverInitializedPlaces<'_, '_> {
         if init_loc.statement_index < init_block_data.statements.len() {
             // This case mirrors `apply_primary_statement_effect`.
             queue.push(init_loc.successor_within_block());
-        } else if init.kind == InitKind::NonPanicPathOnly {
+        } else if init.kind == InitKind::OnReturn {
             // This case mirrors `apply_call_return_effect`.
             let TerminatorEdges::AssignOnReturn { return_, .. } =
                 init_block_data.terminator().edges()

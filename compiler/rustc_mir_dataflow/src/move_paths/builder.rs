@@ -365,7 +365,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             if let Some(path) = self.data.rev_lookup.find_local(arg) {
                 let init = self.data.inits.push(Init {
                     path,
-                    kind: InitKind::Deep,
+                    kind: InitKind::Unconditional,
                     location: InitLocation::Argument(arg),
                 });
 
@@ -391,7 +391,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             }
             StatementKind::Assign((place, rval)) => {
                 self.create_move_path(*place);
-                self.gather_init(place.as_ref(), InitKind::Deep);
+                self.gather_init(place.as_ref(), InitKind::Unconditional);
                 self.gather_rvalue(rval);
             }
             StatementKind::FakeRead((_, place)) => {
@@ -473,7 +473,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
                 self.gather_operand(value);
                 self.create_move_path(place);
-                self.gather_init(place.as_ref(), InitKind::Deep);
+                self.gather_init(place.as_ref(), InitKind::Unconditional);
             }
             TerminatorKind::Call {
                 ref func,
@@ -490,7 +490,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 }
                 if let Some(_bb) = target {
                     self.create_move_path(destination);
-                    self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
+                    self.gather_init(destination.as_ref(), InitKind::OnReturn);
                 }
             }
             TerminatorKind::TailCall { ref func, ref args, .. } => {
@@ -516,14 +516,14 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
                             if let Some(place) = place {
                                 self.create_move_path(place);
-                                self.gather_init(place.as_ref(), InitKind::Deep);
+                                self.gather_init(place.as_ref(), InitKind::Unconditional);
                             }
                         }
                         InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
                             self.gather_operand(in_value);
                             if let Some(out_place) = out_place {
                                 self.create_move_path(out_place);
-                                self.gather_init(out_place.as_ref(), InitKind::Deep);
+                                self.gather_init(out_place.as_ref(), InitKind::Unconditional);
                             }
                         }
                         InlineAsmOperand::Const { value: _ }
