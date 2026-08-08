@@ -19,16 +19,13 @@ impl Instant {
         Instant(clock_gettime(CLOCK_MONOTONIC))
     }
 
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.sub_timespec(&other.0).ok()
+    pub fn from_duration(duration: Duration) -> Instant {
+        let spec = Timespec::MIN.checked_add_duration(&duration).unwrap();
+        Instant(spec)
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add_duration(other)?))
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub_duration(other)?))
+    pub fn into_duration(self) -> Duration {
+        self.0.sub_timespec(&Timespec::MIN).unwrap()
     }
 }
 

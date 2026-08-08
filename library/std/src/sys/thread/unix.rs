@@ -672,7 +672,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         }
 
         if let Some(clock_nanosleep) = __clock_nanosleep_time64.get() {
-            let ts = deadline.into_inner().into_timespec().to_timespec64();
+            let ts = crate::time::instant_into_inner(deadline).into_timespec().to_timespec64();
             loop {
                 let r = unsafe {
                     clock_nanosleep(
@@ -700,7 +700,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         }
     }
 
-    let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
+    let Some(ts) = crate::time::instant_into_inner(deadline).into_timespec().to_timespec() else {
         // The deadline is further in the future then can be passed to
         // clock_nanosleep. We have to use Self::sleep instead. This might
         // happen on 32 bit platforms, especially closer to 2038.
@@ -750,7 +750,8 @@ pub fn sleep_until(deadline: crate::time::Instant) {
 
     // Make sure to round up to ensure that we definitely sleep until after
     // the deadline has elapsed.
-    let Some(deadline) = deadline.into_inner().into_mach_absolute_time_ceil() else {
+    let Some(deadline) = crate::time::instant_into_inner(deadline).into_mach_absolute_time_ceil()
+    else {
         // Since the deadline is before the system boot time, it has already
         // passed, so we can return immediately.
         return;
