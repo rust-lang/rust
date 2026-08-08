@@ -1,3 +1,5 @@
+//! Test that CoerceShared can be implemented even if field order changes.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

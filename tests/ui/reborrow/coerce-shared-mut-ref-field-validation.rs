@@ -1,3 +1,5 @@
+//! Test that reference shared coercing does not allow changing lifetime relations.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

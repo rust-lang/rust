@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
-  --> $DIR/coerce-shared-decl-macro-hygiene.rs:20:5
+  --> $DIR/coerce-shared-decl-macro-hygiene.rs:24:5
    |
 LL |     impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^---------^^^^^^---------^^^

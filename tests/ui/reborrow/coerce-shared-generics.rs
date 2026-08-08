@@ -1,3 +1,5 @@
+//! Test that Reborrow and CoerceShared can be implemented with generics.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

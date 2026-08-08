@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
-  --> $DIR/coerce-shared-field-lifetime-swap.rs:14:5
+  --> $DIR/coerce-shared-field-lifetime-swap.rs:16:5
    |
 LL |     x: &'static (),
    |     -------------- source field `x` has type `&'static ()`

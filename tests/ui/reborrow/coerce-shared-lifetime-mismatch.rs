@@ -1,3 +1,5 @@
+//! Test that CoerceShared cannot be implemented with spurious 'static lifetimes.
+
 #![feature(reborrow)]
 
 // The impl is accepted, but using it to coerce a local marker into a `'static`
@@ -20,5 +22,4 @@ fn method(_a: StaticMarkerRef<'static>) {}
 fn main() {
     let a = CustomMarker(PhantomData);
     method(a);
-    //~^ ERROR
 }

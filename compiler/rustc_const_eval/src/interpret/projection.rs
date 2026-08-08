@@ -411,6 +411,9 @@ where
             OpaqueCast(ty) => {
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
+            PhantomDeref => {
+                span_bug!(self.cur_span(), "PhantomDeref encountered after borrowck")
+            }
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
             Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,

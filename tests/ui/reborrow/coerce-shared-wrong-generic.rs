@@ -1,3 +1,5 @@
+//! Test that CoerceShared cannot switch generic type usage around.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, PhantomData, Reborrow};

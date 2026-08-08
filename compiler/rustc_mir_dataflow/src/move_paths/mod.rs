@@ -452,6 +452,9 @@ impl MoveSubPath {
         let subpath = match elem {
             // correspond to a MoveSubPath
             ProjectionKind::Deref => MoveSubPath::Deref,
+            ProjectionKind::PhantomDeref => {
+                unreachable!("unexpected PhantomDeref in MoveSubPath::of")
+            }
             ProjectionKind::Field(idx, _) => MoveSubPath::Field(idx),
             ProjectionKind::ConstantIndex { offset, min_length: _, from_end: false } => {
                 MoveSubPath::ConstantIndex(offset)
