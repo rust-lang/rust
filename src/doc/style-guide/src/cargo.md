@@ -11,8 +11,7 @@ key-value pairs in that section, or between key-value pairs in a section.
 Version-sort key names within each section, with the exception of the
 `[package]` section. Put the `[package]` section at the top of the file; put
 the `name` and `version` keys in that order at the top of that section,
-followed by the remaining keys other than `description` in order, followed by
-the `description` at the end of that section.
+followed by the remaining keys in order.
 
 Don't use quotes around any standard key names; use bare keys. Only use quoted
 keys for non-standard keys whose names require them, and avoid introducing such
