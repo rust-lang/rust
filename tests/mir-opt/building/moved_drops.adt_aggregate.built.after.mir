@@ -1,0 +1,37 @@
+// MIR for `adt_aggregate` after built
+
+fn adt_aggregate() -> () {
+    let mut _0: ();
+    let _1: adt_aggregate::S;
+    let mut _2: std::string::String;
+    scope 1 {
+        debug _s => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = String::new() -> [return: bb1, unwind: bb4];
+    }
+
+    bb1: {
+        _1 = S(move _2);
+        drop(_2) -> [return: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        StorageDead(_2);
+        FakeRead(ForLet(None), _1);
+        _0 = const ();
+        drop(_1) -> [return: bb3, unwind: bb4];
+    }
+
+    bb3: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+}
