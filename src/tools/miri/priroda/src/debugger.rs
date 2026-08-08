@@ -377,14 +377,11 @@ impl<'tcx> PrirodaContext<'tcx> {
     /// Initialized bytes are shown in hexadecimal, uninitialized bytes as `??`,
     /// and complete pointer-sized provenance as pointer markers.
     fn render_mplace_bytes(&self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx, String> {
-        let size = match self.ecx.size_and_align_of_val(mplace)? {
-            Some((size, _)) => size,
-            None => {
-                // Extern types cannot currently be executed as by-value locals,
-                // so this path cannot yet be covered by a Priroda UI fixture.
-                // FIXME: Add coverage once Priroda supports printing dereferenced places.
-                return interp_ok("<unsupported-unsized>".to_string());
-            }
+        let Some((size, _)) = self.ecx.size_and_align_of_val(mplace)? else {
+            // Extern types cannot currently be executed as by-value locals,
+            // so this path cannot yet be covered by a Priroda UI fixture.
+            // FIXME: Add coverage once Priroda supports printing dereferenced places.
+            return interp_ok("<unsupported-unsized>".to_string());
         };
 
         let size = size.bytes_usize();
@@ -508,20 +505,22 @@ impl<'tcx> PrirodaContext<'tcx> {
                 // view before fields can be projected. Structs use their sole
                 // variant directly. Keep the display name tied to the same choice.
                 let (variant_idx, down, name) = if def.is_enum() {
-                    let variant_idx = match self.ecx.read_discriminant(&op).discard_err() {
-                        Some(variant_idx) => variant_idx,
+                    let Some(variant_idx) =
+                        self.ecx.read_discriminant(&op).discard_err()
+                    else {
                         // FIXME: expose this as an explicit render error when
                         // Priroda grows structured value states. Falling back to
                         // bytes keeps today's UI usable but hides why the enum
                         // could not be source-shaped.
-                        None => return self.render_op(op),
+                        return self.render_op(op);
                     };
-                    let down = match self.ecx.project_downcast(&op, variant_idx).discard_err() {
-                        Some(down) => down,
+                    let Some(down) =
+                        self.ecx.project_downcast(&op, variant_idx).discard_err()
+                    else {
                         // FIXME: distinguish invalid/uninitialized discriminants
                         // from projection bugs in the rendered output once locals
                         // can carry structured diagnostics.
-                        None => return self.render_op(op),
+                        return self.render_op(op);
                     };
                     let variant_def = &def.variants()[variant_idx];
                     (
@@ -542,12 +541,13 @@ impl<'tcx> PrirodaContext<'tcx> {
                     let field_idx = FieldIdx::from_usize(i);
                     // `project_field` avoids manual offset math and works for both
                     // immediate and memory-backed operands through `Projectable`.
-                    let field_op = match self.ecx.project_field(&down, field_idx).discard_err() {
-                        Some(field_op) => field_op,
+                    let Some(field_op) =
+                        self.ecx.project_field(&down, field_idx).discard_err()
+                    else {
                         // FIXME: preserve the successfully rendered fields and
                         // mark only this field as unavailable once the value model
                         // can represent partial render failures.
-                        None => return self.render_op(op),
+                        return self.render_op(op);
                     };
                     fields.push(self.render_source_shaped_op_inner(field_op, depth + 1));
                 }
@@ -578,14 +578,14 @@ impl<'tcx> PrirodaContext<'tcx> {
                 for i in 0..args.len() {
                     // Tuples have no field names in source, so preserve their
                     // source field order and render children positionally.
-                    let field_op =
-                        match self.ecx.project_field(&op, FieldIdx::from_usize(i)).discard_err() {
-                            Some(field_op) => field_op,
-                            // FIXME: render tuple fields independently so one
-                            // projection failure does not throw away the whole
-                            // source-shaped tuple.
-                            None => return self.render_op(op),
-                        };
+                    let Some(field_op) =
+                        self.ecx.project_field(&op, FieldIdx::from_usize(i)).discard_err()
+                    else {
+                        // FIXME: render tuple fields independently so one
+                        // projection failure does not throw away the whole
+                        // source-shaped tuple.
+                        return self.render_op(op);
+                    };
                     fields.push(self.render_source_shaped_op_inner(field_op, depth + 1));
                 }
 
@@ -600,11 +600,10 @@ impl<'tcx> PrirodaContext<'tcx> {
                 // `project_array_fields` uses the dynamic length for slices. That
                 // avoids the classic mistake of treating slice layout as a fixed
                 // zero-length array.
-                let mut iter = match self.ecx.project_array_fields(&op).discard_err() {
-                    Some(iter) => iter,
+                let Some(mut iter) = self.ecx.project_array_fields(&op).discard_err() else {
                     // FIXME: when slice metadata is invalid, show that as a slice
                     // length problem instead of silently falling back to raw bytes.
-                    None => return self.render_op(op),
+                    return self.render_op(op);
                 };
 
                 let mut fields = Vec::new();
