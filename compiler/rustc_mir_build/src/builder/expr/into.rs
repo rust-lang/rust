@@ -455,9 +455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let place = b.project_deeper(&[ProjectionElem::Deref], tcx);
                         // Current type: `MaybeUninit<T>`. Field #1 is `ManuallyDrop<T>`.
                         let place = place.project_to_field(FieldIdx::from_u32(1), decls, tcx);
-                        // Current type: `ManuallyDrop<T>`. Field #0 is `MaybeDangling<T>`.
-                        let place = place.project_to_field(FieldIdx::ZERO, decls, tcx);
-                        // Current type: `MaybeDangling<T>`. Field #0 is `T`.
+                        // Current type: `ManuallyDrop<T>`. Field #0 is `T`.
                         let place = place.project_to_field(FieldIdx::ZERO, decls, tcx);
                         // Sanity check.
                         assert_eq!(place.ty(decls, tcx).ty, generic_args.type_at(0));

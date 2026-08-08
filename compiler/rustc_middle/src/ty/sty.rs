@@ -2204,7 +2204,12 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_like_maybe_dangling(self) -> bool {
         match self.kind() {
-            ty::Adt(def, _) => def.flags().contains(AdtFlags::IS_MAYBE_DANGLING),
+            ty::Adt(def, _) => {
+                // ManuallyDrop is "natively" like maybe-dangling so that we don't have
+                // to nest field types even deeper.
+                def.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
+                    || def.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+            }
             ty::Closure(..) | ty::Coroutine(..) | ty::CoroutineClosure(..) => true,
             _ => false,
         }
