@@ -6,12 +6,12 @@
 //! for pivot selection. Using this as a fallback ensures O(n) worst case running time with
 //! better performance than one would get using heapsort as fallback.
 
-use crate::cfg_select;
 use crate::mem::{self, SizedTypeProperties};
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 use crate::slice::sort::unstable::quicksort::partition;
+use crate::{cfg_select, hint};
 
 /// Reorders the slice such that the element at `index` is at its final sorted position.
 pub(crate) fn partition_at_index<T, F>(
@@ -32,14 +32,12 @@ where
     if T::IS_ZST {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.
     } else if index == len - 1 {
-        // Find max element and place it in the last position of the array. We're free to use
-        // `unwrap()` here because we checked that `v` is not empty.
-        let max_idx = max_index(v, &mut is_less).unwrap();
+        // Find max element and place it in the last position of the array.
+        let max_idx = max_index(v, is_less);
         v.swap(max_idx, index);
     } else if index == 0 {
-        // Find min element and place it in the first position of the array. We're free to use
-        // `unwrap()` here because we checked that `v` is not empty.
-        let min_idx = min_index(v, &mut is_less).unwrap();
+        // Find min element and place it in the first position of the array.
+        let min_idx = min_index(v, is_less);
         v.swap(min_idx, index);
     } else {
         cfg_select! {
@@ -145,22 +143,20 @@ fn partition_at_index_loop<'a, T, F>(
 
 /// Helper function that returns the index of the minimum element in the slice using the given
 /// comparator function
-fn min_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Option<usize> {
+fn min_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], mut is_less: F) -> usize {
     slice
         .iter()
         .enumerate()
         .reduce(|acc, t| if is_less(t.1, acc.1) { t } else { acc })
-        .map(|(i, _)| i)
+        // returning `Option<usize>` makes LLVM forget it's an index from enumerate()
+        .unwrap()
+        .0
 }
 
 /// Helper function that returns the index of the maximum element in the slice using the given
 /// comparator function
-fn max_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Option<usize> {
-    slice
-        .iter()
-        .enumerate()
-        .reduce(|acc, t| if is_less(acc.1, t.1) { t } else { acc })
-        .map(|(i, _)| i)
+fn max_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], mut is_less: F) -> usize {
+    min_index(slice, |a, b| is_less(b, a))
 }
 
 /// Selection algorithm to select the k-th element from the slice in guaranteed O(n) time.
@@ -187,13 +183,13 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
         if k == v.len() - 1 {
             // Find max element and place it in the last position of the array. We're free to use
             // `unwrap()` here because we know v must not be empty.
-            let max_idx = max_index(v, is_less).unwrap();
+            let max_idx = max_index(v, is_less);
             v.swap(max_idx, k);
             return;
         } else if k == 0 {
             // Find min element and place it in the first position of the array. We're free to use
             // `unwrap()` here because we know v must not be empty.
-            let min_idx = min_index(v, is_less).unwrap();
+            let min_idx = min_index(v, is_less);
             v.swap(min_idx, k);
             return;
         }
@@ -217,6 +213,10 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
 // as close as possible to the median of the slice. For more details on how the algorithm
 // operates, refer to the paper <https://drops.dagstuhl.de/opus/volltexte/2017/7612/pdf/LIPIcs-SEA-2017-24.pdf>.
 fn median_of_ninthers<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) -> usize {
+    if v.is_empty() {
+        return 0;
+    }
+
     // use `saturating_mul` so the multiplication doesn't overflow on 16-bit platforms.
     let frac = if v.len() <= 1024 {
         v.len() / 12
@@ -229,6 +229,14 @@ fn median_of_ninthers<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F)
     let pivot = frac / 2;
     let lo = v.len() / 2 - pivot;
     let hi = frac + lo;
+
+    // LLVM loses track of integer ranges after division
+    // SAFETY: v is not empty, and frac is < v.len()/2
+    unsafe {
+        hint::assert_unchecked(lo <= hi);
+        hint::assert_unchecked(hi < v.len());
+    }
+
     let gap = (v.len() - 9 * frac) / 4;
     let mut a = lo - 4 * frac - gap;
     let mut b = hi + gap;
