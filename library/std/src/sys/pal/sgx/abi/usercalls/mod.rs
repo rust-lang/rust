@@ -20,19 +20,22 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
-        let ret_len = raw::read(fd, userbuf.as_mut_ptr(), userbuf.len()).from_sgx_result()?;
-        let userbuf = &userbuf[..ret_len];
+        let mut user_mut = userbuf.as_user_mut();
+        let ret_len =
+            raw::read(fd, user_mut.reborrow().as_mut_ptr(), user_mut.coerce_shared().len())
+                .from_sgx_result()?;
+        let user_ref = user_mut.coerce_shared().index(..ret_len);
         let mut index = 0;
         for buf in bufs {
-            let end = cmp::min(index + buf.len(), userbuf.len());
+            let end = cmp::min(index + buf.len(), user_ref.len());
             if let Some(buflen) = end.checked_sub(index) {
-                userbuf[index..end].copy_to_enclave(&mut buf[..buflen]);
+                user_ref.index(index..end).copy_to_enclave(&mut buf[..buflen]);
                 index += buf.len();
             } else {
                 break;
             }
         }
-        Ok(userbuf.len())
+        Ok(user_ref.len())
     }
 }
 
@@ -42,8 +45,10 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
     unsafe {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
-        let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;
-        userbuf[..len].copy_to_enclave(&mut buf.as_mut()[..len]);
+        let mut user_mut = userbuf.as_user_mut();
+        let len = raw::read(fd, user_mut.reborrow().as_mut_ptr(), user_mut.coerce_shared().len())
+            .from_sgx_result()?;
+        user_mut.coerce_shared().index(..len).copy_to_enclave(&mut buf.as_mut()[..len]);
         buf.advance(len);
         Ok(())
     }
@@ -55,8 +60,9 @@ pub fn read_alloc(fd: Fd) -> io::Result<Vec<u8>> {
     unsafe {
         let userbuf = ByteBuffer { data: crate::ptr::null_mut(), len: 0 };
         let mut userbuf = alloc::User::new_from_enclave(&userbuf);
-        raw::read_alloc(fd, userbuf.as_raw_mut_ptr()).from_sgx_result()?;
-        Ok(userbuf.copy_user_buffer())
+        let mut user_mut = userbuf.as_user_mut();
+        raw::read_alloc(fd, user_mut.reborrow().as_raw_mut_ptr()).from_sgx_result()?;
+        Ok(user_mut.coerce_shared().copy_user_buffer())
     }
 }
 
@@ -69,17 +75,19 @@ pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
+        let mut user_mut = userbuf.as_user_mut();
         let mut index = 0;
         for buf in bufs {
-            let end = cmp::min(index + buf.len(), userbuf.len());
+            let end = cmp::min(index + buf.len(), user_mut.coerce_shared().len());
             if let Some(buflen) = end.checked_sub(index) {
-                userbuf[index..end].copy_from_enclave(&buf[..buflen]);
+                user_mut.reborrow().index_mut(index..end).copy_from_enclave(&buf[..buflen]);
                 index += buf.len();
             } else {
                 break;
             }
         }
-        raw::write(fd, userbuf.as_ptr(), userbuf.len()).from_sgx_result()
+        raw::write(fd, user_mut.coerce_shared().as_ptr(), user_mut.coerce_shared().len())
+            .from_sgx_result()
     }
 }
 
@@ -95,7 +103,11 @@ pub fn close(fd: Fd) {
     unsafe { raw::close(fd) }
 }
 
-fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg: &str) -> String {
+fn string_from_bytebuffer(
+    buf: alloc::UserRef<'_, ByteBuffer>,
+    usercall: &str,
+    arg: &str,
+) -> String {
     String::from_utf8(buf.copy_user_buffer())
         .unwrap_or_else(|_| rtabort!("Usercall {usercall}: expected {arg} to be valid UTF-8"))
 }
@@ -105,10 +117,16 @@ fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg:
 pub fn bind_stream(addr: &str) -> io::Result<(Fd, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
+        let addr_user_ref = addr_user.as_user_ref();
         let mut local = alloc::User::<ByteBuffer>::uninitialized();
-        let fd = raw::bind_stream(addr_user.as_ptr(), addr_user.len(), local.as_raw_mut_ptr())
-            .from_sgx_result()?;
-        let local = string_from_bytebuffer(&local, "bind_stream", "local_addr");
+        let mut local_mut = local.as_user_mut();
+        let fd = raw::bind_stream(
+            addr_user_ref.as_ptr(),
+            addr_user_ref.len(),
+            local_mut.reborrow().as_raw_mut_ptr(),
+        )
+        .from_sgx_result()?;
+        let local = string_from_bytebuffer(local_mut.coerce_shared(), "bind_stream", "local_addr");
         Ok((fd, local))
     }
 }
@@ -118,13 +136,17 @@ pub fn bind_stream(addr: &str) -> io::Result<(Fd, String)> {
 pub fn accept_stream(fd: Fd) -> io::Result<(Fd, String, String)> {
     unsafe {
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
-        let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
+        let mut buf_it = alloc::UserMut::iter_mut(bufs.as_user_mut()); // FIXME: can this be done
         // without forcing coercion?
-        let (local, peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
-        let fd = raw::accept_stream(fd, local.as_raw_mut_ptr(), peer.as_raw_mut_ptr())
-            .from_sgx_result()?;
-        let local = string_from_bytebuffer(&local, "accept_stream", "local_addr");
-        let peer = string_from_bytebuffer(&peer, "accept_stream", "peer_addr");
+        let (mut local, mut peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
+        let fd = raw::accept_stream(
+            fd,
+            local.reborrow().as_raw_mut_ptr(),
+            peer.reborrow().as_raw_mut_ptr(),
+        )
+        .from_sgx_result()?;
+        let local = string_from_bytebuffer(local.coerce_shared(), "accept_stream", "local_addr");
+        let peer = string_from_bytebuffer(peer.coerce_shared(), "accept_stream", "peer_addr");
         Ok((fd, local, peer))
     }
 }
@@ -134,19 +156,20 @@ pub fn accept_stream(fd: Fd) -> io::Result<(Fd, String, String)> {
 pub fn connect_stream(addr: &str) -> io::Result<(Fd, String, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
+        let addr_user_ref = addr_user.as_user_ref();
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
-        let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
+        let mut buf_it = alloc::UserMut::iter_mut(bufs.as_user_mut()); // FIXME: can this be done
         // without forcing coercion?
-        let (local, peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
+        let (mut local, mut peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
         let fd = raw::connect_stream(
-            addr_user.as_ptr(),
-            addr_user.len(),
-            local.as_raw_mut_ptr(),
-            peer.as_raw_mut_ptr(),
+            addr_user_ref.as_ptr(),
+            addr_user_ref.len(),
+            local.reborrow().as_raw_mut_ptr(),
+            peer.reborrow().as_raw_mut_ptr(),
         )
         .from_sgx_result()?;
-        let local = string_from_bytebuffer(&local, "connect_stream", "local_addr");
-        let peer = string_from_bytebuffer(&peer, "connect_stream", "peer_addr");
+        let local = string_from_bytebuffer(local.coerce_shared(), "connect_stream", "local_addr");
+        let peer = string_from_bytebuffer(peer.coerce_shared(), "connect_stream", "peer_addr");
         Ok((fd, local, peer))
     }
 }

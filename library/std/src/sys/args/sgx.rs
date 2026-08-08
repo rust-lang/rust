@@ -18,6 +18,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     if argc != 0 {
         let args = unsafe { alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _) };
         let args = args
+            .as_user_ref()
             .iter()
             .map(|a| OsString::from_inner(Buf { inner: a.copy_user_buffer() }))
             .collect::<Vec<_>>();
