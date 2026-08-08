@@ -16,7 +16,7 @@ unsafe extern "C" fn variadic(_x: u32, _args: ...) { }
 fn take_generic_ref<'a, T>(_x: &'a T) { }
 fn take_generic_array<T, const N: usize>(_x: [T; N]) { }
 fn multiple_generic<T, U>(_x: T, _y: U) { }
-fn multiple_generic_arrays<T, U, const N: usize, const M: usize>(_x: [T; N], _y: [U; M]) { }
+fn multiple_generic_arrays<T, const N: usize, U, const M: usize>(_x: [T; N], _y: [U; M]) { }
 
 //function references passed to these functions should never lint
 fn call_fn(f: &dyn Fn(u32) -> u32, x: u32) { f(x); }
@@ -120,7 +120,7 @@ fn main() {
     //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &multiple_generic::<u32, f32>);
     //~^ WARNING taking a reference to a function item does not give a function pointer
-    println!("{:p}", &multiple_generic_arrays::<u32, f32, 4, 8>);
+    println!("{:p}", &multiple_generic_arrays::<u32, 4, f32, 8>);
     //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &std::env::var::<String>);
     //~^ WARNING taking a reference to a function item does not give a function pointer

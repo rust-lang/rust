@@ -454,7 +454,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     let new_args = new_trait.trait_ref.args;
                     let old_args = old_trait.trait_ref.args;
 
-                    if !new_args.types().eq(old_args.types()) {
+                    if !new_args.terms().eq(old_args.terms()) {
                         // We can't compare lifetimes if the types are different,
                         // so skip checking `old_clause`.
                         return true;
@@ -624,7 +624,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
-        self.is_of_param(args.type_at(0)) && !args.types().any(|t| t.has_infer_types())
+        self.is_of_param(args.type_at(0)) && !args.terms().any(|t| t.has_infer_types())
     }
 
     pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
