@@ -46,3 +46,38 @@ fn main() {
 fn magic_foo(arg: Baz) -> Foo {
     arg.into()
 }
+
+struct Value;
+
+impl PartialEq<Value> for u32 {
+    fn eq(&self, _: &Value) -> bool {
+        false
+    }
+}
+
+impl PartialEq<u32> for Value {
+    fn eq(&self, _: &u32) -> bool {
+        false
+    }
+}
+
+// https://github.com/rust-lang/rust/issues/156004
+fn partial_eq_with_infer_cast_on_rhs() {
+    let n: u32 = 17;
+    let _ = n == 42usize as _; //~ ERROR E0283
+}
+
+fn partial_eq_with_infer_cast_on_lhs() {
+    let n: u32 = 17;
+    let _ = 42usize as _ == n; //~ ERROR E0283
+}
+
+fn unrelated_infer_cast_in_lhs() {
+    let n: u32 = 17;
+    let _ = (
+        {
+            let _ = 42usize as _; //~ ERROR E0282
+            Default::default()
+        }
+    ) == n;
+}
