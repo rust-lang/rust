@@ -723,6 +723,7 @@ fn human_readable_target_env(env: Symbol) -> Option<&'static str> {
         Nto71 => "QNX SDP 7.1",
         Nto71IoSock => "QNX SDP 7.1 with io-sock",
         Ohos => "OpenHarmony",
+        OpenBsd => "OpenBSD -current",
         P1 => "WASIp1",
         P2 => "WASIp2",
         P3 => "WASIp3",
