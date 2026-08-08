@@ -2,14 +2,14 @@ ast-stats ================================================================
 ast-stats POST EXPANSION AST STATS: input_stats
 ast-stats Name                Accumulated Size         Count     Item Size
 ast-stats ----------------------------------------------------------------
-ast-stats Item                   1_584 (NN.N%)            11           144
-ast-stats - Enum                     144 (NN.N%)             1
-ast-stats - ExternCrate              144 (NN.N%)             1
-ast-stats - ForeignMod               144 (NN.N%)             1
-ast-stats - Impl                     144 (NN.N%)             1
-ast-stats - Trait                    144 (NN.N%)             1
-ast-stats - Fn                       288 (NN.N%)             2
-ast-stats - Use                      576 (NN.N%)             4
+ast-stats Item                   1_408 (NN.N%)            11           128
+ast-stats - Enum                     128 (NN.N%)             1
+ast-stats - ExternCrate              128 (NN.N%)             1
+ast-stats - ForeignMod               128 (NN.N%)             1
+ast-stats - Impl                     128 (NN.N%)             1
+ast-stats - Trait                    128 (NN.N%)             1
+ast-stats - Fn                       256 (NN.N%)             2
+ast-stats - Use                      512 (NN.N%)             4
 ast-stats PathSegment              840 (NN.N%)            35            24
 ast-stats Ty                       784 (NN.N%)            14            56
 ast-stats - Ptr                       56 (NN.N%)             1
@@ -58,7 +58,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  6_872                   126
+ast-stats Total                  6_696                   126
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats

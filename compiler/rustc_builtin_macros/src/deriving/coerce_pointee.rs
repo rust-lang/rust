@@ -3,13 +3,13 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
-    TraitBoundModifiers, VariantData, WherePredicate,
+    TraitBoundModifiers, VariantData, WhereClause,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_macros::Diagnostic;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{BytePos, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::diagnostics;
@@ -28,7 +28,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 ) {
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
 
-    let (name_ident, generics) = if let Annotatable::Item(aitem) = item
+    let (name_ident, generics, where_insert_sp) = if let Annotatable::Item(aitem) = item
         && let ItemKind::Struct(ident, g, struct_data) = &aitem.kind
     {
         if !matches!(
@@ -39,7 +39,14 @@ pub(crate) fn expand_deriving_coerce_pointee(
             cx.dcx().emit_err(RequireOneField { span });
             return;
         }
-        (*ident, g)
+        let where_insert_sp = if let Some(sp) = g.where_clause.span() {
+            sp
+        } else if struct_data.requires_semi() {
+            aitem.span.with_hi(aitem.span.hi() - BytePos(1)).shrink_to_hi()
+        } else {
+            g.span.shrink_to_hi()
+        };
+        (*ident, g, where_insert_sp)
     } else {
         cx.dcx().emit_err(RequireTransparent { span });
         return;
@@ -104,6 +111,11 @@ pub(crate) fn expand_deriving_coerce_pointee(
         let trait_path =
             cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
         let trait_ref = cx.trait_ref(trait_path);
+        let where_clause = if generics.where_clause.span().is_some() {
+            generics.where_clause.clone()
+        } else {
+            ast::WhereClause::new_synthetic(where_insert_sp, ThinVec::new())
+        };
         push(Annotatable::Item(
             cx.item(
                 span,
@@ -130,7 +142,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                                     ),
                             })
                             .collect(),
-                        where_clause: generics.where_clause.clone(),
+                        where_clause,
                         span: generics.span,
                     },
                     of_trait: Some(Box::new(ast::TraitImplHeader {
@@ -180,17 +192,14 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
     //
     // Find the `#[pointee]` parameter and add an `Unsize<__S>` bound to it.
-    let mut impl_generics = generics.clone();
+    let mut impl_generics_params = generics.params.clone();
     let pointee_ty_ident = generics.params[pointee_param_idx].ident;
     let mut self_bounds;
     {
-        let pointee = &mut impl_generics.params[pointee_param_idx];
+        let pointee = &mut impl_generics_params[pointee_param_idx];
         self_bounds = pointee.bounds.clone();
         if !contains_maybe_sized_bound(&self_bounds)
-            && !contains_maybe_sized_bound_on_pointee(
-                &generics.where_clause.predicates,
-                pointee_ty_ident.name,
-            )
+            && !contains_maybe_sized_bound_on_pointee(&generics.where_clause, pointee_ty_ident.name)
         {
             cx.dcx().emit_err(RequiresMaybeSized {
                 span: pointee_ty_ident.span,
@@ -225,7 +234,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // The new bound marked with (*) has to be done separately.
     // See next section
     for (idx, (params, orig_params)) in
-        impl_generics.params.iter_mut().zip(&generics.params).enumerate()
+        impl_generics_params.iter_mut().zip(&generics.params).enumerate()
     {
         // Default type parameters are rejected for `impl` block.
         // We should drop them now.
@@ -294,7 +303,9 @@ pub(crate) fn expand_deriving_coerce_pointee(
     //
     // We should also write a few new `where` bounds from `#[pointee] T` to `__S`
     // as well as any bound that indirectly involves the `#[pointee] T` type.
-    for predicate in &generics.where_clause.predicates {
+    let mut predicates = ThinVec::new();
+    for predicate in generics.where_clause.predicates() {
+        predicates.push(predicate.clone());
         if let ast::WherePredicateKind::BoundPredicate(bound) = &predicate.kind {
             let mut substitution = TypeSubstitution {
                 from_name: pointee_ty_ident.name,
@@ -311,22 +322,26 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     id: ast::DUMMY_NODE_ID,
                     is_placeholder: false,
                 };
-                impl_generics.where_clause.predicates.push(predicate);
+                predicates.push(predicate);
             }
         }
     }
 
     let extra_param = cx.typaram(span, Ident::new(sym::__S, span), self_bounds, None);
-    impl_generics.params.insert(pointee_param_idx + 1, extra_param);
+    impl_generics_params.insert(pointee_param_idx + 1, extra_param);
+
+    let where_clause = ast::WhereClause::new_synthetic(where_insert_sp, predicates);
+    let impl_generics =
+        Generics { params: impl_generics_params, where_clause, span: generics.span };
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
     let gen_args = vec![GenericArg::Type(alt_self_type)];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
-    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
+    add_impl_block(impl_generics, sym::CoerceUnsized, gen_args);
 }
 
-fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee: Symbol) -> bool {
-    for bound in predicates {
+fn contains_maybe_sized_bound_on_pointee(where_clause: &WhereClause, pointee: Symbol) -> bool {
+    for bound in where_clause.predicates() {
         if let ast::WherePredicateKind::BoundPredicate(bound) = &bound.kind
             && bound.bounded_ty.kind.is_simple_path().is_some_and(|name| name == pointee)
         {

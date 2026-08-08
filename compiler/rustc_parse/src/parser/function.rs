@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
 
         // `fn_params_end` is needed only when it's followed by a where clause.
         let fn_params_end =
-            if generics.where_clause.has_where_token { Some(fn_params_end) } else { None };
+            if generics.where_clause.has_where_token() { Some(fn_params_end) } else { None };
 
         let mut sig_hi = self.prev_token.span;
         // Either `;` or `{ ... }`.

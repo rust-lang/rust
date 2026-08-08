@@ -196,26 +196,27 @@ impl<'a> AstValidator<'a> {
         &mut self,
         ty_alias: &TyAlias,
     ) -> Result<(), diagnostics::WhereClauseBeforeTypeAlias> {
-        if ty_alias.ty.is_none() || !ty_alias.generics.where_clause.has_where_token {
+        let Some(ref ty) = ty_alias.ty else {
             return Ok(());
-        }
+        };
+        let Some(span) = ty_alias.generics.where_clause.span() else {
+            return Ok(());
+        };
 
-        let span = ty_alias.generics.where_clause.span;
-
-        let sugg = if !ty_alias.generics.where_clause.predicates.is_empty()
-            || !ty_alias.after_where_clause.has_where_token
+        let sugg = if !ty_alias.generics.where_clause.predicates().is_empty()
+            || !ty_alias.after_where_clause.has_where_token()
         {
             let mut state = State::new();
 
-            let mut needs_comma = !ty_alias.after_where_clause.predicates.is_empty();
-            if !ty_alias.after_where_clause.has_where_token {
+            let mut needs_comma = !ty_alias.after_where_clause.predicates().is_empty();
+            if !ty_alias.after_where_clause.has_where_token() {
                 state.space();
                 state.word_space("where");
             } else if !needs_comma {
                 state.space();
             }
 
-            for p in &ty_alias.generics.where_clause.predicates {
+            for p in ty_alias.generics.where_clause.predicates() {
                 if needs_comma {
                     state.word_space(",");
                 }
@@ -223,10 +224,11 @@ impl<'a> AstValidator<'a> {
                 state.print_where_predicate(p);
             }
 
+            let right = ty_alias.after_where_clause.span().unwrap_or(ty.span).shrink_to_hi();
             diagnostics::WhereClauseBeforeTypeAliasSugg::Move {
                 left: span,
                 snippet: state.s.eof(),
-                right: ty_alias.after_where_clause.span.shrink_to_hi(),
+                right,
             }
         } else {
             diagnostics::WhereClauseBeforeTypeAliasSugg::Remove { span }
@@ -825,8 +827,8 @@ impl<'a> AstValidator<'a> {
         }
 
         let check_where_clause = |where_clause: &WhereClause| {
-            if where_clause.has_where_token {
-                cannot_have(where_clause.span, "`where` clauses", "`where` clause");
+            if let Some(span) = where_clause.span() {
+                cannot_have(span, "`where` clauses", "`where` clause");
             }
         };
 
@@ -1093,12 +1095,14 @@ impl<'a> AstValidator<'a> {
     }
 
     fn deny_where_clause(&self, where_clause: &WhereClause, ident: Span) {
-        if !where_clause.predicates.is_empty() {
+        if !where_clause.predicates().is_empty()
+            && let Some(span) = where_clause.span()
+        {
             // FIXME: The current diagnostic is misleading since it only talks about
             // super trait and lifetime bounds while we should just say “bounds”.
             self.dcx().emit_err(diagnostics::AutoTraitBounds {
-                span: vec![where_clause.span],
-                removal: where_clause.span,
+                span: vec![span],
+                removal: span,
                 ident,
             });
         }
@@ -1703,9 +1707,9 @@ impl Visitor<'_> for AstValidator<'_> {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
-                } else if after_where_clause.has_where_token {
+                } else if let Some(span) = after_where_clause.span() {
                     self.dcx().emit_err(diagnostics::WhereClauseAfterTypeAlias {
-                        span: after_where_clause.span,
+                        span,
                         help: self.sess.is_nightly_build(),
                     });
                 }
@@ -1818,7 +1822,7 @@ impl Visitor<'_> for AstValidator<'_> {
         validate_generic_param_order(self.dcx(), &generics.params, generics.span);
         walk_list!(self, visit_generic_param, &generics.params);
 
-        for predicate in &generics.where_clause.predicates {
+        for predicate in generics.where_clause.predicates() {
             match &predicate.kind {
                 WherePredicateKind::BoundPredicate(bound_pred) => {
                     // This is slightly complicated. Our representation for poly-trait-refs contains a single

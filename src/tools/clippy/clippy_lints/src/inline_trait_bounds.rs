@@ -116,13 +116,14 @@ fn lint_fn(cx: &EarlyContext<'_>, f: &Fn) {
     let predicate_text = predicates.join(", ");
 
     let where_clause = &generics.where_clause;
-    if where_clause.has_where_token {
-        let (insert_at, suffix) = if let Some(last_pred) = where_clause.predicates.last() {
+    if where_clause.has_where_token() {
+        let (insert_at, suffix) = if let Some(last_pred) = where_clause.predicates().last() {
             // existing `where` with predicates: append after last predicate
             (last_pred.span.shrink_to_hi(), format!(", {predicate_text}"))
         } else {
             // `where` token present but empty predicate list
-            (where_clause.span.shrink_to_hi(), format!(" {predicate_text}"))
+            let where_clause_span = where_clause.span().expect("`where` but no span");
+            (where_clause_span.shrink_to_hi(), format!(" {predicate_text}"))
         };
 
         edits.push((insert_at, suffix));
