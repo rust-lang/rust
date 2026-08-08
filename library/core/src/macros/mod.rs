@@ -170,25 +170,25 @@ macro_rules! assert_ne {
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( $guard:guard )? $(,)?) => {{
         match $left {
-            $( $pattern )|+ $( if $guard )? => {}
+            $( $pattern )|+ $( $guard )? => {}
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
                     left_val,
-                    $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    $crate::stringify!($($pattern)|+ $($guard)?),
                     $crate::option::Option::None
                 );
             }
         }
     }},
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => {{
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( $guard:guard )?, $($arg:tt)+) => {{
         match $left {
-            $( $pattern )|+ $( if $guard )? => {}
+            $( $pattern )|+ $( $guard )? => {}
             ref left_val => {
                 $crate::panicking::assert_matches_failed(
                     left_val,
-                    $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    $crate::stringify!($($pattern)|+ $($guard)?),
                     $crate::option::Option::Some($crate::format_args!($($arg)+))
                 );
             }
@@ -429,10 +429,10 @@ pub macro debug_assert_matches($($arg:tt)*) {
 #[allow_internal_unstable(non_exhaustive_omitted_patterns_lint, stmt_expr_attributes)]
 #[rustc_diagnostic_opaque]
 macro_rules! matches {
-    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+    ($expression:expr, $pattern:pat $($guard:guard)? $(,)?) => {
         #[allow(non_exhaustive_omitted_patterns)]
         match $expression {
-            $pattern $(if $guard)? => true,
+            $pattern $($guard)? => true,
             _ => false
         }
     };
