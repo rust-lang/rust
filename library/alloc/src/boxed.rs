@@ -1897,20 +1897,12 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// `'static`.
     ///
     /// This function is mainly useful for data that lives for the remainder of the program's life,
-    /// i.e., memory that is meant to leak. Reconstructing ("unleaking") a `Box` from the mutable
-    /// reference returned here (e.g. via [`Box::from_raw`]) is a grey area (meaning it is possible
-    /// under specific circumstances but many seemingly harmless ways of doing it are undefined
-    /// behavior) and should be avoided. Notably, soundly unleaking a box requires that the
-    /// allocator is `Global`. If the memory should eventually be freed, prefer to use
-   /// This function is mainly useful for data that lives for the remainder of the program's life,
-   /// i.e., memory that is meant to leak.
-   /// If the memory should eventually be freed, prefer to use
-   /// [`Box::into_raw`] or [`Box::into_non_null`] instead.
-   /// Reconstructing ("unleaking") a `Box` from the mutable
-   /// reference returned here (e.g. via [`Box::from_raw`]) is only possible if the
-   /// allocator is `Global`, and even then it is a grey area (meaning it is possible
-   /// under specific circumstances but many seemingly harmless ways of doing it are undefined
-    /// behavior) and should be avoided.
+    /// i.e., memory that is meant to leak. If the memory should eventually be freed, prefer to use
+    /// [`Box::into_raw`] or [`Box::into_non_null`] instead. Reconstructing ("unleaking") a `Box` from
+    /// the mutable reference returned here (e.g. via [`Box::from_raw`]) is only possible if the
+    /// allocator is `Global`, and even then it is a grey area (meaning it is possible under specific
+    /// circumstances but many seemingly harmless ways of doing it are undefined behavior) and should
+    /// be avoided.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
