@@ -14,6 +14,8 @@ import lldb
 from .common import (
     BLESS,
     INPUT_DATA,
+    TYPES_TESTED,
+    VARS_TESTED,
     Child,
     Variable,
     Result,
@@ -28,11 +30,6 @@ from .from_lldb import (
     type_from_lldb,
     get_generics,
 )
-
-
-VARS_TESTED: list[dict[str, Result]] = []
-"""Used to help ensure all expected variables were tested. Each element of the list corresponds to a
-breakpoint, and contains a set of all of the variable names tested for that breakpoint."""
 
 
 def check(var_name: str, breakpoint_idx: int, frame: lldb.SBFrame) -> Result:
@@ -78,12 +75,6 @@ def check(var_name: str, breakpoint_idx: int, frame: lldb.SBFrame) -> Result:
         print(f"{var_name}: Ok")
 
     return result
-
-
-TYPES_TESTED: dict[str, Result] = {}
-"""Since types are unique and unchanging, we only need to test each type once. This also helps
-ensure we have tested all types in `INPUT_DATA`
-"""
 
 
 def type_matches(
@@ -146,58 +137,6 @@ def type_matches(
 
     for t in inner_types:
         result = type_matches(t, sbtarget) and result
-
-    return result
-
-
-def tested_all_types() -> bool:
-    """Returns true if all types in INPUT_DATA were tested this run."""
-
-    expected_types = set(k for k in INPUT_DATA.types)
-    untested_types = expected_types.difference(TYPES_TESTED.keys())
-
-    if len(untested_types) != 0:
-        print(
-            f"[repr error] The following types were expected, but were not tested:\n\
-  {untested_types}"
-        )
-
-    return len(untested_types) == 0
-
-
-def tested_all_variables() -> bool:
-    expected_vars = [set(k for k in vars) for vars in INPUT_DATA.breakpoints]
-    untested_vars = [
-        expected.difference(tested.keys())
-        for expected, tested in zip(expected_vars, VARS_TESTED)
-    ]
-
-    tested_not_expected = [
-        set(tested.keys()).difference(expected)
-        for expected, tested in zip(expected_vars, VARS_TESTED)
-    ]
-
-    result = True
-
-    for i, v in enumerate(untested_vars):
-        if len(v) == 0:
-            continue
-
-        result = False
-        print(
-            f"[repr error] The following variables were expected at breakpoint#{i}, but were not \
-tested:\n  {v}"
-        )
-
-    for i, v in enumerate(tested_not_expected):
-        if len(v) == 0:
-            continue
-
-        result = False
-        print(
-            f"[repr error] The following variables were tested, but do not exist in the input data \
-at breakpoint#{i}:\n  {v}"
-        )
 
     return result
 
