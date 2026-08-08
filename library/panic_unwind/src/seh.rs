@@ -337,24 +337,24 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
     // express more operations in statics (and we may never be able to).
     unsafe {
         #[allow(function_casts_as_integer)]
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut THROW_INFO.pmfnUnwind).cast(),
             ptr_t::new(exception_cleanup as *mut u8).raw(),
         );
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
             ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
         );
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
             ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
         );
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut CATCHABLE_TYPE.pType).cast(),
             ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
         );
         #[allow(function_casts_as_integer)]
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
             ptr_t::new(exception_copy as *mut u8).raw(),
         );
