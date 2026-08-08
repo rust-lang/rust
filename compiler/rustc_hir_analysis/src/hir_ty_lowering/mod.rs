@@ -25,6 +25,7 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
@@ -179,7 +180,7 @@ pub trait HirTyLowerer<'tcx> {
         span: Span,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>);
+    ) -> (Vec<InherentAssocCandidate>, ThinVec<FulfillmentError<'tcx>>);
 
     /// Lower a path to an associated item (of a trait) to a projection.
     ///

@@ -27,7 +27,7 @@ LL |         foo = Some(Struct);
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
+note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: you could `clone` the value and consume it, if the `Struct: Clone` trait bound could be satisfied
    |
@@ -61,7 +61,7 @@ LL |         foo = Some(Struct2);
 LL |     } else if true {
 LL |         foo = Some(Struct2);
    |         ^^^^^^^^^^^^^^^^^^^
-note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
+note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: you could `clone` the value and consume it, if the `Struct2: Clone` trait bound could be satisfied
    |

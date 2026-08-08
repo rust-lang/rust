@@ -28,7 +28,9 @@ use crate::infer::{
     TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
-use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
+use crate::traits::{
+    ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine, TraitErrors,
+};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -129,10 +131,17 @@ impl<'tcx> InferCtxt<'tcx> {
         // Select everything, returning errors.
         let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self);
 
-        // True error!
-        if errors.iter().any(|e| e.is_true_error()) {
-            return Err(NoSolution);
-        }
+        let certainty = match errors {
+            TraitErrors::HasErrors(errors) => {
+                if errors.iter().any(|e| e.is_true_error()) {
+                    // True error!
+                    return Err(NoSolution);
+                } else {
+                    Certainty::Ambiguous
+                }
+            }
+            TraitErrors::NoErrors => Certainty::Proven,
+        };
 
         let region_obligations = self.take_registered_region_obligations();
         let region_assumptions = self.take_registered_region_assumptions();
@@ -145,8 +154,6 @@ impl<'tcx> InferCtxt<'tcx> {
             )
         });
         debug!(?region_constraints);
-
-        let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
         let opaque_types = self
             .inner

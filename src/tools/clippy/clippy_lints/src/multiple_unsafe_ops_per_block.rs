@@ -126,6 +126,48 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
         unsafe_ops.sort_unstable();
         unsafe_ops
     }
+
+    fn visit_raw_addr_of(&mut self, inner: &'tcx hir::Expr<'tcx>) {
+        let mut base = inner;
+        let mut has_fields = false;
+        while let ExprKind::Field(prefix, _) = base.kind
+            && self.typeck_results.expr_adjustments(prefix).is_empty()
+        {
+            base = prefix;
+            has_fields = true;
+        }
+
+        if has_fields {
+            return self.visit_expr(base);
+        }
+
+        // Direct address-of operations under `&raw` do not read/write the place, so they are safe
+        // for mutable statics and raw pointer dereferences.
+        if let ExprKind::Path(QPath::Resolved(
+            _,
+            hir::Path {
+                res:
+                    Res::Def(
+                        DefKind::Static {
+                            mutability: Mutability::Mut,
+                            ..
+                        },
+                        _,
+                    ),
+                ..
+            },
+        )) = base.kind
+        {
+            return;
+        }
+        if let ExprKind::Unary(UnOp::Deref, ptr_expr) = base.kind
+            && self.typeck_results.expr_ty(ptr_expr).is_raw_ptr()
+        {
+            return self.visit_expr(ptr_expr);
+        }
+
+        self.visit_expr(base);
+    }
 }
 
 impl UnsafeExprCollector<'_> {
@@ -157,13 +199,8 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
 
             ExprKind::InlineAsm(_) => self.insert_span(expr.span, "inline assembly used here"),
 
-            ExprKind::AddrOf(BorrowKind::Raw, _, mut inner) => {
-                while let ExprKind::Field(prefix, _) = inner.kind
-                    && self.typeck_results.expr_adjustments(prefix).is_empty()
-                {
-                    inner = prefix;
-                }
-                return self.visit_expr(inner);
+            ExprKind::AddrOf(BorrowKind::Raw, _, inner) => {
+                return self.visit_raw_addr_of(inner);
             },
 
             ExprKind::Field(e, _) if self.typeck_results.expr_ty(e).is_union() => {

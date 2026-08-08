@@ -1,4 +1,4 @@
-//@ compile-flags: -Znext-solver=globally -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders
 
 trait Trait<T> {}
 

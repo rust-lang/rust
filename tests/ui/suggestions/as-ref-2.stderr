@@ -8,7 +8,7 @@ LL |     let _x: Option<Struct> = foo.map(|s| bar(&s));
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: `Option::<T>::map` takes ownership of the receiver `self`, which moves `foo`
+note: `std::option::Option::<T>::map` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider calling `.as_ref()` to borrow the value's contents
    |

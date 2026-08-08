@@ -2281,10 +2281,18 @@ impl CommandLineStep for Assemble {
 
         if builder.config.llvm_offload && !builder.config.dry_run() {
             debug!("`llvm_offload` requested");
+            let rust_offload = builder.ensure(llvm::RustOffload { target: build_compiler.host });
             let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+                let rust_offload_dst_lib = target_libdir.join(rust_offload.rust_offload_filename());
+                builder.copy_link(
+                    &rust_offload.rust_offload_path(),
+                    &rust_offload_dst_lib,
+                    FileType::NativeLibrary,
+                );
+
                 for p in offload_install.offload_paths() {
                     let libname = p.file_name().unwrap();
                     let dst_lib = target_libdir.join(libname);
@@ -2350,17 +2358,13 @@ impl CommandLineStep for Assemble {
             let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
             // If we link statically to stdlib, do not copy the libstd dynamic library file
-            // FIXME: Also do this for Windows once incremental post-optimization stage0 tests
-            // work without std.dll (see https://github.com/rust-lang/rust/pull/131188).
-            let can_be_rustc_dynamic_dep = if builder
-                .link_std_into_rustc_driver(target_compiler.host)
-                && !target_compiler.host.is_windows()
-            {
-                let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
-                !is_std
-            } else {
-                true
-            };
+            let can_be_rustc_dynamic_dep =
+                if builder.link_std_into_rustc_driver(target_compiler.host) {
+                    let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+                    !is_std
+                } else {
+                    true
+                };
 
             if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename), FileType::Regular);

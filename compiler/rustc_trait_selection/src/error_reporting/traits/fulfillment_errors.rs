@@ -18,8 +18,8 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node, expr_needs_parens, find_attr};
 use rustc_infer::infer::{InferOk, TypeTrace};
-use rustc_infer::traits::ImplSource;
 use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::{ImplSource, TraitErrors};
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -2161,7 +2161,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 )
                             }),
                     );
-                    if !ocx.try_evaluate_obligations().is_empty() {
+                    if !ocx.try_evaluate_obligations().no_errors() {
                         return false;
                     }
 
@@ -2177,7 +2177,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             terrs.push(terr);
                         }
-                        if !ocx.try_evaluate_obligations().is_empty() {
+                        if !ocx.try_evaluate_obligations().no_errors() {
                             return false;
                         }
                     }
@@ -2347,7 +2347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         )
                                         .is_err()
                                     {
-                                        return Vec::new();
+                                        return TraitErrors::NoErrors;
                                     }
                                     ocx.register_obligations(
                                         self.tcx
@@ -2370,10 +2370,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 if !self.tcx.clauses_of(def_id).clauses.is_empty() {
                                     self.probe(|_| evaluate_obligations())
                                 } else {
-                                    Vec::new()
+                                    TraitErrors::NoErrors
                                 };
 
-                            if failing_obligations.is_empty() {
+                            if failing_obligations.no_errors() {
                                 (" implemented for `", "")
                             } else {
                                 for error in failing_obligations {
@@ -3842,7 +3842,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);
-                if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                if ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                     return Ok((
                         self.tcx
                             .fn_trait_kind_from_def_id(trait_def_id)

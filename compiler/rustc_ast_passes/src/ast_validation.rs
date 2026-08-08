@@ -1531,7 +1531,10 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 if &Safety::Default == safety {
                     if item.span.at_least_rust_2024() {
-                        self.dcx().emit_err(diagnostics::MissingUnsafeOnExtern { span: item.span });
+                        self.dcx().emit_err(diagnostics::MissingUnsafeOnExtern {
+                            span: item.span,
+                            unsafe_span: item.span.shrink_to_lo(),
+                        });
                     } else {
                         self.lint_buffer.buffer_lint(
                             MISSING_UNSAFE_ON_EXTERN,

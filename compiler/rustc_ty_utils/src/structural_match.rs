@@ -28,7 +28,7 @@ fn has_structural_eq_impl<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
     //
     // 2. We are sometimes doing future-incompatibility lints for
     //    now, so we do not want unconditional errors here.
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

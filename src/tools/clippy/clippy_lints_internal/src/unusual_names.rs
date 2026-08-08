@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::paths::PathLookup;
 use clippy_utils::sym;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, Pat, PatKind, Stmt, StmtKind};

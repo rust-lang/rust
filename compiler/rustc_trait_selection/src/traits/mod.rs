@@ -233,11 +233,11 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
             ocx.register_obligation(obligation);
 
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            match errors.as_slice() {
+            match errors {
                 // Only known to hold if we did no inference.
-                [] => infcx.resolve_vars_if_possible(goal) == goal,
+                TraitErrors::NoErrors => infcx.resolve_vars_if_possible(goal) == goal,
 
-                errors => {
+                TraitErrors::HasErrors(errors) => {
                     debug!(?errors);
                     false
                 }
@@ -322,7 +322,7 @@ fn do_normalize_clauses<'tcx>(
     };
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -804,7 +804,7 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
     // with no infer vars. There may also be ways to encounter ambiguity due
     // to post-mono overflow.
     let true_errors = ocx.try_evaluate_obligations();
-    if !true_errors.is_empty() {
+    if !true_errors.no_errors() {
         return true;
     }
 
@@ -919,7 +919,7 @@ fn is_impossible_associated_item(
 
     let ocx = ObligationCtxt::new(&infcx);
     ocx.register_obligations(predicates_for_trait);
-    !ocx.try_evaluate_obligations().is_empty()
+    !ocx.try_evaluate_obligations().no_errors()
 }
 
 pub fn provide(providers: &mut Providers) {

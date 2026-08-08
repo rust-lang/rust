@@ -148,7 +148,7 @@ impl MaybeRequiresStorage {
             killable_locals: Default::default(),
         };
 
-        for (bb, data) in body.basic_blocks.iter_enumerated() {
+        for (bb, data) in traversal::reachable(body) {
             visitor.visit_basic_block_data(bb, data);
         }
 
@@ -295,12 +295,12 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
         }
     }
 
-    fn apply_primary_terminator_effect<'t>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'t Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         loc: Location,
-    ) -> TerminatorEdges<'t, 'tcx> {
+    ) {
         match terminator.kind {
             // For call terminators the destination requires storage for the call
             // and after the call returns successfully, but not after a panic.
@@ -333,7 +333,6 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
         }
 
         self.check_for_move(state, loc);
-        terminator.edges()
     }
 
     fn apply_call_return_effect(

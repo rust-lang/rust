@@ -130,7 +130,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.probe(|_| {
             let ocx = ObligationCtxt::new(self);
             let normalized_fn_sig = ocx.normalize(&ObligationCause::dummy(), param_env, fn_sig);
-            if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+            if ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                 let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
                 if !normalized_fn_sig.has_infer() {
                     return normalized_fn_sig;

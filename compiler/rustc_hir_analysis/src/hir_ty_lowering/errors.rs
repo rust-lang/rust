@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -884,7 +885,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         name: Ident,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-        fulfillment_errors: Vec<FulfillmentError<'tcx>>,
+        fulfillment_errors: ThinVec<FulfillmentError<'tcx>>,
         span: Span,
         assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {

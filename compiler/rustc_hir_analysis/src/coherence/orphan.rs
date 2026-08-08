@@ -332,7 +332,7 @@ fn orphan_check<'tcx>(
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), Unnormalized::new_wip(user_ty));
         let ty = infcx.resolve_vars_if_possible(ty);
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             return Ok(user_ty);
         }
 

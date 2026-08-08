@@ -622,7 +622,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 }
 

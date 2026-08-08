@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::{fn_def_id, get_expr_use_site, std_or_core, sym};
 use rustc_errors::Applicability;

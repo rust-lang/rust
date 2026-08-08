@@ -364,8 +364,15 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
     }
 }
 
+#[derive_where(Default; I: Interner)]
+pub struct CanonicalParamEnvCache<I: Interner>(
+    pub HashMap<I::ParamEnv, CanonicalParamEnvCacheEntry<I>>,
+);
+
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct CanonicalParamEnvCacheEntry<I: Interner> {
+    // Note: this `param_env` is the canonicalized form of the key for this entry in the enclosing
+    // `CanonicalParamEnvCache`.
     pub param_env: I::ParamEnv,
     pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,

@@ -8,7 +8,7 @@ use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
-use unicode_normalization::UnicodeNormalization;
+use unicode_normalization::UnicodeNormalization as _;
 
 declare_clippy_lint! {
     /// ### What it does

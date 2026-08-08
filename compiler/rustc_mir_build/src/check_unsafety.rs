@@ -448,7 +448,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         let build_enabled = self
                             .tcx
                             .sess
-                            .target_features
+                            .internal_target_features
                             .iter()
                             .copied()
                             .filter(|feature| missing.contains(feature))

@@ -68,8 +68,8 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::specialization_graph::Node;
+use rustc_infer::traits::{ObligationCause, TraitErrors};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, GenericArg, GenericArgs, GenericArgsRef, TyCtxt, TypeVisitableExt, TypingMode,
@@ -184,7 +184,7 @@ fn get_impl_args(
     );
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }

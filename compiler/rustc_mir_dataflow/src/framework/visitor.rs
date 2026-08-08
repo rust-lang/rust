@@ -1,9 +1,9 @@
-use rustc_middle::mir::{self, BasicBlock, Location, traversal};
+use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Results};
 
-/// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
-/// dataflow state at that location.
+/// Calls the visitor methods in `vis` for every location in every block in `blocks`. Note that
+/// every block in `blocks` must be reachable, and a `debug_assert` checks this.
 pub fn visit_results<'mir, 'tcx, A>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
@@ -25,18 +25,6 @@ pub fn visit_results<'mir, 'tcx, A>(
         state.clone_from(&results.entry_states[block]);
         A::Direction::visit_results_in_block(&results.analysis, &mut state, block, block_data, vis);
     }
-}
-
-/// Like `visit_results`, but only for reachable blocks.
-pub fn visit_reachable_results<'mir, 'tcx, A>(
-    body: &'mir mir::Body<'tcx>,
-    results: &Results<'tcx, A>,
-    vis: &mut impl ResultsVisitor<'tcx, A>,
-) where
-    A: Analysis<'tcx>,
-{
-    let blocks = traversal::reachable(body).map(|(bb, _)| bb);
-    visit_results(body, blocks, results, vis)
 }
 
 /// A visitor over the results of an `Analysis`. Use this when you want to inspect domain values in

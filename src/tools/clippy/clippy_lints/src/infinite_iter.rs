@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{higher, sym};
 use rustc_hir::{BorrowKind, Closure, Expr, ExprKind};

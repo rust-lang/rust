@@ -7,7 +7,7 @@ use std::{ptr, slice, str};
 
 use libc::c_int;
 use rustc_codegen_ssa::base::wants_wasm_eh;
-use rustc_codegen_ssa::target_features::cfg_target_feature;
+use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::{TargetConfig, target_features};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -252,6 +252,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "allows-misaligned-mem-access" if major < 22 => None,
             s => Some(LLVMFeature::new(s)),
         },
+        Arch::Nvptx64 => match s {
+            "sm_101" if major >= 24 => Some(LLVMFeature::new("sm_110")),
+            "sm_101a" if major >= 24 => Some(LLVMFeature::new("sm_110a")),
+            "sm_101f" if major >= 24 => Some(LLVMFeature::new("sm_110f")),
+            s => Some(LLVMFeature::new(s)),
+        },
         // Filter out features that are not supported by the current LLVM version
         Arch::PowerPC | Arch::PowerPC64 => match s {
             "power8-crypto" => Some(LLVMFeature::new("crypto")),
@@ -314,7 +320,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 pub(crate) fn target_config(sess: &Session) -> TargetConfig {
     let target_machine = create_informational_target_machine(sess, true);
 
-    let (unstable_target_features, target_features) = cfg_target_feature(
+    let internal_target_features = internal_target_features(
         sess,
         |feature| {
             to_llvm_features(sess, feature)
@@ -322,9 +328,9 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
                 .unwrap_or_default()
         },
         |feature| {
-            // This closure determines whether the target CPU has the feature according to LLVM. We do
-            // *not* consider the `-Ctarget-feature`s here, as that will be handled later in
-            // `cfg_target_feature`.
+            // This closure determines whether the target CPU has the feature according to LLVM. We
+            // do *not* consider the `-Ctarget-feature`s here, as that will be handled later in
+            // `internal_target_features`.
             if let Some(feat) = to_llvm_features(sess, feature) {
                 // All the LLVM features this expands to must be enabled.
                 for llvm_feature in feat {
@@ -344,8 +350,7 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
     );
 
     let mut cfg = TargetConfig {
-        target_features,
-        unstable_target_features,
+        internal_target_features,
         has_reliable_f16: true,
         has_reliable_f16_math: true,
         has_reliable_f128: true,
@@ -736,7 +741,10 @@ pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String>
         target_features::flag_to_backend_features(sess, extend_backend_features);
     }
 
-    // We add this in the "base target" so that these show up in `sess.unstable_target_features`.
+    // `-C` flags that map to LLVM target features.
+    // We need to include them even with `only_base_features` as this is used to populate
+    // `sess.internal_target_features` where we very much want them to be present (e.g. the inline
+    // asm logic uses that to check which registers may be used).
     llvm_features_by_flags(sess, &mut features);
 
     // `-Zllvm-target-features`, all the way at the end to overwrite everything.

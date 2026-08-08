@@ -312,7 +312,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // obligation cause code, and perhaps some custom logic in `report_region_errors`.
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         let mut guar = None;
         let mut root_predicates = FxHashSet::default();
         for error in errors {
