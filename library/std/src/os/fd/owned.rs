@@ -89,6 +89,26 @@ impl BorrowedFd<'_> {
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
         Self { fd: ValidRawFd::new(fd).expect("fd != -1"), _phantom: PhantomData }
     }
+
+    /// Converts a `BorrowedFd` into a reference to a file-like type.
+    ///
+    /// ```rust
+    /// # #![feature(fd_view)]
+    /// # use std::fs::File;
+    /// # use std::io;
+    /// # use std::os::fd::AsFd;
+    /// let meta = io::stdout().as_fd().to_view::<File>().metadata().unwrap();
+    /// if meta.is_file() {
+    ///     println!("stdout is a regular file");
+    /// }
+    /// ```
+    #[unstable(feature = "fd_view", issue = "160402")]
+    pub fn to_view<T>(&self) -> &T
+    where
+        Self: AsRef<T>,
+    {
+        self.as_ref()
+    }
 }
 
 impl OwnedFd {
@@ -433,6 +453,58 @@ impl From<OwnedFd> for crate::net::UdpSocket {
         ))))
     }
 }
+
+/// Implements `AsRef<$t>` conversions from `BorrowedFd` to the specified types.
+///
+/// # Safety
+///
+/// It must be sound to transmute `&BorrowedFd` to `&$t`.
+///
+/// This typically implies that:
+///
+/// - $t must be a wrapper with `BorrowedFd`, `OwnedFd` or `RawFd` being the single non-ZST-field.
+///   Nominally it also requires repr(transparent), but std can cheat because we can stay in
+///   sync with rustc's layout implementation details.
+/// - `&$t` must not have any methods that would allow closing the file descriptor.
+/// - `&$t` impls must tolerate instances being created from any kind of file-descriptor without
+///   going through some dedicated constructor function, akin to `From<OwnedFd>` being a noop
+///   conversion.
+pub(crate) macro unsafe_impl_fd_asrefs {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "fd_view", issue = "160402")]
+        #[unstable_feature_bound(fd_view)]
+        impl AsRef<$t> for BorrowedFd<'_> {
+            #[inline]
+            fn as_ref(&self) -> &$t {
+                use core::mem;
+
+                // These are neither necessary nor sufficient, but generally
+                // a type that implements them is more likely to have the required behavior.
+                fn type_check<T: From<OwnedFd> + Into<OwnedFd> + AsFd>() {}
+
+                // sanity check in case layouts change
+                const {
+                    assert!(mem::size_of::<RawFd>() == mem::size_of::<$t>());
+                    assert!(mem::size_of::<RawFd>() == mem::size_of::<BorrowedFd<'_>>());
+                }
+                type_check::<$t>();
+                // SAFETY: See macro-level requirements.
+                unsafe { mem::transmute::<&BorrowedFd<'_>, &$t>(self) }
+            }
+        }
+    )*}
+}
+
+#[cfg(not(target_os = "trusty"))]
+unsafe_impl_fd_asrefs!(
+    crate::fs::File,
+    crate::net::TcpStream,
+    crate::net::TcpListener,
+    crate::net::UdpSocket,
+);
+
+#[cfg(unix)]
+unsafe_impl_fd_asrefs!(io::PipeWriter, io::PipeReader);
 
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
 /// This impl allows implementing traits that require `AsFd` on Arc.
