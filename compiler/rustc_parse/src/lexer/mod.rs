@@ -1,7 +1,7 @@
 use diagnostics::make_errors_for_mismatched_closing_delims;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, StashKey};
@@ -62,6 +62,80 @@ pub enum StripTokens {
     Nothing,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LexTokenTree {
+    /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
+    /// delimiters are implicitly represented by `Delimited`.
+    Token(Token, Spacing),
+    /// A delimited sequence of token trees.
+    Delimited { data: DelimitedData, start: u32, length: u32 },
+}
+
+#[derive(Default, Debug, PartialEq, Eq, Hash)]
+pub struct TokenArena {
+    tokens: Vec<LexTokenTree>,
+    tree_count: usize,
+}
+
+impl TokenArena {
+    pub fn new(tokens: Vec<LexTokenTree>) -> Self {
+        Self { tokens, tree_count: 0 }
+    }
+
+    pub fn push(&mut self, token: LexTokenTree) {
+        self.tokens.push(token);
+        self.tree_count += 1;
+    }
+
+    pub fn start_delimited(&mut self) -> OpenDelimited {
+        let index = self.length();
+        self.tokens.push(LexTokenTree::Delimited {
+            data: DelimitedData {
+                span: DelimSpan { open: Default::default(), close: Default::default() },
+                spacing: DelimSpacing { open: Spacing::Alone, close: Spacing::Alone },
+                delimiter: Delimiter::Parenthesis,
+            },
+            start: index as u32,
+            length: 0,
+        });
+        OpenDelimited { start: index }
+    }
+
+    pub fn finish_delimited(&mut self, open: OpenDelimited, data: DelimitedData) {
+        let length = self.length();
+        match &mut self.tokens[open.start] {
+            LexTokenTree::Token(_, _) => unreachable!(),
+            LexTokenTree::Delimited { length: mut_length, data: mut_data, .. } => {
+                let len = length.saturating_sub(open.start);
+                // self.tree_count -= len;
+                *mut_length = len as u32;
+                // assert!(
+                //     open.start as u32 + *mut_length <= length as u32,
+                //     "total len: {length}, start: {}",
+                //     open.start
+                // );
+                *mut_data = data;
+            }
+        }
+    }
+
+    pub fn length(&self) -> usize {
+        self.tokens.len()
+    }
+}
+
+pub struct OpenDelimited {
+    start: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DelimitedData {
+    pub span: DelimSpan,
+    pub spacing: DelimSpacing,
+    pub delimiter: Delimiter,
+}
+
+#[allow(unused)]
 pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
@@ -69,6 +143,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     override_span: Option<Span>,
     strip_tokens: StripTokens,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
+    // let start = Instant::now();
     match strip_tokens {
         StripTokens::Shebang | StripTokens::ShebangAndFrontmatter => {
             if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
@@ -105,7 +180,113 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     match res {
         Ok((_open_spacing, stream)) => {
             if unmatched_closing_delims.is_empty() {
+                // let old = start.elapsed();
+                // let start = Instant::now();
+                let stream2 =
+                    lex_token_trees2(psess, src, start_pos, override_span, strip_tokens).unwrap();
+                // let new = start.elapsed();
+                // eprintln!(
+                //     "old: {}, new: {}, diff: {}, pct: {:.2}%",
+                //     old.as_micros(),
+                //     new.as_micros(),
+                //     new.as_micros() as i128 - old.as_micros() as i128,
+                //     (new.as_micros() as f64 / old.as_micros() as f64) * 100.0
+                // );
+                assert_eq!(stream, stream2);
                 Ok(stream)
+            } else {
+                // Return error if there are unmatched delimiters or unclosed delimiters.
+                Err(unmatched_closing_delims)
+            }
+        }
+        Err(errs) => {
+            // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
+            // because the delimiter mismatch is more likely to be the root cause of error
+            unmatched_closing_delims.push(errs);
+            Err(unmatched_closing_delims)
+        }
+    }
+}
+
+pub(crate) fn lex_token_trees2<'psess, 'src>(
+    psess: &'psess ParseSess,
+    mut src: &'src str,
+    mut start_pos: BytePos,
+    override_span: Option<Span>,
+    strip_tokens: StripTokens,
+) -> Result<TokenStream, Vec<Diag<'psess>>> {
+    match strip_tokens {
+        StripTokens::Shebang | StripTokens::ShebangAndFrontmatter => {
+            if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
+                src = &src[shebang_len..];
+                start_pos = start_pos + BytePos::from_usize(shebang_len);
+            }
+        }
+        StripTokens::Nothing => {}
+    }
+
+    let frontmatter_allowed = match strip_tokens {
+        StripTokens::ShebangAndFrontmatter => FrontmatterAllowed::Yes,
+        StripTokens::Shebang | StripTokens::Nothing => FrontmatterAllowed::No,
+    };
+
+    let cursor = Cursor::new(src, frontmatter_allowed);
+    let mut lexer = Lexer {
+        psess,
+        start_pos,
+        pos: start_pos,
+        src,
+        cursor,
+        override_span,
+        nbsp_is_whitespace: false,
+        last_lifetime: None,
+        token: Token::dummy(),
+        diag_info: TokenTreeDiagInfo::default(),
+    };
+    let mut arena = TokenArena::new(Vec::new());
+    let res = lexer.lex_token_trees2(&mut arena, /* is_delimited */ false);
+
+    let mut unmatched_closing_delims: Vec<_> =
+        make_errors_for_mismatched_closing_delims(&lexer.diag_info.unmatched_delims, psess);
+
+    match res {
+        Ok(_) => {
+            if unmatched_closing_delims.is_empty() {
+                fn to_token_stream(arena: &TokenArena, start: usize, length: usize) -> TokenStream {
+                    let mut tokens = Vec::new();
+                    let mut index = start;
+                    let end = start + length;
+                    // assert!(
+                    //     end <= arena.tokens.len(),
+                    //     "{start}/{length}/{end}/{}",
+                    //     arena.tokens.len()
+                    // );
+                    while index < end {
+                        match &arena.tokens[index] {
+                            LexTokenTree::Token(a, b) => {
+                                tokens.push(TokenTree::Token(*a, *b));
+                                index += 1;
+                            }
+                            LexTokenTree::Delimited { data, start, length } => {
+                                let tokenstream = to_token_stream(
+                                    arena,
+                                    (*start + 1) as usize,
+                                    (*length as usize).saturating_sub(1),
+                                );
+                                tokens.push(TokenTree::Delimited(
+                                    data.span,
+                                    data.spacing,
+                                    data.delimiter,
+                                    tokenstream,
+                                ));
+                                index += *length as usize;
+                            }
+                        }
+                    }
+
+                    TokenStream::new(tokens)
+                }
+                Ok(to_token_stream(&arena, 0, arena.tokens.len()))
             } else {
                 // Return error if there are unmatched delimiters or unclosed delimiters.
                 Err(unmatched_closing_delims)
