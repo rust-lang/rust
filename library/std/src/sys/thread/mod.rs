@@ -73,6 +73,7 @@ cfg_select! {
             target_os = "vxworks",
             target_os = "wasi",
             target_vendor = "apple",
+            target_os = "fuchsia",
         ))]
         pub use unix::sleep_until;
         #[expect(dead_code)]
@@ -134,7 +135,8 @@ cfg_select! {
     target_os = "wasi",
     target_vendor = "apple",
     target_os = "motor",
-    target_os = "vexos"
+    target_os = "vexos",
+    target_os = "fuchsia",
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
