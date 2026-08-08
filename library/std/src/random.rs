@@ -49,7 +49,9 @@
 //! [version 4/variant 1 UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
 
 #[unstable(feature = "random", issue = "130703")]
-pub use core::random::*;
+pub use core::random::Distribution;
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
+pub use core::random::Rng;
 
 use crate::sys::random as sys;
 
@@ -140,10 +142,10 @@ use crate::sys::random as sys;
 /// ```
 #[doc(alias = "getrandom", alias = "getentropy", alias = "arc4random")]
 #[derive(Default, Debug, Clone, Copy)]
-#[unstable(feature = "random", issue = "130703")]
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
 pub struct SystemRng;
 
-#[unstable(feature = "random", issue = "130703")]
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
 impl Rng for SystemRng {
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
         sys::fill_bytes(bytes)
