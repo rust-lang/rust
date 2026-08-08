@@ -1965,4 +1965,28 @@ pub(crate) mod builtin {
     pub macro eii_declaration($item:item) {
         /* compiler built-in */
     }
+
+    /// `scope!('l => $expr)` sets the [enclosing temporary scope] of `$expr` to that of the
+    /// expression labeled with `'l`.
+    ///
+    /// [enclosing temporary scope]: https://doc.rust-lang.org/reference/destructors.html#r-destructors.scope.temporary.enclosing
+    // FIXME(super_let): add documentation, ideally using Reference terminology
+    #[allow_internal_unstable(builtin_syntax)]
+    #[unstable(feature = "super_let", issue = "139076")]
+    #[diagnostic::opaque]
+    pub macro scope($($arg:tt)*) {
+        builtin # scope($($arg)*)
+    }
+
+    /// `extend!('l => $expr)` sets the [lifetime-extension context] of `$expr` to that of the
+    /// expression labeled with `'l`.
+    ///
+    /// [lifetime-extension context]: https://doc.rust-lang.org/reference/destructors.html#temporary-lifetime-extension
+    // FIXME(super_let): add documentation, ideally using Reference terminology
+    #[allow_internal_unstable(builtin_syntax)]
+    #[unstable(feature = "super_let", issue = "139076")]
+    #[diagnostic::opaque]
+    pub macro extend($($arg:tt)*) {
+        builtin # extend($($arg)*)
+    }
 }

@@ -327,6 +327,10 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         | ExprKind::DropTemps(..)
         | ExprKind::Let(..) => false,
 
+        // Whether `scope!` and `extend!` produce a short-lived temporary depends on their
+        // subexpression, and in the case of `scope!`, also the label. For simplicity, don't lint.
+        ExprKind::Rescope(..) => false,
+
         ExprKind::UnsafeBinderCast(..) => false,
 
         // Not applicable

@@ -3827,6 +3827,13 @@ pub(crate) struct ExpectedLabelFoundIdent {
 }
 
 #[derive(Diagnostic)]
+#[diag("expected a label")]
+pub(crate) struct ExpectedLabel {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$article} {$descr} cannot be `default`")]
 #[note("only associated `fn`, `const`, and `type` items can be `default`")]
 pub(crate) struct InappropriateDefault {

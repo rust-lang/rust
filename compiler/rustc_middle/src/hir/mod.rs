@@ -246,7 +246,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
                     // Place-preserving expressions only constitute reads if their
                     // parent expression constitutes a read.
-                    ExprKind::Type(..) | ExprKind::UnsafeBinderCast(..) => {
+                    ExprKind::Type(..) | ExprKind::UnsafeBinderCast(..) | ExprKind::Rescope(..) => {
                         self.expr_guaranteed_to_constitute_read_for_never(parent_expr)
                     }
 
