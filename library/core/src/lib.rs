@@ -304,7 +304,7 @@ pub mod panicking;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod pin;
-#[unstable(feature = "abort_immediate", issue = "154601")]
+#[stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
 pub mod process;
 #[unstable(feature = "random", issue = "130703")]
 pub mod random;

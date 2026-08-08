@@ -22,7 +22,8 @@
 ///
 /// `abort_immediate` lowers to a trap instruction on *most* architectures; on
 /// some architectures it simply lowers to call the unmangled `abort` function.
-/// The exact behavior is architecture and system dependent.
+/// The exact behavior is architecture and system dependent, but not explicitly
+/// guaranteed.
 ///
 /// On bare-metal (no OS) systems the trap instruction usually causes a
 /// *hardware* exception to be raised in a *synchronous* fashion; hardware
@@ -34,7 +35,7 @@
 /// corresponds to `SIGILL` or equivalent, *unless* this signal is handled.
 /// Other signals such as `SIGABRT`, `SIGTRAP`, `SIGSEGV`, and `SIGBUS` may be
 /// produced instead, depending on specifics. This is not an exhaustive list.
-#[unstable(feature = "abort_immediate", issue = "154601")]
+#[stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
 #[cold]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
