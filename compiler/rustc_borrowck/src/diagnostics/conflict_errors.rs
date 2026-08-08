@@ -29,7 +29,7 @@ use rustc_middle::ty::{
     self, PredicateKind, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_mir_dataflow::move_paths::{Init, InitKind, InitLocation, MoveOutIndex, MovePathIndex};
+use rustc_mir_dataflow::move_paths::{Init, InitLocation, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym};
@@ -3948,25 +3948,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
 
             // check for inits
-            let mut any_match = false;
             for ii in &self.move_data.init_loc_map[location] {
                 let init = self.move_data.inits[*ii];
-                match init.kind {
-                    InitKind::Deep | InitKind::NonPanicPathOnly => {
-                        if mpis.contains(&init.path) {
-                            any_match = true;
-                        }
-                    }
-                    InitKind::Shallow => {
-                        if mpi == init.path {
-                            any_match = true;
-                        }
-                    }
+                if mpis.contains(&init.path) {
+                    reinits.push(location);
+                    return true;
                 }
-            }
-            if any_match {
-                reinits.push(location);
-                return true;
             }
             false
         };

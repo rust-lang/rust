@@ -146,10 +146,6 @@ where
 
                 on_all_children_bits(move_data, path, &mut callback)
             }
-            InitKind::Shallow => {
-                let mpi = init.path;
-                callback(mpi);
-            }
             InitKind::NonPanicPathOnly => (),
         }
     }

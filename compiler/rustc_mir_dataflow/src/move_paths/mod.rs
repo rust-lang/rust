@@ -300,8 +300,6 @@ pub enum InitLocation {
 pub enum InitKind {
     /// Deep init, even on panic
     Deep,
-    /// Only does a shallow init
-    Shallow,
     /// This doesn't initialize the variable on panic (and a panic is possible).
     NonPanicPathOnly,
 }
