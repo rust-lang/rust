@@ -22,7 +22,7 @@ impl SelfKind {
             } else if let ty::Adt(adt_def, args) = ty.kind()
                 && matches!(cx.tcx.get_diagnostic_name(adt_def.did()), Some(sym::Rc | sym::Arc))
             {
-                args.iter().filter_map(ty::GenericArg::as_type).nth(0) == Some(parent_ty)
+                args.iter().next().and_then(ty::GenericArg::as_type) == Some(parent_ty)
             } else {
                 false
             }

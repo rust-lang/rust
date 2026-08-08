@@ -38,7 +38,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
 fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
         ty::Adt(adt, args) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => {
-            args.iter().filter_map(ty::GenericArg::as_type).nth(1)
+            args.iter().nth(1).and_then(ty::GenericArg::as_type)
         },
         _ => None,
     }

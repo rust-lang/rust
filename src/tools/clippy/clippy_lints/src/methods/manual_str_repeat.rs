@@ -19,7 +19,7 @@ enum RepeatKind {
 
 fn get_ty_param(ty: Ty<'_>) -> Option<Ty<'_>> {
     if let ty::Adt(_, subs) = ty.kind() {
-        subs.iter().filter_map(ty::GenericArg::as_type).nth(0)
+        subs.iter().next().and_then(ty::GenericArg::as_type)
     } else {
         None
     }

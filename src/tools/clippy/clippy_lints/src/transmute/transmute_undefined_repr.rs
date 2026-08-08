@@ -330,9 +330,9 @@ fn same_except_params<'tcx>(subs1: GenericArgsRef<'tcx>, subs2: GenericArgsRef<'
                 (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(subs1, subs2) => (),
                 _ => return false,
             },
-            // FIXME: check const parameters better as well. Currently this will consider `Array<5>` the same as
-            // `Array<6>`
-            (ty::TermKind::Const(c1), ty::TermKind::Const(c2)) if c1 == c2 => todo!(),
+            // FIXME: check const parameters better as well. Is it still possible to treat equal
+            // consts as unequal?
+            (ty::TermKind::Const(c1), ty::TermKind::Const(c2)) if c1 == c2 => return true,
             _ => return false,
         }
     }
