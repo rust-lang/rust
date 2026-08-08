@@ -28,6 +28,27 @@ fn test_contains_bytewise_types() {
     assert!(optional_nonzeros.contains(&None));
     assert!(!optional_nonzeros.contains(&Some(two)));
 
+    let minus_one = NonZero::new(-1_i8).unwrap();
+    let signed_one = NonZero::new(1_i8).unwrap();
+    let signed_two = NonZero::new(2_i8).unwrap();
+    let mut signed_nonzeros = [minus_one; 64];
+    signed_nonzeros[31] = signed_one;
+    assert!(signed_nonzeros.contains(&minus_one));
+    assert!(signed_nonzeros.contains(&signed_one));
+    assert!(!signed_nonzeros.contains(&signed_two));
+
+    let mut optional_signed_nonzeros = [Some(minus_one); 64];
+    optional_signed_nonzeros[31] = None;
+    assert!(optional_signed_nonzeros.contains(&Some(minus_one)));
+    assert!(optional_signed_nonzeros.contains(&None));
+    assert!(!optional_signed_nonzeros.contains(&Some(signed_one)));
+
+    let mut orderings = [Ordering::Less; 64];
+    orderings[31] = Ordering::Greater;
+    assert!(orderings.contains(&Ordering::Less));
+    assert!(orderings.contains(&Ordering::Greater));
+    assert!(!orderings.contains(&Ordering::Equal));
+
     let a = core::ascii::Char::CapitalA;
     let q = core::ascii::Char::CapitalQ;
     let z = core::ascii::Char::CapitalZ;
