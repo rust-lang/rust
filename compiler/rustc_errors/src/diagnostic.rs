@@ -101,7 +101,6 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 ///   rather than the `Diagnostic` impl.
 /// - Derived impls are always generic, and it's good for the hand-written
 ///   impls to be consistent with them.
-#[rustc_diagnostic_item = "Diagnostic"]
 pub trait Diagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
@@ -132,7 +131,6 @@ impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for DiagDecorator<F> {
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
-#[rustc_diagnostic_item = "Subdiagnostic"]
 pub trait Subdiagnostic {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
