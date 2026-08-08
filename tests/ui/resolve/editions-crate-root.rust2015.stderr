@@ -1,5 +1,5 @@
 error[E0433]: cannot find module or crate `nonexistant` in the crate root
-  --> $DIR/editions-crate-root-2015.rs:4:26
+  --> $DIR/editions-crate-root.rs:7:26
    |
 LL |     fn global_inner(_: ::nonexistant::Foo) {
    |                          ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistant`
@@ -10,7 +10,7 @@ LL + extern crate nonexistant;
    |
 
 error[E0433]: cannot find module or crate `nonexistant` in `crate`
-  --> $DIR/editions-crate-root-2015.rs:7:30
+  --> $DIR/editions-crate-root.rs:11:30
    |
 LL |     fn crate_inner(_: crate::nonexistant::Foo) {
    |                              ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistant`
@@ -21,13 +21,13 @@ LL + extern crate nonexistant;
    |
 
 error[E0425]: cannot find type `nonexistant` in the crate root
-  --> $DIR/editions-crate-root-2015.rs:11:25
+  --> $DIR/editions-crate-root.rs:16:25
    |
 LL |     fn bare_global(_: ::nonexistant) {
    |                         ^^^^^^^^^^^ not found in the crate root
 
 error[E0425]: cannot find type `nonexistant` in the crate root
-  --> $DIR/editions-crate-root-2015.rs:14:29
+  --> $DIR/editions-crate-root.rs:20:29
    |
 LL |     fn bare_crate(_: crate::nonexistant) {
    |                             ^^^^^^^^^^^ not found in the crate root
