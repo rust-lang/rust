@@ -179,8 +179,14 @@ pr:
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
-  - <<: [*job-dist-x86_64-linux, *job-linux-48c-ec2]
-    name: dist-x86_64-linux-quick
+  - name: dist-x86_64-linux-quick
+    os: simulacrum-aws-test-runner-ef87d34144aec120ee7637c761663f1a
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+      DIST_TRY_BUILD: 1
+    <<: *base-job
 
 # Jobs that only run when explicitly invoked in one of the following ways:
 # - comment `@bors try jobs=<job-name>`
