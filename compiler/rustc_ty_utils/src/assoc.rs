@@ -356,9 +356,10 @@ fn associated_type_for_impl_trait_in_impl(
             parent: Some(impl_local_def_id.to_def_id()),
             parent_count,
             own_params,
+            own_lifetime_params: trait_assoc_generics.own_lifetime_params.clone(),
             param_def_id_to_index,
             has_self: false,
-            has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,
+            own_late_bound_regions: trait_assoc_generics.own_late_bound_regions.clone(),
         }
     });
 

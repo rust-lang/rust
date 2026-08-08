@@ -41,6 +41,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:29:15
@@ -53,6 +54,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:31:15
@@ -65,6 +67,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:34:21
@@ -77,6 +80,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:36:21
@@ -89,6 +93,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
    |                   ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:40:24
@@ -101,6 +106,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:42:24
@@ -113,6 +119,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:44:24
@@ -125,6 +132,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:47:30
@@ -137,6 +145,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:49:30
@@ -149,6 +158,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
    |                                         ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:52:35
@@ -161,6 +171,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_self_early<'b>(&self) -> &'b u8 { loop {} }
    |                                     ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:54:35
@@ -173,6 +184,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit_self_early<'b>(&self) -> &'b u8 { loop {} }
    |                                     ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:57:28
@@ -185,6 +197,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
    |                          ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args-fail.rs:59:28
@@ -197,6 +210,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
    |                          ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0107]: method takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/method-call-lifetime-args-fail.rs:63:8

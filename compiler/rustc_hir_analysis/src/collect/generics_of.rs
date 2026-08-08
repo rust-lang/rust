@@ -60,9 +60,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             parent: Some(trait_def_id),
             parent_count,
             own_params,
+            own_lifetime_params: opaque_ty_generics.own_lifetime_params.clone(),
             param_def_id_to_index,
             has_self: opaque_ty_generics.has_self,
-            has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
+            own_late_bound_regions: opaque_ty_generics.own_late_bound_regions.clone(),
         };
     }
 
@@ -155,9 +156,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         parent: generics.parent,
                         parent_count: generics.parent_count,
                         own_params,
+                        own_lifetime_params: generics.own_lifetime_params.clone(),
                         param_def_id_to_index,
                         has_self: generics.has_self,
-                        has_late_bound_regions: generics.has_late_bound_regions,
+                        own_late_bound_regions: generics.own_late_bound_regions.clone(),
                     };
                 }
                 ty::AnonConstKind::GCE => Some(parent_did),
@@ -268,6 +270,22 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     if let Some(opt_self) = opt_self {
         own_params.push(opt_self);
     }
+
+    let own_lifetime_params = hir_generics
+        .params
+        .iter()
+        .enumerate()
+        .filter_map(|(i, param)| match param.kind {
+            GenericParamKind::Lifetime { .. } => Some(ty::GenericParamDef {
+                name: param.name.ident().name,
+                index: own_start + i as u32,
+                def_id: param.def_id.to_def_id(),
+                pure_wrt_drop: param.pure_wrt_drop,
+                kind: ty::GenericParamDefKind::Lifetime,
+            }),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
 
     let early_lifetimes = super::early_bound_lifetimes_from_generics(tcx, hir_generics);
     own_params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
@@ -394,9 +412,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         parent: parent_def_id.map(LocalDefId::to_def_id),
         parent_count,
         own_params,
+        own_lifetime_params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
-        has_late_bound_regions: has_late_bound_regions(tcx, node),
+        own_late_bound_regions: late_bound_regions(tcx, node),
     }
 }
 
@@ -442,7 +461,7 @@ fn param_default_policy(node: Node<'_>) -> Option<ParamDefaultPolicy> {
     })
 }
 
-fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {
+fn late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Vec<Span> {
     struct LateBoundRegionsDetector<'tcx> {
         tcx: TyCtxt<'tcx>,
         outer_index: ty::DebruijnIndex,
@@ -495,25 +514,37 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         }
     }
 
-    fn has_late_bound_regions<'tcx>(
+    fn late_bound_regions<'tcx>(
         tcx: TyCtxt<'tcx>,
         generics: &'tcx hir::Generics<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
-    ) -> Option<Span> {
+    ) -> Vec<Span> {
         let mut visitor = LateBoundRegionsDetector { tcx, outer_index: ty::INNERMOST };
-        for param in generics.params {
-            if let GenericParamKind::Lifetime { .. } = param.kind {
-                if tcx.is_late_bound(param.hir_id) {
-                    return Some(param.span);
+
+        let spans = generics
+            .params
+            .iter()
+            .flat_map(|param| {
+                if let GenericParamKind::Lifetime { .. } = param.kind
+                    && tcx.is_late_bound(param.hir_id)
+                {
+                    Some(param.span)
+                } else {
+                    None
                 }
-            }
+            })
+            .collect::<Vec<_>>();
+
+        if !spans.is_empty() {
+            spans
+        } else {
+            visitor.visit_fn_decl(decl).break_value().map_or_default(|val| vec![val])
         }
-        visitor.visit_fn_decl(decl).break_value()
     }
 
-    let decl = node.fn_decl()?;
-    let generics = node.generics()?;
-    has_late_bound_regions(tcx, generics, decl)
+    let Some(decl) = node.fn_decl() else { return vec![] };
+    let Some(generics) = node.generics() else { return vec![] };
+    late_bound_regions(tcx, generics, decl)
 }
 
 struct AnonConstInParamTyDetector {
