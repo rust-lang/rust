@@ -221,7 +221,6 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/gdb_load_rust_pretty_printers.py",
         "src/etc/gdb_lookup.py",
         "src/etc/gdb_providers.py",
-        "src/etc/lldb_batchmode",
         "src/etc/lldb_lookup.py",
         "src/etc/lldb_providers.py",
     ];
@@ -229,6 +228,9 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         let path = src_root.join(file);
         stamp.add_path(&path);
     }
+    let lldb_batchmode = src_root.join("src/etc/lldb_batchmode");
+    stamp.add_path(&lldb_batchmode);
+    stamp.add_dir(&lldb_batchmode);
 
     stamp.add_dir(&src_root.join("src/etc/natvis"));
 
@@ -574,6 +576,15 @@ fn is_up_to_date(
     let mut inputs_stamp = cx.common_inputs_stamp.clone();
     for path in files_related_to_test(&cx.config, testpaths, aux_props, variant.revision()) {
         inputs_stamp.add_path(&path);
+    }
+    if variant.debugger == Some(Debugger::Lldb) {
+        let test_dir = testpaths.file.parent().unwrap();
+        inputs_stamp.add_path(test_dir);
+        let lldb_input = test_dir.join("lldb_input");
+        if lldb_input.is_dir() {
+            inputs_stamp.add_path(&lldb_input);
+            inputs_stamp.add_dir(&lldb_input);
+        }
     }
 
     // If no relevant files have been modified since the stamp file was last
