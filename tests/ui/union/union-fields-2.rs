@@ -1,3 +1,4 @@
+//@ reference: items.union.init.intro
 union U {
     a: u8,
     b: u16,
