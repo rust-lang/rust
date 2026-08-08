@@ -161,13 +161,13 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
     }
 }
 
-/// The shortest mode implementation for Grisu.
+/// Provides a Grisu implementation for flt2dec::format_short.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_shortest_opt<'a>(
+pub fn format_short<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+) -> Option<(/*digits*/ &'a [u8], /*pow10*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -450,31 +450,14 @@ pub fn format_shortest_opt<'a>(
     }
 }
 
-/// The shortest mode implementation for Grisu with Dragon fallback.
-///
-/// This should be used for most cases.
-pub fn format_shortest<'a>(
-    d: &Decoded,
-    buf: &'a mut [MaybeUninit<u8>],
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
-    use flt2dec::strategy::dragon::format_shortest as fallback;
-    // SAFETY: The borrow checker is not smart enough to let us use `buf`
-    // in the second branch, so we launder the lifetime here. But we only re-use
-    // `buf` if `format_shortest_opt` returned `None` so this is okay.
-    match format_shortest_opt(d, unsafe { &mut *(buf as *mut _) }) {
-        Some(ret) => ret,
-        None => fallback(d, buf),
-    }
-}
-
-/// The exact and fixed mode implementation for Grisu.
+/// Provides a Grisu implementation for flt2dec::format_fixed.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_exact_opt<'a>(
+pub fn format_fixed<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-    limit: i16,
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+    resolution: i16,
+) -> Option<(/*digits*/ &'a [u8], /*pow10*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
@@ -528,7 +511,7 @@ pub fn format_exact_opt<'a>(
     // if we are working with the last-digit limitation, we need to shorten the buffer
     // before the actual rendering in order to avoid double rounding.
     // note that we have to enlarge the buffer again when rounding up happens!
-    let len = if exp <= limit {
+    let len = if exp <= resolution {
         // oops, we cannot even produce *one* digit.
         // this is possible when, say, we've got something like 9.5 and it's being rounded to 10.
         //
@@ -540,10 +523,10 @@ pub fn format_exact_opt<'a>(
         //
         // SAFETY: `len=0`, so the obligation of having initialized this memory is trivial.
         return unsafe {
-            possibly_round(buf, 0, exp, limit, v.f / 10, (max_ten_kappa as u64) << e, err << e)
+            possibly_round(buf, 0, exp, resolution, v.f / 10, (max_ten_kappa as u64) << e, err << e)
         };
-    } else if ((exp as i32 - limit as i32) as usize) < buf.len() {
-        (exp - limit) as usize
+    } else if ((exp as i32 - resolution as i32) as usize) < buf.len() {
+        (exp - resolution) as usize
     } else {
         buf.len()
     };
@@ -573,7 +556,7 @@ pub fn format_exact_opt<'a>(
             let vrem = ((r as u64) << e) + vfrac; // == (v % 10^kappa) * 2^e
             // SAFETY: we have initialized `len` many bytes.
             return unsafe {
-                possibly_round(buf, len, exp, limit, vrem, (ten_kappa as u64) << e, err << e)
+                possibly_round(buf, len, exp, resolution, vrem, (ten_kappa as u64) << e, err << e)
             };
         }
 
@@ -625,7 +608,7 @@ pub fn format_exact_opt<'a>(
         // is the buffer full? run the rounding pass with the remainder.
         if i == len {
             // SAFETY: we have initialized `len` many bytes.
-            return unsafe { possibly_round(buf, len, exp, limit, r, 1 << e, err) };
+            return unsafe { possibly_round(buf, len, exp, resolution, r, 1 << e, err) };
         }
 
         // restore invariants
@@ -651,7 +634,7 @@ pub fn format_exact_opt<'a>(
         buf: &mut [MaybeUninit<u8>],
         mut len: usize,
         mut exp: i16,
-        limit: i16,
+        resolution: i16,
         remainder: u64,
         ten_kappa: u64,
         ulp: u64,
@@ -742,9 +725,9 @@ pub fn format_exact_opt<'a>(
             {
                 // only add an additional digit when we've been requested the fixed precision.
                 // we also need to check that, if the original buffer was empty,
-                // the additional digit can only be added when `exp == limit` (edge case).
+                // the additional digit can only be added when `exp == resolution` (edge case).
                 exp += 1;
-                if exp > limit && len < buf.len() {
+                if exp > resolution && len < buf.len() {
                     buf[len] = MaybeUninit::new(c);
                     len += 1;
                 }
@@ -756,23 +739,5 @@ pub fn format_exact_opt<'a>(
         // otherwise we are doomed (i.e., some values between `v - 1 ulp` and `v + 1 ulp` are
         // rounding down and others are rounding up) and give up.
         None
-    }
-}
-
-/// The exact and fixed mode implementation for Grisu with Dragon fallback.
-///
-/// This should be used for most cases.
-pub fn format_exact<'a>(
-    d: &Decoded,
-    buf: &'a mut [MaybeUninit<u8>],
-    limit: i16,
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
-    use flt2dec::strategy::dragon::format_exact as fallback;
-    // SAFETY: The borrow checker is not smart enough to let us use `buf`
-    // in the second branch, so we launder the lifetime here. But we only re-use
-    // `buf` if `format_exact_opt` returned `None` so this is okay.
-    match format_exact_opt(d, unsafe { &mut *(buf as *mut _) }, limit) {
-        Some(ret) => ret,
-        None => fallback(d, buf, limit),
     }
 }
