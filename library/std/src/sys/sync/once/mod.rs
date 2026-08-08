@@ -8,6 +8,10 @@
 // should help the fast path on call sites.
 
 cfg_select! {
+    all(target_os = "emscripten", not(target_feature = "atomics")) => {
+        mod no_threads;
+        pub use no_threads::{Once, OnceState};
+    }
     any(
         all(target_os = "windows", not(target_vendor="win7")),
         target_os = "linux",
