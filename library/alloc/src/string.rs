@@ -1464,8 +1464,8 @@ impl String {
 
     /// Shortens this `String` to the specified length.
     ///
-    /// If `new_len` is greater than or equal to the string's current length, this has no
-    /// effect.
+    /// If `new_len` is greater than or equal to the string's current length,
+    /// this has no effect.
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the string
@@ -1487,10 +1487,11 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     pub fn truncate(&mut self, new_len: usize) {
-        if new_len <= self.len() {
-            assert!(self.is_char_boundary(new_len));
-            self.vec.truncate(new_len)
+        if new_len >= self.len() {
+            return;
         }
+        assert!(self.is_char_boundary(new_len));
+        self.vec.truncate(new_len)
     }
 
     /// Removes the last character from the string buffer and returns it.
