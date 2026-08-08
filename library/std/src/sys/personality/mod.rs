@@ -10,8 +10,6 @@
 //! Additionally, ARM EHABI uses the personality function when generating
 //! backtraces.
 
-mod dwarf;
-
 #[cfg(not(any(test, doctest)))]
 cfg_select! {
     any(target_env = "msvc", target_family = "wasm", target_os = "motor") => {
