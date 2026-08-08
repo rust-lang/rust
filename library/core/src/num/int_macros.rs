@@ -3306,6 +3306,47 @@ macro_rules! int_impl {
             }
         }
 
+        /// Calculates the remainder of `self` and `rhs`, where the sign of the
+        /// remainder is always equal to the sign of `rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
+        /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
+        /// let b = 3;
+        ///
+        /// assert_eq!(a.rem_floor(b), 2);
+        /// assert_eq!(a.rem_floor(-b), -1);
+        /// assert_eq!((-a).rem_floor(b), 1);
+        /// assert_eq!((-a).rem_floor(-b), -2);
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn rem_floor(self, rhs: Self) -> Self {
+            let r = self % rhs;
+
+            // r currently always has the sign of self.
+            // If the remainder is non-zero and the signs of self and rhs are
+            // different, we must rectify this by adding rhs. We check that the
+            // signs are different not by comparing self < 0, but r < 0. This is
+            // done so the compiler can optimize this function better for
+            // constant divisors (e.g. x.rem_floor(8) simply becomes x & 7).
+            if r != 0 && (r < 0) != (rhs < 0) {
+                r + rhs
+            } else {
+                r
+            }
+        }
+
         /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
         ///
         /// # Panics
@@ -3341,6 +3382,47 @@ macro_rules! int_impl {
                 d + correction
             } else {
                 d
+            }
+        }
+
+        /// Calculates the remainder of `self` and `rhs`, where the sign of the
+        /// remainder is always the opposite of the sign of `rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
+        /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
+        /// let b = 3;
+        ///
+        /// assert_eq!(a.rem_ceil(b), -1);
+        /// assert_eq!(a.rem_ceil(-b), 2);
+        /// assert_eq!((-a).rem_ceil(b), -2);
+        /// assert_eq!((-a).rem_ceil(-b), 1);
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn rem_ceil(self, rhs: Self) -> Self {
+            let r = self % rhs;
+
+            // r currently always has the sign of self.
+            // If the remainder is non-zero and the signs of self and rhs are
+            // the same, we must rectify this by subtracting rhs. We check that
+            // the signs are different not by comparing self < 0, but r < 0.
+            // This is done so the compiler can optimize this function better
+            // for constant divisors.
+            if r != 0 && (r < 0) == (rhs < 0) {
+                r - rhs
+            } else {
+                r
             }
         }
 
