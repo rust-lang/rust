@@ -9,7 +9,15 @@
 //! into the same system service anyway, and `CCRandomGenerateBytes` has been
 //! proven to be App Store-compatible.
 
-pub fn fill_bytes(bytes: &mut [u8]) {
-    let ret = unsafe { libc::CCRandomGenerateBytes(bytes.as_mut_ptr().cast(), bytes.len()) };
+use crate::io::BorrowedCursor;
+
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
+    let ret = unsafe {
+        libc::CCRandomGenerateBytes(cursor.as_mut().as_mut_ptr().cast(), cursor.capacity())
+    };
     assert_eq!(ret, libc::kCCSuccess, "failed to generate random data");
+    // SAFETY: We've just initialized all the bytes with random data
+    unsafe {
+        cursor.advance(cursor.capacity());
+    }
 }

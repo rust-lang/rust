@@ -1,9 +1,10 @@
+use crate::io::BorrowedCursor;
 use crate::sync::atomic::Ordering::Relaxed;
 use crate::sync::atomic::{Atomic, AtomicBool};
 
 static RNG_INIT: Atomic<bool> = AtomicBool::new(false);
 
-pub fn fill_bytes(mut bytes: &mut [u8]) {
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
     while !RNG_INIT.load(Relaxed) {
         let ret = unsafe { libc::randSecure() };
         if ret < 0 {
@@ -16,10 +17,13 @@ pub fn fill_bytes(mut bytes: &mut [u8]) {
         unsafe { libc::usleep(10) };
     }
 
-    while !bytes.is_empty() {
-        let len = bytes.len().try_into().unwrap_or(libc::c_int::MAX);
-        let ret = unsafe { libc::randABytes(bytes.as_mut_ptr(), len) };
+    while cursor.capacity() != 0 {
+        let len = cursor.capacity().try_into().unwrap_or(libc::c_int::MAX);
+        let ret = unsafe { libc::randABytes(cursor.as_mut().as_mut_ptr().cast(), len) };
         assert!(ret >= 0, "failed to generate random data");
-        bytes = &mut bytes[len as usize..];
+        // SAFETY: We've just initialized `len` bytes
+        unsafe {
+            cursor.advance(len as usize);
+        }
     }
 }

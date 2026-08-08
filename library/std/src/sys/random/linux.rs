@@ -61,7 +61,7 @@
 // when secure data is required.
 
 use crate::fs::File;
-use crate::io::Read;
+use crate::io::{BorrowedBuf, BorrowedCursor, Read};
 use crate::os::fd::AsRawFd;
 use crate::sync::OnceLock;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
@@ -69,7 +69,7 @@ use crate::sync::atomic::{Atomic, AtomicBool};
 use crate::sys::io::errno;
 use crate::sys::pal::weak::syscall;
 
-fn getrandom(mut bytes: &mut [u8], insecure: bool) {
+fn getrandom(mut cursor: BorrowedCursor<'_, u8>, insecure: bool) {
     // A weak symbol allows interposition, e.g. for perf measurements that want to
     // disable randomness for consistency. Otherwise, we'll try a raw syscall.
     // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
@@ -88,7 +88,7 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
 
     if GETRANDOM_AVAILABLE.load(Relaxed) {
         loop {
-            if bytes.is_empty() {
+            if cursor.capacity() == 0 {
                 return;
             }
 
@@ -102,9 +102,13 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
                 0
             };
 
-            let ret = unsafe { getrandom(bytes.as_mut_ptr().cast(), bytes.len(), flags) };
+            let ret =
+                unsafe { getrandom(cursor.as_mut().as_mut_ptr().cast(), cursor.capacity(), flags) };
             if ret != -1 {
-                bytes = &mut bytes[ret as usize..];
+                // SAFETY: We've just initialized `ret` bytes
+                unsafe {
+                    cursor.advance(ret as usize);
+                }
             } else {
                 match errno() {
                     libc::EINTR => continue,
@@ -155,17 +159,17 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
 
     DEVICE
         .get_or_try_init(|| File::open("/dev/urandom"))
-        .and_then(|mut dev| dev.read_exact(bytes))
+        .and_then(|mut dev| dev.read_buf_exact(cursor))
         .expect("failed to generate random data");
 }
 
-pub fn fill_bytes(bytes: &mut [u8]) {
-    getrandom(bytes, false);
+pub fn fill_buf(cursor: BorrowedCursor<'_, u8>) {
+    getrandom(cursor, false);
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut bytes = [0; 16];
-    getrandom(&mut bytes, true);
+    let mut bytes = [0u8; 16];
+    getrandom(BorrowedBuf::from(bytes.as_mut_slice()).unfilled(), true);
     let k1 = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
     let k2 = u64::from_ne_bytes(bytes[8..].try_into().unwrap());
     (k1, k2)

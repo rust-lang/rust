@@ -1,5 +1,6 @@
 //! Random value generation.
 
+use crate::io::{BorrowedBuf, BorrowedCursor};
 use crate::range::{RangeFull, RangeInclusive};
 
 /// A source of randomness.
@@ -11,15 +12,31 @@ pub trait Rng {
     /// with a larger buffer. An `Rng` is allowed to return different bytes for those two cases. For
     /// instance, this allows an `Rng` to generate a word at a time and throw part of it away if not
     /// needed.
-    fn fill_bytes(&mut self, bytes: &mut [u8]);
+    ///
+    /// This is always implemented in terms of `fill_buf`, and cannot be overridden. Implementations
+    /// of this trait only need to define `fill_buf`.
+    #[inline(always)]
+    final fn fill_bytes(&mut self, bytes: &mut [u8]) {
+        self.fill_buf(BorrowedBuf::from(bytes).unfilled());
+    }
+
+    /// Fills `buf` with random bytes.
+    ///
+    /// Implementations must always fill the entire cursor.
+    ///
+    /// Note that calling `fill_buf` multiple times is not equivalent to calling `fill_buf` once
+    /// with a larger buffer. An `Rng` is allowed to return different bytes for those two cases. For
+    /// instance, this allows an `Rng` to generate a word at a time and throw part of it away if not
+    /// needed.
+    fn fill_buf(&mut self, cursor: BorrowedCursor<'_, u8>);
 }
 
 /// Implements `Rng` for mutable references to random number generators by
 /// forwarding all methods to the referenced generator.
 #[unstable(feature = "random", issue = "130703")]
 impl<'a, R: Rng + ?Sized> Rng for &'a mut R {
-    fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        R::fill_bytes(self, bytes);
+    fn fill_buf(&mut self, cursor: BorrowedCursor<'_, u8>) {
+        R::fill_buf(self, cursor);
     }
 }
 
