@@ -293,7 +293,10 @@ impl str {
     ///
     /// # Safety
     ///
-    /// The bytes passed in must be valid UTF-8.
+    /// This function is unsafe because it does not check that the bytes passed
+    /// to it are valid UTF-8. If this constraint is violated, it may cause
+    /// memory unsafety issues with future users of the `str`, as the rest of
+    /// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
     ///
     /// # Examples
     ///
@@ -322,7 +325,14 @@ impl str {
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8; mutable version.
     ///
-    /// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
+    /// See the immutable version, [`from_utf8_unchecked()`] for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the bytes passed
+    /// to it are valid UTF-8. If this constraint is violated, it may cause
+    /// memory unsafety issues with future users of the `str`, as the rest of
+    /// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
     ///
     /// # Examples
     ///
@@ -519,10 +529,14 @@ impl str {
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the content of the slice is valid UTF-8
-    /// before the borrow ends and the underlying `str` is used.
+    /// This function is unsafe because the returned `&mut [u8]` allows writing
+    /// bytes which are not valid UTF-8. If this constraint is violated, using
+    /// the original `str` after the `&mut [u8]` borrow expires may violate memory
+    /// safety, as the rest of the standard library [assumes that `str`s are
+    /// valid UTF-8](prim@str#invariant).
     ///
-    /// Use of a `str` whose contents are not valid UTF-8 is undefined behavior.
+    /// As an exception to the [general rule](prim@str#invariant), this function will not cause
+    /// immediate undefined behavior if called on a `str` containing invalid UTF-8.
     ///
     /// # Examples
     ///

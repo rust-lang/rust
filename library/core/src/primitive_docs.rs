@@ -1014,6 +1014,10 @@ mod prim_slice {}
 /// Constructing a non-UTF-8 string slice is not immediate undefined behavior, but any function
 /// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
 /// slice can lead to undefined behavior down the road.
+///
+/// Some functions explicitly allow invalid UTF-8, and will not immediately cause undefined
+/// behavior if called on a string slice containing invalid UTF-8. Such functions explicitly
+/// specify this in their documentation.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str {}
 
