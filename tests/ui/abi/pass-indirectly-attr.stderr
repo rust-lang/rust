@@ -121,7 +121,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                        },
                    },
                    mode: Cast {
-                       pad_i32: false,
+                       pad_i32: 0,
                        cast: CastTarget {
                            prefix: [],
                            rest_offset: None,
