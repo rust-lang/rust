@@ -36,10 +36,10 @@ trait Ty<'a> {
 
 fn main() {
     let v = Unit2.m(
-        L { //~ ERROR type mismatch
+        L {
             f: |x| {
                 drop(x);
-                Unit4 //~ ERROR to return `Unit3`, but it returns `Unit4`
+                Unit4 //~ ERROR mismatched types
             },
         },
     );

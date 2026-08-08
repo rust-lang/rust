@@ -23,6 +23,5 @@ fn main() {
     a: 1
   };
   f(|a, b| a.cmp(b));
-  //~^ ERROR: type annotations needed
-  //~| ERROR: this function takes 0 arguments but 1 argument was supplied
+  //~^ ERROR: this function takes 0 arguments but 1 argument was supplied
 }

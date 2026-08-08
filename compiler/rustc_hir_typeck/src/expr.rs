@@ -1730,6 +1730,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = fcx.check_expr_with_expectation(body.value, expected);
         fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::SizedConstOrStatic);
         fcx.write_ty(block.hir_id, ty);
+        fcx.check_deferred_closure_bodies_for_parent(def_id);
         ty
     }
 

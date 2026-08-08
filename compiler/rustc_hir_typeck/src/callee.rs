@@ -1096,6 +1096,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None,
         );
 
+        if self.is_closure_body_deferred(closure_def_id) {
+            if let Some(expected_ty) = expected.only_has_type(self) {
+                // Unlike the speculative argument guidance above, commit the result constraint
+                // before checking the body so nested closures can use it.
+                self.demand_suptype(call_expr.span, expected_ty, fn_sig.output());
+            }
+            self.check_deferred_closure_body(closure_def_id);
+        }
+
         fn_sig.output()
     }
 

@@ -9,7 +9,7 @@ fn select<F, I>(filter: F) -> Select<F, I> {}
 
 fn parser1() {
     let lit = select(|x| match x {
-        //~^ ERROR type annotations needed [E0282]
+        //~^ ERROR type annotations needed for `Select
         _ => (),
     });
 }
