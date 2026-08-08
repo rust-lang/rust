@@ -19,9 +19,13 @@
 //! function is called. In the worst case, multiple threads may all end up
 //! importing the same function unnecessarily.
 
+use crate::cell::UnsafeCell;
 use crate::ffi::{CStr, c_void};
-use crate::ptr::NonNull;
+use crate::ptr::{self, NonNull};
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::c;
+#[cfg(not(target_vendor = "win7"))]
+use crate::sys::pal::windows::futex::{futex_wait, futex_wake_all};
 
 // This uses a static initializer to preload some imported functions.
 // The CRT (C runtime) executes static initializers before `main`
@@ -118,6 +122,24 @@ impl Module {
         }
     }
 
+    /// Try to load a module handle.
+    ///
+    /// # SAFETY
+    ///
+    /// This should only be used for system modules that will not be unloaded
+    /// for the lifetime of std (e.g. shell32 and combase).
+    pub unsafe fn load(name: &CStr) -> Option<Self> {
+        // SAFETY: A CStr is always null terminated.
+        unsafe {
+            let module = c::LoadLibraryExA(
+                /* lpLibFileName */ name.as_ptr().cast::<u8>(),
+                /* hReserved */ ptr::null_mut(),
+                /* dwFlags */ c::LOAD_LIBRARY_SEARCH_SYSTEM32,
+            );
+            NonNull::new(module).map(Module)
+        }
+    }
+
     // Try to get the address of a function.
     pub fn proc_address(self, name: &CStr) -> Option<NonNull<c_void>> {
         unsafe {
@@ -128,6 +150,101 @@ impl Module {
             // SAFETY: `GetProcAddress` returns None on null.
             proc.map(|p| NonNull::new_unchecked(p as *mut c_void))
         }
+    }
+}
+
+/// Represents a lazy-loaded module.
+///
+/// Note that the modules std depends on must not be unloaded.
+/// Therefore a `Module` is always valid for the lifetime of std.
+///
+/// # State machine
+///
+/// - `(ptr: *mut u8, len: usize is 1..MAX)` -- module not yet loaded;
+///   module name is `CStr::from_unchecked(&*ptr::from_raw_parts(ptr, len))`
+/// - `(ptr: *mut u8, len: usize is MAX)` -- locked; a thread is loading the module
+/// - `(val: Option<Module>, len: usize is 0)` -- module loaded (or failed to load)
+pub(in crate::sys) struct LazyModule(UnsafeCell<Option<NonNull<c_void>>>, AtomicUsize);
+unsafe impl Sync for LazyModule {}
+impl LazyModule {
+    /// Create a lazy-loaded handle to a module.
+    ///
+    /// # SAFETY
+    ///
+    /// This should only be used for system modules that will not be unloaded
+    /// for the lifetime of std (e.g. shell32 and combase).
+    pub const unsafe fn new(name: &'static CStr) -> Self {
+        let bytes = name.to_bytes_with_nul();
+        let len = bytes.len();
+        let ptr = ptr::from_ref(bytes).cast_mut().cast();
+        Self(UnsafeCell::new(NonNull::new(ptr)), AtomicUsize::new(len))
+    }
+
+    /// Get the module handle, loading it if necessary.
+    pub fn load(&self) -> Option<Module> {
+        match self.1.load(Ordering::Acquire) {
+            // SAFETY: This module has been loaded.
+            0 => unsafe { self.get_unchecked() },
+            // SAFETY: This module is being loaded.
+            usize::MAX => unsafe { self.wait_unchecked() },
+            len => self.load_inner(len),
+        }
+    }
+
+    /// Get the already-acquired module handle.
+    ///
+    /// # SAFETY
+    ///
+    /// The `LazyModule` must be loaded. (`self.1 is 0`)
+    unsafe fn get_unchecked(&self) -> Option<Module> {
+        unsafe { *self.0.get() }.map(Module)
+    }
+
+    /// Wait for this module to be loaded.
+    ///
+    /// # SAFETY
+    ///
+    /// Some thread must have started loading the module. (`self.1 is (0 | usize::MAX)`)
+    unsafe fn wait_unchecked(&self) -> Option<Module> {
+        while self.1.load(Ordering::Acquire) != 0 {
+            #[cfg(not(target_vendor = "win7"))]
+            futex_wait(&self.1, usize::MAX, None);
+            #[cfg(target_vendor = "win7")]
+            crate::hint::spin_loop(); // no WaitOnAddress, so fall back to busy-wait
+        }
+        unsafe { self.get_unchecked() }
+    }
+
+    /// Wake any threads waiting for this module to be loaded.
+    fn wake(&self) {
+        #[cfg(not(target_vendor = "win7"))]
+        futex_wake_all(&self.1);
+    }
+
+    #[cold]
+    fn load_inner(&self, len: usize) -> Option<Module> {
+        match self.1.compare_exchange(len, usize::MAX, Ordering::Relaxed, Ordering::Acquire) {
+            // SAFETY: this module has been loaded.
+            Err(0) => return unsafe { self.get_unchecked() },
+            // SAFETY: this module is being loaded.
+            Err(usize::MAX) => return unsafe { self.wait_unchecked() },
+            Err(_) => unreachable!(),
+            Ok(_) => {}
+        }
+
+        let module = try {
+            // SAFETY: `self.0`` is a valid pointer to `len` bytes, and we have self.1 locked.
+            let bytes = NonNull::slice_from_raw_parts(unsafe { *self.0.get() }?.cast(), len);
+            // SAFETY: `bytes` was created from a valid CStr, so it is null-terminated.
+            let name = unsafe { CStr::from_bytes_with_nul_unchecked(bytes.as_ref()) };
+            unsafe { Module::new(name).or_else(|| Module::load(name))? }
+        };
+
+        // SAFETY: We have `self.1` locked, and `self.1 == 0` expects `self.0` to be `Option<Module>`.
+        unsafe { *self.0.get() = module.map(|module| module.0) };
+        self.1.store(0, Ordering::Release);
+        self.wake();
+        module
     }
 }
 
@@ -191,6 +308,67 @@ macro_rules! compat_fn_with_fallback {
             }
         }
         #[allow(unused)]
+        $(#[$meta])*
+        $vis use $symbol::call as $symbol;
+    )*);
+    (#[lazy] pub static $module:ident: &CStr = $name:expr; $(
+        $(#[$meta:meta])*
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
+    )*) => (
+        pub static $module: &CStr = $name;
+    $(
+        $(#[$meta])*
+        pub mod $symbol {
+            #[allow(unused_imports)]
+            use super::*;
+            use crate::mem;
+            use crate::ffi::CStr;
+            use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
+            use crate::sys::compat::{LazyModule, Module};
+
+            type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
+
+            /// `PTR` contains a function pointer to one of three functions.
+            /// It starts with the `load` function.
+            /// When that is called it attempts to load the requested symbol.
+            /// If it succeeds, `PTR` is set to the address of that symbol.
+            /// If it fails, then `PTR` is set to `fallback`.
+            static PTR: Atomic<*mut c_void> = AtomicPtr::new(load as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _);
+
+            unsafe extern "system" fn load($($argname: $argtype),*) -> $rettype {
+                unsafe {
+                    static MODULE: LazyModule = unsafe { LazyModule::new($module) };
+                    let func = load_from_module(MODULE.load());
+                    func($($argname),*)
+                }
+            }
+
+            fn load_from_module(module: Option<Module>) -> F {
+                unsafe {
+                    static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
+                    if let Some(f) = module.and_then(|m| m.proc_address(SYMBOL_NAME)) {
+                        PTR.store(f.as_ptr(), Ordering::Relaxed);
+                        mem::transmute(f)
+                    } else {
+                        PTR.store(fallback as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _, Ordering::Relaxed);
+                        fallback
+                    }
+                }
+            }
+
+            #[allow(unused_variables)]
+            unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype {
+                $fallback_body
+            }
+
+            #[inline(always)]
+            pub unsafe fn call($($argname: $argtype),*) -> $rettype {
+                unsafe {
+                    let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
+                    func($($argname),*)
+                }
+            }
+        }
         $(#[$meta])*
         $vis use $symbol::call as $symbol;
     )*)
