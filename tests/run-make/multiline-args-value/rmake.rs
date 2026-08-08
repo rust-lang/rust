@@ -3,7 +3,8 @@ use run_make_support::{cwd, diff, rustc};
 fn test_and_compare(test_name: &str, flag: &str, val: &str) {
     let mut cmd = rustc();
 
-    let output = cmd.input("").arg("--crate-type=lib").arg(flag).arg(val).run_fail();
+    let output =
+        cmd.edition("2015").input("").arg("--crate-type=lib").arg(flag).arg(val).run_fail();
 
     assert_eq!(output.stdout_utf8(), "");
     diff()
