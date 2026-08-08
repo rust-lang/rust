@@ -56,10 +56,6 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
                 test_type_match::extract_verify_if_eq(
                     tcx,
                     &outlives.map_bound(|ty::OutlivesClause(ty, bound)| VerifyIfEq { ty, bound }),
-                    // FIXME(#155345): Region handling should generally only
-                    // deal with rigid aliases, making sure we do so correctly
-                    // everywhere is effort, so we're just using `No` everywhere
-                    // for now. This should change soon.
                     alias_ty,
                 )
             }
