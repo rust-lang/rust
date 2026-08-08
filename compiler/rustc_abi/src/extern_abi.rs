@@ -370,6 +370,43 @@ impl ExternAbi {
             | Self::Swift => true,
         }
     }
+
+    /// Returns whether safe functions with this ABI implement the `Fn` traits.
+    /// `false` only for uncallable or internal ABIs.
+    pub fn is_fn_trait_compatible(self) -> bool {
+        match self {
+            ExternAbi::C { .. }
+            | ExternAbi::System { .. }
+            | ExternAbi::Rust
+            | ExternAbi::RustCold
+            | ExternAbi::RustPreserveNone
+            | ExternAbi::RustTail
+            | ExternAbi::EfiApi
+            | ExternAbi::Swift
+            | ExternAbi::Aapcs { .. }
+            | ExternAbi::CmseNonSecureCall
+            | ExternAbi::CmseNonSecureEntry
+            | ExternAbi::Cdecl { .. }
+            | ExternAbi::Stdcall { .. }
+            | ExternAbi::Fastcall { .. }
+            | ExternAbi::Thiscall { .. }
+            | ExternAbi::Vectorcall { .. }
+            | ExternAbi::SysV64 { .. }
+            | ExternAbi::Win64 { .. } => true,
+            ExternAbi::RustCall
+            | ExternAbi::RustInvalid
+            | ExternAbi::Unadjusted
+            | ExternAbi::Custom
+            | ExternAbi::GpuKernel
+            | ExternAbi::PtxKernel
+            | ExternAbi::AvrInterrupt
+            | ExternAbi::AvrNonBlockingInterrupt
+            | ExternAbi::Msp430Interrupt
+            | ExternAbi::RiscvInterruptM
+            | ExternAbi::RiscvInterruptS
+            | ExternAbi::X86Interrupt => false,
+        }
+    }
 }
 
 pub fn all_names() -> Vec<&'static str> {
