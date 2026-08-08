@@ -35,7 +35,7 @@
    LL|       |try_in_macro_helper::bang!();
    LL|       |
    LL|       |// Expand via a derive proc-macro.
-   LL|       |#[cfg_attr(derive, derive(try_in_macro_helper::Arbitrary))]
+   LL|      1|#[cfg_attr(derive, derive(try_in_macro_helper::Arbitrary))]
    LL|       |enum MyEnum {}
    LL|       |
    LL|      1|fn main() {
