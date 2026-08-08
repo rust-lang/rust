@@ -13,7 +13,7 @@
 //@ ignore-backends: gcc
 
 //[sparc_feature_v8plus,sparc_cpu_v9_feature_v8plus]~? WARN unstable feature specified for `-Ctarget-feature`
-//[sparc_feature_v8plus,sparc_cpu_v9_feature_v8plus]~? NOTE this feature is not stably supported; its behavior can change in the future
+//[sparc_feature_v8plus,sparc_cpu_v9_feature_v8plus]~? WARN `v8plus` must be disabled
 
 #![crate_type = "rlib"]
 #![feature(no_core, rustc_attrs, lang_items)]
