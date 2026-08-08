@@ -1648,10 +1648,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .notable-trait-badge-container {
-	padding: 0.5rem 0;
+	padding-top: 8px;
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.5rem;
+	gap: 8px;
 }
 
 .notable-trait-badge-container > a {
@@ -1659,23 +1659,31 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	align-items: center;
 	width: fit-content;
 	height: 1.5rem;
-	padding: 0 0.5rem;
-	border-radius: 0.75rem;
+	padding: 0 14px;
+	border-radius: var(--code-block-border-radius);
 	font-size: 1rem;
 	font-weight: normal;
 	color: var(--main-color);
+	border: solid 1px transparent;
 }
 
 .notable-trait-badge-container > a:hover {
 	text-decoration: none;
+	border: solid 1px var(--settings-button-border-focus);
 }
 
-.notable-trait-badge-container > .badge-0 { background: var(--notable-badge-pink); }
-.notable-trait-badge-container > .badge-1 { background: var(--notable-badge-red); }
-.notable-trait-badge-container > .badge-2 { background: var(--notable-badge-orange); }
-.notable-trait-badge-container > .badge-3 { background: var(--notable-badge-green); }
-.notable-trait-badge-container > .badge-4 { background: var(--notable-badge-blue); }
-.notable-trait-badge-container > .badge-5 { background: var(--notable-badge-violet); }
+/* this list of colors is lifted from the ANSI escape codes list:
+	https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+	This way, CLI-based tooling can adapt them without having to do
+	complex platform support dances. */
+.notable-trait-badge-grey { background: var(--notable-badge-grey); }
+.notable-trait-badge-red { background: var(--notable-badge-red); }
+.notable-trait-badge-green { background: var(--notable-badge-green); }
+.notable-trait-badge-yellow { background: var(--notable-badge-yellow); }
+.notable-trait-badge-blue { background: var(--notable-badge-blue); }
+.notable-trait-badge-magenta { background: var(--notable-badge-magenta); }
+.notable-trait-badge-cyan { background: var(--notable-badge-cyan); }
+.notable-trait-badge-transparent { background: var(--notable-badge-transparent); }
 
 .rightside {
 	padding-left: 12px;
@@ -3310,12 +3318,14 @@ by default.
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
-	--notable-badge-pink: oklch(0.88 0.21 0);
-	--notable-badge-red: oklch(0.88 0.21 40);
-	--notable-badge-orange: oklch(0.88 0.21 70);
+	--notable-badge-grey: oklch(0.88 0 0);
+	--notable-badge-red: oklch(0.88 0.21 20);
 	--notable-badge-green: oklch(0.88 0.21 150);
+	--notable-badge-yellow: oklch(0.88 0.21 70);
 	--notable-badge-blue: oklch(0.88 0.21 240);
-	--notable-badge-violet: oklch(0.88 0.21 300);
+	--notable-badge-magenta: oklch(0.88 0.21 320);
+	--notable-badge-cyan: oklch(0.88 0.21 180);
+	--notable-badge-transparent: white;
 }
 /* End theme: light */
 
@@ -3426,12 +3436,14 @@ by default.
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 	--sidebar-resizer-hover: hsl(207, 30%, 54%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
-	--notable-badge-pink: oklch(0.55 0.21 0);
-	--notable-badge-red: oklch(0.55 0.21 40);
-	--notable-badge-orange: oklch(0.55 0.21 70);
+	--notable-badge-grey: oklch(0.55 0 0);
+	--notable-badge-red: oklch(0.55 0.21 20);
 	--notable-badge-green: oklch(0.55 0.21 150);
+	--notable-badge-yellow: oklch(0.55 0.21 100);
 	--notable-badge-blue: oklch(0.55 0.21 240);
-	--notable-badge-violet: oklch(0.55 0.21 300);
+	--notable-badge-magenta: oklch(0.55 0.21 320);
+	--notable-badge-cyan: oklch(0.55 0.21 180);
+	--notable-badge-transparent: transparent;
 }
 /* End theme: dark */
 
@@ -3546,12 +3558,14 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
 	--sidebar-resizer-hover: hsl(34, 50%, 33%);
 	--sidebar-resizer-active: hsl(34, 100%, 66%);
-	--notable-badge-pink: oklch(0.49 0.21 0);
-	--notable-badge-red: oklch(0.49 0.21 40);
-	--notable-badge-orange: oklch(0.49 0.21 70);
+	--notable-badge-grey: oklch(0.49 0 0);
+	--notable-badge-red: oklch(0.49 0.21 20);
 	--notable-badge-green: oklch(0.49 0.21 150);
+	--notable-badge-yellow: oklch(0.49 0.21 100);
 	--notable-badge-blue: oklch(0.49 0.21 240);
-	--notable-badge-violet: oklch(0.49 0.21 300);
+	--notable-badge-magenta: oklch(0.49 0.21 320);
+	--notable-badge-cyan: oklch(0.49 0.21 180);
+	--notable-badge-transparent: transparent;
 }
 
 :root[data-theme="ayu"] h1,

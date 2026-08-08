@@ -53,7 +53,9 @@ use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, RustcVersion};
+use rustc_hir::attrs::{
+    AttributeKind, DeprecatedSince, Deprecation, NotableTraitColor, RustcVersion,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, StabilityLevel, StableSince};
@@ -1799,6 +1801,8 @@ pub(crate) struct NotableTraitBadge {
     pub full_path: String,
     /// Relative URL to the trait page, or `None` if it cannot be linked.
     pub href: Option<String>,
+    /// One of the color names.
+    pub color: NotableTraitColor,
 }
 
 /// Returns all `#[doc(notable_trait)]` traits that `item` implements, to be
@@ -1816,15 +1820,15 @@ pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<
             .filter_map(|impl_| {
                 if let Some(trait_) = &impl_.trait_
                     && let trait_did = trait_.def_id()
-                    && let Some(trait_) = cx.cache().traits.get(&trait_did)
-                    && trait_.is_notable_trait(tcx)
+                    && cx.cache().traits.contains_key(&trait_did)
+                    && let Some(&color) = tcx.doc_notable_trait(trait_did)
                 {
                     let name = tcx.item_name(trait_did).to_string();
                     let (full_path, href) = match href(trait_did, cx) {
                         Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
                         Err(_) => (tcx.def_path_str(trait_did), None),
                     };
-                    Some((name.clone(), NotableTraitBadge { name, full_path, href }))
+                    Some((name.clone(), NotableTraitBadge { name, full_path, href, color }))
                 } else {
                     None
                 }

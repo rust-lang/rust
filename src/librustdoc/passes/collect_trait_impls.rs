@@ -55,7 +55,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                 debug!("considering extern trait impl {trait_ref:?}");
                 if crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
                     || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
-                    || tcx.is_doc_notable_trait(trait_ref.def_id())
+                    || tcx.doc_notable_trait(trait_ref.def_id()).is_some()
                 {
                     debug!("-> inlining due to trait");
                     cx.with_param_env(impl_def_id, |cx| {

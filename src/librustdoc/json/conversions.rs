@@ -1219,7 +1219,13 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             name_value_attr(&mut ret, "keyword", keyword);
             name_value_attr(&mut ret, "attribute", attribute);
             toggle_attr(&mut ret, "masked", masked);
-            toggle_attr(&mut ret, "notable_trait", notable_trait);
+            if let Some((notable_trait, _span)) = notable_trait {
+                if let Some((color, _span)) = notable_trait {
+                    ret.push(Attribute::Other(format!("#[doc(notable_trait = \"{color}\")]")));
+                } else {
+                    ret.push(Attribute::Other(format!("#[doc(notable_trait)]")));
+                }
+            }
             toggle_attr(&mut ret, "search_unbox", search_unbox);
             name_value_attr(&mut ret, "html_favicon_url", html_favicon_url);
             name_value_attr(&mut ret, "html_logo_url", html_logo_url);

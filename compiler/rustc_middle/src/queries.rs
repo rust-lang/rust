@@ -60,7 +60,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
-use rustc_hir::attrs::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
+use rustc_hir::attrs::{CanonicalSymbols, EiiDecl, EiiImpl, NotableTraitColor, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
@@ -1504,8 +1504,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Determines whether an item is annotated with `#[doc(notable_trait)]`.
-    query is_doc_notable_trait(def_id: DefId) -> bool {
+    /// If an item is annotated with `#[doc(notable_trait)]`,
+    /// returns the color used to render its pill. If the crate specifies
+    /// no color, `Transparent` is used.
+    query doc_notable_trait(def_id: DefId) -> Option<&'tcx NotableTraitColor> {
         desc { "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
     }
 

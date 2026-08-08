@@ -82,7 +82,7 @@ use crate::vec::Vec;
 /// [`&str`]: prim@str
 /// [`std::io`]: crate::io
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[doc(notable_trait(color = "grey"))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
 #[rustc_must_implement_one_of(read_buf, read)] // Keep this order, it's important for rust-analyzer (the preferred-to-implement method should come first).
 pub trait Read {
