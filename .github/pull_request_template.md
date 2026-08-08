@@ -1,3 +1,7 @@
+Relevant Tracking Issue:
+
+---
+
 <!-- homu-ignore:start -->
 
 - [ ] I did not use an LLM to create a change in this PR.
@@ -13,7 +17,7 @@ LLM contributions are not banned, but are held to a higher standard of review an
 
 If this PR is related to an unstable feature or an otherwise tracked effort,
 please link to the relevant tracking issue here. If you don't know of a related
-tracking issue or there are none, feel free to ignore this.
+tracking issue or there are none, please explicitly write `none` instead.
 
 This PR will get automatically assigned to a reviewer. In case you would like
 a specific user to review your work, you can assign it to them by using
