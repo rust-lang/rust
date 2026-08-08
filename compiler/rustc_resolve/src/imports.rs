@@ -468,7 +468,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 || max_vis.get().is_none_or(|max_vis| vis.greater_than(max_vis, self.tcx)))
         {
             // `set` can't fail because this can only happen during "write_import_resolutions"
-            max_vis.set(Some(vis), self)
+            max_vis.set_checked(Some(vis), self)
         }
 
         self.arenas.alloc_decl(DeclData {
@@ -585,7 +585,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && glob_decl.ambiguity.get().is_none()
             {
                 // Do not lose glob ambiguities when re-fetching the glob.
-                glob_decl.ambiguity.set(Some((old_ambig, true)), self);
+                glob_decl.ambiguity.set_checked(Some((old_ambig, true)), self);
             }
             glob_decl
         } else if glob_decl.res() != old_glob_decl.res() {
@@ -593,7 +593,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 || self.is_rustybuzz_0_4_0(old_glob_decl, glob_decl)
                 || self.is_pdf_0_9_0(old_glob_decl, glob_decl)
                 || self.is_net2_0_2_39(old_glob_decl, glob_decl);
-            old_glob_decl.ambiguity.set(Some((glob_decl, warning)), self);
+            old_glob_decl.ambiguity.set_checked(Some((glob_decl, warning)), self);
             old_glob_decl
         } else if let old_vis = old_glob_decl.vis()
             && let vis = glob_decl.vis()
@@ -602,17 +602,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // We are glob-importing the same item but with a different visibility.
             // All visibilities here are ordered because all of them are ancestors of `module`.
             if vis.greater_than(old_vis, self.tcx) {
-                old_glob_decl.ambiguity_vis_max.set(Some(glob_decl), self);
+                old_glob_decl.ambiguity_vis_max.set_checked(Some(glob_decl), self);
             } else if let old_min_vis = old_glob_decl.min_vis()
                 && old_min_vis != vis
                 && old_min_vis.greater_than(vis, self.tcx)
             {
-                old_glob_decl.ambiguity_vis_min.set(Some(glob_decl), self);
+                old_glob_decl.ambiguity_vis_min.set_checked(Some(glob_decl), self);
             }
             old_glob_decl
         } else if glob_decl.is_ambiguity_recursive() && !old_glob_decl.is_ambiguity_recursive() {
             // Overwriting a non-ambiguous glob import with an ambiguous glob import.
-            old_glob_decl.ambiguity.set(Some((glob_decl, true)), self);
+            old_glob_decl.ambiguity.set_checked(Some((glob_decl, true)), self);
             old_glob_decl
         } else {
             old_glob_decl
@@ -1011,7 +1011,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<Decl<'ra>>) {
         for module in &self.local_modules {
             for (key, resolution) in self.resolutions(module.to_module()).iter() {
-                let resolution = resolution.borrow(self);
+                let resolution = resolution.borrow_checked(self);
                 let Some(binding) = resolution.best_decl() else { continue };
 
                 // Report "cannot reexport" errors for exotic cases involving macros 2.0
@@ -1808,7 +1808,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .resolutions(module)
                 .iter()
                 .filter_map(|(key, resolution)| {
-                    let res = resolution.borrow(self);
+                    let res = resolution.borrow_checked(self);
                     let decl = res.determined_decl()?;
                     let mut key = *key;
                     let scope = match key.ident.ctxt.update_unchecked(|ctxt| {
@@ -1874,7 +1874,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ambig_module_children: &mut LocalDefIdMap<Vec<AmbigModChild>>,
     ) {
         // Since import resolution is finished, globs will not define any more names.
-        *module.globs.borrow_mut(self) = Vec::new();
+        *module.globs.borrow_mut_checked(self) = Vec::new();
 
         let Some(def_id) = module.opt_def_id() else { return };
 

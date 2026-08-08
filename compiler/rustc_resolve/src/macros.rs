@@ -805,7 +805,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PathResult::Module(..) => unreachable!(),
             };
 
-            self.multi_segment_macro_resolutions.borrow_mut(&self).push((
+            self.multi_segment_macro_resolutions.borrow_mut_checked(&self).push((
                 path,
                 path_span,
                 kind,
@@ -832,7 +832,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return Err(Determinacy::Undetermined);
             }
 
-            self.single_segment_macro_resolutions.borrow_mut(&self).push((
+            self.single_segment_macro_resolutions.borrow_mut_checked(&self).push((
                 path[0].ident,
                 kind,
                 *parent_scope,
