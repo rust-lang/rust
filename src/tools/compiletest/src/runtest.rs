@@ -1038,6 +1038,7 @@ impl<'test> TestCx<'test> {
             .arg(file_to_doc)
             .arg("-A")
             .arg("internal_features")
+            .arg("-Znext-solver=coherence")
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
@@ -1850,7 +1851,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {
-                compiler.args(&["-Zpolonius=next"]);
+                compiler.args(&["-Zpolonius=next", "-Znext-solver=coherence"]);
             }
             Some(CompareMode::NextSolver) => {
                 compiler.args(&["-Znext-solver"]);
@@ -1867,7 +1868,9 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::SplitDwarfSingle) => {
                 compiler.args(&["-Csplit-debuginfo=packed"]);
             }
-            None => {}
+            None => {
+                compiler.args(["-Znext-solver=coherence"]);
+            }
         }
 
         // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
