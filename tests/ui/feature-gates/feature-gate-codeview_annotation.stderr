@@ -1,0 +1,22 @@
+error[E0658]: use of unstable library feature `codeview_annotation`
+  --> $DIR/feature-gate-codeview_annotation.rs:2:5
+   |
+LL |     std::hint::codeview_annotation!("string1", "string2", "string3");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(codeview_annotation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `codeview_annotation`
+  --> $DIR/feature-gate-codeview_annotation.rs:2:5
+   |
+LL |     std::hint::codeview_annotation!("string1", "string2", "string3");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(codeview_annotation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `std::hint::codeview_annotation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -87,6 +87,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 self.penalty += match **ndi {
                     NonDivergingIntrinsic::Assume(..) => INSTR_COST,
                     NonDivergingIntrinsic::CopyNonOverlapping(..) => CALL_PENALTY,
+                    NonDivergingIntrinsic::CodeviewAnnotation(..) => 0, // codeview_annotation is a no-op at runtime
                 };
             }
             StatementKind::Assign(..) => self.penalty += INSTR_COST,

@@ -703,6 +703,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     fn retag_mem(&mut self, _ptr: Self::Value, _info: &RetagInfo<Self::Value>) {
         unimplemented!()
     }
+
+    fn codeview_annotation(&mut self, _strings: &[&[u8]]) {
+        // No-op as codeview_annotation is supported only by the LLVM backend.
+        // GCC has no intrinsic we can lower to
+    }
 }
 
 impl<'a, 'gcc, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
