@@ -21,6 +21,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(extend_one)]
 #![feature(file_buffered)]
+#![feature(likely_unlikely)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
