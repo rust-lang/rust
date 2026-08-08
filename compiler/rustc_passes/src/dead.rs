@@ -313,8 +313,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 // we will lose the liveness info of `T` cause we cannot mark it live when visiting `foo`.
                 // Related issue: https://github.com/rust-lang/rust/issues/120770
                 self.check_def_id(adt.did());
+
+                if pats.is_empty() {
+                    return;
+                }
                 adt.variant_of_res(res)
             }
+            _ if pats.is_empty() => return,
             _ => span_bug!(lhs.span, "non-ADT in struct pattern"),
         };
         for pat in pats {

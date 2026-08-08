@@ -455,6 +455,8 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
     Pat,
     /// Paths in struct expressions and patterns `Path { .. }`.
     Struct(Option<&'a Expr>),
+    /// Paths in patterns matching `Path { .. }` exactly (no fields, with rest pattern).
+    TypeOrEnumVariant,
     /// Paths in tuple struct patterns `Path(..)`.
     TupleStruct(Span, &'ra [Span]),
     /// `m::A::B` in `<T as m::A>::B::C`.
@@ -484,6 +486,7 @@ impl PathSource<'_, '_, '_> {
             PathSource::Type
             | PathSource::Trait(_)
             | PathSource::Struct(_)
+            | PathSource::TypeOrEnumVariant
             | PathSource::DefineOpaques
             | PathSource::Module => TypeNS,
             PathSource::Expr(..)
@@ -504,6 +507,7 @@ impl PathSource<'_, '_, '_> {
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct(_)
+            | PathSource::TypeOrEnumVariant
             | PathSource::TupleStruct(..)
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
@@ -524,6 +528,7 @@ impl PathSource<'_, '_, '_> {
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct(_) => "struct, variant or union type",
+            PathSource::TypeOrEnumVariant => "type or enum variant",
             PathSource::TraitItem(ValueNS, PathSource::TupleStruct(..))
             | PathSource::TupleStruct(..) => "tuple struct or tuple variant",
             PathSource::TraitItem(ns, _) => match ns {
@@ -636,6 +641,24 @@ impl PathSource<'_, '_, '_> {
                 ) | Res::SelfTyParam { .. }
                     | Res::SelfTyAlias { .. }
             ),
+            PathSource::TypeOrEnumVariant => matches!(
+                res,
+                Res::Def(
+                    DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Variant
+                        | DefKind::Trait
+                        | DefKind::TraitAlias
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::ForeignTy,
+                    _,
+                ) | Res::PrimTy(..)
+                    | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
+            ),
             PathSource::TraitItem(ns, _) => match res {
                 Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
@@ -673,8 +696,14 @@ impl PathSource<'_, '_, '_> {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
-            (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
-            (PathSource::Type | PathSource::DefineOpaques, false) => E0425,
+            (
+                PathSource::Type | PathSource::DefineOpaques | PathSource::TypeOrEnumVariant,
+                true,
+            ) => E0573,
+            (
+                PathSource::Type | PathSource::DefineOpaques | PathSource::TypeOrEnumVariant,
+                false,
+            ) => E0425,
             (PathSource::Struct(_), true) => E0574,
             (PathSource::Struct(_), false) => E0422,
             (PathSource::Expr(..), true)
@@ -2240,6 +2269,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct(_)
+                | PathSource::TypeOrEnumVariant
                 | PathSource::TupleStruct(..)
                 | PathSource::DefineOpaques
                 | PathSource::Delegation
@@ -4254,8 +4284,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
-                PatKind::Struct(ref qself, ref path, ref _fields, ref rest) => {
-                    self.smart_resolve_path(pat.id, qself, path, PathSource::Struct(None));
+                PatKind::Struct(ref qself, ref path, ref fields, ref rest) => {
+                    let path_source = if fields.is_empty() && matches!(rest, PatFieldsRest::Rest(_))
+                    {
+                        PathSource::TypeOrEnumVariant
+                    } else {
+                        PathSource::Struct(None)
+                    };
+                    self.smart_resolve_path(pat.id, qself, path, path_source);
                     self.record_patterns_with_skipped_bindings(pat, rest);
                 }
                 PatKind::Or(ref ps) => {

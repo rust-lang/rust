@@ -1101,7 +1101,9 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
-        if let PatKind::Struct(ref qpath, fields, _) = pat.kind {
+        if let PatKind::Struct(ref qpath, fields, _) = pat.kind
+            && !fields.is_empty()
+        {
             let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
             let adt = self.typeck_results().pat_ty(pat).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
