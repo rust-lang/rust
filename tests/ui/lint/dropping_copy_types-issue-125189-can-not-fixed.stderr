@@ -6,6 +6,7 @@ LL |         0 => drop(y),
    |                   |
    |                   argument has type `i32`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
    = note: use `let _ = ...` to ignore the expression or result
 note: the lint level is defined here
   --> $DIR/dropping_copy_types-issue-125189-can-not-fixed.rs:3:9
@@ -21,6 +22,7 @@ LL |         1 => drop(z),
    |                   |
    |                   argument has type `i32`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
    = note: use `let _ = ...` to ignore the expression or result
 
 error: calls to `std::mem::drop` with a value that implements `Copy` does nothing
@@ -31,6 +33,7 @@ LL |         2 => drop(3),
    |                   |
    |                   argument has type `i32`
    |
+   = note: for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>
    = note: use `let _ = ...` to ignore the expression or result
 
 error: aborting due to 3 previous errors
