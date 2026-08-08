@@ -74,6 +74,7 @@ define_config! {
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
+        stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
     }
 }
 
@@ -391,6 +392,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
         rustflags: _,
+        stdlib_semver_baseline: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
