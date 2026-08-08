@@ -1,0 +1,19 @@
+error: type `Private` is more private than the item `Public::_`
+  --> $DIR/associated-const-underscore-visibility.rs:9:5
+   |
+LL |     pub const _: Private = Private;
+   |     ^^^^^^^^^^^^^^^^^^^^ associated constant `Public::_` is reachable at visibility `pub`
+   |
+note: but type `Private` is only usable at visibility `pub(crate)`
+  --> $DIR/associated-const-underscore-visibility.rs:6:1
+   |
+LL | struct Private;
+   | ^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/associated-const-underscore-visibility.rs:2:9
+   |
+LL | #![deny(private_interfaces)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
