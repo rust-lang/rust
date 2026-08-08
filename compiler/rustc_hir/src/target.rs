@@ -29,6 +29,17 @@ pub enum MethodKind {
     Inherent,
 }
 
+/// Context of an associated const or associated type (not methods; see [`MethodKind`]).
+#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
+pub enum AssocKind {
+    /// Associated item in a `trait Trait` block
+    Trait,
+    /// Associated item in a `impl Trait for Type` block
+    TraitImpl,
+    /// Associated item in a `impl Type` block
+    Inherent,
+}
+
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum Target {
     ExternCrate,
@@ -52,9 +63,9 @@ pub enum Target {
     Expression,
     Statement,
     Arm,
-    AssocConst,
+    AssocConst(AssocKind),
     Method(MethodKind),
-    AssocTy,
+    AssocTy(AssocKind),
     ForeignFn,
     ForeignStatic,
     ForeignTy,
@@ -84,7 +95,7 @@ rustc_error_messages::into_diag_arg_using_display!(Target);
 impl Target {
     pub fn is_associated_item(self) -> bool {
         match self {
-            Target::AssocConst | Target::AssocTy | Target::Method(_) => true,
+            Target::AssocConst(_) | Target::AssocTy(_) | Target::Method(_) => true,
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -159,8 +170,13 @@ impl Target {
     }
 
     pub fn from_assoc_item_kind(kind: &ast::AssocItemKind, assoc_ctxt: AssocCtxt) -> Target {
+        let assoc_kind = match assoc_ctxt {
+            AssocCtxt::Trait => AssocKind::Trait,
+            AssocCtxt::Impl { of_trait: true, .. } => AssocKind::TraitImpl,
+            AssocCtxt::Impl { of_trait: false, .. } => AssocKind::Inherent,
+        };
         match kind {
-            AssocItemKind::Const(_) => Target::AssocConst,
+            AssocItemKind::Const(_) => Target::AssocConst(assoc_kind),
             AssocItemKind::Fn(f) => Target::Method(match assoc_ctxt {
                 AssocCtxt::Trait => MethodKind::Trait { body: f.body.is_some() },
                 AssocCtxt::Impl { of_trait, .. } => {
@@ -171,7 +187,7 @@ impl Target {
                     }
                 }
             }),
-            AssocItemKind::Type(_) => Target::AssocTy,
+            AssocItemKind::Type(_) => Target::AssocTy(assoc_kind),
             AssocItemKind::Delegation(_) => Target::Delegation { mac: false },
             AssocItemKind::DelegationMac(_) => Target::Delegation { mac: true },
             AssocItemKind::MacCall(_) => Target::MacroCall,
@@ -213,14 +229,14 @@ impl Target {
             Target::Expression => "expression",
             Target::Statement => "statement",
             Target::Arm => "match arm",
-            Target::AssocConst => "associated const",
+            Target::AssocConst(_) => "associated const",
             Target::Method(kind) => match kind {
                 MethodKind::Inherent => "inherent method",
                 MethodKind::Trait { body: false } => "required trait method",
                 MethodKind::Trait { body: true } => "provided trait method",
                 MethodKind::TraitImpl => "trait method in an impl block",
             },
-            Target::AssocTy => "associated type",
+            Target::AssocTy(_) => "associated type",
             Target::ForeignFn => "foreign function",
             Target::ForeignStatic => "foreign static item",
             Target::ForeignTy => "foreign type",
@@ -268,14 +284,14 @@ impl Target {
             Target::Expression => "expressions",
             Target::Statement => "statements",
             Target::Arm => "match arms",
-            Target::AssocConst => "associated consts",
+            Target::AssocConst(_) => "associated consts",
             Target::Method(kind) => match kind {
                 MethodKind::Inherent => "inherent methods",
                 MethodKind::Trait { body: false } => "required trait methods",
                 MethodKind::Trait { body: true } => "provided trait methods",
                 MethodKind::TraitImpl => "trait methods in impl blocks",
             },
-            Target::AssocTy => "associated types",
+            Target::AssocTy(_) => "associated types",
             Target::ForeignFn => "foreign functions",
             Target::ForeignStatic => "foreign statics",
             Target::ForeignTy => "foreign types",
@@ -331,14 +347,14 @@ impl From<&hir::GenericParam<'_>> for Target {
 impl From<&hir::TraitItem<'_>> for Target {
     fn from(trait_item: &hir::TraitItem<'_>) -> Target {
         match trait_item.kind {
-            TraitItemKind::Const(..) => Target::AssocConst,
+            TraitItemKind::Const(..) => Target::AssocConst(AssocKind::Trait),
             TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                 Target::Method(MethodKind::Trait { body: false })
             }
             TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
                 Target::Method(MethodKind::Trait { body: true })
             }
-            TraitItemKind::Type(..) => Target::AssocTy,
+            TraitItemKind::Type(..) => Target::AssocTy(AssocKind::Trait),
         }
     }
 }

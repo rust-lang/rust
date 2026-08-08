@@ -2,12 +2,15 @@ use rustc_ast::LitKind;
 use rustc_feature::AttributeStability;
 use rustc_hir::VERSION_PLACEHOLDER;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation, RustcVersion};
+use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 
 use super::prelude::*;
 use super::util::parse_version;
 use crate::session_diagnostics::{
-    DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
+    DeprecatedAnnotationHasNoEffect, DeprecatedItemSuggestion, InvalidSince, MissingNote,
+    MissingSince,
 };
+use crate::target_checking::Policy::AllowSilent;
 
 fn get(
     cx: &mut AcceptContext<'_, '_>,
@@ -51,8 +54,12 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::ForeignTy),
         Allow(Target::Field),
         Allow(Target::Trait),
-        Allow(Target::AssocTy),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocKind::Inherent)),
+        Allow(Target::AssocConst(AssocKind::Trait)),
+        AllowSilent(Target::AssocConst(AssocKind::TraitImpl)),
+        Allow(Target::AssocTy(AssocKind::Inherent)),
+        Allow(Target::AssocTy(AssocKind::Trait)),
+        AllowSilent(Target::AssocTy(AssocKind::TraitImpl)),
         Allow(Target::Variant),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Crate),
@@ -183,6 +190,22 @@ impl SingleAttributeParser for DeprecatedParser {
         if is_rustc && note.is_none() {
             cx.emit_err(MissingNote { span: cx.attr_span });
             return None;
+        }
+
+        // `#[deprecated]` on trait-impl associated items has no effect (deprecation comes from the
+        // trait definition). Methods also get `useless_deprecated` from target checking.
+        if matches!(
+            cx.target,
+            Target::Method(MethodKind::TraitImpl)
+                | Target::AssocConst(AssocKind::TraitImpl)
+                | Target::AssocTy(AssocKind::TraitImpl)
+        ) {
+            let attr_span = cx.attr_span;
+            cx.emit_lint(
+                UNUSED_ATTRIBUTES,
+                DeprecatedAnnotationHasNoEffect { span: attr_span },
+                attr_span,
+            );
         }
 
         Some(AttributeKind::Deprecated {

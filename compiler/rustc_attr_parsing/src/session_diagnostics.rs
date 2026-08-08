@@ -30,6 +30,17 @@ pub(crate) struct BothFfiConstAndPure {
 }
 
 #[derive(Diagnostic)]
+#[diag("this `#[deprecated]` annotation has no effect")]
+pub(crate) struct DeprecatedAnnotationHasNoEffect {
+    #[suggestion(
+        "remove the unnecessary deprecation attribute",
+        applicability = "machine-applicable",
+        code = ""
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("attribute should be applied to `#[repr(transparent)]` types")]
 pub(crate) struct RustcPubTransparent {
     #[primary_span]

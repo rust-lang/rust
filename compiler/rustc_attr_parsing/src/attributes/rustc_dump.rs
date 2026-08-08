@@ -1,6 +1,6 @@
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{AttributeKind, RustcDumpLayoutKind};
-use rustc_hir::{MethodKind, Target};
+use rustc_hir::{AssocKind, MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use super::prelude::*;
@@ -59,8 +59,12 @@ impl NoArgsAttributeParser for RustcDumpGenericsParser {
         Allow(Target::Closure),
         Allow(Target::TyAlias),
         Allow(Target::Const),
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocKind::Inherent)),
+        Allow(Target::AssocConst(AssocKind::Trait)),
+        Allow(Target::AssocConst(AssocKind::TraitImpl)),
+        Allow(Target::AssocTy(AssocKind::Inherent)),
+        Allow(Target::AssocTy(AssocKind::Trait)),
+        Allow(Target::AssocTy(AssocKind::TraitImpl)),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -101,8 +105,11 @@ pub(crate) struct RustcDumpItemBoundsParser;
 
 impl NoArgsAttributeParser for RustcDumpItemBoundsParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_item_bounds];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::AssocTy)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::AssocTy(AssocKind::Inherent)),
+        Allow(Target::AssocTy(AssocKind::Trait)),
+        Allow(Target::AssocTy(AssocKind::TraitImpl)),
+    ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpItemBounds;
 }
@@ -176,8 +183,12 @@ pub(crate) struct RustcDumpObjectLifetimeDefaultsParser;
 impl NoArgsAttributeParser for RustcDumpObjectLifetimeDefaultsParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_object_lifetime_defaults];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocKind::Inherent)),
+        Allow(Target::AssocConst(AssocKind::Trait)),
+        Allow(Target::AssocConst(AssocKind::TraitImpl)),
+        Allow(Target::AssocTy(AssocKind::Inherent)),
+        Allow(Target::AssocTy(AssocKind::Trait)),
+        Allow(Target::AssocTy(AssocKind::TraitImpl)),
         Allow(Target::Const),
         Allow(Target::Enum),
         Allow(Target::Fn),
@@ -203,8 +214,12 @@ pub(crate) struct RustcDumpPredicatesParser;
 impl NoArgsAttributeParser for RustcDumpPredicatesParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_predicates];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocKind::Inherent)),
+        Allow(Target::AssocConst(AssocKind::Trait)),
+        Allow(Target::AssocConst(AssocKind::TraitImpl)),
+        Allow(Target::AssocTy(AssocKind::Inherent)),
+        Allow(Target::AssocTy(AssocKind::Trait)),
+        Allow(Target::AssocTy(AssocKind::TraitImpl)),
         Allow(Target::Const),
         Allow(Target::Delegation { mac: false }),
         Allow(Target::Delegation { mac: true }),
