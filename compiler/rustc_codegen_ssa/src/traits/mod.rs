@@ -36,7 +36,7 @@ pub use self::asm::{
     AsmBuilderMethods, AsmCodegenMethods, GlobalAsmOperandRef, InlineAsmOperandRef,
 };
 pub use self::backend::{BackendTypes, CodegenBackend, ExtraBackendMethods};
-pub use self::builder::{BuilderMethods, OverflowOp};
+pub use self::builder::{BuilderMethods, OverflowOp, ReturnSlot};
 pub use self::consts::ConstCodegenMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
