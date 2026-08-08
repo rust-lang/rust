@@ -289,7 +289,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         f(value.as_ref().skip_binder(), self)
     }
 
-    /// Prints comma-separated elements.
+    /// Prints comma-separated elements. If `comma_sep_has_space` is `true`, there is a space after
+    /// each comma.
     fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
     where
         T: Print<Self>,
@@ -297,11 +298,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         if let Some(first) = elems.next() {
             first.print(self)?;
             for elem in elems {
-                self.write_str(", ")?;
+                if self.comma_sep_has_space() {
+                    self.write_str(", ")?;
+                } else {
+                    self.write_str(",")?;
+                }
                 elem.print(self)?;
             }
         }
         Ok(())
+    }
+
+    fn comma_sep_has_space(&self) -> bool {
+        true
     }
 
     /// Prints `{f: t}` or `{f as t}` depending on the `cast` argument
@@ -1504,14 +1513,26 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let splatted_arg_index = splatted.map(usize::from);
         let mut input_iter = inputs.iter().copied();
         if let Some(index) = splatted_arg_index {
-            self.comma_sep((&mut input_iter).take(usize::from(index)))?;
-            write!(self, ", #[rustc_splat]")?;
+            self.comma_sep((&mut input_iter).take(index))?;
+            // Splitting the comma-separated list can miss a comma, but we only need that comma if
+            // there are arguments before the splat.
+            // FIXME(splat): if splatting becomes part of the type, we can remove this hack
+            if index > 0 {
+                if self.comma_sep_has_space() {
+                    write!(self, ", ")?;
+                } else {
+                    write!(self, ",")?;
+                }
+            }
+            write!(self, "#[rustc_splat] ")?;
             self.comma_sep(input_iter)?;
         } else {
             self.comma_sep(input_iter)?;
         }
         if c_variadic {
             if !inputs.is_empty() {
+                // In legacy mangling, most comma-separated lists have no spaces. But here we print
+                // a space before the `...` for readability.
                 write!(self, ", ")?;
             }
             write!(self, "...")?;
@@ -1967,6 +1988,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             let mut first = true;
                             for (field_def, field) in iter::zip(&variant_def.fields, fields) {
                                 if !first {
+                                    // FIXME(legacy mangling): if this appears, should we enable
+                                    // spaces depending on `comma_sep_has_space`?
                                     write!(self, ", ")?;
                                 }
                                 write!(self, "{}: ", field_def.name)?;
