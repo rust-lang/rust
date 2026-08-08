@@ -1,9 +1,12 @@
+use crate::hint::cold_path;
 use crate::iter::{
     FusedIterator, Step, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
 };
+use crate::marker::Destruct;
 use crate::num::NonZero;
+use crate::ops::Try;
 use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
-use crate::{intrinsics, mem};
+use crate::{fmt, intrinsics, mem};
 
 /// By-value [`Range`] iterator.
 #[stable(feature = "new_range_api", since = "1.96.0")]
@@ -168,10 +171,60 @@ impl<A: Step> IntoIterator for Range<A> {
 
 /// By-value [`RangeInclusive`] iterator.
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-#[derive(Debug, Clone)]
-pub struct RangeInclusiveIter<A>(legacy::RangeInclusive<A>);
+#[derive(Clone)]
+pub struct RangeInclusiveIter<A> {
+    // When created from `start..=last`, this range is
+    // - Preferably `start..(last+1)`, so we only need to delegate to the exclusive range
+    // - If necessary (because `last` is a maximal element) `start..last`,
+    //   with the `is_inclusive` field set to `true`
+    range: legacy::Range<A>,
+    // Preferably this is `false`, denoting that we successfully converted the inclusive
+    // range into an exclusive range, and thus have no need for extra handling.
+    // If this is true, however, that means that we must return one final item
+    // after iterating it as an exclusive range.
+    // This must only be true if the iterator is non-empty, implying
+    // `range.start <= range.end`. (If the original inclusive range is empty because
+    // `!(start <= last)`, it's stored as the empty exclusive range `start..last` )
+    is_inclusive: bool,
+}
+
+#[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
+impl<A: fmt::Debug> fmt::Debug for RangeInclusiveIter<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { range: legacy::Range { start, end }, is_inclusive } = self;
+        let inclusive;
+        let exclusive;
+        let field: &dyn fmt::Debug = if *is_inclusive {
+            inclusive = &start..=&end;
+            &inclusive
+        } else {
+            exclusive = &start..&end;
+            &exclusive
+        };
+        fmt::Formatter::debug_tuple_field1_finish(f, "RangeInclusiveIter", field)
+    }
+}
 
 impl<A: Step> RangeInclusiveIter<A> {
+    #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[inline]
+    const fn is_empty(&self) -> bool
+    where
+        A: [const] PartialOrd,
+    {
+        let Self { range, is_inclusive } = self;
+        // We expect to need the range comparison (since inclusive is rare),
+        // so run it outside the `if` to tell the backend that it's ok to look
+        // at those fields unconditionally.
+        let range_is_empty = range.is_empty();
+        if *is_inclusive {
+            debug_assert!(range.start <= range.end);
+            false
+        } else {
+            range_is_empty
+        }
+    }
+
     /// Returns the remainder of the range being iterated over.
     ///
     /// If the iterator is exhausted or empty, returns `None`.
@@ -191,11 +244,18 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// ```
     #[unstable(feature = "new_range_remainder", issue = "154458")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
-        if self.0.is_empty() {
+        if self.is_empty() {
             return None;
         }
 
-        Some(RangeInclusive { start: self.0.start, last: self.0.end })
+        let Self { range: legacy::Range { start, end }, is_inclusive } = self;
+        let last = if is_inclusive {
+            end
+        } else {
+            // Can't overflow because the range isn't empty
+            Step::backward(end, 1)
+        };
+        Some(RangeInclusive { start, last })
     }
 }
 
@@ -205,27 +265,75 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.0.next()
+        // Conveniently, regardless of whether we were able to convert to exclusive,
+        // the normal case is to return a value when `range.start < range.end`.
+        // Only rarely do we need to handle something else.
+
+        let Self { range, is_inclusive } = self;
+        if let next @ Some(_) = range.next() {
+            next
+        } else {
+            cold_path();
+            if *is_inclusive {
+                // Tighter invariant check than normal because we only get here after
+                // having already returned all the previous items.
+                // As an exclusive range it's empty, but we give out one more.
+                debug_assert!(range.start == range.end);
+                *is_inclusive = false;
+                // Because we're going forward, prefer giving out `start` since
+                // that's what the `range.next()` above returned.
+                let last = range.start.clone();
+                Some(last)
+            } else {
+                None
+            }
+        }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        let Self { range, is_inclusive } = self;
+        let (low, high) = range.size_hint();
+        let extra = *is_inclusive as usize;
+        (low.saturating_add(extra), try { high?.checked_add(extra)? })
     }
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn count(self) -> usize {
-        self.0.count()
+        let Self { range, is_inclusive } = self;
+        let extra = is_inclusive as usize;
+        range.count() + extra
     }
 
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<A> {
-        self.0.nth(n)
+    impl_fold_via_try_fold! { fold -> try_fold }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R + Destruct,
+        R: Try<Output = B>,
+    {
+        let Self { range, is_inclusive } = self;
+        let mut accum = init;
+
+        accum = range.try_fold(accum, &mut f)?;
+
+        if *is_inclusive {
+            cold_path();
+            debug_assert!(range.start == range.end);
+            *is_inclusive = false;
+            let last = range.start.clone();
+            // Update the state before this call so it happens even if `?` short-circuits
+            accum = f(accum, last)?;
+        }
+
+        try { accum }
     }
 
     #[inline]
     fn last(self) -> Option<A> {
-        self.0.last()
+        { self }.next_back()
     }
 
     #[inline]
@@ -233,7 +341,7 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
     where
         A: Ord,
     {
-        self.0.min()
+        { self }.next()
     }
 
     #[inline]
@@ -241,7 +349,7 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
     where
         A: Ord,
     {
-        self.0.max()
+        { self }.next_back()
     }
 
     #[inline]
@@ -251,7 +359,25 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
 
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        self.0.advance_by(n)
+        let Self { range, is_inclusive } = self;
+        match range.advance_by(n) {
+            Ok(()) => Ok(()),
+            Err(remainder) => {
+                if *is_inclusive {
+                    cold_path();
+                    debug_assert!(range.start == range.end);
+                    // `remainder` is `NonZero`, so we always pass the final element
+                    *is_inclusive = false;
+                    if let Some(remainder) = NonZero::new(remainder.get() - 1) {
+                        Err(remainder)
+                    } else {
+                        Ok(())
+                    }
+                } else {
+                    Err(remainder)
+                }
+            }
+        }
     }
 }
 
@@ -259,17 +385,61 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
 impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        self.0.next_back()
+        // Sadly when iterating backwards we have to always check whether we're
+        // inclusive, even though it's rare.
+
+        let Self { range, is_inclusive } = self;
+        if *is_inclusive {
+            cold_path();
+            debug_assert!(range.start <= range.end);
+            *is_inclusive = false;
+            let last = range.end.clone();
+            Some(last)
+        } else {
+            range.next_back()
+        }
+    }
+
+    impl_fold_via_try_fold! { rfold -> try_rfold }
+
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R + Destruct,
+        R: Try<Output = B>,
+    {
+        let Self { range, is_inclusive } = self;
+        let mut accum = init;
+
+        if *is_inclusive {
+            cold_path();
+            debug_assert!(range.start <= range.end);
+            *is_inclusive = false;
+            let last = range.end.clone();
+            // Update the state before this call so it happens even if `?` short-circuits
+            accum = f(accum, last)?;
+        }
+
+        accum = range.try_rfold(accum, f)?;
+
+        try { accum }
     }
 
     #[inline]
-    fn nth_back(&mut self, n: usize) -> Option<A> {
-        self.0.nth_back(n)
-    }
+    fn advance_back_by(&mut self, mut n: usize) -> Result<(), NonZero<usize>> {
+        let Self { range, is_inclusive } = self;
+        if *is_inclusive {
+            cold_path();
+            debug_assert!(range.start <= range.end);
+            *is_inclusive = false;
+            if let Some(new_n) = n.checked_sub(1) {
+                n = new_n;
+            } else {
+                return Ok(());
+            }
+        }
 
-    #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        self.0.advance_back_by(n)
+        range.advance_back_by(n)
     }
 }
 
@@ -284,8 +454,29 @@ impl<A: Step> IntoIterator for RangeInclusive<A> {
     type Item = A;
     type IntoIter = RangeInclusiveIter<A>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        RangeInclusiveIter(self.into())
+        // This is the core opportunity for us to do something different from the
+        // legacy `RangeInclusive` type. For the old one `into_iter` is forced to
+        // be identity, but here we can try to adjust it *outside* the loop.
+
+        let Self { start, last } = self;
+        let is_inclusive;
+        let end = if let Some(end) = Step::forward_checked(last.clone(), 1) {
+            is_inclusive = false;
+            end
+        } else {
+            is_inclusive = start <= last;
+            if !is_inclusive {
+                // This is unreachable for `Ord` types, but `Step` accepts partial orders.
+                // So it's possible for the range to be empty even if `last` is
+                // a maximal element in the DAG.
+                debug_assert_eq!(PartialOrd::partial_cmp(&start, &last), None);
+            }
+            last
+        };
+        let range = legacy::Range { start, end };
+        RangeInclusiveIter { range, is_inclusive }
     }
 }
 
@@ -307,7 +498,11 @@ macro_rules! range_exact_iter_impl {
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-        impl ExactSizeIterator for RangeInclusiveIter<$t> { }
+        impl ExactSizeIterator for RangeInclusiveIter<$t> {
+            fn is_empty(&self) -> bool {
+                self.is_empty()
+            }
+        }
     )*)
 }
 
