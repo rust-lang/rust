@@ -30,3 +30,5 @@ LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode a
            11: main
                at tests/pass/open_a_file_in_proc.rs:LL:CC
 
+warning: 1 warning emitted
+
