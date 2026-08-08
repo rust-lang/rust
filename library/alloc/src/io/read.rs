@@ -828,8 +828,9 @@ where
 /// - avoid overallocating if we know the exact size (#89165)
 /// - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
 /// - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
-/// - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
+/// - and pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
 ///   at the same time, i.e. small reads suffer from syscall overhead, all reads incur costs proportional to buffer size (#110650)
+/// - also avoid <4 byte reads as this may split UTF-8 code points, which can be a problem for Windows console reads (#142847)
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub fn default_read_to_end<R: Read + ?Sized>(
@@ -892,7 +893,7 @@ pub fn default_read_to_end<R: Read + ?Sized>(
     }
 
     loop {
-        if buf.len() == buf.capacity() && buf.capacity() == start_cap {
+        if buf.spare_capacity_mut().len() < PROBE_SIZE && buf.capacity() == start_cap {
             // The buffer might be an exact fit. Let's read into a probe buffer
             // and see if it returns `Ok(0)`. If so, we've avoided an
             // unnecessary doubling of the capacity. But if not, append the
@@ -902,12 +903,15 @@ pub fn default_read_to_end<R: Read + ?Sized>(
             if read == 0 {
                 return Ok(buf.len() - start_len);
             }
+            // In the case of very short reads, continue to use the stack buffer
+            // until either we reach the end or we need to reallocate.
+            continue;
         }
 
-        if buf.len() == buf.capacity() {
-            // buf is full, need more space
-            buf.try_reserve(PROBE_SIZE)?;
-        }
+        // Avoid unnecessarily short reads by ensuring there's at least PROBE_SIZE space available.
+        // And assert that PROBE_SIZE is always at least large enough to fit any UTF-8 encoded code point.
+        const { assert!(PROBE_SIZE >= char::MAX_LEN_UTF8) }
+        buf.try_reserve(PROBE_SIZE)?;
 
         let mut spare = buf.spare_capacity_mut();
         let buf_len = cmp::min(spare.len(), max_read_size);
