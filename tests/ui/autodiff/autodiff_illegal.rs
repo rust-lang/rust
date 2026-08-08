@@ -1,6 +1,7 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
+#![feature(proc_macro_hygiene)]
 //@ pretty-mode:expanded
 //@ pretty-compare-only
 //@ pp-exact:autodiff_illegal.pp
