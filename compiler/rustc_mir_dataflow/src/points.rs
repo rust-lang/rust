@@ -1,3 +1,5 @@
+use std::fmt;
+
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{BasicBlock, Body, Location};
 
@@ -84,6 +86,15 @@ impl DenseLocationMap {
     #[inline]
     pub fn point_in_range(&self, index: PointIndex) -> bool {
         index.index() < self.num_points
+    }
+}
+
+// The per-point tables would drown any containing struct's debug output.
+impl fmt::Debug for DenseLocationMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DenseLocationMap")
+            .field("num_points", &self.num_points)
+            .finish_non_exhaustive()
     }
 }
 
