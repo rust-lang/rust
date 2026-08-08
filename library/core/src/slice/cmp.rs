@@ -399,10 +399,7 @@ impl<T: BytewiseEq> SliceContains for T {
             // compare like their underlying bytes. Since `T` is one byte, both the value and
             // slice can be read as `u8`s.
             let (byte, bytes) = unsafe {
-                (
-                    transmute_copy::<T, u8>(self),
-                    from_raw_parts(x.as_ptr().cast::<u8>(), x.len()),
-                )
+                (transmute_copy::<T, u8>(self), from_raw_parts(x.as_ptr().cast::<u8>(), x.len()))
             };
             memchr::memchr(byte, bytes).is_some()
         } else {
