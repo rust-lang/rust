@@ -3,10 +3,10 @@
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64] check-pass
 //@[x86_64] needs-llvm-components: x86
-// LLVM 19+ has full support for 64-bit cookies.
 //@[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
 //@[arm] build-fail
 //@[arm] needs-llvm-components: arm
+//@[arm] min-llvm-version: 23
 //@ ignore-backends: gcc
 
 #![feature(no_core)]

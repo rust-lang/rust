@@ -661,6 +661,20 @@ extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
       unwrap<FunctionType>(Ty), StringRef(Constraints, ConstraintsLen)));
 }
 
+extern "C" void LLVMRustAppendModuleInlineAsm(
+    LLVMModuleRef M, const char *Asm, size_t AsmLen, const char *TargetFeatures,
+    size_t TargetFeaturesLen, const char *TargetCPU, size_t TargetCPULen) {
+#if LLVM_VERSION_GE(23, 0)
+  Module::GlobalAsmProperties Props;
+  Props.TargetFeatures = StringRef(TargetFeatures, TargetFeaturesLen);
+  Props.TargetCPU = StringRef(TargetCPU, TargetCPULen);
+  unwrap(M)->appendModuleInlineAsm(
+      Module::GlobalAsmFragment(std::string(Asm, AsmLen), std::move(Props)));
+#else
+  unwrap(M)->appendModuleInlineAsm(StringRef(Asm, AsmLen));
+#endif
+}
+
 template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
   return (DIT *)(Ref ? unwrap<Metadata>(Ref) : nullptr);
 }
