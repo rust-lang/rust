@@ -64,11 +64,11 @@ use rustc_span::sym;
 use rustc_target::spec::PanicStrategy;
 use tracing::info;
 
-use crate::creader::CStore;
 use crate::diagnostics::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy,
     IncompatibleWithImmediateAbort, IncompatibleWithImmediateAbortCore, LibRequired,
-    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
+    NoPanicStrategy, NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired,
+    TwoPanicRuntimes,
 };
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
@@ -250,14 +250,8 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         }
     }
 
-    // We've gotten this far because we're emitting some form of a final
-    // artifact which means that we may need to inject dependencies of some
-    // form.
-    //
-    // Things like panic runtimes may not have been activated quite yet, so do so here.
-    activate_injected_dep(CStore::from_tcx(tcx).injected_panic_runtime(), &mut ret, &|cnum| {
-        tcx.is_panic_runtime(cnum)
-    });
+    // Panic runtimes may not have been activated quite yet, so do so here.
+    activate_panic_runtime(tcx, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -364,39 +358,44 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     // Our panic runtime may not have been linked above if it wasn't explicitly
     // linked, which is the case for any injected dependency. Handle that here
     // and activate it.
-    activate_injected_dep(CStore::from_tcx(tcx).injected_panic_runtime(), &mut ret, &|cnum| {
-        tcx.is_panic_runtime(cnum)
-    });
+    activate_panic_runtime(tcx, &mut ret);
 
     Some(ret)
 }
 
-/// Given a list of how to link upstream dependencies so far, ensure that an
-/// injected dependency is activated. This will not do anything if one was
+/// Given a list of how to link upstream dependencies so far, ensure that a
+/// panic runtime is activated. This will not do anything if one was
 /// transitively included already (e.g., via a dylib or explicitly so).
 ///
-/// If an injected dependency was not found then we're guaranteed the
-/// metadata::creader module has injected that dependency (not listed as
-/// a required dependency) in one of the session's field. If this field is not
-/// set then this compilation doesn't actually need the dependency and we can
-/// also skip this step entirely.
-fn activate_injected_dep(
-    injected: Option<CrateNum>,
-    list: &mut DependencyList,
-    replaces_injected: &dyn Fn(CrateNum) -> bool,
-) {
+/// Both `panic_unwind` and `panic_abort` were injected during the `std` build.
+/// Here we need to activate only one, based on the desired strategy.
+fn activate_panic_runtime(tcx: TyCtxt<'_>, list: &mut DependencyList) {
+    let desired_strategy = tcx.sess.panic_strategy();
+    let desired_name = match desired_strategy {
+        PanicStrategy::Unwind => sym::panic_unwind,
+        PanicStrategy::Abort => sym::panic_abort,
+        PanicStrategy::ImmediateAbort => {
+            // Immediate-aborting panics don't use a runtime.
+            return;
+        }
+    };
+    let mut activated = None;
     for (cnum, slot) in list.iter_enumerated() {
-        if !replaces_injected(cnum) {
+        if !tcx.is_panic_runtime(cnum) {
             continue;
         }
         if *slot != Linkage::NotLinked {
             return;
         }
+        if tcx.crate_name(cnum) == desired_name {
+            activated = Some(cnum);
+        }
     }
-    if let Some(injected) = injected {
-        assert_eq!(list[injected], Linkage::NotLinked);
-        list[injected] = Linkage::Static;
-    }
+    if let Some(activated) = activated {
+        assert_eq!(list[activated], Linkage::NotLinked);
+        info!("panic runtime activated (cnum = {:?}) (name = {})", activated, desired_name);
+        list[activated] = Linkage::Static;
+    };
 }
 
 /// After the linkage for a crate has been determined we need to verify that
@@ -465,6 +464,22 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &DependencyList) {
             sess.dcx().emit_err(BadPanicStrategy {
                 runtime: tcx.crate_name(runtime_cnum),
                 strategy: desired_strategy,
+            });
+        }
+
+        // Sanity check the panic strategy of the panic runtime is indeed what we
+        // thought it was. E.g. `panic_abort` should be compiled with `-Cpanic=abort`.
+        let expected_runtime_strategy = match tcx.crate_name(runtime_cnum) {
+            sym::panic_unwind => Some(PanicStrategy::Unwind),
+            sym::panic_abort => Some(PanicStrategy::Abort),
+            _ => None,
+        };
+        if let Some(expected_runtime_strategy) = expected_runtime_strategy
+            && found_strategy != expected_runtime_strategy
+        {
+            sess.dcx().emit_err(NoPanicStrategy {
+                crate_name: tcx.crate_name(runtime_cnum),
+                strategy: expected_runtime_strategy,
             });
         }
 
