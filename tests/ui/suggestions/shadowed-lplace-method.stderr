@@ -19,7 +19,7 @@ LL |     *rc.borrow_mut() = false;
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     *rc.borrow_mut() = false;
-LL +     *std::cell::RefCell::<_>::borrow_mut(&rc) = false;
+LL +     *RefCell::borrow_mut(&rc) = false;
    |
 
 error: aborting due to 1 previous error
