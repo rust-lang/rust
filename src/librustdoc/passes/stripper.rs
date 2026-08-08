@@ -266,6 +266,7 @@ impl DocFolder for ImplStripper<'_, '_> {
 /// This stripper discards all private import statements (`use`, `extern crate`)
 pub(crate) struct ImportStripper<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) document_private: bool,
     pub(crate) is_json_output: bool,
     pub(crate) document_hidden: bool,
 }
@@ -289,6 +290,14 @@ impl DocFolder for ImportStripper<'_> {
             {
                 debug!("ImportStripper: stripping {:?}", i.name);
                 None
+            }
+            clean::ImportItem(imp) if self.document_private => {
+                if !imp.should_be_displayed {
+                    debug!("ImportStripper: stripping {:?}", i.name);
+                    None
+                } else {
+                    Some(self.fold_item_recur(i))
+                }
             }
             // clean::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
