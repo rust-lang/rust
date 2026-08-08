@@ -219,6 +219,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `size_of`");
                 }
+                let val = layout.size_without_padding.bytes();
+                self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
+            }
+            sym::stride_of => {
+                let tp_ty = instance.args.type_at(0);
+                let layout = self.layout_of(tp_ty)?;
+                if !layout.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `stride_of`");
+                }
                 let val = layout.size.bytes();
                 self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
             }
@@ -299,7 +308,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&val, dest)?;
             }
 
-            sym::align_of_val | sym::size_of_val => {
+            sym::align_of_val | sym::size_of_val | sym::stride_of_val => {
                 // Avoid `deref_pointer` -- this is not a deref, the ptr does not have to be
                 // dereferenceable!
                 let place = self.imm_ptr_to_mplace(&self.read_immediate(&args[0])?)?;
@@ -310,6 +319,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let result = match intrinsic_name {
                     sym::align_of_val => align.bytes(),
                     sym::size_of_val => size.bytes(),
+                    sym::stride_of_val => size.align_to(align).bytes(),
                     _ => bug!(),
                 };
 

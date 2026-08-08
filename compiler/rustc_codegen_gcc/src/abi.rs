@@ -248,6 +248,8 @@ pub fn conv_to_fn_attribute<'gcc>(sess: &Session, conv: CanonAbi) -> Option<FnAt
             sess.dcx().fatal("gcc/gccjit backend does not support RustTail calling convention")
         }
         CanonAbi::RustCold => FnAttribute::Cold,
+        // gcc doesn't support Swift as far as I'm aware
+        CanonAbi::Swift { .. } => return None,
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.

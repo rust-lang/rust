@@ -659,6 +659,9 @@ fn fn_abi_adjust_for_abi<'tcx>(
         fn_abi.adjust_for_rust_abi(cx);
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi);
+        if abi == ExternAbi::Swift {
+            fn_abi.adjust_for_swift_abi(cx);
+        }
     }
 }
 

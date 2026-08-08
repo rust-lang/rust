@@ -167,6 +167,7 @@ pub(crate) enum CallConv {
     PreserveAll = 15,
     SwiftCallConv = 16,
     Tail = 18,
+    SwiftCallConvTail = 20,
     PreserveNone = 21,
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,

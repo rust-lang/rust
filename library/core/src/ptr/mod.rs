@@ -557,7 +557,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         (
             src: *const () = src as *const (),
             dst: *mut () = dst as *mut (),
-            size: usize = size_of::<T>(),
+            size: usize = size_without_padding_of::<T>(),
             align: usize = align_of::<T>(),
             count: usize = count,
         ) => {

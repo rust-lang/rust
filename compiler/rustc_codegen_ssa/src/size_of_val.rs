@@ -16,13 +16,14 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     t: Ty<'tcx>,
     info: Option<Bx::Value>,
-) -> (Bx::Value, Bx::Value) {
+) -> (Bx::Value, Bx::Value, Bx::Value) {
     let layout = bx.layout_of(t);
     trace!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
     if layout.is_sized() {
-        let size = bx.const_usize(layout.size.bytes());
+        let size = bx.const_usize(layout.size_without_padding.bytes());
+        let stride = bx.const_usize(layout.size.bytes());
         let align = bx.const_usize(layout.align.bytes());
-        return (size, align);
+        return (size, stride, align);
     }
     match t.kind() {
         ty::Dynamic(..) => {
@@ -41,18 +42,19 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let align_bound = Align::max_for_target(bx.data_layout()).bytes().into();
             bx.range_metadata(align, WrappingRange { start: 1, end: align_bound });
 
-            (size, align)
+            (size, size, align)
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(bx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            (
-                // All slice sizes must fit into `isize`, so this multiplication cannot
-                // wrap -- neither signed nor unsigned.
-                bx.unchecked_sumul(info.unwrap(), bx.const_usize(unit.size.bytes())),
-                bx.const_usize(unit.align.bytes()),
-            )
+            let info = info.unwrap();
+            // All slice sizes must fit into `isize`, so this multiplication cannot
+            // wrap -- neither signed nor unsigned.
+            let size = bx.unchecked_sumul(info, bx.const_usize(unit.size_without_padding.bytes()));
+            let stride = bx.unchecked_sumul(info, bx.const_usize(unit.size.bytes()));
+            let align = bx.const_usize(unit.align.bytes());
+            (size, stride, align)
         }
         ty::Foreign(_) => {
             // `extern` type. We cannot compute the size, so panic.
@@ -83,9 +85,10 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             );
 
             // This function does not return so we can now return whatever we want.
-            let size = bx.const_usize(layout.size.bytes());
+            let size = bx.const_usize(layout.size_without_padding.bytes());
+            let stride = bx.const_usize(layout.size.bytes());
             let align = bx.const_usize(layout.align.bytes());
-            (size, align)
+            (size, stride, align)
         }
         ty::Adt(..) | ty::Tuple(..) => {
             // First get the size of all statically known fields.
@@ -107,7 +110,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
             let field_ty = layout.field(bx, i).ty;
-            let (unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info);
+            let (_, unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info);
 
             // # First compute the dynamic alignment
 
@@ -175,9 +178,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let addend = bx.sub(full_align, one);
             let add = bx.add(full_size, addend);
             let neg = bx.neg(full_align);
-            let full_size = bx.and(add, neg);
+            let full_stride = bx.and(add, neg);
 
-            (full_size, full_align)
+            (full_size, full_stride, full_align)
         }
         _ => bug!("size_and_align_of_dst: {t} not supported"),
     }

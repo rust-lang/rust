@@ -43,7 +43,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let ty = self.get_ptr_vtable_ty(vtable, expected_trait)?;
         let layout = self.layout_of(ty)?;
         assert!(layout.is_sized(), "there are no vtables for unsized types");
-        interp_ok((layout.size, layout.align.abi))
+        interp_ok((layout.size_without_padding, layout.align.abi))
     }
 
     pub(super) fn vtable_entries(

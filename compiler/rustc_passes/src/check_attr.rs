@@ -1184,6 +1184,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprC => {
                     is_c = true;
                 }
+                ReprAttr::ReprSwift => match target {
+                    Target::Struct | Target::Union | Target::Enum => continue,
+                    _ => {
+                        self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                            hint_span: *repr_span,
+                            span,
+                        });
+                    }
+                },
                 ReprAttr::ReprAlign(..) => {}
                 ReprAttr::ReprPacked(_) => {}
                 ReprAttr::ReprSimd => {

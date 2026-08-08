@@ -222,7 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | CanonAbi::RustCold
             | CanonAbi::RustPreserveNone
             | CanonAbi::RustTail
-            | CanonAbi::Swift
+            | CanonAbi::Swift { .. }
             | CanonAbi::Arm(_)
             | CanonAbi::X86(_) => {}
         }
