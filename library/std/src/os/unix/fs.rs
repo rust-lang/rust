@@ -1096,6 +1096,7 @@ impl DirEntryExt2 for fs::DirEntry {
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink")]
 pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink(original.as_ref(), link.as_ref())
 }

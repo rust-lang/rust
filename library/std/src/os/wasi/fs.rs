@@ -451,6 +451,7 @@ pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
 ///
 /// This is a convenience API similar to `std::os::unix::fs::symlink` and
 /// `std::os::windows::fs::symlink_file` and `std::os::windows::fs::symlink_dir`.
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_path")]
 pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) -> io::Result<()> {
     crate::sys::fs::symlink(old_path.as_ref(), new_path.as_ref())
 }
