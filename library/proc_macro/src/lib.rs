@@ -1010,12 +1010,36 @@ impl Group {
     /// Configures the span for this `Group`'s delimiters, but not its internal
     /// tokens.
     ///
+    /// This will set the span of the opening and closing tokens.
+    ///
     /// This method will **not** set the span of all the internal tokens spanned
     /// by this group, but rather it will only set the span of the delimiter
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
         self.0.span = bridge::DelimSpan::from_single(span.0);
+    }
+
+    /// Configures the span for this `Group`'s opening delimiter.
+    ///
+    /// ```text
+    /// pub fn span_open(&self) -> Span {
+    ///                 ^
+    /// ```
+    #[unstable(feature = "proc_macro_set_group_span", issue = "none")]
+    pub fn set_span_open(&mut self, span: Span) {
+        self.0.span.open = span.0;
+    }
+
+    /// Configures the span for this `Group`'s closing delimiter.
+    ///
+    /// ```text
+    /// pub fn span_close(&self) -> Span {
+    ///                        ^
+    /// ```
+    #[unstable(feature = "proc_macro_set_group_span", issue = "none")]
+    pub fn set_span_close(&mut self, span: Span) {
+        self.0.span.close = span.0;
     }
 }
 
