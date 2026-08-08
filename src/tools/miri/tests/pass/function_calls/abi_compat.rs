@@ -62,11 +62,11 @@ fn test_abi_newtype<T: Copy + Default>() {
     struct Wrapper2a<T>((), T);
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    struct Wrapper3<T>(Zst, T, [u8; 0]);
+    struct Wrapper3<T>(Zst, T, [(); 0]);
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     enum Wrapper4<T> {
-        V(Zst, T, [u8; 0]),
+        V(Zst, T, [(); 10]),
     }
 
     let t = T::default();
@@ -74,7 +74,7 @@ fn test_abi_newtype<T: Copy + Default>() {
     test_abi_compat(t, Wrapper2(t, ()));
     test_abi_compat(t, Wrapper2a((), t));
     test_abi_compat(t, Wrapper3(Zst, t, []));
-    test_abi_compat(t, Wrapper4::V(Zst, t, []));
+    test_abi_compat(t, Wrapper4::V(Zst, t, [(); _]));
     // MaybeUninit is `repr(transparent)`; that covers the `union` case.
     test_abi_compat(t, mem::MaybeUninit::new(t));
 }
@@ -100,8 +100,8 @@ fn main() {
     test_abi_compat(&0u32, &([true; 4], [0u32; 0]));
     // - `fn` types
     test_abi_compat(main as fn(), id::<i32> as fn(i32) -> i32);
-    // - 1-ZST
-    test_abi_compat((), [0u8; 0]);
+    // - trivial-ABI types
+    test_abi_compat((), [(); 0]);
 
     // Guaranteed null-pointer-layout optimizations:
     // - Guaranteed Option<X> null-pointer-optimizations (RFC 3391).
