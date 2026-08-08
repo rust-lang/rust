@@ -53,6 +53,7 @@ define-function: (
             "#src-sidebar details[open] > .files a:not(.selected):focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
+        // Focus another element to remove focus from the <a> element.
         focus: "#search-button"
         // With hover.
         move-cursor-to: "#src-sidebar details[open] > .files a:not(.selected)"
@@ -72,6 +73,7 @@ define-function: (
             "#src-sidebar .dir-entry summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
+        // Focus another element to remove focus from the <summary> element.
         focus: "#search-button"
         // With hover.
         move-cursor-to: "#src-sidebar .dir-entry summary"
@@ -91,6 +93,7 @@ define-function: (
             "#src-sidebar details[open] > .folders > details > summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
+        // Focus another element to remove focus from the <summary> element.
         focus: "#search-button"
         // With hover.
         move-cursor-to: "#src-sidebar details[open] > .folders > details > summary"
