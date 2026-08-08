@@ -1332,7 +1332,7 @@ pub(crate) fn start_codegen<'tcx>(
                 rustc_monomorphize::write_host_metadata_offload_manifest(tcx);
             }
 
-            // Linker::link will skip join_codegen in case of a CodegenResults Any value.
+            // Linker::link will skip join_codegen in case of a `CompiledModules` Any value.
             Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
             codegen_backend.codegen_crate(tcx)
