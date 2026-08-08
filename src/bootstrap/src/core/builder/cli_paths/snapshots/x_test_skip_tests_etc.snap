@@ -22,6 +22,7 @@ expression: test --skip=tests --skip=library --skip=tidyselftest
     - Set({compiler/rustc_ast_lowering})
     - Set({compiler/rustc_ast_passes})
     - Set({compiler/rustc_ast_pretty})
+    - Set({compiler/rustc_attr_ir})
     - Set({compiler/rustc_attr_parsing})
     - Set({compiler/rustc_baked_icu_data})
     - Set({compiler/rustc_borrowck})
