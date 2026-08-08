@@ -213,6 +213,13 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 
 #[tracing::instrument(level = "debug", skip(visitor))]
 fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
+    // We walk the whole pattern here to avoid walking `cond` expr another time on `walk_pat`
+    if let PatKind::Guard(pat, cond) = pat.kind {
+        resolve_cond(visitor, cond);
+        resolve_pat(visitor, pat);
+        return;
+    }
+
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id);
