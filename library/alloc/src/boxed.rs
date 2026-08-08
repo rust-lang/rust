@@ -1900,10 +1900,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// i.e., memory that is meant to leak. Reconstructing ("unleaking") a `Box` from the mutable
     /// reference returned here (e.g. via [`Box::from_raw`]) is a grey area (meaning it is possible
     /// under specific circumstances but many seemingly harmless ways of doing it are undefined
-    /// behavior) and should be avoided. If the memory should eventually be freed, prefer to use
+    /// behavior) and should be avoided. Notably, soundly unleaking a box requires that the
+    /// allocator is `Global`. If the memory should eventually be freed, prefer to use
     /// [`Box::into_raw`] or [`Box::into_non_null`] instead.
-    ///
-    /// Notably, soundly "unleaking" a box requires that the allocator is `Global`.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
