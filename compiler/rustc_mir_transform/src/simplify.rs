@@ -96,7 +96,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(true)
+        PassPolicy::optimization(true, 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -429,8 +429,8 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         }
     }
 
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() > 0)
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(true, 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry;
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_middle::bug;
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -92,36 +93,23 @@ pub(crate) enum PassPolicy {
         /// Whether this pass should be enabled by default in this session in the absence of
         /// an explicit `-Zmir-enable-passes` or `#[optimize(none)]`.
         generally_enabled: bool,
-        /// Whether this is an optimization pass. `#[optimize(none)]` only disables optimization
-        /// passes.
-        /// A pass may be optional without being an optimization pass,
-        /// e.g. if it just adds extra debug checks that one can turn off.
-        optimization: bool,
+        /// If this is an optimization pass, define the minimum optimization level to enable
+        /// the pass.
+        min_optimization_level: Option<u32>,
     },
 }
 
 impl PassPolicy {
-    fn and_enabled(self, enabled: bool) -> Self {
-        match self {
-            PassPolicy::Required => PassPolicy::Required,
-            PassPolicy::Optional { generally_enabled: enabled_by_default, optimization } => {
-                PassPolicy::Optional {
-                    generally_enabled: enabled_by_default && enabled,
-                    optimization,
-                }
-            }
-        }
-    }
-
     /// Create a [`PassPolicy::Optional`] that is not an optimization,
     /// enabled by default under the given condition.
     pub(crate) fn optional_non_optimization(condition: bool) -> Self {
-        Self::Optional { generally_enabled: condition, optimization: false }
+        Self::Optional { generally_enabled: condition, min_optimization_level: None }
     }
 
-    /// Create a [`PassPolicy::Optional`] optimization, enabled by default under the given condition.
-    pub(crate) fn optimization(condition: bool) -> Self {
-        Self::Optional { generally_enabled: condition, optimization: true }
+    /// Create a [`PassPolicy::Optional`] optimization, enabled by default with the given condition
+    /// and MIR opt-level.
+    pub(crate) fn optimization(condition: bool, min_opt_level: u32) -> Self {
+        Self::Optional { generally_enabled: condition, min_optimization_level: Some(min_opt_level) }
     }
 }
 
@@ -197,7 +185,10 @@ where
     }
 
     fn policy(&self, sess: &Session) -> PassPolicy {
-        self.1.policy(sess).and_enabled(sess.mir_opt_level() >= self.0 as usize)
+        let PassPolicy::Optional { generally_enabled, .. } = self.1.policy(sess) else {
+            bug!("required pass cannot be gated by an opt-level")
+        };
+        PassPolicy::optimization(generally_enabled, self.0)
     }
 }
 
@@ -205,12 +196,7 @@ where
 ///
 /// [optimization passes]: PassPolicy::Optional::optimization
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Optimizations {
-    /// The current function has `#[optimize(none)]`.
-    Suppressed,
-    /// Normal optimizations may run.
-    Allowed,
-}
+pub(crate) struct OptLevelForBody(pub(crate) u32);
 
 /// Run the sequence of passes without validating the MIR after each pass. The MIR is still
 /// validated at the end.
@@ -236,7 +222,7 @@ pub(super) fn run_passes<'tcx>(
 pub(super) fn should_run_pass<'tcx, P>(
     tcx: TyCtxt<'tcx>,
     pass: &P,
-    optimizations: Optimizations,
+    optimizations: OptLevelForBody,
 ) -> bool
 where
     P: MirPass<'tcx> + ?Sized,
@@ -254,7 +240,7 @@ where
 
     match pass.policy(tcx.sess) {
         PassPolicy::Required => true,
-        PassPolicy::Optional { generally_enabled: enabled_by_default, optimization } => {
+        PassPolicy::Optional { generally_enabled: enabled_by_default, min_optimization_level } => {
             if let Some(o) = pass_override() {
                 trace!(
                     pass = %name,
@@ -262,8 +248,10 @@ where
                     if o { "Running" } else { "Not running" }
                 );
                 o
-            } else if optimization && optimizations == Optimizations::Suppressed {
-                trace!(pass = %name, "Not running as requested by `#[optimize(none)]`");
+            } else if let Some(min_level) = min_optimization_level
+                && optimizations.0 < min_level
+            {
+                trace!(pass = %name, "Not running as requested by MIR opt level");
                 false
             } else {
                 enabled_by_default
@@ -323,9 +311,9 @@ fn run_passes_inner<'tcx>(
         let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
             && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
         {
-            Optimizations::Suppressed
+            OptLevelForBody(1)
         } else {
-            Optimizations::Allowed
+            OptLevelForBody(tcx.sess.mir_opt_level() as u32)
         };
 
         for pass in passes {
@@ -335,7 +323,7 @@ fn run_passes_inner<'tcx>(
                 continue;
             };
 
-            if is_optimization_stage(body, phase_change, optimizations)
+            if is_optimization_stage(body, phase_change)
                 && let Some(limit) = &tcx.sess.opts.unstable_opts.mir_opt_bisect_limit
                 && limited_by_opt_bisect(
                     tcx,
@@ -419,13 +407,8 @@ pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tc
     }
 }
 
-fn is_optimization_stage(
-    body: &Body<'_>,
-    phase_change: Option<MirPhase>,
-    optimizations: Optimizations,
-) -> bool {
-    optimizations == Optimizations::Allowed
-        && body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup)
+fn is_optimization_stage(body: &Body<'_>, phase_change: Option<MirPhase>) -> bool {
+    body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup)
         && phase_change == Some(MirPhase::Runtime(RuntimePhase::Optimized))
 }
 

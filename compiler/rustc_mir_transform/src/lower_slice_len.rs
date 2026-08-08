@@ -10,8 +10,8 @@ use crate::PassPolicy;
 pub(super) struct LowerSliceLenCalls;
 
 impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() > 0)
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(true, 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

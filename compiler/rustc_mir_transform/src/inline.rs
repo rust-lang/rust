@@ -45,6 +45,10 @@ pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
     fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        // If `inline_mir` is specified, return that.
+        // Otherwise, enable when either:
+        // - mir-opt-level == 2 && opt-level >= 2 && !incremental, OR
+        // - mir-opt-level > 2
         let enabled_by_default =
             sess.opts.unstable_opts.inline_mir.unwrap_or_else(|| match sess.mir_opt_level() {
                 0 | 1 => false,
@@ -55,7 +59,8 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
                 }
                 _ => true,
             });
-        PassPolicy::optimization(enabled_by_default)
+        // FIXME: this is an optimization
+        PassPolicy::optional_non_optimization(enabled_by_default)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
