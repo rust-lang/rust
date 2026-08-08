@@ -129,7 +129,19 @@ impl Socket {
                 ) => {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
-                    Ok((Socket(FileDesc::from_raw_fd(fds[0])), Socket(FileDesc::from_raw_fd(fds[1]))))
+
+                    let a = Socket(FileDesc::from_raw_fd(fds[0]));
+                    let b = Socket(FileDesc::from_raw_fd(fds[1]));
+
+                    // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
+                    // flag to disable `SIGPIPE` emission on socket.
+                    #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+                    {
+                        setsockopt(&a, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+                        setsockopt(&b, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+                    };
+
+                    Ok((a, b))
                 }
                 _ => {
                     cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
@@ -137,7 +149,19 @@ impl Socket {
                     let b = FileDesc::from_raw_fd(fds[1]);
                     a.set_cloexec()?;
                     b.set_cloexec()?;
-                    Ok((Socket(a), Socket(b)))
+
+                    let a = Socket(a);
+                    let b = Socket(b);
+
+                    // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
+                    // flag to disable `SIGPIPE` emission on socket.
+                    #[cfg(target_vendor = "apple")]
+                    {
+                        setsockopt(&a, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+                        setsockopt(&b, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+                    }
+
+                    Ok((a, b))
                 }
             }
         }
