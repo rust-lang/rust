@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::ty::{BottomUpFolder, Region, RegionVid, TypeFoldable, TypeVisitable};
 use rustc_span::DUMMY_SP;
 use tracing::debug;
 
@@ -445,6 +445,33 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         user_computed_clauses: &mut FxIndexSet<ty::Clause<'tcx>>,
         new_clause: ty::Clause<'tcx>,
     ) {
+        // Collects every region -- free or bound -- in visit order.
+        #[derive(Default)]
+        struct CollectAllRegions<'tcx> {
+            regions: Vec<ty::Region<'tcx>>,
+        }
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for CollectAllRegions<'tcx> {
+            fn visit_region(&mut self, r: ty::Region<'tcx>) {
+                self.regions.push(r);
+            }
+        }
+
+        let tcx = self.tcx;
+
+        // Replaces every region -- free or bound -- with `'erased`, in order
+        // to compare two sets of generic arguments modulo regions. Note that
+        // `fold_regions` and `erase_and_anonymize_regions` don't touch regions
+        // bound within the value, so they can't be used here: erasing *every*
+        // region ensures that a walk over the regions of two values that
+        // compare equal after erasure visits the same positions.
+        let erase_all_regions = |args: ty::GenericArgsRef<'tcx>| {
+            args.fold_with(&mut BottomUpFolder {
+                tcx,
+                ty_op: |ty| ty,
+                lt_op: |_| tcx.lifetimes.re_erased,
+                ct_op: |ct| ct,
+            })
+        };
         let mut should_add_new = true;
         user_computed_clauses.retain(|&old_clause| {
             if let (ty::ClauseKind::Trait(new_trait), ty::ClauseKind::Trait(old_trait)) =
@@ -454,14 +481,32 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     let new_args = new_trait.trait_ref.args;
                     let old_args = old_trait.trait_ref.args;
 
-                    if !new_args.types().eq(old_args.types()) {
-                        // We can't compare lifetimes if the types are different,
-                        // so skip checking `old_clause`.
+                    // The two clauses can only be merged if they differ solely in
+                    // their regions. Note that regions don't just show up as
+                    // direct generic arguments of the trait ref: with generic
+                    // associated types, a region can also sit *inside* a type
+                    // argument, e.g. `for<'w> <A as Alloc>::Wired<'w>: Send` vs.
+                    // `<A as Alloc>::Wired<'static>: Send`. Therefore the
+                    // arguments are compared with *all* regions erased, and the
+                    // region comparison below walks the regions of both argument
+                    // lists in lockstep.
+                    if erase_all_regions(new_args) != erase_all_regions(old_args) {
+                        // The clauses differ in more than their regions, so both
+                        // must be kept: skip checking `old_clause`.
                         return true;
                     }
 
+                    let mut new_regions = CollectAllRegions::default();
+                    new_args.visit_with(&mut new_regions);
+                    let mut old_regions = CollectAllRegions::default();
+                    old_args.visit_with(&mut old_regions);
+
+                    // Equal modulo regions implies the same region positions
+                    // on both sides.
+                    debug_assert_eq!(new_regions.regions.len(), old_regions.regions.len());
+
                     for (new_region, old_region) in
-                        iter::zip(new_args.regions(), old_args.regions())
+                        iter::zip(new_regions.regions, old_regions.regions)
                     {
                         match (new_region.kind(), old_region.kind()) {
                             // If both predicates have an `ReBound` (a HRTB) in the
