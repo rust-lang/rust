@@ -2,6 +2,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, HasLocalDecls, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::relate::Relate;
@@ -660,12 +661,12 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                         span,
                     ) {
                         Ok(_) => ocx.evaluate_obligations_error_on_ambiguity(),
-                        Err(e) => e,
+                        Err(e) => TraitErrors::HasErrors(e),
                     };
 
                     // Could have no errors if a type lowering error, say, caused the query
                     // to fail.
-                    if !errors.is_empty() {
+                    if let TraitErrors::HasErrors(errors) = errors {
                         typeck.infcx.err_ctxt().report_fulfillment_errors(errors);
                     }
                 });

@@ -292,6 +292,7 @@ impl<'sess> AttributeParser<'sess> {
         self.sess
     }
 
+    #[track_caller]
     pub(crate) fn features(&self) -> &'sess Features {
         self.features.expect("features not available at this point in the compiler")
     }
@@ -451,6 +452,8 @@ impl<'sess> AttributeParser<'sess> {
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
                             cx.shared.cx.check_args_used(attr, &args)
                         }
+                    } else if let [sym::diagnostic, _unknown, ..] = &*parts {
+                        self.unknown_diagnostic_attr(&n.item.path.segments[1], &mut emit_lint);
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),

@@ -6,10 +6,10 @@
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
 use rustc_const_eval::check_consts::ConstCx;
-use rustc_hir::def_id::DefId;
 use rustc_hir::attrs::RustcVersion;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, StableSince};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;
 use rustc_middle::mir::{
@@ -492,7 +492,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligations(impl_src.nested_obligations());
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 
     !ty.needs_drop(tcx, ConstCx::new(tcx, body).typing_env)

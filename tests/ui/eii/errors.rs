@@ -8,7 +8,7 @@
 #[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
 fn hello() {
     #[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
-    let x = 3 + 3;
+    let x = 3 + 3;          //~| ERROR macro attributes on statements are unstable
 }
 
 #[eii_declaration] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements

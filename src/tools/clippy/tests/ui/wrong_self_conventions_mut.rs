@@ -1,5 +1,4 @@
 #![warn(clippy::wrong_self_convention)]
-#![allow(dead_code)]
 
 fn main() {}
 

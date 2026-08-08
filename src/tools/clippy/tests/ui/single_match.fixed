@@ -1,13 +1,6 @@
 //@require-annotations-for-level: WARN
 #![warn(clippy::single_match)]
-#![allow(
-    unused,
-    clippy::uninlined_format_args,
-    clippy::needless_ifs,
-    clippy::redundant_guards,
-    clippy::redundant_pattern_matching,
-    clippy::manual_unwrap_or_default
-)]
+#![allow(clippy::redundant_pattern_matching)]
 fn dummy() {}
 
 fn single_match() {

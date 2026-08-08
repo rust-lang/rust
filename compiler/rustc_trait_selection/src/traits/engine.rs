@@ -9,12 +9,13 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast, Variance};
+use thin_vec::ThinVec;
 
 use super::{FromSolverError, FulfillmentContext, ScrubbedTraitError, TraitEngine};
 use crate::error_reporting::InferCtxtErrorExt;
@@ -86,14 +87,14 @@ where
         }
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         match self {
             FulfillmentEngine::Old(engine) => engine.try_evaluate_obligations(infcx),
             FulfillmentEngine::Next(engine) => engine.try_evaluate_obligations(infcx),
         }
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         match self {
             FulfillmentEngine::Old(engine) => engine.collect_remaining_errors(infcx),
             FulfillmentEngine::Next(engine) => engine.collect_remaining_errors(infcx),
@@ -310,7 +311,7 @@ where
     ///
     /// Returns a list of errors from obligations that evaluated to Err.
     #[must_use]
-    pub fn try_evaluate_obligations(&self) -> Vec<E> {
+    pub fn try_evaluate_obligations(&self) -> TraitErrors<E> {
         self.engine.borrow_mut().try_evaluate_obligations(self.infcx)
     }
 
@@ -323,7 +324,7 @@ where
     ///
     /// Returns a list of errors from obligations that evaluated to Ambiguous or Err.
     #[must_use]
-    pub fn evaluate_obligations_error_on_ambiguity(&self) -> Vec<E> {
+    pub fn evaluate_obligations_error_on_ambiguity(&self) -> TraitErrors<E> {
         self.engine.borrow_mut().evaluate_obligations_error_on_ambiguity(self.infcx)
     }
 
@@ -409,10 +410,10 @@ where
         &self,
         param_env: ty::ParamEnv<'tcx>,
         def_id: LocalDefId,
-    ) -> Result<FxIndexSet<Ty<'tcx>>, Vec<E>> {
+    ) -> Result<FxIndexSet<Ty<'tcx>>, ThinVec<E>> {
         let tcx = self.infcx.tcx;
         let mut implied_bounds = FxIndexSet::default();
-        let mut errors = Vec::new();
+        let mut errors = ThinVec::new();
         for &(ty, span) in tcx.assumed_wf_types(def_id) {
             // FIXME(@lcnr): rustc currently does not check wf for types
             // pre-normalization, meaning that implied bounds are sometimes
@@ -446,7 +447,7 @@ where
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
-    ) -> Result<T, Vec<E>> {
+    ) -> Result<T, ThinVec<E>> {
         self.infcx.at(cause, param_env).deeply_normalize(value, &mut *self.engine.borrow_mut())
     }
 
@@ -455,7 +456,7 @@ where
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, Ty<'tcx>>,
-    ) -> Result<Ty<'tcx>, Vec<E>> {
+    ) -> Result<Ty<'tcx>, ThinVec<E>> {
         self.infcx
             .at(cause, param_env)
             .structurally_normalize_ty(value, &mut *self.engine.borrow_mut())
@@ -466,7 +467,7 @@ where
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, ty::Const<'tcx>>,
-    ) -> Result<ty::Const<'tcx>, Vec<E>> {
+    ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
         self.infcx
             .at(cause, param_env)
             .structurally_normalize_const(value, &mut *self.engine.borrow_mut())
@@ -477,7 +478,7 @@ where
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, ty::Term<'tcx>>,
-    ) -> Result<ty::Term<'tcx>, Vec<E>> {
+    ) -> Result<ty::Term<'tcx>, ThinVec<E>> {
         self.infcx
             .at(cause, param_env)
             .structurally_normalize_term(value, &mut *self.engine.borrow_mut())

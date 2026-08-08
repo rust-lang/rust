@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         cx.param_env,
                         Unnormalized::new_wip(assoc_pred),
                     );
-                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // Can't normalize for some reason...?
                         continue;
                     }
@@ -172,7 +172,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     // If that predicate doesn't hold modulo regions (but passed during type-check),
                     // then we must've taken advantage of the hack in `project_and_unify_types` where
                     // we replace opaques with inference vars. Emit a warning!
-                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
                         let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {

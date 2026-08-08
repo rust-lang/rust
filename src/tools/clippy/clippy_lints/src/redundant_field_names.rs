@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, MsrvStack};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -43,22 +43,15 @@ pub struct RedundantFieldNames {
 
 impl RedundantFieldNames {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: MsrvStack::new(conf.msrv),
-        }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
 impl EarlyLintPass for RedundantFieldNames {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if !self.msrv.meets(msrvs::FIELD_INIT_SHORTHAND) {
-            return;
-        }
-
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-        if let ExprKind::Struct(ref se) = expr.kind {
+        if let ExprKind::Struct(ref se) = expr.kind
+            && self.msrv.meets(msrvs::FIELD_INIT_SHORTHAND)
+        {
             for field in &se.fields {
                 if !field.is_shorthand
                     && let ExprKind::Path(None, path) = &field.expr.kind
@@ -66,6 +59,7 @@ impl EarlyLintPass for RedundantFieldNames {
                     && segment.args.is_none()
                     && segment.ident == field.ident
                     && field.span.eq_ctxt(field.ident.span)
+                    && !field.span.in_external_macro(cx.sess().source_map())
                 {
                     span_lint_and_sugg(
                         cx,

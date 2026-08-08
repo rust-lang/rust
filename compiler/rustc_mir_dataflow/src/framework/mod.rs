@@ -56,7 +56,7 @@ pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
 pub use self::results::{EntryStates, Results};
-pub use self::visitor::{ResultsVisitor, visit_reachable_results, visit_results};
+pub use self::visitor::{ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
 /// operations needed by all of them.
@@ -196,19 +196,30 @@ pub trait Analysis<'tcx> {
     ) {
     }
 
+    /// Gets the terminator edges. Used by forward analyses only. Called *before*
+    /// `apply_primary_terminator_effect` is applied; this might seem strange but in practice
+    /// `MaybeInitializedPlaces` needs that ordering and other analyses work with either ordering.
+    fn get_terminator_edges<'mir>(
+        &self,
+        _state: &Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
+        _location: Location,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        terminator.edges()
+    }
+
     /// Updates the current dataflow state with the effect of evaluating a terminator.
     ///
     /// The effect of a successful return from a `Call` terminator should **not** be accounted for
     /// in this function. That should go in `apply_call_return_effect`. For example, in the
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         _state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        terminator.edges()
+    ) {
     }
 
     /* Edge-specific effects */

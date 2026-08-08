@@ -187,5 +187,5 @@ fn suggest_question_mark<'tcx>(
         into_iterator_did,
     );
 
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }

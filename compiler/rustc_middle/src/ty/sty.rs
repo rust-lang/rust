@@ -770,7 +770,7 @@ impl<'tcx> Ty<'tcx> {
                 .map(|principal| {
                     tcx.associated_items(principal.def_id())
                         .in_definition_order()
-                        .filter(|item| item.is_type() || item.is_type_const())
+                        .filter(|item| item.can_have_equality_constraint(tcx))
                         .filter(|item| !item.is_impl_trait_in_trait())
                         .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                         .count()
@@ -1188,6 +1188,15 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_adt(self) -> bool {
         matches!(self.kind(), Adt(..))
+    }
+
+    #[inline]
+    pub fn is_self_param(self) -> bool {
+        if let Param(param) = self.kind() {
+            param.index == 0 && param.name == kw::SelfUpper
+        } else {
+            false
+        }
     }
 
     #[inline]

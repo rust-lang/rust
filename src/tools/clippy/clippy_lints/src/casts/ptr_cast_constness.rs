@@ -6,7 +6,7 @@ use clippy_utils::{std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
 
 use super::PTR_CAST_CONSTNESS;
 
@@ -90,6 +90,7 @@ pub(super) fn check_null_ptr_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) 
         && let mut app = Applicability::MachineApplicable
         && let sugg = snippet_with_applicability(cx, cast_from_expr.span, "_", &mut app)
         && let Some((_, after_lt)) = sugg.split_once("::<")
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
     {
         span_lint_and_sugg(
             cx,

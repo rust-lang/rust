@@ -60,7 +60,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
         // Cycle errors are the only post-monomorphization errors possible; emit them now so
         // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.

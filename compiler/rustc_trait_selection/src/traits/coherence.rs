@@ -11,7 +11,7 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
@@ -425,7 +425,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         let ocx = ObligationCtxt::new(infcx);
         ocx.register_obligations(obligations.iter().cloned());
         let hard_errors = ocx.try_evaluate_obligations();
-        if !hard_errors.is_empty() {
+        if let TraitErrors::HasErrors(hard_errors) = hard_errors {
             assert!(
                 hard_errors.iter().all(|e| e.is_true_error()),
                 "should not have detected ambiguity during first pass"
@@ -691,7 +691,7 @@ fn try_prove_negated_where_clause<'tcx>(
         param_env,
         negative_predicate,
     ));
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         return false;
     }
 
@@ -811,7 +811,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                         Unnormalized::new_wip(ty),
                     )
                     .map_err(|_| ())?;
-                if !ocx.try_evaluate_obligations().is_empty() {
+                if !ocx.try_evaluate_obligations().no_errors() {
                     return Err(());
                 }
             }
