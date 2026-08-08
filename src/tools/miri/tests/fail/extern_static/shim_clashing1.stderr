@@ -1,0 +1,16 @@
+error: found `environ` symbol definition that clashes with a built-in shim
+  --> tests/fail/extern_static/shim_clashing1.rs:LL:CC
+   |
+LL |     let _val = &raw const environ;
+   |                           ^^^^^^^ error occurred here
+   |
+help: the `environ` symbol is defined here
+  --> tests/fail/extern_static/shim_clashing1.rs:LL:CC
+   |
+LL | static mut MY_ENVIRON: *const *const u8 = std::ptr::null();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+
