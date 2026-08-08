@@ -473,7 +473,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
                 self.gather_operand(value);
                 self.create_move_path(place);
-                self.gather_init(place.as_ref(), InitKind::Unconditional);
+                self.gather_init(place.as_ref(), InitKind::OnReturn);
             }
             TerminatorKind::Call {
                 ref func,
@@ -516,14 +516,14 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
                             if let Some(place) = place {
                                 self.create_move_path(place);
-                                self.gather_init(place.as_ref(), InitKind::Unconditional);
+                                self.gather_init(place.as_ref(), InitKind::OnReturn);
                             }
                         }
                         InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
                             self.gather_operand(in_value);
                             if let Some(out_place) = out_place {
                                 self.create_move_path(out_place);
-                                self.gather_init(out_place.as_ref(), InitKind::Unconditional);
+                                self.gather_init(out_place.as_ref(), InitKind::OnReturn);
                             }
                         }
                         InlineAsmOperand::Const { value: _ }
