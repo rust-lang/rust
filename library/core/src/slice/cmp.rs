@@ -5,7 +5,7 @@ use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
 use crate::marker::Destruct;
-use crate::mem::SizedTypeProperties;
+use crate::mem::{SizedTypeProperties, transmute_copy};
 use crate::num::NonZero;
 use crate::ops::ControlFlow;
 
@@ -400,7 +400,7 @@ impl<T: BytewiseEq> SliceContains for T {
             // slice can be read as `u8`s.
             let (byte, bytes) = unsafe {
                 (
-                    *(self as *const Self).cast::<u8>(),
+                    transmute_copy::<T, u8>(self),
                     from_raw_parts(x.as_ptr().cast::<u8>(), x.len()),
                 )
             };
