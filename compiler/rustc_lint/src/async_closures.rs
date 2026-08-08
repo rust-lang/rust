@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, Span};
 
 use crate::{LateContext, LateLintPass};
 
@@ -77,6 +77,13 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
             body = tail;
         }
 
+        if !body.span.is_desugaring(DesugaringKind::Async) {
+            return;
+        }
+        let hir::ExprKind::Call(_, &[coroutine]) = body.kind else {
+            return;
+        };
+
         let hir::ExprKind::Closure(&hir::Closure {
             kind:
                 hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
@@ -85,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
                 )),
             fn_decl_span: async_decl_span,
             ..
-        }) = body.kind
+        }) = coroutine.kind
         else {
             return;
         };

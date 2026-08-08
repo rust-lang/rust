@@ -1,7 +1,7 @@
 - // MIR for `array::{closure#0}` before ElaborateDrops
 + // MIR for `array::{closure#0}` after ElaborateDrops
   
-  fn array::{closure#0}(_1: {async fn body of array()}, _2: std::future::ResumeTy) -> ()
+  fn array::{closure#0}(_1: {static coroutine body of array()}, _2: std::future::ResumeTy) -> ()
   yields ()
    {
       debug _task_context => _2;

@@ -3,7 +3,7 @@
 | User Type Annotations
 | 0: user_ty: Canonical { value: TypeOf(Box<^c_0>::new_uninit at <impl boxed::<{impl#0}> for Box<^c_1, ^c_2>>), max_universe: U0, var_kinds: [Ty { ui: U0, sub_root: 0 }, Ty { ui: U0, sub_root: 1 }, Ty { ui: U0, sub_root: 2 }] }, span: $SRC_DIR/alloc/src/macros.rs:LL:COL, inferred_ty: fn() -> std::boxed::Box<std::mem::MaybeUninit<[std::string::String; 5]>> {std::boxed::Box::<[std::string::String; 5]>::new_uninit}
 |
-fn build::{closure#0}(_1: {async fn body of build()}, _2: std::future::ResumeTy) -> Vec<String>
+fn build::{closure#0}(_1: {static coroutine body of build()}, _2: std::future::ResumeTy) -> Vec<String>
 yields ()
  {
     debug _task_context => _2;

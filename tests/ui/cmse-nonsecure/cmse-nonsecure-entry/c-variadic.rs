@@ -72,3 +72,39 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
 
 #[lang = "pin"]
 pub struct Pin<T>(T);
+
+#[lang = "future_from_coroutine"]
+pub const fn future_from_coroutine<C: Coroutine<ResumeTy, Yield = ()>>(
+    coroutine: C,
+) -> CoroutineFuture<C> {
+    CoroutineFuture(coroutine)
+}
+
+#[lang = "CoroutineFuture"]
+pub struct CoroutineFuture<C>(C);
+
+impl<C> Future for CoroutineFuture<C>
+where
+    C: Coroutine<ResumeTy, Yield = ()>,
+{
+    type Output = C::Return;
+
+    // NOTE: misses the `poll` method.
+}
+
+#[lang = "coroutine_state"]
+pub enum CoroutineState<Y, R> {
+    Yielded(Y),
+    Complete(R),
+}
+
+#[lang = "coroutine"]
+pub trait Coroutine<R = ()> {
+    #[lang = "coroutine_yield"]
+    type Yield;
+
+    #[lang = "coroutine_return"]
+    type Return;
+
+    // NOTE: misses the `resume` method.
+}

@@ -1,4 +1,4 @@
-//@ known-bug: #149748
+//@ build-pass
 //@ edition: 2024
 //@ compile-flags: -Zmir-enable-passes=+Inline -Zmir-enable-passes=+ReferencePropagation -Zlint-mir
 

@@ -56,6 +56,17 @@ unsafe impl Send for ResumeTy {}
 #[unstable(feature = "gen_future", issue = "none")]
 unsafe impl Sync for ResumeTy {}
 
+/// Helper function to wrap a `&mut Context` into a `ResumeTy` that can be passed to a coroutine.
+/// This is used by `CoroutineFuture` type.
+#[must_use]
+#[inline]
+pub(crate) unsafe fn wrap_context(cx: &mut Context<'_>) -> ResumeTy {
+    // SAFETY: `cx` is a valid mutable reference, its pointer is non-null.
+    // The cast to `'static` is sound because the `ResumeTy`
+    // is only unwrapped by `get_context`.
+    ResumeTy(unsafe { NonNull::new_unchecked((&raw mut *cx).cast()) })
+}
+
 #[lang = "get_context"]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "none")]

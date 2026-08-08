@@ -83,7 +83,7 @@ pub fn check(
                 Some(owner_id.def_id.to_def_id()),
                 &[],
             )
-            && let ty::Coroutine(_, subs) = ret_ty.kind()
+            && let Some((_, subs)) = cx.tcx.try_unwrap_desugared_coroutine(ret_ty)
             && subs.as_coroutine().return_ty().is_diag_item(cx, sym::Result)
         {
             span_lint(
