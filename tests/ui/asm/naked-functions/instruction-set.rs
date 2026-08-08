@@ -2,7 +2,6 @@
 //@ compile-flags: --target armv5te-unknown-linux-gnueabi
 //@ needs-llvm-components: arm
 //@ build-pass
-//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(no_core)]

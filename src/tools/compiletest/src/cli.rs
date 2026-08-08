@@ -385,6 +385,13 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
     let iteration_count = args.iteration_count.unwrap_or(Config::DEFAULT_ITERATION_COUNT);
     assert!(iteration_count > 0, "`--iteration-count` must be a positive integer");
 
+    let gcc_supported_target_tuples = match default_codegen_backend {
+        CodegenBackend::Gcc => {
+            directives::find_gcc_supported_targets(&args.sysroot_base, &args.host)
+        }
+        CodegenBackend::Llvm | CodegenBackend::Cranelift => vec![],
+    };
+
     Config {
         bless: args.bless,
         fail_fast: args.fail_fast || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
@@ -493,6 +500,8 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         default_codegen_backend,
         override_codegen_backend: args.override_codegen_backend,
         bypass_ignore_backends: args.bypass_ignore_backends,
+
+        gcc_supported_target_tuples,
 
         jobs: args.jobs,
 
