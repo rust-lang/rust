@@ -3,7 +3,7 @@ SOURCE_FILE
     FN_KW "fn"
     WHITESPACE " "
     NAME
-      IDENT "main"
+      IDENT "foo"
     PARAM_LIST
       L_PAREN "("
       R_PAREN ")"
@@ -13,21 +13,28 @@ SOURCE_FILE
         L_CURLY "{"
         WHITESPACE "\n    "
         EXPR_STMT
-          FORMAT_ARGS_EXPR
+          ASM_EXPR
             BUILTIN_KW "builtin"
+            WHITESPACE " "
             POUND "#"
-            FORMAT_ARGS_KW "format_args"
+            WHITESPACE " "
+            ASM_KW "asm"
             L_PAREN "("
             LITERAL
-              STRING "\"{type}\""
+              STRING "\"\""
             COMMA ","
             WHITESPACE " "
-            FORMAT_ARGS_ARG
+            ASM_OPERAND_NAMED
               NAME
-                IDENT "type"
+                IDENT "fn"
+              WHITESPACE " "
               EQ "="
-              LITERAL
-                INT_NUMBER "1"
+              WHITESPACE " "
+              ASM_CONST
+                CONST_KW "const"
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
             R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"
