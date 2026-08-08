@@ -596,3 +596,37 @@ fn test_arc_condvar_poison() {
         }
     }
 }
+
+#[test]
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
+fn poison_multiple_mutexes() {
+    use std::sync::poison::{Condvar, Mutex};
+    use std::time::Duration;
+
+    let m1 = Mutex::new(());
+    let m2 = Mutex::new(());
+    let c = Condvar::new();
+
+    let g1 = m1.lock().unwrap();
+    let _ = c.wait_timeout(g1, Duration::from_nanos(1));
+
+    let g2 = m2.lock().unwrap();
+    let _ = c.wait_timeout(g2, Duration::from_nanos(1));
+}
+
+#[test]
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
+fn nonpoison_multiple_mutexes() {
+    use std::sync::nonpoison::{Condvar, Mutex};
+    use std::time::Duration;
+
+    let m1 = Mutex::new(());
+    let m2 = Mutex::new(());
+    let c = Condvar::new();
+
+    let mut g1 = m1.lock();
+    let _ = c.wait_timeout(&mut g1, Duration::from_nanos(1));
+
+    let mut g2 = m2.lock();
+    let _ = c.wait_timeout(&mut g2, Duration::from_nanos(1));
+}
