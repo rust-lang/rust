@@ -11,7 +11,7 @@ use rustc_hir::{
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics;
+use crate::diagnostics;
 
 const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Fn),
@@ -54,7 +54,7 @@ impl StabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
     fn check_duplicate(&self, cx: &AcceptContext<'_, '_>) -> bool {
         if let Some((_, _)) = self.stability {
-            cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
+            cx.emit_err(diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
         } else {
             false
@@ -117,16 +117,15 @@ impl AttributeParser for StabilityParser {
             {
                 *allowed_through_unstable_modules = Some(atum);
             } else {
-                cx.dcx().emit_err(session_diagnostics::RustcAllowedUnstablePairing {
-                    span: cx.target_span,
-                });
+                cx.dcx()
+                    .emit_err(diagnostics::RustcAllowedUnstablePairing { span: cx.target_span });
             }
         }
 
         if let Some((Stability { level: StabilityLevel::Stable { .. }, .. }, _)) = self.stability {
             for other_attr in cx.all_attrs {
                 if other_attr.word_is(sym::unstable_feature_bound) {
-                    cx.emit_err(session_diagnostics::UnstableFeatureBoundIncompatibleStability {
+                    cx.emit_err(diagnostics::UnstableFeatureBoundIncompatibleStability {
                         span: cx.target_span,
                     });
                 }
@@ -152,8 +151,7 @@ impl AttributeParser for BodyStabilityParser {
         unstable!(staged_api),
         |this, cx, args| {
             if this.stability.is_some() {
-                cx.dcx()
-                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
+                cx.dcx().emit_err(diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             } else if let Some((feature, level)) = parse_unstability(cx, args) {
                 this.stability = Some((DefaultBodyStability { level, feature }, cx.attr_span));
             }
@@ -190,7 +188,7 @@ impl ConstStabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
     fn check_duplicate(&self, cx: &AcceptContext<'_, '_>) -> bool {
         if let Some((_, _)) = self.stability {
-            cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
+            cx.emit_err(diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
         } else {
             false
@@ -254,8 +252,7 @@ impl AttributeParser for ConstStabilityParser {
             if let Some((ref mut stab, _)) = self.stability {
                 stab.promotable = true;
             } else {
-                cx.dcx()
-                    .emit_err(session_diagnostics::RustcPromotablePairing { span: cx.target_span });
+                cx.dcx().emit_err(diagnostics::RustcPromotablePairing { span: cx.target_span });
             }
         }
 
@@ -323,10 +320,8 @@ pub(crate) fn parse_stability(
 
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
-        Some(_bad_feature) => {
-            Err(cx.emit_err(session_diagnostics::NonIdentFeature { span: cx.attr_span }))
-        }
-        None => Err(cx.emit_err(session_diagnostics::MissingFeature { span: cx.attr_span })),
+        Some(_bad_feature) => Err(cx.emit_err(diagnostics::NonIdentFeature { span: cx.attr_span })),
+        None => Err(cx.emit_err(diagnostics::MissingFeature { span: cx.attr_span })),
     };
 
     let since = if let Some(since) = since {
@@ -335,11 +330,11 @@ pub(crate) fn parse_stability(
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            let err = cx.emit_err(diagnostics::InvalidSince { span: cx.attr_span });
             StableSince::Err(err)
         }
     } else {
-        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        let err = cx.emit_err(diagnostics::MissingSince { span: cx.attr_span });
         StableSince::Err(err)
     };
 
@@ -391,15 +386,13 @@ pub(crate) fn parse_unstability(
                     issue_str => match issue_str.parse::<NonZero<u32>>() {
                         Ok(num) => Some(num),
                         Err(err) => {
-                            cx.emit_err(
-                                session_diagnostics::InvalidIssueString {
-                                    span: param.span(),
-                                    cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
-                                        param.args().as_name_value().unwrap().value_span,
-                                        err.kind(),
-                                    ),
-                                },
-                            );
+                            cx.emit_err(diagnostics::InvalidIssueString {
+                                span: param.span(),
+                                cause: diagnostics::InvalidIssueStringCause::from_int_error_kind(
+                                    param.args().as_name_value().unwrap().value_span,
+                                    err.kind(),
+                                ),
+                            });
                             return None;
                         }
                     },
@@ -423,21 +416,18 @@ pub(crate) fn parse_unstability(
 
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
-        Some(_bad_feature) => {
-            Err(cx.emit_err(session_diagnostics::NonIdentFeature { span: cx.attr_span }))
-        }
-        None => Err(cx.emit_err(session_diagnostics::MissingFeature { span: cx.attr_span })),
+        Some(_bad_feature) => Err(cx.emit_err(diagnostics::NonIdentFeature { span: cx.attr_span })),
+        None => Err(cx.emit_err(diagnostics::MissingFeature { span: cx.attr_span })),
     };
 
-    let issue =
-        issue.ok_or_else(|| cx.emit_err(session_diagnostics::MissingIssue { span: cx.attr_span }));
+    let issue = issue.ok_or_else(|| cx.emit_err(diagnostics::MissingIssue { span: cx.attr_span }));
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
             // Stable *language* features shouldn't be used as unstable library features.
             // (Not doing this for stable library features is checked by tidy.)
             if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
-                cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
+                cx.emit_err(diagnostics::UnstableAttrForAlreadyStableFeature {
                     attr_span: cx.attr_span,
                     item_span: cx.target_span,
                 });
@@ -526,7 +516,7 @@ impl CombineAttributeParser for UnstableRemovedParser {
         };
 
         let Some(version) = parse_version(since) else {
-            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            cx.emit_err(diagnostics::InvalidSince { span: cx.attr_span });
             return None;
         };
 

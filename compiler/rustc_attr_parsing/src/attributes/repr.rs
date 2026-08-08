@@ -6,7 +6,7 @@ use rustc_hir::attrs::ReprAttr;
 use rustc_session::diagnostics::feature_err;
 
 use super::prelude::*;
-use crate::session_diagnostics;
+use crate::diagnostics;
 
 /// Parse #[repr(...)] forms.
 ///
@@ -236,10 +236,7 @@ fn parse_repr_align(
             AlignKind::Align => ReprAttr::ReprAlign(literal),
         }),
         Err(message) => {
-            cx.emit_err(session_diagnostics::InvalidAlignmentValue {
-                span: lit.span,
-                error_part: message,
-            });
+            cx.emit_err(diagnostics::InvalidAlignmentValue { span: lit.span, error_part: message });
             None
         }
     }
@@ -298,7 +295,7 @@ impl RustcAlignParser {
         match parse_alignment(&lit.kind, cx) {
             Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
             Err(message) => {
-                cx.emit_err(session_diagnostics::InvalidAlignmentValue {
+                cx.emit_err(diagnostics::InvalidAlignmentValue {
                     span: lit.span,
                     error_part: message,
                 });

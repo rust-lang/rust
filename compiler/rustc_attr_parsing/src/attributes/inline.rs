@@ -4,7 +4,7 @@ use rustc_hir::find_attr;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
-use crate::session_diagnostics::InlineForceInlineConflict;
+use crate::diagnostics::InlineForceInlineConflict;
 
 pub(crate) struct InlineParser;
 

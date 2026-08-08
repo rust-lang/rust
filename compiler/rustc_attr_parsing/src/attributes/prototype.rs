@@ -10,7 +10,7 @@ use crate::context::AcceptContext;
 use crate::parser::{ArgParser, NameValueParser};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
-use crate::{AttributeTemplate, session_diagnostics, template, unstable};
+use crate::{AttributeTemplate, diagnostics, template, unstable};
 
 pub(crate) struct CustomMirParser;
 
@@ -140,10 +140,7 @@ fn check_custom_mir(
     let Some((dialect, dialect_span)) = dialect else {
         if let Some((_, phase_span)) = phase {
             *failed = true;
-            cx.emit_err(session_diagnostics::CustomMirPhaseRequiresDialect {
-                attr_span,
-                phase_span,
-            });
+            cx.emit_err(diagnostics::CustomMirPhaseRequiresDialect { attr_span, phase_span });
         }
         return;
     };
@@ -152,7 +149,7 @@ fn check_custom_mir(
         MirDialect::Analysis => {
             if let Some((MirPhase::Optimized, phase_span)) = phase {
                 *failed = true;
-                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                cx.emit_err(diagnostics::CustomMirIncompatibleDialectAndPhase {
                     dialect,
                     phase: MirPhase::Optimized,
                     attr_span,
@@ -165,7 +162,7 @@ fn check_custom_mir(
         MirDialect::Built => {
             if let Some((phase, phase_span)) = phase {
                 *failed = true;
-                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                cx.emit_err(diagnostics::CustomMirIncompatibleDialectAndPhase {
                     dialect,
                     phase,
                     attr_span,
