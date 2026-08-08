@@ -366,11 +366,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 Limit(0) => Limit(2),
                 limit => limit * 2,
             };
-            let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
-                span,
-                ty,
-                suggested_limit,
-            });
+            let reported =
+                tcx.dcx().emit_err(crate::diagnostics::RecursionLimitReachedSizeSkeleton {
+                    span,
+                    ty,
+                    suggested_limit,
+                });
             return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
         }
 
