@@ -3426,10 +3426,62 @@ impl Path {
     ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error in the following situations:
+    ///
+    /// - `path` where [`Path::has_root`] is `false` and a parent reference `..` points outside
+    ///    of the base directory.
+    ///
+    /// On Unix, a path that is absolute ([`Path::is_absolute`]) is equivalent to
+    /// [`Path::has_root`] and will never fail. On Windows, a root-relative path such
+    /// as `\..` is not considered absolute, but it has a root, so its `..` is pinned
+    /// to that root and it will not fail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("relative/path/unnormalized/../.");
+    /// let normalized = path.normalize_lexically().unwrap();
+    /// assert_eq!(Path::new("relative/path"), normalized);
+    ///
+    /// let path = Path::new("/absolute/path/un/../normalized/.");
+    /// let normalized = path.normalize_lexically().unwrap();
+    /// assert_eq!(Path::new("/absolute/path/normalized"), normalized);
+    /// ```
+    ///
+    /// A path without a root cannot normalize beyond its current base, attempting to do so will
+    /// cause an error. Paths with a root will pin `..` to the root.
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("../relative");
+    /// assert!(path.normalize_lexically().is_err());
+    ///
+    /// let path = Path::new("relative/../..");
+    /// assert!(path.normalize_lexically().is_err());
+    ///
+    /// let path = Path::new("/../has_root");
+    /// assert_eq!(Path::new("/has_root"), path.normalize_lexically().unwrap());
+    /// ```
+    ///
+    /// This root pinning behavior for absolute paths is common in many operating systems but is
+    /// [not guaranteed by POSIX](https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/basedefs/V1_chap04.html#tag_04_16).
+    ///
+    /// > As a special case, in the root directory, dot-dot may refer to the root directory itself.
+    ///
+    /// If your operating system behavior diverges you can use [`Component`] directly.
     #[unstable(feature = "normalize_lexically", issue = "134694")]
     pub fn normalize_lexically(&self) -> Result<PathBuf, NormalizeError> {
         let mut lexical = PathBuf::new();
         let mut iter = self.components().peekable();
+        let base_dir_not_root = !self.has_root();
 
         // Find the root, if any, and add it to the lexical path.
         // Here we treat the Windows path "C:\" as a single "root" even though
@@ -3460,9 +3512,11 @@ impl Path {
                 Component::Prefix(_) => return Err(NormalizeError),
                 Component::CurDir => continue,
                 Component::ParentDir => {
-                    // It's an error if ParentDir causes us to go above the "root".
+                    // This ParentDir would take us above the "root".
                     if lexical.as_os_str().len() == root {
-                        return Err(NormalizeError);
+                        if base_dir_not_root {
+                            return Err(NormalizeError);
+                        }
                     } else {
                         lexical.pop();
                     }
