@@ -1177,13 +1177,19 @@ where
                     if ecx.shallow_resolve(self_ty).is_ty_var() {
                         // We force the certainty of impl candidates to be `Maybe`.
                         let certainty = certainty.and(Certainty::AMBIGUOUS);
-                        ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+                        let response =
+                            ecx.evaluate_added_goals_and_make_canonical_response(certainty)?;
+
+                        let Certainty::Maybe(maybe) = response.value.certainty else {
+                            unreachable!();
+                        };
+
+                        // Blanket impls here only guide inference while the opaque hidden type
+                        // is unknown. Do not let constraints from matching the impl itself
+                        // constrain other inference variables.
+                        Ok(ecx.make_ambiguous_response_no_constraints(maybe))
                     } else {
                         // We don't want to use impls if they constrain the opaque.
-                        //
-                        // FIXME(trait-system-refactor-initiative#229): This isn't
-                        // perfect yet as it still allows us to incorrectly constrain
-                        // other inference variables.
                         Err(NoSolution.into())
                     }
                 })

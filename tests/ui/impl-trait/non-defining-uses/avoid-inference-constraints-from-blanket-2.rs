@@ -1,14 +1,10 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[current] check-pass
+//@ check-pass
 
-// Regression test for trait-system-refactor-initiative#205. Avoid
+// Regression test for trait-system-refactor-initiative#205 and #229. Avoid
 // constraining other impl arguments when applying blanket impls.
-
-// FIXME(-Znext-solver): This currently incompletely constrains the
-// argument of `opaque: Trait<?x>` using the blanket impl of trait.
-// Ideally we don't do that.
 
 trait Trait<T> {}
 
@@ -25,7 +21,6 @@ fn foo() -> impl Sized {
         return impls_trait::<_, _>(x);
     }
     let _: u32 = x;
-    //[next]~^ ERROR mismatched types
     1u64
 }
 fn main() {}
