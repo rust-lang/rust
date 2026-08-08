@@ -696,7 +696,7 @@ pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
 
 #[derive(Diagnostic)]
 #[diag(
-    "-Zstaticlib-rename-internal-symbols only supports ELF and Mach-O targets, but the target uses `{$binary_format}`"
+    "-Zstaticlib-rename-internal-symbols only supports ELF, Mach-O, and COFF targets, but the target uses `{$binary_format}`"
 )]
 pub(crate) struct StaticlibRenameInternalSymbolsUnsupported {
     pub binary_format: String,
