@@ -72,6 +72,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::def_id::{LocalModId, ModId};
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -1017,6 +1018,25 @@ struct DeclData<'ra> {
     /// declaration from the set, if its visibility is different from `initial_vis`.
     ambiguity_vis_min: CmCell<Option<Decl<'ra>>>,
     parent_module: Option<Module<'ra>>,
+    /// Fully resolved cross-crate redirects attached to this declaration.
+    edition_redirects: &'ra [EditionRedirectDecl<'ra>],
+}
+
+#[derive(Clone, Copy, Debug)]
+struct EditionRedirectDecl<'ra> {
+    before: Edition,
+    target: Decl<'ra>,
+}
+
+/// A resolved redirect import waiting to be attached to the default item with the same name.
+#[derive(Clone)]
+struct LocalEditionRedirect<'ra> {
+    module: LocalModule<'ra>,
+    key: BindingKey,
+    before: Edition,
+    import_decl: Decl<'ra>,
+    default_decl: Option<Decl<'ra>>,
+    span: Span,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -1370,6 +1390,8 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
+    /// Resolved redirect imports waiting to be combined with their default module children.
+    local_edition_redirects: Vec<LocalEditionRedirect<'ra>> = Vec::new(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1580,6 +1602,7 @@ impl<'ra> ResolverArenas<'ra> {
             span,
             expansion,
             parent_module,
+            edition_redirects: &[],
         })
     }
 
@@ -1590,6 +1613,12 @@ impl<'ra> ResolverArenas<'ra> {
     fn alloc_decl(&'ra self, data: DeclData<'ra>) -> Decl<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
         Interned::new_unchecked(self.dropless.alloc(data))
+    }
+    fn alloc_edition_redirects(
+        &'ra self,
+        redirects: &[EditionRedirectDecl<'ra>],
+    ) -> &'ra [EditionRedirectDecl<'ra>] {
+        if redirects.is_empty() { &[] } else { self.dropless.alloc_slice(redirects) }
     }
     fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
@@ -2032,6 +2061,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, TypeNS);
         f(self, ValueNS);
         f(self, MacroNS);
+    }
+
+    fn edition_adjusted_decl(&self, decl: Decl<'ra>, span: Span) -> Decl<'ra> {
+        // Nothing to do if the decl has no redirects.
+        if decl.edition_redirects.is_empty() {
+            return decl;
+        }
+
+        // Crates with `edition_redirect` resolve canonical bindings so
+        // redirects can be preserved through their re-exports. Other crates
+        // select using the use-site edition.
+        if self.features.edition_redirect() {
+            return decl;
+        }
+
+        // Glob selection has already determined that this name has multiple
+        // distinct candidates. Applying only the representative declaration's
+        // redirect would discard the ambiguity and make the result depend on
+        // which glob happened to be retained.
+        if decl.is_ambiguity_recursive() {
+            return decl;
+        }
+
+        let edition = span.edition();
+        decl.edition_redirects
+            .iter()
+            .find(|redirect| edition < redirect.before)
+            .map_or(decl, |redirect| redirect.target)
     }
 
     fn is_builtin_macro(&self, res: Res) -> bool {

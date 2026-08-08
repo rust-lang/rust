@@ -4,13 +4,16 @@ use std::cmp::Ordering;
 use std::mem;
 
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, BufferedEarlyLint, Diagnostic};
 use rustc_expand::base::SyntaxExtensionKind;
+use rustc_hir::attrs::EditionRedirect;
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
-use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
+use rustc_middle::metadata::{
+    AmbigModChild, EditionRedirect as MetadataEditionRedirect, ModChild, Reexport,
+};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
@@ -22,6 +25,7 @@ use rustc_session::lint::builtin::{
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
+use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -35,9 +39,9 @@ use crate::diagnostics::{
 use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, Decl, DeclData, DeclKind, Determinacy, Finalize, IdentKey,
-    ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope, PathResult,
-    PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    ImportSuggestion, ImportSummary, LocalEditionRedirect, LocalModule, ModuleOrUniformRoot,
+    ParentScope, PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    module_to_string, names_to_string,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -209,6 +213,10 @@ pub(crate) struct ImportData<'ra> {
     ///
     /// This is `None` if the feature flag for `diagnostic::on_unknown` is disabled.
     pub on_unknown_attr: Option<OnUnknownData>,
+
+    /// If present, this import supplies one edition-specific alternative for its target name.
+    /// It is resolved and checked like an ordinary import, but is not visible in the current crate.
+    pub edition_redirect: Option<EditionRedirect>,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -460,7 +468,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     /// Given an import and the declaration that it points to,
     /// create the corresponding import declaration.
-    pub(crate) fn new_import_decl(&self, decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
+    pub(crate) fn new_import_decl(&self, mut decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
+        // Without `edition_redirect`, the first import consumes the redirect
+        // using that import's edition. The resulting binding is fixed for
+        // downstream users.
+        decl = self.edition_adjusted_decl(decl, import.span);
+
         let vis = self.import_decl_vis(decl, import.summary());
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind
@@ -471,6 +484,38 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             max_vis.set(Some(vis), self)
         }
 
+        // Imports in crates with `edition_redirect` preserve redirects. Wrap
+        // each target in this import so a downstream edition adjustment retains
+        // its visibility and re-export provenance. Other crates consume the
+        // redirects above and produce re-exports with no redirects.
+        let edition_redirects = if decl.edition_redirects.is_empty() {
+            // Fast path when there are no edition redirects.
+            &[]
+        } else {
+            let edition_redirects = if self.features.edition_redirect() {
+                decl.edition_redirects
+                    .iter()
+                    .map(|redirect| crate::EditionRedirectDecl {
+                        before: redirect.before,
+                        target: self.arenas.alloc_decl(DeclData {
+                            kind: DeclKind::Import { source_decl: redirect.target, import },
+                            ambiguity: CmCell::new(None),
+                            span: import.span,
+                            initial_vis: vis.to_mod_id(),
+                            ambiguity_vis_max: CmCell::new(None),
+                            ambiguity_vis_min: CmCell::new(None),
+                            expansion: import.parent_scope.expansion,
+                            parent_module: Some(import.parent_scope.module),
+                            edition_redirects: &[],
+                        }),
+                    })
+                    .collect::<SmallVec<[_; 1]>>()
+            } else {
+                SmallVec::new()
+            };
+            self.arenas.alloc_edition_redirects(&edition_redirects)
+        };
+
         self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { source_decl: decl, import },
             ambiguity: CmCell::new(None),
@@ -480,6 +525,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity_vis_min: CmCell::new(None),
             expansion: import.parent_scope.expansion,
             parent_module: Some(import.parent_scope.module),
+            edition_redirects,
         })
     }
 
@@ -588,7 +634,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 glob_decl.ambiguity.set(Some((old_ambig, true)), self);
             }
             glob_decl
-        } else if glob_decl.res() != old_glob_decl.res() {
+        } else if glob_decl.res() != old_glob_decl.res()
+            || (!(old_glob_decl.edition_redirects.is_empty()
+                && glob_decl.edition_redirects.is_empty())
+                && !Self::same_edition_redirects(old_glob_decl, glob_decl))
+        {
+            // Redirects are part of a binding's behavior. If two globs resolve
+            // to the same item but redirect differently, retaining either
+            // declaration would make the result depend on glob insertion order,
+            // so keep an ambiguity witness just as we do for distinct `Res`s.
             let warning = self.is_noise_0_7_0(old_glob_decl, glob_decl)
                 || self.is_rustybuzz_0_4_0(old_glob_decl, glob_decl)
                 || self.is_pdf_0_9_0(old_glob_decl, glob_decl)
@@ -617,6 +671,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         } else {
             old_glob_decl
         }
+    }
+
+    /// Whether two declarations imported from other crates have the same
+    /// edition-dependent behavior.
+    ///
+    /// Redirects declared in the current crate are intentionally not
+    /// considered: they affect only the metadata produced for downstream
+    /// crates, not local name resolution.
+    fn same_edition_redirects(decl1: Decl<'ra>, decl2: Decl<'ra>) -> bool {
+        // Fast path when there are no edition redirects.
+        if decl1.edition_redirects.is_empty() && decl2.edition_redirects.is_empty() {
+            return true;
+        }
+
+        decl1.edition_redirects.len() == decl2.edition_redirects.len()
+            && decl1.edition_redirects.iter().zip(decl2.edition_redirects).all(
+                |(redirect1, redirect2)| {
+                    redirect1.before == redirect2.before
+                        && redirect1.target.res() == redirect2.target.res()
+                },
+            )
     }
 
     /// Attempt to put the declaration with the given name and namespace into the module,
@@ -733,6 +808,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if !(is_indeterminate || decls.iter().all(|d| d.get().decl().is_none())) {
                 return; // Has resolution, do not create the dummy binding
             }
+            if import.edition_redirect.is_some() {
+                let dummy_decl = self.new_import_decl(self.dummy_decl, import);
+                self.record_use(target, dummy_decl, Used::Other);
+                return;
+            }
             let dummy_decl = self.dummy_decl;
             let dummy_decl = self.new_import_decl(dummy_decl, import);
             self.per_ns_mut(|this, ns| {
@@ -837,7 +917,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match (&import.kind, resolution_kind) {
                 (
-                    ImportKind::Single { target, decls, .. },
+                    ImportKind::Single { source, target, decls, .. },
                     ImportResolutionKind::Single(import_decls),
                 ) => {
                     self.per_ns_mut(|this, ns| {
@@ -856,17 +936,37 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     )
                                     .emit();
                                 }
-                                this.plant_decl_into_local_module(
-                                    IdentKey::new(*target),
-                                    target.span,
-                                    ns,
-                                    import_decl,
-                                );
+                                let ident = IdentKey::new(*target);
+                                if let Some(redirect) = import.edition_redirect {
+                                    // Redirect imports are checked like ordinary imports, but their
+                                    // aliases are not visible while compiling this crate. They are
+                                    // combined with the ordinary binding when metadata is produced.
+                                    this.local_edition_redirects.push(LocalEditionRedirect {
+                                        module: import.parent_scope.module.expect_local(),
+                                        key: BindingKey::new(ident, ns),
+                                        before: redirect.before,
+                                        import_decl,
+                                        default_decl: None,
+                                        span: redirect.span,
+                                    });
+                                    this.record_use(*source, import_decl, Used::Other);
+                                } else {
+                                    this.plant_decl_into_local_module(
+                                        ident,
+                                        target.span,
+                                        ns,
+                                        import_decl,
+                                    );
+                                }
                                 decls[ns].set(PendingDecl::Ready(Some(import_decl)), this);
                             }
                             PendingDecl::Ready(None) => {
-                                // Don't remove underscores from `single_imports`, they were never added.
-                                if target.name != kw::Underscore {
+                                // Don't remove underscores and edition
+                                // redirects from `single_imports`, they were
+                                // never added.
+                                if target.name != kw::Underscore
+                                    && import.edition_redirect.is_none()
+                                {
                                     let key = BindingKey::new(IdentKey::new(*target), ns);
                                     this.update_local_resolution(
                                         import.parent_scope.module.expect_local(),
@@ -921,10 +1021,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn finalize_imports(&mut self) {
+        self.finalize_local_edition_redirects();
+
         let mut module_children = Default::default();
         let mut ambig_module_children = Default::default();
-        for module in &self.local_modules {
-            self.finalize_resolutions_in(*module, &mut module_children, &mut ambig_module_children);
+        for index in 0..self.local_modules.len() {
+            let module = self.local_modules[index];
+            self.finalize_resolutions_in(module, &mut module_children, &mut ambig_module_children);
         }
         self.module_children = module_children;
         self.ambig_module_children = ambig_module_children;
@@ -1809,7 +1912,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|(key, resolution)| {
                     let res = resolution.borrow(self);
-                    let decl = res.determined_decl()?;
+                    let decl = self.edition_adjusted_decl(res.determined_decl()?, import.span);
                     let mut key = *key;
                     let scope = match key.ident.ctxt.update_unchecked(|ctxt| {
                         ctxt.reverse_glob_adjust(module.expansion, import.span)
@@ -1865,6 +1968,131 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
+    /// Connects each resolved redirect import to the ordinary binding used if no redirect applies.
+    ///
+    /// This also validates properties that concern the redirect group as a whole rather than one
+    /// import in isolation.
+    fn finalize_local_edition_redirects(&mut self) {
+        // A BindingKey includes a namespace, so redirects may be duplicated in
+        // multiple namespaces. We only want to emit diagnostics once in these
+        // cases.
+        let mut diagnosed_missing_default = FxHashSet::default();
+        let mut diagnosed_visibility = FxHashSet::default();
+        let mut diagnosed_duplicate = FxHashSet::default();
+
+        // Group redirects by the base decl that they are attached to.
+        let mut groups = FxIndexMap::<_, SmallVec<[usize; 2]>>::default();
+        for (index, redirect) in self.local_edition_redirects.iter().enumerate() {
+            groups.entry((redirect.module, redirect.key)).or_default().push(index);
+        }
+
+        for ((module, key), mut indices) in groups {
+            // Resolve the default decl that redirects are attached to.
+            let Some(default_decl) = self
+                .resolution(module.to_module(), key)
+                .and_then(|resolution| resolution.best_decl())
+            else {
+                let redirect = &self.local_edition_redirects[indices[0]];
+                if diagnosed_missing_default.insert(redirect.span) {
+                    self.dcx().span_err(
+                        redirect.span,
+                        format!(
+                            "edition redirect for `{}` has no default item",
+                            redirect.key.ident.name
+                        ),
+                    );
+                }
+                continue;
+            };
+
+            // Point each redirect to the default decl for later passes.
+            for &index in &indices {
+                self.local_edition_redirects[index].default_decl = Some(default_decl);
+            }
+
+            // Check that there are no duplicate editions in the group.
+            indices.sort_by_key(|&index| self.local_edition_redirects[index].before);
+            for &[previous, redirect] in indices.array_windows() {
+                let previous = &self.local_edition_redirects[previous];
+                let redirect = &self.local_edition_redirects[redirect];
+                if previous.before == redirect.before && diagnosed_duplicate.insert(redirect.span) {
+                    self.dcx().span_err(
+                        redirect.span,
+                        format!(
+                            "multiple edition redirects before edition {} for `{}`",
+                            redirect.before, redirect.key.ident.name
+                        ),
+                    );
+                }
+            }
+
+            // Check that redirects have the same visibility as the default
+            // item.
+            for index in indices {
+                let redirect = &self.local_edition_redirects[index];
+                if redirect.import_decl.vis() != default_decl.vis()
+                    && diagnosed_visibility.insert(redirect.span)
+                {
+                    self.dcx().span_err(
+                        redirect.span,
+                        format!(
+                            "edition redirect for `{}` must have the same visibility as its default item",
+                            redirect.key.ident.name
+                        ),
+                    );
+                }
+            }
+        }
+    }
+
+    /// Returns the redirects to encode for `decl`.
+    fn edition_redirects_for_decl(
+        &self,
+        mut decl: Decl<'ra>,
+    ) -> SmallVec<[MetadataEditionRedirect; 1]> {
+        let original_decl = decl;
+        if !self.local_edition_redirects.is_empty() {
+            // Redirects declared in this crate are attached to their default
+            // declaration. Follow the import chain to preserve them through
+            // named and glob re-exports.
+            loop {
+                // A module child can be wrapped in one or more
+                // `DeclKind::Import`s. Prefer an attribute on a re-export
+                // itself; otherwise continue to the item at the end of the
+                // import chain.
+                let mut redirects = self
+                    .local_edition_redirects
+                    .iter()
+                    .filter(|redirect| redirect.default_decl == Some(decl))
+                    .collect::<SmallVec<[_; 1]>>();
+                if !redirects.is_empty() {
+                    redirects.sort_by_key(|redirect| redirect.before);
+                    return redirects
+                        .into_iter()
+                        .map(|redirect| MetadataEditionRedirect {
+                            before: redirect.before,
+                            target: redirect.import_decl.res().expect_non_local(),
+                        })
+                        .collect();
+                }
+
+                let DeclKind::Import { source_decl, .. } = decl.kind else { break };
+                decl = source_decl;
+            }
+        }
+
+        // Otherwise use the fully resolved redirects already attached to the
+        // original declaration.
+        original_decl
+            .edition_redirects
+            .iter()
+            .map(|redirect| MetadataEditionRedirect {
+                before: redirect.before,
+                target: redirect.target.res().expect_non_local(),
+            })
+            .collect()
+    }
+
     // Miscellaneous post-processing, including recording re-exports,
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(
@@ -1890,18 +2118,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     decl.vis()
                 };
                 let ident = ident.orig(orig_ident_span);
-                let child = |reexport_chain| ModChild { ident, res, vis, reexport_chain };
                 if let Some((ambig_binding1, ambig_binding2)) = decl.descent_to_ambiguity() {
-                    let main = child(ambig_binding1.reexport_chain());
+                    let main = ModChild {
+                        ident,
+                        res,
+                        vis,
+                        reexport_chain: ambig_binding1.reexport_chain(),
+                        edition_redirects: this.edition_redirects_for_decl(ambig_binding1),
+                    };
                     let second = ModChild {
                         ident,
                         res: ambig_binding2.res().expect_non_local(),
                         vis: ambig_binding2.vis(),
                         reexport_chain: ambig_binding2.reexport_chain(),
+                        edition_redirects: this.edition_redirects_for_decl(ambig_binding2),
                     };
                     ambig_children.push(AmbigModChild { main, second })
                 } else {
-                    children.push(child(decl.reexport_chain()));
+                    children.push(ModChild {
+                        ident,
+                        res,
+                        vis,
+                        reexport_chain: decl.reexport_chain(),
+                        edition_redirects: this.edition_redirects_for_decl(decl),
+                    });
                 }
             }
         });

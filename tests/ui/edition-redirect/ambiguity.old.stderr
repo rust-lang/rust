@@ -1,0 +1,23 @@
+error[E0659]: `Item` is ambiguous
+  --> $DIR/ambiguity.rs:13:17
+   |
+LL |     fn check(_: Item) {}
+   |                 ^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Item` could refer to the struct imported here
+  --> $DIR/ambiguity.rs:10:9
+   |
+LL |     use edition_redirect::ambiguity::alias_a::*;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Item` to disambiguate
+note: `Item` could also refer to the struct imported here
+  --> $DIR/ambiguity.rs:11:9
+   |
+LL |     use edition_redirect::ambiguity::alias_b::*;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Item` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.
