@@ -29,10 +29,16 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let expr = self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |p, _| {
-            p.parse_expr_res(Restrictions::STMT_EXPR, AttrWrapper::empty())
-                .map(|(expr, _)| (expr, Trailing::No, UsePreAttrPos::No))
-        })?;
+        let attrs = AttrWrapper::empty(); // FIXME expressions with attributes can be supported here
+        let expr = self.collect_tokens(
+            None,
+            AttrWrapper::empty(),
+            ForceCollect::Yes,
+            |p, _empty_attrs| {
+                p.parse_expr_res_after_attrs(Restrictions::STMT_EXPR, attrs)
+                    .map(|(expr, _)| (expr, Trailing::No, UsePreAttrPos::No))
+            },
+        )?;
         if !classify::expr_is_complete(&expr)
             && self.token != token::CloseBrace
             && self.token != token::Eof
