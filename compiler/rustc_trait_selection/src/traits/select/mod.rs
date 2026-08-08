@@ -934,12 +934,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
 
-                    let evaluate = |c: ty::Const<'tcx>| {
+                    let mut evaluate = |c: ty::Const<'tcx>| {
                         if let ty::ConstKind::Alias(_, _) = c.kind() {
                             match crate::traits::try_evaluate_const(
                                 self.infcx,
                                 c,
                                 obligation.param_env,
+                                |ty| {
+                                    normalize_with_depth_to(
+                                        self,
+                                        obligation.param_env,
+                                        obligation.cause.clone(),
+                                        obligation.recursion_depth + 1,
+                                        ty,
+                                        &mut PredicateObligations::new(),
+                                    )
+                                },
                             ) {
                                 Ok(val) => Ok(val),
                                 Err(e) => Err(e),

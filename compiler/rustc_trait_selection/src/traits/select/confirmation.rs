@@ -354,7 +354,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut assume = predicate.trait_ref.args.const_at(2);
         if self.tcx().features().generic_const_exprs() {
-            assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env)
+            assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env, |ty| {
+                normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    ty,
+                    &mut PredicateObligations::new(),
+                )
+            })
         }
         let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
             return Err(SelectionError::Unimplemented);

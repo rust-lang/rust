@@ -23,7 +23,12 @@ impl<'tcx> At<'_, 'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
     ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
         if self.infcx.tcx.features().generic_const_exprs() {
-            return Ok(super::evaluate_const(&self.infcx, ct.skip_normalization(), self.param_env));
+            return super::evaluate_const_with_fallible_normalization(
+                &self.infcx,
+                ct.skip_normalization(),
+                self.param_env,
+                |ty| self.structurally_normalize_ty(ty, fulfill_cx),
+            );
         }
 
         self.structurally_normalize_term(ct.map(Into::into), fulfill_cx)

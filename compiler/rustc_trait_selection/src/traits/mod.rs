@@ -413,7 +413,20 @@ pub fn normalize_param_env_or_error<'tcx>(
                         && matches!(alias_const.kind, ty::AliasConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
-                        let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
+                        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+                        let cause = ObligationCause::dummy();
+                        let c = match evaluate_const_with_fallible_normalization(
+                            &infcx,
+                            c,
+                            ty::ParamEnv::empty(),
+                            |ty| ocx.deeply_normalize(&cause, ty::ParamEnv::empty(), ty),
+                        ) {
+                            Ok(c) => c,
+                            Err(errors) => ty::Const::new_error(
+                                self.0,
+                                infcx.err_ctxt().report_fulfillment_errors(errors),
+                            ),
+                        };
                         // We should never wind up with any `infcx` local state when normalizing anon consts
                         // under min const generics.
                         assert!(!c.has_infer() && !c.has_placeholders());
@@ -535,6 +548,11 @@ pub enum EvaluateConstErr {
     EvaluationFailure(ErrorGuaranteed),
 }
 
+enum EvaluatedConst<'tcx> {
+    Const(ty::Const<'tcx>),
+    ValTree { value: ty::ValTree<'tcx>, ty: Unnormalized<'tcx, Ty<'tcx>> },
+}
+
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
 // FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
@@ -548,8 +566,9 @@ pub fn evaluate_const<'tcx>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
 ) -> ty::Const<'tcx> {
-    match try_evaluate_const(infcx, ct, param_env) {
+    match try_evaluate_const(infcx, ct, param_env, normalize_ty) {
         Ok(ct) => ct,
         Err(EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e)) => {
             ty::Const::new_error(infcx.tcx, e)
@@ -558,26 +577,72 @@ pub fn evaluate_const<'tcx>(
     }
 }
 
+pub(crate) fn evaluate_const_with_fallible_normalization<'tcx, E>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
+) -> Result<ty::Const<'tcx>, E> {
+    match try_evaluate_const_with_fallible_normalization(infcx, ct, param_env, normalize_ty) {
+        Ok(ct) => ct,
+        Err(EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e)) => {
+            Ok(ty::Const::new_error(infcx.tcx, e))
+        }
+        Err(EvaluateConstErr::HasGenericsOrInfers) => Ok(ct),
+    }
+}
+
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
 // FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
-/// Evaluates a type system constant making sure to not allow constants that depend on generic parameters
-/// or inference variables to succeed in evaluating.
+/// Evaluates a type system constant making sure to not allow constants that depend on generic
+/// parameters or inference variables to succeed in evaluating.
+///
+/// If evaluation succeeds, `normalize_ty` normalizes the type before it is attached to the
+/// resulting `ConstKind::Value`.
 ///
 /// You should not call this function unless you are implementing normalization itself. Prefer to use
 /// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
-#[instrument(level = "debug", skip(infcx), ret)]
 pub fn try_evaluate_const<'tcx>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
 ) -> Result<ty::Const<'tcx>, EvaluateConstErr> {
+    match try_evaluate_const_inner(infcx, ct, param_env)? {
+        EvaluatedConst::Const(ct) => Ok(ct),
+        EvaluatedConst::ValTree { value, ty } => {
+            Ok(ty::Const::new_value(infcx.tcx, value, normalize_ty(ty)))
+        }
+    }
+}
+
+pub(crate) fn try_evaluate_const_with_fallible_normalization<'tcx, E>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
+) -> Result<Result<ty::Const<'tcx>, E>, EvaluateConstErr> {
+    match try_evaluate_const_inner(infcx, ct, param_env)? {
+        EvaluatedConst::Const(ct) => Ok(Ok(ct)),
+        EvaluatedConst::ValTree { value, ty } => {
+            Ok(normalize_ty(ty).map(|ty| ty::Const::new_value(infcx.tcx, value, ty)))
+        }
+    }
+}
+
+#[instrument(name = "try_evaluate_const", level = "debug", skip(infcx))]
+fn try_evaluate_const_inner<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Result<EvaluatedConst<'tcx>, EvaluateConstErr> {
     let tcx = infcx.tcx;
     let ct = infcx.resolve_vars_if_possible(ct);
     debug!(?ct);
 
     match ct.kind() {
-        ty::ConstKind::Value(..) => Ok(ct),
+        ty::ConstKind::Value(..) => Ok(EvaluatedConst::Const(ct)),
         ty::ConstKind::Error(e) => Err(EvaluateConstErr::EvaluationFailure(e)),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Infer(_)
@@ -709,8 +774,8 @@ pub fn try_evaluate_const<'tcx>(
             // where it gets used as a const generic.
             let span = alias_const.kind.def_span(tcx);
             match tcx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
-                Ok(Ok(val)) => {
-                    Ok(ty::Const::new_value(tcx, val, alias_const.type_of(tcx).skip_norm_wip()))
+                Ok(Ok(value)) => {
+                    Ok(EvaluatedConst::ValTree { value, ty: alias_const.type_of(tcx) })
                 }
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(

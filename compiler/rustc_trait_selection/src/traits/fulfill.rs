@@ -764,6 +764,16 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 self.selcx.infcx,
                                 c,
                                 obligation.param_env,
+                                |ty| {
+                                    normalize_with_depth_to(
+                                        &mut self.selcx,
+                                        obligation.param_env,
+                                        obligation.cause.clone(),
+                                        obligation.recursion_depth + 1,
+                                        ty,
+                                        &mut PredicateObligations::new(),
+                                    )
+                                },
                             ) {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {
@@ -798,6 +808,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     obligation,
                                     inf_ok.into_obligations(),
                                 )),
+
                                 Err(err) => {
                                     ProcessResult::Error(FulfillmentErrorCode::ConstEquate(
                                         ExpectedFound::new(c1, c2),
