@@ -422,6 +422,8 @@ pub struct Session {
 
     /// Config specifying targets' pointer authentication preference.
     pub pointer_auth_config: Option<PointerAuthConfig>,
+    /// Frontend stats collected for JSON output.
+    pub frontend_stats: Lock<Vec<(String, usize)>>,
 }
 
 #[derive(Clone, Copy)]
@@ -1355,6 +1357,7 @@ pub fn build_session(
         used_features: Lock::default(),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
+        frontend_stats: Lock::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
