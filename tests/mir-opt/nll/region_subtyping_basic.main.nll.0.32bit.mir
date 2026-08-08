@@ -5,15 +5,15 @@
 | '?1 | Local | ['?1]
 |
 | Inferred Region Values
-| '?0 | U0 | {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0], '?0, '?1}
-| '?1 | U0 | {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0], '?1}
+| '?0 | U0 | {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0], bb8[0], bb9[0], bb10[0], '?0, '?1}
+| '?1 | U0 | {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0], bb8[0], bb9[0], bb10[0], '?1}
 | '?2 | U0 | {bb1[0..=8], bb2[0..=2]}
 | '?3 | U0 | {bb1[1..=8], bb2[0..=2]}
 | '?4 | U0 | {bb1[5..=8], bb2[0..=2]}
 |
 | Inference Constraints
-| '?0 live at {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0]}
-| '?1 live at {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0]}
+| '?0 live at {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0], bb8[0], bb9[0], bb10[0]}
+| '?1 live at {bb0[0..=8], bb1[0..=8], bb2[0..=3], bb3[0..=3], bb4[0..=1], bb5[0..=2], bb6[0..=4], bb7[0], bb8[0], bb9[0], bb10[0]}
 | '?2 live at {bb1[0]}
 | '?3 live at {bb1[1..=4]}
 | '?4 live at {bb1[5..=8], bb2[0..=2]}
@@ -53,7 +53,7 @@ fn main() -> () {
         _3 = const ConstValue(Scalar(0x00000000): usize);
         FakeRead(ForIndex, _1);
         _4 = Lt(copy _3, const ValTree(Leaf(0x00000003): usize));
-        assert(move _4, "index out of bounds: the length is {} but the index is {}", const ValTree(Leaf(0x00000003): usize), copy _3) -> [success: bb1, unwind: bb7];
+        assert(move _4, "index out of bounds: the length is {} but the index is {}", const ValTree(Leaf(0x00000003): usize), copy _3) -> [success: bb1, unwind: bb8];
     }
 
     bb1: {
@@ -72,7 +72,7 @@ fn main() -> () {
         StorageLive(_7);
         StorageLive(_8);
         _8 = copy (*_5);
-        _7 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(move _8) -> [return: bb3, unwind: bb7];
+        _7 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(move _8) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
@@ -84,7 +84,7 @@ fn main() -> () {
 
     bb4: {
         StorageLive(_9);
-        _9 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(const ConstValue(Scalar(0x00000016): usize)) -> [return: bb5, unwind: bb7];
+        _9 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(const ConstValue(Scalar(0x00000016): usize)) -> [return: bb5, unwind: bb10];
     }
 
     bb5: {
@@ -103,5 +103,17 @@ fn main() -> () {
 
     bb7 (cleanup): {
         resume;
+    }
+
+    bb8 (cleanup): {
+        goto -> bb7;
+    }
+
+    bb9 (cleanup): {
+        goto -> bb7;
+    }
+
+    bb10 (cleanup): {
+        goto -> bb7;
     }
 }

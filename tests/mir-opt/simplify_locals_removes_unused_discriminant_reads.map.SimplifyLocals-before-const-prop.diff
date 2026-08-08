@@ -7,14 +7,11 @@
       let mut _2: isize;
       let _3: std::boxed::Box<()>;
       let mut _4: std::boxed::Box<()>;
--     let mut _5: bool;
       scope 1 {
           debug x => _3;
       }
   
       bb0: {
--         _5 = const false;
--         _5 = const true;
           _2 = discriminant(_1);
           switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
       }

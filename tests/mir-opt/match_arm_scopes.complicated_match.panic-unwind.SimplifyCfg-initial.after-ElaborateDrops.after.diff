@@ -110,8 +110,8 @@
 -     bb10: {
 +     bb7: {
           _0 = const 1_i32;
--         drop(_7) -> [return: bb19, unwind: bb25];
-+         drop(_7) -> [return: bb16, unwind: bb22];
+-         drop(_7) -> [return: bb19, unwind: bb24];
++         drop(_7) -> [return: bb16, unwind: bb21];
       }
   
 -     bb11: {
@@ -119,8 +119,8 @@
           _0 = const 3_i32;
           StorageDead(_10);
           StorageDead(_9);
--         goto -> bb23;
-+         goto -> bb20;
+-         goto -> bb22;
++         goto -> bb19;
       }
   
 -     bb12: {
@@ -161,8 +161,8 @@
           _0 = const 3_i32;
           StorageDead(_13);
           StorageDead(_12);
--         goto -> bb23;
-+         goto -> bb20;
+-         goto -> bb22;
++         goto -> bb19;
       }
   
 -     bb16: {
@@ -204,52 +204,40 @@
           StorageDead(_5);
           StorageDead(_8);
           StorageDead(_6);
--         goto -> bb22;
-+         goto -> bb19;
+-         goto -> bb23;
++         goto -> bb20;
       }
   
 -     bb20: {
 +     bb17: {
           _0 = const 2_i32;
--         drop(_16) -> [return: bb21, unwind: bb25];
-+         drop(_16) -> [return: bb18, unwind: bb22];
+-         drop(_16) -> [return: bb21, unwind: bb24];
++         drop(_16) -> [return: bb18, unwind: bb21];
       }
   
 -     bb21: {
 +     bb18: {
           StorageDead(_16);
           StorageDead(_15);
--         goto -> bb22;
-+         goto -> bb19;
+-         goto -> bb23;
++         goto -> bb20;
       }
   
 -     bb22: {
--         drop(_2) -> [return: bb24, unwind: bb26];
 +     bb19: {
-+         goto -> bb21;
+          StorageDead(_8);
+          StorageDead(_6);
+-         drop(_2) -> [return: bb23, unwind: bb24];
++         drop(_2) -> [return: bb20, unwind: bb21];
       }
   
 -     bb23: {
 +     bb20: {
-          StorageDead(_8);
-          StorageDead(_6);
--         drop(_2) -> [return: bb24, unwind: bb26];
-+         drop(_2) -> [return: bb21, unwind: bb23];
-      }
-  
--     bb24: {
-+     bb21: {
           return;
       }
   
--     bb25 (cleanup): {
--         drop(_2) -> [return: bb26, unwind terminate(cleanup)];
-+     bb22 (cleanup): {
-+         goto -> bb23;
-      }
-  
--     bb26 (cleanup): {
-+     bb23 (cleanup): {
+-     bb24 (cleanup): {
++     bb21 (cleanup): {
           resume;
       }
   }
