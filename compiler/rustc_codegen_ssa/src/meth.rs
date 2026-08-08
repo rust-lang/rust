@@ -114,7 +114,10 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 
     let vtable_alloc_id = tcx.vtable_allocation((ty, trait_ref));
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
-    let vtable = cx.static_addr_of(vtable_allocation, Some("vtable"));
+    // Vtables cannot contain extern "C"/"System" function pointers (asserted in
+    // vtable_allocation_provider), so they do not require function pointer type
+    // discriminators.
+    let vtable = cx.static_addr_of(vtable_allocation, Some("vtable"), None);
 
     cx.apply_vcall_visibility_metadata(ty, trait_ref, vtable);
     cx.create_vtable_debuginfo(ty, trait_ref, vtable);
