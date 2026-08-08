@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 cx.emit_span_lint(
                     MULTIPLE_SUPERTRAIT_UPCASTABLE,
                     cx.tcx.def_span(def_id),
-                    crate::lints::MultipleSupertraitUpcastable { ident },
+                    crate::diagnostics::MultipleSupertraitUpcastable { ident },
                 );
             }
         }
