@@ -63,6 +63,7 @@
 #![feature(funnel_shifts)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
+#![feature(get_set_bit)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_from_ascii)]
