@@ -3314,13 +3314,22 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let (front, back) = self.as_slices();
         let cmp_back = back.first().map(|elem| f(elem));
 
-        if let Some(Ordering::Equal) = cmp_back {
+        let result = if let Some(Ordering::Equal) = cmp_back {
             Ok(front.len())
         } else if let Some(Ordering::Less) = cmp_back {
             back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
         } else {
             front.binary_search_by(f)
+        };
+
+        match result {
+            // SAFETY: `index` points at an element of one of the two slices.
+            Ok(index) => unsafe { core::hint::assert_unchecked(index < self.len()) },
+            // SAFETY: An insertion point in either slice is at most one past the deque's end.
+            Err(index) => unsafe { core::hint::assert_unchecked(index <= self.len()) },
         }
+
+        result
     }
 
     /// Binary searches this `VecDeque` with a key extraction function.
