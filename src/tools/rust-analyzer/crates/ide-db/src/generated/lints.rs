@@ -4363,18 +4363,6 @@ The tracking issue for this feature is: [#148767]
         deny_since: None,
     },
     Lint {
-        label: "c_void_variant",
-        description: r##"# `c_void_variant`
-
-This feature is internal to the Rust compiler and is not intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "can_vector",
         description: r##"# `can_vector`
 

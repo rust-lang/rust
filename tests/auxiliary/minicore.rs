@@ -25,6 +25,7 @@
     auto_traits,
     freeze_impls,
     negative_impls,
+    never_type,
     pattern_types,
     rustc_attrs,
     decl_macro,
@@ -392,10 +393,10 @@ pub mod hint {
 }
 
 #[lang = "c_void"]
-#[repr(u8)]
-pub enum c_void {
-    __variant1,
-    __variant2,
+#[repr(transparent)]
+pub struct c_void {
+    _inner: u8,
+    _uninhabited: !,
 }
 
 #[rustc_builtin_macro(pattern_type)]
