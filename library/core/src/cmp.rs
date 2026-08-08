@@ -743,6 +743,54 @@ impl<T: Clone> Clone for Reverse<T> {
     }
 }
 
+/// A pair where ordering and equality work on only the `key`, ignoring the `value`.
+///
+/// Used to implement `Iterator::min_by_key` as `map`+`min`, for example.
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct KeyAndValue<K, V> {
+    pub key: K,
+    pub value: V,
+}
+impl<K: PartialEq, V> PartialEq for KeyAndValue<K, V> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        self.key != other.key
+    }
+}
+impl<K: Eq, V> Eq for KeyAndValue<K, V> {}
+impl<K: PartialOrd, V> PartialOrd for KeyAndValue<K, V> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&self.key, &other.key)
+    }
+    #[inline]
+    fn lt(&self, other: &Self) -> bool {
+        self.key < other.key
+    }
+    #[inline]
+    fn le(&self, other: &Self) -> bool {
+        self.key <= other.key
+    }
+    #[inline]
+    fn gt(&self, other: &Self) -> bool {
+        self.key > other.key
+    }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool {
+        self.key >= other.key
+    }
+}
+impl<K: Ord, V> Ord for KeyAndValue<K, V> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ord::cmp(&self.key, &other.key)
+    }
+}
+
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
 /// Implementations must be consistent with the [`PartialOrd`] implementation, and ensure `max`,
