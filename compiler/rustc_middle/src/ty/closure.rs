@@ -434,11 +434,11 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
         // refining the set of captures via edition-2021 precise captures. We want to
         // match up any number of child captures with one parent capture, so we keep
         // peeking off this `Peekable` until the child doesn't match anymore.
+        //
+        // Do not require every parent capture to match a child capture. A parent
+        // capture may be used only while evaluating a coroutine-closure
+        // `move(expr)` initializer, before the child coroutine is created.
         for (parent_field_idx, parent_capture) in parent_captures.into_iter().enumerate() {
-            // Make sure we use every field at least once, b/c why are we capturing something
-            // if it's not used in the inner coroutine.
-            let mut field_used_at_least_once = false;
-
             // A parent matches a child if they share the same prefix of projections.
             // The child may have more, if it is capturing sub-fields out of
             // something that is captured by-move in the parent closure.
@@ -458,21 +458,13 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
                     (parent_field_idx, parent_capture),
                     (child_field_idx, child_capture),
                 );
-
-                field_used_at_least_once = true;
             }
-
-            // Make sure the field was used at least once.
-            assert!(
-                field_used_at_least_once,
-                "we captured {parent_capture:#?} but it was not used in the child coroutine?"
-            );
         }
         assert_eq!(child_captures.next(), None, "leftover child captures?");
     }
 }
 
-fn child_prefix_matches_parent_projections(
+pub fn child_prefix_matches_parent_projections(
     parent_capture: &ty::CapturedPlace<'_>,
     child_capture: &ty::CapturedPlace<'_>,
 ) -> bool {
