@@ -52,6 +52,12 @@ fn wrapping_range_smallest_range_containing() {
     check([200, 50, 60], 1, 200, 60);
     check([200, 50, 125], 1, 50, 200);
 
+    // A wraparound range is only potentially interesting when
+    // the non-wraparound range covers over half the range.
+    check([0, 127], 1, 0, 127); // `0..=127` is smaller
+    check([0, 128], 1, 0, 128); // both are the same size
+    check([0, 129], 1, 129, 0); // `(..=0) | (129..)` is smaller
+
     // The mem::Alignment case
     check((0..64).map(|n| 1 << n), 8, 1, i64::MIN.cast_unsigned().into());
 
@@ -66,6 +72,9 @@ fn wrapping_range_smallest_range_containing() {
     // `(..=32) | (96..)`, `(..=96) | (160..)`, `(..=160) | (224..)`, and `32..=224`.
     // We pick the last one as the only one that doesn't contain zero.
     check([0xA0, 0xE0, 0x20, 0x60], 1, 0x20, 0xE0);
+
+    // Wraparound can still be needed even in `max - min < values.len()`.
+    check(std::iter::chain([50; 100], [200; 100]), 1, 200, 50);
 }
 
 #[test]
