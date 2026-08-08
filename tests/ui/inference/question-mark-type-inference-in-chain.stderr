@@ -35,7 +35,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `Vec<std::result::Result<Version, Error>>`
    |
-   = help: the nightly-only, unstable trait `Try` is not implemented for `Vec<std::result::Result<Version, Error>>`
+   = help: the nightly-only, unstable trait `Branch` is not implemented for `Vec<std::result::Result<Version, Error>>`
 
 warning: method call on a diverging inference variable
   --> $DIR/question-mark-type-inference-in-chain.rs:66:10
