@@ -141,6 +141,10 @@ impl ThreadInit {
             rtabort!("current thread handle already set during thread spawn");
         }
 
+        // The handle was created by the spawning thread, so only now that we are
+        // running can the OS id be filled in.
+        self.handle.set_os_id_to_current();
+
         if let Some(name) = self.handle.cname() {
             imp::set_name(name);
         }
