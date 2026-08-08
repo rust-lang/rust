@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
-  --> $DIR/uninhabited-patterns.rs:34:11
+  --> $DIR/uninhabited-patterns.rs:33:11
    |
 LL |     match x {
    |           ^ pattern `Ok(_)` not covered
@@ -17,7 +17,7 @@ LL ~         Ok(_) => todo!(),
    |
 
 error: unreachable pattern
-  --> $DIR/uninhabited-patterns.rs:43:9
+  --> $DIR/uninhabited-patterns.rs:42:9
    |
 LL |         Err(Ok(_y)) => (),
    |         ^^^^^^^^^^^-------
@@ -27,13 +27,13 @@ LL |         Err(Ok(_y)) => (),
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/uninhabited-patterns.rs:4:9
+  --> $DIR/uninhabited-patterns.rs:3:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/uninhabited-patterns.rs:46:15
+  --> $DIR/uninhabited-patterns.rs:45:15
    |
 LL |     while let Some(_y) = foo() {
    |               ^^^^^^^^ matches no values because `NotSoSecretlyEmpty` is uninhabited

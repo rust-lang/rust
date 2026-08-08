@@ -1,8 +1,8 @@
-// Test or-patterns with box-patterns
+// Test or-patterns with deref patterns
 
 //@ run-pass
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {
@@ -20,8 +20,8 @@ enum Test {
 
 fn test(x: Option<Box<Test>>) -> MatchArm {
     match x {
-        Some(box Test::Foo | box Test::Bar) => MatchArm::Arm(0),
-        Some(box Test::Baz) => MatchArm::Arm(1),
+        Some(Test::Foo | Test::Bar) => MatchArm::Arm(0),
+        Some(Test::Baz) => MatchArm::Arm(1),
         Some(_) => MatchArm::Arm(2),
         _ => MatchArm::Wild,
     }
