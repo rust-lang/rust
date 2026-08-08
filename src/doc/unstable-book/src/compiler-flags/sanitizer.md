@@ -13,6 +13,7 @@ The tracking issues for this feature are:
 
 * [#39699](https://github.com/rust-lang/rust/issues/39699).
 * [#89653](https://github.com/rust-lang/rust/issues/89653).
+* [#159111](https://github.com/rust-lang/rust/issues/159111).
 
 ------------------------
 
@@ -31,6 +32,8 @@ This feature allows for use of one of following sanitizers:
   * [ThreadSanitizer](#threadsanitizer) a fast data race detector.
 
 * Those that apart from testing, may be used in production:
+  * [AllocToken](#alloctoken) LLVM AllocToken provides token identifiers to
+    the allocator for heap partitioning.
   * [ControlFlowIntegrity](#controlflowintegrity) LLVM Control Flow Integrity
     (CFI) provides forward-edge control flow protection.
   * [DataFlowSanitizer](#dataflowsanitizer) a generic dynamic data flow analysis
@@ -45,7 +48,8 @@ This feature allows for use of one of following sanitizers:
   * [ShadowCallStack](#shadowcallstack) provides backward-edge control flow
     protection (aarch64 only).
 
-To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=cfi`,
+To enable a sanitizer compile with `-Zsanitizer=address`,
+`-Zsanitizer=alloc-token`, `-Zsanitizer=cfi`,
 `-Zsanitizer=dataflow`,`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`,
 `-Zsanitizer=memory`, `-Zsanitizer=memtag`, `-Zsanitizer=realtime`,
 `-Zsanitizer=shadow-call-stack` or `-Zsanitizer=thread`. You might also need the
@@ -224,6 +228,98 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Shadow gap:              cc
 ==39249==ABORTING
 ```
+
+# AllocToken
+
+The LLVM AllocToken support in the Rust compiler provides token identifiers
+for heap partitioning for both Rust-compiled code only and for C or C++ and
+Rust-compiled code mixed-language binaries, also known as “mixed binaries”
+(i.e., for when C or C++ and Rust-compiled code share the same virtual
+address space and memory allocator), by classifying allocated types and
+passing token identifiers to the allocator (i.e., by rewriting allocation
+calls to token-enabled versions of the allocation functions, prefixed with
+`__alloc_token_`, with the token identifier appended as the last argument).
+
+LLVM AllocToken can be enabled with `-Zsanitizer=alloc-token` and requires a
+token-enabled memory allocator (i.e., an allocator that implements the
+token-enabled allocator interface and uses token identifiers to separate
+allocations into partitions) for heap partitioning. Allocators that do not
+use token identifiers degrade gracefully (i.e., programs remain correct,
+without heap partitioning).
+
+The pointer-split heap partitioning scheme is the default heap partitioning
+scheme for the Rust compiler. It separates allocations into two partitions:
+one containing pointers and another not containing pointers, with default or
+unknown being the partition containing pointers. It uses the
+TypeHashPointerSplit token identifier derivation mode with the maximum number
+of tokens set to two (i.e., `-Zsanitizer-alloc-token-max` is ignored), so that
+the token identifier is the partition number: token identifier 0 for the
+partition not containing pointers, and token identifier 1 for the partition
+containing pointers.
+
+The type-hash-pointer-split heap partitioning scheme additionally separates
+allocations by the allocated type within each partition, providing per-type
+token identifiers. It uses a configurable maximum number of tokens (i.e.,
+`-Zsanitizer-alloc-token-max`, defaulting to the same value as Clang, i.e.,
+the number of tokens bounded by `SIZE_MAX`, when not set).
+
+The heap partitioning scheme can be selected with the
+`-Zsanitizer-alloc-token-scheme` option with either `pointer-split` or
+`type-hash-pointer-split` values.
+
+Non-standard allocation functions (e.g., the Rust allocator interface
+functions, such as `__rust_alloc`) are instrumented by default; this can be
+turned off with the `-Zsanitizer-alloc-token-extended=no` option. The token
+identifier can be encoded in the allocation function name instead of being
+appended as an argument with the `-Zsanitizer-alloc-token-fast-abi` option.
+
+It is recommended to rebuild the standard library with allocation token
+instrumentation enabled by using the Cargo build-std feature (i.e.,
+`-Zbuild-std`) when enabling it, so that allocations performed by the standard
+library are instrumented with allocation token hints.
+
+See the [Clang AllocToken documentation][clang-alloctoken] for more details.
+
+## Example: Separating allocations of types containing pointers from allocations of types not containing pointers
+
+```rust,ignore (making doc tests pass cross-platform is hard)
+pub struct Buffer {
+    data: [u8; 4096],
+}
+
+pub struct Node {
+    next: *mut Node,
+    value: u64,
+}
+
+fn main() {
+    // Allocated type [Buffer] does not contain pointers: partition 0.
+    let buffer = Box::new(Buffer { data: [0; 4096] });
+
+    // Allocated type [Node] contains pointers: partition 1.
+    let node = Box::new(Node {
+        next: core::ptr::null_mut(),
+        value: 0,
+    });
+
+    std::hint::black_box((buffer, node));
+}
+```
+
+```shell
+$ RUSTFLAGS="-Zsanitizer=alloc-token -Cno-prepopulate-passes -Copt-level=0 --emit=llvm-ir" cargo build -Zbuild-std --target x86_64-unknown-linux-gnu
+$ grep '@__alloc_token' target/x86_64-unknown-linux-gnu/debug/deps/*.ll
+  %3 = call ptr @__alloc_token_…__rust_alloc(i64 %_3, i64 %_5, i64 1) #19, !dbg !409, !alloc_token !410
+  %3 = call ptr @__alloc_token_…__rust_alloc(i64 %_3, i64 %_5, i64 0) #19, !dbg !420, !alloc_token !421
+```
+
+When LLVM AllocToken is enabled, allocation calls are rewritten to
+token-enabled versions of the allocation functions, with the partition number
+as the token identifier, and a token-enabled memory allocator places the
+allocations in separate heap partitions, so that attempts to use
+attacker-controlled data allocations (e.g., `Buffer`) to control the heap
+layout around, corrupt, or reclaim the memory of objects containing pointers
+(e.g., `Node`) across partitions are mitigated.
 
 # ControlFlowIntegrity
 
@@ -1014,6 +1110,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 
 * [Sanitizers project page](https://github.com/google/sanitizers/wiki/)
 * [AddressSanitizer in Clang][clang-asan]
+* [AllocToken in Clang][clang-alloctoken]
 * [ControlFlowIntegrity in Clang][clang-cfi]
 * [DataFlowSanitizer in Clang][clang-dataflow]
 * [HWAddressSanitizer in Clang][clang-hwasan]
@@ -1024,6 +1121,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 * [ThreadSanitizer in Clang][clang-tsan]
 * [RealtimeSanitizer in Clang][clang-rtsan]
 
+[clang-alloctoken]: https://clang.llvm.org/docs/AllocToken.html
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
 [clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
 [clang-dataflow]: https://clang.llvm.org/docs/DataFlowSanitizer.html

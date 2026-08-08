@@ -1160,3 +1160,17 @@ pub(crate) struct UnusedDuplicate {
     )]
     pub warning: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag("expected a boolean literal")]
+pub(crate) struct AllocTokenHintExpectedBool {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[alloc_token_hint]` requires at least one of `contains_pointers` or `type_name`")]
+pub(crate) struct AllocTokenHintMissingArgs {
+    #[primary_span]
+    pub span: Span,
+}

@@ -232,6 +232,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
+            AttributeKind::AllocTokenHint { .. } => (),
             AttributeKind::AllowInternalUnsafe(..) => (),
             AttributeKind::AllowInternalUnstable(..) => (),
             AttributeKind::AutomaticallyDerived => (),
@@ -300,6 +301,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Repr { .. } => (),
             AttributeKind::RustcAbi { .. } => (),
             AttributeKind::RustcAlign { .. } => {}
+            AttributeKind::RustcAllocTokenHint => (),
             AttributeKind::RustcAllocator => (),
             AttributeKind::RustcAllocatorZeroed => (),
             AttributeKind::RustcAllocatorZeroedVariant { .. } => (),

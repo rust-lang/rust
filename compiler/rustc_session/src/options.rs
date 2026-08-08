@@ -833,7 +833,7 @@ mod desc {
     pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
+    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `alloc-token`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
     pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub(crate) const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -868,6 +868,8 @@ mod desc {
         "one of: `disabled`, `trampolines`, or `aliases`";
     pub(crate) const parse_symbol_mangling_version: &str =
         "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
+    pub(crate) const parse_alloc_token_scheme: &str =
+        "one of: `pointer-split` or `type-hash-pointer-split`";
     pub(crate) const parse_opt_symbol_visibility: &str =
         "one of: `hidden`, `protected`, or `interposable`";
     pub(crate) const parse_cargo_src_file_hash: &str =
@@ -1307,6 +1309,7 @@ pub mod parse {
             for s in v.split(',') {
                 *slot |= match s {
                     "address" => SanitizerSet::ADDRESS,
+                    "alloc-token" => SanitizerSet::ALLOCTOKEN,
                     "cfi" => SanitizerSet::CFI,
                     "dataflow" => SanitizerSet::DATAFLOW,
                     "kcfi" => SanitizerSet::KCFI,
@@ -1883,6 +1886,18 @@ pub mod parse {
             Some("legacy") => Some(SymbolManglingVersion::Legacy),
             Some("v0") => Some(SymbolManglingVersion::V0),
             Some("hashed") => Some(SymbolManglingVersion::Hashed),
+            _ => return false,
+        };
+        true
+    }
+
+    pub(crate) fn parse_alloc_token_scheme(
+        slot: &mut Option<AllocTokenScheme>,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("pointer-split") => Some(AllocTokenScheme::PointerSplit),
+            Some("type-hash-pointer-split") => Some(AllocTokenScheme::TypeHashPointerSplit),
             _ => return false,
         };
         true
@@ -2799,6 +2814,17 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED] { TARGET_MODIFIER: Sanitizer },
         "use a sanitizer"),
+    sanitizer_alloc_token_extended: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
+        "instrument non-standard allocation function calls with allocation token hint metadata \
+        (default: yes)"),
+    sanitizer_alloc_token_fast_abi: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "encode the token identifier in the allocation function name instead of appending it as \
+        an argument (default: no)"),
+    sanitizer_alloc_token_max: Option<u32> = (None, parse_opt_number, [TRACKED],
+        "set the maximum number of tokens (default: 2 for the pointer-split scheme, \
+        and can not be explicitly specified; unbounded for the type-hash-pointer-split scheme)"),
+    sanitizer_alloc_token_scheme: Option<AllocTokenScheme> = (None, parse_alloc_token_scheme, [TRACKED],
+        "select the heap partitioning scheme (default: pointer-split)"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],

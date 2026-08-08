@@ -195,6 +195,21 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     std::mem::take(&mut p.out)
 }
 
+pub(super) fn mangle_typeid_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
+    let mut p = V0SymbolMangler {
+        tcx,
+        start_offset: 0,
+        is_exportable: false,
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
+        binders: vec![],
+        out: String::new(),
+    };
+    p.print_type(ty).unwrap();
+    std::mem::take(&mut p.out)
+}
+
 struct BinderLevel {
     /// The range of distances from the root of what's
     /// being printed, to the lifetimes in a binder.

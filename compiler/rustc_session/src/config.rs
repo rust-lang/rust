@@ -583,6 +583,29 @@ pub enum SymbolManglingVersion {
     Hashed,
 }
 
+/// The heap partitioning scheme used for LLVM AllocToken and heap partitioning support.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash)]
+#[derive(Encodable, BlobDecodable)]
+pub enum AllocTokenScheme {
+    /// The pointer-split heap partitioning scheme separates allocations into two partitions: one
+    /// containing pointers and another not containing pointers, with default or unknown being the
+    /// partition containing pointers. It uses the TypeHashPointerSplit token identifier derivation
+    /// mode with the maximum number of tokens set to two (i.e., `-Zsanitizer-alloc-token-max` is
+    /// ignored), so that the token identifier is the partition number: token identifier 0 for the
+    /// partition not containing pointers, and token identifier 1 for the partition containing
+    /// pointers.
+    PointerSplit,
+    /// The type-hash-pointer-split heap partitioning scheme additionally separates allocations by
+    /// the allocated type within each of the two partitions (i.e., one containing pointers and
+    /// another not containing pointers). It also uses the TypeHashPointerSplit token identifier
+    /// derivation mode, but with a configurable maximum number of tokens (i.e.,
+    /// `-Zsanitizer-alloc-token-max`, defaulting to the same value as Clang, i.e., the number of
+    /// tokens bounded by `SIZE_MAX`, when not set), so that the token identifier is derived from a
+    /// stable hash of the allocated type name within each partition, providing per-type token
+    /// identifiers.
+    TypeHashPointerSplit,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum DebugInfo {
     None,
@@ -3325,11 +3348,11 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
-        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
-        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
-        MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        AllocTokenScheme, AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection,
+        CodegenRetagOptions, CoverageOptions, CrateType, DebugInfo, DebugInfoCompression,
+        ErrorOutputType, FmtDebug, FunctionReturn, InliningThreshold, InstrumentCoverage,
+        InstrumentMcount, InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
         OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
         SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
         WasiExecModel,
@@ -3423,6 +3446,7 @@ pub(crate) mod dep_tracking {
         SwitchWithOptPath,
         SymbolManglingVersion,
         SymbolVisibility,
+        AllocTokenScheme,
         RemapPathScopeComponents,
         SourceFileHashAlgorithm,
         OutFileName,

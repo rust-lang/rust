@@ -35,6 +35,7 @@ use crate::{AttributeTemplate, template};
 /// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
 mod prelude;
 
+pub(crate) mod alloc_token_hint;
 pub(crate) mod allow_unstable;
 pub(crate) mod autodiff;
 pub(crate) mod body;

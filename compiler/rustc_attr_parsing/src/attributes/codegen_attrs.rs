@@ -713,6 +713,7 @@ impl SingleAttributeParser for SanitizeParser {
                 sym::address | sym::kernel_address => {
                     apply(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS)
                 }
+                sym::alloc_token => apply(SanitizerSet::ALLOCTOKEN),
                 sym::cfi => apply(SanitizerSet::CFI),
                 sym::kcfi => apply(SanitizerSet::KCFI),
                 sym::memory => apply(SanitizerSet::MEMORY),
@@ -739,6 +740,7 @@ impl SingleAttributeParser for SanitizeParser {
                         &[
                             sym::address,
                             sym::kernel_address,
+                            sym::alloc_token,
                             sym::cfi,
                             sym::kcfi,
                             sym::memory,

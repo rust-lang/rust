@@ -248,6 +248,11 @@ bitflags::bitflags! {
         /// As such, we must make sure these symbols really do exist in the final binary/library.
         /// This flag is put on both the implementations of EIIs and the foreign item they implement.
         const EXTERNALLY_IMPLEMENTABLE_ITEM = 1 << 18;
+        /// `#[rustc_alloc_token_hint]`: indicates a typed allocation function whose type parameter
+        /// identifies the allocated type, used to compute the allocation token hints (i.e., the
+        /// contents of the `!alloc_token` metadata) for LLVM AllocToken and heap partitioning
+        /// support.
+        const ALLOC_TOKEN_HINT          = 1 << 19;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
