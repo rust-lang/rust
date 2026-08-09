@@ -3122,3 +3122,19 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn regression_23083() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    match 2 {
+        x if let true = return => {
+            x;
+        }
+        _ => {}
+    }
+}
+    "#,
+    );
+}
