@@ -1,0 +1,224 @@
+// MIR for `closure` 0 nll
+
+| Free Region Mapping
+| '?0 | Global | ['?3, '?2, '?0, '?4, '?1]
+| '?1 | Local | ['?4, '?1]
+| '?2 | Local | ['?2, '?4]
+| '?3 | Local | ['?3, '?4]
+| '?4 | Local | ['?4]
+|
+| Inferred Region Values
+| '?0 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?0, '?1, '?2, '?3, '?4}
+| '?1 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?2 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?3 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?4 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?4}
+| '?5 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?6 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?7 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?8 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?9 | U0 | {bb0[1]}
+| '?10 | U0 | {bb0[1]}
+| '?11 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?12 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?13 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?14 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?15 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?16 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?17 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?18 | U0 | {bb1[2]}
+| '?19 | U0 | {bb1[2]}
+| '?20 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?21 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?22 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?23 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?24 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?25 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?26 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?27 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?28 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?29 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?30 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?31 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?32 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?33 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?34 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?35 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?36 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?37 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?38 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?39 | U0 | {bb0[1]}
+| '?40 | U0 | {bb0[1]}
+| '?41 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?1}
+| '?42 | U0 | {bb1[2]}
+| '?43 | U0 | {bb1[2]}
+| '?44 | U0 | {}
+| '?45 | U0 | {}
+| '?46 | U0 | {}
+| '?47 | U0 | {}
+| '?48 | U0 | {}
+| '?49 | U0 | {}
+| '?50 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?2}
+| '?51 | U0 | {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0], '?3}
+| '?52 | U0 | {bb0[1]}
+| '?53 | U0 | {bb0[1]}
+| '?54 | U0 | {bb1[2]}
+| '?55 | U0 | {bb1[2]}
+|
+| Inference Constraints
+| '?0 live at {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0]}
+| '?1 live at {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0]}
+| '?2 live at {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0]}
+| '?3 live at {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0]}
+| '?4 live at {bb0[0..=1], bb1[0..=2], bb2[0..=2], bb3[0]}
+| '?5 live at {bb0[1]}
+| '?6 live at {bb0[1]}
+| '?7 live at {bb0[1]}
+| '?8 live at {bb0[1]}
+| '?9 live at {bb0[1]}
+| '?10 live at {bb0[1]}
+| '?11 live at {bb0[1]}
+| '?12 live at {bb0[1]}
+| '?13 live at {bb0[1]}
+| '?14 live at {bb1[2]}
+| '?15 live at {bb1[2]}
+| '?16 live at {bb1[2]}
+| '?17 live at {bb1[2]}
+| '?18 live at {bb1[2]}
+| '?19 live at {bb1[2]}
+| '?20 live at {bb1[2]}
+| '?21 live at {bb1[2]}
+| '?22 live at {bb1[2]}
+| '?23 live at {bb2[1]}
+| '?24 live at {bb2[1]}
+| '?25 live at {bb2[1]}
+| '?26 live at {bb2[2]}
+| '?27 live at {bb2[2]}
+| '?28 live at {bb2[2]}
+| '?1: '?23 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?1: '?29 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43) ($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43 (#0)
+| '?1: '?32 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43) ($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43 (#0)
+| '?1: '?35 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62 (#0)
+| '?2: '?24 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?2: '?30 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43) ($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43 (#0)
+| '?2: '?34 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43) ($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43 (#0)
+| '?3: '?25 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?3: '?31 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43) ($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43 (#0)
+| '?3: '?33 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43) ($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43 (#0)
+| '?5: '?11 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?5: '?38 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?6: '?12 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?7: '?13 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?8: '?38 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?9: '?39 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?10: '?40 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?11: '?5 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?11: '?29 due to TypeAnnotation(GenericArg) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?12: '?6 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?12: '?30 due to TypeAnnotation(GenericArg) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?13: '?7 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?13: '?31 due to TypeAnnotation(GenericArg) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?14: '?20 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?14: '?41 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?15: '?21 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?16: '?22 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?17: '?41 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?18: '?42 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?19: '?43 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?20: '?14 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?20: '?32 due to TypeAnnotation(GenericArg) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?21: '?15 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?21: '?33 due to TypeAnnotation(GenericArg) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?22: '?16 due to CallArgument(Some(FnDef(DefId(0:3 ~ opaque_non_member_candidate_equality[f00c]::new_defining_use), Binder { value: [FnDef(DefId(0:7 ~ opaque_non_member_candidate_equality[f00c]::closure), Binder { value: ['{erased}, '{erased}, '{erased}], bound_vars: [] }), (), Closure(DefId(0:12 ~ opaque_non_member_candidate_equality[f00c]::closure::{closure#0}), ['{erased}, '{erased}, '{erased}, i8, Binder { value: extern "RustCall" fn(()), bound_vars: [] }, ()])], bound_vars: [] }))) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?22: '?34 due to TypeAnnotation(GenericArg) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?23: '?1 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?23: '?26 due to Return(Normal) at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?24: '?2 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?24: '?27 due to Return(Normal) at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?25: '?3 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?25: '?28 due to Return(Normal) at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?26: '?23 due to Return(Normal) at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?26: '?35 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62 (#0)
+| '?27: '?24 due to Return(Normal) at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?27: '?36 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62 (#0)
+| '?28: '?25 due to Return(Normal) at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:17:5: 17:10 (#0)
+| '?28: '?37 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62 (#0)
+| '?29: '?1 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43) ($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43 (#0)
+| '?29: '?11 due to TypeAnnotation(GenericArg) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?30: '?2 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43) ($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43 (#0)
+| '?30: '?12 due to TypeAnnotation(GenericArg) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?31: '?3 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43) ($DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43 (#0)
+| '?31: '?13 due to TypeAnnotation(GenericArg) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?32: '?1 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43) ($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43 (#0)
+| '?32: '?20 due to TypeAnnotation(GenericArg) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?33: '?3 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43) ($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43 (#0)
+| '?33: '?21 due to TypeAnnotation(GenericArg) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?34: '?2 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43) ($DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43 (#0)
+| '?34: '?22 due to TypeAnnotation(GenericArg) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?35: '?1 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62 (#0)
+| '?35: '?26 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62 (#0)
+| '?35: '?38 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?35: '?41 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?36: '?27 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62 (#0)
+| '?36: '?50 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62 (#0)
+| '?37: '?28 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:42: 14:62 (#0)
+| '?37: '?51 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62 (#0)
+| '?38: '?5 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?38: '?8 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?38: '?35 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?39: '?9 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?39: '?52 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?40: '?10 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb0[1]) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?40: '?53 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?41: '?14 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?41: '?17 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?41: '?35 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?42: '?18 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?42: '?54 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?43: '?19 due to Predicate($DIR/opaque_non_member_candidate_equality.rs:7:37: 7:38 (#0)) at Single(bb1[2]) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?43: '?55 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?44: '?46 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?44: '?48 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?45: '?47 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?45: '?49 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?46: '?44 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?47: '?45 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?48: '?44 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?49: '?45 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?50: '?36 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62 (#0)
+| '?51: '?37 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62) ($DIR/opaque_non_member_candidate_equality.rs:14:1: 14:62 (#0)
+| '?52: '?39 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?53: '?40 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44) ($DIR/opaque_non_member_candidate_equality.rs:15:5: 15:44 (#0)
+| '?54: '?42 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+| '?55: '?43 due to OpaqueType at All($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44) ($DIR/opaque_non_member_candidate_equality.rs:16:5: 16:44 (#0)
+|
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(closure<'a, 'b, 'c>), max_universe: U0, var_kinds: [] }, span: $DIR/opaque_non_member_candidate_equality.rs:15:22: 15:43, inferred_ty: fn(()) -> impl Sized {closure::<'_, '_, '_>}
+| 1: user_ty: Canonical { value: TypeOf(closure<'a, 'c, 'b>), max_universe: U0, var_kinds: [] }, span: $DIR/opaque_non_member_candidate_equality.rs:16:22: 16:43, inferred_ty: fn(()) -> impl Sized {closure::<'_, '_, '_>}
+|
+fn closure(_1: ()) -> {closure@$DIR/opaque_non_member_candidate_equality.rs:17:5: 17:7} {
+    let mut _0: {closure@$DIR/opaque_non_member_candidate_equality.rs:17:5: 17:7};
+    let _2: ();
+    let _3: ();
+
+    bb0: {
+        StorageLive(_2);
+        _2 = new_defining_use::<fn(()) -> impl Sized {closure::<'_, '_, '_>}, (), {closure@$DIR/opaque_non_member_candidate_equality.rs:17:5: 17:7}>(closure::<'_, '_, '_>) -> [return: bb1, unwind: bb3];
+    }
+
+    bb1: {
+        StorageDead(_2);
+        StorageLive(_3);
+        _3 = new_defining_use::<fn(()) -> impl Sized {closure::<'_, '_, '_>}, (), {closure@$DIR/opaque_non_member_candidate_equality.rs:17:5: 17:7}>(closure::<'_, '_, '_>) -> [return: bb2, unwind: bb3];
+    }
+
+    bb2: {
+        StorageDead(_3);
+        _0 = {closure@$DIR/opaque_non_member_candidate_equality.rs:17:5: 17:7};
+        return;
+    }
+
+    bb3 (cleanup): {
+        resume;
+    }
+}
