@@ -47,15 +47,18 @@ pub fn f6(x: f64) {
 
 fn dummy() {
     #[autodiff_forward(df7, Dual)]
+    //~^ ERROR macro attributes on statements are unstable
     let mut x = 5;
     //~^ ERROR autodiff must be applied to function
 
     #[autodiff_forward(df7, Dual)]
     x = x + 3;
-    //~^^ ERROR attributes on expressions are experimental [E0658]
-    //~^^ ERROR autodiff must be applied to function
+    //~^^  ERROR attributes on expressions are experimental [E0658]
+    //~|   ERROR macro attributes on expressions are unstable
+    //~^^^ ERROR autodiff must be applied to function
 
     #[autodiff_forward(df7, Dual)]
+    //~^ ERROR macro attributes on statements are unstable
     let add_one_v2 = |x: u32| -> u32 { x + 1 };
     //~^ ERROR autodiff must be applied to function
 }
