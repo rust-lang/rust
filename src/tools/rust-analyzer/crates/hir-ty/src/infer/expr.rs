@@ -385,13 +385,12 @@ impl<'db> InferenceContext<'db> {
                 coerce.complete(self)
             }
             &Expr::Let { pat, expr } => {
-                let child_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
-                    ExprIsRead::Yes
-                } else {
-                    ExprIsRead::No
-                };
-                let input_ty = self.infer_expr(expr, &Expectation::none(), child_is_read);
-                self.infer_top_pat(pat, input_ty, PatOrigin::LetExpr);
+                self.infer_let(
+                    self.table.next_ty_var(tgt_expr.into()),
+                    Some(expr),
+                    pat,
+                    PatOrigin::LetExpr,
+                );
                 self.types.types.bool
             }
             Expr::Block { statements, tail, label, id: _ } => {
@@ -1518,36 +1517,10 @@ impl<'db> InferenceContext<'db> {
                                 .map(|&tr| this.make_body_ty(tr))
                                 .unwrap_or_else(|| this.table.next_ty_var((*pat).into()));
 
-                            let ty = if let Some(expr) = initializer {
-                                // If we have a subpattern that performs a read, we want to consider this
-                                // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
-                                let target_is_read =
-                                    if this.pat_guaranteed_to_constitute_read_for_never(*pat) {
-                                        ExprIsRead::Yes
-                                    } else {
-                                        ExprIsRead::No
-                                    };
-                                let ty = if this.contains_explicit_ref_binding(*pat) {
-                                    this.infer_expr(
-                                        *expr,
-                                        &Expectation::has_type(decl_ty),
-                                        target_is_read,
-                                    )
-                                } else {
-                                    this.infer_expr_coerce(
-                                        *expr,
-                                        &Expectation::has_type(decl_ty),
-                                        target_is_read,
-                                    )
-                                };
-                                if type_ref.is_some() { decl_ty } else { ty }
-                            } else {
-                                decl_ty
-                            };
-
-                            this.infer_top_pat(
+                            this.infer_let(
+                                decl_ty,
+                                *initializer,
                                 *pat,
-                                ty,
                                 PatOrigin::LetStmt { has_else: else_branch.is_some() },
                             );
                             if let Some(expr) = else_branch {
@@ -1624,6 +1597,31 @@ impl<'db> InferenceContext<'db> {
         self.resolver.reset_to_guard(g);
 
         coerce.complete(self)
+    }
+
+    fn infer_let(
+        &mut self,
+        decl_ty: Ty<'db>,
+        initializer: Option<ExprId>,
+        pat: PatId,
+        pat_origin: PatOrigin,
+    ) {
+        if let Some(expr) = initializer {
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            let target_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
+                ExprIsRead::Yes
+            } else {
+                ExprIsRead::No
+            };
+            if self.contains_explicit_ref_binding(pat) {
+                self.infer_expr(expr, &Expectation::has_type(decl_ty), target_is_read)
+            } else {
+                self.infer_expr_coerce(expr, &Expectation::has_type(decl_ty), target_is_read)
+            };
+        };
+
+        self.infer_top_pat(pat, decl_ty, pat_origin);
     }
 
     fn lookup_field(
