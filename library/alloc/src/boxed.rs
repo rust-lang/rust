@@ -266,6 +266,8 @@ const fn box_new_uninit(layout: Layout) -> *mut u8 {
 pub const fn box_assume_init_into_vec_unsafe<T, const N: usize>(
     b: Box<MaybeUninit<[T; N]>>,
 ) -> crate::vec::Vec<T> {
+    // SAFETY: Technically not, but this can't be
+    // called stably except in ways we control.
     unsafe { (b.assume_init() as Box<[T]>).into_vec() }
 }
 
@@ -452,6 +454,7 @@ impl<T, A: Allocator> Box<T, A> {
     {
         let mut boxed = Self::new_uninit_in(alloc);
         boxed.write(x);
+        // SAFETY: Initialised by the above.
         unsafe { boxed.assume_init() }
     }
 
@@ -478,6 +481,7 @@ impl<T, A: Allocator> Box<T, A> {
     {
         let mut boxed = Self::try_new_uninit_in(alloc)?;
         boxed.write(x);
+        // SAFETY: Initialised by the above.
         unsafe { Ok(boxed.assume_init()) }
     }
 
@@ -542,6 +546,7 @@ impl<T, A: Allocator> Box<T, A> {
             let layout = Layout::new::<mem::MaybeUninit<T>>();
             alloc.allocate(layout)?.cast()
         };
+        // SAFETY: Pointer is nonnull and matches the allocator.
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
 
@@ -614,6 +619,7 @@ impl<T, A: Allocator> Box<T, A> {
             let layout = Layout::new::<mem::MaybeUninit<T>>();
             alloc.allocate_zeroed(layout)?.cast()
         };
+        // SAFETY: Pointer is nonnull and matches the allocator.
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
 
@@ -650,6 +656,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
     pub fn into_boxed_slice(boxed: Self) -> Box<[T], A> {
         let (raw, alloc) = Box::into_raw_with_allocator(boxed);
+        // SAFETY: A pointer to T is also a valid pointer to [T; 1].
         unsafe { Box::from_raw_in(raw as *mut [T; 1], alloc) }
     }
 
@@ -693,6 +700,8 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "box_take", issue = "147212")]
     pub fn take(boxed: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
+        // SAFETY: Reading out an initialised value & leaving behind a
+        // box with uninit contents.
         unsafe {
             let (raw, alloc) = Box::into_non_null_with_allocator(boxed);
             let value = raw.read();
@@ -724,9 +733,11 @@ impl<T, A: Allocator> Box<T, A> {
         let (value, allocation) = Box::take(this);
         let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
         if size_of::<T>() == size_of::<U>() && align_of::<T>() == align_of::<U>() {
+            // ignore-tidy-undocumented-unsafe
             let allocation = unsafe { Box::from_non_null_in(raw.cast::<MaybeUninit<U>>(), alloc) };
             Box::write(allocation, f(value))
         } else {
+            // ignore-tidy-undocumented-unsafe
             unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
             Box::new_in(f(value), alloc)
         }
@@ -764,9 +775,11 @@ impl<T, A: Allocator> Box<T, A> {
         let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
         if size_of::<T>() == size_of::<R::Output>() && align_of::<T>() == align_of::<R::Output>() {
             let allocation =
+                // ignore-tidy-undocumented-unsafe
                 unsafe { Box::from_non_null_in(raw.cast::<MaybeUninit<R::Output>>(), alloc) };
             try { Box::write(allocation, f(value)?) }
         } else {
+            // ignore-tidy-undocumented-unsafe
             unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
             try { Box::new_in(f(value)?, alloc) }
         }
@@ -865,7 +878,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
         impl<'a, A: Allocator> Drop for DeallocDropGuard<'a, A> {
             fn drop(&mut self) {
                 let &mut DeallocDropGuard(layout, alloc, ptr) = self;
-                // Safety: `ptr` was allocated by `*alloc` with layout `layout`
+                // SAFETY: `ptr` was allocated by `*alloc` with layout `layout`
                 unsafe {
                     alloc.deallocate(ptr, layout);
                 }
@@ -880,7 +893,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
             (ptr, Some(DeallocDropGuard(layout, &alloc, ptr)))
         };
         let ptr = ptr.as_ptr();
-        // Safety: `*ptr` is newly allocated, correctly aligned to `align_of_val(src)`,
+        // SAFETY: `*ptr` is newly allocated, correctly aligned to `align_of_val(src)`,
         // and is valid for writes for `size_of_val(src)`.
         // If this panics, then `guard` will deallocate for us (if allocation occuured)
         unsafe {
@@ -888,7 +901,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
         }
         // Defuse the deallocate guard
         core::mem::forget(guard);
-        // Safety: We just initialized `*ptr` as a clone of `src`
+        // SAFETY: We just initialized `*ptr` as a clone of `src`
         Ok(unsafe { Box::from_raw_in(ptr.with_metadata_of(src), alloc) })
     }
 }
@@ -912,6 +925,7 @@ impl<T> Box<[T]> {
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { RawVec::with_capacity(len).into_box(len) }
     }
 
@@ -935,6 +949,7 @@ impl<T> Box<[T]> {
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
     }
 
@@ -968,6 +983,7 @@ impl<T> Box<[T]> {
             };
             Global.allocate(layout)?.cast()
         };
+        // ignore-tidy-undocumented-unsafe
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
 
@@ -1002,6 +1018,7 @@ impl<T> Box<[T]> {
             };
             Global.allocate_zeroed(layout)?.cast()
         };
+        // ignore-tidy-undocumented-unsafe
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
 }
@@ -1029,6 +1046,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
     }
 
@@ -1056,6 +1074,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
     }
 
@@ -1094,6 +1113,7 @@ impl<T, A: Allocator> Box<[T], A> {
             };
             alloc.allocate(layout)?.cast()
         };
+        // ignore-tidy-undocumented-unsafe
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
 
@@ -1133,6 +1153,7 @@ impl<T, A: Allocator> Box<[T], A> {
             };
             alloc.allocate_zeroed(layout)?.cast()
         };
+        // ignore-tidy-undocumented-unsafe
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
 
@@ -1229,6 +1250,7 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     #[stable(feature = "box_uninit_write", since = "1.87.0")]
     #[inline]
     pub fn write(mut boxed: Self, value: T) -> Box<T, A> {
+        // SAFETY: Writing initialises the boxed value.
         unsafe {
             (*boxed).write(value);
             boxed.assume_init()
@@ -1265,6 +1287,7 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T], A> {
         let (raw, alloc) = Box::into_raw_with_allocator(self);
+        // SAFETY: Upheld by caller.
         unsafe { Box::from_raw_in(raw as *mut [T], alloc) }
     }
 }
@@ -1318,6 +1341,7 @@ impl<T: ?Sized> Box<T> {
     #[inline]
     #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
+        // SAFETY: Upheld by caller.
         unsafe { Self::from_raw_in(raw, Global) }
     }
 
@@ -1370,6 +1394,7 @@ impl<T: ?Sized> Box<T> {
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
+        // SAFETY: Upheld by caller.
         unsafe { Self::from_raw(ptr.as_ptr()) }
     }
 
@@ -1549,6 +1574,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
+        // SAFETY: Upheld by caller.
         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
     }
 
@@ -1667,6 +1693,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // In case `A` *is* `Global`, this does not quite have the right behavior; `into_raw`
         // works around that.
         let ptr = &raw mut **b;
+        // SAFETY: See above.
         let alloc = unsafe { ptr::read(&b.1) };
         (ptr, alloc)
     }
@@ -1734,6 +1761,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[doc(hidden)]
     pub fn into_unique(b: Self) -> (Unique<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
+        // SAFETY: Pointer is valid and unique.
         unsafe { (Unique::from(&mut *ptr), alloc) }
     }
 
@@ -1933,6 +1961,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
         mem::forget(alloc);
+        // SAFETY: Pointer is valid and unique.
         unsafe { &mut *ptr }
     }
 
@@ -1971,9 +2000,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     where
         A: StaticAllocator,
     {
-        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
-        // when `T: !Unpin`, so it's safe to pin it directly without any
-        // additional requirements.
+        // SAFETY: It's not possible to move or replace the insides of a
+        // `Pin<Box<T>>` when `T: !Unpin`, so it's safe to pin it directly
+        // without any additional requirements.
         unsafe { Pin::new_unchecked(boxed) }
     }
 }
@@ -1986,6 +2015,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
 
         let ptr = self.0;
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let layout = Layout::for_value_raw(ptr.as_ptr());
             if layout.size() != 0 {
@@ -2002,19 +2032,18 @@ impl<T: Default> Default for Box<T> {
     #[inline]
     fn default() -> Self {
         let mut x: Box<mem::MaybeUninit<T>> = Box::new_uninit();
-        unsafe {
-            // SAFETY: `x` is valid for writing and has the same layout as `T`.
-            // If `T::default()` panics, dropping `x` will just deallocate the Box as `MaybeUninit<T>`
-            // does not have a destructor.
-            //
-            // We use `ptr::write` as `MaybeUninit::write` creates
-            // extra stack copies of `T` in debug mode.
-            //
-            // See https://github.com/rust-lang/rust/issues/136043 for more context.
-            ptr::write(&raw mut *x as *mut T, T::default());
-            // SAFETY: `x` was just initialized above.
-            x.assume_init()
-        }
+
+        // SAFETY: `x` is valid for writing and has the same layout as `T`.
+        // If `T::default()` panics, dropping `x` will just deallocate the Box as `MaybeUninit<T>`
+        // does not have a destructor.
+        //
+        // We use `ptr::write` as `MaybeUninit::write` creates
+        // extra stack copies of `T` in debug mode.
+        //
+        // See https://github.com/rust-lang/rust/issues/136043 for more context.
+        unsafe { ptr::write(&raw mut *x as *mut T, T::default()) };
+        // SAFETY: `x` was just initialized above.
+        unsafe { x.assume_init() }
     }
 }
 
@@ -2079,6 +2108,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     fn clone(&self) -> Self {
         // Pre-allocate memory to allow writing the cloned value directly.
         let mut boxed = Self::new_uninit_in(self.1.clone());
+        // SAFETY: Destination pointer is valid and will then become initialised.
         unsafe {
             (**self).clone_to_uninit(boxed.as_mut_ptr().cast());
             boxed.assume_init()
@@ -2148,6 +2178,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
 impl<A: Allocator + Clone> Clone for Box<str, A> {
     fn clone(&self) -> Self {
         let buf = Box::clone_from_ref_in(self.as_bytes(), self.1.clone());
+        // SAFETY: We know the [u8] is a valid str.
         unsafe { from_boxed_utf8_unchecked_in(buf) }
     }
 }

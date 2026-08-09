@@ -343,6 +343,7 @@ pub trait BufRead: Read {
         // Note that we are not calling the `.read_until` method here, but
         // rather our hardcoded implementation. For more details as to why, see
         // the comments in `default_read_to_string`.
+        // ignore-tidy-undocumented-unsafe
         unsafe { append_to_string(buf, |b| default_read_until(self, b'\n', b)) }
     }
 

@@ -43,6 +43,7 @@ impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
             if self.mask[i] {
                 // SAFETY: read + i < original_len (in-bounds).
                 let src = unsafe { self.v.as_ptr().add(self.read + i) };
+                // SAFETY: Continued from above.
                 let dst_ptr = unsafe { self.v.as_mut_ptr().add(dst) };
                 // SAFETY: src and dst_ptr < original_len
                 unsafe { ptr::copy(src, dst_ptr, 1) };
@@ -107,8 +108,9 @@ where
         }
 
         // Phase B: SVE compress.
-        // SAFETY: write <= read and the dispatch guarantees size_of::<T>() matches the kernel lane width.
         let kept = match mem::size_of::<T>() {
+            // SAFETY: write <= read and the dispatch guarantees size_of::<T>() matches
+            // the kernel lane width.
             1 => unsafe {
                 compact8_kernel(
                     guard.v.as_mut_ptr().add(guard.read),
@@ -117,6 +119,7 @@ where
                     chunk_len,
                 )
             },
+            // SAFETY: Same as above.
             2 => unsafe {
                 compact16_kernel(
                     guard.v.as_mut_ptr().add(guard.read),
@@ -125,6 +128,7 @@ where
                     chunk_len,
                 )
             },
+            // SAFETY: Same as above.
             4 => unsafe {
                 compact32_kernel(
                     guard.v.as_mut_ptr().add(guard.read),
@@ -133,6 +137,7 @@ where
                     chunk_len,
                 )
             },
+            // SAFETY: Same as above.
             8 => unsafe {
                 compact64_kernel(
                     guard.v.as_mut_ptr().add(guard.read),
