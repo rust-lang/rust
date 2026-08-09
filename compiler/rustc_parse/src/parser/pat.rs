@@ -479,7 +479,7 @@ impl<'a> Parser<'a> {
         // Parse an associative expression such as `+ expr`, `% expr`, ...
         // Assignments, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
         let Ok((expr, _)) = snapshot
-            .parse_expr_assoc_rest_with(Bound::Unbounded, false, expr)
+            .parse_expr_assoc_rest(Bound::Unbounded, false, expr)
             .map_err(|err| err.cancel())
         else {
             // We got a trailing method/operator, but that wasn't an expression.

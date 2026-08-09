@@ -20,7 +20,7 @@ pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use crate::job::{QueryJobMap, break_query_cycle, print_query_stack};
 
 mod dep_kind_vtables;
-mod error;
+mod diagnostics;
 mod execution;
 mod handle_cycle_error;
 mod job;

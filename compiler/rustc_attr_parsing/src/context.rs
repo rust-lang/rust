@@ -66,13 +66,13 @@ use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
+use crate::diagnostics::{
+    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
+    ParsedDescription, UnusedDuplicate,
+};
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
     RefPathParser,
-};
-use crate::session_diagnostics::{
-    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription, UnusedDuplicate,
 };
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeParser, AttributeTemplate, EmitAttribute};

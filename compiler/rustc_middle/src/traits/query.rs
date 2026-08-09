@@ -8,7 +8,7 @@
 use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
-use crate::error::DropCheckOverflow;
+use crate::diagnostics::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
 use crate::traits::solve;
 pub use crate::traits::solve::NoSolution;

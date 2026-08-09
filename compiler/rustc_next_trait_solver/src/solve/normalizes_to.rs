@@ -261,10 +261,9 @@ where
         let alias_def_id = goal.predicate.alias.expect_projection_def_id();
         let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
-            goal.predicate.alias.trait_ref(cx).args,
-            impl_trait_ref.skip_binder().args,
-        ) {
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
+            .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
+        {
             return Err(NoSolution.into());
         }
 

@@ -104,7 +104,6 @@ mod diagnostics;
 mod interface;
 pub mod parser;
 mod safety;
-mod session_diagnostics;
 mod stability;
 mod synthetic;
 mod target_checking;
@@ -118,7 +117,7 @@ pub use attributes::cfg::{
 pub use attributes::cfg_select::*;
 pub use attributes::util::{is_builtin_attr, parse_version};
 pub use context::{OmitDoc, ShouldEmit};
+pub use diagnostics::ParsedDescription;
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
-pub use session_diagnostics::ParsedDescription;
 pub use template::AttributeTemplate;

@@ -28,7 +28,7 @@ use rustc_macros::Diagnostic;
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_middle::bug;
-use rustc_middle::error::DuplicateEiiImpls;
+use rustc_middle::diagnostics::DuplicateEiiImpls;
 use rustc_middle::lint::emit_lint_base;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
