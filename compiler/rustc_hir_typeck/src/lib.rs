@@ -215,6 +215,11 @@ fn typeck_with_inspect<'tcx>(
         fcx.write_ty(id, expected_type);
     };
 
+    // Finish checking closure bodies after their parent has contributed all available constraints.
+    // This must happen before processing any other deferred checks that closure bodies may enqueue.
+    fcx.check_deferred_closure_bodies_for_parent(def_id);
+    assert!(fcx.deferred_closure_bodies.borrow().is_empty());
+
     // Whether to check repeat exprs before/after inference fallback is somewhat
     // arbitrary of a decision as neither option is strictly more permissive than
     // the other. However, we opt to check repeat exprs first as errors from not

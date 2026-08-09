@@ -6,7 +6,9 @@ use std::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{ExprKind, QPath};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
@@ -44,6 +46,18 @@ struct ClosureSignatures<'tcx> {
     liberated_sig: ty::FnSig<'tcx>,
 }
 
+/// A closure body whose signature has been created but whose body has not yet been checked.
+///
+/// Keeping this in the typeck root lets the parent expression constrain the closure signature
+/// before we use that signature to check the body.
+pub(super) struct DeferredClosureBody<'tcx> {
+    parent_def_id: LocalDefId,
+    closure: hir::Closure<'tcx>,
+    liberated_sig: ty::FnSig<'tcx>,
+    coroutine_types: Option<CoroutineTypes<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, closure), level = "debug")]
     pub(crate) fn check_expr_closure(
@@ -53,7 +67,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let body = tcx.hir_body(closure.body);
         let expr_def_id = closure.def_id;
 
         // It's always helpful for inference if we know the kind of
@@ -272,18 +285,131 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        // The surrounding expression may still constrain unresolved closure inputs. Keep the body
+        // pending until the closure reaches a use that cannot wait, or until its parent body ends.
+        let has_unresolved_input = liberated_sig
+            .inputs()
+            .iter()
+            .any(|&ty| self.resolve_vars_if_possible(ty).has_non_region_infer());
+        let should_defer =
+            matches!(closure.kind, hir::ClosureKind::Closure) && has_unresolved_input;
+        if should_defer {
+            self.deferred_closure_bodies.borrow_mut().push(DeferredClosureBody {
+                parent_def_id: self.body_def_id,
+                closure: *closure,
+                liberated_sig,
+                coroutine_types,
+                param_env: self.param_env,
+            });
+        } else {
+            let body = tcx.hir_body(closure.body);
+            check_fn(
+                &mut FnCtxt::new(self, self.param_env, expr_def_id),
+                liberated_sig,
+                coroutine_types,
+                closure.fn_decl,
+                expr_def_id,
+                body,
+                // Closure "rust-call" ABI doesn't support unsized params
+                false,
+            );
+            self.check_deferred_closure_bodies_for_parent(expr_def_id);
+        }
+
+        closure_ty
+    }
+
+    pub(super) fn check_deferred_closure_body(&self, closure_def_id: LocalDefId) {
+        // Remove the body before checking it so recursive scheduling cannot check it twice.
+        let deferred = {
+            let mut bodies = self.deferred_closure_bodies.borrow_mut();
+            let Some(index) = bodies.iter().position(|body| body.closure.def_id == closure_def_id)
+            else {
+                return;
+            };
+            bodies.remove(index)
+        };
+
+        let body = self.tcx.hir_body(deferred.closure.body);
         check_fn(
-            &mut FnCtxt::new(self, self.param_env, closure.def_id),
-            liberated_sig,
-            coroutine_types,
-            closure.fn_decl,
-            expr_def_id,
+            &mut FnCtxt::new(self, deferred.param_env, closure_def_id),
+            deferred.liberated_sig,
+            deferred.coroutine_types,
+            deferred.closure.fn_decl,
+            closure_def_id,
             body,
             // Closure "rust-call" ABI doesn't support unsized params
             false,
         );
 
-        closure_ty
+        self.check_deferred_closure_bodies_for_parent(closure_def_id);
+    }
+
+    pub(super) fn is_closure_body_deferred(&self, closure_def_id: LocalDefId) -> bool {
+        self.deferred_closure_bodies
+            .borrow()
+            .iter()
+            .any(|body| body.closure.def_id == closure_def_id)
+    }
+
+    pub(super) fn check_deferred_closure_body_for_arg_if_ready(
+        &self,
+        ty: Ty<'tcx>,
+        call_output: Ty<'tcx>,
+    ) {
+        let ty = self.resolve_vars_if_possible(ty);
+        let ty = ty.peel_refs();
+        let ty::Closure(def_id, _) = ty.kind() else { return };
+        let Some(closure_def_id) = def_id.as_local() else { return };
+        let inputs = self
+            .deferred_closure_bodies
+            .borrow()
+            .iter()
+            .find(|body| body.closure.def_id == closure_def_id)
+            .map(|body| body.liberated_sig.inputs().to_vec());
+        let Some(inputs) = inputs else { return };
+        // A partially known structural type, such as `(Vec<?T>, usize)`, is enough to guide body
+        // checking. A bare type variable may still be constrained by the parent later.
+        let unresolved_inputs: Vec<_> = inputs
+            .into_iter()
+            .map(|ty| self.resolve_vars_with_obligations(ty))
+            .filter(|ty| ty.is_ty_var())
+            .collect();
+        let call_output = self.resolve_vars_if_possible(call_output);
+        // The parent can only add direct constraints if the call carries the closure or one of
+        // these variables into its output. Otherwise this call consumes the closure and its body
+        // must be checked before those variables are used downstream.
+        let closure_or_input_escapes_call = call_output.contains(ty)
+            || unresolved_inputs.iter().any(|ty| call_output.contains(*ty));
+        if unresolved_inputs.is_empty() || !closure_or_input_escapes_call {
+            self.check_deferred_closure_body(closure_def_id);
+        }
+    }
+
+    pub(super) fn check_deferred_closure_body_for_value_argument(&self, arg: &hir::Expr<'tcx>) {
+        let ExprKind::Path(QPath::Resolved(None, path)) = arg.kind else { return };
+        let Res::Local(local_id) = path.res else { return };
+        let ty = self.resolve_vars_if_possible(self.local_ty(arg.span, local_id));
+        let ty::Closure(def_id, _) = ty.kind() else { return };
+        let Some(closure_def_id) = def_id.as_local() else { return };
+
+        // Preserve the existing order when a closure value is passed to another function: check
+        // its body before the callee's `Fn` bounds further constrain its signature.
+        self.check_deferred_closure_body(closure_def_id);
+    }
+
+    pub(super) fn check_deferred_closure_bodies_for_parent(&self, parent_def_id: LocalDefId) {
+        // Checking a body may discover nested closures, so recursively drain this lexical subtree.
+        loop {
+            let closure_def_id = self
+                .deferred_closure_bodies
+                .borrow()
+                .iter()
+                .find(|body| body.parent_def_id == parent_def_id)
+                .map(|body| body.closure.def_id);
+            let Some(closure_def_id) = closure_def_id else { break };
+            self.check_deferred_closure_body(closure_def_id);
+        }
     }
 
     /// Given the expected type, figures out what it can about this closure we

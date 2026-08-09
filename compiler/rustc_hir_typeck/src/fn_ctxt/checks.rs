@@ -447,9 +447,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
+                self.check_deferred_closure_body_for_value_argument(arg);
                 let compatible = demand_compatible(idx);
                 let is_compatible = matches!(compatible, Compatibility::Compatible);
                 compatibility_diagonal[idx] = compatible;
+
+                let arg_ty = self.typeck_results.borrow().node_type_opt(arg.hir_id);
+                if let Some(arg_ty) = arg_ty {
+                    self.check_deferred_closure_body_for_arg_if_ready(arg_ty, formal_output);
+                }
 
                 if !is_compatible {
                     call_appears_satisfied = false;
