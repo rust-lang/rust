@@ -14,7 +14,6 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{Span, Spanned, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
@@ -22,6 +21,7 @@ use tracing::debug;
 
 use super::FnCtxt;
 use super::method::MethodCallee;
+use crate::diagnostics::ExprParenthesesNeeded;
 use crate::method::TreatNotYetDefinedOpaques;
 use crate::{Expectation, diagnostics};
 

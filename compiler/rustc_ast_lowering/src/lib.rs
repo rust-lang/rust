@@ -54,6 +54,7 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
@@ -104,7 +105,7 @@ pub fn provide(providers: &mut Providers) {
 pub(crate) mod re_lowering {
     use rustc_ast::NodeId;
     use rustc_ast::node_id::NodeMap;
-    use rustc_hir::{self as hir};
+    use rustc_hir as hir;
 
     use crate::LoweringContext;
 
@@ -1012,7 +1013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn make_lang_item_qpath(
         &mut self,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         span: Span,
         args: Option<&'hir hir::GenericArgs<'hir>>,
     ) -> hir::QPath<'hir> {
@@ -1021,7 +1022,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn make_lang_item_path(
         &mut self,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         span: Span,
         args: Option<&'hir hir::GenericArgs<'hir>>,
     ) -> &'hir hir::Path<'hir> {
@@ -1584,7 +1585,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     parenthesized: hir::GenericArgsParentheses::No,
                     span_ext: span,
                 });
-                let path = self.make_lang_item_qpath(hir::LangItem::Pin, span, Some(args));
+                let path = self.make_lang_item_qpath(LangItem::Pin, span, Some(args));
                 hir::TyKind::Path(path)
             }
             TyKind::FnPtr(f) => {
@@ -2135,9 +2136,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // "<$assoc_ty_name = T>"
         let (assoc_ty_name, trait_lang_item) = match coro {
-            CoroutineKind::Async { .. } => (sym::Output, hir::LangItem::Future),
-            CoroutineKind::Gen { .. } => (sym::Item, hir::LangItem::Iterator),
-            CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
+            CoroutineKind::Async { .. } => (sym::Output, LangItem::Future),
+            CoroutineKind::Gen { .. } => (sym::Item, LangItem::Iterator),
+            CoroutineKind::AsyncGen { .. } => (sym::Item, LangItem::AsyncIterator),
         };
 
         let bound_args = self.arena.alloc(hir::GenericArgs {
@@ -2459,7 +2460,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let extended = self.tcx.features().more_maybe_bounds();
                     let is_sized = trait_ref
                         .trait_def_id()
-                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, hir::LangItem::Sized));
+                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, LangItem::Sized));
 
                     if extended && !is_sized {
                         return;
@@ -3127,21 +3128,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn pat_cf_continue(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field)
+        self.pat_lang_item_variant(span, LangItem::ControlFlowContinue, field)
     }
 
     fn pat_cf_break(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowBreak, field)
+        self.pat_lang_item_variant(span, LangItem::ControlFlowBreak, field)
     }
 
     fn pat_some(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::OptionSome, field)
+        self.pat_lang_item_variant(span, LangItem::OptionSome, field)
     }
 
     fn pat_none(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
-        self.pat_lang_item_variant(span, hir::LangItem::OptionNone, &[])
+        self.pat_lang_item_variant(span, LangItem::OptionNone, &[])
     }
 
     fn single_pat_field(
@@ -3162,7 +3163,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn pat_lang_item_variant(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
         let path = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);

@@ -599,7 +599,7 @@ macro_rules! r#try {
 /// }
 ///
 /// let mut m = Example{};
-/// write!(&mut m, "Hello World").expect("Not written");
+/// write!(&mut m, "Hello World").expect("Writing to `Example` should succeed");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]

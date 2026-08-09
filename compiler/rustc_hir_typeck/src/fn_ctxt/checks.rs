@@ -9,10 +9,11 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
 use rustc_hir as hir;
 use rustc_hir::attrs::DivergingBlockBehavior;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, LangItem, Node, QPath, is_range_literal};
+use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, ResolvedStructPath};
 use rustc_index::IndexVec;
@@ -23,7 +24,6 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -35,7 +35,7 @@ use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
-use crate::diagnostics::SuggestPtrNullMut;
+use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut};
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::CStr(_, _) => Ty::new_imm_ref(
                 tcx,
                 tcx.lifetimes.re_static,
-                tcx.type_of(tcx.require_lang_item(hir::LangItem::CStr, lit.span)).skip_binder(),
+                tcx.type_of(tcx.require_lang_item(LangItem::CStr, lit.span)).skip_binder(),
             ),
             ast::LitKind::Err(guar) => Ty::new_error(tcx, guar),
         }
@@ -2359,10 +2359,10 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
 
     fn detect_dotdot(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'tcx>) {
         if let ty::Adt(adt, _) = ty.kind()
-            && self.tcx().is_lang_item(adt.did(), hir::LangItem::RangeFull)
+            && self.tcx().is_lang_item(adt.did(), LangItem::RangeFull)
             && is_range_literal(expr)
             && let hir::ExprKind::Struct(&path, [], _) = expr.kind
-            && self.tcx().qpath_is_lang_item(path, hir::LangItem::RangeFull)
+            && self.tcx().qpath_is_lang_item(path, LangItem::RangeFull)
         {
             // We have `Foo(a, .., c)`, where the user might be trying to use the "rest" syntax
             // from default field values, which is not supported on tuples.

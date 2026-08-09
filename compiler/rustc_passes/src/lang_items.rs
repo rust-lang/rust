@@ -9,9 +9,9 @@
 
 use rustc_ast as ast;
 use rustc_ast::visit;
+use rustc_hir::Target;
+use rustc_hir::attrs::lang_items::{GenericRequirement, LangItem, LanguageItems};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::GenericRequirement;
-use rustc_hir::{LangItem, LanguageItems, Target};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;

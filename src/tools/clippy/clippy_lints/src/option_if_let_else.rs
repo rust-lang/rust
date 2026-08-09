@@ -10,7 +10,7 @@ use clippy_utils::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::ResultErr;
+use rustc_hir::attrs::lang_items::LangItem::ResultErr;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{
