@@ -10,15 +10,15 @@
 //@ normalize-stderr: ".*note: Some details are omitted.*\n" -> ""
 //@ normalize-stderr: ".*--> .*/splat-fn-ptr-tuple.rs:\d{1,}:\d{1,}.*\n" -> ""
 
-//! Test using `#[splat]` on tuple arguments of simple functions.
+//! Test using `#[rustc_splat]` on tuple arguments of simple functions.
 //! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.
 
 #![allow(incomplete_features)]
 #![feature(splat)]
 
-fn tuple_args(#[splat] (_a, _b): (u32, i8)) {}
+fn tuple_args(#[rustc_splat] (_a, _b): (u32, i8)) {}
 
-fn splat_non_terminal_arg(#[splat] (_a, _b): (u32, i8), _c: f64) {}
+fn splat_non_terminal_arg(#[rustc_splat] (_a, _b): (u32, i8), _c: f64) {}
 
 fn main() {
     // FIXME(splat): not currently supported, can be supported when we no longer require a DefId in
@@ -26,7 +26,7 @@ fn main() {
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
     // Functions
     #[rustfmt::skip]
-    let fn_ptr: fn(#[splat] (u32, i8)) = tuple_args;
+    let fn_ptr: fn(#[rustc_splat] (u32, i8)) = tuple_args;
     fn_ptr(1, 2); //~ ERROR no splatted def for function or method callee
     fn_ptr(1u32, 2i8);
 
@@ -35,19 +35,20 @@ fn main() {
     //fn_ptr((1, 2)); // ERROR this splatted function takes 2 arguments, but 1 was provided
 
     #[rustfmt::skip]
-    let fn_ptr: fn(#[splat] (u32, i8), f64) = splat_non_terminal_arg;
+    let fn_ptr: fn(#[rustc_splat] (u32, i8), f64) = splat_non_terminal_arg;
     fn_ptr(1, 2, 3.5);
     fn_ptr(1u32, 2i8, 3.5f64);
 
     // Function pointers
     #[rustfmt::skip]
-    let fn_ptr: *const fn(#[splat] (u32, i8)) = tuple_args as *const fn(#[splat] (u32, i8));
+    let fn_ptr: *const fn(#[rustc_splat] (u32, i8)) =
+        tuple_args as *const fn(#[rustc_splat] (u32, i8));
     (*fn_ptr)(1, 2);
     (*fn_ptr)(1u32, 2i8);
 
     #[rustfmt::skip]
-    let fn_ptr: *const fn(#[splat] (u32, i8), f64) =
-        splat_non_terminal_arg as *const fn(#[splat] (u32, i8), f64);
+    let fn_ptr: *const fn(#[rustc_splat] (u32, i8), f64) =
+        splat_non_terminal_arg as *const fn(#[rustc_splat] (u32, i8), f64);
     (*fn_ptr)(1, 2, 3.5);
     (*fn_ptr)(1u32, 2i8, 3.5f64);
 }
