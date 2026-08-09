@@ -57,7 +57,7 @@ where
 
     // If some inference took place in any of the sub roots,
     // rerunning might make progress so we should rerun.
-    if sub_roots.iter().any(|&vid| delegate.sub_unification_table_root_var(vid) != vid) {
+    if sub_roots.iter().any(|&vid| !delegate.is_sub_unification_table_root_var(vid)) {
         return MayMakeProgress;
     }
 

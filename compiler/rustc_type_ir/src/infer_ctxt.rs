@@ -407,6 +407,7 @@ pub trait InferCtxtLike: Sized {
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
+    fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
     fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;

@@ -108,6 +108,16 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.sub_unification_table_root_var(var)
     }
 
+    #[inline]
+    fn is_sub_unification_table_root_var(&self, vid: ty::TyVid) -> bool {
+        self.inner
+            .borrow()
+            .type_variable_storage
+            .sub_unification_table_ref()
+            .try_probe_value(vid)
+            .is_some()
+    }
+
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
         self.root_const_var(var)
     }
