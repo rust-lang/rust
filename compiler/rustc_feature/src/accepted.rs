@@ -96,6 +96,9 @@ declare_features! (
     (accepted, c_unwind, "1.81.0", Some(74990)),
     /// Allows using C-variadics.
     (accepted, c_variadic, "CURRENT_RUSTC_VERSION", Some(44930)),
+    /// Allows defining c-variadic naked functions with any extern ABI that is allowed
+    /// on c-variadic foreign functions.
+    (accepted, c_variadic_naked_functions, "CURRENT_RUSTC_VERSION", Some(148767)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(<true/false>)]`.
