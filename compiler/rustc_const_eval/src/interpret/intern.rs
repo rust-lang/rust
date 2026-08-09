@@ -16,8 +16,8 @@
 use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir as hir;
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
-use rustc_hir::{self as hir};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{
     AllocBytes, ConstAllocation, CtfeProvenance, InterpResult, Provenance,

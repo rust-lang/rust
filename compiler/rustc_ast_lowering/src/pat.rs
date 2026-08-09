@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, LangItem, Target};
+use rustc_hir::{self as hir, Target};
 use rustc_middle::span_bug;
 use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
 
@@ -454,7 +455,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .map(|e| self.lower_anon_const_to_const_arg_and_alloc(e))
                     .unwrap_or_else(|| {
                         self.lower_ty_pat_range_end(
-                            hir::LangItem::RangeMin,
+                            LangItem::RangeMin,
                             span.shrink_to_lo(),
                             base_type,
                         )
@@ -466,7 +467,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     })
                     .unwrap_or_else(|| {
                         self.lower_ty_pat_range_end(
-                            hir::LangItem::RangeMax,
+                            LangItem::RangeMax,
                             span.shrink_to_hi(),
                             base_type,
                         )
@@ -499,7 +500,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let body = this.lower_body(|this| {
                 // Need to use a custom function as we can't just subtract `1` from a `char`.
                 let kind = hir::ExprKind::Path(this.make_lang_item_qpath(
-                    hir::LangItem::RangeSub,
+                    LangItem::RangeSub,
                     unstable_span,
                     None,
                 ));

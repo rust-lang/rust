@@ -28,11 +28,11 @@ use rustc_data_structures::sync::{
 };
 use rustc_data_structures::{Limit, defer};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_macros::Diagnostic;
@@ -896,7 +896,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Traits added on all bounds by default, excluding `Sized` which is treated separately.
-    pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
+    pub fn default_traits(self) -> &'static [LangItem] {
         if self.sess.opts.unstable_opts.experimental_default_bounds {
             &[
                 LangItem::DefaultTrait1,
@@ -986,14 +986,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
-    pub fn lang_items(self) -> &'tcx rustc_hir::lang_items::LanguageItems {
+    pub fn lang_items(self) -> &'tcx rustc_hir::attrs::lang_items::LanguageItems {
         self.get_lang_items(())
     }
 
     /// Gets a `Ty` representing the [`LangItem::OrderingEnum`]
     #[track_caller]
     pub fn ty_ordering_enum(self, span: Span) -> Ty<'tcx> {
-        let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
+        let ordering_enum = self.require_lang_item(LangItem::OrderingEnum, span);
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
 

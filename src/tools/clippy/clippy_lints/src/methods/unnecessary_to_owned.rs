@@ -8,9 +8,10 @@ use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_expr_temporary_value, return_ty, sym};
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
+use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node};
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;

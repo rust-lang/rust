@@ -15,6 +15,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     OptimizeAttr, ReprAttr,
@@ -1130,7 +1131,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let hir::ItemKind::Impl(impl_) = item.kind
             && let Some(of_trait) = impl_.of_trait
             && let Some(def_id) = of_trait.trait_ref.trait_def_id()
-            && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
+            && self.tcx.is_lang_item(def_id, LangItem::Drop)
         {
             return;
         }
