@@ -795,7 +795,7 @@ impl<T: PointeeSized> NonNull<T> {
     ///
     /// let one = unsafe { ptr2_other.offset_from(ptr2) }; // Undefined Behavior! ⚠️
     /// ```
-    #[inline]
+    #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -923,7 +923,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::read`] for safety concerns and examples.
     ///
     /// [`ptr::read`]: crate::ptr::read()
-    #[inline]
+    #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
@@ -945,7 +945,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::read_volatile`] for safety concerns and examples.
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
-    #[inline]
+    #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     pub unsafe fn read_volatile(self) -> T
@@ -964,7 +964,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// See [`ptr::read_unaligned`] for safety concerns and examples.
     ///
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
-    #[inline]
+    #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
