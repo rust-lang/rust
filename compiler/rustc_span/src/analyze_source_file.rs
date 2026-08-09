@@ -193,7 +193,7 @@ cfg_select! {
                     assert!(intra_chunk_offset == 0);
 
                     // Check for newlines in the chunk
-                    let newlines_test = lsx_vseqi_b::<{b'\n' as i32}>(chunk);
+                    let newlines_test = lsx_vseqi_b::<{ b'\n' as i32 }>(chunk);
                     let newlines_mask = lsx_vmskltz_b(newlines_test);
                     let mut newlines_mask = lsx_vpickve2gr_w::<0>(newlines_mask);
 

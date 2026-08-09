@@ -4,6 +4,7 @@ use std::mem;
 use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
@@ -459,7 +460,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         );
                     }
                     if let Some(trait_did) = self.tcx.trait_of_assoc(func_did)
-                        && self.tcx.is_lang_item(trait_did, hir::LangItem::Drop)
+                        && self.tcx.is_lang_item(trait_did, LangItem::Drop)
                     {
                         self.requires_unsafe(expr.span, CallDropExplicitly(func_did));
                     }

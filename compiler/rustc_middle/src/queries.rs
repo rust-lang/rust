@@ -60,10 +60,10 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::{LangItem, LanguageItems};
 use rustc_hir::attrs::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
-use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
@@ -2274,7 +2274,7 @@ rustc_queries! {
     }
 
     /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
+    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
         arena_cache
         eval_always
         desc { "calculating the diagnostic items map" }
@@ -2294,7 +2294,7 @@ rustc_queries! {
     }
 
     /// Returns the diagnostic items defined in a crate.
-    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
+    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
         arena_cache
         desc { "calculating the diagnostic items map in a crate" }
         separate_provide_extern

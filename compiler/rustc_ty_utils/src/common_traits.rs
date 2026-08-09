@@ -1,6 +1,6 @@
 //! Queries for checking whether a type implements one of a few common traits.
 
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};

@@ -11,9 +11,10 @@ use rustc_data_structures::stable_hash::{
     StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;

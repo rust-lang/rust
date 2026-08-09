@@ -5,8 +5,9 @@
 use std::iter;
 
 use rustc_abi::{Endian, Layout, ReprOptions};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{Attribute, LangItem};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};

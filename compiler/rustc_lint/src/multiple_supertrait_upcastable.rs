@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::Unnormalized;
 use rustc_session::{declare_lint, declare_lint_pass};
 
@@ -49,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 .iter_identity_copied()
                 .map(Unnormalized::skip_norm_wip)
                 .filter_map(|(clause, _)| clause.as_trait_clause())
-                .filter(|pred| !cx.tcx.is_lang_item(pred.def_id(), hir::LangItem::MetaSized))
+                .filter(|pred| !cx.tcx.is_lang_item(pred.def_id(), LangItem::MetaSized))
                 .filter(|pred| !cx.tcx.is_default_trait(pred.def_id()));
             if direct_super_traits_iter.count() > 1 {
                 cx.emit_span_lint(

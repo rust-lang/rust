@@ -7,6 +7,7 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
@@ -717,7 +718,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             // `::std::ops::Try::from_output($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
-                hir::LangItem::TryTraitFromOutput,
+                LangItem::TryTraitFromOutput,
                 try_span,
                 tail_expr,
                 ok_wrapped_span,
@@ -737,7 +738,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn wrap_in_try_constructor(
         &mut self,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         method_span: Span,
         expr: &'hir hir::Expr<'hir>,
         overall_span: Span,
@@ -836,8 +837,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_span(span),
                     Some(Arc::clone(&self.allow_gen_future)),
                 );
-                let resume_ty =
-                    self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span, None);
+                let resume_ty = self.make_lang_item_qpath(LangItem::ResumeTy, unstable_span, None);
                 let input_ty = hir::Ty {
                     hir_id: self.next_id(),
                     kind: hir::TyKind::Path(resume_ty),
@@ -1036,23 +1036,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
-                hir::LangItem::PinNewUnchecked,
+                LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_awaitee],
             );
             let get_context = self.expr_call_lang_item_fn_mut(
                 gen_future_span,
-                hir::LangItem::GetContext,
+                LangItem::GetContext,
                 arena_vec![self; task_context],
             );
             let call = match await_kind {
                 FutureKind::Future => self.expr_call_lang_item_fn(
                     span,
-                    hir::LangItem::FuturePoll,
+                    LangItem::FuturePoll,
                     arena_vec![self; new_unchecked, get_context],
                 ),
                 FutureKind::AsyncIterator => self.expr_call_lang_item_fn(
                     span,
-                    hir::LangItem::AsyncIteratorPollNext,
+                    LangItem::AsyncIteratorPollNext,
                     arena_vec![self; new_unchecked, get_context],
                 ),
             };
@@ -1067,7 +1067,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let (x_pat, x_pat_hid) = self.pat_ident(gen_future_span, x_ident);
             let x_expr = self.expr_ident(gen_future_span, x_ident, x_pat_hid);
             let ready_field = self.single_pat_field(gen_future_span, x_pat);
-            let ready_pat = self.pat_lang_item_variant(span, hir::LangItem::PollReady, ready_field);
+            let ready_pat = self.pat_lang_item_variant(span, LangItem::PollReady, ready_field);
             let break_x = self.with_loop_scope(loop_hir_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
@@ -1078,7 +1078,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `::std::task::Poll::Pending => {}`
         let pending_arm = {
-            let pending_pat = self.pat_lang_item_variant(span, hir::LangItem::PollPending, &[]);
+            let pending_pat = self.pat_lang_item_variant(span, LangItem::PollPending, &[]);
             let empty_block = self.expr_block_empty(span);
             self.arm(pending_pat, empty_block, span)
         };
@@ -1098,7 +1098,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // async gen - task_context = yield ASYNC_GEN_PENDING;
         let yield_stmt = {
             let yielded = if is_async_gen {
-                self.arena.alloc(self.expr_lang_item_path(span, hir::LangItem::AsyncGenPending))
+                self.arena.alloc(self.expr_lang_item_path(span, LangItem::AsyncGenPending))
             } else {
                 self.expr_unit(span)
             };
@@ -1140,7 +1140,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let into_future_expr = match await_kind {
             FutureKind::Future => self.expr_call_lang_item_fn(
                 span,
-                hir::LangItem::IntoFutureIntoFuture,
+                LangItem::IntoFutureIntoFuture,
                 arena_vec![self; *expr],
             ),
             // Not needed for `for await` because we expect to have already called
@@ -1444,7 +1444,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
         let e1 = self.lower_expr_mut(e1);
         let e2 = self.lower_expr_mut(e2);
-        let fn_path = self.make_lang_item_qpath(hir::LangItem::RangeInclusiveNew, span, None);
+        let fn_path = self.make_lang_item_qpath(LangItem::RangeInclusiveNew, span, None);
         let fn_expr = self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path)));
         hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
     }
@@ -1459,32 +1459,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
         use rustc_ast::RangeLimits::*;
 
         let lang_item = match (e1, e2, lims) {
-            (None, None, HalfOpen) => hir::LangItem::RangeFull,
+            (None, None, HalfOpen) => LangItem::RangeFull,
             (Some(..), None, HalfOpen) => {
                 if self.tcx.features().new_range() {
-                    hir::LangItem::RangeFromCopy
+                    LangItem::RangeFromCopy
                 } else {
-                    hir::LangItem::RangeFrom
+                    LangItem::RangeFrom
                 }
             }
-            (None, Some(..), HalfOpen) => hir::LangItem::RangeTo,
+            (None, Some(..), HalfOpen) => LangItem::RangeTo,
             (Some(..), Some(..), HalfOpen) => {
                 if self.tcx.features().new_range() {
-                    hir::LangItem::RangeCopy
+                    LangItem::RangeCopy
                 } else {
-                    hir::LangItem::Range
+                    LangItem::Range
                 }
             }
             (None, Some(..), Closed) => {
                 if self.tcx.features().new_range() {
-                    hir::LangItem::RangeToInclusiveCopy
+                    LangItem::RangeToInclusiveCopy
                 } else {
-                    hir::LangItem::RangeToInclusive
+                    LangItem::RangeToInclusive
                 }
             }
             (Some(e1), Some(e2), Closed) => {
                 if self.tcx.features().new_range() {
-                    hir::LangItem::RangeInclusiveCopy
+                    LangItem::RangeInclusiveCopy
                 } else {
                     return self.lower_expr_range_closed(span, e1, e2);
                 }
@@ -1494,12 +1494,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 match start {
                     Some(..) => {
                         if self.tcx.features().new_range() {
-                            hir::LangItem::RangeFromCopy
+                            LangItem::RangeFromCopy
                         } else {
-                            hir::LangItem::RangeFrom
+                            LangItem::RangeFrom
                         }
                     }
-                    None => hir::LangItem::RangeFull,
+                    None => LangItem::RangeFull,
                 }
             }
         };
@@ -1511,7 +1511,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     (
                         if matches!(
                             lang_item,
-                            hir::LangItem::RangeInclusiveCopy | hir::LangItem::RangeToInclusiveCopy
+                            LangItem::RangeInclusiveCopy | LangItem::RangeToInclusiveCopy
                         ) {
                             sym::last
                         } else {
@@ -1691,7 +1691,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
             let wrapped_yielded = self.expr_call_lang_item_fn(
                 desugar_span,
-                hir::LangItem::AsyncGenReady,
+                LangItem::AsyncGenReady,
                 std::slice::from_ref(yielded),
             );
             let yield_expr = self.arena.alloc(
@@ -1781,7 +1781,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ref_mut_iter = self.expr_mut_addr_of(head_span, iter);
                     self.expr_call_lang_item_fn(
                         head_span,
-                        hir::LangItem::IteratorNext,
+                        LangItem::IteratorNext,
                         arena_vec![self; ref_mut_iter],
                     )
                 }
@@ -1796,7 +1796,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `Pin::new_unchecked(...)`
                     let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
                         head_span,
-                        hir::LangItem::PinNewUnchecked,
+                        LangItem::PinNewUnchecked,
                         arena_vec![self; iter],
                     ));
                     // `unsafe { ... }`
@@ -1831,7 +1831,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `::std::iter::IntoIterator::into_iter(<head>)`
                 let into_iter_expr = self.expr_call_lang_item_fn(
                     head_span,
-                    hir::LangItem::IntoIterIntoIter,
+                    LangItem::IntoIterIntoIter,
                     arena_vec![self; head],
                 );
 
@@ -1851,7 +1851,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `Pin::new_unchecked(...)`
                 let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
                     head_span,
-                    hir::LangItem::PinNewUnchecked,
+                    LangItem::PinNewUnchecked,
                     arena_vec![self; iter],
                 ));
                 // `unsafe { ... }`
@@ -1866,7 +1866,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
                 let iter = self.expr_call_lang_item_fn(
                     head_span,
-                    hir::LangItem::IntoAsyncIterIntoIter,
+                    LangItem::IntoAsyncIterIntoIter,
                     arena_vec![self; head],
                 );
                 let iter_arm = self.arm(async_iter_pat, inner_match_expr, for_span);
@@ -1922,7 +1922,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             self.expr_call_lang_item_fn(
                 unstable_span,
-                hir::LangItem::TryTraitBranch,
+                LangItem::TryTraitBranch,
                 arena_vec![self; sub_expr],
             )
         };
@@ -1949,13 +1949,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let (constructor_item, target_id) = match self.try_block_scope {
                 TryBlockScope::Function => {
-                    (hir::LangItem::TryTraitFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
+                    (LangItem::TryTraitFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
                 }
                 TryBlockScope::Homogeneous(block_id) => {
-                    (hir::LangItem::ResidualIntoTryType, Ok(block_id))
+                    (LangItem::ResidualIntoTryType, Ok(block_id))
                 }
                 TryBlockScope::Heterogeneous(block_id) => {
-                    (hir::LangItem::TryTraitFromResidual, Ok(block_id))
+                    (LangItem::TryTraitFromResidual, Ok(block_id))
                 }
             };
             let from_residual_expr = self.wrap_in_try_constructor(
@@ -2013,7 +2013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         let from_yeet_expr = self.wrap_in_try_constructor(
-            hir::LangItem::TryTraitFromYeet,
+            LangItem::TryTraitFromYeet,
             unstable_span,
             yeeted_expr,
             yeeted_span,
@@ -2140,7 +2140,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_enum_variant_lang_item(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         fields: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
         let path = self.arena.alloc(self.make_lang_item_qpath(lang_item, span, None));
@@ -2159,7 +2159,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_call_lang_item_fn_mut(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
         let path = self.arena.alloc(self.expr_lang_item_path(span, lang_item));
@@ -2169,7 +2169,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_call_lang_item_fn(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         args: &'hir [hir::Expr<'hir>],
     ) -> &'hir hir::Expr<'hir> {
         self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args))
@@ -2178,7 +2178,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_lang_item_path(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
     ) -> hir::Expr<'hir> {
         let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
         self.expr(span, hir::ExprKind::Path(qpath))
@@ -2188,7 +2188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_lang_item_type_relative(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         name: Symbol,
     ) -> hir::Expr<'hir> {
         let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);

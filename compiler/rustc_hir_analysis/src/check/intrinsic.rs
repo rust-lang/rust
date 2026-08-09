@@ -1,7 +1,8 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
 use rustc_errors::DiagMessage;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -639,9 +640,8 @@ pub(crate) fn check_intrinsic_type(
         }
 
         sym::discriminant_value => {
-            let assoc_items = tcx.associated_item_def_ids(
-                tcx.require_lang_item(hir::LangItem::DiscriminantKind, span),
-            );
+            let assoc_items = tcx
+                .associated_item_def_ids(tcx.require_lang_item(LangItem::DiscriminantKind, span));
             let discriminant_def_id = assoc_items[0];
 
             let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
