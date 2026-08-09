@@ -461,6 +461,10 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                     let found_char = self.finger - self.utf8_size();
                     if let Some(slice) = self.haystack.as_bytes().get(found_char..self.finger) {
                         if slice == &self.utf8_encoded[0..self.utf8_size()] {
+                            // SAFETY: `slice` is a nonempty UTF-8 encoding found in the haystack.
+                            unsafe {
+                                crate::hint::assert_unchecked(found_char < self.haystack.len())
+                            };
                             return Some((found_char, self.finger));
                         }
                     }
@@ -521,6 +525,8 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
                     let found_char = index - shift;
                     if let Some(slice) = haystack.get(found_char..(found_char + self.utf8_size())) {
                         if slice == &self.utf8_encoded[0..self.utf8_size()] {
+                            // SAFETY: `slice` is a nonempty UTF-8 encoding found in the haystack.
+                            unsafe { crate::hint::assert_unchecked(found_char < haystack.len()) };
                             // move finger to before the character found (i.e., at its start index)
                             self.finger_back = found_char;
                             return Some((self.finger_back, self.finger_back + self.utf8_size()));
@@ -784,7 +790,10 @@ macro_rules! searcher_methods {
         }
         #[inline]
         fn next_match(&mut self) -> Option<(usize, usize)> {
-            self.0.next_match()
+            let (start, end) = self.0.next_match()?;
+            // SAFETY: these searchers only match nonempty chars in the haystack.
+            unsafe { crate::hint::assert_unchecked(start < self.0.haystack.len()) };
+            Some((start, end))
         }
         #[inline]
         fn next_reject(&mut self) -> Option<(usize, usize)> {
@@ -798,7 +807,10 @@ macro_rules! searcher_methods {
         }
         #[inline]
         fn next_match_back(&mut self) -> Option<(usize, usize)> {
-            self.0.next_match_back()
+            let (start, end) = self.0.next_match_back()?;
+            // SAFETY: these searchers only match nonempty chars in the haystack.
+            unsafe { crate::hint::assert_unchecked(start < self.0.haystack.len()) };
+            Some((start, end))
         }
         #[inline]
         fn next_reject_back(&mut self) -> Option<(usize, usize)> {
