@@ -10,63 +10,6 @@ use crate::core::builder::{Builder, CommandLineStepDescription, Kind, PathSet, S
 #[cfg(test)]
 mod tests;
 
-pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
-    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
-    // actual path is `proc-macro-srv-cli`
-    ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
-    // Make `x test tests` function the same as `x t tests/*`
-    (
-        "tests",
-        &[
-            // tidy-alphabetical-start
-            "tests/assembly-llvm",
-            "tests/build-std",
-            "tests/codegen-llvm",
-            "tests/codegen-units",
-            "tests/coverage",
-            "tests/coverage-run-rustdoc",
-            "tests/crashes",
-            "tests/debuginfo",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make",
-            "tests/run-make-cargo",
-            "tests/rustdoc-gui",
-            "tests/rustdoc-html",
-            "tests/rustdoc-js",
-            "tests/rustdoc-js-std",
-            "tests/rustdoc-json",
-            "tests/rustdoc-ui",
-            "tests/ui",
-            "tests/ui-fulldeps",
-            // tidy-alphabetical-end
-        ],
-    ),
-];
-
-pub(crate) fn remap_paths(paths: &mut Vec<PathBuf>) {
-    let mut remove = vec![];
-    let mut add = vec![];
-    for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
-    {
-        for &(search, replace) in PATH_REMAP {
-            // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
-            if path.trim_matches(std::path::is_separator) == search {
-                remove.push(i);
-                add.extend(replace.iter().map(PathBuf::from));
-                break;
-            }
-        }
-    }
-    remove.sort();
-    remove.dedup();
-    for idx in remove.into_iter().rev() {
-        paths.remove(idx);
-    }
-    paths.append(&mut add);
-}
-
 #[derive(Clone, PartialEq)]
 pub(crate) struct CLIStepPath {
     pub(crate) path: PathBuf,
@@ -106,10 +49,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // paths to match it against.
     let steps = step_descs
         .iter()
-        .map(|desc| StepExtra {
-            desc,
-            should_run: (desc.should_run)(ShouldRun::new(builder, desc.kind)),
-        })
+        .map(|desc| StepExtra { desc, should_run: (desc.should_run)(ShouldRun::new(builder)) })
         .collect::<Vec<_>>();
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
@@ -167,8 +107,6 @@ pub(crate) fn match_paths_to_steps_and_run(
             }
         })
         .collect();
-
-    remap_paths(&mut paths);
 
     // Handle all test suite paths.
     // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
