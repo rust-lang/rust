@@ -54,8 +54,11 @@ fn check_validity_requirement_strict<'tcx>(
     let mut cx = InterpCx::new(cx.tcx(), DUMMY_SP, cx.typing_env, machine);
 
     // It doesn't really matter which `MemoryKind` we use here, `Stack` is the least wrong.
-    let allocated =
-        cx.allocate(ty, MemoryKind::Stack).expect("OOM: failed to allocate for uninit check");
+    // If the allocation fails (e.g. for very large types), conservatively treat the type
+    // as not permitting raw initialization rather than ICEing.
+    let Ok(allocated) = cx.allocate(ty, MemoryKind::Stack) else {
+        return false;
+    };
 
     if kind == ValidityRequirement::Zero {
         cx.write_bytes_ptr(
