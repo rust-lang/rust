@@ -4,6 +4,19 @@
 #![feature(abi_custom)]
 
 #[unsafe(naked)]
+unsafe extern "custom" fn return_explicit_unit() -> () {
+    std::arch::naked_asm!("")
+}
+
+// Rejecting an alias is the status quo, this may change in the future.
+type UnitAlias = ();
+#[unsafe(naked)]
+unsafe extern "custom" fn return_alias_unit() -> UnitAlias {
+    //~^ ERROR invalid signature for `extern "custom"` function
+    std::arch::naked_asm!("")
+}
+
+#[unsafe(naked)]
 extern "custom" fn must_be_unsafe(a: i64) -> i64 {
     //~^ ERROR functions with the "custom" ABI must be unsafe
     //~| ERROR invalid signature for `extern "custom"` function
