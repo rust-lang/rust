@@ -16,7 +16,7 @@ use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::def_id::LOCAL_CRATE;
 
-use crate::error::{QueryOverflow, QueryOverflowNote};
+use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, should_verify_loaded_value};
 use crate::job::find_dep_kind_root;
 use crate::query_impl::for_each_query_vtable;

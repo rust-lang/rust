@@ -3,7 +3,7 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::BytePos;
 
-use crate::lints::{FunctionCastsAsIntegerDiag, FunctionCastsAsIntegerSugg};
+use crate::diagnostics::{FunctionCastsAsIntegerDiag, FunctionCastsAsIntegerSugg};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {

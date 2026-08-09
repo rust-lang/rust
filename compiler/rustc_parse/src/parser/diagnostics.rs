@@ -2651,11 +2651,8 @@ impl<'a> Parser<'a> {
         if is_op_or_dot {
             self.bump();
         }
-        match (|| {
-            let attrs = self.parse_outer_attributes()?;
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs)
-        })() {
-            Ok((expr, _)) => {
+        match (|| self.parse_expr_res(Restrictions::CONST_EXPR))() {
+            Ok(expr) => {
                 // Find a mistake like `MyTrait<Assoc == S::Assoc>`.
                 if snapshot.token == token::EqEq {
                     err.span_suggestion_verbose(
@@ -2707,13 +2704,10 @@ impl<'a> Parser<'a> {
         &mut self,
         mut snapshot: SnapshotParser<'a>,
     ) -> Option<Box<ast::Expr>> {
-        match (|| {
-            let attrs = self.parse_outer_attributes()?;
-            snapshot.parse_expr_res(Restrictions::CONST_EXPR, attrs)
-        })() {
+        match (|| snapshot.parse_expr_res(Restrictions::CONST_EXPR))() {
             // Since we don't know the exact reason why we failed to parse the type or the
             // expression, employ a simple heuristic to weed out some pathological cases.
-            Ok((expr, _)) if let token::Comma | token::Gt = snapshot.token.kind => {
+            Ok(expr) if let token::Comma | token::Gt = snapshot.token.kind => {
                 self.restore_snapshot(snapshot);
                 Some(expr)
             }

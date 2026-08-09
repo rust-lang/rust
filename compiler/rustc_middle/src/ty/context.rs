@@ -1598,7 +1598,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.verify_query_key_hashes();
 
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
-            self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+            self.sess
+                .dcx()
+                .emit_fatal(crate::diagnostics::FailedWritingFile { path: &path, error });
         }
     }
 

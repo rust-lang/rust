@@ -1662,7 +1662,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, R> {
         // The only reason to call `collect_tokens_no_attrs` is if you want tokens, so use
         // `ForceCollect::Yes`
-        self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |this, _attrs| {
+        self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |this, _empty_attrs| {
             Ok((f(this)?, Trailing::No, UsePreAttrPos::No))
         })
     }

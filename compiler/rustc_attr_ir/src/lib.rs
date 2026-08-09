@@ -1,18 +1,37 @@
 //! Data structures for representing parsed attributes in the Rust compiler.
-//! Formerly `rustc_attr_data_structures`.
 //!
 //! For detailed documentation about attribute processing,
 //! see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
 
+// tidy-alphabetical-start
+#![feature(const_default)]
+#![feature(const_trait_impl)]
+#![feature(default_field_values)]
+#![feature(derive_const)]
+#![feature(exhaustive_patterns)]
+#![feature(variant_count)]
+#![recursion_limit = "256"]
+// tidy-alphabetical-end
+
+pub use attr::*;
 pub use data_structures::*;
 pub use encode_cross_crate::EncodeCrossCrate;
+pub use lang_items::*;
 pub use pretty_printing::PrintAttribute;
+pub use stability::*;
 
+// FIXME remove pub on some of these modules? It's fairly inconsistent.
+mod attr;
 mod canonical_symbols;
 mod data_structures;
 pub mod diagnostic;
+pub mod diagnostic_items;
 mod encode_cross_crate;
+pub mod lang_items;
 mod pretty_printing;
+mod stability;
+pub mod target;
+pub mod weak_lang_items;
 
 /// A trait for types that can provide a list of attributes given a `TyCtxt`.
 ///
@@ -20,7 +39,7 @@ mod pretty_printing;
 /// It is defined here with a generic `Tcx` because `rustc_hir` can't depend on `rustc_middle`.
 /// The concrete implementations are in `rustc_middle`.
 pub trait HasAttrs<'tcx, Tcx> {
-    fn get_attrs(self, tcx: &Tcx) -> &'tcx [crate::Attribute];
+    fn get_attrs(self, tcx: &Tcx) -> &'tcx [crate::attr::Attribute];
 }
 
 /// Finds attributes in sequences of attributes by pattern matching.
@@ -72,7 +91,7 @@ macro_rules! find_attr {
     };
     ($tcx: expr, $id: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
         $crate::find_attr!(
-            $crate::attrs::HasAttrs::get_attrs($id, &$tcx),
+            $crate::HasAttrs::get_attrs($id, &$tcx),
             $pattern $(if $guard)? => $e
         )
     }};
@@ -86,7 +105,7 @@ macro_rules! find_attr {
         'done: {
             for i in $attributes_list {
                 #[allow(unused_imports)]
-                use $crate::attrs::AttributeKind::*;
+                use $crate::AttributeKind::*;
                 let i: &$crate::Attribute = i;
                 match i {
                     $crate::Attribute::Parsed($pattern) $(if $guard)? => {

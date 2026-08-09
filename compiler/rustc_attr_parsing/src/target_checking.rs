@@ -9,9 +9,9 @@ use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym}
 
 use crate::context::AcceptContext;
 use crate::diagnostics::{
-    InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
+    InvalidAttrAtCrateLevel, InvalidTarget, InvalidTargetHelp, ItemFollowingInnerAttr,
+    UnsupportedAttributesInWhere,
 };
-use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
 use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
