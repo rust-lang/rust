@@ -54,11 +54,11 @@ use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType};
+use crate::check_c_variadic_abi;
+use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType, NoVariantNamed};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
-use crate::{NoVariantNamed, check_c_variadic_abi};
 
 /// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
 /// trait or a default trait)
