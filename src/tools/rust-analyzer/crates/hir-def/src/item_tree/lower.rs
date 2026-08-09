@@ -4,8 +4,10 @@ use std::cell::OnceCell;
 
 use base_db::{Crate, FxIndexSet, SourceDatabase};
 use cfg::CfgOptions;
+use either::Either;
 use hir_expand::{HirFileId, mod_path::PathKind, name::AsName, span_map::SpanMap};
 use la_arena::Arena;
+use rustc_hash::FxHashSet;
 use span::{AstIdMap, FileAstId, SyntaxContext};
 use syntax::{
     AstNode,
@@ -13,9 +15,9 @@ use syntax::{
 };
 
 use crate::item_tree::{
-    BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias,
-    Interned, ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, ModPath,
-    RawVisibility, RawVisibilityId, SmallModItem, Static, Struct, StructKind, Trait, TypeAlias,
+    BigModItem, Const, Enum, ExternBlock, ExternCrate, Function, Impl, ImportAlias, Interned,
+    ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, ModPath, RawVisibility,
+    RawVisibilityId, SmallModItem, Static, Struct, StructKind, StructValueNsCtor, Trait, TypeAlias,
     Union, Use, UseTree, UseTreeKind, VisibilityExplicitness, attrs::AttrsOrCfg,
 };
 
@@ -169,12 +171,89 @@ impl<'db> Ctx<'db> {
     }
 
     fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<ModItemId> {
-        let visibility = self.lower_visibility(strukt);
+        let visibility = self.lower_visibility_from_ast(strukt);
+        let visibility_id = self.alloc_visibility(visibility.clone());
         let name = strukt.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let shape = adt_shape(strukt.kind());
-        let res = Struct { name, visibility, shape };
-        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Struct(res)))
+        let value_ns_ctor = match strukt.kind() {
+            StructKind::Record(_) => StructValueNsCtor::NoValueNsCtor,
+            StructKind::Unit => StructValueNsCtor::ValueNsCtorWithVis(visibility_id),
+            StructKind::Tuple(fields) => self.tuple_struct_ctor_vis(visibility, fields),
+        };
+        let res = Struct { name, visibility: visibility_id, value_ns_ctor };
+        Some(self.alloc_big(ast_id.upcast(), BigModItem::Struct(res)))
+    }
+
+    fn tuple_struct_ctor_vis(
+        &mut self,
+        struct_vis: RawVisibility,
+        fields: ast::TupleFieldList,
+    ) -> StructValueNsCtor {
+        if let RawVisibility::PubSelf(_) = struct_vis {
+            // `pub(self)` <= anything.
+            return StructValueNsCtor::ValueNsCtorWithVis(self.alloc_visibility(struct_vis));
+        }
+
+        let mut value_ns_ctor_vis = Either::Left(struct_vis);
+        for field in fields.fields() {
+            let field_vis = self.lower_visibility_from_ast(&field);
+            match (&field_vis, &mut value_ns_ctor_vis) {
+                (RawVisibility::PubSelf(_), _) => {
+                    // If there is a field private, the minimal visibility is private.
+                    value_ns_ctor_vis = Either::Left(field_vis);
+                    break;
+                }
+                (_, Either::Left(RawVisibility::Public)) => {
+                    // anything <= `pub`.
+                    value_ns_ctor_vis = Either::Left(field_vis);
+                }
+                (RawVisibility::Module(..), Either::Left(RawVisibility::PubCrate)) => {
+                    // `pub(in module)` <= `pub(crate)`.
+                    value_ns_ctor_vis = Either::Left(field_vis);
+                }
+                (
+                    RawVisibility::Public | RawVisibility::PubCrate,
+                    Either::Right(_)
+                    | Either::Left(RawVisibility::Module(..) | RawVisibility::PubCrate),
+                ) => {
+                    // `pub(in module) | pub(crate)` <= `pub(crate) | pub`.
+                }
+                (_, Either::Left(RawVisibility::PubSelf(_))) => {
+                    unreachable!("we early-exit on `PubSelf`");
+                }
+                (RawVisibility::Module(..), Either::Left(RawVisibility::Module(..))) => {
+                    let old_vis = match std::mem::replace(
+                        &mut value_ns_ctor_vis,
+                        Either::Left(RawVisibility::Public),
+                    ) {
+                        Either::Left(it) => it,
+                        _ => unreachable!(),
+                    };
+                    let mut multiple = FxHashSet::default();
+                    multiple.insert(old_vis);
+                    multiple.insert(field_vis);
+                    value_ns_ctor_vis = Either::Right(multiple);
+                }
+                (RawVisibility::Module(..), Either::Right(multiple)) => {
+                    multiple.insert(field_vis);
+                }
+            }
+        }
+
+        match value_ns_ctor_vis {
+            Either::Left(vis) => StructValueNsCtor::ValueNsCtorWithVis(self.alloc_visibility(vis)),
+            Either::Right(multiple) => {
+                if multiple.len() == 1 {
+                    StructValueNsCtor::ValueNsCtorWithVis(
+                        self.alloc_visibility(multiple.into_iter().next().unwrap()),
+                    )
+                } else {
+                    StructValueNsCtor::ValueNsCtorWithMinVis(
+                        multiple.into_iter().map(|vis| self.alloc_visibility(vis)).collect(),
+                    )
+                }
+            }
+        }
     }
 
     fn lower_union(&mut self, union: &ast::Union) -> Option<ModItemId> {
@@ -349,9 +428,17 @@ impl<'db> Ctx<'db> {
     }
 
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
-        let vis = visibility_from_ast(self.db, item.visibility(), &mut |range| {
+        let vis = self.lower_visibility_from_ast(item);
+        self.alloc_visibility(vis)
+    }
+
+    fn lower_visibility_from_ast(&mut self, item: &dyn ast::HasVisibility) -> RawVisibility {
+        visibility_from_ast(self.db, item.visibility(), &mut |range| {
             self.span_map().span_for_range(range).ctx
-        });
+        })
+    }
+
+    fn alloc_visibility(&mut self, vis: RawVisibility) -> RawVisibilityId {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
             RawVisibility::PubSelf(VisibilityExplicitness::Explicit) => {
@@ -473,12 +560,4 @@ pub(crate) fn visibility_from_ast(
         ast::VisibilityKind::Pub => return RawVisibility::Public,
     };
     RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)
-}
-
-fn adt_shape(kind: StructKind) -> FieldsShape {
-    match kind {
-        StructKind::Record(_) => FieldsShape::Record,
-        StructKind::Tuple(_) => FieldsShape::Tuple,
-        StructKind::Unit => FieldsShape::Unit,
-    }
 }

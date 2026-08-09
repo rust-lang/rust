@@ -298,7 +298,6 @@ enum SmallModItem {
     MacroCall(MacroCall),
     MacroRules(MacroRules),
     Static(Static),
-    Struct(Struct),
     Trait(Trait),
     TypeAlias(TypeAlias),
     Union(Union),
@@ -309,6 +308,7 @@ enum BigModItem {
     ExternCrate(ExternCrate),
     Mod(Mod),
     Use(Use),
+    Struct(Struct),
 }
 
 // `ModItem` is stored a bunch in `ItemTree`'s so we pay the max for each item. It should stay as
@@ -463,7 +463,7 @@ ModItemKind ->
     MacroRules by Left -> ast::MacroRules,
     Mod by Right -> ast::Module,
     Static by Left -> ast::Static,
-    Struct by Left -> ast::Struct,
+    Struct by Right -> ast::Struct,
     Trait by Left -> ast::Trait,
     TypeAlias by Left -> ast::TypeAlias,
     Union by Left -> ast::Union,
@@ -574,7 +574,14 @@ pub struct Function {
 pub struct Struct {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub shape: FieldsShape,
+    pub(crate) value_ns_ctor: StructValueNsCtor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum StructValueNsCtor {
+    NoValueNsCtor,
+    ValueNsCtorWithVis(RawVisibilityId),
+    ValueNsCtorWithMinVis(ThinVec<RawVisibilityId>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -594,6 +601,16 @@ pub enum FieldsShape {
     Record,
     Tuple,
     Unit,
+}
+
+impl FieldsShape {
+    #[inline]
+    pub fn has_value_ns_ctor(self) -> bool {
+        match self {
+            FieldsShape::Record => false,
+            FieldsShape::Tuple | FieldsShape::Unit => true,
+        }
+    }
 }
 
 /// Visibility of an item, not yet resolved.

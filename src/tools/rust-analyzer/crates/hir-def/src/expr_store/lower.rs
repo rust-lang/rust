@@ -55,10 +55,9 @@ use crate::{
         Statement, generics::GenericParams,
     },
     item_scope::BuiltinShadowMode,
-    item_tree::FieldsShape,
     lang_item::{LangItemTarget, LangItems},
     nameres::{DefMap, LocalDefMap, MacroSubNs, block_def_map},
-    signatures::{StructSignature, TypeAliasSignature},
+    signatures::TypeAliasSignature,
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
         RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
@@ -2758,16 +2757,8 @@ impl<'db> ExprCollector<'db> {
                     // can't).
                     match resolved.take_values() {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),
-                        Some(ModuleDefId::EnumVariantId(variant))
-                        // FIXME: This can cause a cycle if the user is writing invalid code
-                            if variant.fields(self.db).shape != FieldsShape::Record =>
-                        {
-                            (None, Pat::Path(name.into()))
-                        }
-                        Some(ModuleDefId::AdtId(AdtId::StructId(s)))
-                        // FIXME: This can cause a cycle if the user is writing invalid code
-                            if StructSignature::of(self.db, s).shape != FieldsShape::Record =>
-                        {
+                        Some(ModuleDefId::EnumVariantId(_)) => (None, Pat::Path(name.into())),
+                        Some(ModuleDefId::AdtId(AdtId::StructId(_))) => {
                             (None, Pat::Path(name.into()))
                         }
                         // shadowing statics is an error as well, so we just ignore that case here
