@@ -95,7 +95,7 @@
 +         _28 = std::future::ResumeTy(move _29);
 +         _27 = copy (_1.0: &mut {async fn body of add()});
 +         _26 = discriminant((*_27));
-+         switchInt(move _26) -> [0: bb27, 1: bb26, 2: bb25, 3: bb24, otherwise: bb6];
++         switchInt(move _26) -> [0: bb26, 1: bb25, 2: bb24, 3: bb23, otherwise: bb6];
       }
   
       bb1: {
@@ -207,7 +207,7 @@
           StorageDead(_5);
 -         StorageDead(_4);
 -         StorageDead(_3);
--         drop(_1) -> [return: bb13, unwind: bb28];
+-         drop(_1) -> [return: bb13, unwind: bb27];
 +         nop;
 +         nop;
 +         goto -> bb13;
@@ -222,88 +222,107 @@
 -     bb14: {
 -         StorageDead(_24);
 -         StorageDead(_23);
--         drop(_10) -> [return: bb15, unwind: bb29];
-+     bb14 (cleanup): {
-+         StorageDead(_18);
-+         StorageDead(_17);
-+         goto -> bb16;
-      }
-  
+-         drop(_10) -> [return: bb15, unwind: bb28];
+-     }
+- 
 -     bb15: {
 -         StorageDead(_10);
-+     bb15 (cleanup): {
-+         StorageDead(_15);
-          goto -> bb16;
-      }
-  
+-         goto -> bb16;
+-     }
+- 
 -     bb16: {
 -         StorageDead(_8);
 -         goto -> bb17;
-+     bb16 (cleanup): {
-+         StorageDead(_16);
-+         StorageDead(_14);
-+         StorageDead(_13);
-+         StorageDead(_12);
-+         drop((((*_27) as variant#3).2: {async block@$DIR/async_fn.rs:34:13: 34:18})) -> [return: bb17, unwind terminate(cleanup)];
-      }
-  
+-     }
+- 
 -     bb17: {
 -         StorageDead(_5);
 -         StorageDead(_4);
 -         StorageDead(_3);
--         drop(_1) -> [return: bb18, unwind: bb28];
-+     bb17 (cleanup): {
-+         nop;
-+         goto -> bb20;
-      }
-  
+-         drop(_1) -> [return: bb18, unwind: bb27];
+-     }
+- 
 -     bb18: {
 -         coroutine_drop;
-+     bb18 (cleanup): {
+-     }
+- 
+-     bb19 (cleanup): {
+-         StorageDead(_19);
+-         goto -> bb20;
+-     }
+- 
+-     bb20 (cleanup): {
++     bb14 (cleanup): {
+          StorageDead(_18);
+          StorageDead(_17);
+-         goto -> bb22;
++         goto -> bb16;
+      }
+  
+-     bb21 (cleanup): {
++     bb15 (cleanup): {
+          StorageDead(_15);
+-         goto -> bb22;
++         goto -> bb16;
+      }
+  
+-     bb22 (cleanup): {
++     bb16 (cleanup): {
+          StorageDead(_16);
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageDead(_12);
+-         drop(_10) -> [return: bb23, unwind terminate(cleanup)];
++         drop((((*_27) as variant#3).2: {async block@$DIR/async_fn.rs:34:13: 34:18})) -> [return: bb17, unwind terminate(cleanup)];
+      }
+  
+-     bb23 (cleanup): {
+-         StorageDead(_10);
+-         goto -> bb25;
++     bb17 (cleanup): {
++         nop;
 +         goto -> bb19;
       }
   
-      bb19 (cleanup): {
--         StorageDead(_19);
-+         StorageDead(_9);
-          goto -> bb20;
+-     bb24 (cleanup): {
++     bb18 (cleanup): {
+          StorageDead(_9);
+-         goto -> bb25;
++         goto -> bb19;
       }
   
-      bb20 (cleanup): {
--         StorageDead(_18);
--         StorageDead(_17);
--         goto -> bb22;
-+         StorageDead(_8);
+-     bb25 (cleanup): {
++     bb19 (cleanup): {
+          StorageDead(_8);
+-         goto -> bb26;
++         goto -> bb20;
+      }
+  
+-     bb26 (cleanup): {
++     bb20 (cleanup): {
+          StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb27, unwind terminate(cleanup)];
++         nop;
++         nop;
 +         goto -> bb21;
       }
   
-      bb21 (cleanup): {
--         StorageDead(_15);
-+         StorageDead(_5);
-+         nop;
-+         nop;
-          goto -> bb22;
-      }
-  
-      bb22 (cleanup): {
--         StorageDead(_16);
--         StorageDead(_14);
--         StorageDead(_13);
--         StorageDead(_12);
--         drop(_10) -> [return: bb23, unwind terminate(cleanup)];
-+         goto -> bb23;
-      }
-  
-      bb23 (cleanup): {
--         StorageDead(_10);
--         goto -> bb26;
+-     bb27 (cleanup): {
++     bb21 (cleanup): {
++         goto -> bb22;
++     }
++ 
++     bb22 (cleanup): {
 +         discriminant((*_27)) = 2;
-+         resume;
+          resume;
       }
   
--     bb24 (cleanup): {
--         goto -> bb25;
-+     bb24: {
+-     bb28 (cleanup): {
+-         StorageDead(_10);
+-         goto -> bb29;
++     bb23: {
 +         StorageLive(_5);
 +         StorageLive(_8);
 +         StorageLive(_23);
@@ -312,47 +331,23 @@
 +         goto -> bb9;
       }
   
--     bb25 (cleanup): {
--         StorageDead(_9);
--         goto -> bb26;
-+     bb25: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb25, unwind continue];
-      }
-  
--     bb26 (cleanup): {
--         StorageDead(_8);
--         goto -> bb27;
-+     bb26: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb26, unwind continue];
-      }
-  
--     bb27 (cleanup): {
--         StorageDead(_5);
--         StorageDead(_4);
--         StorageDead(_3);
--         drop(_1) -> [return: bb28, unwind terminate(cleanup)];
--     }
-- 
--     bb28 (cleanup): {
--         resume;
--     }
-- 
 -     bb29 (cleanup): {
--         StorageDead(_10);
--         goto -> bb30;
--     }
-- 
--     bb30 (cleanup): {
 -         StorageDead(_8);
--         goto -> bb31;
--     }
-- 
--     bb31 (cleanup): {
+-         goto -> bb30;
++     bb24: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb24, unwind continue];
+      }
+  
+-     bb30 (cleanup): {
 -         StorageDead(_5);
 -         StorageDead(_4);
 -         StorageDead(_3);
--         drop(_1) -> [return: bb28, unwind terminate(cleanup)];
-+     bb27: {
+-         drop(_1) -> [return: bb27, unwind terminate(cleanup)];
++     bb25: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb25, unwind continue];
++     }
++ 
++     bb26: {
 +         nop;
 +         (((*_27) as variant#3).0: u32) = copy ((*_27).0: u32);
 +         nop;
