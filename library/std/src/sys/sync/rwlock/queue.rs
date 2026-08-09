@@ -164,6 +164,7 @@ fn read_lock(state: State) -> Option<State> {
 /// The state must contain a valid pointer to a queue node.
 #[inline]
 unsafe fn to_node(state: State) -> NonNull<Node> {
+    // SAFETY: Untriaged.
     unsafe { NonNull::new_unchecked(state.mask(NODE_MASK)).cast() }
 }
 
@@ -228,6 +229,7 @@ impl Node {
     /// May only be called from the thread that created the node.
     unsafe fn wait(&self) {
         while !self.completed.load(Acquire) {
+            // SAFETY: Untriaged.
             unsafe {
                 self.thread.get().unwrap().park();
             }
@@ -242,7 +244,9 @@ impl Node {
     unsafe fn complete(node: NonNull<Node>) {
         // Since the node may be destroyed immediately after the completed flag is set, clone the
         // thread handle before that.
+        // SAFETY: Untriaged.
         let thread = unsafe { node.as_ref().thread.get().unwrap().clone() };
+        // SAFETY: Untriaged.
         unsafe {
             node.as_ref().completed.store(true, Release);
         }
@@ -265,6 +269,7 @@ unsafe fn find_tail_and_add_backlinks(head: NonNull<Node>) -> NonNull<Node> {
 
     // Traverse the queue until we find a node that has a set `tail`.
     let tail = loop {
+        // SAFETY: Untriaged.
         let c = unsafe { current.as_ref() };
         if let Some(tail) = c.tail.get() {
             break tail;
@@ -279,6 +284,7 @@ unsafe fn find_tail_and_add_backlinks(head: NonNull<Node>) -> NonNull<Node> {
         }
     };
 
+    // SAFETY: Untriaged.
     unsafe {
         head.as_ref().tail.set(Some(tail));
         tail
@@ -296,7 +302,9 @@ unsafe fn complete_all(tail: NonNull<Node>) {
 
     // Traverse backwards through the queue (FIFO) and `complete` all of the nodes.
     loop {
+        // SAFETY: Untriaged.
         let prev = unsafe { current.as_ref().prev.get() };
+        // SAFETY: Untriaged.
         unsafe {
             Node::complete(current);
         }
@@ -470,6 +478,7 @@ impl RwLock {
         }) {
             Ok(_) => {}
             // There are waiters queued and the lock count was moved to the tail of the queue.
+            // SAFETY: Untriaged.
             Err(state) => unsafe { self.read_unlock_contended(state) },
         }
     }
@@ -665,9 +674,11 @@ impl RwLock {
             // modifications.
 
             let downgrade = state.addr() & DOWNGRADED != 0;
+            // SAFETY: Untriaged.
             let is_writer = unsafe { tail.as_ref().write };
             if !downgrade
                 && is_writer
+// SAFETY: Untriaged.
                 && let Some(prev) = unsafe { tail.as_ref().prev.get() }
             {
                 // If we are not downgrading and the next thread is a writer, only wake up that
@@ -678,6 +689,7 @@ impl RwLock {
                 // non-null tail field will be current (Invariant 2).
                 // We also fulfill Invariant 4 since `find_tail` was called on this node, which
                 // ensures all backlinks are set.
+                // SAFETY: Untriaged.
                 unsafe {
                     to_node(state).as_ref().tail.set(Some(prev));
                 }
@@ -689,6 +701,7 @@ impl RwLock {
                     // Undo the tail modification above, so that we can find the tail again above.
                     // As mentioned above, we have exclusive control over the queue, so no other
                     // thread could have noticed the change.
+                    // SAFETY: Untriaged.
                     unsafe {
                         to_node(state).as_ref().tail.set(Some(tail));
                     }
@@ -697,6 +710,7 @@ impl RwLock {
                 }
 
                 // The tail was split off and the lock was released. Mark the node as completed.
+                // SAFETY: Untriaged.
                 unsafe {
                     return Node::complete(tail);
                 }

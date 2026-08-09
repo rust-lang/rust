@@ -71,6 +71,7 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
+        // SAFETY: Untriaged.
         unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
     }
     fn st_dev(&self) -> u64 {

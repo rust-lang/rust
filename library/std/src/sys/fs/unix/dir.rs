@@ -67,7 +67,9 @@ impl Dir {
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        // SAFETY: Untriaged.
         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+        // SAFETY: Untriaged.
         Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
 
@@ -76,13 +78,16 @@ impl Dir {
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        // SAFETY: Untriaged.
         let fd = cvt_r(|| unsafe {
             openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as c_int)
         })?;
+        // SAFETY: Untriaged.
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
     fn remove_c(&self, path: &CStr, remove_dir: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         cvt(unsafe {
             unlinkat(
                 self.0.as_raw_fd(),
@@ -94,6 +99,7 @@ impl Dir {
     }
 
     fn rename_c(&self, from: &CStr, to_dir: &Self, to: &CStr) -> io::Result<()> {
+        // SAFETY: Untriaged.
         cvt(unsafe {
             renameat(self.0.as_raw_fd(), from.as_ptr(), to_dir.0.as_raw_fd(), to.as_ptr())
         })
@@ -126,6 +132,7 @@ impl IntoRawFd for fs::Dir {
 #[unstable(feature = "dirfd", issue = "120426")]
 impl FromRawFd for fs::Dir {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         Self::from_inner(Dir(unsafe { FromRawFd::from_raw_fd(fd) }))
     }
 }

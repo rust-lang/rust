@@ -33,8 +33,11 @@ static EXIT_BOOT_SERVICE_EVENT: Atomic<*mut crate::ffi::c_void> =
 /// - argv must be &[Handle, *mut SystemTable].
 pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     assert_eq!(argc, 2);
+    // SAFETY: Untriaged.
     let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
+    // SAFETY: Untriaged.
     let system_table = unsafe { NonNull::new(*argv.add(1) as *mut crate::ffi::c_void).unwrap() };
+    // SAFETY: Untriaged.
     unsafe { uefi::env::init_globals(image_handle, system_table) };
 
     // Register exit boot services handler
@@ -68,6 +71,7 @@ pub unsafe fn cleanup() {
     if let Some(exit_boot_service_event) =
         NonNull::new(EXIT_BOOT_SERVICE_EVENT.swap(crate::ptr::null_mut(), Ordering::Acquire))
     {
+        // SAFETY: Untriaged.
         let _ = unsafe { helpers::OwnedEvent::from_raw(exit_boot_service_event.as_ptr()) };
     }
 }
@@ -86,6 +90,7 @@ pub fn abort_internal() -> ! {
     if let Some(exit_boot_service_event) =
         NonNull::new(EXIT_BOOT_SERVICE_EVENT.load(Ordering::Acquire))
     {
+        // SAFETY: Untriaged.
         let _ = unsafe { helpers::OwnedEvent::from_raw(exit_boot_service_event.as_ptr()) };
     }
 
@@ -93,6 +98,7 @@ pub fn abort_internal() -> ! {
         (uefi::env::boot_services(), uefi::env::try_image_handle())
     {
         let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+        // SAFETY: Untriaged.
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
                 handle.as_ptr(),

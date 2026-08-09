@@ -56,6 +56,7 @@ mod impl_linux {
         let mut ucred_size = ucred_size as socklen_t;
         let mut ucred: ucred = ucred { pid: 1, uid: 1, gid: 1 };
 
+        // SAFETY: Untriaged.
         unsafe {
             let ret = getsockopt(
                 socket.as_raw_fd(),
@@ -90,6 +91,7 @@ mod impl_bsd {
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let mut cred = UCred { uid: 1, gid: 1, pid: None };
+        // SAFETY: Untriaged.
         unsafe {
             let ret = libc::getpeereid(socket.as_raw_fd(), &mut cred.uid, &mut cred.gid);
 
@@ -109,6 +111,7 @@ mod impl_apple {
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let mut cred = UCred { uid: 1, gid: 1, pid: None };
+        // SAFETY: Untriaged.
         unsafe {
             let ret = getpeereid(socket.as_raw_fd(), &mut cred.uid, &mut cred.gid);
 

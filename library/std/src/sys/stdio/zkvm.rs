@@ -13,10 +13,12 @@ impl Stdin {
 
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         Ok(unsafe { abi::sys_read(fileno::STDIN, buf.as_mut_ptr(), buf.len()) })
     }
 
     fn read_buf(&mut self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let n = abi::sys_read(fileno::STDIN, buf.as_mut().as_mut_ptr().cast(), buf.capacity());
             buf.advance(n);
@@ -33,6 +35,7 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe { abi::sys_write(fileno::STDOUT, buf.as_ptr(), buf.len()) }
 
         Ok(buf.len())
@@ -51,6 +54,7 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe { abi::sys_write(fileno::STDERR, buf.as_ptr(), buf.len()) }
 
         Ok(buf.len())

@@ -155,6 +155,7 @@ impl<T> OnceLock<T> {
     pub fn get(&self) -> Option<&T> {
         if self.initialized() {
             // Safe b/c checked initialized
+            // SAFETY: Untriaged.
             Some(unsafe { self.get_unchecked() })
         } else {
             None
@@ -173,6 +174,7 @@ impl<T> OnceLock<T> {
     pub fn get_mut(&mut self) -> Option<&mut T> {
         if self.initialized_mut() {
             // Safe b/c checked initialized and we have a unique access
+            // SAFETY: Untriaged.
             Some(unsafe { self.get_unchecked_mut() })
         } else {
             None
@@ -203,6 +205,7 @@ impl<T> OnceLock<T> {
     pub fn wait(&self) -> &T {
         self.once.wait_force();
 
+        // SAFETY: Untriaged.
         unsafe { self.get_unchecked() }
     }
 
@@ -542,6 +545,7 @@ impl<T> OnceLock<T> {
         self.once.call_once_force(|p| {
             match f() {
                 Ok(value) => {
+                    // SAFETY: Untriaged.
                     unsafe { (&mut *slot.get()).write(value) };
                 }
                 Err(e) => {
@@ -562,6 +566,7 @@ impl<T> OnceLock<T> {
     #[inline]
     unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.initialized());
+        // SAFETY: Untriaged.
         unsafe { (&*self.value.get()).assume_init_ref() }
     }
 
@@ -571,6 +576,7 @@ impl<T> OnceLock<T> {
     #[inline]
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.initialized_mut());
+        // SAFETY: Untriaged.
         unsafe { self.value.get_mut().assume_init_mut() }
     }
 }

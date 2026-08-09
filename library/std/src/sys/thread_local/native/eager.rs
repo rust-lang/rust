@@ -35,6 +35,7 @@ impl<T> Storage<T> {
         if let State::Alive = self.state.get() {
             self.val.get()
         } else {
+            // SAFETY: Untriaged.
             unsafe { self.get_or_init_slow() }
         }
     }
@@ -70,10 +71,12 @@ impl<T> Storage<T> {
 unsafe extern "C" fn destroy<T>(ptr: *mut u8) {
     // Print a nice abort message if a panic occurs.
     abort_on_dtor_unwind(|| {
+        // SAFETY: Untriaged.
         let storage = unsafe { &*(ptr as *const Storage<T>) };
         // Update the state before running the destructor as it may attempt to
         // access the variable.
         storage.state.set(State::Destroyed);
+        // SAFETY: Untriaged.
         unsafe {
             drop_in_place(storage.val.get());
         }

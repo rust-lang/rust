@@ -40,6 +40,7 @@ cfg_select! {
 
         pub(super) fn get() -> Option<ThreadId> {
             if INIT.load(Acquire) {
+// SAFETY: Untriaged.
                 Some(unsafe { MAIN.assume_init() })
             } else {
                 None
@@ -49,6 +50,7 @@ cfg_select! {
         /// # Safety
         /// May only be called once.
         pub(crate) unsafe fn set(id: ThreadId) {
+// SAFETY: Untriaged.
             unsafe { MAIN = MaybeUninit::new(id) };
             INIT.store(true, Release);
         }

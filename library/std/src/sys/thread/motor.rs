@@ -17,6 +17,7 @@ unsafe impl Sync for Thread {}
 impl Thread {
     pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         extern "C" fn __moto_rt_thread_fn(thread_arg: u64) {
+            // SAFETY: Untriaged.
             unsafe {
                 let init = Box::from_raw(core::ptr::with_exposed_provenance_mut::<ThreadInit>(
                     thread_arg as usize,
@@ -52,6 +53,7 @@ pub fn current_os_id() -> Option<u64> {
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+    // SAFETY: Untriaged.
     Ok(unsafe { NonZeroUsize::new_unchecked(moto_rt::num_cpus()) })
 }
 

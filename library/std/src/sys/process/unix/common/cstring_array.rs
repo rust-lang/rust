@@ -83,6 +83,7 @@ impl Drop for CStringArray {
         // into pointers using `CString::into_raw`.
         self.ptrs[..self.ptrs.len() - 1]
             .iter()
+            // SAFETY: Untriaged.
             .for_each(|&p| drop(unsafe { CString::from_raw(p.cast_mut()) }))
     }
 }

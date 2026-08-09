@@ -71,6 +71,7 @@ unsafe extern "Rust" {
 #[inline]
 fn tls_ptr_addr() -> *mut *mut u8 {
     let tp: *mut *mut u8;
+    // SAFETY: Untriaged.
     unsafe {
         asm!(
             "mv {}, tp",
@@ -87,6 +88,7 @@ fn tls_table() -> &'static mut [*mut u8] {
     let tp = tls_ptr_addr();
 
     if !tp.is_null() {
+        // SAFETY: Untriaged.
         unsafe { core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<*mut u8>()) }
     } else {
         tls_table_slow()
@@ -97,6 +99,7 @@ fn tls_table() -> &'static mut [*mut u8] {
 fn tls_table_slow() -> &'static mut [*mut u8] {
     // If the TP register is `0`, then this thread hasn't initialized
     // its TLS yet. Allocate a new page to store this memory.
+    // SAFETY: Untriaged.
     let tp: &mut [*mut u8] = unsafe {
         map_memory(
             None,
@@ -111,6 +114,7 @@ fn tls_table_slow() -> &'static mut [*mut u8] {
         assert!((*val).is_null());
     }
 
+    // SAFETY: Untriaged.
     unsafe {
         // Set the thread's `$tp` register
         asm!(
@@ -125,8 +129,10 @@ fn tls_table_slow() -> &'static mut [*mut u8] {
 pub fn create(dtor: Option<Dtor>) -> Key {
     // Allocate a new TLS key. These keys are shared among all threads.
     #[allow(unused_unsafe)]
+    // SAFETY: Untriaged.
     let key = unsafe { TLS_KEY_INDEX.fetch_add(1, Relaxed) };
     if let Some(f) = dtor {
+        // SAFETY: Untriaged.
         unsafe { register_dtor(key, f) };
     }
     key
@@ -164,10 +170,12 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
         ManuallyDrop::new(Box::new_in(Node { key, dtor, next: ptr::null_mut() }, System));
 
     #[allow(unused_unsafe)]
+    // SAFETY: Untriaged.
     let mut head = unsafe { DTORS.load(Acquire) };
     loop {
         node.next = head;
         #[allow(unused_unsafe)]
+        // SAFETY: Untriaged.
         match unsafe { DTORS.compare_exchange(head, &mut **node, Release, Acquire) } {
             Ok(_) => return, // nothing to drop, we successfully added the node to the list
             Err(cur) => head = cur,
@@ -183,9 +191,11 @@ pub unsafe fn destroy_tls() {
         return;
     }
 
+    // SAFETY: Untriaged.
     unsafe { run_dtors() };
 
     // Finally, free the TLS array
+    // SAFETY: Untriaged.
     unsafe {
         unmap_memory(core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / size_of::<usize>()))
             .unwrap()
@@ -211,16 +221,21 @@ unsafe fn run_dtors() {
         }
         any_run = false;
         #[allow(unused_unsafe)]
+        // SAFETY: Untriaged.
         let mut cur = unsafe { DTORS.load(Acquire) };
         while !cur.is_null() {
+            // SAFETY: Untriaged.
             let ptr = unsafe { get((*cur).key) };
 
             if !ptr.is_null() {
+                // SAFETY: Untriaged.
                 unsafe { set((*cur).key, ptr::null_mut()) };
+                // SAFETY: Untriaged.
                 unsafe { ((*cur).dtor)(ptr as *mut _) };
                 any_run = true;
             }
 
+            // SAFETY: Untriaged.
             unsafe { cur = (*cur).next };
         }
     }

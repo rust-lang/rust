@@ -263,6 +263,7 @@ impl Builder {
         T: Send + 'scope,
     {
         let Builder { name, stack_size, no_hooks } = self;
+        // SAFETY: Untriaged.
         Ok(ScopedJoinHandle(unsafe {
             spawn_unchecked(name, stack_size, no_hooks, Some(scope.data.clone()), f)
         }?))

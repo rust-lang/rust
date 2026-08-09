@@ -1244,6 +1244,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
+        // SAFETY: Untriaged.
         unsafe { self.base.get_disjoint_unchecked_mut(ks) }
     }
 

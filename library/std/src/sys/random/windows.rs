@@ -3,6 +3,7 @@ use crate::sys::c;
 #[cfg(not(target_vendor = "win7"))]
 #[inline]
 pub fn fill_bytes(bytes: &mut [u8]) {
+    // SAFETY: Untriaged.
     let ret = unsafe { c::ProcessPrng(bytes.as_mut_ptr(), bytes.len()) };
     // ProcessPrng is documented as always returning `TRUE`.
     // https://learn.microsoft.com/en-us/windows/win32/seccng/processprng#return-value
@@ -13,6 +14,7 @@ pub fn fill_bytes(bytes: &mut [u8]) {
 pub fn fill_bytes(mut bytes: &mut [u8]) {
     while !bytes.is_empty() {
         let len = bytes.len().try_into().unwrap_or(u32::MAX);
+        // SAFETY: Untriaged.
         let ret = unsafe { c::RtlGenRandom(bytes.as_mut_ptr().cast(), len) };
         assert!(ret, "failed to generate random data");
         bytes = &mut bytes[len as usize..];

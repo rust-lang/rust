@@ -32,10 +32,12 @@ impl Parker {
     }
 
     fn lock(self: Pin<&Self>) -> Pin<&Mutex> {
+        // SAFETY: Untriaged.
         unsafe { self.map_unchecked(|p| &p.lock) }
     }
 
     fn cvar(self: Pin<&Self>) -> Pin<&Condvar> {
+        // SAFETY: Untriaged.
         unsafe { self.map_unchecked(|p| &p.cvar) }
     }
 
@@ -156,6 +158,7 @@ impl Parker {
         // Releasing `lock` before the call to `notify_one` means that when the
         // parked thread wakes it doesn't get woken only to have to wait for us
         // to release `lock`.
+        // SAFETY: Untriaged.
         unsafe {
             self.lock().lock();
             self.lock().unlock();

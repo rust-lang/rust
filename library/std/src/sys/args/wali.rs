@@ -2,6 +2,7 @@ pub use super::common::Args;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    // SAFETY: Untriaged.
     unsafe { imp::init(argc, argv) }
 }
 
@@ -32,9 +33,11 @@ mod imp {
     }
 
     unsafe fn load_arg(idx: c_uint) -> OsString {
+        // SAFETY: Untriaged.
         let arg_len = unsafe { __cl_get_argv_len(idx) };
         let arg_buf = CString::new(vec![b'x'; arg_len as usize]).unwrap();
         let ptr = arg_buf.into_raw();
+        // SAFETY: Untriaged.
         let arg_buf = unsafe {
             __cl_copy_argv(ptr, idx);
             CString::from_raw(ptr)
@@ -43,7 +46,9 @@ mod imp {
     }
 
     fn argc_argv() -> Vec<OsString> {
+        // SAFETY: Untriaged.
         let argc = unsafe { __cl_get_argc() };
+        // SAFETY: Untriaged.
         (0..argc).map(|x| unsafe { load_arg(x) }).collect()
     }
 

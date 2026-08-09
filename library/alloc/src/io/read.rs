@@ -633,6 +633,7 @@ pub trait Read {
         self.read_buf_exact(borrowed_buf.unfilled())?;
         // Guard against incorrect `read_buf_exact` implementations.
         assert_eq!(borrowed_buf.len(), N);
+        // SAFETY: Untriaged.
         Ok(unsafe { MaybeUninit::array_assume_init(buf) })
     }
 
@@ -807,6 +808,7 @@ where
     let len_original = buf.len();
     // SAFETY: invalid UTF-8 discarded before return or unwind
     let buf_vec = unsafe { buf.as_mut_vec() };
+    // SAFETY: Untriaged.
     let mut g = DropGuard::new((len_original, buf_vec), |(len, buf)| unsafe {
         buf.set_len(len);
     });
@@ -978,6 +980,7 @@ pub fn default_read_to_string<R: Read + ?Sized>(
     // To prevent extraneously checking the UTF-8-ness of the entire buffer
     // we pass it to our hardcoded `default_read_to_end` implementation which
     // we know is guaranteed to only read data into the end of the buffer.
+    // SAFETY: Untriaged.
     unsafe { append_to_string(buf, |b| default_read_to_end(r, b, size_hint)) }
 }
 

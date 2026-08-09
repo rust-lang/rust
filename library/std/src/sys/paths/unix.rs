@@ -22,6 +22,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
+        // SAFETY: Untriaged.
         unsafe {
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
             if !libc::getcwd(ptr, buf.capacity()).is_null() {
@@ -52,6 +53,7 @@ pub fn chdir(_p: &path::Path) -> io::Result<()> {
 
 #[cfg(not(target_os = "espidf"))]
 pub fn chdir(p: &path::Path) -> io::Result<()> {
+    // SAFETY: Untriaged.
     let result = run_path_with_cstr(p, &|p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
     if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
@@ -147,6 +149,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
 pub fn current_exe() -> io::Result<PathBuf> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut mib = [
             libc::CTL_KERN as c_int,
@@ -186,6 +189,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "netbsd")]
 pub fn current_exe() -> io::Result<PathBuf> {
     fn sysctl() -> io::Result<PathBuf> {
+        // SAFETY: Untriaged.
         unsafe {
             let mib = [libc::CTL_KERN, libc::KERN_PROC_ARGS, -1, libc::KERN_PROC_PATHNAME];
             let mut path_len: usize = 0;
@@ -231,6 +235,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "openbsd")]
 pub fn current_exe() -> io::Result<PathBuf> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut mib = [libc::CTL_KERN, libc::KERN_PROC_ARGS, libc::getpid(), libc::KERN_PROC_ARGV];
         let mib = mib.as_mut_ptr();
@@ -295,6 +300,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_vendor = "apple")]
 pub fn current_exe() -> io::Result<PathBuf> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut sz: u32 = 0;
         #[expect(deprecated)]
@@ -318,6 +324,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     if let Ok(path) = crate::fs::read_link("/proc/self/path/a.out") {
         Ok(path)
     } else {
+        // SAFETY: Untriaged.
         unsafe {
             let path = libc::getexecname();
             if path.is_null() {
@@ -337,6 +344,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "haiku")]
 pub fn current_exe() -> io::Result<PathBuf> {
     let mut name = vec![0; libc::PATH_MAX as usize];
+    // SAFETY: Untriaged.
     unsafe {
         let result = libc::find_path(
             crate::ptr::null_mut(),
@@ -430,6 +438,7 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     return crate::env::var_os("HOME")
         .filter(|s| !s.is_empty())
+        // SAFETY: Untriaged.
         .or_else(|| unsafe { fallback() })
         .map(PathBuf::from);
 

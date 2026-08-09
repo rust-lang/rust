@@ -23,8 +23,10 @@ pub(super) fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
         }
     }
     let guard = PanicGuard;
+    // SAFETY: Untriaged.
     let value = unsafe { ptr::read(v) };
     let (new_value, ret) = change(value);
+    // SAFETY: Untriaged.
     unsafe {
         ptr::write(v, new_value);
     }

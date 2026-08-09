@@ -74,10 +74,12 @@ where
 
 /// Returns the last error from the network subsystem.
 fn last_error() -> io::Error {
+    // SAFETY: Untriaged.
     io::Error::from_raw_os_error(unsafe { netc::SOLID_NET_GetLastError() })
 }
 
 pub fn error_name(er: abi::ER) -> Option<&'static str> {
+    // SAFETY: Untriaged.
     unsafe { CStr::from_ptr(netc::strerror(er)) }.to_str().ok()
 }
 
@@ -116,12 +118,15 @@ pub struct Socket(OwnedFd);
 
 impl Socket {
     pub fn new(fam: c_int, ty: c_int) -> io::Result<Socket> {
+        // SAFETY: Untriaged.
         let fd = cvt(unsafe { netc::socket(fam, ty, 0) })?;
+        // SAFETY: Untriaged.
         Ok(unsafe { Self::from_raw_fd(fd) })
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = socket_addr_to_c(addr);
+        // SAFETY: Untriaged.
         cvt(unsafe { netc::connect(self.as_raw_fd(), addr.as_ptr(), len) })?;
         Ok(())
     }
@@ -158,6 +163,7 @@ impl Socket {
         let mut writefds = fds;
         let mut errorfds = fds;
 
+        // SAFETY: Untriaged.
         let n = unsafe {
             cvt(netc::select(
                 self.as_raw_fd() + 1,
@@ -183,7 +189,9 @@ impl Socket {
     }
 
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
+        // SAFETY: Untriaged.
         let fd = cvt_r(|| unsafe { netc::accept(self.as_raw_fd(), storage, len) })?;
+        // SAFETY: Untriaged.
         unsafe { Ok(Self::from_raw_fd(fd)) }
     }
 
@@ -192,9 +200,11 @@ impl Socket {
     }
 
     fn recv_with_flags(&self, mut buf: BorrowedCursor<'_, u8>, flags: c_int) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             netc::recv(self.as_raw_fd(), buf.as_mut().as_mut_ptr().cast(), buf.capacity(), flags)
         })?;
+        // SAFETY: Untriaged.
         unsafe {
             buf.advance(ret as usize);
         }
@@ -218,6 +228,7 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             netc::readv(
                 self.as_raw_fd(),
@@ -238,9 +249,11 @@ impl Socket {
         buf: &mut [u8],
         flags: c_int,
     ) -> io::Result<(usize, SocketAddr)> {
+        // SAFETY: Untriaged.
         let mut storage: netc::sockaddr_storage = unsafe { mem::zeroed() };
         let mut addrlen = size_of_val(&storage) as netc::socklen_t;
 
+        // SAFETY: Untriaged.
         let n = cvt(unsafe {
             netc::recvfrom(
                 self.as_raw_fd(),
@@ -251,6 +264,7 @@ impl Socket {
                 &mut addrlen,
             )
         })?;
+        // SAFETY: Untriaged.
         Ok((n as usize, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
     }
 
@@ -263,6 +277,7 @@ impl Socket {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             netc::writev(
                 self.as_raw_fd(),
@@ -298,10 +313,12 @@ impl Socket {
             }
             None => netc::timeval { tv_sec: 0, tv_usec: 0 },
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, netc::SOL_SOCKET, kind, timeout) }
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
+        // SAFETY: Untriaged.
         let raw: netc::timeval = unsafe { getsockopt(self, netc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
@@ -318,6 +335,7 @@ impl Socket {
             Shutdown::Read => netc::SHUT_RD,
             Shutdown::Both => netc::SHUT_RDWR,
         };
+        // SAFETY: Untriaged.
         cvt(unsafe { netc::shutdown(self.as_raw_fd(), how) })?;
         Ok(())
     }
@@ -329,10 +347,12 @@ impl Socket {
                 as netc::c_int,
         };
 
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER, linger) }
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        // SAFETY: Untriaged.
         let val: netc::linger = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
@@ -347,16 +367,19 @@ impl Socket {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY, nodelay as c_int) }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as c_int;
+        // SAFETY: Untriaged.
         cvt(unsafe {
             netc::ioctl(self.as_raw_fd(), netc::FIONBIO, (&mut nonblocking) as *mut c_int as _)
         })
@@ -364,6 +387,7 @@ impl Socket {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
@@ -404,6 +428,7 @@ impl AsRawFd for Socket {
 impl FromRawFd for Socket {
     #[inline]
     unsafe fn from_raw_fd(fd: c_int) -> Socket {
+        // SAFETY: Untriaged.
         unsafe { Self(FromRawFd::from_raw_fd(fd)) }
     }
 }

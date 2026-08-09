@@ -102,6 +102,7 @@ impl<T> Channel<T> {
             return Err(msg);
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             let packet = &*(token.zero.0 as *const Packet<T>);
             packet.msg.get().write(Some(msg));
@@ -117,12 +118,14 @@ impl<T> Channel<T> {
             return Err(());
         }
 
+        // SAFETY: Untriaged.
         let packet = unsafe { &*(token.zero.0 as *const Packet<T>) };
 
         if packet.on_stack {
             // The message has been in the packet from the beginning, so there is no need to wait
             // for it. However, after reading the message, we need to set `ready` to `true` in
             // order to signal that the packet can be destroyed.
+            // SAFETY: Untriaged.
             let msg = unsafe { packet.msg.get().replace(None) }.unwrap();
             packet.ready.store(true, Ordering::Release);
             Ok(msg)
@@ -130,6 +133,7 @@ impl<T> Channel<T> {
             // Wait until the message becomes available, then read it and destroy the
             // heap-allocated packet.
             packet.wait_ready();
+            // SAFETY: Untriaged.
             unsafe {
                 let msg = packet.msg.get().replace(None).unwrap();
                 drop(Box::from_raw(token.zero.0 as *mut Packet<T>));
@@ -147,6 +151,7 @@ impl<T> Channel<T> {
         if let Some(operation) = inner.receivers.try_select() {
             token.zero.0 = operation.packet;
             drop(inner);
+            // SAFETY: Untriaged.
             unsafe {
                 self.write(token, msg).ok().unwrap();
             }
@@ -171,6 +176,7 @@ impl<T> Channel<T> {
         if let Some(operation) = inner.receivers.try_select() {
             token.zero.0 = operation.packet;
             drop(inner);
+            // SAFETY: Untriaged.
             unsafe {
                 self.write(token, msg).ok().unwrap();
             }
@@ -197,11 +203,13 @@ impl<T> Channel<T> {
                 Selected::Waiting => unreachable!(),
                 Selected::Aborted => {
                     self.inner.lock().unwrap().senders.unregister(oper).unwrap();
+                    // SAFETY: Untriaged.
                     let msg = unsafe { packet.msg.get().replace(None).unwrap() };
                     Err(SendTimeoutError::Timeout(msg))
                 }
                 Selected::Disconnected => {
                     self.inner.lock().unwrap().senders.unregister(oper).unwrap();
+                    // SAFETY: Untriaged.
                     let msg = unsafe { packet.msg.get().replace(None).unwrap() };
                     Err(SendTimeoutError::Disconnected(msg))
                 }
@@ -223,6 +231,7 @@ impl<T> Channel<T> {
         if let Some(operation) = inner.senders.try_select() {
             token.zero.0 = operation.packet;
             drop(inner);
+            // SAFETY: Untriaged.
             unsafe { self.read(token).map_err(|_| TryRecvError::Disconnected) }
         } else if inner.is_disconnected {
             Err(TryRecvError::Disconnected)
@@ -240,6 +249,7 @@ impl<T> Channel<T> {
         if let Some(operation) = inner.senders.try_select() {
             token.zero.0 = operation.packet;
             drop(inner);
+            // SAFETY: Untriaged.
             unsafe {
                 return self.read(token).map_err(|_| RecvTimeoutError::Disconnected);
             }
@@ -274,6 +284,7 @@ impl<T> Channel<T> {
                 Selected::Operation(_) => {
                     // Wait until the message is provided, then read it.
                     packet.wait_ready();
+                    // SAFETY: Untriaged.
                     unsafe { Ok(packet.msg.get().replace(None).unwrap()) }
                 }
             }

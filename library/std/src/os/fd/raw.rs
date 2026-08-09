@@ -180,6 +180,7 @@ impl AsRawFd for fs::File {
 impl FromRawFd for fs::File {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
+        // SAFETY: Untriaged.
         unsafe { fs::File::from(OwnedFd::from_raw_fd(fd)) }
     }
 }
@@ -301,6 +302,7 @@ impl AsRawFd for io::PipeReader {
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for io::PipeReader {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         Self::from_inner(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
 }
@@ -325,6 +327,7 @@ impl AsRawFd for io::PipeWriter {
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for io::PipeWriter {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         Self::from_inner(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
 }

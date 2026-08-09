@@ -19,6 +19,7 @@ use crate::sys::c::{self, FLS_OUT_OF_INDEXES};
 pub type Key = u32;
 
 unsafe fn create(dtor: c::PFLS_CALLBACK_FUNCTION) -> Key {
+    // SAFETY: Untriaged.
     let key_result = unsafe { c::FlsAlloc(dtor) };
 
     if key_result == c::FLS_OUT_OF_INDEXES {
@@ -29,6 +30,7 @@ unsafe fn create(dtor: c::PFLS_CALLBACK_FUNCTION) -> Key {
 }
 
 unsafe fn set(key: Key, ptr: *const c_void) {
+    // SAFETY: Untriaged.
     let result = unsafe { c::FlsSetValue(key, ptr) };
 
     if result == c::FALSE {
@@ -37,6 +39,7 @@ unsafe fn set(key: Key, ptr: *const c_void) {
 }
 
 fn is_thread_a_fiber() -> bool {
+    // SAFETY: Untriaged.
     let res = unsafe { c::IsThreadAFiber() };
     res == c::TRUE
 }
@@ -136,6 +139,7 @@ pub fn enable() {
             current_key
         } else {
             // Otherwise, we try to allocate a key.
+            // SAFETY: Untriaged.
             let new_key = unsafe { create(Some(cleanup)) };
 
             // Now we need to set this key to be used by everyone else.
@@ -160,6 +164,7 @@ pub fn enable() {
                     // Miri has no DLL unloading so we can skip this step here.
                     if !cfg!(miri) {
                         if cleanup_is_unloadable() {
+                            // SAFETY: Untriaged.
                             let res = unsafe { c::atexit(free_fls_key_at_exit) };
                             if res != 0 {
                                 rtabort!("failed to register fls atexit hook");
@@ -170,6 +175,7 @@ pub fn enable() {
                     new_key
                 }
                 Err(other_key) => {
+                    // SAFETY: Untriaged.
                     unsafe { c::FlsFree(new_key) };
                     other_key
                 }
@@ -177,6 +183,7 @@ pub fn enable() {
         };
 
         // Setting the key's value to non-zero will cause the dtor callback to be called when the thread exits.
+        // SAFETY: Untriaged.
         unsafe { set(key, ptr::without_provenance(1)) };
     }
 }
@@ -197,6 +204,7 @@ fn cleanup_is_unloadable() -> bool {
     let cleanup_module = {
         let mut handle: c::HMODULE = ptr::null_mut();
 
+        // SAFETY: Untriaged.
         let res = unsafe {
             c::GetModuleHandleExW(
                 c::GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
@@ -214,6 +222,7 @@ fn cleanup_is_unloadable() -> bool {
     };
 
     // Get a handle to the file used to create the calling process (.exe file).
+    // SAFETY: Untriaged.
     let main_exe_module = unsafe { c::GetModuleHandleW(ptr::null()) };
 
     if main_exe_module.is_null() {
@@ -238,6 +247,7 @@ extern "C" fn free_fls_key_at_exit() {
         // `cleanup` is safe to run repeatedly: it only drains the current thread's TLS destructor list, and we check that we are not running in a fiber before doing so.
         // We only call this when no `enable` call is active, so it cannot race with `FlsSetValue` using this key.
         // Destructors of thread locals in other threads will not run and therefore leak, which is allowed since we are exiting or unloading.
+        // SAFETY: Untriaged.
         unsafe { c::FlsFree(current_key) };
     }
 }
@@ -256,6 +266,7 @@ unsafe extern "system" fn cleanup(_ptr: *const c_void) {
         return;
     }
 
+    // SAFETY: Untriaged.
     unsafe {
         #[cfg(target_thread_local)]
         super::super::destructors::run();

@@ -134,12 +134,14 @@ compat_fn_with_fallback! {
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
     pub fn SetThreadDescription(hthread: HANDLE, lpthreaddescription: PCWSTR) -> HRESULT {
+// SAFETY: Untriaged.
         unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL }
     }
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getthreaddescription
     pub fn GetThreadDescription(hthread: HANDLE, lpthreaddescription: *mut PWSTR) -> HRESULT {
+// SAFETY: Untriaged.
         unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL }
     }
 
@@ -147,12 +149,14 @@ compat_fn_with_fallback! {
     // https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
     #[cfg(target_vendor = "win7")]
     pub fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime: *mut FILETIME) -> () {
+// SAFETY: Untriaged.
         unsafe { GetSystemTimeAsFileTime(lpsystemtimeasfiletime) }
     }
 
     // >= Win11 / Server 2022
     // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppath2a
     pub fn GetTempPath2W(bufferlength: u32, buffer: PWSTR) -> u32 {
+// SAFETY: Untriaged.
         unsafe {  GetTempPathW(bufferlength, buffer) }
     }
 }

@@ -43,12 +43,15 @@ const CCP_WIN_A_TO_POSIX: libc::c_uint = 2;
 pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     run_path_with_cstr(path, &|path| {
         let conv = CCP_WIN_A_TO_POSIX;
+        // SAFETY: Untriaged.
         let size = cvt(unsafe { cygwin_conv_path(conv, path.as_ptr(), ptr::null_mut(), 0) })?;
         // If success, size should not be 0.
         debug_assert!(size >= 1);
         let size = size as usize;
         let mut buffer = Vec::with_capacity(size);
+        // SAFETY: Untriaged.
         cvt(unsafe { cygwin_conv_path(conv, path.as_ptr(), buffer.as_mut_ptr(), size) })?;
+        // SAFETY: Untriaged.
         unsafe {
             buffer.set_len(size - 1);
         }

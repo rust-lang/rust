@@ -66,6 +66,7 @@ const MAX_BUFFER_SIZE: usize = 8192;
 pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 
 pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
+    // SAFETY: Untriaged.
     let handle = unsafe { c::GetStdHandle(handle_id) };
     if handle == c::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
@@ -81,12 +82,14 @@ fn is_console(handle: c::HANDLE) -> bool {
     // mode). This will only detect Windows Console, not other terminals connected to a pipe like
     // MSYS. Which is exactly what we need, as only Windows Console needs a conversion to UTF-16.
     let mut mode = 0;
+    // SAFETY: Untriaged.
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
 }
 
 /// Returns true if the attached console's code page is currently UTF-8.
 #[cfg(not(target_vendor = "win7"))]
 fn is_utf8_console() -> bool {
+    // SAFETY: Untriaged.
     unsafe { c::GetConsoleOutputCP() == c::CP_UTF8 }
 }
 
@@ -105,6 +108,7 @@ fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> i
 
     let handle = get_handle(handle_id)?;
     if !is_console(handle) || is_utf8_console() {
+        // SAFETY: Untriaged.
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
@@ -193,6 +197,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
     let mut utf16 = [MaybeUninit::<u16>::uninit(); MAX_BUFFER_SIZE / 2];
     let utf8 = &utf8[..utf8.floor_char_boundary(utf16.len())];
 
+    // SAFETY: Untriaged.
     let utf16: &[u16] = unsafe {
         // Note that this theoretically checks validity twice in the (most common) case
         // where the underlying byte sequence is valid utf-8 (given the check in `write()`).
@@ -246,6 +251,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
 fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
     debug_assert!(data.len() < u32::MAX as usize);
     let mut written = 0;
+    // SAFETY: Untriaged.
     cvt(unsafe {
         c::WriteConsoleW(handle, data.as_ptr(), data.len() as u32, &mut written, ptr::null_mut())
     })?;
@@ -262,6 +268,7 @@ impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let handle = get_handle(c::STD_INPUT_HANDLE)?;
         if !is_console(handle) {
+            // SAFETY: Untriaged.
             unsafe {
                 let handle = Handle::from_raw_handle(handle);
                 let ret = handle.read(buf);
@@ -283,6 +290,7 @@ impl io::Read for Stdin {
             let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, 1, &mut self.surrogate)?;
             // Read bytes, using the (now-empty) self.incomplete_utf8 as extra space.
             let read_bytes = utf16_to_utf8(
+                // SAFETY: Untriaged.
                 unsafe { utf16_buf[..read].assume_init_ref() },
                 &mut self.incomplete_utf8.bytes,
             )?;
@@ -303,6 +311,7 @@ impl io::Read for Stdin {
                 read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;
             // Safety `read_u16s_fixup_surrogates` returns the number of items
             // initialized.
+            // SAFETY: Untriaged.
             let utf16s = unsafe { utf16_buf[..read].assume_init_ref() };
             match utf16_to_utf8(utf16s, buf) {
                 Ok(value) => return Ok(bytes_copied + value),
@@ -340,6 +349,7 @@ fn read_u16s_fixup_surrogates(
         // Safety: The returned `amount` is the number of values initialized,
         // and it is not 0, so we know that `buf[amount - 1]` have been
         // initialized.
+        // SAFETY: Untriaged.
         let last_char = unsafe { buf[amount - 1].assume_init() };
         if matches!(last_char, 0xD800..=0xDBFF) {
             // high surrogate
@@ -366,6 +376,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 
     let mut amount = 0;
     loop {
+        // SAFETY: Untriaged.
         cvt(unsafe {
             c::SetLastError(0);
             c::ReadConsoleW(
@@ -386,6 +397,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
     }
     // Safety: if `amount > 0`, then that many bytes were written, so
     // `buf[amount as usize - 1]` has been initialized.
+    // SAFETY: Untriaged.
     if amount > 0 && unsafe { buf[amount as usize - 1].assume_init() } == CTRL_Z {
         amount -= 1;
     }
@@ -400,6 +412,7 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
         return Ok(0);
     }
 
+    // SAFETY: Untriaged.
     let result = unsafe {
         c::WideCharToMultiByte(
             c::CP_UTF8,              // CodePage

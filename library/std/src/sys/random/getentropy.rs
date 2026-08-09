@@ -11,6 +11,7 @@ pub fn fill_bytes(bytes: &mut [u8]) {
     // GETENTROPY_MAX isn't defined yet on most platforms, but it's mandated
     // to be at least 256, so just use that as limit.
     for chunk in bytes.chunks_mut(256) {
+        // SAFETY: Untriaged.
         let r = unsafe { libc::getentropy(chunk.as_mut_ptr().cast(), chunk.len()) };
         assert_ne!(r, -1, "failed to generate random data");
     }

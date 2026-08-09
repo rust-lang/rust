@@ -94,11 +94,13 @@ impl Thread {
         unsafe extern "C" fn trampoline(exinf: isize) {
             let p_inner: *mut ThreadInner = crate::ptr::with_exposed_provenance_mut(exinf as usize);
             // Safety: `ThreadInner` is alive at this point
+            // SAFETY: Untriaged.
             let inner = unsafe { &*p_inner };
 
             // Safety: Since `trampoline` is called only once for each
             //         `ThreadInner` and only `trampoline` touches `init`,
             //         `init` contains contents and is safe to mutably borrow.
+            // SAFETY: Untriaged.
             let init = unsafe { ManuallyDrop::take(&mut *inner.init.get()) };
             let rust_start = init.init();
             rust_start();
@@ -106,11 +108,14 @@ impl Thread {
             // Fix the current thread's state just in case, so that the
             // destructors won't abort
             // Safety: Not really unsafe
+            // SAFETY: Untriaged.
             let _ = unsafe { abi::unl_cpu() };
+            // SAFETY: Untriaged.
             let _ = unsafe { abi::ena_dsp() };
 
             // Run TLS destructors now because they are not
             // called automatically for terminated tasks.
+            // SAFETY: Untriaged.
             unsafe { crate::sys::thread_local::destructors::run() };
 
             let old_lifecycle = inner
@@ -129,9 +134,11 @@ impl Thread {
                     // `LIFECYCLE_DETACHED` happens-before `Box::from_raw(
                     // p_inner)`.
                     // Safety: See above.
+                    // SAFETY: Untriaged.
                     let _ = unsafe { Box::from_raw(p_inner) };
 
                     // Safety: There are no pinned references to the stack
+                    // SAFETY: Untriaged.
                     unsafe { terminate_and_delete_current_task() };
                 }
                 LIFECYCLE_INIT => {
@@ -154,6 +161,7 @@ impl Thread {
                     // [JOINING → JOIN_FINALIZE]
                     // Wake up the parent task.
                     expect_success(
+                        // SAFETY: Untriaged.
                         unsafe {
                             let mut er = abi::wup_tsk(parent_tid as _);
                             if er == abi::E_QOVR {
@@ -171,6 +179,7 @@ impl Thread {
 
         let p_inner = Box::into_non_null(inner);
 
+        // SAFETY: Untriaged.
         let new_task = ItronError::err_if_negative(unsafe {
             abi::acre_tsk(&abi::T_CTSK {
                 // Activate this task immediately
@@ -192,6 +201,7 @@ impl Thread {
 
     pub fn join(self) {
         // Safety: `ThreadInner` is alive at this point
+        // SAFETY: Untriaged.
         let inner = unsafe { self.p_inner.as_ref() };
         // Get the current task ID. Panicking here would cause a resource leak,
         // so just abort on failure.
@@ -212,6 +222,7 @@ impl Thread {
                 // the child task's point of view, we must use the release
                 // ordering in the above `swap` call.
                 loop {
+                    // SAFETY: Untriaged.
                     expect_success_aborting(unsafe { abi::slp_tsk() }, &"slp_tsk");
                     // To synchronize with the child task's memory accesses to
                     // `inner` up to the point of the assignment of
@@ -230,6 +241,7 @@ impl Thread {
                 // `inner` up to the point of the assignment of `FINISHED`,
                 // `Ordering::Acquire` must be used for the above `swap` call.
             }
+            // SAFETY: Untriaged.
             _ => unsafe { hint::unreachable_unchecked() },
         }
 
@@ -238,10 +250,12 @@ impl Thread {
         //         method or `detach_inner` is called only once for each
         //         `Thread`). The task indicated that it's safe to delete by
         //         entering the `FINISHED` or `JOIN_FINALIZE` state.
+        // SAFETY: Untriaged.
         unsafe { terminate_and_delete_task(self.task) };
 
         // In either case, we are responsible for dropping `inner`.
         // Safety: The contents of `*p_inner` will not be accessed hereafter
+        // SAFETY: Untriaged.
         let _inner = unsafe { Box::from_raw(self.p_inner.as_ptr()) };
 
         // Skip the destructor (because it would attempt to detach the thread)
@@ -252,6 +266,7 @@ impl Thread {
 impl Drop for Thread {
     fn drop(&mut self) {
         // Safety: `ThreadInner` is alive at this point
+        // SAFETY: Untriaged.
         let inner = unsafe { self.p_inner.as_ref() };
 
         // Detach the thread.
@@ -277,12 +292,15 @@ impl Drop for Thread {
                 //         this method or `join_inner` is called only once for
                 //         each `Thread`). The task indicated that it's safe to
                 //         delete by entering the `FINISHED` state.
+                // SAFETY: Untriaged.
                 unsafe { terminate_and_delete_task(self.task) };
 
                 // Wwe are responsible for dropping `*p_inner`.
                 // Safety: The contents of `*p_inner` will not be accessed hereafter
+                // SAFETY: Untriaged.
                 let _ = unsafe { Box::from_raw(self.p_inner.as_ptr()) };
             }
+            // SAFETY: Untriaged.
             _ => unsafe { hint::unreachable_unchecked() },
         }
     }
@@ -304,6 +322,7 @@ impl Drop for Thread {
 unsafe fn terminate_and_delete_task(deleted_task: abi::ID) {
     // Terminate the task
     // Safety: Upheld by the caller
+    // SAFETY: Untriaged.
     match unsafe { abi::ter_tsk(deleted_task) } {
         // Indicates the task is already dormant, ignore it
         abi::E_OBJ => {}
@@ -314,6 +333,7 @@ unsafe fn terminate_and_delete_task(deleted_task: abi::ID) {
 
     // Delete the task
     // Safety: Upheld by the caller
+    // SAFETY: Untriaged.
     expect_success_aborting(unsafe { abi::del_tsk(deleted_task) }, &"del_tsk");
 }
 
@@ -329,17 +349,21 @@ unsafe fn terminate_and_delete_task(deleted_task: abi::ID) {
 /// The task must be safe to terminate. This is in general not true
 /// because there might be pinned references to the task's stack.
 unsafe fn terminate_and_delete_current_task() -> ! {
+    // SAFETY: Untriaged.
     expect_success_aborting(unsafe { abi::exd_tsk() }, &"exd_tsk");
     // Safety: `exd_tsk` never returns on success
+    // SAFETY: Untriaged.
     unsafe { crate::hint::unreachable_unchecked() };
 }
 
 pub fn yield_now() {
+    // SAFETY: Untriaged.
     expect_success(unsafe { abi::rot_rdq(abi::TPRI_SELF) }, &"rot_rdq");
 }
 
 pub fn sleep(dur: Duration) {
     for timeout in dur2reltims(dur) {
+        // SAFETY: Untriaged.
         expect_success(unsafe { abi::dly_tsk(timeout) }, &"dly_tsk");
     }
 }

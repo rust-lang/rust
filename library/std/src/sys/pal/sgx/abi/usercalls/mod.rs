@@ -17,6 +17,7 @@ use self::raw::*;
 /// `bufs`. To read to a single buffer, just pass a slice of length one.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    // SAFETY: Untriaged.
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
@@ -40,6 +41,7 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 /// more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
         let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;
@@ -52,6 +54,7 @@ pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
 /// Usercall `read_alloc`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn read_alloc(fd: Fd) -> io::Result<Vec<u8>> {
+    // SAFETY: Untriaged.
     unsafe {
         let userbuf = ByteBuffer { data: crate::ptr::null_mut(), len: 0 };
         let mut userbuf = alloc::User::new_from_enclave(&userbuf);
@@ -66,6 +69,7 @@ pub fn read_alloc(fd: Fd) -> io::Result<Vec<u8>> {
 /// `bufs`. To write from a single buffer, just pass a slice of length one.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    // SAFETY: Untriaged.
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
@@ -86,12 +90,14 @@ pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 /// Usercall `flush`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn flush(fd: Fd) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe { raw::flush(fd).from_sgx_result() }
 }
 
 /// Usercall `close`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn close(fd: Fd) {
+    // SAFETY: Untriaged.
     unsafe { raw::close(fd) }
 }
 
@@ -103,6 +109,7 @@ fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg:
 /// Usercall `bind_stream`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn bind_stream(addr: &str) -> io::Result<(Fd, String)> {
+    // SAFETY: Untriaged.
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
         let mut local = alloc::User::<ByteBuffer>::uninitialized();
@@ -116,6 +123,7 @@ pub fn bind_stream(addr: &str) -> io::Result<(Fd, String)> {
 /// Usercall `accept_stream`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn accept_stream(fd: Fd) -> io::Result<(Fd, String, String)> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
         let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
@@ -132,6 +140,7 @@ pub fn accept_stream(fd: Fd) -> io::Result<(Fd, String, String)> {
 /// Usercall `connect_stream`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn connect_stream(addr: &str) -> io::Result<(Fd, String, String)> {
+    // SAFETY: Untriaged.
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
@@ -161,6 +170,7 @@ pub unsafe fn launch_thread() -> io::Result<()> {
 /// Usercall `exit`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn exit(panic: bool) -> ! {
+    // SAFETY: Untriaged.
     unsafe { raw::exit(panic) }
 }
 
@@ -181,6 +191,7 @@ pub fn wait(event_mask: u64, mut timeout: u64) -> io::Result<u64> {
             timeout = timeout_signed.saturating_add(deviation) as _;
         }
     }
+    // SAFETY: Untriaged.
     unsafe { raw::wait(event_mask, timeout).from_sgx_result() }
 }
 
@@ -261,12 +272,14 @@ where
 /// Usercall `send`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn send(event_set: u64, tcs: Option<Tcs>) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe { raw::send(event_set, tcs).from_sgx_result() }
 }
 
 /// Usercall `insecure_time`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn insecure_time() -> Duration {
+    // SAFETY: Untriaged.
     let t = unsafe { raw::insecure_time().0 };
     Duration::new(t / 1_000_000_000, (t % 1_000_000_000) as _)
 }
@@ -274,6 +287,7 @@ pub fn insecure_time() -> Duration {
 /// Usercall `alloc`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn alloc(size: usize, alignment: usize) -> io::Result<*mut u8> {
+    // SAFETY: Untriaged.
     unsafe { raw::alloc(size, alignment).from_sgx_result() }
 }
 

@@ -26,6 +26,7 @@ pub macro thread_local_inner {
         // NOTE: this cannot import `LocalKey` or `Storage` with a `use` because that can shadow
         // user provided type or type alias with a matching name. Please update the shadowing test
         // in `tests/thread.rs` if these types are renamed.
+// SAFETY: Untriaged.
         unsafe {
             $crate::thread::LocalKey::new(|__rust_std_internal_init| {
                 static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::Storage<$t, {
@@ -107,10 +108,12 @@ impl<T: 'static, const ALIGN: usize> AlignedSystemBox<T, ALIGN> {
 
         // We use the System allocator here to avoid interfering with a potential
         // Global allocator using thread-local storage.
+        // SAFETY: Untriaged.
         let ptr: *mut Value<T> = (unsafe { System.alloc(layout) }).cast();
         let Some(ptr) = NonNull::new(ptr) else {
             alloc::handle_alloc_error(layout);
         };
+        // SAFETY: Untriaged.
         unsafe { ptr.write(v) };
         Self { ptr }
     }
@@ -123,6 +126,7 @@ impl<T: 'static, const ALIGN: usize> AlignedSystemBox<T, ALIGN> {
 
     #[inline]
     unsafe fn from_raw(ptr: *mut Value<T>) -> Self {
+        // SAFETY: Untriaged.
         Self { ptr: unsafe { NonNull::new_unchecked(ptr) } }
     }
 }
@@ -132,6 +136,7 @@ impl<T: 'static, const ALIGN: usize> Deref for AlignedSystemBox<T, ALIGN> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
+        // SAFETY: Untriaged.
         unsafe { &*(self.ptr.as_ptr()) }
     }
 }
@@ -141,6 +146,7 @@ impl<T: 'static, const ALIGN: usize> Drop for AlignedSystemBox<T, ALIGN> {
     fn drop(&mut self) {
         let layout = Layout::new::<Value<T>>().align_to(ALIGN).unwrap();
 
+        // SAFETY: Untriaged.
         unsafe {
             let unwind_result = catch_unwind(AssertUnwindSafe(|| self.ptr.drop_in_place()));
             System.dealloc(self.ptr.as_ptr().cast(), layout);
@@ -165,6 +171,7 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
     #[inline]
     pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let key = self.key.force();
+        // SAFETY: Untriaged.
         let ptr = unsafe { get(key) as *mut Value<T> };
         if ptr.addr() > 1 {
             // SAFETY: the check ensured the pointer is safe (its destructor
@@ -232,6 +239,7 @@ unsafe extern "C" fn destroy_value<T: 'static, const ALIGN: usize>(ptr: *mut u8)
     // Note that to prevent an infinite loop we reset it back to null right
     // before we return from the destructor ourselves.
     abort_on_dtor_unwind(|| {
+        // SAFETY: Untriaged.
         let ptr = unsafe { AlignedSystemBox::<T, ALIGN>::from_raw(ptr as *mut Value<T>) };
         let key = ptr.key;
         // SAFETY: `key` is the TLS key `ptr` was stored under.
@@ -264,10 +272,12 @@ impl LocalPointer {
     }
 
     pub fn get(&'static self) -> *mut () {
+        // SAFETY: Untriaged.
         unsafe { get(self.key.force()) as *mut () }
     }
 
     pub fn set(&'static self, p: *mut ()) {
+        // SAFETY: Untriaged.
         unsafe { set(self.key.force(), p as *mut u8) }
     }
 }

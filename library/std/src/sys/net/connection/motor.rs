@@ -30,6 +30,7 @@ impl TcpStream {
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         let addr = into_netc(&addr.to_socket_addrs()?.next().unwrap());
         moto_rt::net::tcp_connect(&addr, Duration::MAX, false)
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -37,6 +38,7 @@ impl TcpStream {
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         let addr = into_netc(addr);
         moto_rt::net::tcp_connect(&addr, timeout, false)
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -70,6 +72,7 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let bufs: &mut [&mut [u8]] = unsafe { core::mem::transmute(bufs) };
         moto_rt::fs::read_vectored(self.inner.as_raw_fd(), bufs).map_err(map_motor_error)
     }
@@ -83,6 +86,7 @@ impl TcpStream {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let bufs: &[&[u8]] = unsafe { core::mem::transmute(bufs) };
         moto_rt::fs::write_vectored(self.inner.as_raw_fd(), bufs).map_err(map_motor_error)
     }
@@ -115,6 +119,7 @@ impl TcpStream {
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
         moto_rt::fs::duplicate(self.inner.as_raw_fd())
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -180,6 +185,7 @@ impl TcpListener {
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
         let addr = into_netc(&addr.to_socket_addrs()?.next().unwrap());
         moto_rt::net::bind(moto_rt::net::PROTO_TCP, &addr)
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -193,6 +199,7 @@ impl TcpListener {
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         moto_rt::net::accept(self.inner.as_raw_fd())
             .map(|(fd, addr)| {
+                // SAFETY: Untriaged.
                 (TcpStream { inner: unsafe { Socket::from_raw_fd(fd) } }, from_netc(&addr))
             })
             .map_err(map_motor_error)
@@ -200,6 +207,7 @@ impl TcpListener {
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         moto_rt::fs::duplicate(self.inner.as_raw_fd())
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -248,6 +256,7 @@ impl UdpSocket {
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         let addr = into_netc(&addr.to_socket_addrs()?.next().unwrap());
         moto_rt::net::bind(moto_rt::net::PROTO_UDP, &addr)
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -283,6 +292,7 @@ impl UdpSocket {
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
         moto_rt::fs::duplicate(self.inner.as_raw_fd())
+            // SAFETY: Untriaged.
             .map(|fd| Self { inner: unsafe { Socket::from_raw_fd(fd) } })
             .map_err(map_motor_error)
     }
@@ -453,7 +463,9 @@ fn from_netc(addr: &netc::sockaddr) -> SocketAddr {
     // SAFETY: all variants of union netc::sockaddr have `sin_family` at the same offset.
     let family = unsafe { addr.v4.sin_family };
     match family {
+        // SAFETY: Untriaged.
         netc::AF_INET => SocketAddr::V4(crate::net::SocketAddrV4::from(unsafe { addr.v4 })),
+        // SAFETY: Untriaged.
         netc::AF_INET6 => SocketAddr::V6(crate::net::SocketAddrV6::from(unsafe { addr.v6 })),
         _ => panic!("bad sin_family {family}"),
     }

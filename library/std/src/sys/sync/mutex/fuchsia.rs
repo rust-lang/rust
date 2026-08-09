@@ -93,6 +93,7 @@ impl Mutex {
         if let Err(state) =
             self.futex.compare_exchange(UNLOCKED, to_state(thread_self), Acquire, Relaxed)
         {
+            // SAFETY: Untriaged.
             unsafe {
                 self.lock_contested(state, thread_self);
             }
@@ -111,6 +112,7 @@ impl Mutex {
                 || self.futex.compare_exchange(state, contested, Relaxed, Relaxed).is_ok()
             {
                 // The mutex has been marked as contested, wait for the state to change.
+                // SAFETY: Untriaged.
                 unsafe {
                     match zx_futex_wait(
                         &self.futex,
@@ -155,6 +157,7 @@ impl Mutex {
 
     #[cold]
     fn wake(&self) {
+        // SAFETY: Untriaged.
         unsafe {
             zx_futex_wake_single_owner(&self.futex);
         }

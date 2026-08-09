@@ -19,6 +19,7 @@ pub macro thread_local_inner {
         const __RUST_STD_INTERNAL_INIT: $t = $init;
 
         // NOTE: Please update the shadowing test in `tests/thread.rs` if these types are renamed.
+// SAFETY: Untriaged.
         unsafe {
             $crate::thread::LocalKey::new(|_| {
                 $(#[$align_attr])*
@@ -34,6 +35,7 @@ pub macro thread_local_inner {
         #[inline]
         fn __rust_std_internal_init_fn() -> $t { $init }
 
+// SAFETY: Untriaged.
         unsafe {
             $crate::thread::LocalKey::new(|__rust_std_internal_init| {
                 $(#[$align_attr])*
@@ -99,6 +101,7 @@ impl<T> LazyStorage<T> {
         if self.state.get() == State::Alive {
             self.state.set(State::Destroying);
             // Safety: we check for no initialization during drop below
+            // SAFETY: Untriaged.
             unsafe {
                 ptr::drop_in_place(self.value.get() as *mut T);
             }
@@ -110,6 +113,7 @@ impl<T> LazyStorage<T> {
             panic!("Attempted to initialize thread-local while it is being dropped");
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             self.value.get().write(MaybeUninit::new(value));
         }

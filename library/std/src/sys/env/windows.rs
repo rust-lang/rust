@@ -33,6 +33,7 @@ impl Iterator for EnvIterator {
     fn next(&mut self) -> Option<(OsString, OsString)> {
         let Self(cur) = self;
         loop {
+            // SAFETY: Untriaged.
             unsafe {
                 if **cur == 0 {
                     return None;
@@ -65,6 +66,7 @@ impl Iterator for EnvIterator {
 
 impl Drop for Env {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             c::FreeEnvironmentStringsW(self.base);
         }
@@ -72,6 +74,7 @@ impl Drop for Env {
 }
 
 pub fn env() -> Env {
+    // SAFETY: Untriaged.
     unsafe {
         let ch = c::GetEnvironmentStringsW();
         if ch.is_null() {
@@ -84,6 +87,7 @@ pub fn env() -> Env {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     let k = to_u16s(k).ok()?;
     fill_utf16_buf(
+        // SAFETY: Untriaged.
         |buf, sz| unsafe { c::GetEnvironmentVariableW(k.as_ptr(), buf, sz) },
         OsStringExt::from_wide,
     )

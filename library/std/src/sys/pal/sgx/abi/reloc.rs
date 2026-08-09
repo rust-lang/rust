@@ -16,10 +16,12 @@ pub fn relocate_elf_rela() {
         static RELACOUNT: usize;
     }
 
+    // SAFETY: Untriaged.
     if unsafe { RELACOUNT } == 0 {
         return;
     } // unsafe ok: link-time constant
 
+    // SAFETY: Untriaged.
     let relas = unsafe {
         from_raw_parts::<Rela<u64>>(mem::rel_ptr(RELA), RELACOUNT) // unsafe ok: link-time constant
     };
@@ -27,6 +29,7 @@ pub fn relocate_elf_rela() {
         if rela.info != (/*0 << 32 |*/R_X86_64_RELATIVE as u64) {
             rtabort!("Invalid relocation");
         }
+        // SAFETY: Untriaged.
         unsafe { *mem::rel_ptr_mut::<*const ()>(rela.offset) = mem::rel_ptr(rela.addend) };
     }
 }

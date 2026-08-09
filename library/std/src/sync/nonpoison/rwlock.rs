@@ -320,6 +320,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
     pub fn read(&self) -> RwLockReadGuard<'_, T> {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.read();
             RwLockReadGuard::new(self)
@@ -359,6 +360,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe {
             if self.inner.try_read() { Ok(RwLockReadGuard::new(self)) } else { Err(WouldBlock) }
         }
@@ -394,6 +396,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
     pub fn write(&self) -> RwLockWriteGuard<'_, T> {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.write();
             RwLockWriteGuard::new(self)
@@ -435,6 +438,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe {
             if self.inner.try_write() { Ok(RwLockWriteGuard::new(self)) } else { Err(WouldBlock) }
         }
@@ -605,6 +609,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> RwLockReadGuard<'rwlock, T> {
         RwLockReadGuard {
+            // SAFETY: Untriaged.
             data: unsafe { NonNull::new_unchecked(lock.data.get()) },
             inner_lock: &lock.inner,
         }

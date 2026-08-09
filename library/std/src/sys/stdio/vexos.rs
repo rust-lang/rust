@@ -17,6 +17,7 @@ impl io::Read for Stdin {
         let mut count = 0;
 
         for out_byte in buf.iter_mut() {
+            // SAFETY: Untriaged.
             let byte = unsafe { vex_sdk::vexSerialReadChar(STDIO_CHANNEL) };
             if byte < 0 {
                 break;
@@ -48,10 +49,12 @@ impl io::Write for Stdout {
         // recursive panic when using macros such as `print!` to write large amounts of data
         // (buf.len() > 2048) to stdout at once.
         for chunk in buf.chunks(STDOUT_BUF_SIZE) {
+            // SAFETY: Untriaged.
             if unsafe { vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize } < chunk.len() {
                 self.flush().unwrap();
             }
 
+            // SAFETY: Untriaged.
             let count: usize = unsafe {
                 vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, chunk.as_ptr(), chunk.len() as u32)
             }
@@ -78,6 +81,7 @@ impl io::Write for Stdout {
 
     fn flush(&mut self) -> io::Result<()> {
         // This may block for up to a millisecond.
+        // SAFETY: Untriaged.
         unsafe {
             while (vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize) != STDOUT_BUF_SIZE {
                 vex_sdk::vexTasksRun();

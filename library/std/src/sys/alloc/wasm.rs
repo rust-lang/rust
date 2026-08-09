@@ -31,6 +31,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
     // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
     let _lock = lock::lock();
+    // SAFETY: Untriaged.
     unsafe { (*DLMALLOC.get()).0.malloc(layout.size(), layout.align()) }
 }
 
@@ -39,6 +40,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
     // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
     let _lock = lock::lock();
+    // SAFETY: Untriaged.
     unsafe { (*DLMALLOC.get()).0.calloc(layout.size(), layout.align()) }
 }
 
@@ -47,6 +49,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
     // Calling free() is safe because preconditions on this function match the trait method preconditions.
     let _lock = lock::lock();
+    // SAFETY: Untriaged.
     unsafe { (*DLMALLOC.get()).0.free(ptr, layout.size(), layout.align()) }
 }
 
@@ -55,6 +58,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
     // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
     // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
     let _lock = lock::lock();
+    // SAFETY: Untriaged.
     unsafe { (*DLMALLOC.get()).0.realloc(ptr, layout.size(), layout.align(), new_size) }
 }
 

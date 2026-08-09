@@ -25,10 +25,12 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
             helpers::image_handle_protocol::<loaded_image::Protocol>(loaded_image::PROTOCOL_GUID)
                 .unwrap();
         // Gives allocations the memory type that the data sections were loaded as.
+        // SAFETY: Untriaged.
         unsafe { (*protocol.as_ptr()).image_data_type }
     });
 
     // The caller must ensure non-0 layout
+    // SAFETY: Untriaged.
     unsafe { r_efi_alloc::raw::alloc(system_table, layout, *mem_type) }
 }
 
@@ -41,6 +43,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     // If boot services is valid then SystemTable is not null.
     let system_table = crate::os::uefi::env::system_table().as_ptr().cast();
     // The caller must ensure non-0 layout
+    // SAFETY: Untriaged.
     unsafe { r_efi_alloc::raw::dealloc(system_table, ptr, layout) }
 }
 

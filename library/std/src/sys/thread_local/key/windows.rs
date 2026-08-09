@@ -67,6 +67,7 @@ impl LazyKey {
         }
 
         match self.key.load(Acquire) {
+            // SAFETY: Untriaged.
             0 => unsafe { self.init() },
             key => key - 1,
         }
@@ -76,6 +77,7 @@ impl LazyKey {
     unsafe fn init(&'static self) -> Key {
         if self.dtor.is_some() {
             let mut pending = c::FALSE;
+            // SAFETY: Untriaged.
             let r = unsafe {
                 c::InitOnceBeginInitialize(self.once.get(), 0, &mut pending, ptr::null_mut())
             };
@@ -85,6 +87,7 @@ impl LazyKey {
                 // Some other thread initialized the key, load it.
                 self.key.load(Relaxed) - 1
             } else {
+                // SAFETY: Untriaged.
                 let key = unsafe { c::TlsAlloc() };
                 if key == c::TLS_OUT_OF_INDEXES {
                     // Since we abort the process, there is no need to wake up
@@ -93,6 +96,7 @@ impl LazyKey {
                     rtabort!("out of TLS indexes");
                 }
 
+                // SAFETY: Untriaged.
                 unsafe {
                     // Add ourselves to the `DTORS` list, so that when `run_dtors` gets called,
                     // our dtor is invoked.
@@ -106,6 +110,7 @@ impl LazyKey {
                 // must happen-after the register_dtor above, to ensure the dtor actually runs!
                 self.key.store(key + 1, Release);
 
+                // SAFETY: Untriaged.
                 let r = unsafe { c::InitOnceComplete(self.once.get(), 0, ptr::null_mut()) };
                 debug_assert_eq!(r, c::TRUE);
 
@@ -114,6 +119,7 @@ impl LazyKey {
         } else {
             // If there is no destructor to clean up, we can use racy initialization.
 
+            // SAFETY: Untriaged.
             let key = unsafe { c::TlsAlloc() };
             if key == c::TLS_OUT_OF_INDEXES {
                 rtabort!("out of TLS indexes");
@@ -121,6 +127,7 @@ impl LazyKey {
 
             match self.key.compare_exchange(0, key + 1, AcqRel, Acquire) {
                 Ok(_) => key,
+                // SAFETY: Untriaged.
                 Err(new) => unsafe {
                     // Some other thread completed initialization first, so destroy
                     // our key and use theirs.
@@ -138,12 +145,14 @@ unsafe impl Sync for LazyKey {}
 
 #[inline]
 pub unsafe fn set(key: Key, val: *mut u8) {
+    // SAFETY: Untriaged.
     let r = unsafe { c::TlsSetValue(key, val.cast()) };
     debug_assert_eq!(r, c::TRUE);
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
+    // SAFETY: Untriaged.
     unsafe { c::TlsGetValue(key).cast() }
 }
 
@@ -173,8 +182,11 @@ pub unsafe fn run_dtors() {
         // Use acquire ordering to observe key initialization.
         let mut cur = DTORS.load(Acquire);
         while !cur.is_null() {
+            // SAFETY: Untriaged.
             let pre_key = unsafe { (*cur).key.load(Acquire) };
+            // SAFETY: Untriaged.
             let dtor = unsafe { (*cur).dtor.unwrap() };
+            // SAFETY: Untriaged.
             cur = unsafe { (*cur).next.load(Relaxed) };
 
             // In LazyKey::init, we register the dtor before setting `key`.
@@ -190,8 +202,10 @@ pub unsafe fn run_dtors() {
             // sorry.)
             let key = pre_key - 1;
 
+            // SAFETY: Untriaged.
             let ptr = unsafe { c::TlsGetValue(key) };
             if !ptr.is_null() {
+                // SAFETY: Untriaged.
                 unsafe {
                     c::TlsSetValue(key, ptr::null_mut());
                     dtor(ptr as *mut _);

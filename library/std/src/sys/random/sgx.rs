@@ -7,6 +7,7 @@ fn fail() -> ! {
 }
 
 fn rdrand64() -> u64 {
+    // SAFETY: Untriaged.
     unsafe {
         let mut ret: u64 = 0;
         for _ in 0..RETRIES {
@@ -20,6 +21,7 @@ fn rdrand64() -> u64 {
 }
 
 fn rdrand32() -> u32 {
+    // SAFETY: Untriaged.
     unsafe {
         let mut ret: u32 = 0;
         for _ in 0..RETRIES {
@@ -33,6 +35,7 @@ fn rdrand32() -> u32 {
 }
 
 fn rdrand16() -> u16 {
+    // SAFETY: Untriaged.
     unsafe {
         let mut ret: u16 = 0;
         for _ in 0..RETRIES {

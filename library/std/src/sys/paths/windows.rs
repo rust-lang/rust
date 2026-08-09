@@ -96,10 +96,12 @@ impl fmt::Display for JoinPathsError {
 impl crate::error::Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
+    // SAFETY: Untriaged.
     fill_utf16_buf(|buf, sz| unsafe { c::GetModuleFileNameW(ptr::null_mut(), buf, sz) }, os2path)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
+    // SAFETY: Untriaged.
     fill_utf16_buf(|buf, sz| unsafe { c::GetCurrentDirectoryW(sz, buf) }, os2path)
 }
 
@@ -108,15 +110,18 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let mut p = p.encode_wide().collect::<Vec<_>>();
     p.push(0);
 
+    // SAFETY: Untriaged.
     cvt(unsafe { c::SetCurrentDirectoryW(p.as_ptr()) }).map(drop)
 }
 
 pub fn temp_dir() -> PathBuf {
+    // SAFETY: Untriaged.
     fill_utf16_buf(|buf, sz| unsafe { c::GetTempPath2W(sz, buf) }, os2path).unwrap()
 }
 
 #[cfg(all(not(target_vendor = "uwp"), not(target_vendor = "win7")))]
 fn home_dir_crt() -> Option<PathBuf> {
+    // SAFETY: Untriaged.
     unsafe {
         // Defined in processthreadsapi.h.
         const CURRENT_PROCESS_TOKEN: usize = -4_isize as usize;
@@ -143,6 +148,7 @@ fn home_dir_crt() -> Option<PathBuf> {
 
 #[cfg(target_vendor = "win7")]
 fn home_dir_crt() -> Option<PathBuf> {
+    // SAFETY: Untriaged.
     unsafe {
         use crate::sys::handle::Handle;
 

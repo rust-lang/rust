@@ -406,6 +406,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.read();
             RwLockReadGuard::new(self)
@@ -453,6 +454,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe {
             if self.inner.try_read() {
                 Ok(RwLockReadGuard::new(self)?)
@@ -499,6 +501,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.write();
             RwLockWriteGuard::new(self)
@@ -547,6 +550,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe {
             if self.inner.try_write() {
                 Ok(RwLockWriteGuard::new(self)?)
@@ -739,6 +743,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard {
+            // SAFETY: Untriaged.
             data: unsafe { NonNull::new_unchecked(lock.data.get()) },
             inner_lock: &lock.inner,
         })

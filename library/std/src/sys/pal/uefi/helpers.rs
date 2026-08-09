@@ -47,6 +47,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         buf_size: &mut usize,
         buf: *mut r_efi::efi::Handle,
     ) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let r = unsafe {
             ((*boot_services.as_ptr()).locate_handle)(
                 r_efi::efi::BY_PROTOCOL,
@@ -81,6 +82,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         Ok(()) => {
             // This is safe because the call will succeed only if buf_len >= required length.
             // Also, on success, the `buf_len` is updated with the size of bufferv (in bytes) written
+            // SAFETY: Untriaged.
             unsafe { buf.set_len(num_of_handles) };
             Ok(buf.into_iter().filter_map(|x| NonNull::new(x)).collect())
         }
@@ -105,6 +107,7 @@ pub(crate) fn open_protocol<T>(
     let system_handle = uefi::env::image_handle();
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
+    // SAFETY: Untriaged.
     let r = unsafe {
         ((*boot_services.as_ptr()).open_protocol)(
             handle.as_ptr(),
@@ -119,6 +122,7 @@ pub(crate) fn open_protocol<T>(
     if r.is_error() {
         Err(crate::io::Error::from_raw_os_error(r.as_usize()))
     } else {
+        // SAFETY: Untriaged.
         NonNull::new(unsafe { protocol.assume_init() })
             .ok_or(const_error!(io::ErrorKind::Other, "null protocol"))
     }
@@ -138,6 +142,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         protocol: NonNull<device_path_to_text::Protocol>,
         path: NonNull<device_path::Protocol>,
     ) -> io::Result<OsString> {
+        // SAFETY: Untriaged.
         let path_ptr: *mut r_efi::efi::Char16 = unsafe {
             ((*protocol.as_ptr()).convert_device_path_to_text)(
                 path.as_ptr(),
@@ -153,6 +158,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+            // SAFETY: Untriaged.
             unsafe {
                 ((*boot_services.as_ptr()).free_pool)(path_ptr.cast());
             }
@@ -192,6 +198,7 @@ fn device_node_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsStr
         protocol: NonNull<device_path_to_text::Protocol>,
         path: NonNull<device_path::Protocol>,
     ) -> io::Result<OsString> {
+        // SAFETY: Untriaged.
         let path_ptr: *mut r_efi::efi::Char16 = unsafe {
             ((*protocol.as_ptr()).convert_device_node_to_text)(
                 path.as_ptr(),
@@ -207,6 +214,7 @@ fn device_node_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsStr
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+            // SAFETY: Untriaged.
             unsafe {
                 ((*boot_services.as_ptr()).free_pool)(path_ptr.cast());
             }
@@ -245,6 +253,7 @@ fn device_node_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsStr
 pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>> {
     let system_table: NonNull<r_efi::efi::SystemTable> =
         crate::os::uefi::env::try_system_table()?.cast();
+    // SAFETY: Untriaged.
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
     NonNull::new(runtime_services)
 }
@@ -266,6 +275,7 @@ impl OwnedDevicePath {
             }
 
             let path =
+// SAFETY: Untriaged.
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
             NonNull::new(path)
@@ -315,6 +325,7 @@ impl Drop for OwnedDevicePath {
     fn drop(&mut self) {
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
+            // SAFETY: Untriaged.
             unsafe {
                 ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
             }
@@ -373,6 +384,7 @@ impl<'a> Iterator for DevicePathIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let cur_node = self.0?;
 
+        // SAFETY: Untriaged.
         let next_node = unsafe { cur_node.next_node() };
         self.0 = if next_node.is_end() { None } else { Some(next_node) };
 
@@ -392,15 +404,18 @@ impl<'a> DevicePathNode<'a> {
     }
 
     pub(crate) const fn length(&self) -> u16 {
+        // SAFETY: Untriaged.
         let len = unsafe { (*self.protocol.as_ptr()).length };
         u16::from_le_bytes(len)
     }
 
     pub(crate) const fn node_type(&self) -> u8 {
+        // SAFETY: Untriaged.
         unsafe { (*self.protocol.as_ptr()).r#type }
     }
 
     pub(crate) const fn sub_type(&self) -> u8 {
+        // SAFETY: Untriaged.
         unsafe { (*self.protocol.as_ptr()).sub_type }
     }
 
@@ -410,7 +425,9 @@ impl<'a> DevicePathNode<'a> {
         // Some nodes do not have any special data
         if length > 4 {
             let raw_ptr: *const u8 = self.protocol.as_ptr().cast();
+            // SAFETY: Untriaged.
             let data = unsafe { raw_ptr.add(4) };
+            // SAFETY: Untriaged.
             unsafe { crate::slice::from_raw_parts(data, length - 4) }
         } else {
             &[]
@@ -428,6 +445,7 @@ impl<'a> DevicePathNode<'a> {
     }
 
     pub(crate) unsafe fn next_node(&self) -> Self {
+        // SAFETY: Untriaged.
         let node = unsafe {
             self.protocol
                 .cast::<u8>()
@@ -494,8 +512,10 @@ impl<T> OwnedProtocol<T> {
 
         // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
         let func: BootInstallMultipleProtocolInterfaces =
+// SAFETY: Untriaged.
             unsafe { crate::mem::transmute((*bt.as_ptr()).install_multiple_protocol_interfaces) };
 
+        // SAFETY: Untriaged.
         let r = unsafe {
             func(
                 &mut handle,
@@ -506,6 +526,7 @@ impl<T> OwnedProtocol<T> {
         };
 
         if r.is_error() {
+            // SAFETY: Untriaged.
             drop(unsafe { Box::from_raw(protocol) });
             return Err(crate::io::Error::from_raw_os_error(r.as_usize()));
         };
@@ -527,9 +548,11 @@ impl<T> Drop for OwnedProtocol<T> {
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
             // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
+            // SAFETY: Untriaged.
             let func: BootUninstallMultipleProtocolInterfaces = unsafe {
                 crate::mem::transmute((*bt.as_ptr()).uninstall_multiple_protocol_interfaces)
             };
+            // SAFETY: Untriaged.
             let status = unsafe {
                 func(
                     self.handle.as_ptr(),
@@ -541,6 +564,7 @@ impl<T> Drop for OwnedProtocol<T> {
 
             // Leak the protocol in case uninstall fails
             if status == r_efi::efi::Status::SUCCESS {
+                // SAFETY: Untriaged.
                 let _ = unsafe { Box::from_raw(self.protocol) };
             }
         }
@@ -549,6 +573,7 @@ impl<T> Drop for OwnedProtocol<T> {
 
 impl<T> AsRef<T> for OwnedProtocol<T> {
     fn as_ref(&self) -> &T {
+        // SAFETY: Untriaged.
         unsafe { self.protocol.as_ref().unwrap() }
     }
 }
@@ -562,6 +587,7 @@ impl<T> OwnedTable<T> {
     pub(crate) fn from_table_header(hdr: &r_efi::efi::TableHeader) -> Self {
         let header_size = hdr.header_size as usize;
         let layout = crate::alloc::Layout::from_size_align(header_size, 8).unwrap();
+        // SAFETY: Untriaged.
         let ptr = unsafe { crate::alloc::alloc(layout) as *mut T };
         Self { layout, ptr }
     }
@@ -577,9 +603,11 @@ impl<T> OwnedTable<T> {
 
 impl OwnedTable<r_efi::efi::SystemTable> {
     pub(crate) fn from_table(tbl: *const r_efi::efi::SystemTable) -> Self {
+        // SAFETY: Untriaged.
         let hdr = unsafe { (*tbl).hdr };
 
         let owned_tbl = Self::from_table_header(&hdr);
+        // SAFETY: Untriaged.
         unsafe {
             crate::ptr::copy_nonoverlapping(
                 tbl as *const u8,
@@ -594,13 +622,16 @@ impl OwnedTable<r_efi::efi::SystemTable> {
 
 impl<T> Drop for OwnedTable<T> {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { crate::alloc::dealloc(self.ptr as *mut u8, self.layout) };
     }
 }
 
 /// Create OsString from a pointer to NULL terminated UTF-16 string
 pub(crate) fn os_string_from_raw(ptr: *mut r_efi::efi::Char16) -> Option<OsString> {
+    // SAFETY: Untriaged.
     let path_len = unsafe { WStrUnits::new(ptr)?.count() };
+    // SAFETY: Untriaged.
     Some(OsString::from_wide(unsafe { slice::from_raw_parts(ptr.cast(), path_len) }))
 }
 
@@ -642,6 +673,7 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
 
     // The Device Path Protocol pointer returned by UEFI shell is owned by the shell and is not
     // freed throughout it's lifetime. So it has a 'static lifetime.
+    // SAFETY: Untriaged.
     let protocol = unsafe { ((*shell.as_ptr()).get_device_path_from_map)(path.as_mut_ptr()) };
     let protocol = NonNull::new(protocol)
         .ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell mapping not found"))?;
@@ -672,6 +704,7 @@ impl ServiceProtocol {
 
         for handle in handles {
             if let Ok(protocol) = open_protocol::<service_binding::Protocol>(handle, service_guid) {
+                // SAFETY: Untriaged.
                 if let Ok(child_handle) = unsafe { Self::create_child(protocol) } {
                     return Ok((Self { service_guid, handle }, child_handle));
                 }
@@ -705,6 +738,7 @@ impl ServiceProtocol {
     ) -> io::Result<()> {
         let sbp = open_protocol::<service_binding::Protocol>(self.handle, self.service_guid)?;
 
+        // SAFETY: Untriaged.
         let r = unsafe { ((*sbp.as_ptr()).destroy_child)(sbp.as_ptr(), handle.as_ptr()) };
         if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
@@ -725,6 +759,7 @@ impl OwnedEvent {
         let mut event: r_efi::efi::Event = crate::ptr::null_mut();
         let context = context.map(NonNull::as_ptr).unwrap_or(crate::ptr::null_mut());
 
+        // SAFETY: Untriaged.
         let r = unsafe {
             let create_event = (*boot_services.as_ptr()).create_event;
             (create_event)(signal, tpl, handler, context, &mut event)
@@ -751,6 +786,7 @@ impl OwnedEvent {
 
     /// SAFETY: Assumes that ptr is a non-null valid UEFI event
     pub(crate) unsafe fn from_raw(ptr: *mut crate::ffi::c_void) -> Self {
+        // SAFETY: Untriaged.
         Self(unsafe { NonNull::new_unchecked(ptr) })
     }
 }
@@ -759,6 +795,7 @@ impl Drop for OwnedEvent {
     fn drop(&mut self) {
         if let Some(boot_services) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+            // SAFETY: Untriaged.
             unsafe {
                 let close_event = (*bt.as_ptr()).close_event;
                 (close_event)(self.0.as_ptr())
@@ -787,6 +824,7 @@ impl<T> UefiBox<T> {
         assert!(len >= size_of::<T>());
         // UEFI always expects types to be 8 byte aligned.
         let layout = Layout::from_size_align(len, 8).unwrap();
+        // SAFETY: Untriaged.
         let ptr = unsafe { crate::alloc::alloc(layout) };
 
         match NonNull::new(ptr.cast()) {
@@ -796,6 +834,7 @@ impl<T> UefiBox<T> {
     }
 
     pub(crate) fn write(&mut self, data: T) {
+        // SAFETY: Untriaged.
         unsafe { self.inner.write(data) }
     }
 
@@ -815,16 +854,19 @@ impl<T> UefiBox<T> {
 impl<T> Drop for UefiBox<T> {
     fn drop(&mut self) {
         let layout = Layout::from_size_align(self.size, 8).unwrap();
+        // SAFETY: Untriaged.
         unsafe { crate::alloc::dealloc(self.inner.as_ptr().cast(), layout) };
     }
 }
 
 impl UefiBox<file::Info> {
     fn size(&self) -> u64 {
+        // SAFETY: Untriaged.
         unsafe { (*self.as_ptr()).size }
     }
 
     fn set_size(&mut self, s: u64) {
+        // SAFETY: Untriaged.
         unsafe { (*self.as_mut_ptr()).size = s }
     }
 
@@ -834,12 +876,14 @@ impl UefiBox<file::Info> {
     }
 
     pub(crate) fn file_name(&self) -> &[u16] {
+        // SAFETY: Untriaged.
         unsafe {
             crate::slice::from_raw_parts((*self.as_ptr()).file_name.as_ptr(), self.file_name_len())
         }
     }
 
     fn file_name_mut(&mut self) -> &mut [u16] {
+        // SAFETY: Untriaged.
         unsafe {
             crate::slice::from_raw_parts_mut(
                 (*self.as_mut_ptr()).file_name.as_mut_ptr(),
@@ -864,6 +908,7 @@ impl UefiBox<file::Info> {
 
         let mut new_box = UefiBox::new(new_size)?;
 
+        // SAFETY: Untriaged.
         unsafe {
             crate::ptr::copy_nonoverlapping(self.as_ptr(), new_box.as_mut_ptr(), 1);
         }

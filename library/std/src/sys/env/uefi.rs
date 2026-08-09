@@ -29,6 +29,7 @@ mod uefi_env {
     pub(crate) fn get(key: &OsStr) -> Option<OsString> {
         let shell = helpers::open_shell()?;
         let mut key_ptr = helpers::os_string_to_raw(key)?;
+        // SAFETY: Untriaged.
         unsafe { get_raw(shell, key_ptr.as_mut_ptr()) }
     }
 
@@ -37,12 +38,14 @@ mod uefi_env {
             .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "invalid key"))?;
         let mut val_ptr = helpers::os_string_to_raw(val)
             .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "invalid value"))?;
+        // SAFETY: Untriaged.
         unsafe { set_raw(key_ptr.as_mut_ptr(), val_ptr.as_mut_ptr()) }
     }
 
     pub(crate) fn unset(key: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
             .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "invalid key"))?;
+        // SAFETY: Untriaged.
         let r = unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) };
 
         // The UEFI Shell spec only lists `EFI_SUCCESS` as a possible return value for
@@ -63,6 +66,7 @@ mod uefi_env {
         let shell = helpers::open_shell().ok_or(unsupported_err())?;
 
         let mut vars = Vec::new();
+        // SAFETY: Untriaged.
         let val = unsafe { ((*shell.as_ptr()).get_env)(crate::ptr::null_mut()) };
 
         if val.is_null() {
@@ -74,12 +78,14 @@ mod uefi_env {
         // UEFI Shell returns all keys separated by NULL.
         // End of string is denoted by two NULLs
         for i in 0.. {
+            // SAFETY: Untriaged.
             if unsafe { *val.add(i) } == 0 {
                 // Two NULL signal end of string
                 if i == start {
                     break;
                 }
 
+                // SAFETY: Untriaged.
                 let key = OsString::from_wide(unsafe {
                     crate::slice::from_raw_parts(val.add(start), i - start)
                 });
@@ -99,6 +105,7 @@ mod uefi_env {
         shell: NonNull<r_efi::efi::protocols::shell::Protocol>,
         key_ptr: *mut r_efi::efi::Char16,
     ) -> Option<OsString> {
+        // SAFETY: Untriaged.
         let val = unsafe { ((*shell.as_ptr()).get_env)(key_ptr) };
         helpers::os_string_from_raw(val)
     }
@@ -109,6 +116,7 @@ mod uefi_env {
     ) -> io::Result<()> {
         let shell = helpers::open_shell().ok_or(unsupported_err())?;
         let volatile = r_efi::efi::Boolean::TRUE;
+        // SAFETY: Untriaged.
         let r = unsafe { ((*shell.as_ptr()).set_env)(key_ptr, val_ptr, volatile) };
         if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }

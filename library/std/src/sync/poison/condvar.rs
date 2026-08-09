@@ -123,6 +123,7 @@ impl Condvar {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> LockResult<MutexGuard<'a, T>> {
+        // SAFETY: Untriaged.
         let poisoned = unsafe {
             let lock = mutex::guard_lock(&guard);
             self.inner.wait(lock);
@@ -325,6 +326,7 @@ impl Condvar {
         guard: MutexGuard<'a, T>,
         dur: Duration,
     ) -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)> {
+        // SAFETY: Untriaged.
         let (poisoned, result) = unsafe {
             let lock = mutex::guard_lock(&guard);
             let success = self.inner.wait_timeout(lock, dur);

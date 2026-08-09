@@ -21,6 +21,7 @@ pub mod sync {
 use crate::io;
 
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe { libc::abort() }
 }
 

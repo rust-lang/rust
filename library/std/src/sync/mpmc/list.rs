@@ -90,6 +90,7 @@ impl<T> Block<T> {
         // It is not necessary to set the `DESTROY` bit in the last slot because that slot has
         // begun destruction of the block.
         for i in start..BLOCK_CAP - 1 {
+            // SAFETY: Untriaged.
             let slot = unsafe { (*this).slots.get_unchecked(i) };
 
             // Mark the `DESTROY` bit if a thread is still using the slot.
@@ -102,6 +103,7 @@ impl<T> Block<T> {
         }
 
         // No thread is using the block, now it is safe to destroy it.
+        // SAFETY: Untriaged.
         drop(unsafe { Box::from_raw(this) });
     }
 }
@@ -221,6 +223,7 @@ impl<T> Channel<T> {
                     self.head.block.store(new, Ordering::Release);
                     block = new;
                 } else {
+                    // SAFETY: Untriaged.
                     next_block = unsafe { Some(Box::from_raw(new)) };
                     tail = self.tail.index.load(Ordering::Acquire);
                     block = self.tail.block.load(Ordering::Acquire);
@@ -237,6 +240,7 @@ impl<T> Channel<T> {
                 Ordering::SeqCst,
                 Ordering::Acquire,
             ) {
+                // SAFETY: Untriaged.
                 Ok(_) => unsafe {
                     // If we've reached the end of the block, install the next one.
                     if offset + 1 == BLOCK_CAP {
@@ -269,6 +273,7 @@ impl<T> Channel<T> {
         // Write the message into the slot.
         let block = token.list.block as *mut Block<T>;
         let offset = token.list.offset;
+        // SAFETY: Untriaged.
         unsafe {
             let slot = (*block).slots.get_unchecked(offset);
             slot.msg.get().write(MaybeUninit::new(msg));
@@ -339,6 +344,7 @@ impl<T> Channel<T> {
                 Ordering::SeqCst,
                 Ordering::Acquire,
             ) {
+                // SAFETY: Untriaged.
                 Ok(_) => unsafe {
                     // If we've reached the end of the block, move to the next one.
                     if offset + 1 == BLOCK_CAP {
@@ -375,6 +381,7 @@ impl<T> Channel<T> {
         // Read the message.
         let block = token.list.block as *mut Block<T>;
         let offset = token.list.offset;
+        // SAFETY: Untriaged.
         unsafe {
             let slot = (*block).slots.get_unchecked(offset);
             slot.wait_write();
@@ -408,6 +415,7 @@ impl<T> Channel<T> {
     ) -> Result<(), SendTimeoutError<T>> {
         let token = &mut Token::default();
         assert!(self.start_send(token));
+        // SAFETY: Untriaged.
         unsafe { self.write(token, msg).map_err(SendTimeoutError::Disconnected) }
     }
 
@@ -416,6 +424,7 @@ impl<T> Channel<T> {
         let token = &mut Token::default();
 
         if self.start_recv(token) {
+            // SAFETY: Untriaged.
             unsafe { self.read(token).map_err(|_| TryRecvError::Disconnected) }
         } else {
             Err(TryRecvError::Empty)
@@ -427,6 +436,7 @@ impl<T> Channel<T> {
         let token = &mut Token::default();
         loop {
             if self.start_recv(token) {
+                // SAFETY: Untriaged.
                 unsafe {
                     return self.read(token).map_err(|_| RecvTimeoutError::Disconnected);
                 }
@@ -579,6 +589,7 @@ impl<T> Channel<T> {
         // NULL. Failing to do so will lead to the Drop code attempting a double free. For this
         // reason both reads above do an atomic swap instead of a simple atomic load.
 
+        // SAFETY: Untriaged.
         unsafe {
             // Drop all messages between head and tail and deallocate the heap-allocated blocks.
             while head >> SHIFT != tail >> SHIFT {
@@ -639,6 +650,7 @@ impl<T> Drop for Channel<T> {
         head &= !((1 << SHIFT) - 1);
         tail &= !((1 << SHIFT) - 1);
 
+        // SAFETY: Untriaged.
         unsafe {
             // Drop all messages between head and tail and deallocate the heap-allocated blocks.
             while head != tail {

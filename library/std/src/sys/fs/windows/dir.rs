@@ -38,6 +38,7 @@ unsafe fn nt_create_file(
     let access = opts.get_access_mode()? | c::SYNCHRONIZE;
     // one of FILE_SYNCHRONOUS_IO_{,NON}ALERT is required for later operations to succeed.
     let options = create_options | c::FILE_SYNCHRONOUS_IO_NONALERT;
+    // SAFETY: Untriaged.
     let status = unsafe {
         c::NtCreateFile(
             &mut handle,
@@ -57,6 +58,7 @@ unsafe fn nt_create_file(
         // SAFETY: nt_success guarantees that handle is no longer null
         unsafe { Ok(Handle::from_raw_handle(handle)) }
     } else {
+        // SAFETY: Untriaged.
         Err(WinError::new(unsafe { c::RtlNtStatusToDosError(status) })).io_result()
     }
 }
@@ -94,6 +96,7 @@ impl Dir {
             lpSecurityDescriptor: ptr::null_mut(),
             bInheritHandle: opts.inherit_handle as c::BOOL,
         };
+        // SAFETY: Untriaged.
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
@@ -106,6 +109,7 @@ impl Dir {
                 ptr::null_mut(),
             )
         };
+        // SAFETY: Untriaged.
         match OwnedHandle::try_from(unsafe { HandleOrInvalid::from_raw_handle(handle) }) {
             Ok(handle) => Ok(Self { handle: Handle::from_inner(handle) }),
             Err(_) => Err(io::Error::last_os_error()),
@@ -120,6 +124,7 @@ impl Dir {
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
         let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
+        // SAFETY: Untriaged.
         unsafe { nt_create_file(opts, &object_attributes, create_opt) }
     }
 
@@ -171,6 +176,7 @@ impl Dir {
             );
         }
 
+        // SAFETY: Untriaged.
         let status = unsafe {
             c::NtSetInformationFile(
                 handle.as_raw_handle(),
@@ -180,11 +186,13 @@ impl Dir {
                 c::FileRenameInformation,
             )
         };
+        // SAFETY: Untriaged.
         unsafe { dealloc(file_rename_info.cast::<u8>(), layout) };
         if c::nt_success(status) {
             // SAFETY: nt_success guarantees that handle is no longer null
             Ok(())
         } else {
+            // SAFETY: Untriaged.
             Err(WinError::new(unsafe { c::RtlNtStatusToDosError(status) }))
         }
         .io_result()
@@ -225,6 +233,7 @@ impl IntoRawHandle for fs::Dir {
 #[unstable(feature = "dirfd", issue = "120426")]
 impl FromRawHandle for fs::Dir {
     unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+        // SAFETY: Untriaged.
         Self::from_inner(Dir { handle: unsafe { FromRawHandle::from_raw_handle(handle) } })
     }
 }

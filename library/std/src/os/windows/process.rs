@@ -15,6 +15,7 @@ use crate::{io, marker, process, ptr, sys};
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
+        // SAFETY: Untriaged.
         let handle = unsafe { sys::handle::Handle::from_raw_handle(handle as *mut _) };
         let io = sys::process::Stdio::Handle(handle);
         process::Stdio::from_inner(io)
@@ -505,6 +506,7 @@ impl<'a> Drop for ProcThreadAttributeList<'a> {
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
     fn drop(&mut self) {
         let lp_attribute_list = self.attribute_list.as_mut_ptr().cast::<c_void>();
+        // SAFETY: Untriaged.
         unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
     }
 }
@@ -546,6 +548,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
     pub fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
+        // SAFETY: Untriaged.
         unsafe {
             self.raw_attribute(attribute, ptr::addr_of!(*value).cast::<c_void>(), size_of::<T>())
         }
@@ -660,6 +663,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
                 "maximum number of ProcThreadAttributes exceeded",
             ));
         };
+        // SAFETY: Untriaged.
         unsafe {
             sys::c::InitializeProcThreadAttributeList(
                 ptr::null_mut(),
@@ -673,6 +677,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
 
         // Once we've allocated the necessary memory, it's safe to invoke
         // `InitializeProcThreadAttributeList` to properly initialize the list.
+        // SAFETY: Untriaged.
         sys::cvt(unsafe {
             sys::c::InitializeProcThreadAttributeList(
                 attribute_list.as_mut_ptr().cast::<c_void>(),
@@ -687,6 +692,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         // value. Therefore, we ensure that we don't add more attributes than
         // the buffer was initialized for.
         for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
+            // SAFETY: Untriaged.
             sys::cvt(unsafe {
                 sys::c::UpdateProcThreadAttribute(
                     attribute_list.as_mut_ptr().cast::<c_void>(),

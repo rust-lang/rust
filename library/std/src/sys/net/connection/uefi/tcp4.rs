@@ -67,6 +67,7 @@ impl Tcp4 {
             control_option: ptr::null_mut(),
         };
 
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).configure)(protocol, &mut config_data) };
         if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
@@ -75,6 +76,7 @@ impl Tcp4 {
         let mut config_data = tcp4::ConfigData::default();
         let protocol = self.protocol.as_ptr();
 
+        // SAFETY: Untriaged.
         let r = unsafe {
             ((*protocol).get_mode_data)(
                 protocol,
@@ -90,6 +92,7 @@ impl Tcp4 {
     }
 
     pub(crate) fn accept(&self) -> io::Result<Self> {
+        // SAFETY: Untriaged.
         let evt = unsafe { self.create_evt() }?;
         let completion_token =
             tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
@@ -97,11 +100,13 @@ impl Tcp4 {
             tcp4::ListenToken { completion_token, new_child_handle: ptr::null_mut() };
 
         let protocol = self.protocol.as_ptr();
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).accept)(protocol, &mut listen_token) };
         if r.is_error() {
             return Err(io::Error::from_raw_os_error(r.as_usize()));
         }
 
+        // SAFETY: Untriaged.
         unsafe { self.wait_or_cancel(None, &mut listen_token.completion_token) }?;
 
         if completion_token.status.is_error() {
@@ -128,6 +133,7 @@ impl Tcp4 {
     }
 
     pub(crate) fn connect(&self, timeout: Option<Duration>) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let evt = unsafe { self.create_evt() }?;
         let completion_token =
             tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
@@ -135,11 +141,13 @@ impl Tcp4 {
         let protocol = self.protocol.as_ptr();
         let mut conn_token = tcp4::ConnectionToken { completion_token };
 
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).connect)(protocol, &mut conn_token) };
         if r.is_error() {
             return Err(io::Error::from_raw_os_error(r.as_usize()));
         }
 
+        // SAFETY: Untriaged.
         unsafe { self.wait_or_cancel(timeout, &mut conn_token.completion_token) }?;
 
         if completion_token.status.is_error() {
@@ -196,6 +204,7 @@ impl Tcp4 {
             fragment_count,
             fragment_table: [],
         });
+        // SAFETY: Untriaged.
         unsafe {
             // SAFETY: IoSlice and FragmentData are guaranteed to have same layout.
             crate::ptr::copy_nonoverlapping(
@@ -213,6 +222,7 @@ impl Tcp4 {
         tx_data: *mut tcp4::TransmitData,
         timeout: Option<Duration>,
     ) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let evt = unsafe { self.create_evt() }?;
         let completion_token =
             tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
@@ -220,11 +230,13 @@ impl Tcp4 {
         let protocol = self.protocol.as_ptr();
         let mut token = tcp4::IoToken { completion_token, packet: tcp4::IoTokenPacket { tx_data } };
 
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).transmit)(protocol, &mut token) };
         if r.is_error() {
             return Err(io::Error::from_raw_os_error(r.as_usize()));
         }
 
+        // SAFETY: Untriaged.
         unsafe { self.wait_or_cancel(timeout, &mut token.completion_token) }?;
 
         if completion_token.status.is_error() {
@@ -279,6 +291,7 @@ impl Tcp4 {
             fragment_count,
             fragment_table: [],
         });
+        // SAFETY: Untriaged.
         unsafe {
             // SAFETY: IoSlice and FragmentData are guaranteed to have same layout.
             crate::ptr::copy_nonoverlapping(
@@ -296,6 +309,7 @@ impl Tcp4 {
         rx_data: *mut tcp4::ReceiveData,
         timeout: Option<Duration>,
     ) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let evt = unsafe { self.create_evt() }?;
         let completion_token =
             tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
@@ -303,16 +317,19 @@ impl Tcp4 {
         let protocol = self.protocol.as_ptr();
         let mut token = tcp4::IoToken { completion_token, packet: tcp4::IoTokenPacket { rx_data } };
 
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).receive)(protocol, &mut token) };
         if r.is_error() {
             return Err(io::Error::from_raw_os_error(r.as_usize()));
         }
 
+        // SAFETY: Untriaged.
         unsafe { self.wait_or_cancel(timeout, &mut token.completion_token) }?;
 
         if completion_token.status.is_error() {
             Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
         } else {
+            // SAFETY: Untriaged.
             let data_length = unsafe { (*rx_data).data_length };
             Ok(data_length as usize)
         }
@@ -335,6 +352,7 @@ impl Tcp4 {
         token: *mut tcp4::CompletionToken,
     ) -> io::Result<()> {
         if !self.wait_for_flag(timeout) {
+            // SAFETY: Untriaged.
             let _ = unsafe { self.cancel(token) };
             return Err(io::Error::new(io::ErrorKind::TimedOut, "Operation Timed out"));
         }
@@ -354,6 +372,7 @@ impl Tcp4 {
     unsafe fn cancel(&self, token: *mut tcp4::CompletionToken) -> io::Result<()> {
         let protocol = self.protocol.as_ptr();
 
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).cancel)(protocol, token) };
         if r.is_error() {
             return Err(io::Error::from_raw_os_error(r.as_usize()));
@@ -368,6 +387,7 @@ impl Tcp4 {
             efi::EVT_NOTIFY_SIGNAL,
             efi::TPL_CALLBACK,
             Some(toggle_atomic_flag),
+            // SAFETY: Untriaged.
             Some(unsafe { NonNull::new_unchecked(self.flag.as_ptr().cast()) }),
         )
     }
@@ -389,6 +409,7 @@ impl Tcp4 {
 
     fn poll(&self) -> io::Result<()> {
         let protocol = self.protocol.as_ptr();
+        // SAFETY: Untriaged.
         let r = unsafe { ((*protocol).poll)(protocol) };
 
         if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
@@ -397,11 +418,13 @@ impl Tcp4 {
 
 impl Drop for Tcp4 {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         let _ = unsafe { self.service_binding.destroy_child(self.handle) };
     }
 }
 
 extern "efiapi" fn toggle_atomic_flag(_: r_efi::efi::Event, ctx: *mut crate::ffi::c_void) {
+    // SAFETY: Untriaged.
     let flag = unsafe { AtomicBool::from_ptr(ctx.cast()) };
     flag.store(true, Ordering::Relaxed);
 }

@@ -101,6 +101,7 @@ impl SocketAddr {
     where
         F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
     {
+        // SAFETY: Untriaged.
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
             let mut len = size_of::<libc::sockaddr_un>() as libc::socklen_t;
@@ -118,6 +119,7 @@ impl SocketAddr {
             // and not the len of the content. Figure out the length for ourselves.
             // https://marc.info/?l=openbsd-bugs&m=170105481926736&w=2
             let sun_path: &[u8] =
+// SAFETY: Untriaged.
                 unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&addr.sun_path) };
             len = core::slice::memchr::memchr(0, sun_path)
                 .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
@@ -251,6 +253,7 @@ impl SocketAddr {
 
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
+        // SAFETY: Untriaged.
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
@@ -286,6 +289,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
         N: AsRef<[u8]>,
     {
         let name = name.as_ref();
+        // SAFETY: Untriaged.
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
             addr.sun_family = libc::AF_UNIX as libc::sa_family_t;

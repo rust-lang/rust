@@ -53,6 +53,7 @@ unsafe extern "C" {
 )))]
 #[inline]
 pub fn errno() -> i32 {
+    // SAFETY: Untriaged.
     unsafe { (*errno_location()) as i32 }
 }
 
@@ -69,12 +70,14 @@ pub fn errno() -> i32 {
 )))]
 #[inline]
 pub fn set_errno(e: i32) {
+    // SAFETY: Untriaged.
     unsafe { *errno_location() = e as c_int }
 }
 
 #[cfg(target_os = "vxworks")]
 #[inline]
 pub fn errno() -> i32 {
+    // SAFETY: Untriaged.
     unsafe { libc::errnoGet() }
 }
 
@@ -86,6 +89,7 @@ pub fn errno() -> i32 {
         static _tls_errno: c_int;
     }
 
+    // SAFETY: Untriaged.
     unsafe { _tls_errno as i32 }
 }
 
@@ -97,6 +101,7 @@ pub fn errno() -> i32 {
         static mut errno: c_int;
     }
 
+    // SAFETY: Untriaged.
     unsafe { errno as i32 }
 }
 
@@ -108,6 +113,7 @@ pub fn set_errno(e: i32) {
         static mut errno: c_int;
     }
 
+    // SAFETY: Untriaged.
     unsafe { errno = e };
 }
 
@@ -120,11 +126,13 @@ unsafe extern "C" {
 
 #[cfg(target_os = "wasi")]
 pub fn errno() -> i32 {
+    // SAFETY: Untriaged.
     unsafe { libc_errno as i32 }
 }
 
 #[cfg(target_os = "wasi")]
 pub fn set_errno(val: i32) {
+    // SAFETY: Untriaged.
     unsafe {
         libc_errno = val;
     }
@@ -214,6 +222,7 @@ pub fn error_string(errno: i32) -> String {
     let mut buf = [0 as c_char; TMPBUF_SZ];
 
     let p = buf.as_mut_ptr();
+    // SAFETY: Untriaged.
     unsafe {
         if strerror_r(errno as c_int, p, buf.len()) < 0 {
             panic!("strerror_r failure");

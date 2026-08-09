@@ -39,6 +39,7 @@ impl Parker {
     /// Constructs the futex parker. The UNIX parker implementation
     /// requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
+        // SAFETY: Untriaged.
         unsafe { parker.write(Self { state: Futex::new(EMPTY) }) };
     }
 

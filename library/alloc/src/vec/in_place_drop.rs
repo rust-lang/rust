@@ -13,6 +13,7 @@ pub(super) struct InPlaceDrop<T> {
 
 impl<T> InPlaceDrop<T> {
     fn len(&self) -> usize {
+        // SAFETY: Untriaged.
         unsafe { self.dst.offset_from_unsigned(self.inner) }
     }
 }
@@ -20,6 +21,7 @@ impl<T> InPlaceDrop<T> {
 impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { self.inner.cast_slice(self.len()).drop_in_place() }
     }
 }
@@ -37,6 +39,7 @@ pub(super) struct InPlaceDstDataSrcBufDrop<Src, Dest> {
 impl<Src, Dest> Drop for InPlaceDstDataSrcBufDrop<Src, Dest> {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             let _drop_allocation =
                 RawVec::<Src>::from_nonnull_in(self.ptr.cast::<Src>(), self.src_cap, Global);

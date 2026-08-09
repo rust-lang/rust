@@ -58,6 +58,7 @@ impl LazyKey {
             key1
         } else {
             let key2 = super::create(self.dtor);
+            // SAFETY: Untriaged.
             unsafe {
                 super::destroy(key1);
             }
@@ -73,6 +74,7 @@ impl LazyKey {
             // The CAS succeeded, so we've created the actual key
             Ok(_) => key as usize,
             // If someone beat us to the punch, use their key instead
+            // SAFETY: Untriaged.
             Err(n) => unsafe {
                 super::destroy(key);
                 n

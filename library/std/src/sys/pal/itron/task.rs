@@ -17,6 +17,7 @@ pub fn current_task_id_aborting() -> abi::ID {
 /// Gets the ID of the task in Running state.
 #[inline]
 pub fn try_current_task_id() -> Result<abi::ID, ItronError> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut out = MaybeUninit::uninit();
         ItronError::err_if_negative(abi::get_tid(out.as_mut_ptr()))?;
@@ -33,6 +34,7 @@ pub fn task_priority(task: abi::ID) -> abi::PRI {
 /// Gets the specified task's priority.
 #[inline]
 pub fn try_task_priority(task: abi::ID) -> Result<abi::PRI, ItronError> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut out = MaybeUninit::uninit();
         ItronError::err_if_negative(abi::get_pri(task, out.as_mut_ptr()))?;

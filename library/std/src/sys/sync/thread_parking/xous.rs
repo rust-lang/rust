@@ -16,6 +16,7 @@ pub struct Parker {
 
 impl Parker {
     pub unsafe fn new_in_place(parker: *mut Parker) {
+        // SAFETY: Untriaged.
         unsafe { parker.write(Parker { state: AtomicI8::new(EMPTY) }) }
     }
 

@@ -10,6 +10,7 @@ pub(crate) macro weak {
                 static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
             }
             #[allow(unused_unsafe)]
+// SAFETY: Untriaged.
             ExternWeak::new(unsafe { $name })
         };
     )

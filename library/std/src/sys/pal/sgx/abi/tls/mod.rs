@@ -60,6 +60,7 @@ impl<'a> Drop for ActiveTls<'a> {
     fn drop(&mut self) {
         let value_with_destructor = |key: usize| {
             let ptr = TLS_DESTRUCTOR[key].load(Ordering::Relaxed);
+            // SAFETY: Untriaged.
             unsafe { mem::transmute::<_, Option<unsafe extern "C" fn(*mut u8)>>(ptr) }
                 .map(|dtor| (&self.tls.data[key], dtor))
         };
@@ -71,6 +72,7 @@ impl<'a> Drop for ActiveTls<'a> {
                 let value = value.replace(ptr::null_mut());
                 if !value.is_null() {
                     any_non_null_dtor = true;
+                    // SAFETY: Untriaged.
                     unsafe { dtor(value) }
                 }
             }
@@ -85,12 +87,14 @@ impl Tls {
 
     pub unsafe fn activate(&self) -> ActiveTls<'_> {
         // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
+        // SAFETY: Untriaged.
         unsafe { set_tls_ptr(self as *const Tls as _) };
         ActiveTls { tls: self }
     }
 
     unsafe fn current<'a>() -> &'a Tls {
         // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
+        // SAFETY: Untriaged.
         unsafe { &*(get_tls_ptr() as *const Tls) }
     }
 
@@ -101,6 +105,7 @@ impl Tls {
             rtabort!("TLS limit exceeded")
         };
         TLS_DESTRUCTOR[index].store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
+        // SAFETY: Untriaged.
         unsafe { Self::current() }.data[index].set(ptr::null_mut());
         Key::from_index(index)
     }
@@ -108,12 +113,14 @@ impl Tls {
     pub fn set(key: Key, value: *mut u8) {
         let index = key.to_index();
         rtassert!(TLS_KEY_IN_USE.get(index));
+        // SAFETY: Untriaged.
         unsafe { Self::current() }.data[index].set(value);
     }
 
     pub fn get(key: Key) -> *mut u8 {
         let index = key.to_index();
         rtassert!(TLS_KEY_IN_USE.get(index));
+        // SAFETY: Untriaged.
         unsafe { Self::current() }.data[index].get()
     }
 

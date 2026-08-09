@@ -136,6 +136,7 @@ impl FileDesc {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
@@ -153,6 +154,7 @@ impl FileDesc {
         target_os = "nuttx"
     )))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
@@ -190,6 +192,7 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         cvt(unsafe {
             pread64(
                 self.as_raw_fd(),
@@ -250,6 +253,7 @@ impl FileDesc {
         all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::preadv(
                 self.as_raw_fd(),
@@ -296,6 +300,7 @@ impl FileDesc {
             ) -> isize;
         );
 
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             preadv(
                 self.as_raw_fd(),
@@ -320,6 +325,7 @@ impl FileDesc {
 
         match preadv64.get() {
             Some(preadv) => {
+                // SAFETY: Untriaged.
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
@@ -357,6 +363,7 @@ impl FileDesc {
 
         match preadv.get() {
             Some(preadv) => {
+                // SAFETY: Untriaged.
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
@@ -372,6 +379,7 @@ impl FileDesc {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::write(
                 self.as_raw_fd(),
@@ -389,6 +397,7 @@ impl FileDesc {
         target_os = "nuttx"
     )))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::writev(
                 self.as_raw_fd(),
@@ -421,6 +430,7 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             cvt(pwrite64(
                 self.as_raw_fd(),
@@ -446,6 +456,7 @@ impl FileDesc {
         all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::pwritev(
                 self.as_raw_fd(),
@@ -492,6 +503,7 @@ impl FileDesc {
             ) -> isize;
         );
 
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             pwritev(
                 self.as_raw_fd(),
@@ -516,6 +528,7 @@ impl FileDesc {
 
         match pwritev64.get() {
             Some(pwritev) => {
+                // SAFETY: Untriaged.
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
@@ -553,6 +566,7 @@ impl FileDesc {
 
         match pwritev.get() {
             Some(pwritev) => {
+                // SAFETY: Untriaged.
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
@@ -584,6 +598,7 @@ impl FileDesc {
         target_os = "wasi",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             cvt(libc::ioctl(self.as_raw_fd(), libc::FIOCLEX))?;
             Ok(())
@@ -609,6 +624,7 @@ impl FileDesc {
         target_os = "wasi",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let previous = cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFD))?;
             let new = previous | libc::FD_CLOEXEC;
@@ -627,6 +643,7 @@ impl FileDesc {
 
     #[cfg(target_os = "linux")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let v = nonblocking as libc::c_int;
             cvt(libc::ioctl(self.as_raw_fd(), libc::FIONBIO, &v))?;
@@ -636,6 +653,7 @@ impl FileDesc {
 
     #[cfg(not(target_os = "linux"))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let previous = cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFL))?;
             let new = if nonblocking {
@@ -715,6 +733,7 @@ impl IntoRawFd for FileDesc {
 
 impl FromRawFd for FileDesc {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         Self(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
 }

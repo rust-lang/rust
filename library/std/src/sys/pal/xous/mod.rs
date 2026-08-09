@@ -15,11 +15,13 @@ mod eh_unwinding {
 
     unsafe impl unwind::EhFrameFinder for EhFrameFinder {
         fn find(&self, _pc: usize) -> Option<unwind::FrameInfo> {
+            // SAFETY: Untriaged.
             if unsafe { EH_FRAME_ADDRESS == 0 } {
                 None
             } else {
                 Some(unwind::FrameInfo {
                     text_base: None,
+                    // SAFETY: Untriaged.
                     kind: unwind::FrameInfoKind::EhFrame(unsafe { EH_FRAME_ADDRESS }),
                 })
             }
@@ -44,11 +46,14 @@ mod c_compat {
     pub extern "C" fn _start(eh_frame: usize, params: *mut u8) {
         #[cfg(feature = "panic-unwind")]
         {
+            // SAFETY: Untriaged.
             unsafe { super::eh_unwinding::EH_FRAME_ADDRESS = eh_frame };
             unwind::set_custom_eh_frame_finder(&super::eh_unwinding::EH_FRAME_SETTINGS).ok();
         }
 
+        // SAFETY: Untriaged.
         unsafe { super::params::set(params) };
+        // SAFETY: Untriaged.
         exit(unsafe { main() });
     }
 }

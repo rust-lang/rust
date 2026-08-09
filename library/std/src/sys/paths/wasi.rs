@@ -9,6 +9,7 @@ use crate::sys::helpers::run_path_with_cstr;
 pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
+        // SAFETY: Untriaged.
         unsafe {
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
             if !libc::getcwd(ptr, buf.capacity()).is_null() {
@@ -33,6 +34,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
+    // SAFETY: Untriaged.
     let result = run_path_with_cstr(p, &|p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
     match result == (0 as libc::c_int) {
         true => Ok(()),

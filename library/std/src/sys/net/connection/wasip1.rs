@@ -54,6 +54,7 @@ impl IntoRawFd for Socket {
 
 impl FromRawFd for Socket {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self(FromRawFd::from_raw_fd(raw_fd)) }
     }
 }
@@ -130,6 +131,7 @@ impl TcpStream {
             Shutdown::Both => wasip1::SDFLAGS_RD | wasip1::SDFLAGS_WR,
         };
 
+        // SAFETY: Untriaged.
         unsafe { wasip1::sock_shutdown(self.socket().as_raw_fd() as _, wasi_how).map_err(err2io) }
     }
 
@@ -174,6 +176,7 @@ impl TcpStream {
     }
 
     pub fn set_nonblocking(&self, state: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let fdstat = unsafe {
             wasip1::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasip1::Fd)
                 .map_err(err2io)?
@@ -187,6 +190,7 @@ impl TcpStream {
             flags &= !wasip1::FDFLAGS_NONBLOCK;
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasip1::Fd, flags)
                 .map_err(err2io)
@@ -229,11 +233,13 @@ impl TcpListener {
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
+        // SAFETY: Untriaged.
         let fd = unsafe {
             wasip1::sock_accept(self.as_inner().as_inner().as_raw_fd() as _, 0).map_err(err2io)?
         };
 
         Ok((
+            // SAFETY: Untriaged.
             TcpStream::from_inner(unsafe { Socket::from_raw_fd(fd as _) }),
             // WASI has no concept of SocketAddr yet
             // return an unspecified IPv4Addr
@@ -266,6 +272,7 @@ impl TcpListener {
     }
 
     pub fn set_nonblocking(&self, state: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let fdstat = unsafe {
             wasip1::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasip1::Fd)
                 .map_err(err2io)?
@@ -279,6 +286,7 @@ impl TcpListener {
             flags &= !wasip1::FDFLAGS_NONBLOCK;
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasip1::Fd, flags)
                 .map_err(err2io)

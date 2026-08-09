@@ -13,6 +13,7 @@ unsafe impl DestroyedState for ! {
 
 unsafe impl DestroyedState for () {
     fn register_dtor<T>(s: &Storage<T, ()>) {
+        // SAFETY: Untriaged.
         unsafe {
             destructors::register(ptr::from_ref(s).cast_mut().cast(), destroy::<T>);
         }
@@ -59,6 +60,7 @@ where
         if let State::Alive = self.state.get() {
             self.value.get().cast()
         } else {
+            // SAFETY: Untriaged.
             unsafe { self.get_or_init_slow(i, f) }
         }
     }
@@ -93,6 +95,7 @@ where
 
             // Recursive initialization, we only need to drop the old value
             // as we've already registered the destructor.
+            // SAFETY: Untriaged.
             State::Alive => unsafe { old_value.assume_init_drop() },
 
             State::Destroyed(_) => unreachable!(),
@@ -112,6 +115,7 @@ where
 unsafe extern "C" fn destroy<T>(ptr: *mut u8) {
     // Print a nice abort message if a panic occurs.
     abort_on_dtor_unwind(|| {
+        // SAFETY: Untriaged.
         let storage = unsafe { &*(ptr as *const Storage<T, ()>) };
         if let State::Alive = storage.state.replace(State::Destroyed(())) {
             // SAFETY: we ensured the state was Alive so the value was initialized.

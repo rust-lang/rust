@@ -13,11 +13,13 @@ pub fn enable() {
 
     // Setting the key value to something other than NULL will result in the
     // destructor being run at thread exit.
+    // SAFETY: Untriaged.
     unsafe {
         set(DTORS.force(), ptr::without_provenance_mut(1));
     }
 
     unsafe extern "C" fn run(_: *mut u8) {
+        // SAFETY: Untriaged.
         unsafe {
             destructors::run();
             // On platforms with `__cxa_thread_atexit_impl`, `destructors::run`
@@ -41,6 +43,7 @@ pub fn enable() {
 
     static CLEANUP: LazyKey = LazyKey::new(Some(run));
 
+    // SAFETY: Untriaged.
     unsafe { set(CLEANUP.force(), DEFER) }
 
     unsafe extern "C" fn run(state: *mut u8) {
@@ -48,6 +51,7 @@ pub fn enable() {
             // Make sure that this function is run again in the next round of
             // TLS destruction. If there is no further round, there will be leaks,
             // but that's okay, `thread_cleanup` is not guaranteed to be called.
+            // SAFETY: Untriaged.
             unsafe { set(CLEANUP.force(), RUN) }
         } else {
             debug_assert_eq!(state, RUN);

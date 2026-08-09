@@ -54,6 +54,7 @@ struct Inner {
 
 impl Inner {
     fn parker(self: Pin<&Self>) -> Pin<&Parker> {
+        // SAFETY: Untriaged.
         unsafe { Pin::map_unchecked(self, |inner| &inner.parker) }
     }
 }
@@ -118,6 +119,7 @@ impl Thread {
     ///
     /// [`park`]: super::park
     pub(crate) unsafe fn park(&self) {
+        // SAFETY: Untriaged.
         unsafe { self.inner.as_ref().parker().park() }
     }
 
@@ -129,6 +131,7 @@ impl Thread {
     ///
     /// [`park_timeout`]: super::park_timeout
     pub(crate) unsafe fn park_timeout(&self, dur: Duration) {
+        // SAFETY: Untriaged.
         unsafe { self.inner.as_ref().parker().park_timeout(dur) }
     }
 
@@ -276,6 +279,7 @@ impl Thread {
     #[unstable(feature = "thread_raw", issue = "97523")]
     pub fn into_raw(self) -> *const () {
         // Safety: We only expose an opaque pointer, which maintains the `Pin` invariant.
+        // SAFETY: Untriaged.
         let inner = unsafe { Pin::into_inner_unchecked(self.inner) };
         Arc::into_raw_with_allocator(inner).0 as *const ()
     }
@@ -299,6 +303,7 @@ impl Thread {
     #[unstable(feature = "thread_raw", issue = "97523")]
     pub unsafe fn from_raw(ptr: *const ()) -> Thread {
         // Safety: Upheld by caller.
+        // SAFETY: Untriaged.
         unsafe {
             Thread { inner: Pin::new_unchecked(Arc::from_raw_in(ptr as *const Inner, System)) }
         }

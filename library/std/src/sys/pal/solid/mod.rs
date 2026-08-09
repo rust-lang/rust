@@ -38,5 +38,6 @@ pub fn unsupported_err() -> io::Error {
 
 #[inline]
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe { libc::abort() }
 }

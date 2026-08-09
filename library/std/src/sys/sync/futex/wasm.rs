@@ -23,6 +23,7 @@ pub type SmallPrimitive = u32;
 /// Returns false on timeout, and true in all other cases.
 pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     let timeout = timeout.and_then(|t| t.as_nanos().try_into().ok()).unwrap_or(-1);
+    // SAFETY: Untriaged.
     unsafe {
         wasm::memory_atomic_wait32(
             futex as *const Atomic<u32> as *mut i32,
@@ -37,11 +38,13 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 /// Returns true if this actually woke up such a thread,
 /// or false if no thread was waiting on this futex.
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    // SAFETY: Untriaged.
     unsafe { wasm::memory_atomic_notify(futex as *const Atomic<u32> as *mut i32, 1) > 0 }
 }
 
 /// Wakes up all threads that are waiting on `futex_wait` on this futex.
 pub fn futex_wake_all(futex: &Atomic<u32>) {
+    // SAFETY: Untriaged.
     unsafe {
         wasm::memory_atomic_notify(futex as *const Atomic<u32> as *mut i32, i32::MAX as u32);
     }

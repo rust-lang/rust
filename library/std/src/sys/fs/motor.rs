@@ -169,6 +169,7 @@ impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
         moto_rt::fs::open(path, opts.rt_open_options)
+            // SAFETY: Untriaged.
             .map(|fd| unsafe { Self::from_raw_fd(fd) })
             .map_err(map_motor_error)
     }
@@ -246,6 +247,7 @@ impl File {
 
     pub fn duplicate(&self) -> io::Result<File> {
         moto_rt::fs::duplicate(self.as_raw_fd())
+            // SAFETY: Untriaged.
             .map(|fd| unsafe { Self::from_raw_fd(fd) })
             .map_err(map_motor_error)
     }
@@ -411,6 +413,7 @@ pub struct DirEntry {
 
 impl DirEntry {
     fn filename(&self) -> &str {
+        // SAFETY: Untriaged.
         core::str::from_utf8(unsafe {
             core::slice::from_raw_parts(self.inner.fname.as_ptr(), self.inner.fname_size as usize)
         })
@@ -485,6 +488,7 @@ impl IntoRawFd for File {
 
 impl FromRawFd for File {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self(FromRawFd::from_raw_fd(raw_fd)) }
     }
 }

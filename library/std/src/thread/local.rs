@@ -460,6 +460,7 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(&T) -> R,
     {
+        // SAFETY: Untriaged.
         let thread_local = unsafe { (self.inner)(None).as_ref().ok_or(AccessError)? };
         Ok(f(thread_local))
     }
@@ -482,6 +483,7 @@ impl<T: 'static> LocalKey<T> {
     {
         let mut init = Some(init);
 
+        // SAFETY: Untriaged.
         let reference = unsafe {
             match (self.inner)(Some(&mut init)).as_ref() {
                 Some(r) => r,

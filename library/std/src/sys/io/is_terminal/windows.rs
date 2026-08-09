@@ -13,6 +13,7 @@ fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
     }
 
     let mut out = 0;
+    // SAFETY: Untriaged.
     if unsafe { c::GetConsoleMode(handle.as_raw_handle(), &mut out) != 0 } {
         // False positives aren't possible. If we got a console then we definitely have a console.
         return true;
@@ -24,6 +25,7 @@ fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
 
 fn msys_tty_on(handle: BorrowedHandle<'_>) -> bool {
     // Early return if the handle is not a pipe.
+    // SAFETY: Untriaged.
     if unsafe { c::GetFileType(handle.as_raw_handle()) != c::FILE_TYPE_PIPE } {
         return false;
     }
@@ -40,6 +42,7 @@ fn msys_tty_on(handle: BorrowedHandle<'_>) -> bool {
     }
     let mut name_info = FILE_NAME_INFO { FileNameLength: 0, FileName: [0; c::MAX_PATH as usize] };
     // Safety: buffer length is fixed.
+    // SAFETY: Untriaged.
     let res = unsafe {
         c::GetFileInformationByHandleEx(
             handle.as_raw_handle(),

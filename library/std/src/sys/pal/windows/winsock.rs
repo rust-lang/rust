@@ -16,6 +16,7 @@ pub fn startup() {
 
 #[cold]
 fn wsa_startup() {
+    // SAFETY: Untriaged.
     unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
@@ -34,6 +35,7 @@ pub fn cleanup() {
 
 /// Returns the last error from the Windows socket interface.
 pub fn last_error() -> io::Error {
+    // SAFETY: Untriaged.
     io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 

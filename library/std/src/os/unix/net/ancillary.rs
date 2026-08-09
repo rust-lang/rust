@@ -35,6 +35,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
     bufs: &mut [IoSliceMut<'_>],
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<(usize, bool, io::Result<SocketAddr>)> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut msg_name: libc::sockaddr_un = zeroed();
         let mut msg: libc::msghdr = zeroed();
@@ -66,6 +67,7 @@ pub(super) fn send_vectored_with_ancillary_to(
     bufs: &[IoSlice<'_>],
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<usize> {
+    // SAFETY: Untriaged.
     unsafe {
         let (mut msg_name, msg_namelen) =
             if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
@@ -97,6 +99,7 @@ fn add_to_ancillary_data<T>(
     #[cfg(not(target_os = "freebsd"))]
     let cmsg_size = source.len().checked_mul(size_of::<T>());
     #[cfg(target_os = "freebsd")]
+    // SAFETY: Untriaged.
     let cmsg_size = Some(unsafe { libc::SOCKCRED2SIZE(1) });
 
     let source_len = if let Some(source_len) = cmsg_size {
@@ -109,6 +112,7 @@ fn add_to_ancillary_data<T>(
         return false;
     };
 
+    // SAFETY: Untriaged.
     unsafe {
         let additional_space = libc::CMSG_SPACE(source_len) as usize;
 
@@ -180,6 +184,7 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
 
     fn next(&mut self) -> Option<T> {
         if size_of::<T>() <= self.data.len() {
+            // SAFETY: Untriaged.
             unsafe {
                 let unit = read_unaligned(self.data.as_ptr().cast());
                 self.data = &self.data[size_of::<T>()..];
@@ -504,6 +509,7 @@ impl<'a> AncillaryData<'a> {
     }
 
     fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
+        // SAFETY: Untriaged.
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
             let data_len = (*cmsg).cmsg_len as usize - cmsg_len_zero;
@@ -544,6 +550,7 @@ impl<'a> Iterator for Messages<'a> {
     type Item = Result<AncillaryData<'a>, AncillaryError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut msg: libc::msghdr = zeroed();
             msg.msg_control = self.buffer.as_ptr() as *mut _;

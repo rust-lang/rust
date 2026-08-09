@@ -174,16 +174,19 @@ impl Buf {
 
     #[inline]
     pub fn leak<'a>(self) -> &'a mut Slice {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(self.inner.leak()) }
     }
 
     #[inline]
     pub fn into_box(self) -> Box<Slice> {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(self.inner.into_boxed_slice()) }
     }
 
     #[inline]
     pub fn from_box(boxed: Box<Slice>) -> Buf {
+        // SAFETY: Untriaged.
         let inner: Box<[u8]> = unsafe { mem::transmute(boxed) };
         Buf { inner: inner.into_vec() }
     }
@@ -232,6 +235,7 @@ impl Slice {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(s) }
     }
 
@@ -288,6 +292,7 @@ impl Slice {
 
     #[inline]
     pub fn from_str(s: &str) -> &Slice {
+        // SAFETY: Untriaged.
         unsafe { Slice::from_encoded_bytes_unchecked(s.as_bytes()) }
     }
 
@@ -314,18 +319,21 @@ impl Slice {
     #[inline]
     pub fn empty_box() -> Box<Slice> {
         let boxed: Box<[u8]> = Default::default();
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(boxed) }
     }
 
     #[inline]
     pub fn into_arc(&self) -> Arc<Slice> {
         let arc: Arc<[u8]> = Arc::from(&self.inner);
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
     }
 
     #[inline]
     pub fn into_rc(&self) -> Rc<Slice> {
         let rc: Rc<[u8]> = Rc::from(&self.inner);
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 

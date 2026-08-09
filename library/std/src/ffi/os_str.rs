@@ -174,6 +174,7 @@ impl OsString {
     #[inline]
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: Vec<u8>) -> Self {
+        // SAFETY: Untriaged.
         OsString { inner: unsafe { Buf::from_encoded_bytes_unchecked(bytes) } }
     }
 
@@ -544,6 +545,7 @@ impl OsString {
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
         let rw = Box::into_raw(self.inner.into_box()) as *mut OsStr;
+        // SAFETY: Untriaged.
         unsafe { Box::from_raw(rw) }
     }
 
@@ -871,6 +873,7 @@ impl OsStr {
     #[inline]
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub unsafe fn from_encoded_bytes_unchecked(bytes: &[u8]) -> &Self {
+        // SAFETY: Untriaged.
         Self::from_inner(unsafe { Slice::from_encoded_bytes_unchecked(bytes) })
     }
 
@@ -1043,6 +1046,7 @@ impl OsStr {
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     pub fn into_os_string(self: Box<Self>) -> OsString {
+        // SAFETY: Untriaged.
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
         OsString { inner: Buf::from_box(boxed) }
     }
@@ -1419,6 +1423,7 @@ impl From<OsString> for Arc<OsStr> {
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const OsStr) }
     }
 }
@@ -1429,6 +1434,7 @@ impl From<&OsStr> for Arc<OsStr> {
     #[inline]
     fn from(s: &OsStr) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const OsStr) }
     }
 }
@@ -1449,6 +1455,7 @@ impl From<OsString> for Rc<OsStr> {
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const OsStr) }
     }
 }
@@ -1459,6 +1466,7 @@ impl From<&OsStr> for Rc<OsStr> {
     #[inline]
     fn from(s: &OsStr) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const OsStr) }
     }
 }
@@ -1532,6 +1540,7 @@ impl Default for Box<OsStr> {
     #[inline]
     fn default() -> Box<OsStr> {
         let rw = Box::into_raw(Slice::empty_box()) as *mut OsStr;
+        // SAFETY: Untriaged.
         unsafe { Box::from_raw(rw) }
     }
 }

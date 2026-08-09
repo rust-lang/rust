@@ -147,6 +147,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // Safety: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.
+        // SAFETY: Untriaged.
         unsafe {
             let i1_len = self.i1.len();
             if idx < i1_len {

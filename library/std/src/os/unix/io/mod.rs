@@ -211,20 +211,22 @@ fn null_fd() -> io::Result<OwnedFd> {
 /// Does not set CLOEXEC.
 fn replace_stdio_fd(this: BorrowedFd<'_>, other: OwnedFd) -> io::Result<()> {
     cfg_select! {
-        all(target_os = "wasi", target_env = "p1") => {
-            cvt(unsafe { libc::__wasilibc_fd_renumber(other.as_raw_fd(), this.as_raw_fd()) }).map(|_| ())
+            all(target_os = "wasi", target_env = "p1") => {
+    // SAFETY: Untriaged.
+                cvt(unsafe { libc::__wasilibc_fd_renumber(other.as_raw_fd(), this.as_raw_fd()) }).map(|_| ())
+            }
+            not(any(
+                all(target_arch = "wasm32", not(target_os = "emscripten")),
+                target_os = "hermit",
+                target_os = "trusty",
+                target_os = "motor"
+            )) => {
+    // SAFETY: Untriaged.
+                cvt(unsafe {libc::dup2(other.as_raw_fd(), this.as_raw_fd())}).map(|_| ())
+            }
+            _ => {
+                let _ = (this, other);
+                Err(io::Error::UNSUPPORTED_PLATFORM)
+            }
         }
-        not(any(
-            all(target_arch = "wasm32", not(target_os = "emscripten")),
-            target_os = "hermit",
-            target_os = "trusty",
-            target_os = "motor"
-        )) => {
-            cvt(unsafe {libc::dup2(other.as_raw_fd(), this.as_raw_fd())}).map(|_| ())
-        }
-        _ => {
-            let _ = (this, other);
-            Err(io::Error::UNSUPPORTED_PLATFORM)
-        }
-    }
 }

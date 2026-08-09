@@ -67,6 +67,7 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
     // value is always the named pipe, whereas `theirs` is just the normal file.
     // This should hopefully shield us from child processes which assume their
     // stdout is a named pipe, which would indeed be odd!
+    // SAFETY: Untriaged.
     unsafe {
         let mut io_status = c::IO_STATUS_BLOCK::default();
         let mut object_attributes = c::OBJECT_ATTRIBUTES::default();
@@ -241,6 +242,7 @@ impl ChildPipe {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let result = unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             let ptr = buf.as_mut_ptr();
@@ -260,6 +262,7 @@ impl ChildPipe {
     }
 
     pub fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let result = unsafe {
             let len = crate::cmp::min(buf.capacity(), u32::MAX as usize) as u32;
             let ptr = buf.as_mut().as_mut_ptr().cast::<u8>();
@@ -276,6 +279,7 @@ impl ChildPipe {
             Err(ref e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(()),
             Err(e) => Err(e),
             Ok(n) => {
+                // SAFETY: Untriaged.
                 unsafe {
                     buf.advance(n);
                 }
@@ -298,6 +302,7 @@ impl ChildPipe {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             self.alertable_io_internal(|overlapped, callback| {
@@ -380,6 +385,7 @@ impl ChildPipe {
         }
 
         // STEP 1: Start the I/O operation.
+        // SAFETY: Untriaged.
         let mut overlapped: c::OVERLAPPED = unsafe { crate::mem::zeroed() };
         // `hEvent` is unused by `ReadFileEx` and `WriteFileEx`.
         // Therefore the documentation suggests using it to smuggle a pointer to the callback.
@@ -398,6 +404,7 @@ impl ChildPipe {
         let result = loop {
             // STEP 2: Enter an alertable state.
             // The second parameter of `SleepEx` is used to make this sleep alertable.
+            // SAFETY: Untriaged.
             unsafe { c::SleepEx(c::INFINITE, c::TRUE) };
             if let Some(result) = async_result {
                 break result;
@@ -434,6 +441,7 @@ pub fn read_output(
     // duration of the I/O operation (where tons of operations can also fail).
     // The destructor for `AsyncPipe` ends up taking care of most of this.
     loop {
+        // SAFETY: Untriaged.
         let res = unsafe { c::WaitForMultipleObjects(2, objs.as_ptr(), c::FALSE, c::INFINITE) };
         if res == c::WAIT_OBJECT_0 {
             if !p1.result()? || !p1.schedule_read()? {
@@ -477,6 +485,7 @@ impl<'a> AsyncPipe<'a> {
         // and the only time an even will go back to "unset" will be once an
         // I/O operation is successfully scheduled (what we want).
         let event = Handle::new_event(true, true)?;
+        // SAFETY: Untriaged.
         let mut overlapped: Box<c::OVERLAPPED> = unsafe { Box::new(mem::zeroed()) };
         overlapped.hEvent = event.as_raw_handle();
         Ok(AsyncPipe { pipe, overlapped, event, dst, state: State::NotReading })
@@ -490,6 +499,7 @@ impl<'a> AsyncPipe<'a> {
     /// then `result()` should not be called as it will just block forever.
     fn schedule_read(&mut self) -> io::Result<bool> {
         assert_eq!(self.state, State::NotReading);
+        // SAFETY: Untriaged.
         let amt = unsafe {
             if self.dst.capacity() == self.dst.len() {
                 let additional = if self.dst.capacity() == 0 { 16 } else { 1 };
@@ -531,6 +541,7 @@ impl<'a> AsyncPipe<'a> {
             State::Read(amt) => amt,
         };
         self.state = State::NotReading;
+        // SAFETY: Untriaged.
         unsafe {
             let len = self.dst.len();
             self.dst.set_len(len + amt);
@@ -566,6 +577,7 @@ impl<'a> Drop for AsyncPipe<'a> {
         // the buffer/OVERLAPPED pointers to ensure we're at least memory safe.
         if self.pipe.cancel_io().is_err() || self.result().is_err() {
             let buf = mem::take(self.dst);
+            // SAFETY: Untriaged.
             let overlapped = Box::new(unsafe { mem::zeroed() });
             let overlapped = mem::replace(&mut self.overlapped, overlapped);
             mem::forget((buf, overlapped));

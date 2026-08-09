@@ -118,6 +118,7 @@ impl IntoRawFd for FileDesc {
 
 impl FromRawFd for FileDesc {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self(FromRawFd::from_raw_fd(raw_fd)) }
     }
 }

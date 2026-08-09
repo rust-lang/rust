@@ -19,6 +19,7 @@ pub fn sleep(dur: Duration) {
 
     while dur_ms > 0 {
         let ms = crate::cmp::min(dur_ms, usize::MAX as u128);
+        // SAFETY: Untriaged.
         let _ = unsafe { ((*boot_services.as_ptr()).stall)(ms as usize) };
         dur_ms -= ms;
     }

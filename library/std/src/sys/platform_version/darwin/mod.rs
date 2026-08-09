@@ -120,6 +120,7 @@ fn version_from_sysctl() -> Option<OSVersion> {
         let mut buf: [u8; 32] = [0; 32];
         let mut size = buf.len();
         let ptr = buf.as_mut_ptr().cast();
+        // SAFETY: Untriaged.
         let ret = unsafe { libc::sysctlbyname(name.as_ptr(), ptr, &mut size, null_mut(), 0) };
         if ret != 0 {
             // This sysctl is not available.
@@ -206,6 +207,7 @@ fn version_from_plist() -> OSVersion {
 ///
 /// Split out from [`version_from_plist`] to allow for testing.
 fn parse_version_from_plist(cf_handle: &CFHandle, plist_buffer: &[u8]) -> OSVersion {
+    // SAFETY: Untriaged.
     let plist_data = unsafe {
         cf_handle.CFDataCreateWithBytesNoCopy(
             kCFAllocatorDefault,
@@ -215,8 +217,10 @@ fn parse_version_from_plist(cf_handle: &CFHandle, plist_buffer: &[u8]) -> OSVers
         )
     };
     assert!(!plist_data.is_null(), "failed creating CFData");
+    // SAFETY: Untriaged.
     let _plist_data_release = Deferred(|| unsafe { cf_handle.CFRelease(plist_data) });
 
+    // SAFETY: Untriaged.
     let plist = unsafe {
         cf_handle.CFPropertyListCreateWithData(
             kCFAllocatorDefault,
@@ -227,10 +231,13 @@ fn parse_version_from_plist(cf_handle: &CFHandle, plist_buffer: &[u8]) -> OSVers
         )
     };
     assert!(!plist.is_null(), "failed reading PList in SystemVersion.plist");
+    // SAFETY: Untriaged.
     let _plist_release = Deferred(|| unsafe { cf_handle.CFRelease(plist) });
 
     assert_eq!(
+        // SAFETY: Untriaged.
         unsafe { cf_handle.CFGetTypeID(plist) },
+        // SAFETY: Untriaged.
         unsafe { cf_handle.CFDictionaryGetTypeID() },
         "SystemVersion.plist did not contain a dictionary at the top level"
     );
@@ -239,6 +246,7 @@ fn parse_version_from_plist(cf_handle: &CFHandle, plist_buffer: &[u8]) -> OSVers
     // Same logic as in `version_from_sysctl`.
     if cfg!(target_os = "ios") {
         if let Some(ios_support_version) =
+            // SAFETY: Untriaged.
             unsafe { string_version_key(cf_handle, plist, c"iOSSupportVersion") }
         {
             return ios_support_version;
@@ -251,6 +259,7 @@ fn parse_version_from_plist(cf_handle: &CFHandle, plist_buffer: &[u8]) -> OSVers
     }
 
     // On all other platforms, we can find the OS version by simply looking at `ProductVersion`.
+    // SAFETY: Untriaged.
     unsafe { string_version_key(cf_handle, plist, c"ProductVersion") }
         .expect("expected ProductVersion in SystemVersion.plist")
 }
@@ -261,6 +270,7 @@ unsafe fn string_version_key(
     plist: CFDictionaryRef,
     lookup_key: &CStr,
 ) -> Option<OSVersion> {
+    // SAFETY: Untriaged.
     let cf_lookup_key = unsafe {
         cf_handle.CFStringCreateWithCStringNoCopy(
             kCFAllocatorDefault,
@@ -270,9 +280,11 @@ unsafe fn string_version_key(
         )
     };
     assert!(!cf_lookup_key.is_null(), "failed creating CFString");
+    // SAFETY: Untriaged.
     let _lookup_key_release = Deferred(|| unsafe { cf_handle.CFRelease(cf_lookup_key) });
 
     let value: CFTypeRef =
+// SAFETY: Untriaged.
         unsafe { cf_handle.CFDictionaryGetValue(plist, cf_lookup_key) }.cast_mut();
     // `CFDictionaryGetValue` is a "getter", so we should not release,
     // the value is held alive internally by the CFDictionary, see:
@@ -282,13 +294,16 @@ unsafe fn string_version_key(
     }
 
     assert_eq!(
+        // SAFETY: Untriaged.
         unsafe { cf_handle.CFGetTypeID(value) },
+        // SAFETY: Untriaged.
         unsafe { cf_handle.CFStringGetTypeID() },
         "key in SystemVersion.plist must be a string"
     );
     let value: CFStringRef = value.cast();
 
     let mut version_str = [0u8; 32];
+    // SAFETY: Untriaged.
     let ret = unsafe {
         cf_handle.CFStringGetCString(
             value,

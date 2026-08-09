@@ -11,11 +11,13 @@ pub type ThreadId = lwpid_t;
 
 #[inline]
 pub fn current() -> ThreadId {
+    // SAFETY: Untriaged.
     unsafe { _lwp_self() }
 }
 
 #[inline]
 pub fn park(hint: usize) {
+    // SAFETY: Untriaged.
     unsafe {
         _lwp_park(0, 0, ptr::null_mut(), 0, ptr::without_provenance(hint), ptr::null_mut());
     }
@@ -31,6 +33,7 @@ pub fn park_timeout(dur: Duration, hint: usize) {
 
     // Timeout needs to be mutable since it is modified on NetBSD 9.0 and
     // above.
+    // SAFETY: Untriaged.
     unsafe {
         _lwp_park(
             CLOCK_MONOTONIC,
@@ -45,6 +48,7 @@ pub fn park_timeout(dur: Duration, hint: usize) {
 
 #[inline]
 pub fn unpark(tid: ThreadId, hint: usize) {
+    // SAFETY: Untriaged.
     unsafe {
         _lwp_unpark(tid, ptr::without_provenance(hint));
     }

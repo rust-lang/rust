@@ -5,6 +5,7 @@ use crate::sys::io::errno;
 
 pub fn hostname() -> io::Result<OsString> {
     // Query the system for the maximum host name length.
+    // SAFETY: Untriaged.
     let host_name_max = match unsafe { libc::sysconf(libc::_SC_HOST_NAME_MAX) } {
         // If this fails (possibly because there is no maximum length), then
         // assume a maximum length of _POSIX_HOST_NAME_MAX (255).

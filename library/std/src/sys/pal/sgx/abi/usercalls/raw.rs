@@ -34,6 +34,7 @@ pub unsafe fn do_usercall(
     p4: u64,
     abort: bool,
 ) -> (u64, u64) {
+    // SAFETY: Untriaged.
     let UsercallReturn(a, b) = unsafe { usercall(nr, p1, p2, abort as _, p3, p4) };
     (a, b)
 }
@@ -194,6 +195,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3, $n4: $t4) -> $r {
+// SAFETY: Untriaged.
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
@@ -210,6 +212,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3) -> $r {
+// SAFETY: Untriaged.
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
@@ -226,6 +229,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2) -> $r {
+// SAFETY: Untriaged.
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
@@ -241,6 +245,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1) -> $r {
+// SAFETY: Untriaged.
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
@@ -255,6 +260,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f() -> $r {
+// SAFETY: Untriaged.
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
                     rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     0,0,0,0,

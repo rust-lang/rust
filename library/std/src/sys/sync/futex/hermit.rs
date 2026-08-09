@@ -24,6 +24,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
         })
     });
 
+    // SAFETY: Untriaged.
     let r = unsafe {
         hermit_abi::futex_wait(
             futex.as_ptr(),
@@ -38,11 +39,13 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 
 #[inline]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    // SAFETY: Untriaged.
     unsafe { hermit_abi::futex_wake(futex.as_ptr(), 1) > 0 }
 }
 
 #[inline]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
+    // SAFETY: Untriaged.
     unsafe {
         hermit_abi::futex_wake(futex.as_ptr(), i32::MAX);
     }

@@ -71,6 +71,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
+        // SAFETY: Untriaged.
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
@@ -137,6 +138,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
+        // SAFETY: Untriaged.
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             #[cfg(target_os = "linux")]
@@ -179,6 +181,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
+        // SAFETY: Untriaged.
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
         let mut len = size_of_val(&storage) as libc::socklen_t;
         let sock = self.0.accept((&raw mut storage) as *mut _, &mut len)?;
@@ -225,6 +228,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
 

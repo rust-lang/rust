@@ -134,12 +134,15 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
             OnceExclusiveState::Poisoned => panic_poisoned(),
             state => {
                 let this = ManuallyDrop::new(this);
+                // SAFETY: Untriaged.
                 let data = unsafe { ptr::read(&this.data) }.into_inner();
                 match state {
                     OnceExclusiveState::Incomplete => {
+                        // SAFETY: Untriaged.
                         Err(ManuallyDrop::into_inner(unsafe { data.f }))
                     }
                     OnceExclusiveState::Complete => {
+                        // SAFETY: Untriaged.
                         Ok(ManuallyDrop::into_inner(unsafe { data.value }))
                     }
                     OnceExclusiveState::Poisoned => unreachable!(),
@@ -246,6 +249,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 
             // SAFETY: `call_once` only runs this closure once, ever.
             let data = unsafe { &mut *this.data.get() };
+            // SAFETY: Untriaged.
             let f = unsafe { ManuallyDrop::take(&mut data.f) };
             let value = f();
             data.value = ManuallyDrop::new(value);
@@ -324,9 +328,11 @@ impl<T, F> LazyLock<T, F> {
 impl<T, F> Drop for LazyLock<T, F> {
     fn drop(&mut self) {
         match self.once.state() {
+            // SAFETY: Untriaged.
             OnceExclusiveState::Incomplete => unsafe {
                 ManuallyDrop::drop(&mut self.data.get_mut().f)
             },
+            // SAFETY: Untriaged.
             OnceExclusiveState::Complete => unsafe {
                 ManuallyDrop::drop(&mut self.data.get_mut().value)
             },

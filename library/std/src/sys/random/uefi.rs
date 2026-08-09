@@ -31,6 +31,7 @@ mod rng_protocol {
                 if let Ok(protocol) =
                     helpers::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID)
                 {
+                    // SAFETY: Untriaged.
                     let r = unsafe {
                         ((*protocol.as_ptr()).get_rng)(
                             protocol.as_ptr(),
@@ -78,6 +79,7 @@ mod rdrand {
     unsafe fn rdrand() -> Option<Word> {
         for _ in 0..RETRY_LIMIT {
             let mut val = 0;
+            // SAFETY: Untriaged.
             if unsafe { rdrand_step(&mut val) } == 1 {
                 return Some(val);
             }
@@ -93,6 +95,7 @@ mod rdrand {
         let mut prev = Word::MAX;
         let mut fails = 0;
         for _ in 0..8 {
+            // SAFETY: Untriaged.
             match unsafe { rdrand() } {
                 Some(val) if val == prev => fails += 1,
                 Some(val) => prev = val,
@@ -141,11 +144,13 @@ mod rdrand {
     unsafe fn rdrand_exact(dest: &mut [u8]) -> Option<()> {
         let (chunks, tail) = dest.as_chunks_mut();
         for chunk in chunks {
+            // SAFETY: Untriaged.
             *chunk = unsafe { rdrand() }?.to_ne_bytes();
         }
 
         let n = tail.len();
         if n > 0 {
+            // SAFETY: Untriaged.
             let src = unsafe { rdrand() }?.to_ne_bytes();
             tail.copy_from_slice(&src[..n]);
         }
@@ -153,6 +158,7 @@ mod rdrand {
     }
 
     pub(crate) fn fill_bytes(bytes: &mut [u8]) -> bool {
+        // SAFETY: Untriaged.
         if *RDRAND_GOOD { unsafe { rdrand_exact(bytes).is_some() } } else { false }
     }
 }

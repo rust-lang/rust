@@ -46,6 +46,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
             tv_nsec: t.subsec_nanos().try_into().ok()?,
         })
     });
+    // SAFETY: Untriaged.
     unsafe {
         __wasilibc_futex_wait(
             futex.as_ptr().cast(),
@@ -58,10 +59,12 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 }
 
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    // SAFETY: Untriaged.
     unsafe { __wasilibc_futex_wake(futex.as_ptr().cast(), 1, 0) == 1 }
 }
 
 pub fn futex_wake_all(futex: &Atomic<u32>) {
+    // SAFETY: Untriaged.
     unsafe {
         __wasilibc_futex_wake(futex.as_ptr().cast(), __WASILIBC_FUTEX_WAKE_ALL, 0);
     }

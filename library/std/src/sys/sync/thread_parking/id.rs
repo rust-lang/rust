@@ -87,6 +87,7 @@ impl Parker {
             // The thread id is initialized before the state is set to `PARKED`
             // for the first time and is not written to from that point on
             // (negating the need for an atomic read).
+            // SAFETY: Untriaged.
             let tid = unsafe { self.tid.get().read().unwrap_unchecked() };
             // It is possible that the waiting thread woke up because of a timeout
             // and terminated before this call is made. This call then returns an

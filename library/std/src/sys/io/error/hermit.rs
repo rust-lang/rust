@@ -1,6 +1,7 @@
 use crate::io;
 
 pub fn errno() -> i32 {
+    // SAFETY: Untriaged.
     unsafe { hermit_abi::get_errno() }
 }
 

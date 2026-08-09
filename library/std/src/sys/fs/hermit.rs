@@ -84,6 +84,7 @@ impl GetdentsBuffer {
         if self.pos >= self.filled {
             debug_assert!(self.pos == self.filled);
 
+            // SAFETY: Untriaged.
             let result = unsafe {
                 cvt(hermit_abi::getdents64(
                     fd.as_raw_fd(),
@@ -264,9 +265,11 @@ impl Iterator for ReadDir {
             // to be in bounds of the same allocation, only the offset of the field
             // being referenced.
 
+            // SAFETY: Untriaged.
             self.buf.consume(usize::from(unsafe { (*entry_ptr).d_reclen }));
 
             // d_name is guaranteed to be null-terminated.
+            // SAFETY: Untriaged.
             let name = unsafe { CStr::from_ptr((&raw const (*entry_ptr).d_name).cast()) };
             let name_bytes = name.to_bytes();
             if name_bytes == b"." || name_bytes == b".." {
@@ -275,7 +278,9 @@ impl Iterator for ReadDir {
 
             return Some(Ok(DirEntry {
                 dir: Arc::clone(&self.inner),
+                // SAFETY: Untriaged.
                 ino: unsafe { (*entry_ptr).d_ino },
+                // SAFETY: Untriaged.
                 type_: unsafe { (*entry_ptr).d_type },
                 name: OsString::from_vec(name_bytes.to_vec()),
             }));
@@ -400,11 +405,14 @@ impl File {
             mode = 0;
         }
 
+        // SAFETY: Untriaged.
         let fd = unsafe { cvt(hermit_abi::open(path.as_ptr(), flags, mode))? };
+        // SAFETY: Untriaged.
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
+        // SAFETY: Untriaged.
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
         self.0.fstat(&mut stat_val)?;
         Ok(FileAttr::from_stat(stat_val))
@@ -509,6 +517,7 @@ impl DirBuilder {
 
     pub fn mkdir(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| {
+            // SAFETY: Untriaged.
             cvt(unsafe { hermit_abi::mkdir(path.as_ptr().cast(), self.mode.into()) }).map(|_| ())
         })
     }
@@ -566,6 +575,7 @@ impl IntoRawFd for File {
 
 impl FromRawFd for File {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         let file_desc = unsafe { FileDesc::from_raw_fd(raw_fd) };
         Self(file_desc)
     }
@@ -573,8 +583,10 @@ impl FromRawFd for File {
 
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     let fd_raw = run_path_with_cstr(path, &|path| {
+        // SAFETY: Untriaged.
         cvt(unsafe { hermit_abi::open(path.as_ptr(), O_RDONLY | O_DIRECTORY, 0) })
     })?;
+    // SAFETY: Untriaged.
     let fd = unsafe { FileDesc::from_raw_fd(fd_raw) };
 
     let root = path.to_path_buf();
@@ -586,6 +598,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
+    // SAFETY: Untriaged.
     run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::unlink(path.as_ptr()) }).map(|_| ()))
 }
 
@@ -610,6 +623,7 @@ pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
 }
 
 pub fn rmdir(path: &Path) -> io::Result<()> {
+    // SAFETY: Untriaged.
     run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::rmdir(path.as_ptr()) }).map(|_| ()))
 }
 
@@ -631,7 +645,9 @@ pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, &|path| {
+        // SAFETY: Untriaged.
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+        // SAFETY: Untriaged.
         cvt(unsafe { hermit_abi::stat(path.as_ptr(), &mut stat_val) })?;
         Ok(FileAttr::from_stat(stat_val))
     })
@@ -639,7 +655,9 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
 
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     run_path_with_cstr(path, &|path| {
+        // SAFETY: Untriaged.
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+        // SAFETY: Untriaged.
         cvt(unsafe { hermit_abi::lstat(path.as_ptr(), &mut stat_val) })?;
         Ok(FileAttr::from_stat(stat_val))
     })

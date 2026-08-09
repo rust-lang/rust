@@ -37,6 +37,7 @@ pub(crate) struct Sender<C> {
 impl<C> Sender<C> {
     /// Returns the internal `Counter`.
     fn counter(&self) -> &Counter<C> {
+        // SAFETY: Untriaged.
         unsafe { &*self.counter }
     }
 
@@ -62,6 +63,7 @@ impl<C> Sender<C> {
             disconnect(&self.counter().chan);
 
             if self.counter().destroy.swap(true, Ordering::AcqRel) {
+                // SAFETY: Untriaged.
                 drop(unsafe { Box::from_raw(self.counter) });
             }
         }
@@ -90,6 +92,7 @@ pub(crate) struct Receiver<C> {
 impl<C> Receiver<C> {
     /// Returns the internal `Counter`.
     fn counter(&self) -> &Counter<C> {
+        // SAFETY: Untriaged.
         unsafe { &*self.counter }
     }
 
@@ -115,6 +118,7 @@ impl<C> Receiver<C> {
             disconnect(&self.counter().chan);
 
             if self.counter().destroy.swap(true, Ordering::AcqRel) {
+                // SAFETY: Untriaged.
                 drop(unsafe { Box::from_raw(self.counter) });
             }
         }

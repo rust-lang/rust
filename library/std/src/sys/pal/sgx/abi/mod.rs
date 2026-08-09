@@ -67,6 +67,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
     // We use the System allocator here such that the global allocator may use
     // thread-locals.
     let tls = Box::new_in(tls::Tls::new(), System);
+    // SAFETY: Untriaged.
     let tls_guard = unsafe { tls.activate() };
 
     if secondary {
@@ -85,6 +86,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
         rtassert!(p4 == 0);
         rtassert!(p5 == 0);
 
+        // SAFETY: Untriaged.
         unsafe {
             // The actual types of these arguments are `p1: *const Arg, p2:
             // usize`. We can't currently customize the argument list of Rust's

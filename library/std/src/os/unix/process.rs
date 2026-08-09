@@ -128,6 +128,7 @@ pub impl(self) trait CommandExt {
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,
     {
+        // SAFETY: Untriaged.
         unsafe { self.pre_exec(f) }
     }
 

@@ -52,6 +52,7 @@ impl io::Read for Stdin {
         // (No-op if there is nothing in the buffer.)
         let mut bytes_copied = self.incomplete_utf8.read(buf);
 
+        // SAFETY: Untriaged.
         let stdin: *mut r_efi::protocols::simple_text_input::Protocol = unsafe {
             let st: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
             (*st.as_ptr()).con_in
@@ -110,6 +111,7 @@ impl Stdout {
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let st: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
+        // SAFETY: Untriaged.
         let stdout = unsafe { (*st.as_ptr()).con_out };
 
         write(stdout, buf)
@@ -129,6 +131,7 @@ impl Stderr {
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let st: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
+        // SAFETY: Untriaged.
         let stderr = unsafe { (*st.as_ptr()).std_err };
 
         write(stderr, buf)
@@ -161,6 +164,7 @@ fn write(
     // Get valid UTF-8 buffer
     let utf8 = match crate::str::from_utf8(buf) {
         Ok(x) => x,
+        // SAFETY: Untriaged.
         Err(e) => unsafe { crate::str::from_utf8_unchecked(&buf[..e.valid_up_to()]) },
     };
 
@@ -168,6 +172,7 @@ fn write(
     // NULL terminate the string
     utf16.push(0);
 
+    // SAFETY: Untriaged.
     unsafe { simple_text_output(protocol, &mut utf16) }?;
 
     Ok(utf8.len())
@@ -177,6 +182,7 @@ unsafe fn simple_text_output(
     protocol: *mut r_efi::protocols::simple_text_output::Protocol,
     buf: &mut [u16],
 ) -> io::Result<()> {
+    // SAFETY: Untriaged.
     let res = unsafe { ((*protocol).output_string)(protocol, buf.as_mut_ptr()) };
     if res.is_error() { Err(io::Error::from_raw_os_error(res.as_usize())) } else { Ok(()) }
 }
@@ -196,7 +202,9 @@ fn simple_text_input_read(
 fn wait_stdin(stdin: *mut r_efi::protocols::simple_text_input::Protocol) -> io::Result<()> {
     let boot_services: NonNull<r_efi::efi::BootServices> =
         uefi::env::boot_services().unwrap().cast();
+    // SAFETY: Untriaged.
     let wait_for_event = unsafe { (*boot_services.as_ptr()).wait_for_event };
+    // SAFETY: Untriaged.
     let wait_for_key_event = unsafe { (*stdin).wait_for_key };
 
     let r = {
@@ -212,11 +220,13 @@ fn read_key_stroke(
     let mut input_key: MaybeUninit<r_efi::protocols::simple_text_input::InputKey> =
         MaybeUninit::uninit();
 
+    // SAFETY: Untriaged.
     let r = unsafe { ((*stdin).read_key_stroke)(stdin, input_key.as_mut_ptr()) };
 
     if r.is_error() {
         Err(r)
     } else {
+        // SAFETY: Untriaged.
         let input_key = unsafe { input_key.assume_init() };
         Ok(input_key)
     }

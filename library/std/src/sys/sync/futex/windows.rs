@@ -59,6 +59,7 @@ pub fn wait_on_address<W: Waitable>(
     compare: W,
     timeout: Option<Duration>,
 ) -> bool {
+    // SAFETY: Untriaged.
     unsafe {
         let addr = ptr::from_ref(address).cast::<c_void>();
         let size = size_of::<W>();
@@ -69,6 +70,7 @@ pub fn wait_on_address<W: Waitable>(
 }
 
 pub fn wake_by_address_single<T: Futexable>(address: &T) {
+    // SAFETY: Untriaged.
     unsafe {
         let addr = ptr::from_ref(address).cast::<c_void>();
         c::WakeByAddressSingle(addr);
@@ -76,6 +78,7 @@ pub fn wake_by_address_single<T: Futexable>(address: &T) {
 }
 
 pub fn wake_by_address_all<T: Futexable>(address: &T) {
+    // SAFETY: Untriaged.
     unsafe {
         let addr = ptr::from_ref(address).cast::<c_void>();
         c::WakeByAddressAll(addr);

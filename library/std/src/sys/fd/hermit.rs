@@ -18,6 +18,7 @@ pub struct FileDesc {
 impl FileDesc {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let result =
+// SAFETY: Untriaged.
             cvt(unsafe { hermit_abi::read(self.fd.as_raw_fd(), buf.as_mut_ptr(), buf.len()) })?;
         Ok(result as usize)
     }
@@ -38,6 +39,7 @@ impl FileDesc {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             hermit_abi::readv(
                 self.as_raw_fd(),
@@ -60,11 +62,13 @@ impl FileDesc {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let result =
+// SAFETY: Untriaged.
             cvt(unsafe { hermit_abi::write(self.fd.as_raw_fd(), buf.as_ptr(), buf.len()) })?;
         Ok(result as usize)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             hermit_abi::writev(
                 self.as_raw_fd(),
@@ -88,6 +92,7 @@ impl FileDesc {
             SeekFrom::End(off) => (hermit_abi::SEEK_END, off),
             SeekFrom::Current(off) => (hermit_abi::SEEK_CUR, off),
         };
+        // SAFETY: Untriaged.
         let n = cvt(unsafe { hermit_abi::lseek(self.as_raw_fd(), pos as isize, whence) })?;
         Ok(n as u64)
     }
@@ -117,6 +122,7 @@ impl FileDesc {
     }
 
     pub fn fstat(&self, stat: *mut hermit_abi::stat) -> io::Result<()> {
+        // SAFETY: Untriaged.
         cvt(unsafe { hermit_abi::fstat(self.fd.as_raw_fd(), stat) })?;
         Ok(())
     }
@@ -142,6 +148,7 @@ impl FromInner<OwnedFd> for FileDesc {
 
 impl FromRawFd for FileDesc {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
+        // SAFETY: Untriaged.
         let fd = unsafe { OwnedFd::from_raw_fd(raw_fd) };
         Self { fd }
     }

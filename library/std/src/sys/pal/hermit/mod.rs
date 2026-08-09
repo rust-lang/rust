@@ -33,12 +33,14 @@ pub fn unsupported_err() -> io::Error {
 }
 
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe { hermit_abi::abort() }
 }
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
+    // SAFETY: Untriaged.
     unsafe {
         crate::sys::args::init(argc, argv);
     }
@@ -62,13 +64,16 @@ pub unsafe extern "C" fn runtime_entry(
     // initialize environment
     env::init(env);
 
+    // SAFETY: Untriaged.
     let result = unsafe { main(argc as isize, argv) };
 
+    // SAFETY: Untriaged.
     unsafe {
         crate::sys::thread_local::destructors::run();
     }
     crate::rt::thread_cleanup();
 
+    // SAFETY: Untriaged.
     unsafe {
         hermit_abi::exit(result);
     }

@@ -72,6 +72,7 @@ impl SystemTime {
     pub const MIN: SystemTime = SystemTime::from_intervals(0);
 
     pub fn now() -> SystemTime {
+        // SAFETY: Untriaged.
         unsafe {
             let mut t: SystemTime = mem::zeroed();
             c::GetSystemTimePreciseAsFileTime(&mut t.t);

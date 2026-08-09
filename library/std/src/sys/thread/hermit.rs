@@ -21,6 +21,7 @@ impl Thread {
         core_id: isize,
     ) -> io::Result<Thread> {
         let data = Box::into_raw(init);
+        // SAFETY: Untriaged.
         let tid = unsafe {
             hermit_abi::spawn2(
                 thread_start,
@@ -34,6 +35,7 @@ impl Thread {
         return if tid == 0 {
             // The thread failed to start and as a result data was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
+            // SAFETY: Untriaged.
             unsafe {
                 drop(Box::from_raw(data));
             }
@@ -45,11 +47,13 @@ impl Thread {
         extern "C" fn thread_start(data: usize) {
             // SAFETY: we are simply recreating the box that was leaked earlier.
             let init =
+// SAFETY: Untriaged.
                 unsafe { Box::from_raw(ptr::with_exposed_provenance_mut::<ThreadInit>(data)) };
             let rust_start = init.init();
             rust_start();
 
             // Run all destructors.
+            // SAFETY: Untriaged.
             unsafe {
                 crate::sys::thread_local::destructors::run();
             }
@@ -58,12 +62,14 @@ impl Thread {
     }
 
     pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
+        // SAFETY: Untriaged.
         unsafe {
             Thread::new_with_coreid(stack, init, -1 /* = no specific core */)
         }
     }
 
     pub fn join(self) {
+        // SAFETY: Untriaged.
         unsafe {
             let _ = hermit_abi::join(self.tid);
         }
@@ -71,6 +77,7 @@ impl Thread {
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
+    // SAFETY: Untriaged.
     unsafe { Ok(NonZero::new_unchecked(hermit_abi::available_parallelism())) }
 }
 
@@ -79,6 +86,7 @@ pub fn sleep(dur: Duration) {
     let micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
     let micros = u64::try_from(micros).unwrap_or(u64::MAX);
 
+    // SAFETY: Untriaged.
     unsafe {
         hermit_abi::usleep(micros);
     }
@@ -86,6 +94,7 @@ pub fn sleep(dur: Duration) {
 
 #[inline]
 pub fn yield_now() {
+    // SAFETY: Untriaged.
     unsafe {
         hermit_abi::yield_now();
     }

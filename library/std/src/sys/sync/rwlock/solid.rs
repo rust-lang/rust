@@ -15,6 +15,7 @@ unsafe impl Send for RwLock {}
 unsafe impl Sync for RwLock {}
 
 fn new_rwl() -> Result<abi::ID, ItronError> {
+    // SAFETY: Untriaged.
     ItronError::err_if_negative(unsafe { abi::rwl_acre_rwl() })
 }
 
@@ -35,12 +36,14 @@ impl RwLock {
     #[inline]
     pub fn read(&self) {
         let rwl = self.raw();
+        // SAFETY: Untriaged.
         expect_success(unsafe { abi::rwl_loc_rdl(rwl) }, &"rwl_loc_rdl");
     }
 
     #[inline]
     pub fn try_read(&self) -> bool {
         let rwl = self.raw();
+        // SAFETY: Untriaged.
         match unsafe { abi::rwl_ploc_rdl(rwl) } {
             abi::E_TMOUT => false,
             er => {
@@ -53,12 +56,14 @@ impl RwLock {
     #[inline]
     pub fn write(&self) {
         let rwl = self.raw();
+        // SAFETY: Untriaged.
         expect_success(unsafe { abi::rwl_loc_wrl(rwl) }, &"rwl_loc_wrl");
     }
 
     #[inline]
     pub fn try_write(&self) -> bool {
         let rwl = self.raw();
+        // SAFETY: Untriaged.
         match unsafe { abi::rwl_ploc_wrl(rwl) } {
             abi::E_TMOUT => false,
             er => {
@@ -71,12 +76,14 @@ impl RwLock {
     #[inline]
     pub unsafe fn read_unlock(&self) {
         let rwl = self.raw();
+        // SAFETY: Untriaged.
         expect_success_aborting(unsafe { abi::rwl_unl_rwl(rwl) }, &"rwl_unl_rwl");
     }
 
     #[inline]
     pub unsafe fn write_unlock(&self) {
         let rwl = self.raw();
+        // SAFETY: Untriaged.
         expect_success_aborting(unsafe { abi::rwl_unl_rwl(rwl) }, &"rwl_unl_rwl");
     }
 
@@ -91,6 +98,7 @@ impl Drop for RwLock {
     #[inline]
     fn drop(&mut self) {
         if let Some(rwl) = self.rwl.get().map(|x| x.0) {
+            // SAFETY: Untriaged.
             expect_success_aborting(unsafe { abi::rwl_del_rwl(rwl) }, &"rwl_del_rwl");
         }
     }

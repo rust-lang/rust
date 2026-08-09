@@ -27,6 +27,7 @@ pub unsafe fn run() {
         match dtors.pop() {
             Some((t, dtor)) => {
                 drop(dtors);
+                // SAFETY: Untriaged.
                 unsafe {
                     dtor(t);
                 }

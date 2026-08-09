@@ -27,6 +27,7 @@ impl Command {
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
+        // SAFETY: Untriaged.
         let process_handle = unsafe { self.do_exec(theirs, envp.as_ref())? };
 
         Ok((Process { handle: Handle::new(process_handle) }, ours))
@@ -146,6 +147,7 @@ impl Process {
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             zx_cvt(zx_task_kill(self.handle.raw()))?;
         }
@@ -168,6 +170,7 @@ impl Process {
         let mut actual: size_t = 0;
         let mut avail: size_t = 0;
 
+        // SAFETY: Untriaged.
         unsafe {
             zx_cvt(zx_object_wait_one(
                 self.handle.raw(),
@@ -198,6 +201,7 @@ impl Process {
         let mut actual: size_t = 0;
         let mut avail: size_t = 0;
 
+        // SAFETY: Untriaged.
         unsafe {
             let status =
                 zx_object_wait_one(self.handle.raw(), ZX_TASK_TERMINATED, 0, ptr::null_mut());

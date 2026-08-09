@@ -264,6 +264,7 @@ impl CString {
                 let bytes: Vec<u8> = self.into();
                 match memchr::memchr(0, &bytes) {
                     Some(i) => Err(NulError(i, bytes)),
+                    // SAFETY: Untriaged.
                     None => Ok(unsafe { CString::_from_vec_unchecked(bytes) }),
                 }
             }
@@ -287,6 +288,7 @@ impl CString {
             // This allows better optimizations if lto enabled.
             match memchr::memchr(0, bytes) {
                 Some(i) => Err(NulError(i, buffer)),
+                // SAFETY: Untriaged.
                 None => Ok(unsafe { CString::_from_vec_unchecked(buffer) }),
             }
         }
@@ -339,6 +341,7 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(v: Vec<u8>) -> Self {
         debug_assert!(memchr::memchr(0, &v).is_none());
+        // SAFETY: Untriaged.
         unsafe { Self::_from_vec_unchecked(v) }
     }
 
@@ -478,6 +481,7 @@ impl CString {
     pub fn into_string(self) -> Result<String, IntoStringError> {
         String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
             error: e.utf8_error(),
+            // SAFETY: Untriaged.
             inner: unsafe { Self::_from_vec_unchecked(e.into_bytes()) },
         })
     }
@@ -584,6 +588,7 @@ impl CString {
     #[stable(feature = "as_c_str", since = "1.20.0")]
     #[rustc_diagnostic_item = "cstring_as_c_str"]
     pub fn as_c_str(&self) -> &CStr {
+        // SAFETY: Untriaged.
         unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
     }
 
@@ -599,6 +604,7 @@ impl CString {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
+        // SAFETY: Untriaged.
         unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
     }
 
@@ -610,6 +616,7 @@ impl CString {
         // Then we can return the box directly without invalidating it.
         // See https://github.com/rust-lang/rust/issues/62553.
         let this = mem::ManuallyDrop::new(self);
+        // SAFETY: Untriaged.
         unsafe { ptr::read(&this.inner) }
     }
 
@@ -634,6 +641,7 @@ impl CString {
     #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
     pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
         debug_assert!(memchr::memchr(0, &v).unwrap() + 1 == v.len());
+        // SAFETY: Untriaged.
         unsafe { Self::_from_vec_with_nul_unchecked(v) }
     }
 
@@ -702,6 +710,7 @@ impl CString {
 impl Drop for CString {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             *self.inner.get_unchecked_mut(0) = 0;
         }
@@ -802,6 +811,7 @@ impl From<Box<CStr>> for CString {
     #[inline]
     fn from(s: Box<CStr>) -> CString {
         let raw = Box::into_raw(s) as *mut [u8];
+        // SAFETY: Untriaged.
         CString { inner: unsafe { Box::from_raw(raw) } }
     }
 }
@@ -812,6 +822,7 @@ impl From<Vec<NonZero<u8>>> for CString {
     /// copying nor checking for inner nul bytes.
     #[inline]
     fn from(v: Vec<NonZero<u8>>) -> CString {
+        // SAFETY: Untriaged.
         unsafe {
             // Transmute `Vec<NonZero<u8>>` to `Vec<u8>`.
             let v: Vec<u8> = {
@@ -906,6 +917,7 @@ impl From<CString> for Arc<CStr> {
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
     }
 }
@@ -918,6 +930,7 @@ impl From<&CStr> for Arc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
     }
 }
@@ -940,6 +953,7 @@ impl From<CString> for Rc<CStr> {
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
     }
 }
@@ -951,6 +965,7 @@ impl From<&CStr> for Rc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
     }
 }

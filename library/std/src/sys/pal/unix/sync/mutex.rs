@@ -44,6 +44,7 @@ impl Mutex {
         // references, we instead create the mutex with type
         // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
         // re-lock it from the same thread, thus avoiding undefined behavior.
+        // SAFETY: Untriaged.
         unsafe {
             let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
             cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
@@ -69,6 +70,7 @@ impl Mutex {
             panic!("failed to lock mutex: {error}");
         }
 
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_mutex_lock(self.raw()) };
         // As we set the mutex type to `PTHREAD_MUTEX_NORMAL` above, we expect
         // the lock call to never fail. Unfortunately however, some platforms
@@ -87,12 +89,14 @@ impl Mutex {
     ///   undefined behaviour.
     /// * Destroying a locked mutex causes undefined behaviour.
     pub unsafe fn try_lock(self: Pin<&Self>) -> bool {
+        // SAFETY: Untriaged.
         unsafe { libc::pthread_mutex_trylock(self.raw()) == 0 }
     }
 
     /// # Safety
     /// The mutex must be locked by the current thread.
     pub unsafe fn unlock(self: Pin<&Self>) {
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_mutex_unlock(self.raw()) };
         debug_assert_eq!(r, 0);
     }
@@ -127,6 +131,7 @@ struct AttrGuard<'a>(pub &'a mut MaybeUninit<libc::pthread_mutexattr_t>);
 
 impl Drop for AttrGuard<'_> {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             let result = libc::pthread_mutexattr_destroy(self.0.as_mut_ptr());
             assert_eq!(result, 0);

@@ -84,6 +84,7 @@ where
             //  Note: we can't use `vec.get_mut(i).unwrap()` here since the precondition for that
             //  function is that i < vec.len, but we've set vec's length to zero.
             let idx = self.vec.to_wrapped_index(i);
+            // SAFETY: Untriaged.
             let cur = unsafe { &mut *self.vec.ptr().add(idx.as_index()) };
             let drained = (self.pred)(cur);
             // Update the index *after* the predicate is called. If the index

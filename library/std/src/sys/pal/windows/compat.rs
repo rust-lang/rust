@@ -120,6 +120,7 @@ impl Module {
 
     // Try to get the address of a function.
     pub fn proc_address(self, name: &CStr) -> Option<NonNull<c_void>> {
+        // SAFETY: Untriaged.
         unsafe {
             // SAFETY:
             // `self.0` will always be a valid module.
@@ -158,6 +159,7 @@ macro_rules! compat_fn_with_fallback {
             static PTR: Atomic<*mut c_void> = AtomicPtr::new(load as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _);
 
             unsafe extern "system" fn load($($argname: $argtype),*) -> $rettype {
+// SAFETY: Untriaged.
                 unsafe {
                     let func = load_from_module(Module::new($module));
                     func($($argname),*)
@@ -165,6 +167,7 @@ macro_rules! compat_fn_with_fallback {
             }
 
             fn load_from_module(module: Option<Module>) -> F {
+// SAFETY: Untriaged.
                 unsafe {
                     static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
                     if let Some(f) = module.and_then(|m| m.proc_address(SYMBOL_NAME)) {
@@ -184,6 +187,7 @@ macro_rules! compat_fn_with_fallback {
 
             #[inline(always)]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
+// SAFETY: Untriaged.
                 unsafe {
                     let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
                     func($($argname),*)
@@ -220,11 +224,13 @@ macro_rules! compat_fn_optional {
 
                 #[inline(always)]
                 pub fn option() -> Option<F> {
+// SAFETY: Untriaged.
                     NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
                 }
             }
             #[inline]
             pub unsafe extern "system" fn $symbol($($argname: $argtype),*) $(-> $rettype)? {
+// SAFETY: Untriaged.
                 unsafe { $symbol::option().unwrap()($($argname),*) }
             }
         )+
@@ -242,6 +248,7 @@ pub(super) fn load_synch_functions() {
 
         // Try loading the library and all the required functions.
         // If any step fails, then they all fail.
+        // SAFETY: Untriaged.
         let library = unsafe { Module::new(MODULE_NAME) }?;
         let wait_on_address = library.proc_address(WAIT_ON_ADDRESS)?;
         let wake_by_address_single = library.proc_address(WAKE_BY_ADDRESS_SINGLE)?;

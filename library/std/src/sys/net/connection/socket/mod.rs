@@ -123,6 +123,7 @@ fn socket_addr_v4_to_c(addr: &SocketAddrV4) -> c::sockaddr_in {
         sin_family: c::AF_INET as c::sa_family_t,
         sin_port: addr.port().to_be(),
         sin_addr: ip_v4_addr_to_c(addr.ip()),
+        // SAFETY: Untriaged.
         ..unsafe { mem::zeroed() }
     }
 }
@@ -134,6 +135,7 @@ fn socket_addr_v6_to_c(addr: &SocketAddrV6) -> c::sockaddr_in6 {
         sin6_addr: ip_v6_addr_to_c(addr.ip()),
         sin6_flowinfo: addr.flowinfo(),
         sin6_scope_id: addr.scope_id(),
+        // SAFETY: Untriaged.
         ..unsafe { mem::zeroed() }
     }
 }
@@ -199,12 +201,14 @@ unsafe fn socket_addr_from_c(
     match (*storage).ss_family as c_int {
         c::AF_INET => {
             assert!(len >= size_of::<c::sockaddr_in>());
+            // SAFETY: Untriaged.
             Ok(SocketAddr::V4(socket_addr_v4_from_c(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in)
             })))
         }
         c::AF_INET6 => {
             assert!(len >= size_of::<c::sockaddr_in6>());
+            // SAFETY: Untriaged.
             Ok(SocketAddr::V6(socket_addr_v6_from_c(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in6)
             })))
@@ -322,6 +326,7 @@ impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
         loop {
+            // SAFETY: Untriaged.
             unsafe {
                 let cur = self.cur.as_ref()?;
                 self.cur = cur.ai_next;
@@ -342,6 +347,7 @@ unsafe impl Send for LookupHost {}
 
 impl Drop for LookupHost {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { c::freeaddrinfo(self.original) }
     }
 }
@@ -349,9 +355,11 @@ impl Drop for LookupHost {
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
     init();
     run_with_cstr(host.as_bytes(), &|c_host| {
+        // SAFETY: Untriaged.
         let mut hints: c::addrinfo = unsafe { mem::zeroed() };
         hints.ai_socktype = c::SOCK_STREAM;
         let mut res = ptr::null_mut();
+        // SAFETY: Untriaged.
         unsafe {
             cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res))
                 .map(|_| LookupHost { original: res, cur: res, port })
@@ -435,6 +443,7 @@ impl TcpStream {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
         })?;
@@ -451,10 +460,12 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         unsafe { sockname(|buf, len| c::getpeername(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
@@ -491,10 +502,12 @@ impl TcpStream {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
@@ -562,12 +575,14 @@ impl TcpListener {
             // which allows “socket hijacking”, so we explicitly don't set it here.
             // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
             #[cfg(not(windows))]
+            // SAFETY: Untriaged.
             unsafe {
                 setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?
             };
 
             // Bind our new socket
             let (addr, len) = socket_addr_to_c(addr);
+            // SAFETY: Untriaged.
             cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
 
             let backlog = if cfg!(target_os = "horizon") {
@@ -585,6 +600,7 @@ impl TcpListener {
             };
 
             // Start listening
+            // SAFETY: Untriaged.
             cvt(unsafe { c::listen(sock.as_raw(), backlog) })?;
             Ok(TcpListener { inner: sock })
         }
@@ -600,6 +616,7 @@ impl TcpListener {
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
@@ -610,6 +627,7 @@ impl TcpListener {
         let mut storage = MaybeUninit::<c::sockaddr_storage>::uninit();
         let mut len = size_of::<c::sockaddr_storage>() as c::socklen_t;
         let sock = self.inner.accept(storage.as_mut_ptr() as *mut _, &mut len)?;
+        // SAFETY: Untriaged.
         let addr = unsafe { socket_addr_from_c(storage.as_ptr(), len as usize)? };
         Ok((TcpStream { inner: sock }, addr))
     }
@@ -619,19 +637,23 @@ impl TcpListener {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int) }
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY)? };
         Ok(raw != 0)
     }
@@ -680,6 +702,7 @@ impl UdpSocket {
         fn inner(addr: &SocketAddr) -> io::Result<UdpSocket> {
             let sock = Socket::new(addr_family(addr), c::SOCK_DGRAM)?;
             let (addr, len) = socket_addr_to_c(addr);
+            // SAFETY: Untriaged.
             cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
             Ok(UdpSocket { inner: sock })
         }
@@ -695,10 +718,12 @@ impl UdpSocket {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         unsafe { sockname(|buf, len| c::getpeername(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
@@ -717,6 +742,7 @@ impl UdpSocket {
             return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
         }
         let (dst, dstlen) = socket_addr_to_c(dst);
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             c::sendto(
                 self.inner.as_raw(),
@@ -751,15 +777,18 @@ impl UdpSocket {
     }
 
     pub fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST, broadcast as c_int) }
     }
 
     pub fn broadcast(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST)? };
         Ok(raw != 0)
     }
 
     pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             setsockopt(
                 &self.inner,
@@ -772,11 +801,13 @@ impl UdpSocket {
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
         let raw: IpV4MultiCastType =
+// SAFETY: Untriaged.
             unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)? };
         Ok(raw != 0)
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             setsockopt(
                 &self.inner,
@@ -789,11 +820,13 @@ impl UdpSocket {
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
         let raw: IpV4MultiCastType =
+// SAFETY: Untriaged.
             unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)? };
         Ok(raw as u32)
     }
 
     pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             setsockopt(
                 &self.inner,
@@ -806,6 +839,7 @@ impl UdpSocket {
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
         let raw: c_int =
+// SAFETY: Untriaged.
             unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP)? };
         Ok(raw != 0)
     }
@@ -815,6 +849,7 @@ impl UdpSocket {
             imr_multiaddr: ip_v4_addr_to_c(multiaddr),
             imr_interface: ip_v4_addr_to_c(interface),
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq) }
     }
 
@@ -823,6 +858,7 @@ impl UdpSocket {
             ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq) }
     }
 
@@ -831,6 +867,7 @@ impl UdpSocket {
             imr_multiaddr: ip_v4_addr_to_c(multiaddr),
             imr_interface: ip_v4_addr_to_c(interface),
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq) }
     }
 
@@ -839,14 +876,17 @@ impl UdpSocket {
             ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq) }
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
@@ -873,6 +913,7 @@ impl UdpSocket {
         if buf.len() > MAX_SEND_LEN {
             return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
         }
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             c::send(
                 self.inner.as_raw(),
@@ -889,6 +930,7 @@ impl UdpSocket {
 
         fn inner(this: &UdpSocket, addr: &SocketAddr) -> io::Result<()> {
             let (addr, len) = socket_addr_to_c(addr);
+            // SAFETY: Untriaged.
             cvt_r(|| unsafe { c::connect(this.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
         }
     }

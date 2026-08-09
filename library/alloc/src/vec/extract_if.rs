@@ -43,6 +43,7 @@ impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
         let Range { start, end } = slice::range(range, ..old_len);
 
         // Guard against the vec getting leaked (leak amplification)
+        // SAFETY: Untriaged.
         unsafe {
             vec.set_len(0);
         }
@@ -139,10 +140,12 @@ where
 
         // SAFETY: we have not yet touched elements starting at `self.idx`.
         let valid_tail =
+// SAFETY: Untriaged.
             unsafe { slice::from_raw_parts(start.add(self.idx), self.old_len - self.idx) };
 
         // SAFETY: `end - idx <= old_len - idx`, because `end <= old_len`. Also `idx <= end` by invariant.
         let (remainder, skipped_tail) =
+// SAFETY: Untriaged.
             unsafe { valid_tail.split_at_unchecked(self.end - self.idx) };
 
         f.debug_struct("ExtractIf")

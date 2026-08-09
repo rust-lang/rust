@@ -36,6 +36,7 @@ impl Command {
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let mut p = Process { pid: 0, status: None };
 
+        // SAFETY: Untriaged.
         unsafe {
             macro_rules! t {
                 ($e:expr) => {
@@ -121,6 +122,7 @@ impl Command {
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         let ret = Command::spawn(self, default, false);
         match ret {
+            // SAFETY: Untriaged.
             Ok(t) => unsafe {
                 let mut status = 0 as c_int;
                 libc::waitpid(t.0.pid, &mut status, 0);
@@ -167,6 +169,7 @@ impl Process {
         if self.status.is_some() {
             Ok(())
         } else {
+            // SAFETY: Untriaged.
             cvt(unsafe { libc::kill(self.pid, signal) }).map(drop)
         }
     }
@@ -182,6 +185,7 @@ impl Process {
             return Ok(status);
         }
         let mut status = 0 as c_int;
+        // SAFETY: Untriaged.
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
         self.status = Some(ExitStatus::new(status));
         Ok(ExitStatus::new(status))
@@ -192,6 +196,7 @@ impl Process {
             return Ok(Some(status));
         }
         let mut status = 0 as c_int;
+        // SAFETY: Untriaged.
         let pid = cvt(unsafe { libc::waitpid(self.pid, &mut status, libc::WNOHANG) })?;
         if pid == 0 {
             Ok(None)

@@ -14,6 +14,7 @@ use crate::os::unix::ffi::OsStringExt;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    // SAFETY: Untriaged.
     unsafe { imp::init(argc, argv) }
 }
 
@@ -111,6 +112,7 @@ mod imp {
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         // on GNU/Linux if we are main then we will init argv and argc twice, it "duplicates work"
         // BUT edge-cases are real: only using .init_array can break most emulators, dlopen, etc.
+        // SAFETY: Untriaged.
         unsafe { really_init(argc, argv) };
     }
 
@@ -129,6 +131,7 @@ mod imp {
             argv: *const *const u8,
             _envp: *const *const u8,
         ) {
+            // SAFETY: Untriaged.
             unsafe { really_init(argc as isize, argv) };
         }
         init_wrapper

@@ -43,6 +43,7 @@ impl Thread {
         } else {
             // The thread failed to start and as a result data was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
+            // SAFETY: Untriaged.
             unsafe { drop(Box::from_raw(data)) };
             Err(io::Error::last_os_error())
         };
@@ -61,6 +62,7 @@ impl Thread {
     }
 
     pub fn join(self) {
+        // SAFETY: Untriaged.
         let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE) };
         if rc == c::WAIT_FAILED {
             panic!("failed to join on thread: {}", io::Error::last_os_error());
@@ -77,6 +79,7 @@ impl Thread {
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
+    // SAFETY: Untriaged.
     let res = unsafe {
         let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
         c::GetSystemInfo(&mut sysinfo);
@@ -84,6 +87,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     };
     match res {
         0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
+        // SAFETY: Untriaged.
         cpus => Ok(unsafe { NonZero::new_unchecked(cpus) }),
     }
 }
@@ -99,6 +103,7 @@ pub fn current_os_id() -> Option<u64> {
 pub fn set_name(name: &CStr) {
     if let Ok(utf8) = name.to_str() {
         if let Ok(utf16) = to_u16s(utf8) {
+            // SAFETY: Untriaged.
             unsafe {
                 // SAFETY: the vec returned by `to_u16s` ends with a zero value
                 set_name_wide(&utf16)
@@ -111,6 +116,7 @@ pub fn set_name(name: &CStr) {
 ///
 /// `name` must end with a zero value
 pub unsafe fn set_name_wide(name: &[u16]) {
+    // SAFETY: Untriaged.
     unsafe { c::SetThreadDescription(c::GetCurrentThread(), name.as_ptr()) };
 }
 
@@ -123,11 +129,13 @@ pub fn sleep(dur: Duration) {
     // Directly forward to `Sleep` for its zero duration behavior when indeed
     // zero in order to skip the `Instant::now` calls, useless in this case.
     if dur.is_zero() {
+        // SAFETY: Untriaged.
         unsafe { c::Sleep(0) };
     // Attempt to use high-precision sleep (Windows 10, version 1803+).
     // On error, fallback to the standard `Sleep` function.
     } else if high_precision_sleep(dur).is_err() {
         let start = Instant::now();
+        // SAFETY: Untriaged.
         unsafe { c::Sleep(dur2timeout(dur)) };
 
         // See #149935: `Sleep` under Windows 7 and probably 8 as well seems a
@@ -140,6 +148,7 @@ pub fn sleep(dur: Duration) {
         // that counts in "tick" units of ~15ms by default: a 1ms timeout
         // therefore passes the next tick boundary.
         if start.elapsed() < dur {
+            // SAFETY: Untriaged.
             unsafe { c::Sleep(1) };
         }
     }
@@ -149,6 +158,7 @@ pub fn yield_now() {
     // This function will return 0 if there are no other threads to execute,
     // but this also means that the yield was useless so this isn't really a
     // case that needs to be worried about.
+    // SAFETY: Untriaged.
     unsafe {
         c::SwitchToThread();
     }

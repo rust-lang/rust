@@ -16,6 +16,7 @@ const KCALL_DEBUG_CMD_PUT_BYTES: i64 = 2;
 
 unsafe fn debug_call(cap_ref: u64, call_no: i64, arg1: u64, arg2: u64) -> i32 {
     let ret: u64;
+    // SAFETY: Untriaged.
     unsafe {
         asm!(
             "svc #99",
@@ -41,6 +42,7 @@ impl io::Write for Stdout {
         const MAX_LEN: usize = 512;
         let len = buf.len().min(MAX_LEN);
         let result =
+// SAFETY: Untriaged.
             unsafe { debug_call(0, KCALL_DEBUG_CMD_PUT_BYTES, buf.as_ptr() as u64, len as u64) };
 
         if result == 0 { Ok(len) } else { Err(io::Error::from(io::ErrorKind::InvalidInput)) }

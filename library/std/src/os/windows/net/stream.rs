@@ -101,6 +101,7 @@ impl UnixStream {
     pub fn connect_addr(socket_addr: &SocketAddr) -> io::Result<UnixStream> {
         startup();
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
+        // SAFETY: Untriaged.
         unsafe {
             cvt_nz(connect(
                 inner.as_raw(),
@@ -127,6 +128,7 @@ impl UnixStream {
     /// }
     /// ```
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
 
@@ -146,6 +148,7 @@ impl UnixStream {
     /// }
     /// ```
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { getpeername(self.0.as_raw(), addr, len) })
     }
 
@@ -427,6 +430,7 @@ impl AsRawSocket for UnixStream {
 impl FromRawSocket for UnixStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
+        // SAFETY: Untriaged.
         unsafe { UnixStream(Socket::from_raw_socket(sock)) }
     }
 }

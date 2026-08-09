@@ -47,6 +47,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
     }
 
     #[cfg(not(any(target_os = "espidf", target_os = "nuttx")))]
+    // SAFETY: Untriaged.
     let detail = unsafe {
         // We can't always expect a UTF-8 environment. When we don't get that luxury,
         // it's better to give a low-quality error message than none at all.
@@ -65,51 +66,58 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         cfg_select! {
-            any(
-                target_os = "android",
-                target_os = "dragonfly",
-                target_os = "freebsd",
-                target_os = "illumos",
-                target_os = "hurd",
-                target_os = "linux",
-                target_os = "netbsd",
-                target_os = "openbsd",
-                target_os = "cygwin",
-                target_os = "nto",
-                target_os = "qnx",
-                target_os = "solaris",
-            ) => {
-                // On platforms that support it we pass the SOCK_CLOEXEC
-                // flag to atomically create the socket and set it as
-                // CLOEXEC. On Linux this was added in 2.6.27.
-                let fd = cvt(unsafe { libc::socket(family, ty | libc::SOCK_CLOEXEC, 0) })?;
-                let socket = Socket(unsafe { FileDesc::from_raw_fd(fd) });
+                    any(
+                        target_os = "android",
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "illumos",
+                        target_os = "hurd",
+                        target_os = "linux",
+                        target_os = "netbsd",
+                        target_os = "openbsd",
+                        target_os = "cygwin",
+                        target_os = "nto",
+                        target_os = "qnx",
+                        target_os = "solaris",
+                    ) => {
+                        // On platforms that support it we pass the SOCK_CLOEXEC
+                        // flag to atomically create the socket and set it as
+                        // CLOEXEC. On Linux this was added in 2.6.27.
+        // SAFETY: Untriaged.
+                        let fd = cvt(unsafe { libc::socket(family, ty | libc::SOCK_CLOEXEC, 0) })?;
+        // SAFETY: Untriaged.
+                        let socket = Socket(unsafe { FileDesc::from_raw_fd(fd) });
 
-                // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
-                // flag to disable `SIGPIPE` emission on socket.
-                #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
-                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
+                        // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
+                        // flag to disable `SIGPIPE` emission on socket.
+                        #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+        // SAFETY: Untriaged.
+                        unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
 
-                Ok(socket)
-            }
-            _ => {
-                let fd = cvt(unsafe { libc::socket(family, ty, 0) })?;
-                let fd = unsafe { FileDesc::from_raw_fd(fd) };
-                fd.set_cloexec()?;
-                let socket = Socket(fd);
+                        Ok(socket)
+                    }
+                    _ => {
+        // SAFETY: Untriaged.
+                        let fd = cvt(unsafe { libc::socket(family, ty, 0) })?;
+        // SAFETY: Untriaged.
+                        let fd = unsafe { FileDesc::from_raw_fd(fd) };
+                        fd.set_cloexec()?;
+                        let socket = Socket(fd);
 
-                // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
-                // flag to disable `SIGPIPE` emission on socket.
-                #[cfg(target_vendor = "apple")]
-                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
+                        // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
+                        // flag to disable `SIGPIPE` emission on socket.
+                        #[cfg(target_vendor = "apple")]
+        // SAFETY: Untriaged.
+                        unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
 
-                Ok(socket)
-            }
-        }
+                        Ok(socket)
+                    }
+                }
     }
 
     #[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut fds = [0, 0];
 
@@ -151,6 +159,7 @@ impl Socket {
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = socket_addr_to_c(addr);
         loop {
+            // SAFETY: Untriaged.
             let result = unsafe { libc::connect(self.as_raw_fd(), addr.as_ptr(), len) };
             if result.is_minus_one() {
                 let err = crate::sys::io::errno();
@@ -166,6 +175,7 @@ impl Socket {
 
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
+        // SAFETY: Untriaged.
         let r = unsafe {
             let (addr, len) = socket_addr_to_c(addr);
             cvt(libc::connect(self.as_raw_fd(), addr.as_ptr(), len))
@@ -204,6 +214,7 @@ impl Socket {
 
             let timeout = cmp::min(timeout, c_int::MAX as u64) as c_int;
 
+            // SAFETY: Untriaged.
             match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
                 -1 => {
                     let err = io::Error::last_os_error();
@@ -246,31 +257,33 @@ impl Socket {
         // platforms that support it. On Linux, this was added in 2.6.28,
         // glibc 2.10 and musl 0.9.5.
         cfg_select! {
-            any(
-                target_os = "android",
-                target_os = "dragonfly",
-                target_os = "freebsd",
-                target_os = "illumos",
-                target_os = "linux",
-                target_os = "hurd",
-                target_os = "netbsd",
-                target_os = "openbsd",
-                target_os = "cygwin",
-            ) => {
-                unsafe {
-                    let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
-                    Ok(Socket(FileDesc::from_raw_fd(fd)))
+                    any(
+                        target_os = "android",
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "illumos",
+                        target_os = "linux",
+                        target_os = "hurd",
+                        target_os = "netbsd",
+                        target_os = "openbsd",
+                        target_os = "cygwin",
+                    ) => {
+        // SAFETY: Untriaged.
+                        unsafe {
+                            let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
+                            Ok(Socket(FileDesc::from_raw_fd(fd)))
+                        }
+                    }
+                    _ => {
+        // SAFETY: Untriaged.
+                        unsafe {
+                            let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
+                            let fd = FileDesc::from_raw_fd(fd);
+                            fd.set_cloexec()?;
+                            Ok(Socket(fd))
+                        }
+                    }
                 }
-            }
-            _ => {
-                unsafe {
-                    let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
-                    let fd = FileDesc::from_raw_fd(fd);
-                    fd.set_cloexec()?;
-                    Ok(Socket(fd))
-                }
-            }
-        }
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
@@ -280,6 +293,7 @@ impl Socket {
     #[cfg(not(target_os = "wasi"))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
         let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
         })?;
@@ -287,6 +301,7 @@ impl Socket {
     }
 
     fn recv_with_flags(&self, mut buf: BorrowedCursor<'_, u8>, flags: c_int) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let ret = cvt(unsafe {
             libc::recv(
                 self.as_raw_fd(),
@@ -295,6 +310,7 @@ impl Socket {
                 flags,
             )
         })?;
+        // SAFETY: Untriaged.
         unsafe {
             buf.advance(ret as usize);
         }
@@ -337,6 +353,7 @@ impl Socket {
         let mut storage: mem::MaybeUninit<libc::sockaddr_storage> = mem::MaybeUninit::uninit();
         let mut addrlen = size_of_val(&storage) as libc::socklen_t;
 
+        // SAFETY: Untriaged.
         let n = cvt(unsafe {
             libc::recvfrom(
                 self.as_raw_fd(),
@@ -347,6 +364,7 @@ impl Socket {
                 &mut addrlen,
             )
         })?;
+        // SAFETY: Untriaged.
         Ok((n as usize, unsafe { socket_addr_from_c(storage.as_ptr(), addrlen as usize)? }))
     }
 
@@ -356,6 +374,7 @@ impl Socket {
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
         Ok(n as usize)
     }
@@ -380,6 +399,7 @@ impl Socket {
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
         Ok(n as usize)
     }
@@ -404,10 +424,12 @@ impl Socket {
             }
             None => libc::timeval { tv_sec: 0, tv_usec: 0 },
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, kind, timeout) }
     }
 
     pub fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
+        // SAFETY: Untriaged.
         let raw: libc::timeval = unsafe { getsockopt(self, libc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
@@ -424,6 +446,7 @@ impl Socket {
             Shutdown::Read => libc::SHUT_RD,
             Shutdown::Both => libc::SHUT_RDWR,
         };
+        // SAFETY: Untriaged.
         cvt(unsafe { libc::shutdown(self.as_raw_fd(), how) })?;
         Ok(())
     }
@@ -435,6 +458,7 @@ impl Socket {
             l_linger: cmp::min(linger.unwrap_or_default().as_secs(), c_int::MAX as u64) as c_int,
         };
 
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger) }
     }
 
@@ -446,40 +470,48 @@ impl Socket {
                 as libc::c_ushort,
         };
 
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger) }
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        // SAFETY: Untriaged.
         let val: libc::linger = unsafe { getsockopt(self, libc::SOL_SOCKET, SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_KEEPALIVE, keepalive as c_int) }
     }
 
     pub fn keepalive(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_KEEPALIVE)? };
         Ok(raw != 0)
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int) }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn set_quickack(&self, quickack: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK, quickack as c_int) }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn quickack(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK)? };
         Ok(raw != 0)
     }
@@ -488,11 +520,13 @@ impl Socket {
     #[cfg(target_os = "linux")]
     pub fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
         let val = cmp::min(accept.as_secs(), c_int::MAX as u64) as c_int;
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, val) }
     }
 
     #[cfg(target_os = "linux")]
     pub fn deferaccept(&self) -> io::Result<Duration> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)? };
         Ok(Duration::from_secs(raw as _))
     }
@@ -505,10 +539,13 @@ impl Socket {
             for (src, dst) in name.to_bytes().iter().zip(&mut buf[..AF_NAME_MAX - 1]) {
                 *dst = *src as libc::c_char;
             }
+            // SAFETY: Untriaged.
             let mut arg: libc::accept_filter_arg = unsafe { mem::zeroed() };
             arg.af_name = buf;
+            // SAFETY: Untriaged.
             unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER, &mut arg) }
         } else {
+            // SAFETY: Untriaged.
             unsafe {
                 setsockopt(
                     self,
@@ -523,8 +560,10 @@ impl Socket {
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
     pub fn acceptfilter(&self) -> io::Result<&CStr> {
         let arg: libc::accept_filter_arg =
+// SAFETY: Untriaged.
             unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER)? };
         let s: &[u8] =
+// SAFETY: Untriaged.
             unsafe { core::slice::from_raw_parts(arg.af_name.as_ptr() as *const u8, 16) };
         let name = CStr::from_bytes_with_nul(s).unwrap();
         Ok(name)
@@ -534,6 +573,7 @@ impl Socket {
     pub fn set_exclbind(&self, excl: bool) -> io::Result<()> {
         // not yet on libc crate
         const SO_EXCLBIND: i32 = 0x1015;
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND, excl) }
     }
 
@@ -541,36 +581,42 @@ impl Socket {
     pub fn exclbind(&self) -> io::Result<bool> {
         // not yet on libc crate
         const SO_EXCLBIND: i32 = 0x1015;
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND)? };
         Ok(raw != 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int) }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn passcred(&self) -> io::Result<bool> {
         let passcred: libc::c_int =
+// SAFETY: Untriaged.
             unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)? };
         Ok(passcred != 0)
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn set_local_creds(&self, local_creds: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, local_creds as libc::c_int) }
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn local_creds(&self) -> io::Result<bool> {
         let local_creds: libc::c_int =
+// SAFETY: Untriaged.
             unsafe { getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)? };
         Ok(local_creds != 0)
     }
 
     #[cfg(target_os = "freebsd")]
     pub fn set_local_creds_persistent(&self, local_creds_persistent: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             setsockopt(
                 self,
@@ -584,6 +630,7 @@ impl Socket {
     #[cfg(target_os = "freebsd")]
     pub fn local_creds_persistent(&self) -> io::Result<bool> {
         let local_creds_persistent: libc::c_int =
+// SAFETY: Untriaged.
             unsafe { getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)? };
         Ok(local_creds_persistent != 0)
     }
@@ -591,12 +638,14 @@ impl Socket {
     #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "vita")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;
+        // SAFETY: Untriaged.
         cvt(unsafe { libc::ioctl(self.as_raw_fd(), libc::FIONBIO, &mut nonblocking) }).map(drop)
     }
 
     #[cfg(target_os = "vita")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let option = nonblocking as libc::c_int;
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_NONBLOCK, option) }
     }
 
@@ -615,10 +664,12 @@ impl Socket {
         let option = libc::SO_USER_COOKIE;
         #[cfg(target_os = "openbsd")]
         let option = libc::SO_RTABLE;
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int) }
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
@@ -695,6 +746,7 @@ fn on_resolver_failure() {
     // If the version fails to parse, we treat it the same as "not glibc".
     if let Some(version) = sys::pal::conf::glibc_version() {
         if version < (2, 26) {
+            // SAFETY: Untriaged.
             unsafe { libc::res_init() };
         }
     }

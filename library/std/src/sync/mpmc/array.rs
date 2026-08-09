@@ -139,6 +139,7 @@ impl<T> Channel<T> {
 
             // Inspect the corresponding slot.
             debug_assert!(index < self.buffer.len());
+            // SAFETY: Untriaged.
             let slot = unsafe { self.buffer.get_unchecked(index) };
             let stamp = slot.stamp.load(Ordering::Acquire);
 
@@ -200,6 +201,7 @@ impl<T> Channel<T> {
         }
 
         // Write the message into the slot and update the stamp.
+        // SAFETY: Untriaged.
         unsafe {
             let slot: &Slot<T> = &*(token.array.slot as *const Slot<T>);
             slot.msg.get().write(MaybeUninit::new(msg));
@@ -223,6 +225,7 @@ impl<T> Channel<T> {
 
             // Inspect the corresponding slot.
             debug_assert!(index < self.buffer.len());
+            // SAFETY: Untriaged.
             let slot = unsafe { self.buffer.get_unchecked(index) };
             let stamp = slot.stamp.load(Ordering::Acquire);
 
@@ -292,6 +295,7 @@ impl<T> Channel<T> {
         }
 
         // Read the message from the slot and update the stamp.
+        // SAFETY: Untriaged.
         let msg = unsafe {
             let slot: &Slot<T> = &*(token.array.slot as *const Slot<T>);
 
@@ -309,6 +313,7 @@ impl<T> Channel<T> {
     pub(crate) fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
         let token = &mut Token::default();
         if self.start_send(token) {
+            // SAFETY: Untriaged.
             unsafe { self.write(token, msg).map_err(TrySendError::Disconnected) }
         } else {
             Err(TrySendError::Full(msg))
@@ -325,6 +330,7 @@ impl<T> Channel<T> {
         loop {
             // Try sending a message.
             if self.start_send(token) {
+                // SAFETY: Untriaged.
                 let res = unsafe { self.write(token, msg) };
                 return res.map_err(SendTimeoutError::Disconnected);
             }
@@ -365,6 +371,7 @@ impl<T> Channel<T> {
         let token = &mut Token::default();
 
         if self.start_recv(token) {
+            // SAFETY: Untriaged.
             unsafe { self.read(token).map_err(|_| TryRecvError::Disconnected) }
         } else {
             Err(TryRecvError::Empty)
@@ -377,6 +384,7 @@ impl<T> Channel<T> {
         loop {
             // Try receiving a message.
             if self.start_recv(token) {
+                // SAFETY: Untriaged.
                 let res = unsafe { self.read(token) };
                 return res.map_err(|_| RecvTimeoutError::Disconnected);
             }
@@ -476,6 +484,7 @@ impl<T> Channel<T> {
             false
         };
 
+        // SAFETY: Untriaged.
         unsafe { self.discard_all_messages(tail) };
         disconnected
     }
@@ -509,6 +518,7 @@ impl<T> Channel<T> {
 
             // Inspect the corresponding slot.
             debug_assert!(index < self.buffer.len());
+            // SAFETY: Untriaged.
             let slot = unsafe { self.buffer.get_unchecked(index) };
             let stamp = slot.stamp.load(Ordering::Acquire);
 
@@ -524,6 +534,7 @@ impl<T> Channel<T> {
                     lap.wrapping_add(self.one_lap)
                 };
 
+                // SAFETY: Untriaged.
                 unsafe {
                     (*slot.msg.get()).assume_init_drop();
                 }

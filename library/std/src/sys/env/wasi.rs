@@ -36,6 +36,7 @@ cfg_select! {
 }
 
 pub fn env() -> Env {
+    // SAFETY: Untriaged.
     unsafe {
         let _guard = env_read_lock();
 
@@ -76,6 +77,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     // always None as well
     run_with_cstr(k.as_bytes(), &|k| {
         let _guard = env_read_lock();
+        // SAFETY: Untriaged.
         let v = unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char;
 
         if v.is_null() {
@@ -93,6 +95,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
 
 pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     run_with_cstr(k.as_bytes(), &|k| {
+        // SAFETY: Untriaged.
         run_with_cstr(v.as_bytes(), &|v| unsafe {
             let _guard = env_write_lock();
             cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
@@ -101,6 +104,7 @@ pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 }
 
 pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
+    // SAFETY: Untriaged.
     run_with_cstr(n.as_bytes(), &|nbuf| unsafe {
         let _guard = env_write_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)

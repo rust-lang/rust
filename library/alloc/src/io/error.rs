@@ -216,6 +216,7 @@ impl Error {
                 Ok(*err)
             } else {
                 // Safety: We have just checked that the condition is true
+                // SAFETY: Untriaged.
                 unsafe { core::hint::unreachable_unchecked() }
             }
         } else {
@@ -256,6 +257,7 @@ fn custom_owner_from_box(
     unsafe fn drop_box_raw<T: ?Sized>(ptr: *mut T) {
         // SAFETY
         // Caller ensures `ptr` is valid to pass into `Box::from_raw`.
+        // SAFETY: Untriaged.
         drop(unsafe { Box::from_raw(ptr) })
     }
 

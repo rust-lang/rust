@@ -26,6 +26,7 @@ pub mod perf_counter {
 
     pub fn now() -> i64 {
         let mut qpc_value: i64 = 0;
+        // SAFETY: Untriaged.
         cvt(unsafe { c::QueryPerformanceCounter(&mut qpc_value) }).unwrap();
         qpc_value
     }
@@ -49,6 +50,7 @@ pub mod perf_counter {
     #[cold]
     fn frequency_init(cache: &AtomicI64) -> i64 {
         let mut frequency = 0;
+        // SAFETY: Untriaged.
         unsafe {
             cvt(c::QueryPerformanceFrequency(&mut frequency)).unwrap();
         }
@@ -79,6 +81,7 @@ pub(crate) struct WaitableTimer {
 impl WaitableTimer {
     /// Creates a high-resolution timer. Will fail before Windows 10, version 1803.
     pub fn high_resolution() -> Result<Self, ()> {
+        // SAFETY: Untriaged.
         let handle = unsafe {
             c::CreateWaitableTimerExW(
                 null(),
@@ -95,11 +98,13 @@ impl WaitableTimer {
         // Negative values are relative times whereas positive values are absolute.
         // Therefore we negate the relative duration.
         let time = checked_dur2intervals(&duration).ok_or(())?.neg();
+        // SAFETY: Untriaged.
         let result = unsafe { c::SetWaitableTimer(self.handle, &time, 0, None, null(), c::FALSE) };
         if result != 0 { Ok(()) } else { Err(()) }
     }
 
     pub fn wait(&self) -> Result<(), ()> {
+        // SAFETY: Untriaged.
         let result = unsafe { c::WaitForSingleObject(self.handle, c::INFINITE) };
         if result != c::WAIT_FAILED { Ok(()) } else { Err(()) }
     }
@@ -107,6 +112,7 @@ impl WaitableTimer {
 
 impl Drop for WaitableTimer {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { c::CloseHandle(self.handle) };
     }
 }

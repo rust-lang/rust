@@ -884,6 +884,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(not(panic = "immediate-abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
+    // SAFETY: Untriaged.
     let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
 }

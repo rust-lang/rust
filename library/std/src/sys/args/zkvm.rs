@@ -9,20 +9,26 @@ pub fn args() -> Args {
 }
 
 fn get_args() -> Vec<&'static OsStr> {
+    // SAFETY: Untriaged.
     let argc = unsafe { abi::sys_argc() };
     let mut args = Vec::with_capacity(argc);
 
     for i in 0..argc {
         // Get the size of the argument then the data.
+        // SAFETY: Untriaged.
         let arg_len = unsafe { abi::sys_argv(ptr::null_mut(), 0, i) };
 
         let arg_len_words = (arg_len + WORD_SIZE - 1) / WORD_SIZE;
+        // SAFETY: Untriaged.
         let words = unsafe { abi::sys_alloc_words(arg_len_words) };
 
+        // SAFETY: Untriaged.
         let arg_len2 = unsafe { abi::sys_argv(words, arg_len_words, i) };
         debug_assert_eq!(arg_len, arg_len2);
 
+        // SAFETY: Untriaged.
         let arg_bytes = unsafe { slice::from_raw_parts(words.cast(), arg_len) };
+        // SAFETY: Untriaged.
         args.push(unsafe { OsStr::from_encoded_bytes_unchecked(arg_bytes) });
     }
     args

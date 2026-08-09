@@ -3,6 +3,7 @@ use crate::sys::pal::abi;
 
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    // SAFETY: Untriaged.
     unsafe { abi::sys_alloc_aligned(layout.size(), layout.align()) }
 }
 

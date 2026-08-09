@@ -96,6 +96,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
+        // SAFETY: Untriaged.
         unsafe {
             let socket = UnixDatagram::unbound()?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
@@ -130,6 +131,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixDatagram> {
+        // SAFETY: Untriaged.
         unsafe {
             let socket = UnixDatagram::unbound()?;
             cvt(libc::bind(
@@ -216,6 +218,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
@@ -249,6 +252,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             cvt(libc::connect(
                 self.as_raw_fd(),
@@ -298,6 +302,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
 
@@ -323,6 +328,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(self.as_raw_fd(), addr, len) })
     }
 
@@ -332,6 +338,7 @@ impl UnixDatagram {
         flags: core::ffi::c_int,
     ) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
+        // SAFETY: Untriaged.
         let addr = SocketAddr::new(|addr, len| unsafe {
             count = libc::recvfrom(
                 self.as_raw_fd(),
@@ -529,6 +536,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
@@ -567,6 +575,7 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn send_to_addr(&self, buf: &[u8], socket_addr: &SocketAddr) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             let count = cvt(libc::sendto(
                 self.as_raw_fd(),
@@ -1021,6 +1030,7 @@ impl From<UnixDatagram> for OwnedFd {
     /// Takes ownership of a [`UnixDatagram`]'s socket file descriptor.
     #[inline]
     fn from(unix_datagram: UnixDatagram) -> OwnedFd {
+        // SAFETY: Untriaged.
         unsafe { OwnedFd::from_raw_fd(unix_datagram.into_raw_fd()) }
     }
 }
@@ -1029,6 +1039,7 @@ impl From<UnixDatagram> for OwnedFd {
 impl From<OwnedFd> for UnixDatagram {
     #[inline]
     fn from(owned: OwnedFd) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_raw_fd(owned.into_raw_fd()) }
     }
 }

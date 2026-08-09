@@ -346,10 +346,12 @@ impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
         #[cfg(target_env = "musl")]
+        // SAFETY: Untriaged.
         unsafe {
             &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat)
         }
         #[cfg(not(target_env = "musl"))]
+        // SAFETY: Untriaged.
         unsafe {
             &*(self.as_inner().as_inner() as *const libc::stat64 as *const raw::stat)
         }

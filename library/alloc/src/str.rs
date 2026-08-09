@@ -73,6 +73,7 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
     fn join(slice: &Self, sep: &str) -> String {
+        // SAFETY: Untriaged.
         unsafe { String::from_utf8_unchecked(join_generic_copy(slice, sep.as_bytes())) }
     }
 }
@@ -180,6 +181,7 @@ where
 
     result.extend_from_slice(first);
 
+    // SAFETY: Untriaged.
     unsafe {
         let pos = result.len();
         debug_assert!(reserved_len >= pos);
@@ -248,6 +250,7 @@ impl ToOwned for str {
 
     #[inline]
     fn to_owned(&self) -> String {
+        // SAFETY: Untriaged.
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
@@ -316,6 +319,7 @@ impl str {
             _ => None,
         } {
             if let [to_byte] = to.as_bytes() {
+                // SAFETY: Untriaged.
                 return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
             }
         }
@@ -328,10 +332,12 @@ impl str {
         let mut result = String::with_capacity(default_capacity);
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
+            // SAFETY: Untriaged.
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // SAFETY: Untriaged.
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -368,10 +374,12 @@ impl str {
         let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(pat).take(count) {
+            // SAFETY: Untriaged.
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // SAFETY: Untriaged.
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -785,6 +793,7 @@ impl str {
     #[inline]
     pub fn into_string(self: Box<Self>) -> String {
         let slice = Box::<[u8]>::from(self);
+        // SAFETY: Untriaged.
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
@@ -814,6 +823,7 @@ impl str {
     #[stable(feature = "repeat_str", since = "1.16.0")]
     #[inline]
     pub fn repeat(&self, n: usize) -> String {
+        // SAFETY: Untriaged.
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
 
@@ -903,6 +913,7 @@ impl str {
 #[must_use]
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
+    // SAFETY: Untriaged.
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }
 
@@ -960,7 +971,9 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
         }
 
         ascii_prefix_len += N;
+        // SAFETY: Untriaged.
         slice = unsafe { slice.get_unchecked(N..) };
+        // SAFETY: Untriaged.
         out_slice = unsafe { out_slice.get_unchecked_mut(N..) };
     }
 
@@ -975,10 +988,13 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
             *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
         }
         ascii_prefix_len += 1;
+        // SAFETY: Untriaged.
         slice = unsafe { slice.get_unchecked(1..) };
+        // SAFETY: Untriaged.
         out_slice = unsafe { out_slice.get_unchecked_mut(1..) };
     }
 
+    // SAFETY: Untriaged.
     unsafe {
         // SAFETY: ascii_prefix_len bytes have been initialized above
         out.set_len(ascii_prefix_len);

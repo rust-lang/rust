@@ -125,7 +125,9 @@ impl BorrowedFd<'_> {
         let cmd = libc::F_DUPFD;
 
         // Avoid using file descriptors below 3 as they are used for stdio
+        // SAFETY: Untriaged.
         let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 3) })?;
+        // SAFETY: Untriaged.
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
@@ -147,6 +149,7 @@ impl BorrowedFd<'_> {
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         let fd = moto_rt::fs::duplicate(self.as_raw_fd()).map_err(crate::sys::map_motor_error)?;
+        // SAFETY: Untriaged.
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 }
@@ -200,6 +203,7 @@ impl FromRawFd for OwnedFd {
 impl Drop for OwnedFd {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             // Note that errors are ignored when closing a file descriptor. According to POSIX 2024,
             // we can and indeed should retry `close` on `EINTR`
@@ -310,6 +314,7 @@ impl AsFd for OwnedFd {
         // Safety: `OwnedFd` and `BorrowedFd` have the same validity
         // invariants, and the `BorrowedFd` is bounded by the lifetime
         // of `&self`.
+        // SAFETY: Untriaged.
         unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
@@ -485,6 +490,7 @@ impl<T: AsFd + ?Sized> AsFd for Box<T> {
 impl AsFd for io::Stdin {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedFd::borrow_raw(0) }
     }
 }
@@ -502,6 +508,7 @@ impl<'a> AsFd for io::StdinLock<'a> {
 impl AsFd for io::Stdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedFd::borrow_raw(1) }
     }
 }
@@ -519,6 +526,7 @@ impl<'a> AsFd for io::StdoutLock<'a> {
 impl AsFd for io::Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedFd::borrow_raw(2) }
     }
 }

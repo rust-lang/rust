@@ -25,6 +25,7 @@ impl DwarfReader {
     ///
     /// DWARF streams are "packed", so all types must be read at align 1.
     pub unsafe fn read<T: Copy>(&mut self) -> T {
+        // SAFETY: Untriaged.
         unsafe {
             let result = self.ptr.cast::<T>().read_unaligned();
             self.ptr = self.ptr.byte_add(size_of::<T>());
@@ -38,6 +39,7 @@ impl DwarfReader {
         let mut result: u64 = 0;
         let mut byte: u8;
         loop {
+            // SAFETY: Untriaged.
             byte = unsafe { self.read::<u8>() };
             result |= ((byte & 0x7F) as u64) << shift;
             shift += 7;
@@ -53,6 +55,7 @@ impl DwarfReader {
         let mut result: u64 = 0;
         let mut byte: u8;
         loop {
+            // SAFETY: Untriaged.
             byte = unsafe { self.read::<u8>() };
             result |= ((byte & 0x7F) as u64) << shift;
             shift += 7;

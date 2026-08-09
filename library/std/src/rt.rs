@@ -114,6 +114,7 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     unsafe { main_thread::set(thread::current_id()) };
 
     #[cfg_attr(target_os = "teeos", allow(unused_unsafe))]
+    // SAFETY: Untriaged.
     unsafe {
         sys::init(argc, argv, sigpipe)
     };
@@ -138,6 +139,7 @@ pub(crate) fn thread_cleanup() {
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub(crate) fn cleanup() {
     static CLEANUP: Once = Once::new();
+    // SAFETY: Untriaged.
     CLEANUP.call_once(|| unsafe {
         // Flush stdout and disable buffering.
         crate::io::cleanup();

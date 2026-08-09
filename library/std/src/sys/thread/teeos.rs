@@ -27,10 +27,14 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         let data = Box::into_raw(init);
+        // SAFETY: Untriaged.
         let mut native: libc::pthread_t = unsafe { mem::zeroed() };
+        // SAFETY: Untriaged.
         let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
+        // SAFETY: Untriaged.
         assert_eq!(unsafe { libc::pthread_attr_init(&mut attr) }, 0);
         assert_eq!(
+            // SAFETY: Untriaged.
             unsafe {
                 libc::pthread_attr_settee(
                     &mut attr,
@@ -44,6 +48,7 @@ impl Thread {
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
 
+        // SAFETY: Untriaged.
         match unsafe { libc::pthread_attr_setstacksize(&mut attr, stack_size) } {
             0 => {}
             n => {
@@ -55,19 +60,23 @@ impl Thread {
                 let page_size = conf::page_size();
                 let stack_size =
                     (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
+                // SAFETY: Untriaged.
                 assert_eq!(unsafe { libc::pthread_attr_setstacksize(&mut attr, stack_size) }, 0);
             }
         };
 
+        // SAFETY: Untriaged.
         let ret = unsafe { libc::pthread_create(&mut native, &attr, thread_start, data as *mut _) };
         // Note: if the thread creation fails and this assert fails, then data will
         // be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
+        // SAFETY: Untriaged.
         assert_eq!(unsafe { libc::pthread_attr_destroy(&mut attr) }, 0);
 
         return if ret != 0 {
             // The thread failed to start and as a result data was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
+            // SAFETY: Untriaged.
             drop(unsafe { Box::from_raw(data) });
             Err(io::Error::from_raw_os_error(ret))
         } else {
@@ -89,6 +98,7 @@ impl Thread {
     /// must join, because no pthread_detach supported
     pub fn join(self) {
         let id = self.into_id();
+        // SAFETY: Untriaged.
         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
         assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
@@ -106,6 +116,7 @@ impl Drop for Thread {
 }
 
 pub fn yield_now() {
+    // SAFETY: Untriaged.
     let ret = unsafe { libc::sched_yield() };
     debug_assert_eq!(ret, 0);
 }

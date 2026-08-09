@@ -9,11 +9,13 @@ pub fn pipe() -> io::Result<(Pipe, Pipe)> {
     let mut read_pipe = c::INVALID_HANDLE_VALUE;
     let mut write_pipe = c::INVALID_HANDLE_VALUE;
 
+    // SAFETY: Untriaged.
     let ret = unsafe { c::CreatePipe(&mut read_pipe, &mut write_pipe, ptr::null_mut(), 0) };
 
     if ret == 0 {
         Err(io::Error::last_os_error())
     } else {
+        // SAFETY: Untriaged.
         unsafe { Ok((Handle::from_raw_handle(read_pipe), Handle::from_raw_handle(write_pipe))) }
     }
 }

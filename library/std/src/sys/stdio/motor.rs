@@ -72,6 +72,7 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
 impl FromRawFd for process::Stdio {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
+        // SAFETY: Untriaged.
         let fd = unsafe { sys::fd::FileDesc::from_raw_fd(fd) };
         let io = sys::process::Stdio::Fd(fd);
         process::Stdio::from_inner(io)

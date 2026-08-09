@@ -166,6 +166,7 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
     let zeroed = false;
+    // SAFETY: Untriaged.
     unsafe { allocate(layout, zeroed) }
 }
 
@@ -173,6 +174,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
     let zeroed = true;
+    // SAFETY: Untriaged.
     unsafe { allocate(layout, zeroed) }
 }
 

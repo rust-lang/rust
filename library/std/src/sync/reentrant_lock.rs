@@ -159,6 +159,7 @@ cfg_select!(
                 let tls_addr = tls_addr();
                 // SAFETY: See the comments in the struct definition.
                 self.tls_addr.load(Ordering::Relaxed) == tls_addr
+// SAFETY: Untriaged.
                     && unsafe { *self.tid.get() } == owner.as_u64().get()
             }
 
@@ -172,6 +173,7 @@ cfg_select!(
                 let tls_addr = if tid.is_some() { tls_addr() } else { 0 };
                 let value = tid.map_or(0, |tid| tid.as_u64().get());
                 self.tls_addr.store(tls_addr, Ordering::Relaxed);
+// SAFETY: Untriaged.
                 unsafe { *self.tid.get() = value };
             }
         }
@@ -286,6 +288,7 @@ impl<T: ?Sized> ReentrantLock<T> {
         // Safety: We only touch lock_count when we own the inner mutex.
         // Additionally, we only call `self.owner.set()` while holding
         // the inner mutex, so no two threads can call it concurrently.
+        // SAFETY: Untriaged.
         unsafe {
             if self.owner.contains(this_thread) {
                 self.increment_lock_count().expect("lock count overflow in reentrant mutex");
@@ -333,6 +336,7 @@ impl<T: ?Sized> ReentrantLock<T> {
         // Safety: We only touch lock_count when we own the inner mutex.
         // Additionally, we only call `self.owner.set()` while holding
         // the inner mutex, so no two threads can call it concurrently.
+        // SAFETY: Untriaged.
         unsafe {
             if self.owner.contains(this_thread) {
                 self.increment_lock_count()?;
@@ -360,6 +364,7 @@ impl<T: ?Sized> ReentrantLock<T> {
     }
 
     unsafe fn increment_lock_count(&self) -> Option<()> {
+        // SAFETY: Untriaged.
         unsafe {
             *self.lock_count.get() = (*self.lock_count.get()).checked_add(1)?;
         }
@@ -421,6 +426,7 @@ impl<T: ?Sized> Drop for ReentrantLockGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // Safety: We own the lock.
+        // SAFETY: Untriaged.
         unsafe {
             *self.lock.lock_count.get() -= 1;
             if *self.lock.lock_count.get() == 0 {

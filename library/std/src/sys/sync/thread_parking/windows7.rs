@@ -167,6 +167,7 @@ impl Parker {
         // purpose, to make sure every unpark() has a release-acquire ordering
         // with park().
         if self.state.swap(NOTIFIED, Release) == PARKED {
+            // SAFETY: Untriaged.
             unsafe {
                 #[cfg(target_vendor = "win7")]
                 if c::WakeByAddressSingle::option().is_none() {
@@ -248,6 +249,7 @@ mod keyed_events {
         match HANDLE.load(Relaxed) {
             INVALID => {
                 let mut handle = c::INVALID_HANDLE_VALUE;
+                // SAFETY: Untriaged.
                 unsafe {
                     match c::NtCreateKeyedEvent(
                         &mut handle,
@@ -264,6 +266,7 @@ mod keyed_events {
                     Err(h) => {
                         // Lost the race to another thread initializing HANDLE before we did.
                         // Closing our handle and using theirs instead.
+                        // SAFETY: Untriaged.
                         unsafe {
                             c::CloseHandle(handle);
                         }

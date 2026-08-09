@@ -111,6 +111,7 @@ impl Parker {
     pub fn unpark(self: Pin<&Self>) {
         let state = self.state.swap(NOTIFIED, Release);
         if state == PARKED {
+            // SAFETY: Untriaged.
             unsafe {
                 dispatch_semaphore_signal(self.semaphore);
             }

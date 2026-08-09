@@ -88,6 +88,7 @@ pub(super) mod netc {
     }
 
     pub unsafe fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int {
+        // SAFETY: Untriaged.
         unsafe { c::send(socket, buf.cast::<u8>(), len, flags) }
     }
     pub unsafe fn sendto(
@@ -98,6 +99,7 @@ pub(super) mod netc {
         addr: *const SOCKADDR,
         addrlen: c_int,
     ) -> c_int {
+        // SAFETY: Untriaged.
         unsafe { c::sendto(socket, buf.cast::<u8>(), len, flags, addr, addrlen) }
     }
     pub unsafe fn getaddrinfo(
@@ -106,6 +108,7 @@ pub(super) mod netc {
         hints: *const ADDRINFOA,
         res: *mut *mut ADDRINFOA,
     ) -> c_int {
+        // SAFETY: Untriaged.
         unsafe { c::getaddrinfo(node.cast::<u8>(), service.cast::<u8>(), hints, res) }
     }
 }
@@ -117,6 +120,7 @@ pub struct Socket(OwnedSocket);
 
 impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
+        // SAFETY: Untriaged.
         let socket = unsafe {
             c::WSASocketW(
                 family,
@@ -129,8 +133,10 @@ impl Socket {
         };
 
         if socket != c::INVALID_SOCKET {
+            // SAFETY: Untriaged.
             unsafe { Ok(Self::from_raw(socket)) }
         } else {
+            // SAFETY: Untriaged.
             let error = unsafe { c::WSAGetLastError() };
 
             if error != c::WSAEPROTOTYPE && error != c::WSAEINVAL {
@@ -138,12 +144,14 @@ impl Socket {
             }
 
             let socket =
+// SAFETY: Untriaged.
                 unsafe { c::WSASocketW(family, ty, 0, ptr::null_mut(), 0, c::WSA_FLAG_OVERLAPPED) };
 
             if socket == c::INVALID_SOCKET {
                 return Err(last_error());
             }
 
+            // SAFETY: Untriaged.
             unsafe {
                 let socket = Self::from_raw(socket);
                 socket.0.set_no_inherit()?;
@@ -154,6 +162,7 @@ impl Socket {
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = socket_addr_to_c(addr);
+        // SAFETY: Untriaged.
         let result = unsafe { c::connect(self.as_raw(), addr.as_ptr(), len) };
         cvt(result).map(drop)
     }
@@ -179,6 +188,7 @@ impl Socket {
                 }
 
                 let fds = {
+                    // SAFETY: Untriaged.
                     let mut fds = unsafe { mem::zeroed::<c::FD_SET>() };
                     fds.fd_count = 1;
                     fds.fd_array[0] = self.as_raw();
@@ -189,6 +199,7 @@ impl Socket {
                 let mut errorfds = fds;
 
                 let count = {
+                    // SAFETY: Untriaged.
                     let result = unsafe {
                         c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout)
                     };
@@ -213,10 +224,12 @@ impl Socket {
     }
 
     pub fn accept(&self, storage: *mut c::SOCKADDR, len: *mut c_int) -> io::Result<Socket> {
+        // SAFETY: Untriaged.
         let socket = unsafe { c::accept(self.as_raw(), storage, len) };
 
         match socket {
             c::INVALID_SOCKET => Err(last_error()),
+            // SAFETY: Untriaged.
             _ => unsafe { Ok(Self::from_raw(socket)) },
         }
     }
@@ -230,10 +243,12 @@ impl Socket {
         // do the same on windows to map a shut down socket to returning EOF.
         let length = cmp::min(buf.capacity(), i32::MAX as usize) as i32;
         let result =
+// SAFETY: Untriaged.
             unsafe { c::recv(self.as_raw(), buf.as_mut().as_mut_ptr() as *mut _, length, flags) };
 
         match result {
             c::SOCKET_ERROR => {
+                // SAFETY: Untriaged.
                 let error = unsafe { c::WSAGetLastError() };
 
                 if error == c::WSAESHUTDOWN {
@@ -243,6 +258,7 @@ impl Socket {
                 }
             }
             _ => {
+                // SAFETY: Untriaged.
                 unsafe { buf.advance(result as usize) };
                 Ok(())
             }
@@ -265,6 +281,7 @@ impl Socket {
         let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nread = 0;
         let mut flags = 0;
+        // SAFETY: Untriaged.
         let result = unsafe {
             c::WSARecv(
                 self.as_raw(),
@@ -280,6 +297,7 @@ impl Socket {
         match result {
             0 => Ok(nread as usize),
             _ => {
+                // SAFETY: Untriaged.
                 let error = unsafe { c::WSAGetLastError() };
 
                 if error == c::WSAESHUTDOWN {
@@ -307,12 +325,14 @@ impl Socket {
         buf: &mut [u8],
         flags: c_int,
     ) -> io::Result<(usize, SocketAddr)> {
+        // SAFETY: Untriaged.
         let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE>() };
         let mut addrlen = size_of_val(&storage) as netc::socklen_t;
         let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
+        // SAFETY: Untriaged.
         let result = unsafe {
             c::recvfrom(
                 self.as_raw(),
@@ -326,14 +346,17 @@ impl Socket {
 
         match result {
             c::SOCKET_ERROR => {
+                // SAFETY: Untriaged.
                 let error = unsafe { c::WSAGetLastError() };
 
                 if error == c::WSAESHUTDOWN {
+                    // SAFETY: Untriaged.
                     Ok((0, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
                 } else {
                     Err(io::Error::from_raw_os_error(error))
                 }
             }
+            // SAFETY: Untriaged.
             _ => Ok((result as usize, unsafe { socket_addr_from_c(&storage, addrlen as usize)? })),
         }
     }
@@ -349,6 +372,7 @@ impl Socket {
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nwritten = 0;
+        // SAFETY: Untriaged.
         let result = unsafe {
             c::WSASend(
                 self.as_raw(),
@@ -379,10 +403,12 @@ impl Socket {
             }
             None => 0,
         };
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, c::SOL_SOCKET, kind, timeout) }
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
+        // SAFETY: Untriaged.
         let raw: u32 = unsafe { getsockopt(self, c::SOL_SOCKET, kind)? };
         if raw == 0 {
             Ok(None)
@@ -399,6 +425,7 @@ impl Socket {
             Shutdown::Read => c::SD_RECEIVE,
             Shutdown::Both => c::SD_BOTH,
         };
+        // SAFETY: Untriaged.
         let result = unsafe { c::shutdown(self.as_raw(), how) };
         cvt(result).map(drop)
     }
@@ -406,6 +433,7 @@ impl Socket {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as c_ulong;
         let result =
+// SAFETY: Untriaged.
             unsafe { c::ioctlsocket(self.as_raw(), c::FIONBIO as c_int, &mut nonblocking) };
         cvt(result).map(drop)
     }
@@ -417,34 +445,41 @@ impl Socket {
                 as c_ushort,
         };
 
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger) }
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        // SAFETY: Untriaged.
         let val: c::LINGER = unsafe { getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, c::SOL_SOCKET, c::SO_KEEPALIVE, keepalive as c::BOOL) }
     }
 
     pub fn keepalive(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c::BOOL = unsafe { getsockopt(self, c::SOL_SOCKET, c::SO_KEEPALIVE)? };
         Ok(raw != 0)
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL) }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
+        // SAFETY: Untriaged.
         let raw: c::BOOL = unsafe { getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        // SAFETY: Untriaged.
         let raw: c_int = unsafe { getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
@@ -457,6 +492,7 @@ impl Socket {
     pub unsafe fn from_raw(raw: c::SOCKET) -> Self {
         debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
         debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());
+        // SAFETY: Untriaged.
         unsafe { Self::from_raw_socket(raw as RawSocket) }
     }
 }
@@ -506,6 +542,7 @@ impl IntoRawSocket for Socket {
 
 impl FromRawSocket for Socket {
     unsafe fn from_raw_socket(raw_socket: RawSocket) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self(FromRawSocket::from_raw_socket(raw_socket)) }
     }
 }

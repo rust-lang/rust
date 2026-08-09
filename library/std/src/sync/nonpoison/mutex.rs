@@ -282,6 +282,7 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn lock(&self) -> MutexGuard<'_, T> {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.lock();
             MutexGuard::new(self)
@@ -321,6 +322,7 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
+        // SAFETY: Untriaged.
         unsafe { if self.inner.try_lock() { Ok(MutexGuard::new(self)) } else { Err(WouldBlock) } }
     }
 
@@ -456,6 +458,7 @@ impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
+        // SAFETY: Untriaged.
         unsafe { &*self.lock.data.get() }
     }
 }
@@ -463,6 +466,7 @@ impl<T: ?Sized> Deref for MutexGuard<'_, T> {
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: Untriaged.
         unsafe { &mut *self.lock.data.get() }
     }
 }
@@ -471,6 +475,7 @@ impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
 impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             self.lock.inner.unlock();
         }
@@ -557,6 +562,7 @@ impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
+        // SAFETY: Untriaged.
         unsafe { self.data.as_ref() }
     }
 }
@@ -564,6 +570,7 @@ impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized> DerefMut for MappedMutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: Untriaged.
         unsafe { self.data.as_mut() }
     }
 }
@@ -572,6 +579,7 @@ impl<T: ?Sized> DerefMut for MappedMutexGuard<'_, T> {
 impl<T: ?Sized> Drop for MappedMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.unlock();
         }

@@ -146,6 +146,7 @@ impl<T: ?Sized> Deref for ThinBox<T> {
         let value = self.data();
         let metadata = self.meta();
         let pointer = ptr::from_raw_parts(value as *const (), metadata);
+        // SAFETY: Untriaged.
         unsafe { &*pointer }
     }
 }
@@ -156,6 +157,7 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
         let value = self.data();
         let metadata = self.meta();
         let pointer = ptr::from_raw_parts_mut::<T>(value as *mut (), metadata);
+        // SAFETY: Untriaged.
         unsafe { &mut *pointer }
     }
 }
@@ -163,6 +165,7 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized> Drop for ThinBox<T> {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             let value = self.deref_mut();
             let value = value as *mut T;
@@ -176,6 +179,7 @@ impl<T: ?Sized> ThinBox<T> {
     fn meta(&self) -> <T as Pointee>::Metadata {
         //  Safety:
         //  -   NonNull and valid.
+        // SAFETY: Untriaged.
         unsafe { *self.with_header().header() }
     }
 
@@ -238,6 +242,7 @@ impl<H> WithHeader<H> {
             alloc::handle_alloc_error(Layout::new::<()>());
         };
 
+        // SAFETY: Untriaged.
         unsafe {
             // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
             // we use `layout.dangling()` for this case, which should have a valid
@@ -275,6 +280,7 @@ impl<H> WithHeader<H> {
             return Err(core::alloc::AllocError);
         };
 
+        // SAFETY: Untriaged.
         unsafe {
             // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
             // we use `layout.dangling()` for this case, which should have a valid
@@ -330,6 +336,7 @@ impl<H> WithHeader<H> {
 
             let alloc_size = max(align_of::<T>(), size_of::<<Dyn as Pointee>::Metadata>());
 
+            // SAFETY: Untriaged.
             unsafe {
                 // SAFETY: align is power of two because it is the maximum of two alignments.
                 let alloc: *mut u8 = const_allocate(alloc_size, alloc_align);
@@ -350,6 +357,7 @@ impl<H> WithHeader<H> {
 
         // SAFETY: `alloc` points to `<Dyn as Pointee>::Metadata`, so addition stays in-bounds.
         let value_ptr =
+// SAFETY: Untriaged.
             unsafe { (alloc as *const <Dyn as Pointee>::Metadata).add(1) }.cast::<T>().cast_mut();
         debug_assert!(value_ptr.is_aligned());
         mem::forget(value);
@@ -373,6 +381,7 @@ impl<H> WithHeader<H> {
                     return;
                 }
 
+                // SAFETY: Untriaged.
                 unsafe {
                     // SAFETY: Layout must have been computable if we're in drop
                     let (layout, value_offset) =
@@ -385,6 +394,7 @@ impl<H> WithHeader<H> {
             }
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             // `_guard` will deallocate the memory when dropped, even if `drop_in_place` unwinds.
             let _guard = DropGuard {
@@ -407,6 +417,7 @@ impl<H> WithHeader<H> {
         //    needed to align the header. Subtracting the header size from the aligned data pointer
         //    will always result in an aligned header pointer, it just may not point to the
         //    beginning of the allocation.
+        // SAFETY: Untriaged.
         let hp = unsafe { self.0.as_ptr().sub(Self::header_size()) as *mut H };
         debug_assert!(hp.is_aligned());
         hp

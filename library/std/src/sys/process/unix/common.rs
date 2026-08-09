@@ -469,12 +469,14 @@ impl From<io::Stdout> for Stdio {
         //
         // Arguably the hypothetical AsStaticFd and AsFd<'static>
         // should be implemented for io::Stdout, not just for StdoutLocked.
+        // SAFETY: Untriaged.
         Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) })
     }
 }
 
 impl From<io::Stderr> for Stdio {
     fn from(_: io::Stderr) -> Stdio {
+        // SAFETY: Untriaged.
         Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) })
     }
 }
@@ -647,6 +649,7 @@ pub fn read_output(
     out.set_nonblocking(true)?;
     err.set_nonblocking(true)?;
 
+    // SAFETY: Untriaged.
     let mut fds: [libc::pollfd; 2] = unsafe { mem::zeroed() };
     fds[0].fd = out.as_raw_fd();
     fds[0].events = libc::POLLIN;
@@ -654,6 +657,7 @@ pub fn read_output(
     fds[1].events = libc::POLLIN;
     loop {
         // wait for either pipe to become readable using `poll`
+        // SAFETY: Untriaged.
         cvt_r(|| unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) })?;
 
         if fds[0].revents != 0 && read(&out, stdout)? {
@@ -688,9 +692,11 @@ pub fn read_output(
 }
 
 pub fn getpid() -> u32 {
+    // SAFETY: Untriaged.
     unsafe { libc::getpid() as u32 }
 }
 
 pub fn getppid() -> u32 {
+    // SAFETY: Untriaged.
     unsafe { libc::getppid() as u32 }
 }

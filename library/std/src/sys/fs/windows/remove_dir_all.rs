@@ -48,6 +48,7 @@ unsafe fn nt_open_file(
     share: u32,
     options: u32,
 ) -> Result<File, WinError> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut handle = ptr::null_mut();
         let mut io_status = c::IO_STATUS_BLOCK::PENDING;
@@ -89,6 +90,7 @@ fn open_link_no_reparse(
     // earlier versions of Windows.
     static ATTRIBUTES: Atomic<u32> = AtomicU32::new(c::OBJ_DONT_REPARSE);
 
+    // SAFETY: Untriaged.
     let result = unsafe {
         let mut object = c::OBJECT_ATTRIBUTES {
             ObjectName: path.as_ptr(),

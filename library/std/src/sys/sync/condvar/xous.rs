@@ -94,6 +94,7 @@ impl Condvar {
     /// Returns `true` if the condition was received, `false` if it timed out
     fn wait_ms(&self, mutex: &Mutex, ms: usize) -> bool {
         self.counter.fetch_add(1, Ordering::Relaxed);
+        // SAFETY: Untriaged.
         unsafe { mutex.unlock() };
 
         // Threading concern: There is a chance that the `notify` thread wakes up here before
@@ -114,6 +115,7 @@ impl Condvar {
             self.timed_out.fetch_add(1, Ordering::Relaxed);
         }
 
+        // SAFETY: Untriaged.
         unsafe { mutex.lock() };
         awoken
     }

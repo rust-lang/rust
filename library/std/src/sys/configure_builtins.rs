@@ -53,6 +53,7 @@ static RUST_LSE_INIT: extern "C" fn() = {
         }
 
         if arch::is_aarch64_feature_detected!("lse") {
+            // SAFETY: Untriaged.
             unsafe {
                 __rust_enable_lse();
             }
