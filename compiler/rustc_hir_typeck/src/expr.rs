@@ -401,6 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::UnsafeBinderCast(kind, inner_expr, ty) => {
                 self.check_expr_unsafe_binder_cast(expr.span, kind, inner_expr, ty, expected)
             }
+            ExprKind::Rescope(_, _, oprnd) => self.check_expr_with_expectation(oprnd, expected),
             ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }

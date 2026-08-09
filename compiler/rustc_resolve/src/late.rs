@@ -5213,7 +5213,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
             }
 
-            ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
+            ExprKind::Break(Some(label), _)
+            | ExprKind::Continue(Some(label))
+            | ExprKind::Rescope(_, label, _) => {
                 match self.resolve_label(label.ident) {
                     Ok((node_id, _)) => {
                         // Since this res is a label, it is never read.
@@ -5225,7 +5227,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 }
 
-                // visit `break` argument if any
+                // visit `break` argument if any, or the operand for `scope!` and `extend!`
                 visit::walk_expr(self, expr);
             }
 

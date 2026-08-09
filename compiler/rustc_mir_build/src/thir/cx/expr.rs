@@ -90,7 +90,17 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     #[instrument(level = "trace", skip(self, hir_expr))]
-    pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
+    pub(super) fn mirror_expr_inner(&mut self, mut hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
+        // Peel off any re-scoping operators (`scope!`, `extend!`). Their changes to temporary
+        // scopes are only relevant when building the `ScopeTree`; they are otherwise transparent.
+        // We keep track of them to apply their adjustments, if present, so we don't have to be
+        // picky about not putting adjustments on them.
+        let mut rescoping_ops = vec![];
+        while let hir::ExprKind::Rescope(_, _, subexpr) = &hir_expr.kind {
+            rescoping_ops.push(hir_expr);
+            hir_expr = subexpr;
+        }
+
         let expr_scope =
             region::Scope { local_id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
@@ -125,7 +135,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         // Now apply adjustments, if any.
         if self.apply_adjustments {
-            for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
+            for adjustment in std::iter::once(hir_expr)
+                .chain(rescoping_ops.into_iter().rev())
+                .flat_map(|e| self.typeck_results.expr_adjustments(e))
+            {
                 trace!(?expr, ?adjustment);
                 let span = expr.span;
                 expr = self.apply_adjustment(hir_expr, expr, adjustment, span);
@@ -1191,6 +1204,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
             hir::ExprKind::Yield(v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
+            // `ExprKind::Rescope`s are peeled off in `mirror_expr_inner`
+            hir::ExprKind::Rescope(..) => unreachable!("re-scoping operators do not produce THIR"),
             hir::ExprKind::Err(_) => unreachable!("cannot lower a `hir::ExprKind::Err` to THIR"),
         };
 

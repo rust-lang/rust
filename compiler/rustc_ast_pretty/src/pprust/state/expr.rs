@@ -872,6 +872,24 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.pclose();
             }
+            ast::ExprKind::Rescope(kind, label, expr) => {
+                let mac_str = match kind {
+                    ast::RescopeKind::Scope => "core::scope!",
+                    ast::RescopeKind::Extend => "core::extend!",
+                };
+                self.word(mac_str);
+                self.popen();
+                let ib = self.ibox(0);
+
+                self.print_ident(label.ident);
+                self.nbsp();
+                self.word("=>");
+                self.space();
+                self.print_expr(expr, FixupContext::default());
+
+                self.end(ib);
+                self.pclose();
+            }
             ast::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
