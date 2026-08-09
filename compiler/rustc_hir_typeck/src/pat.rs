@@ -9,12 +9,13 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan, pluralize,
     struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{
-    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
-    PatExprKind, PatKind, expr_needs_parens,
+    self as hir, BindingMode, ByRef, ExprKind, HirId, Mutability, Pat, PatExpr, PatExprKind,
+    PatKind, expr_needs_parens,
 };
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
@@ -1212,7 +1213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             self.register_bound(
                 expected,
-                self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
+                self.tcx.require_lang_item(LangItem::Unpin, pat.span),
                 self.misc(pat.span),
             )
         }
@@ -2752,14 +2753,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         self.register_bound(
             source_ty,
-            tcx.require_lang_item(hir::LangItem::DerefPure, span),
+            tcx.require_lang_item(LangItem::DerefPure, span),
             self.misc(span),
         );
         // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
         let target_ty = Ty::new_projection(
             tcx,
             ty::IsRigid::No,
-            tcx.require_lang_item(hir::LangItem::DerefTarget, span),
+            tcx.require_lang_item(LangItem::DerefTarget, span),
             [source_ty],
         );
         let target_ty = self.normalize(span, Unnormalized::new_wip(target_ty));
@@ -2780,7 +2781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for mutably_derefed_ty in derefed_tys {
                 self.register_bound(
                     mutably_derefed_ty,
-                    self.tcx.require_lang_item(hir::LangItem::DerefMut, span),
+                    self.tcx.require_lang_item(LangItem::DerefMut, span),
                     self.misc(span),
                 );
             }

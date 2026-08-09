@@ -4,7 +4,7 @@
 #![feature(once_cell_get_mut)]
 // tidy-alphabetical-end
 
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
 use rustc_middle::ty::{self, Ty};

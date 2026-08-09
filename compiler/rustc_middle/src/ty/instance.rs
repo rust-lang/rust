@@ -3,9 +3,9 @@ use std::{assert_matches, fmt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
@@ -866,22 +866,22 @@ impl<'tcx> Instance<'tcx> {
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
             );
-            hir::LangItem::FuturePoll
+            LangItem::FuturePoll
         } else if tcx.is_lang_item(trait_id, LangItem::Iterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
             );
-            hir::LangItem::IteratorNext
+            LangItem::IteratorNext
         } else if tcx.is_lang_item(trait_id, LangItem::AsyncIterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
             );
-            hir::LangItem::AsyncIteratorPollNext
+            LangItem::AsyncIteratorPollNext
         } else if tcx.is_lang_item(trait_id, LangItem::Coroutine) {
             assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
-            hir::LangItem::CoroutineResume
+            LangItem::CoroutineResume
         } else {
             return None;
         };

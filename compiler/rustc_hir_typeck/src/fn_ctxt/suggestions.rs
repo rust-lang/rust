@@ -7,9 +7,9 @@ use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
     GenericBound, HirId, LoopSource, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind,

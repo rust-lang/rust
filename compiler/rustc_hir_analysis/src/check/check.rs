@@ -7,8 +7,9 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{LangItem, Node, find_attr, intravisit};
+use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
@@ -1377,7 +1378,7 @@ fn check_impl_items_against_trait<'tcx>(
                     // instead of `Drop::drop` is unstable that might be confusing.
                     EvalResult::Deny { .. }
                         if !tcx.features().pin_ergonomics()
-                            && tcx.is_lang_item(trait_ref.def_id, hir::LangItem::Drop)
+                            && tcx.is_lang_item(trait_ref.def_id, LangItem::Drop)
                             && tcx.item_name(trait_item_id) == sym::drop =>
                     {
                         missing_items.push(tcx.associated_item(trait_item_id));

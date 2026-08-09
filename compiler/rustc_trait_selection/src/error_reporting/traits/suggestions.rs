@@ -13,10 +13,10 @@ use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
     expr_needs_parens,
@@ -822,7 +822,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs)
             && let trait_pred = predicate.unwrap_or(trait_pred)
             // Only run this code on binary operators
-            && hir::lang_items::BINARY_OPERATORS
+            && lang_items::BINARY_OPERATORS
                 .iter()
                 .filter_map(|&op| self.tcx.lang_items().get(op))
                 .any(|op| {

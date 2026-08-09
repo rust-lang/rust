@@ -1,8 +1,8 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::bug;
@@ -69,16 +69,8 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
 
-    all_fields_implement_trait(
-        tcx,
-        param_env,
-        self_type,
-        adt,
-        args,
-        parent_cause,
-        hir::LangItem::Copy,
-    )
-    .map_err(CopyImplementationError::InfringingFields)?;
+    all_fields_implement_trait(tcx, param_env, self_type, adt, args, parent_cause, LangItem::Copy)
+        .map_err(CopyImplementationError::InfringingFields)?;
 
     if let Some(did) = adt.destructor(tcx).map(|dtor| dtor.did) {
         return Err(CopyImplementationError::HasDestructor(did));

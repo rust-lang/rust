@@ -26,6 +26,7 @@ use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec};
@@ -504,7 +505,7 @@ fn check_field_tys_sized<'tcx>(
             ),
             param_env,
             field_ty.ty,
-            tcx.require_lang_item(hir::LangItem::Sized, field_ty.source_info.span),
+            tcx.require_lang_item(LangItem::Sized, field_ty.source_info.span),
         );
     }
 

@@ -6,7 +6,7 @@
 // having basically only two use-cases that act in different ways.
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty, TypingMode};

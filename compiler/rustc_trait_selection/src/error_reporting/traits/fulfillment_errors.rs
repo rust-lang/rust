@@ -14,9 +14,10 @@ use rustc_errors::{
     pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::CustomDiagnostic;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem, Node, expr_needs_parens, find_attr};
+use rustc_hir::{self as hir, Node, expr_needs_parens, find_attr};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{ImplSource, TraitErrors};

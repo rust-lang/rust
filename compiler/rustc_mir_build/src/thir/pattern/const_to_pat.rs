@@ -5,6 +5,7 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diag, msg};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -615,9 +616,8 @@ fn type_has_partial_eq_impl<'tcx>(
     // (If there isn't, then we can safely issue a hard
     // error, because that's never worked, due to compiler
     // using `PartialEq::eq` in this scenario in the past.)
-    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, DUMMY_SP);
-    let structural_partial_eq_trait_id =
-        tcx.require_lang_item(hir::LangItem::StructuralPeq, DUMMY_SP);
+    let partial_eq_trait_id = tcx.require_lang_item(LangItem::PartialEq, DUMMY_SP);
+    let structural_partial_eq_trait_id = tcx.require_lang_item(LangItem::StructuralPeq, DUMMY_SP);
 
     // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
     // ignored. However that should be pretty much impossible since consts that do not depend on
