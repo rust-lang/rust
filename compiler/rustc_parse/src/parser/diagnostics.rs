@@ -2928,11 +2928,25 @@ impl<'a> Parser<'a> {
         // parentheses in what should have been a tuple pattern; return a
         // suggestion-enhanced error here rather than choking on the comma later.
         let comma_span = self.token.span;
+        // `EitherTupleOrPipe` is only ever used for the pattern of a `match` arm, which has to be
+        // followed by either a `=>` or an `if` guard. Take a snapshot so that we can rewind to the
+        // comma if neither of those follows the comma-separated list.
+        let snapshot = (rt == CommaRecoveryMode::EitherTupleOrPipe)
+            .then(|| self.create_snapshot_for_diagnostic());
         self.bump();
         if let Err(err) = self.skip_pat_list() {
             // We didn't expect this to work anyway; we just wanted to advance to the
             // end of the comma-sequence so we know the span to suggest parenthesizing.
             err.cancel();
+        }
+        if let Some(snapshot) = snapshot
+            && self.token != token::FatArrow
+            && !self.token.is_keyword(kw::If)
+        {
+            // Neither parenthesising the patterns nor joining them with `|` would give the arm a
+            // body, so the comma is far more likely to stand in for a missing `=> <body>`.
+            self.restore_snapshot(snapshot);
+            return Ok(());
         }
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.dcx().struct_span_err(comma_span, "unexpected `,` in pattern");
