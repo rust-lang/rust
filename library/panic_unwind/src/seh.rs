@@ -233,7 +233,7 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
                     "lea {}, [rip + 2f]"
                 }
                 any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec") => {
-                    "adr {}, 2f"
+                    "adrl {}, 2f"
                 }
             },
             ".pushsection .rdata,\"dr\"",
