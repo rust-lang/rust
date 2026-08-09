@@ -128,6 +128,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         loop {
             let (lower_edge_idx, lower_child_bound) = self.find_lower_bound_index(lower_bound);
             let (upper_edge_idx, upper_child_bound) =
+                // ignore-tidy-undocumented-unsafe
                 unsafe { self.find_upper_bound_index(upper_bound, lower_edge_idx) };
             if lower_edge_idx < upper_edge_idx {
                 return Ok((
@@ -139,6 +140,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
                 ));
             }
             debug_assert_eq!(lower_edge_idx, upper_edge_idx);
+            // ignore-tidy-undocumented-unsafe
             let common_edge = unsafe { Handle::new_edge(self, lower_edge_idx) };
             match common_edge.force() {
                 Leaf(common_edge) => return Err(common_edge),
@@ -165,6 +167,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         K: Borrow<Q>,
     {
         let (edge_idx, bound) = self.find_lower_bound_index(bound);
+        // ignore-tidy-undocumented-unsafe
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
         (edge, bound)
     }
@@ -178,7 +181,9 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Q: ?Sized + Ord,
         K: Borrow<Q>,
     {
+        // ignore-tidy-undocumented-unsafe
         let (edge_idx, bound) = unsafe { self.find_upper_bound_index(bound, 0) };
+        // ignore-tidy-undocumented-unsafe
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
         (edge, bound)
     }
@@ -200,8 +205,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         Q: Ord,
         K: Borrow<Q>,
     {
+        // ignore-tidy-undocumented-unsafe
         match unsafe { self.find_key_index(key, 0) } {
+            // ignore-tidy-undocumented-unsafe
             IndexResult::KV(idx) => Found(unsafe { Handle::new_kv(self, idx) }),
+            // ignore-tidy-undocumented-unsafe
             IndexResult::Edge(idx) => GoDown(unsafe { Handle::new_edge(self, idx) }),
         }
     }
@@ -222,6 +230,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         let node = self.reborrow();
         let keys = node.keys();
         debug_assert!(start_index <= keys.len());
+        // ignore-tidy-undocumented-unsafe
         for (offset, k) in unsafe { keys.get_unchecked(start_index..) }.iter().enumerate() {
             match key.cmp(k.borrow()) {
                 Ordering::Greater => {}
@@ -246,10 +255,12 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         K: Borrow<Q>,
     {
         match bound {
+            // ignore-tidy-undocumented-unsafe
             Included(key) => match unsafe { self.find_key_index(key, 0) } {
                 IndexResult::KV(idx) => (idx, AllExcluded),
                 IndexResult::Edge(idx) => (idx, bound),
             },
+            // ignore-tidy-undocumented-unsafe
             Excluded(key) => match unsafe { self.find_key_index(key, 0) } {
                 IndexResult::KV(idx) => (idx + 1, AllIncluded),
                 IndexResult::Edge(idx) => (idx, bound),
@@ -274,10 +285,12 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         K: Borrow<Q>,
     {
         match bound {
+            // ignore-tidy-undocumented-unsafe
             Included(key) => match unsafe { self.find_key_index(key, start_index) } {
                 IndexResult::KV(idx) => (idx + 1, AllExcluded),
                 IndexResult::Edge(idx) => (idx, bound),
             },
+            // ignore-tidy-undocumented-unsafe
             Excluded(key) => match unsafe { self.find_key_index(key, start_index) } {
                 IndexResult::KV(idx) => (idx, AllIncluded),
                 IndexResult::Edge(idx) => (idx, bound),
