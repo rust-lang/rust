@@ -570,14 +570,9 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         }
     );
 
-    // SAFETY: The caller guarantees that both memory regions are valid for `count` elements.
-    // A Rust allocation cannot exceed `isize::MAX` bytes.
-    unsafe {
-        // Use `assume` directly because the precondition check above already checks this when
-        // UB checks are enabled.
-        crate::intrinsics::assume(ub_checks::is_valid_allocation_size(size_of::<T>(), count));
-        crate::intrinsics::copy_nonoverlapping(src, dst, count)
-    }
+    // SAFETY: the safety contract for `copy_nonoverlapping` must be
+    // upheld by the caller.
+    unsafe { crate::intrinsics::copy_nonoverlapping(src, dst, count) }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
