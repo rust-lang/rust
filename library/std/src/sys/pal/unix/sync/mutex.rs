@@ -3,6 +3,7 @@ use crate::cell::UnsafeCell;
 use crate::io::Error;
 use crate::mem::MaybeUninit;
 use crate::pin::Pin;
+use crate::ptr;
 
 pub struct Mutex {
     inner: UnsafeCell<libc::pthread_mutex_t>,
@@ -19,7 +20,7 @@ impl Mutex {
 
     /// # Safety
     /// May only be called once per instance of `Self`.
-    pub unsafe fn init(self: Pin<&mut Self>) {
+    pub unsafe fn init(this: *mut Self) {
         // Issue #33770
         //
         // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
@@ -53,7 +54,11 @@ impl Mutex {
                 libc::PTHREAD_MUTEX_NORMAL,
             ))
             .unwrap();
-            cvt_nz(libc::pthread_mutex_init(self.raw(), attr.0.as_ptr())).unwrap();
+            cvt_nz(libc::pthread_mutex_init(
+                ptr::addr_of_mut!((*this).inner).cast(),
+                attr.0.as_ptr(),
+            ))
+            .unwrap();
         }
     }
 

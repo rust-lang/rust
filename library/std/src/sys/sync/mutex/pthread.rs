@@ -22,7 +22,7 @@ impl Mutex {
         self.pal.get_or_init(|| {
             let mut pal = Box::pin(pal::Mutex::new());
             // SAFETY: we only call `init` once per `pal::Mutex`, namely here.
-            unsafe { pal.as_mut().init() };
+            unsafe { pal::Mutex::init(&raw mut *pal) };
             pal
         })
     }

@@ -23,7 +23,7 @@ impl Condvar {
         self.cvar.get_or_init(|| {
             let mut cvar = Box::pin(pal::Condvar::new());
             // SAFETY: we only call `init` once per `pal::Condvar`, namely here.
-            unsafe { cvar.as_mut().init() };
+            unsafe { pal::Condvar::init(&raw mut *cvar) };
             cvar
         })
     }

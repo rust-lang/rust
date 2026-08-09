@@ -96,11 +96,10 @@ impl Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
-        // SAFETY: We pin the Arc immediately after creation, so its address never
-        // changes.
+        // safety: the pointer comes from Arc::as_ptr so it is not tied to a &mut
         let inner = unsafe {
-            let mut arc = Arc::<Inner, _>::new_uninit_in(System);
-            let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
+            let arc = Arc::<Inner, _>::new_uninit_in(System);
+            let ptr = Arc::as_ptr(&arc).cast_mut().cast::<Inner>();
             (&raw mut (*ptr).name).write(name);
             (&raw mut (*ptr).id).write(id);
             Parker::new_in_place(&raw mut (*ptr).parker);

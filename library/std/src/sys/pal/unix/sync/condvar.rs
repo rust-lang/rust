@@ -1,6 +1,7 @@
 use super::Mutex;
 use crate::cell::UnsafeCell;
 use crate::pin::Pin;
+use crate::ptr;
 #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
 use crate::sys::pal::time::TIMESPEC_MAX;
 #[cfg(any(target_os = "nto", target_os = "qnx"))]
@@ -149,7 +150,7 @@ impl Condvar {
 
     /// # Safety
     /// May only be called once per instance of `Self`.
-    pub unsafe fn init(self: Pin<&mut Self>) {
+    pub unsafe fn init(this: *mut Self) {
         use crate::mem::MaybeUninit;
 
         struct AttrGuard<'a>(pub &'a mut MaybeUninit<libc::pthread_condattr_t>);
@@ -169,7 +170,8 @@ impl Condvar {
             let attr = AttrGuard(&mut attr);
             let r = libc::pthread_condattr_setclock(attr.0.as_mut_ptr(), Self::CLOCK);
             assert_eq!(r, 0);
-            let r = libc::pthread_cond_init(self.raw(), attr.0.as_ptr());
+            let r =
+                libc::pthread_cond_init(ptr::addr_of_mut!((*this).inner).cast(), attr.0.as_ptr());
             assert_eq!(r, 0);
         }
     }
@@ -183,7 +185,7 @@ impl Condvar {
 
     /// # Safety
     /// May only be called once per instance of `Self`.
-    pub unsafe fn init(self: Pin<&mut Self>) {
+    pub unsafe fn init(_this: *mut Self) {
         // `PTHREAD_COND_INITIALIZER` is fully supported and we don't need to
         // change clocks, so there's nothing to do here.
     }
@@ -204,13 +206,15 @@ impl Condvar {
 
     /// # Safety
     /// May only be called once per instance of `Self`.
-    pub unsafe fn init(self: Pin<&mut Self>) {
+    pub unsafe fn init(this: *mut Self) {
         if cfg!(any(target_os = "espidf", target_os = "horizon", target_os = "teeos")) {
             // NOTE: ESP-IDF's PTHREAD_COND_INITIALIZER support is not released yet
             // So on that platform, init() should always be called.
             //
             // Similar story for the 3DS (horizon) and for TEEOS.
-            let r = unsafe { libc::pthread_cond_init(self.raw(), crate::ptr::null()) };
+            let r = unsafe {
+                libc::pthread_cond_init(ptr::addr_of_mut!((*this).inner).cast(), crate::ptr::null())
+            };
             assert_eq!(r, 0);
         }
     }

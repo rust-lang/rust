@@ -28,7 +28,7 @@ impl Parker {
             cvar: Condvar::new(),
         });
 
-        Pin::new_unchecked(&mut (*parker).cvar).init();
+        unsafe { Condvar::init(&raw mut (*parker).cvar) };
     }
 
     fn lock(self: Pin<&Self>) -> Pin<&Mutex> {
