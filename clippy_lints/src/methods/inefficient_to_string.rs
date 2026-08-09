@@ -6,6 +6,7 @@ use clippy_utils::sym;
 use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 
@@ -52,7 +53,7 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if ty.is_lang_item(cx, hir::LangItem::String) {
+    if ty.is_lang_item(cx, LangItem::String) {
         return true;
     }
 

@@ -1,7 +1,8 @@
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    self as hir, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
+    self as hir, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
