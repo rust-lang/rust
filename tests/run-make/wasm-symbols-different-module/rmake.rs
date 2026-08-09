@@ -30,7 +30,7 @@ fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
     for payload in wasmparser::Parser::new(0).parse_all(&file) {
         let payload = payload.unwrap();
         if let wasmparser::Payload::ImportSection(s) = payload {
-            for i in s {
+            for i in s.into_imports() {
                 let i = i.unwrap();
                 imports.entry(i.module).or_insert(HashSet::new()).insert(i.name);
             }
