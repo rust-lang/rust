@@ -1043,7 +1043,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
 
 fn make_call_args<'tcx, I: Inliner<'tcx>>(
     inliner: &I,
-    args: Box<[Spanned<Operand<'tcx>>]>,
+    args: ThinVec<Spanned<Operand<'tcx>>>,
     callsite: &CallSite<'tcx>,
     caller_body: &mut Body<'tcx>,
     callee_body: &Body<'tcx>,

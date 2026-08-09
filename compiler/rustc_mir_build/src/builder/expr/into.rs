@@ -4,6 +4,7 @@ use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
@@ -480,7 +481,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                let args: Box<[_]> = args
+                let args: ThinVec<_> = args
                     .into_iter()
                     .copied()
                     .map(|arg| Spanned {
@@ -714,8 +715,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 use rustc_middle::{mir, thir};
 
                 let destination_block = this.cfg.start_new_block();
-                let mut targets =
-                    if asm_macro.diverges(options) { vec![] } else { vec![destination_block] };
+                let mut targets = if asm_macro.diverges(options) {
+                    thin_vec![]
+                } else {
+                    thin_vec![destination_block]
+                };
 
                 let operands = operands
                     .into_iter()
@@ -803,7 +807,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        targets: targets.into_boxed_slice(),
+                        targets,
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue
                         } else {
