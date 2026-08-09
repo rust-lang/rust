@@ -36,8 +36,9 @@ use crate::{
     UseLoc, file_item_tree,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
-        self, Attrs, AttrsOrCfg, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
-        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModItemKind, ModKind, TreeId, Use,
+        self, Attrs, AttrsOrCfg, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, Macro2,
+        MacroCall, MacroRules, Mod, ModItemId, ModItemKind, ModKind, StructValueNsCtor, TreeId,
+        Use,
     },
     macro_call_as_call_id,
     nameres::{
@@ -1031,8 +1032,13 @@ impl<'db> DefCollector<'db> {
                             .enum_variants(self.db)
                             .variants
                             .iter()
-                            .map(|(name, &(variant, _))| {
-                                let res = PerNs::both(variant.into(), variant.into(), vis, None);
+                            .map(|(name, &(variant, shape))| {
+                                // We don't need to reduce the visibility, since enum variants and their fields do not have visibility on their own.
+                                let res = if shape.has_value_ns_ctor() {
+                                    PerNs::both(variant.into(), variant.into(), vis, None)
+                                } else {
+                                    PerNs::types(variant.into(), vis, None)
+                                };
                                 (Some(name.clone()), res)
                             })
                             .collect::<Vec<_>>();
@@ -1937,11 +1943,11 @@ impl ModCollector<'_, '_> {
                 }
             };
         let update_def =
-            |def_collector: &mut DefCollector<'_>, id, name: &Name, vis, has_constructor| {
+            |def_collector: &mut DefCollector<'_>, id, name: &Name, vis, value_ns_ctor_vis| {
                 def_collector.def_map.modules[module_id].scope.declare(id);
                 def_collector.update(
                     module_id,
-                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor, None))],
+                    &[(Some(name.clone()), PerNs::from_def(id, vis, value_ns_ctor_vis, None))],
                     vis,
                     None,
                 )
@@ -2098,7 +2104,7 @@ impl ModCollector<'_, '_> {
 
                     let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
 
-                    update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
+                    update_def(self.def_collector, fn_id.into(), &it.name, vis, None);
 
                     if self.def_collector.def_map.block.is_none()
                         && self.def_collector.is_proc_macro
@@ -2121,6 +2127,16 @@ impl ModCollector<'_, '_> {
                 }
                 ModItemKind::Struct(ast_id, it) => {
                     let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
+                    let value_ns_ctor_vis = match &it.value_ns_ctor {
+                        StructValueNsCtor::NoValueNsCtor => None,
+                        StructValueNsCtor::ValueNsCtorWithVis(vis) => {
+                            Some(resolve_vis(def_map, local_def_map, &self.item_tree[*vis]))
+                        }
+                        StructValueNsCtor::ValueNsCtorWithMinVis(multiple) => multiple
+                            .iter()
+                            .map(|&vis| resolve_vis(def_map, local_def_map, &self.item_tree[vis]))
+                            .fold(None, |a: Option<Visibility>, b| a?.min(db, b, def_map)),
+                    };
                     let interned = StructLoc {
                         container: module_id,
                         id: InFile::new(self.tree_id.file_id(), ast_id),
@@ -2138,7 +2154,7 @@ impl ModCollector<'_, '_> {
                         interned.into(),
                         &it.name,
                         vis,
-                        !matches!(it.shape, FieldsShape::Record),
+                        value_ns_ctor_vis,
                     );
                 }
                 ModItemKind::Union(ast_id, it) => {
@@ -2155,7 +2171,7 @@ impl ModCollector<'_, '_> {
                         interned.into(),
                         def_map,
                     );
-                    update_def(self.def_collector, interned.into(), &it.name, vis, false);
+                    update_def(self.def_collector, interned.into(), &it.name, vis, None);
                 }
                 ModItemKind::Enum(ast_id, it) => {
                     let enum_ = EnumLoc {
@@ -2172,7 +2188,7 @@ impl ModCollector<'_, '_> {
                         def_map,
                     );
                     let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
-                    update_def(self.def_collector, enum_.into(), &it.name, vis, false);
+                    update_def(self.def_collector, enum_.into(), &it.name, vis, None);
                 }
                 ModItemKind::Const(ast_id, it) => {
                     let const_id =
@@ -2183,7 +2199,7 @@ impl ModCollector<'_, '_> {
                         Some(name) => {
                             let vis =
                                 resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
-                            update_def(self.def_collector, const_id.into(), name, vis, false);
+                            update_def(self.def_collector, const_id.into(), name, vis, None);
                         }
                         None => {
                             // const _: T = ...;
@@ -2202,7 +2218,7 @@ impl ModCollector<'_, '_> {
                             .into(),
                         &it.name,
                         vis,
-                        false,
+                        None,
                     );
                 }
                 ModItemKind::Trait(ast_id, it) => {
@@ -2214,7 +2230,7 @@ impl ModCollector<'_, '_> {
                             .into(),
                         &it.name,
                         vis,
-                        false,
+                        None,
                     );
                 }
                 ModItemKind::TypeAlias(ast_id, it) => {
@@ -2226,7 +2242,7 @@ impl ModCollector<'_, '_> {
                             .into(),
                         &it.name,
                         vis,
-                        false,
+                        None,
                     );
                 }
             }
@@ -2437,7 +2453,7 @@ impl ModCollector<'_, '_> {
         def_map.modules[self.module_id].scope.declare(def);
         self.def_collector.update(
             self.module_id,
-            &[(Some(name), PerNs::from_def(def, vis, false, None))],
+            &[(Some(name), PerNs::from_def(def, vis, None, None))],
             vis,
             None,
         );

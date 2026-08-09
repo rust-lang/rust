@@ -380,6 +380,32 @@ fn f() {
 }
 
 #[test]
+fn shadowing_tuple_struct_with_invisible_ctor() {
+    let (db, def) = lower(
+        r#"
+mod x {
+    pub struct CrateNum(u32);
+}
+
+use x::CrateNum;
+
+pub struct CrateNumVal(CrateNum);
+
+fn main() {
+    let CrateNumVal(CrateNum) = loop {};
+}
+    "#,
+    );
+    let body = Body::of(&db, def);
+    assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `CrateNum`");
+    assert_eq!(
+        body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        "CrateNum",
+        "should have a binding for `CrateNum`",
+    );
+}
+
+#[test]
 fn regression_pretty_print_bind_pat() {
     pretty_print(
         r#"

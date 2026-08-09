@@ -6,10 +6,9 @@ use span::{Edition, ErasedFileAstId};
 
 use crate::{
     item_tree::{
-        Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree, Macro2,
-        MacroCall, MacroRules, Mod, ModItemId, ModItemKind, ModKind, RawVisibilityId,
-        SourceDatabase, Static, Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
-        attrs::AttrsOrCfg,
+        Const, Enum, ExternBlock, ExternCrate, Function, Impl, ItemTree, Macro2, MacroCall,
+        MacroRules, Mod, ModItemId, ModItemKind, ModKind, RawVisibilityId, SourceDatabase, Static,
+        Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, attrs::AttrsOrCfg,
     },
     visibility::RawVisibility,
 };
@@ -85,13 +84,6 @@ impl Printer<'_> {
         }
     }
 
-    fn whitespace(&mut self) {
-        match self.buf.chars().next_back() {
-            None | Some('\n' | ' ') => {}
-            _ => self.buf.push(' '),
-        }
-    }
-
     fn print_attrs(&mut self, attrs: &AttrsOrCfg, inner: bool, separated_by: &str) {
         let (cfg_disabled_expr, attrs) = match attrs {
             AttrsOrCfg::Enabled { attrs } => (None, attrs),
@@ -128,19 +120,6 @@ impl Printer<'_> {
             RawVisibility::PubCrate => w!(self, "pub(crate) "),
             RawVisibility::PubSelf(_) => w!(self, "pub(self) "),
         };
-    }
-
-    fn print_fields(&mut self, kind: FieldsShape) {
-        match kind {
-            FieldsShape::Record => {
-                self.whitespace();
-                w!(self, "{{ ... }}");
-            }
-            FieldsShape::Tuple => {
-                w!(self, "(...)");
-            }
-            FieldsShape::Unit => {}
-        }
     }
 
     fn print_use_tree(&mut self, use_tree: &UseTree) {
@@ -213,30 +192,22 @@ impl Printer<'_> {
                 wln!(self, "fn {};", name.display(self.db, self.edition));
             }
             ModItemKind::Struct(ast_id, item) => {
-                let Struct { visibility, name, shape: kind } = item;
+                let Struct { visibility, name, value_ns_ctor: _ } = item;
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
-                w!(self, "struct {}", name.display(self.db, self.edition));
-                self.print_fields(*kind);
-                if matches!(kind, FieldsShape::Record) {
-                    wln!(self);
-                } else {
-                    wln!(self, ";");
-                }
+                wln!(self, "struct {} {{ ... }}", name.display(self.db, self.edition));
             }
             ModItemKind::Union(ast_id, item) => {
                 let Union { name, visibility } = item;
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
-                w!(self, "union {}", name.display(self.db, self.edition));
-                self.print_fields(FieldsShape::Record);
-                wln!(self);
+                wln!(self, "union {} {{ ... }}", name.display(self.db, self.edition));
             }
             ModItemKind::Enum(ast_id, item) => {
                 let Enum { name, visibility } = item;
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
-                w!(self, "enum {} {{ ... }}", name.display(self.db, self.edition));
+                wln!(self, "enum {} {{ ... }}", name.display(self.db, self.edition));
             }
             ModItemKind::Const(ast_id, item) => {
                 let Const { name, visibility } = item;
