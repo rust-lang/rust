@@ -175,6 +175,19 @@ impl Symbol {
     }
 
     #[inline]
+    pub fn into_raw(self) -> NonNull<*const str> {
+        ManuallyDrop::new(self).repr.packed
+    }
+
+    /// # Safety
+    ///
+    /// The pointer must have come from [`Symbol::into_raw()`].
+    #[inline]
+    pub unsafe fn from_raw(ptr: NonNull<*const str>) -> Symbol {
+        Symbol { repr: TaggedArcPtr { packed: ptr } }
+    }
+
+    #[inline]
     fn select_shard(
         storage: &'static Map,
         s: &str,
@@ -217,11 +230,12 @@ impl Symbol {
             shard.shrink_to(len, |(x, _)| Self::hash(storage, x.as_str()));
         }
     }
-}
 
-impl Drop for Symbol {
+    /// # Safety
+    ///
+    /// You must know that you have a `Symbol` instance that won't be dropped, so decreasing the refcount is valid.
     #[inline]
-    fn drop(&mut self) {
+    pub unsafe fn decrease_refcount(&mut self) {
         // SAFETY: We're dropping, we have ownership.
         let Some(arc) = (unsafe { self.repr.try_as_arc_owned() }) else {
             return;
@@ -234,6 +248,15 @@ impl Drop for Symbol {
         }
         // decrement the ref count
         ManuallyDrop::into_inner(arc);
+    }
+}
+
+impl Drop for Symbol {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            self.decrease_refcount();
+        }
     }
 }
 
