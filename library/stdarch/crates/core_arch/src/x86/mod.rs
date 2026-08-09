@@ -40,13 +40,12 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "sse2")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -85,13 +84,12 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "sse")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -130,13 +128,12 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "sse2")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -179,13 +176,12 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "avx")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -224,13 +220,12 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "avx")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -269,13 +264,12 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "avx")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
