@@ -108,10 +108,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     where
         G: FnMut(&mut Self, MovePathIndex),
     {
-        let data = &mut self.data;
-
         debug!("lookup({:?})", place);
-        let Some(mut base) = data.rev_lookup.find_local(place.local) else {
+        let Some(mut base) = self.data.rev_lookup.find_local(place.local) else {
             return;
         };
 
@@ -122,8 +120,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
         // from `*(u.f: &_)` isn't allowed.
         let mut union_path = None;
 
-        let mut iter = data.rev_lookup.un_derefer.iter_projections(place.as_ref());
-        while let Some((place_ref, elem)) = iter.next() {
+        let mut iter = self.data.rev_lookup.un_derefer.co_iter_projections(place.as_ref());
+        while let Some((place_ref, elem)) = iter.next(&self.data.rev_lookup.un_derefer) {
             let body = self.body;
             let tcx = self.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;
@@ -232,12 +230,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 // `ConstIndex` patterns. This is done to ensure that all move paths
                 // are disjoint, which is expected by drop elaboration.
                 MoveSubPathResult::Subslice { from, to } => {
-                    assert!(
-                        iter.all(
-                            |(_, elem)| MoveSubPath::of(elem.kind()) == MoveSubPathResult::Skip
-                        )
-                    );
-                    drop(iter); // drop for borrowck
+                    assert!(iter.into_iter(&self.data.rev_lookup.un_derefer).all(|(_, elem)| {
+                        MoveSubPath::of(elem.kind()) == MoveSubPathResult::Skip
+                    }));
 
                     let (&elem_ty, len) = match place_ty.kind() {
                         ty::Array(ty, size) => (
@@ -275,20 +270,10 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 return;
             }
             if union_path.is_none() {
-                // inlined from add_move_path because of a borrowck conflict with the iterator
-                base = *data.rev_lookup.projections.entry((base, move_elem)).or_insert_with(|| {
-                    new_move_path(
-                        &mut data.move_paths,
-                        &mut data.move_out_path_map,
-                        &mut data.init_path_map,
-                        Some(base),
-                        place_ref.project_deeper(&[elem], tcx),
-                    )
-                })
+                base = self
+                    .add_move_path(base, move_elem, |tcx| place_ref.project_deeper(&[elem], tcx))
             }
         }
-
-        drop(iter); // drop for borrowck
 
         if let Some(base) = union_path {
             // Move out of union - always move the entire union.
