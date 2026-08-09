@@ -3,21 +3,29 @@
 //@ needs-target-std
 
 use run_make_support::tempfile::TempDir;
-use run_make_support::{cargo, rfs, CompletedProcess};
+use run_make_support::{cargo, rfs};
 
 fn main() {
     // This is a regression test to ensure that rustc doesn't load `panic_abort`
     // from the sysroot. See rust-lang/cargo#7359
-    test("abort").assert_stderr_contains("duplicate lang item in crate `core`: `sized`");
+    test("abort");
 
-    let result = test("unwind");
-    assert!(result.status().success());
+    // The `panic_abort` crate must be compiled with the `-Cpanic=abort` option
+    // and the compiler has a check to enforce this. However `build-std`
+    // does not yet respect the `std` profile, it may lead to a mismatch:
+    // - Cargo profile sets `panic = "unwind"` -> `panic_abort` is not activated (linked).
+    // - But `panic_abort` is still compiled with `-Cpanic=unwind`.
+    //
+    // This test ensures that the check is not triggered in such a situation.
+    //
+    // FIXME(build-std): ideally, `panic_abort` should always be compiled with
+    // `-Cpanic=abort`, even when unused.
+    test("unwind");
 
-    let result = test("immediate-abort");
-    assert!(result.status().success());
+    test("immediate-abort");
 }
 
-fn test(panic: &'static str) -> CompletedProcess {
+fn test(panic: &'static str) {
     let dir = TempDir::new().unwrap();
 
     let manifest = manifest(panic);
@@ -35,7 +43,7 @@ fn test(panic: &'static str) -> CompletedProcess {
         // Visual Studio 2022 requires that the LIB env var be set so it can
         // find the Windows SDK.
         .env("LIB", std::env::var("LIB").unwrap_or_default())
-        .run_unchecked()
+        .run();
 }
 
 fn manifest(panic: &'static str) -> String {

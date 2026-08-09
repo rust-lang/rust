@@ -51,7 +51,8 @@ fn main() {
         .sysroot("./no_exists")
         .library_search_path(format!("crate={}", path("panic_abort").display()))
         .emit("llvm-ir")
-        .run();
+        .run_fail()
+        .assert_stderr_contains("can't find crate for `panic_abort`");
 
     // Compile the final artifact. The panic runtime can be located via
     // `-Ldependency=` paths.
@@ -61,6 +62,5 @@ fn main() {
         .sysroot("./no_exists")
         .library_search_path(format!("dependency={}", path("panic_abort").display()))
         .emit("llvm-ir")
-        .run_fail()
-        .assert_stderr_contains("can't find crate for `panic_abort`");
+        .run();
 }
