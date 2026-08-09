@@ -770,5 +770,18 @@ error: casting `u8` to `i8` may wrap around the value
 LL |         _ = val? as i8;
    |             ^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `val?.cast_signed()`
 
-error: aborting due to 95 previous errors
+error: casting `i64` to `i32` may truncate the value
+  --> tests/ui/cast.rs:602:13
+   |
+LL |     let _ = cast_from_macro!() as i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL -     let _ = cast_from_macro!() as i32;
+LL +     let _ = i32::try_from(cast_from_macro!());
+   |
+
+error: aborting due to 96 previous errors
 
