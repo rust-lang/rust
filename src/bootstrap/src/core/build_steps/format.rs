@@ -105,7 +105,7 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
 
 /// Rustfmt set via the config, or downloaded from CI, used to format local Rust code.
 ///
-/// This is separate from the in-tree rustfmt.
+/// We never ship this rustfmt, it is designed only for internal usage.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InternalRustfmt;
 
