@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sugg::{Sugg, make_binop};
-use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::visitors::is_local_used;
+use clippy_utils::ty::{implements_trait, is_copy, needs_ordered_drop};
+use clippy_utils::visitors::{any_temporaries_need_ordered_drop, is_local_used};
 use clippy_utils::{get_parent_expr, is_from_proc_macro};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -36,15 +37,108 @@ impl Variant {
     }
 }
 
-pub(super) fn check<'a>(
-    cx: &LateContext<'a>,
-    expr: &Expr<'a>,
-    recv: &Expr<'_>,
-    def: &Expr<'_>,
-    map: &Expr<'_>,
+#[derive(Clone, Copy)]
+enum MapOrKind {
+    Eager,
+    Lazy,
+}
+
+impl MapOrKind {
+    fn method_name(self) -> &'static str {
+        match self {
+            Self::Eager => "map_or",
+            Self::Lazy => "map_or_else",
+        }
+    }
+}
+
+fn bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> {
+    let Some(Constant::Bool(value)) = ConstEvalCtxt::new(cx).eval(expr) else {
+        return None;
+    };
+    Some(value)
+}
+
+fn closure_bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> {
+    let ExprKind::Closure(closure) = expr.kind else {
+        return None;
+    };
+    let body = cx.tcx.hir_body(closure.body);
+    let [_] = body.params else {
+        return None;
+    };
+    bool_constant(cx, body.value)
+}
+
+fn check_result_variant_query<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    recv: &'tcx Expr<'tcx>,
+    def: &'tcx Expr<'tcx>,
+    map: &'tcx Expr<'tcx>,
+    kind: MapOrKind,
+) -> bool {
+    let ExprKind::MethodCall(path, _, _, call_span) = expr.kind else {
+        return false;
+    };
+    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
+    if recv_ty.opt_diag_name(cx) != Some(sym::Result) {
+        return false;
+    }
+
+    let def_bool = match kind {
+        MapOrKind::Eager => bool_constant(cx, def),
+        MapOrKind::Lazy => closure_bool_constant(cx, def),
+    };
+    let Some((def_bool, map_bool)) = def_bool.zip(closure_bool_constant(cx, map)) else {
+        return false;
+    };
+    if def_bool == map_bool || is_from_proc_macro(cx, expr) {
+        return false;
+    }
+
+    let suggested_name = if map_bool { "is_ok" } else { "is_err" };
+    let changes_drop_order = needs_ordered_drop(cx, recv_ty) || any_temporaries_need_ordered_drop(cx, recv);
+    let applicability = if changes_drop_order {
+        Applicability::MaybeIncorrect
+    } else {
+        Applicability::MachineApplicable
+    };
+
+    span_lint_and_then(
+        cx,
+        UNNECESSARY_MAP_OR,
+        path.ident.span,
+        format!("this `{}` can be simplified", kind.method_name()),
+        |diag| {
+            diag.span_suggestion(
+                call_span,
+                format!("use `{suggested_name}` instead"),
+                format!("{suggested_name}()"),
+                applicability,
+            );
+            if changes_drop_order {
+                diag.note("this will change drop order of the result, as well as all temporaries");
+                diag.note("add `#[allow(clippy::unnecessary_map_or)]` if this is important");
+            }
+        },
+    );
+    true
+}
+
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    recv: &'tcx Expr<'tcx>,
+    def: &'tcx Expr<'tcx>,
+    map: &'tcx Expr<'tcx>,
     method_span: Span,
     msrv: Msrv,
 ) {
+    if check_result_variant_query(cx, expr, recv, def, map, MapOrKind::Eager) {
+        return;
+    }
+
     let ExprKind::Lit(def_kind) = def.kind else {
         return;
     };
@@ -157,4 +251,14 @@ pub(super) fn check<'a>(
             diag.multipart_suggestion(format!("use {method} instead"), sugg, applicability);
         },
     );
+}
+
+pub(super) fn check_map_or_else<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    recv: &'tcx Expr<'tcx>,
+    def: &'tcx Expr<'tcx>,
+    map: &'tcx Expr<'tcx>,
+) {
+    check_result_variant_query(cx, expr, recv, def, map, MapOrKind::Lazy);
 }

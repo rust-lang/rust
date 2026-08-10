@@ -1,0 +1,26 @@
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:8:20
+   |
+LL |     let _ = result.map_or(false, |_| true);
+   |                    ^^^^^^-----------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+   |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::unnecessary_map_or)]` if this is important
+   = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+
+error: this `map_or_else` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:12:20
+   |
+LL |     let _ = result.map_or_else(|_| true, |_| false);
+   |                    ^^^^^^^^^^^---------------------
+   |                    |
+   |                    help: use `is_err` instead: `is_err()`
+   |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::unnecessary_map_or)]` if this is important
+
+error: aborting due to 2 previous errors
+
