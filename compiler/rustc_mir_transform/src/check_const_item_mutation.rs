@@ -2,7 +2,7 @@ use rustc_hir::HirId;
 use rustc_lint_defs::builtin::CONST_ITEM_MUTATION;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
@@ -61,6 +61,14 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         // Drop this exception once there is a stable attribute to suppress the
         // const item mutation lint for a single specific const only.
         let ty = self.tcx.type_of(def_id).skip_binder();
+        // `needs_drop` is overly conservative for types that contain type
+        // parameters (e.g. `Self` in a trait associated const): it always
+        // returns `true` because the parameter *might* implement Drop, even
+        // when the concrete type at the call site does not. In that case we
+        // cannot suppress the lint, so fall through and warn.
+        if ty.has_param() {
+            return Some(def_id);
+        }
         let typing_env = ty::TypingEnv::non_body_analysis(self.tcx, def_id);
         if ty.needs_drop(self.tcx, typing_env) { None } else { Some(def_id) }
     }
