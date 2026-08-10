@@ -140,14 +140,15 @@ impl Path {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
-    /// Check if this path is potentially a trivial const arg, i.e., one that can _potentially_
-    /// be represented without an anon const in the HIR.
-    ///
-    /// Returns true iff the path has exactly one segment, and it has no generic args
-    /// (i.e., it is _potentially_ a const parameter).
-    #[tracing::instrument(level = "debug", ret)]
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
-        self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
+    /// Checks if this path is just a simple one-word `PATH` - i.e. the inverse of
+    /// [`Path::from_ident`]
+    pub fn is_single_argless_ident(&self) -> bool {
+        self.segments.len() == 1 && self.segments[0].args.is_none()
+    }
+
+    /// The inverse of [`Path::from_ident`] - if this path is just a simple one-word `PATH`
+    pub fn as_single_argless_ident(&self) -> Option<Ident> {
+        self.is_single_argless_ident().then(|| self.segments[0].ident)
     }
 }
 
@@ -1406,7 +1407,7 @@ impl Expr {
     /// be represented without an anon const in the HIR.
     ///
     /// This will unwrap at most one block level (curly braces). After that, if the expression
-    /// is a path, it mostly dispatches to [`Path::is_potential_trivial_const_arg`].
+    /// is a path, it mostly dispatches to [`Path::is_single_argless_ident`].
     ///
     /// This function will only allow paths with no qself, before dispatching to the `Path`
     /// function of the same name.
@@ -1416,7 +1417,7 @@ impl Expr {
     pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = self.maybe_unwrap_block();
         if let ExprKind::Path(None, path) = &this.kind
-            && path.is_potential_trivial_const_arg()
+            && path.is_single_argless_ident()
         {
             true
         } else {
