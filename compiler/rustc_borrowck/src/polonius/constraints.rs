@@ -5,6 +5,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
+use tracing::debug;
 
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
@@ -255,6 +256,7 @@ fn compute_forward_successor(
 
     // 2. Otherwise, gather the edges due to explicit region liveness, when applicable.
     if !live_regions.contains(region, next_point) {
+        debug!("Region {region:?} isn't live at successor {next_point:?}; traversal stops.");
         return None;
     }
 
@@ -275,6 +277,7 @@ fn compute_forward_successor(
         ConstraintDirection::Backward => {
             // Contravariant cases: loans flow in the inverse direction, but we're only interested
             // in forward successors and there are none here.
+            debug!("Constraint direction is backwards; {region:?} has no forward successors");
             None
         }
         ConstraintDirection::Forward | ConstraintDirection::Bidirectional => {
@@ -299,6 +302,9 @@ fn compute_backward_successor(
     // Liveness flows into the regions live at the next point. So, in a backwards view, we'll link
     // the region from the current point, if it's live there, to the previous point.
     if !live_regions.contains(region, current_point) {
+        debug!(
+            "Backwards successor: {region:?} not live at current point {current_point:?}; bailing out!"
+        );
         return None;
     }
 
