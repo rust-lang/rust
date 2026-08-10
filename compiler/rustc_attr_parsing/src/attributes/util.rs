@@ -1,9 +1,9 @@
 use std::num::IntErrorKind;
 
 use rustc_ast::{LitKind, ast};
+use rustc_attr_ir::RustcVersion;
 use rustc_data_structures::Limit;
 use rustc_feature::is_builtin_attr_name;
-use rustc_hir::attrs::RustcVersion;
 use rustc_span::Symbol;
 
 use crate::context::AcceptContext;

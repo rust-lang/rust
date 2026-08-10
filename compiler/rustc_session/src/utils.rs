@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+use rustc_attr_ir::NativeLibKind;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::attrs::NativeLibKind;
 use rustc_macros::{Decodable, Encodable, StableHash};
 
 use crate::session::Session;

@@ -1,5 +1,5 @@
+use rustc_attr_ir::InstructionSetAttr;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::InstructionSetAttr;
 
 use super::prelude::*;
 use crate::diagnostics;

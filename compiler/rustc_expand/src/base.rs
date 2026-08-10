@@ -10,14 +10,14 @@ use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
+use rustc_attr_ir::{
+    self as attrs, CfgEntry, CollapseMacroDebuginfo, Deprecation, Stability, find_attr,
+};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::{Limit, sync};
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
-use rustc_hir as hir;
-use rustc_hir::attrs::{CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
-use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::Parser;
@@ -844,7 +844,7 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[attrs::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = if let Some(info) = find_attr!(attrs, CollapseDebugInfo(info) => info) {
             *info
@@ -873,7 +873,7 @@ impl SyntaxExtension {
         helper_attrs: Vec<Symbol>,
         edition: Edition,
         name: Symbol,
-        attrs: &[hir::Attribute],
+        attrs: &[attrs::Attribute],
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable = find_attr!(attrs, AllowInternalUnstable(i, _) => i)

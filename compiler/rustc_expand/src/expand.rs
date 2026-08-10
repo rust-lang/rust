@@ -13,6 +13,7 @@ use rustc_ast::{
     PatKind, StmtKind, SyntheticAttr, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::target::Target;
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
@@ -22,7 +23,6 @@ use rustc_data_structures::Limit;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
-use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
@@ -1715,15 +1715,15 @@ impl InvocationCollectorNode for ast::GenericParam {
         Target::GenericParam {
             kind: match &self.kind {
                 rustc_ast::GenericParamKind::Lifetime => {
-                    rustc_hir::target::GenericParamKind::Lifetime
+                    rustc_attr_ir::target::GenericParamKind::Lifetime
                 }
                 rustc_ast::GenericParamKind::Type { default } => {
                     has_default = default.is_some();
-                    rustc_hir::target::GenericParamKind::Type
+                    rustc_attr_ir::target::GenericParamKind::Type
                 }
                 rustc_ast::GenericParamKind::Const { default, .. } => {
                     has_default = default.is_some();
-                    rustc_hir::target::GenericParamKind::Const
+                    rustc_attr_ir::target::GenericParamKind::Const
                 }
             },
             has_default,

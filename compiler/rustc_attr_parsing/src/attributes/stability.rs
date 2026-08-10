@@ -1,13 +1,12 @@
 use std::num::NonZero;
 
+use rustc_attr_ir::target::{GenericParamKind, MethodKind, Target};
+use rustc_attr_ir::{
+    DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
+    UnstableReason, UnstableRemovedFeature, VERSION_PLACEHOLDER,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
-use rustc_hir::attrs::UnstableRemovedFeature;
-use rustc_hir::target::GenericParamKind;
-use rustc_hir::{
-    DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
-    StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
-};
 
 use super::prelude::*;
 use super::util::parse_version;

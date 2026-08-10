@@ -1,6 +1,6 @@
 use rustc_ast::{LitIntType, LitKind};
+use rustc_attr_ir::UnrollAttr;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::UnrollAttr;
 
 use super::prelude::*;
 
