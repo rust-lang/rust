@@ -1425,13 +1425,13 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
-    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+    let llvm_output = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
     }
 
-    cargo.env("LLVM_CONFIG", &host_llvm_config);
+    cargo.env("LLVM_CONFIG", &llvm_output.host_llvm_config);
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by
@@ -2122,11 +2122,11 @@ impl CommandLineStep for Assemble {
             trace!("target_compiler.host" = ?target_compiler.host, "LLVM enabled");
 
             let target = target_compiler.host;
-            let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+            let llvm_output = builder.ensure(llvm::Llvm { target });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 trace!("LLVM tools enabled");
 
-                let host_llvm_bin_dir = command(&host_llvm_config)
+                let host_llvm_bin_dir = command(&llvm_output.host_llvm_config)
                     .arg("--bindir")
                     .cached()
                     .run_capture_stdout(builder)
@@ -2153,7 +2153,7 @@ impl CommandLineStep for Assemble {
                         // relative to its output build directory, and then apply it to the target
                         // LLVM output build directory.
                         let host_llvm_out = builder.llvm_out(builder.host_target);
-                        let target_llvm_out = builder.llvm_out(target);
+                        let target_llvm_out = llvm_output.root_dir();
                         if let Ok(relative_path) =
                             Path::new(&host_llvm_bin_dir).strip_prefix(host_llvm_out)
                         {

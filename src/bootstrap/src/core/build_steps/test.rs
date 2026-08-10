@@ -2352,7 +2352,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--mode").arg(mode.as_str());
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--host").arg(&*test_compiler.host.triple);
-        cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
+
+        let filecheck = builder.ensure(llvm::FileCheck { target: builder.config.host_target });
+        cmd.arg("--llvm-filecheck").arg(filecheck);
 
         if let Some(codegen_backend) = builder.config.cmd.test_codegen_backend() {
             if !builder
@@ -2630,7 +2632,7 @@ Please disable assertions with `rust.debug-assertions = false`.
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(test_compiler.host) {
-            let llvm::LlvmResult { host_llvm_config, .. } =
+            let llvm::LlvmOutput { host_llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
                 let llvm_version = get_llvm_version(builder, &host_llvm_config);

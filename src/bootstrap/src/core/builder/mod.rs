@@ -1574,7 +1574,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// *target*.
     pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
-            let llvm::LlvmResult { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
+            let llvm::LlvmOutput { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if host_llvm_config.is_file() {
                 return Some(host_llvm_config);
             }
