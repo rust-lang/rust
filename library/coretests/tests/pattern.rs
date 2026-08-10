@@ -572,3 +572,81 @@ fn double_ended_regression_test() {
         next_match      => Done
     );
 }
+
+#[test]
+fn two_way_next_reject_skips_matches() {
+    // `next_reject` must not report the matched regions as rejects
+
+    // plen - pattern len
+    // ulen - unmatch len
+    // haystack is always a concatenation of [Match, Reject, Match]
+    #[track_caller]
+    fn check_fw_bw<'a, T>(haystack: &'a str, pat: T, plen: usize, ulen: usize)
+    where
+        T: Pattern + Copy,
+        T::Searcher<'a>: ReverseSearcher<'a>,
+    {
+        // fragments
+        let f1 = (0, plen);
+        let f2 = (f1.1, f1.1 + ulen);
+        let f3 = (f2.1, f2.1 + plen);
+
+        let mut searcher = pat.into_searcher(haystack);
+        let (start, end) = searcher.next_reject().expect("fw reject");
+        assert_eq!(start, f2.0, "fw reject start");
+        assert!(start < end && end <= f2.1, "fw reject must be a non-empty part of f2");
+        assert_eq!(searcher.next_match(), Some(f3), "fw match");
+        assert_eq!(searcher.next_match(), None, "fw end");
+
+        let mut searcher = pat.into_searcher(haystack);
+        let (start, end) = searcher.next_reject_back().expect("bw reject");
+        assert_eq!(end, f2.1, "bw reject end");
+        assert!(f2.0 <= start && start < end, "bw reject must be a non-empty part of f2");
+        assert_eq!(searcher.next_match_back(), Some(f1), "bw match");
+        assert_eq!(searcher.next_match_back(), None, "bw end");
+    }
+    check_fw_bw("XYZabcXYZ", "XYZ", 3, 3);
+
+    // single char 1..4 byte str
+    check_fw_bw("XabcX", "X", 1, 3);
+    check_fw_bw("\u{00e9}abc\u{00e9}", "\u{00e9}", 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", "\u{20ac}", 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", "\u{1f60a}", 4, 3);
+
+    // single char 2..4 byte
+    check_fw_bw("\u{00e9}abc\u{00e9}", '\u{00e9}', 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", '\u{20ac}', 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", '\u{1f60a}', 4, 3);
+
+    check_fw_bw("\u{00e9}abc\u{00e9}", ['\u{00e9}'], 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", ['\u{20ac}'], 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", ['\u{1f60a}'], 4, 3);
+
+    check_fw_bw("\u{00e9}abc\u{00e9}", |c| c == '\u{00e9}', 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", |c| c == '\u{20ac}', 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", |c| c == '\u{1f60a}', 4, 3);
+}
+
+#[test]
+fn two_way_next_reject_never_reports_empty_reject() {
+    // A reject must never be an empty range
+
+    // Haystack fully covered by the pattern: there are no rejects at all.
+    let mut searcher = "XYZ".into_searcher("XYZ");
+    assert_eq!(searcher.next_reject(), None);
+    assert_eq!(searcher.next_reject(), None);
+
+    let mut searcher = "XYZ".into_searcher("XYZ");
+    assert_eq!(searcher.next_reject_back(), None);
+    assert_eq!(searcher.next_reject_back(), None);
+
+    // Haystack ending with a match: the last reject is followed by `None`,
+    // not by an empty reject after the final match.
+    let mut searcher = "XYZ".into_searcher("XYZabcXYZ");
+    assert_eq!(searcher.next_reject(), Some((3, 6)));
+    assert_eq!(searcher.next_reject(), None);
+
+    let mut searcher = "XYZ".into_searcher("XYZabcXYZ");
+    assert_eq!(searcher.next_reject_back(), Some((3, 6)));
+    assert_eq!(searcher.next_reject_back(), None);
+}
