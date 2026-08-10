@@ -25,8 +25,8 @@ mod execution;
 mod handle_cycle_error;
 mod incremental;
 mod job;
-mod profiling_support;
 mod query_vtables;
+mod self_profile;
 
 pub fn query_system<'tcx>(
     local_providers: Providers,
@@ -48,7 +48,7 @@ pub fn query_system<'tcx>(
 
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings =
-        profiling_support::alloc_self_profile_query_strings;
+        self_profile::alloc_self_profile_query_strings;
     providers.hooks.verify_query_key_hashes = incremental::verify_query_key_hashes;
     providers.hooks.encode_query_values = incremental::encode_query_values;
 }
