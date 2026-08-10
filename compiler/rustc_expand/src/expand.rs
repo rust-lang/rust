@@ -20,7 +20,6 @@ use rustc_attr_parsing::{
 };
 use rustc_data_structures::Limit;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::Target;
@@ -2574,7 +2573,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
-        ensure_sufficient_stack(|| self.visit_node(node))
+        self.visit_node(node)
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {

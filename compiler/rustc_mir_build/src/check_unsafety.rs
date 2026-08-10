@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::mem;
 
 use rustc_ast::AsmMacro;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
@@ -406,9 +405,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Scope { value, hir_id, region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                ensure_sufficient_stack(|| {
-                    self.visit_expr(&self.thir[value]);
-                });
+                self.visit_expr(&self.thir[value]);
                 self.hir_context = prev_id;
                 return; // don't visit the whole expression
             }
