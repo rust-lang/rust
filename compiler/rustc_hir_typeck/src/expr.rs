@@ -1873,7 +1873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !ocx.try_evaluate_obligations().no_errors() {
                     return Err(TypeError::Mismatch);
                 }
-                Ok(self.resolve_vars_if_possible(adt_ty))
+                Ok(adt_ty)
             })
             .ok()
         });
