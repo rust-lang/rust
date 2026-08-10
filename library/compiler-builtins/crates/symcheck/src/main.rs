@@ -13,6 +13,7 @@ use std::process::{Command, Stdio, exit};
 use std::sync::LazyLock;
 use std::{env, fmt, fs};
 
+use object::elf::{ProgramFlags, ProgramType};
 use object::read::archive::ArchiveFile;
 use object::read::pe::ImageOptionalHeader;
 use object::{
@@ -697,10 +698,10 @@ fn elf_os<Elf: read::elf::FileHeader>(f: &read::elf::ElfFile<Elf>) -> Os {
 /// Get the OS from a mach file, or `Unknown` if not specified.
 fn mach_os<Mach: read::macho::MachHeader>(f: &read::macho::MachOFile<Mach>) -> Os {
     // Note that this only returns something on `.rmeta` objects, not `.o`s.
-    let Ok(Some(build)) = f.build_version() else {
+    let Ok(Some((build_cmd, build_tool))) = f.build_version() else {
         return Os::Unknown;
     };
-    let platform = build.platform.get(f.endian());
+    let platform = build_cmd.platform.get(f.endian());
 
     match platform {
         macho::PLATFORM_UNKNOWN => Os::Unknown,
@@ -709,7 +710,7 @@ fn mach_os<Mach: read::macho::MachHeader>(f: &read::macho::MachOFile<Mach>) -> O
         macho::PLATFORM_TVOS | macho::PLATFORM_TVOSSIMULATOR => Os::TvOs,
         macho::PLATFORM_VISIONOS | macho::PLATFORM_VISIONOSSIMULATOR => Os::VisionOs,
         macho::PLATFORM_WATCHOS | macho::PLATFORM_WATCHOSSIMULATOR => Os::WatchOs,
-        _ => panic!("unrecognized Mach-O platform {platform} ({build:?})"),
+        _ => panic!("unrecognized Mach-O platform {platform} ({build_cmd:?} {build_tool:?})"),
     }
 }
 
@@ -808,7 +809,8 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
     // Check for PT_GNU_STACK marked executable
     let mut is_obj_exe = false;
     let mut found_gnu_stack = false;
-    let mut check_ph = |p_type: U32<Endianness>, p_flags: U32<Endianness>| {
+    let mut check_ph = |p_type: U32<Endianness, ProgramType>,
+                        p_flags: U32<Endianness, ProgramFlags>| {
         let ty = p_type.get(end);
         let flags = p_flags.get(end);
 
@@ -821,7 +823,7 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
         if ty == elf::PT_GNU_STACK {
             assert!(!found_gnu_stack, "multiple PT_GNU_STACK sections");
             found_gnu_stack = true;
-            if flags & elf::PF_X != 0 {
+            if flags.contains(elf::PF_X) {
                 return Err(ExeStack::ExePtGnuStack);
             }
         }
@@ -852,11 +854,15 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
     let mut gnu_stack_exe = None;
     let mut has_exe_sections = false;
     for sec in obj.sections() {
-        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+        let SectionFlags::Elf {
+            sh_type: _,
+            sh_flags,
+        } = sec.flags()
+        else {
             unreachable!("only elf files are being checked");
         };
 
-        let is_sec_exe = sh_flags & u64::from(elf::SHF_EXECINSTR) != 0;
+        let is_sec_exe = sh_flags.contains(elf::SHF_EXECINSTR);
 
         // If the magic section is present, its exe bit tells us whether or not the object
         // file requires an executable stack.
@@ -891,7 +897,7 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
     match obj.architecture() {
         // PPC64 doesn't set `.note.GNU-stack` since GNU nested functions don't need a trampoline,
         // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=21098>. This only applies to ELFv1.
-        Architecture::PowerPc64 if e_flags & elf::EF_PPC64_ABI != 2 => Ok(()),
+        Architecture::PowerPc64 if e_flags.0 & elf::EF_PPC64_ABI != 2 => Ok(()),
 
         _ => Err(ExeStack::MissingGnuStackSec),
     }

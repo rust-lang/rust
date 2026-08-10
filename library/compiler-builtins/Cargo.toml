@@ -54,7 +54,7 @@ libm-test = { path = "libm-test", default-features = false }
 libtest-mimic = "0.8.1"
 musl-math-sys = { path = "crates/musl-math-sys" }
 no-panic = "0.1.36"
-object = { version = "0.39.0", features = ["wasm"] }
+object = { version = "0.40.0", features = ["wasm"] }
 panic-handler = { path = "crates/panic-handler" }
 paste = "1.0.15"
 pretty_assertions = "1.4.1"
