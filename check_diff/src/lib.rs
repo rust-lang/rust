@@ -496,7 +496,7 @@ pub fn git_remote_add(url: &str) -> Result<(), GitError> {
 
 pub fn git_fetch(branch_name: &str) -> Result<(), GitError> {
     let git_cmd = Command::new("git")
-        .args(["fetch", "feature", branch_name])
+        .args(["fetch", "--depth", "1", "feature", branch_name])
         .output()?;
 
     // if the git command does not return successfully,
@@ -613,11 +613,12 @@ pub fn compile_rustfmt<T: AsRef<str>>(
     config: Option<&[T]>,
 ) -> Result<DiffChecker<RustfmtRunner, RustfmtRunner>, CheckDiffError> {
     const RUSTFMT_REPO: &str = "https://github.com/rust-lang/rustfmt.git";
+    let checkout_ref = commit_hash.as_ref().unwrap_or(&feature_branch);
 
     clone_git_repo(RUSTFMT_REPO, dest)?;
     change_directory_to_path(dest)?;
     git_remote_add(remote_repo_url.as_str())?;
-    git_fetch(feature_branch.as_str())?;
+    git_fetch(checkout_ref.as_str())?;
 
     let cargo_version = get_cargo_version()?;
     info!("Compiling with {}", cargo_version);
@@ -629,10 +630,7 @@ pub fn compile_rustfmt<T: AsRef<str>>(
         config,
     )?;
     let should_detach = commit_hash.is_some();
-    git_switch(
-        commit_hash.as_ref().unwrap_or(&feature_branch),
-        should_detach,
-    )?;
+    git_switch(checkout_ref, should_detach)?;
 
     let target_runner = build_rustfmt_from_src(
         dest.join("target_rustfmt"),
