@@ -27,6 +27,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use std::{env, str};
 
+use quote as _;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenError, CompiledModules};
@@ -62,6 +63,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, FileName};
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
+use syn as _;
 use tracing::trace;
 
 #[allow(unused_macros)]

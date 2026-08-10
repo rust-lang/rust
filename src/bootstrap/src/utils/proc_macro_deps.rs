@@ -3,6 +3,7 @@
 /// See <https://github.com/rust-lang/rust/issues/134863>
 pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
+    "allocator_api2",
     "anyhow",
     "askama_derive",
     "askama_parser",
@@ -75,6 +76,8 @@ pub static CRATES: &[&str] = &[
     "wasm_encoder",
     "wasm_metadata",
     "wasmparser",
+    "wasmtime_internal_component_util",
+    "wasmtime_internal_wit_bindgen",
     "winnow",
     "wit_bindgen_core",
     "wit_bindgen_rust",
