@@ -1,5 +1,3 @@
-//! Support for serializing the dep-graph and reloading it.
-
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(core_intrinsics)]
