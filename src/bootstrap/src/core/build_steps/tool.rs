@@ -1107,8 +1107,11 @@ impl CommandLineStep for RustAnalyzerProcMacroSrv {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
-        run.path("src/tools/rust-analyzer")
-            .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
+        // FIXME(Zalathar): Should we stop registering "src/tools/rust-analyzer" here?
+        run.path("src/tools/rust-analyzer").path_with_alias(
+            "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
+            "rust-analyzer-proc-macro-srv",
+        )
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {

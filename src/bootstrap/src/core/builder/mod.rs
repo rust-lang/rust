@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
-use std::{env, fs};
+use std::{env, fs, iter};
 
 use clap::ValueEnum;
 #[cfg(feature = "tracing")]
@@ -355,6 +355,9 @@ struct CommandLineStepDescription {
     is_default_step_fn: fn(&Builder<'_>) -> bool,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
+
+    /// Kind that was passed to [`CommandLineStepDescription::from`].
+    #[cfg_attr(not(test), expect(dead_code, reason = "currently only needed by tests"))]
     kind: Kind,
 }
 
@@ -520,15 +523,14 @@ impl CommandLineStepDescription {
 /// correspond to.
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
-    kind: Kind,
 
     // use a BTreeSet to maintain sort order
     paths: BTreeSet<PathSet>,
 }
 
 impl<'a> ShouldRun<'a> {
-    fn new(builder: &'a Builder<'_>, kind: Kind) -> ShouldRun<'a> {
-        ShouldRun { builder, kind, paths: BTreeSet::new() }
+    fn new(builder: &'a Builder<'_>) -> ShouldRun<'a> {
+        ShouldRun { builder, paths: BTreeSet::new() }
     }
 
     /// The corresponding step should run if the bootstrap command-line selects
@@ -562,16 +564,25 @@ impl<'a> ShouldRun<'a> {
     }
 
     // single alias, which does not correspond to any on-disk path
-    pub fn alias(mut self, alias: &str) -> Self {
-        // exceptional case for `Kind::Setup` because its `library`
-        // and `compiler` options would otherwise naively match with
-        // `compiler` and `library` folders respectively.
+    pub fn alias(self, alias: &str) -> Self {
+        self.assert_valid_alias(alias);
+        self.alias_without_assert(alias)
+    }
+
+    /// Like [`Self::alias`], but does not assert the absence of a path with the same name.
+    ///
+    /// Needed by [`setup::Profile`], which registers aliases named `compiler` and `library`
+    /// that happen to coincide with directory names.
+    pub fn alias_without_assert(mut self, alias: &str) -> Self {
+        self.paths.insert(PathSet::Set(iter::once(TaskPath { path: alias.into() }).collect()));
+        self
+    }
+
+    fn assert_valid_alias(&self, alias: &str) {
         assert!(
-            self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
+            !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
-        self.paths.insert(PathSet::Set(std::iter::once(TaskPath { path: alias.into() }).collect()));
-        self
     }
 
     fn assert_valid_path(&self, path: &str) {
@@ -595,6 +606,19 @@ impl<'a> ShouldRun<'a> {
 
         let task = TaskPath { path: path.into() };
         self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
+        self
+    }
+
+    /// Registers a path, and an alias that is treated as equivalent to that path.
+    pub fn path_with_alias(mut self, path: &str, alias: &str) -> Self {
+        self.assert_valid_path(path);
+        self.assert_valid_alias(alias);
+
+        let set = [path, alias]
+            .into_iter()
+            .map(|p| TaskPath { path: PathBuf::from(p) })
+            .collect::<BTreeSet<_>>();
+        self.paths.insert(PathSet::Set(set));
         self
     }
 
@@ -1061,11 +1085,9 @@ impl<'a> Builder<'a> {
 
         let builder = Self::new_internal(build, kind, vec![]);
         let builder = &builder;
-        // The "build" kind here is just a placeholder, it will be replaced with something else in
-        // the following statement.
-        let mut should_run = ShouldRun::new(builder, Kind::Build);
+
+        let mut should_run = ShouldRun::new(builder);
         for desc in step_descriptions {
-            should_run.kind = desc.kind;
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
@@ -1148,7 +1170,7 @@ impl<'a> Builder<'a> {
                 continue;
             }
 
-            let should_run = (desc.should_run)(ShouldRun::new(self, Kind::Doc));
+            let should_run = (desc.should_run)(ShouldRun::new(self));
             let default_pathsets = should_run.default_pathsets();
 
             let targets = if desc.is_host { &self.hosts } else { &self.targets };
@@ -1686,7 +1708,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         kind: Kind,
     ) -> Option<S::Output> {
         let desc = CommandLineStepDescription::from::<S>(kind);
-        let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
+        let should_run = (desc.should_run)(ShouldRun::new(self));
 
         // Avoid running steps contained in --skip
         for pathset in &should_run.paths {
@@ -1702,7 +1724,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
     pub(crate) fn was_invoked_explicitly<S: CommandLineStep>(&'a self, kind: Kind) -> bool {
         let desc = CommandLineStepDescription::from::<S>(kind);
-        let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
+        let should_run = (desc.should_run)(ShouldRun::new(self));
 
         for path in &self.paths {
             if should_run.paths.iter().any(|s| s.has(path))
