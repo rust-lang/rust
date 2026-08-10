@@ -275,6 +275,12 @@ fn configure_and_expand(
             sess.dcx().emit_err(diagnostics::MixedProcMacroCrate);
         }
     }
+
+    if is_proc_macro_crate && sess.target.is_like_wasm && !sess.opts.unstable_opts.wasm_proc_macros
+    {
+        sess.dcx().emit_err(diagnostics::UnstableWasmProcMacro);
+    }
+
     if crate_types.contains(&CrateType::Sdylib) && !tcx.features().export_stable() {
         feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
     }

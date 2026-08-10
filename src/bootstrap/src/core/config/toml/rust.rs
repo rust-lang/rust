@@ -75,6 +75,7 @@ define_config! {
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
         stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
+        wasm_proc_macros: Option<bool> = "wasm-proc-macros",
     }
 }
 
@@ -393,6 +394,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         bootstrap_override_lld: _,
         rustflags: _,
         stdlib_semver_baseline: _,
+        wasm_proc_macros: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
