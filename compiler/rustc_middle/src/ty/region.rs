@@ -123,6 +123,24 @@ impl LateParamRegionKind {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::RegionName<TyCtxt<'tcx>> for LateParamRegionKind {
+    #[inline]
+    fn get_name(&self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
+        self.get_name(tcx)
+    }
+
+    #[inline]
+    fn is_named(&self, tcx: TyCtxt<'tcx>) -> bool {
+        self.is_named(tcx)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::DefIdGetter<TyCtxt<'tcx>> for LateParamRegionKind {
+    fn get_def_id(self) -> Option<DefId> {
+        self.get_id()
+    }
+}
+
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {

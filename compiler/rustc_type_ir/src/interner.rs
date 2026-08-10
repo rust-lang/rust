@@ -21,8 +21,8 @@ use crate::solve::{
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache,
-    DebruijnIndex, Region, RegionKind, RegionVid, TraitRef, search_graph,
+    self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex,
+    Region, RegionKind, RegionVid, TraitRef, search_graph,
 };
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
@@ -211,16 +211,31 @@ pub trait Interner:
     /// Do not uplift, the underlying types differ between r-a and rustc.
     ///
     /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
-    type EarlyParamRegion: ParamLike;
+    type EarlyParamRegion: ParamLike + RegionName<Self>;
     /// (2026/08/13)
     /// Do not uplift, the underlying types differ between r-a and rustc.
     ///
     /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
     #[cfg(feature = "nightly")]
-    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash + StableHash;
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + StableHash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     #[cfg(not(feature = "nightly"))]
-    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash;
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
 
