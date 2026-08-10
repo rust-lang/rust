@@ -4,13 +4,19 @@ use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::hash_table::HashTable;
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::{Cycle, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter};
+use rustc_middle::query::{
+    ActiveKeyStatus, Cycle, QueryCache, QueryJob, QueryJobId, QueryKey, QueryLatch,
+    QueryStackFrame, QueryVTable, QueryWaiter,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
+use tracing::debug;
 
-use crate::{CollectActiveJobsKind, collect_active_query_jobs};
+use crate::query_vtables::for_each_query_vtable;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_query_jobs`.
@@ -48,6 +54,87 @@ impl<'tcx> QueryJobMap<'tcx> {
 pub(crate) struct QueryJobInfo<'tcx> {
     pub(crate) tagged_key: TaggedQueryKey<'tcx>,
     pub(crate) job: QueryJob<'tcx>,
+}
+
+#[derive(Clone, Copy)]
+pub enum CollectActiveJobsKind {
+    /// We need the full query job map, and we are willing to wait to obtain the query state
+    /// shard lock(s).
+    Full,
+
+    /// We need the full query job map, and we shouldn't need to wait to obtain the shard lock(s),
+    /// because we are in a place where nothing else could hold the shard lock(s).
+    FullNoContention,
+
+    /// We can get by without the full query job map, so we won't bother waiting to obtain the
+    /// shard lock(s) if they're not already unlocked.
+    PartialAllowed,
+}
+
+/// Returns a map of currently active query jobs, collected from all queries.
+pub fn collect_active_query_jobs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    collect_kind: CollectActiveJobsKind,
+) -> QueryJobMap<'tcx> {
+    let mut job_map = QueryJobMap::default();
+
+    for_each_query_vtable!(ALL, tcx, |query| {
+        collect_active_query_jobs_inner(query, collect_kind, &mut job_map);
+    });
+
+    job_map
+}
+
+/// Internal plumbing for collecting the set of active jobs for this query.
+///
+/// Aborts if jobs can't be gathered as specified by `collect_kind`.
+fn collect_active_query_jobs_inner<'tcx, C>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    collect_kind: CollectActiveJobsKind,
+    job_map: &mut QueryJobMap<'tcx>,
+) where
+    C: QueryCache<Key: QueryKey + DynSend + DynSync>,
+    QueryVTable<'tcx, C>: DynSync,
+{
+    let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
+        for (key, status) in shard.iter() {
+            if let ActiveKeyStatus::Started(job) = status {
+                // It's fine to call `create_tagged_key` with the shard locked,
+                // because it's just a `TaggedQueryKey` variant constructor.
+                let tagged_key = (query.create_tagged_key)(*key);
+                job_map.insert(job.id, QueryJobInfo { tagged_key, job: job.clone() });
+            }
+        }
+    };
+
+    match collect_kind {
+        CollectActiveJobsKind::Full => {
+            for shard in query.state.active.lock_shards() {
+                collect_shard_jobs(&shard);
+            }
+        }
+        CollectActiveJobsKind::FullNoContention => {
+            for shard in query.state.active.try_lock_shards() {
+                match shard {
+                    Some(shard) => collect_shard_jobs(&shard),
+                    None => panic!("Failed to collect active jobs for query `{}`!", query.name),
+                }
+            }
+        }
+        CollectActiveJobsKind::PartialAllowed => {
+            for shard in query.state.active.try_lock_shards() {
+                match shard {
+                    Some(shard) => collect_shard_jobs(&shard),
+                    // This collection is best-effort (it is only used to print the query
+                    // stack on panic), so a contended shard is expected and fine to skip.
+                    // Emitting this at `warn!` would leak nondeterministically into the
+                    // panic output under the parallel front-end, where another thread may
+                    // still hold a shard lock, so keep it at `debug!`.
+                    None => debug!("Failed to collect active jobs for query `{}`!", query.name),
+                }
+            }
+        }
+    }
 }
 
 pub(crate) fn find_cycle_in_stack<'tcx>(
