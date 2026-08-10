@@ -2211,17 +2211,9 @@ impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx
 }
 
 impl<'tcx> rustc_type_ir::inherent::Symbol<TyCtxt<'tcx>> for Symbol {
-    fn get_kw_underscore_lifetime() -> Self {
-        kw::UnderscoreLifetime
-    }
-
-    fn get_kw_static_lifetime() -> Self {
-        kw::StaticLifetime
-    }
-
-    fn get_sym_anon() -> Self {
-        sym::anon
-    }
+    const KW_UNDERSCORE_LIFETIME: Self = kw::UnderscoreLifetime;
+    const KW_STATIC_LIFETIME: Self = kw::StaticLifetime;
+    const SYM_ANON: Self = sym::anon;
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.

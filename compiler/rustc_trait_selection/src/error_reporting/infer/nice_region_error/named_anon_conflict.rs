@@ -3,7 +3,6 @@
 
 use rustc_errors::Diag;
 use rustc_middle::ty;
-use rustc_middle::ty::RegionExt;
 use tracing::debug;
 
 use crate::diagnostics::ExplicitLifetimeRequired;

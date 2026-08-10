@@ -33,8 +33,8 @@ impl<I: Interner> Region<I> {
         match self.kind() {
             RegionKind::ReEarlyParam(ebr) => ebr.get_name(interner),
             RegionKind::ReBound(_, br) => br.kind.get_name(interner),
-            RegionKind::ReLateParam(fr) => fr.get_name(interner),
-            RegionKind::ReStatic => Some(I::Symbol::get_kw_static_lifetime()),
+            RegionKind::ReLateParam(fr) => fr.kind.get_name(interner),
+            RegionKind::ReStatic => Some(I::Symbol::KW_STATIC_LIFETIME),
             RegionKind::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(interner),
             _ => None,
         }
@@ -43,7 +43,7 @@ impl<I: Interner> Region<I> {
     pub fn get_name_or_anon(self, interner: I) -> I::Symbol {
         match self.get_name(interner) {
             Some(name) => name,
-            None => I::Symbol::get_sym_anon(),
+            None => I::Symbol::SYM_ANON,
         }
     }
 
@@ -51,10 +51,10 @@ impl<I: Interner> Region<I> {
     /// or one of the parent generics. Returns the `DefId` of the parameter definition if so.
     pub fn opt_param_def_id(self, interner: I, binding_item: I::DefId) -> Option<I::DefId> {
         match self.kind() {
-            RegionKind::ReEarlyParam(ebr) => Some(
-                I::GenericsOf::generics_of_early_param_region_def_id(interner, binding_item, ebr),
-            ),
-            RegionKind::ReLateParam(param) => param.get_def_id(),
+            RegionKind::ReEarlyParam(ebr) => {
+                Some(interner.generics_of(binding_item).param_region_def_id(interner, ebr))
+            }
+            RegionKind::ReLateParam(param) => param.kind.get_def_id(),
             _ => None,
         }
     }
@@ -64,7 +64,7 @@ impl<I: Interner> Region<I> {
         match self.kind() {
             RegionKind::ReEarlyParam(ebr) => ebr.is_named(interner),
             RegionKind::ReBound(_, br) => br.kind.is_named(interner),
-            RegionKind::ReLateParam(fr) => fr.is_named(interner),
+            RegionKind::ReLateParam(fr) => fr.kind.is_named(interner),
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
             RegionKind::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(interner),
@@ -93,8 +93,8 @@ impl<I: Interner> Region<I> {
     }
 
     #[inline]
-    pub fn new_late_param(interner: I, late_param_region: I::LateParamRegion) -> Self {
-        interner.intern_region(RegionKind::ReLateParam(late_param_region))
+    pub fn new_late_param(interner: I, scope: I::DefId, kind: I::LateParamRegionKind) -> Self {
+        interner.intern_region(RegionKind::ReLateParam(LateParamRegion { scope, kind }))
     }
 
     #[inline]

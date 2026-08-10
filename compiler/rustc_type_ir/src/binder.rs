@@ -1028,7 +1028,7 @@ impl<I: Interner> BoundRegionKind<I> {
         match *self {
             ty::BoundRegionKind::Named(def_id) => {
                 let name = tcx.item_name(def_id);
-                if name == I::Symbol::get_kw_underscore_lifetime() { None } else { Some(name) }
+                if name == I::Symbol::KW_UNDERSCORE_LIFETIME { None } else { Some(name) }
             }
             ty::BoundRegionKind::NamedForPrinting(name) => Some(name),
             _ => None,

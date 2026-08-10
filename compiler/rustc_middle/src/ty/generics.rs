@@ -151,12 +151,8 @@ impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics 
     fn count(&self) -> usize {
         self.parent_count + self.own_params.len()
     }
-    fn generics_of_early_param_region_def_id(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        epr: ty::EarlyParamRegion,
-    ) -> DefId {
-        tcx.generics_of(def_id).region_param(epr, tcx).def_id
+    fn param_region_def_id(self, tcx: TyCtxt<'tcx>, ebr: ty::EarlyParamRegion) -> DefId {
+        self.region_param(ebr, tcx).def_id
     }
 }
 
