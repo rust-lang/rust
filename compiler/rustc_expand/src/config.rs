@@ -11,6 +11,8 @@ use rustc_ast::{
     self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
     SyntheticAttr,
 };
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{self as attrs, AttributeKind};
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
@@ -21,10 +23,6 @@ use rustc_errors::msg;
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
-};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{
-    Target, {self as hir},
 };
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
@@ -51,7 +49,7 @@ pub struct StripUnconfigured<'a> {
 pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
     let mut features = Features::default();
 
-    if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
+    if let Some(attrs::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
         AttributeParser::parse_limited_sym(sess, krate_attrs, &[sym::feature])
     {
         for feature_ident in feature_idents {
