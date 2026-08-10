@@ -9,7 +9,6 @@ use std::fmt::Debug;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -772,20 +771,6 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         }
 
         let mut candidates = goal.candidates();
-        for cand in goal.candidates() {
-            if let inspect::ProbeKind::TraitCandidate {
-                source: CandidateSource::Impl(def_id),
-                result: Ok(_),
-            } = cand.kind()
-                && let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id)
-            {
-                if let Some(message) =
-                    find_attr!(infcx.tcx, def_id, RustcReservationImpl(message) => *message)
-                {
-                    self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                }
-            }
-        }
 
         // We also look for unknowable candidates. In case a goal is unknowable, there's
         // always exactly 1 candidate.

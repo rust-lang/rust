@@ -149,16 +149,10 @@ where
             return Err(NoSolution.into());
         }
 
+        // TODO: certainty can only be yes here...
         let impl_polarity = cx.impl_polarity(impl_def_id);
         let certainty = match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution.into()),
-            ty::ImplPolarity::Reservation => {
-                if ecx.typing_mode().is_coherence() {
-                    Certainty::AMBIGUOUS
-                } else {
-                    return Err(NoSolution.into());
-                }
-            }
             ty::ImplPolarity::Positive => Certainty::Yes,
         };
 

@@ -1074,17 +1074,10 @@ pub(crate) struct StaticSpecialize {
 }
 
 #[derive(Diagnostic)]
-pub(crate) enum DropImplPolarity {
-    #[diag("negative `Drop` impls are not supported")]
-    Negative {
-        #[primary_span]
-        span: Span,
-    },
-    #[diag("reservation `Drop` impls are not supported")]
-    Reservation {
-        #[primary_span]
-        span: Span,
-    },
+#[diag("negative `Drop` impls are not supported")]
+pub(crate) struct NegativeDropImplPolarity {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
