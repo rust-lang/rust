@@ -1023,12 +1023,14 @@ impl CStore {
         };
         let cdata = self.get_crate_data(cnum);
 
-        // Sanity check the loaded crate to ensure it is indeed a panic runtime
-        // and the panic strategy is indeed what we thought it was.
+        // Sanity check the loaded crate to ensure it is indeed a panic runtime.
         if !cdata.is_panic_runtime() {
             tcx.dcx().emit_err(diagnostics::CrateNotPanicRuntime { crate_name: name });
         }
-        if cdata.required_panic_strategy() != Some(desired_strategy) {
+        // Check the `panic_abort` was compiled with `-Cpanic=abort`.
+        if desired_strategy == PanicStrategy::Abort
+            && cdata.required_panic_strategy() != Some(PanicStrategy::Abort)
+        {
             tcx.dcx().emit_err(diagnostics::NoPanicStrategy {
                 crate_name: name,
                 strategy: desired_strategy,
