@@ -1,10 +1,11 @@
 use std::hash::Hash;
 use std::mem::ManuallyDrop;
+use std::num::NonZero;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_data_structures::{defer, outline, sharded, sync};
+use rustc_data_structures::{Limit, defer, outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
@@ -14,13 +15,15 @@ use rustc_middle::query::{
     QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::verify_ich::incremental_verify_ich;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
+use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
 use crate::handle_cycle_error;
-use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack};
-use crate::plumbing::{current_query_job, next_job_id, start_query};
+use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, find_dep_kind_root};
 use crate::query_vtables::for_each_query_vtable;
 
 #[inline]
@@ -282,6 +285,19 @@ fn wait_for_query<'tcx, C: QueryCache>(
     }
 }
 
+#[inline]
+fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+    QueryJobId(
+        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+            .unwrap(),
+    )
+}
+
+#[inline]
+fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
+}
+
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
@@ -406,6 +422,43 @@ fn check_feedable_consistency<'tcx, C: QueryCache>(
             formatter(&cached_value),
         );
     }
+}
+
+fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
+    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
+    let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
+
+    let suggested_limit = match tcx.recursion_limit() {
+        Limit(0) => Limit(2),
+        limit => limit * 2,
+    };
+
+    tcx.dcx().emit_fatal(QueryOverflow {
+        span,
+        note: QueryOverflowNote { desc, depth },
+        suggested_limit,
+        crate_name: tcx.crate_name(LOCAL_CRATE),
+    });
+}
+
+/// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
+#[inline(always)]
+fn start_query<R>(job_id: QueryJobId, depth_limit: bool, compute: impl FnOnce() -> R) -> R {
+    tls::with_context(move |icx| {
+        if depth_limit && !icx.tcx.recursion_limit().value_within_limit(icx.query_depth) {
+            depth_limit_error(icx.tcx, job_id);
+        }
+
+        // Update the `ImplicitCtxt` to point to our new query job.
+        let icx = ImplicitCtxt {
+            query: Some(job_id),
+            query_depth: icx.query_depth + if depth_limit { 1 } else { 0 },
+            ..*icx
+        };
+
+        // Use the `ImplicitCtxt` while we execute the query.
+        tls::enter_context(&icx, compute)
+    })
 }
 
 // Fast path for when incr. comp. is off.
