@@ -253,60 +253,68 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // function where-bounds don't actually hold. This results
                 // in weird bugs when later treating these expectations as if
                 // they were actually correct.
-                self.fudge_inference_if_ok(|| {
-                    let ocx = ObligationCtxt::new(self);
+                let expected_input_tys = self
+                    .fudge_inference_if_ok(|| {
+                        let ocx = ObligationCtxt::new(self);
 
-                    // Attempt to apply a subtyping relationship between the formal
-                    // return type (likely containing type variables if the function
-                    // is polymorphic) and the expected return type.
-                    // No argument expectations are produced if unification fails.
-                    let origin = self.misc(call_span);
-                    ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
+                        // Attempt to apply a subtyping relationship between the formal
+                        // return type (likely containing type variables if the function
+                        // is polymorphic) and the expected return type.
+                        // No argument expectations are produced if unification fails.
+                        let origin = self.misc(call_span);
+                        ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
 
-                    // Check the well-formedness of expected input tys, as using ill-formed
-                    // expectation may cause type inference errors, see #150316.
-                    for &ty in formal_input_tys {
-                        ocx.register_obligation(traits::Obligation::new(
-                            self.tcx,
-                            self.misc(call_span),
-                            self.param_env,
-                            ty::ClauseKind::WellFormed(ty.into()),
-                        ));
-                    }
-
-                    if !ocx.try_evaluate_obligations().no_errors() {
-                        return Err(TypeError::Mismatch);
-                    }
-
-                    // Record all the argument types, with the args
-                    // produced from the above subtyping unification.
-                    Ok(Some(
-                        formal_input_tys
-                            .iter()
-                            .map(|&ty| self.resolve_vars_if_possible(ty))
-                            .collect::<Vec<_>>(),
-                    ))
-                })
-                .ok()
-            })
-            .unwrap_or_default()
-            .map(|expected_input_tys| {
-                expected_input_tys
-                    .into_iter()
-                    .zip(formal_input_tys)
-                    // if the expected input type is structurally equal to the formal input type,
-                    // i.e. we've only changed some inference variables around, keep the formal
-                    // input ty as the expected input ty.
-                    .map(|(expected_input_ty, formal_input_ty)| {
-                        if same_type_modulo_vars(tcx, expected_input_ty, *formal_input_ty) {
-                            // if they're the same, fall back to the formal input type
-                            *formal_input_ty
-                        } else {
-                            expected_input_ty
+                        // Check the well-formedness of expected input tys, as using ill-formed
+                        // expectation may cause type inference errors, see #150316.
+                        for &ty in formal_input_tys {
+                            ocx.register_obligation(traits::Obligation::new(
+                                self.tcx,
+                                self.misc(call_span),
+                                self.param_env,
+                                ty::ClauseKind::WellFormed(ty.into()),
+                            ));
                         }
+
+                        if !ocx.try_evaluate_obligations().no_errors() {
+                            return Err(TypeError::Mismatch);
+                        }
+
+                        // Record all the argument types, with the args
+                        // produced from the above subtyping unification.
+                        Ok(Some(
+                            formal_input_tys
+                                .iter()
+                                .map(|&ty| self.resolve_vars_if_possible(ty))
+                                .collect::<Vec<_>>(),
+                        ))
                     })
-                    .collect()
-            });
+                    .ok()?;
+
+                Some(expected_input_tys.map(|expected_input_tys| {
+                    expected_input_tys
+                        .into_iter()
+                        .zip(formal_input_tys)
+                        // if the expected input type is structurally equal to the formal input type,
+                        // i.e. we've only changed some inference variables around, keep the formal
+                        // input ty as the expected input ty. Usually fudging helps because it gains
+                        // information from a callsite of a function. However, Fudging also sometimes
+                        // loses information, when the original, formal, input type had constraints on it,
+                        // and fudging replaces all inference variables with fresh ones, those constraints
+                        // are discarded. This check makes sure we only keep fudging output if structural
+                        // changes were made to the type. If all that was changed were some typevars,
+                        // we go back to the unfudged formal input type.
+                        .map(|(expected_input_ty, formal_input_ty)| {
+                            if same_type_modulo_vars(tcx, expected_input_ty, *formal_input_ty) {
+                                // if they're the same, fall back to the formal input type
+                                *formal_input_ty
+                            } else {
+                                expected_input_ty
+                            }
+                        })
+                        .collect()
+                }))
+            })
+            .unwrap_or_default();
 
         let mut err_code = E0061;
 
