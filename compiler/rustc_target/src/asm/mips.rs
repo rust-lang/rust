@@ -8,12 +8,19 @@ def_reg_class! {
     Mips MipsInlineAsmRegClass {
         reg,
         freg,
+        wreg,
     }
 }
 
 impl MipsInlineAsmRegClass {
     pub fn valid_modifiers(self, _arch: super::InlineAsmArch) -> &'static [char] {
-        &[]
+        match self {
+            Self::reg => &[],
+            Self::freg => &['w'],
+            // LLVM doesn't currently support displaying vector registers holding vector types as
+            // float registers.
+            Self::wreg => &[],
+        }
     }
 
     pub fn suggest_class(self, _arch: InlineAsmArch, _ty: InlineAsmType) -> Option<Self> {
@@ -37,9 +44,12 @@ impl MipsInlineAsmRegClass {
         arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match (self, arch) {
-            (Self::reg, InlineAsmArch::Mips64) => types! { _: I8, I16, I32, I64, F32, F64; },
-            (Self::reg, _) => types! { _: I8, I16, I32, F32; },
-            (Self::freg, _) => types! { _: F32, F64; },
+            (Self::reg, InlineAsmArch::Mips64) => types! { _: I8, I16, I32, I64, F16, F32, F64; },
+            (Self::reg, _) => types! { _: I8, I16, I32, F16, F32; },
+            (Self::freg, _) => types! { _: F16, F32, F64; },
+            (Self::wreg, _) => {
+                types! { msa: F16, F32, F64, VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2); }
+            }
         }
     }
 }
@@ -105,6 +115,38 @@ def_regs! {
         f29: freg = ["$f29"],
         f30: freg = ["$f30"],
         f31: freg = ["$f31"],
+        w0: wreg = ["$w0"],
+        w1: wreg = ["$w1"],
+        w2: wreg = ["$w2"],
+        w3: wreg = ["$w3"],
+        w4: wreg = ["$w4"],
+        w5: wreg = ["$w5"],
+        w6: wreg = ["$w6"],
+        w7: wreg = ["$w7"],
+        w8: wreg = ["$w8"],
+        w9: wreg = ["$w9"],
+        w10: wreg = ["$w10"],
+        w11: wreg = ["$w11"],
+        w12: wreg = ["$w12"],
+        w13: wreg = ["$w13"],
+        w14: wreg = ["$w14"],
+        w15: wreg = ["$w15"],
+        w16: wreg = ["$w16"],
+        w17: wreg = ["$w17"],
+        w18: wreg = ["$w18"],
+        w19: wreg = ["$w19"],
+        w20: wreg = ["$w20"],
+        w21: wreg = ["$w21"],
+        w22: wreg = ["$w22"],
+        w23: wreg = ["$w23"],
+        w24: wreg = ["$w24"],
+        w25: wreg = ["$w25"],
+        w26: wreg = ["$w26"],
+        w27: wreg = ["$w27"],
+        w28: wreg = ["$w28"],
+        w29: wreg = ["$w29"],
+        w30: wreg = ["$w30"],
+        w31: wreg = ["$w31"],
         #error = ["$0"] =>
             "constant zero cannot be used as an operand for inline asm",
         #error = ["$1"] =>
@@ -132,5 +174,63 @@ impl MipsInlineAsmReg {
         _modifier: Option<char>,
     ) -> fmt::Result {
         out.write_str(self.name())
+    }
+
+    pub fn overlapping_regs(self, mut cb: impl FnMut(MipsInlineAsmReg)) {
+        cb(self);
+
+        macro_rules! reg_conflicts {
+            (
+                $(
+                    $full:ident : $($field:ident)*
+                ),*;
+            ) => {
+                match self {
+                    $(
+                        Self::$full => {
+                            $(cb(Self::$field);)*
+                        }
+                        $(Self::$field)|* => cb(Self::$full),
+                    )*
+                    _ => {}
+                }
+            };
+        }
+
+        // Float registers overlap the first half of vector registers.
+        reg_conflicts! {
+            w0: f0,
+            w1: f1,
+            w2: f2,
+            w3: f3,
+            w4: f4,
+            w5: f5,
+            w6: f6,
+            w7: f7,
+            w8: f8,
+            w9: f9,
+            w10: f10,
+            w11: f11,
+            w12: f12,
+            w13: f13,
+            w14: f14,
+            w15: f15,
+            w16: f16,
+            w17: f17,
+            w18: f18,
+            w19: f19,
+            w20: f20,
+            w21: f21,
+            w22: f22,
+            w23: f23,
+            w24: f24,
+            w25: f25,
+            w26: f26,
+            w27: f27,
+            w28: f28,
+            w29: f29,
+            w30: f30,
+            w31: f31;
+        }
     }
 }

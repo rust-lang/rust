@@ -1,0 +1,26 @@
+warning: unstable feature specified for `-Ctarget-feature`: `fp64`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
+warning: unstable feature specified for `-Ctarget-feature`: `msa`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
+error: register `$f4` conflicts with register `$w4`
+  --> $DIR/reg-conflict.rs:28:33
+   |
+LL |         asm!("", in("$w4") 0.0, in("$f4") 0.0);
+   |                  -------------  ^^^^^^^^^^^^^ register `$f4`
+   |                  |
+   |                  register `$w4`
+
+error: register `$f25` conflicts with register `$w25`
+  --> $DIR/reg-conflict.rs:30:34
+   |
+LL |         asm!("", in("$w25") 0.0, in("$f25") 0.0);
+   |                  --------------  ^^^^^^^^^^^^^^ register `$f25`
+   |                  |
+   |                  register `$w25`
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+

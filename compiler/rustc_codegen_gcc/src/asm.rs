@@ -733,7 +733,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
-        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg) => "f",
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
         // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
         // "define_constraint".
@@ -843,6 +843,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         }
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => cx.type_vector(cx.type_i32(), 4),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
@@ -1084,7 +1085,9 @@ fn modifier_to_gcc(
                 modifier
             }
         }
-        InlineAsmRegClass::Mips(_) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => modifier,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => Some('w'),
         InlineAsmRegClass::Nvptx(_) => None,
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vsreg) => {
             if modifier.is_none() {
