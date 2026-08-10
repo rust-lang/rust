@@ -2211,8 +2211,16 @@ impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx
 }
 
 impl<'tcx> rustc_type_ir::inherent::Symbol<TyCtxt<'tcx>> for Symbol {
-    fn is_kw_underscore_lifetime(self) -> bool {
-        self == kw::UnderscoreLifetime
+    fn get_kw_underscore_lifetime() -> Self {
+        kw::UnderscoreLifetime
+    }
+
+    fn get_kw_static_lifetime() -> Self {
+        kw::StaticLifetime
+    }
+
+    fn get_sym_anon() -> Self {
+        sym::anon
     }
 }
 

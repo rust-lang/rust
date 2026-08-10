@@ -25,6 +25,90 @@ pub struct Region<I: Interner>(pub I::InternedRegionKind);
 // These are only the `inherent` trait methods that have been ported across
 impl<I: Interner> Region<I> {
     #[inline]
+    pub fn new_var(interner: I, v: RegionVid) -> Self {
+        interner.intern_re_var(v)
+    }
+
+    pub fn get_name(self, interner: I) -> Option<I::Symbol> {
+        match self.kind() {
+            RegionKind::ReEarlyParam(ebr) => ebr.get_name(interner),
+            RegionKind::ReBound(_, br) => br.kind.get_name(interner),
+            RegionKind::ReLateParam(fr) => fr.get_name(interner),
+            RegionKind::ReStatic => Some(I::Symbol::get_kw_static_lifetime()),
+            RegionKind::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(interner),
+            _ => None,
+        }
+    }
+
+    pub fn get_name_or_anon(self, interner: I) -> I::Symbol {
+        match self.get_name(interner) {
+            Some(name) => name,
+            None => I::Symbol::get_sym_anon(),
+        }
+    }
+
+    /// Given some item `binding_item`, check if this region is a generic parameter introduced by it
+    /// or one of the parent generics. Returns the `DefId` of the parameter definition if so.
+    pub fn opt_param_def_id(self, interner: I, binding_item: I::DefId) -> Option<I::DefId> {
+        match self.kind() {
+            RegionKind::ReEarlyParam(ebr) => Some(
+                I::GenericsOf::generics_of_early_param_region_def_id(interner, binding_item, ebr),
+            ),
+            RegionKind::ReLateParam(param) => param.get_def_id(),
+            _ => None,
+        }
+    }
+
+    /// Is this region named by the user?
+    pub fn is_named(self, interner: I) -> bool {
+        match self.kind() {
+            RegionKind::ReEarlyParam(ebr) => ebr.is_named(interner),
+            RegionKind::ReBound(_, br) => br.kind.is_named(interner),
+            RegionKind::ReLateParam(fr) => fr.is_named(interner),
+            RegionKind::ReStatic => true,
+            RegionKind::ReVar(..) => false,
+            RegionKind::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(interner),
+            RegionKind::ReErased => false,
+            RegionKind::ReError(_) => false,
+        }
+    }
+
+    /// Constructs a `RegionKind::ReError` region and registers a delayed bug to ensure it gets
+    /// used.
+    #[track_caller]
+    pub fn new_error_misc(interner: I) -> Self {
+        Self::new_error_with_message(
+            interner,
+            I::Span::dummy(),
+            "RegionKind::ReError constructed but no error reported",
+        )
+    }
+
+    /// Constructs a `RegionKind::ReError` region and registers a delayed bug with the given `msg`
+    /// to ensure it gets used.
+    #[track_caller]
+    pub fn new_error_with_message(interner: I, span: I::Span, msg: impl ToString) -> Self {
+        let reported = interner.span_delayed_bug(span, msg);
+        Self::new_error(interner, reported)
+    }
+
+    #[inline]
+    pub fn new_late_param(interner: I, late_param_region: I::LateParamRegion) -> Self {
+        interner.intern_region(RegionKind::ReLateParam(late_param_region))
+    }
+
+    #[inline]
+    pub fn new_early_param(interner: I, early_bound_region: I::EarlyParamRegion) -> Self {
+        interner.intern_region(RegionKind::ReEarlyParam(early_bound_region))
+    }
+
+    /// Constructs a `RegionKind::ReError` region.
+    #[track_caller]
+    pub fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self {
+        interner.intern_region(RegionKind::ReError(guar))
+    }
+
+    #[inline]
     pub fn new_bound(interner: I, debruijn: DebruijnIndex, bound_region: BoundRegion<I>) -> Self {
         interner.intern_bound_region(debruijn, bound_region)
     }
@@ -158,6 +242,14 @@ impl<I: Interner> Region<I> {
     #[inline]
     pub fn kind(self) -> RegionKind<I> {
         self.0.get()
+    }
+
+    #[inline]
+    pub fn bound_at_or_above_binder(self, index: DebruijnIndex) -> bool {
+        match self.kind() {
+            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), _) => debruijn >= index,
+            _ => false,
+        }
     }
 }
 

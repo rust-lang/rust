@@ -13,8 +13,8 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{
-    BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, Unnormalized, VisitorResult,
-    search_graph, try_visit,
+    BoundVar, CollectAndApply, DebruijnIndex, Interner, RegionVid, TypeFoldable, Unnormalized,
+    VisitorResult, search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -618,6 +618,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.dcx().span_delayed_bug(DUMMY_SP, msg.to_string())
     }
 
+    fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> ErrorGuaranteed {
+        self.dcx().span_delayed_bug(span, msg.to_string())
+    }
+
     fn is_general_coroutine(self, coroutine_def_id: DefId) -> bool {
         self.is_general_coroutine(coroutine_def_id)
     }
@@ -730,6 +734,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn get_re_static_lifetime(self) -> Region<'tcx> {
         self.lifetimes.re_static
+    }
+
+    fn intern_re_var(self, rv: RegionVid) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        self.lifetimes
+            .re_vars
+            .get(rv.as_usize())
+            .copied()
+            .unwrap_or_else(|| self.intern_region(ty::ReVar(rv)))
     }
 
     fn intern_region(self, region_kind: RegionKind<'tcx>) -> Region<'tcx> {
