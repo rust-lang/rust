@@ -18,6 +18,7 @@ use std::{fmt, fs, io};
 use serde_derive::{Deserialize, Serialize};
 use sha2::Digest;
 
+use crate::core::build_steps::format;
 use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::exec::command;
@@ -679,6 +680,10 @@ impl CommandLineStep for Editor {
             Ok(editor_kind) => {
                 if let Some(editor_kind) = editor_kind {
                     while !t!(create_editor_settings_maybe(config, &editor_kind)) {}
+
+                    // Also pre-download stage 0 rustfmt, so that the IDE configs which point to
+                    // `build/host/rustfmt` have an available binary to work with.
+                    builder.ensure(format::InternalRustfmt);
                 } else {
                     println!("Ok, skipping editor setup!");
                 }
