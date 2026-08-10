@@ -911,7 +911,12 @@ pub fn default_read_to_end<R: Read + ?Sized>(
         // Avoid unnecessarily short reads by ensuring there's at least PROBE_SIZE space available.
         // And assert that PROBE_SIZE is always at least large enough to fit any UTF-8 encoded code point.
         const { assert!(PROBE_SIZE >= char::MAX_LEN_UTF8) }
-        buf.try_reserve(PROBE_SIZE)?;
+        if buf.spare_capacity_mut().len() < PROBE_SIZE {
+            buf.try_reserve(PROBE_SIZE)?;
+            // When reallocation occurs, we have to update init_until accordingly
+            // to re-calibrate how many bytes are actually initialized in the buffer
+            init_until = buf.len();
+        }
 
         // We set a threshold of >PROBE_SIZE initialized yet unfilled bytes left in the
         // spare buffer before determining that we need to initialize more bytes into
