@@ -149,11 +149,11 @@ jobs:
         rustup default "$channel"
         rustup target add "$JOB_TARGET"
 
-    - uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
+    - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
       with:
         tool: nextest@0.9.131
 
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       with:
         key: ${{ matrix.target }}
     - name: Cache Docker layers
@@ -164,7 +164,7 @@ jobs:
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
     # Configure buildx to use Docker layer caching
-    - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+    - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       if: ${{ env.RUN_IN_DOCKER == 'true' }}
 
     - name: Cache compiler-rt
@@ -224,7 +224,7 @@ jobs:
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add clippy
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - name: Download musl source
       run: ./ci/update-musl.sh
     - run: cargo clippy --workspace --all-targets
@@ -238,7 +238,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
+      - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
 
   build-custom:
     name: Build custom target
@@ -252,7 +252,7 @@ jobs:
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add rust-src
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - run: |
         # Ensure we can build with custom target.json files (these can interact
         # poorly with build scripts)
@@ -274,7 +274,7 @@ jobs:
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add rust-src
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - run: |
         cargo build -p compiler_builtins -p libm \
           --target etc/thumbv6-none-eabi.json \
@@ -300,13 +300,13 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
-    - uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
+    - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
       with:
         tool: cargo-binstall@1.17.7
 
     - name: Set up dependencies
       run: ./ci/install-bench-deps.sh "$JOB_TARGET"
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       with:
         key: ${{ matrix.target }}
     - name: Download musl source
@@ -339,7 +339,7 @@ jobs:
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: rustup component add miri
     - run: cargo miri setup
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - run: ./ci/miri.sh
 
   msrv:
@@ -356,7 +356,7 @@ jobs:
         msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
         echo "MSRV: $msrv"
         rustup update "$msrv" --no-self-update && rustup default "$msrv"
-    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - run: |
         # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
         # `edition = "2024"` and get spooked.
@@ -398,7 +398,7 @@ jobs:
         run: |
           rustup update nightly --no-self-update
           rustup default nightly
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: download musl source
         run: ./ci/update-musl.sh
       - name: Run extensive tests

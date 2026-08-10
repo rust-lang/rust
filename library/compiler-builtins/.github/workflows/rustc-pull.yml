@@ -13,7 +13,7 @@ env:
 jobs:
   pull:
     if: github.repository == 'rust-lang/compiler-builtins'
-    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@edfc69c8c5f54ce3a2afeb25537c5f1b643834d7 # main
+    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@00d007cf377c524bc2968b40a61ef1d2ce20e283 # main
     with:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
       pr-author: "workflows-compiler-builtins[bot]"
