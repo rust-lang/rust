@@ -1869,6 +1869,15 @@ impl Dir {
     pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         self.inner.remove_dir(path.as_ref())
     }
+
+    /// Attempts to create a new symbolic link on the filesystem.
+    ///
+    /// If `original` is a relative path, it is interpreted relative to the created link.
+    /// If `link` is a relative path, it is interpreted relative to `self`.
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
+        self.inner.symlink(original.as_ref(), link.as_ref())
+    }
 }
 
 impl AsInner<fs_imp::Dir> for Dir {

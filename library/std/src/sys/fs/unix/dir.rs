@@ -1,4 +1,4 @@
-use libc::{c_int, mkdirat, renameat, unlinkat};
+use libc::{c_int, mkdirat, renameat, symlinkat, unlinkat};
 
 cfg_select! {
     not(any(
@@ -78,11 +78,17 @@ impl Dir {
     }
 
     pub fn create_dir(&self, path: &Path) -> io::Result<()> {
-        run_path_with_cstr(path.as_ref(), &|path| self.create_dir_c(path))
+        run_path_with_cstr(path, &|path| self.create_dir_c(path))
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| self.remove_c(path, true))
+    }
+
+    pub fn symlink(&self, original: &Path, link: &Path) -> io::Result<()> {
+        run_path_with_cstr(original, &|original| {
+            run_path_with_cstr(link, &|link| self.symlink_c(original, link))
+        })
     }
 
     fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -138,6 +144,10 @@ impl Dir {
 
     fn create_dir_c(&self, path: &CStr) -> io::Result<()> {
         cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
+    }
+
+    fn symlink_c(&self, original: &CStr, link: &CStr) -> io::Result<()> {
+        cvt(unsafe { symlinkat(original.as_ptr(), self.0.as_raw_fd(), link.as_ptr()) }).map(|_| ())
     }
 }
 

@@ -2791,3 +2791,22 @@ fn test_dir_open_dir() {
     check!(f.read_exact(&mut buf));
     assert_eq!(b"baz", &buf);
 }
+
+#[test]
+fn test_dir_symlink() {
+    let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
+    let dir = check!(Dir::open(tmpdir.path()));
+    let mut f = check!(dir.open_file_with("foo.txt", &OpenOptions::new().write(true).create(true)));
+    check!(f.write(b"quux"));
+    check!(f.flush());
+    drop(f);
+    check!(dir.symlink("foo.txt", "bar.txt"));
+    let mut f = check!(dir.open_file("bar.txt"));
+    let mut buf = [0u8; 4];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"quux", &buf);
+}
