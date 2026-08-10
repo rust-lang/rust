@@ -1640,29 +1640,31 @@ fn render_deref_methods(
     Ok(())
 }
 
-fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
+fn should_render_item(
+    item: &clean::Item,
+    deref_mut_: bool,
+    tcx: TyCtxt<'_>,
+    target_is_copy: bool,
+) -> bool {
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
         clean::RequiredMethodItem(ref method, _) => method.decl.receiver_type(),
         _ => None,
     };
 
-    if let Some(self_ty) = self_type_opt {
-        let (by_mut_ref, by_box, by_value) = match *self_ty {
-            clean::Type::BorrowedRef { mutability, .. } => {
-                (mutability == Mutability::Mut, false, false)
-            }
-            clean::Type::Path { ref path } => {
-                (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
-            }
-            clean::Type::SelfTy => (false, false, true),
-            _ => (false, false, false),
-        };
+    let Some(self_ty) = self_type_opt else { return false };
+    let (by_mut_ref, by_box, by_value) = match *self_ty {
+        clean::Type::BorrowedRef { mutability, .. } => {
+            (mutability == Mutability::Mut, false, false)
+        }
+        clean::Type::Path { ref path } => {
+            (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
+        }
+        clean::Type::SelfTy => (false, false, true),
+        _ => (false, false, false),
+    };
 
-        (deref_mut_ || !by_mut_ref) && !by_box && !by_value
-    } else {
-        false
-    }
+    (deref_mut_ || !by_mut_ref) && !by_box && (!by_value || target_is_copy)
 }
 
 /// `Box` has pass-through impls for `Read`, `Write`, `Iterator`, and `Future` when the
@@ -1862,6 +1864,11 @@ fn render_impl(
         let trait_ = i.trait_did().map(|did| &traits[&did]);
         let mut close_tags = <Vec<&str>>::with_capacity(2);
 
+        let is_copy_target = matches!(render_mode, RenderMode::ForDeref { .. })
+            && parent.def_id().is_some_and(|def_id| {
+                cx.cache().types_which_deref_to_copy_target.contains(&def_id)
+            });
+
         // For trait implementations, the `interesting` output contains all methods that have doc
         // comments, and the `boring` output contains all methods that do not. The distinction is
         // used to allow hiding the boring methods.
@@ -1878,6 +1885,7 @@ fn render_impl(
             is_default_item: bool,
             trait_: Option<&clean::Trait>,
             rendering_params: ImplRenderingParameters,
+            is_copy_target: bool,
         ) -> fmt::Result {
             let item_type = item.type_();
             let name = item.name.as_ref().unwrap();
@@ -1888,7 +1896,7 @@ fn render_impl(
                     RenderMode::Normal => true,
                     RenderMode::ForDeref { mut_: deref_mut_ } => {
                         is_deref = true;
-                        should_render_item(item, deref_mut_, cx.tcx())
+                        should_render_item(item, deref_mut_, cx.tcx(), is_copy_target)
                     }
                 };
 
@@ -2168,6 +2176,7 @@ fn render_impl(
                             false,
                             trait_,
                             rendering_params,
+                            is_copy_target,
                         )?;
                     }
                     _ => {}
@@ -2186,6 +2195,7 @@ fn render_impl(
                     false,
                     trait_,
                     rendering_params,
+                    is_copy_target,
                 )?;
             }
             for method in methods {
@@ -2200,6 +2210,7 @@ fn render_impl(
                     false,
                     trait_,
                     rendering_params,
+                    is_copy_target,
                 )?;
             }
         }
@@ -2213,6 +2224,7 @@ fn render_impl(
             parent: &clean::Item,
             render_mode: RenderMode,
             rendering_params: ImplRenderingParameters,
+            is_copy_target: bool,
         ) -> fmt::Result {
             for trait_item in &t.items {
                 // Skip over any default trait items that are impossible to reference
@@ -2243,6 +2255,7 @@ fn render_impl(
                     true,
                     Some(t),
                     rendering_params,
+                    is_copy_target,
                 )?;
             }
             Ok(())
@@ -2265,6 +2278,7 @@ fn render_impl(
                 &i.impl_item,
                 render_mode,
                 rendering_params,
+                is_copy_target,
             )?;
         }
         if render_mode == RenderMode::Normal {

@@ -5,8 +5,7 @@ use std::fmt;
 use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{DefIdMap, DefIdSet};
-use rustc_middle::ty::TyCtxt;
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet};
 use tracing::debug;
 
 use super::{Context, ItemSection, impl_trait_key, item_ty_to_section};
@@ -454,7 +453,7 @@ fn sidebar_assoc_items<'a>(
                     impl_,
                     GetMethodsMode::AlsoCollectAssocFns { assoc_fns: &mut assoc_fns },
                     used_links_bor,
-                    cx.tcx(),
+                    cx,
                 ));
             }
             // We want links' order to be reproducible so we don't use unstable sort.
@@ -566,9 +565,12 @@ fn sidebar_deref_methods<'a>(
                 .flat_map(|i| {
                     get_methods(
                         i.inner_impl(),
-                        GetMethodsMode::Deref { deref_mut },
+                        GetMethodsMode::Deref {
+                            deref_mut,
+                            target_id: real_target.def_id(cx.cache()),
+                        },
                         used_links,
-                        cx.tcx(),
+                        cx,
                     )
                     .collect::<Vec<_>>()
                 })
@@ -757,7 +759,7 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
 }
 
 enum GetMethodsMode<'r, 'l> {
-    Deref { deref_mut: bool },
+    Deref { deref_mut: bool, target_id: Option<DefId> },
     AlsoCollectAssocFns { assoc_fns: &'r mut Vec<Link<'l>> },
 }
 
@@ -765,8 +767,16 @@ fn get_methods<'a>(
     i: &'a clean::Impl,
     mut mode: GetMethodsMode<'_, 'a>,
     used_links: &mut FxHashSet<String>,
-    tcx: TyCtxt<'_>,
+    cx: &Context<'_>,
 ) -> impl Iterator<Item = Link<'a>> {
+    let is_copy_target = if let GetMethodsMode::Deref { target_id, .. } = mode {
+        target_id.is_some_and(|def_id| {
+            cx.shared.cache.types_which_deref_to_copy_target.contains(&def_id)
+        })
+    } else {
+        false
+    };
+
     i.items.iter().filter_map(move |item| {
         if let Some(ref name) = item.name
             && item.is_method()
@@ -778,8 +788,8 @@ fn get_methods<'a>(
                 )
             };
             match &mut mode {
-                &mut GetMethodsMode::Deref { deref_mut } => {
-                    if super::should_render_item(item, deref_mut, tcx) {
+                &mut GetMethodsMode::Deref { deref_mut, .. } => {
+                    if super::should_render_item(item, deref_mut, cx.tcx(), is_copy_target) {
                         Some(build_link())
                     } else {
                         None

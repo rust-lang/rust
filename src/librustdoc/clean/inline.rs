@@ -596,6 +596,11 @@ pub(crate) fn build_impl(
         && polarity != ty::ImplPolarity::Negative
     {
         super::build_deref_target_impls(cx, &trait_items, ret);
+        if let Some(impl_item) = impl_item {
+            if let Some(for_def_id) = for_.def_id(&cx.cache) {
+                super::utils::compute_if_deref_target_implements_copy(cx, for_def_id, impl_item);
+            }
+        }
     }
 
     if !document_hidden {
