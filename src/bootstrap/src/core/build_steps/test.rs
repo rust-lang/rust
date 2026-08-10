@@ -973,6 +973,72 @@ impl CommandLineStep for StdarchVerify {
     }
 }
 
+/// Runs `core_arch`'s inline unit and `assert_instr` tests for the native
+/// targets rust already tests on (x86_64 / aarch64).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CoreArchTest {
+    build_compiler: Compiler,
+    host: TargetSelection,
+}
+
+impl CommandLineStep for CoreArchTest {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("core-arch")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CoreArchTest {
+            build_compiler: get_compiler_to_test(run.builder, run.target),
+            host: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+        if !host.contains("x86_64-unknown-linux") && !host.contains("aarch64-unknown-linux") {
+            builder.info(&format!("Skipping core_arch tests, unsupported on {host}"));
+            return;
+        }
+
+        let build_compiler = self.build_compiler;
+        builder.std(build_compiler, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::Std,
+            host,
+            Kind::Test,
+            "library/stdarch/crates/core_arch",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.profile("release");
+        cargo.rustflag("-Zmerge-functions=disabled");
+        if host.contains("x86_64") {
+            cargo.rustflag("-Ctarget-feature=-sse3");
+        }
+
+        run_cargo_test(
+            cargo,
+            &[],
+            &["core_arch".to_string()],
+            Some("core_arch"),
+            host,
+            builder,
+            record_failed_tests,
+        );
+    }
+}
+
 /// Runs stdarch's intrinsic-test binary crate to verify that Rust's `core::arch`
 /// SIMD intrinsics produce the same results as their C counterparts.
 ///
