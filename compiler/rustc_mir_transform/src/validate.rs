@@ -707,7 +707,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
 
-                        if adt_def.repr().simd() {
+                        if adt_def.repr().simd() || adt_def.repr().scalable() {
                             self.fail(
                                 location,
                                 format!(

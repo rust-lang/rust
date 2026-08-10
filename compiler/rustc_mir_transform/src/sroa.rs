@@ -69,7 +69,9 @@ fn escaping_locals<'tcx>(
             return true;
         }
         if let ty::Adt(def, _args) = ty.kind()
-            && (def.repr().simd() || tcx.is_lang_item(def.did(), LangItem::DynMetadata))
+            && (def.repr().simd()
+                || def.repr().scalable()
+                || tcx.is_lang_item(def.did(), LangItem::DynMetadata))
         {
             // Exclude #[repr(simd)] types so that they are not de-optimized into an array
             // (MCP#838 banned projections into SIMD types, but if the value is unused
