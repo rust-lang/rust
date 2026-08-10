@@ -10,7 +10,7 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::solve::NoSolution;
 use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::{
+use rustc_trait_selection::traits::implied_outlives_bounds::{
     compute_implied_outlives_bounds_inner, consider_implied_bounds_hack_for_ty,
 };
 use smallvec::SmallVec;
@@ -138,13 +138,16 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
 
 /// This computes the `var_values` used by the `mir_borrowck_implied_outlives_bounds` query.
 /// The old solver canonicalization does not replace early and late bound parameters,
-/// so the only `var_values` we need are external regions as we don't have a shared unified
-/// representation between this query and MIR borrowck.
+/// so the only `var_values` we need are external regions from the signature of the nested
+/// body as we don't have a shared representation between this query and MIR borrowck.
 ///
-/// We never late bound regions from a parent while computing implied bounds for the current item.
-/// Any free region in the signature of nested body gets replaced with `'erased` at the end of HIR typeck,
-/// so even if a late bound region of a parent is mentioned in our signature, it will have been erased
-/// and will get represented as an external region instead.
+/// These are not all external regions of the nested body, only the external regions
+/// which may get accessed by this query. We only need to add things to the `var_values`
+/// which can be referenced by both this query and MIR borrowck. MIR borrowck currently
+/// creates external regions for late-bound regions of parent items as these can be
+/// explicitly mentioned in user types. We do not encounter these in this query, as all
+/// free regions in the signature of nested bodies get replaced with `'erased` at the end
+/// of HIR typeck, so we don't care about them.
 #[instrument(level = "debug", skip(tcx, is_external_region), ret)]
 pub(crate) fn implied_bounds_query_var_values<'tcx>(
     tcx: TyCtxt<'tcx>,

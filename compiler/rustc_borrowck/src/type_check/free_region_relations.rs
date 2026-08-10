@@ -342,7 +342,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                                 constraints.push(c);
                             }
                         }
-                        Err::<_, ErrorGuaranteed>(_) => {}
+                        Err(guar) => self.infcx.set_tainted_by_errors(guar),
                     }
                 }
 
@@ -354,6 +354,16 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 // Because of #109628, we may have unexpected placeholders. Ignore them!
                 // FIXME(#109628): panic in this case once the issue is fixed.
                 let bounds = outlives_bounds.into_iter().filter(|bound| !bound.has_placeholders());
+
+                // We intentionally do not renormalize `bounds` while in the defining scope.
+                // While we must not look into opaque types for implied bounds, we must also not
+                // treat an `impl Sized + static: 'static` implied bound as a way to prove that
+                // the underlying hidden type is `'static`. Doing so would be unsound. This is
+                // not an ideal way as it results in assumptions which are unusable as aliases
+                // are incorrectly marked as rigid, but it's the easiest way to get the desired
+                // behavior.
+                //
+                // See tests/ui/traits/next-solver/opaques/implied-bounds-cyclic-reasoning.rs.
                 self.add_outlives_bounds(bounds);
 
                 normalized_inputs_and_output

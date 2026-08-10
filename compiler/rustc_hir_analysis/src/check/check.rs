@@ -403,6 +403,12 @@ fn check_opaque_meets_bounds<'tcx>(
         return Err(guar);
     }
 
+    // FIXME(impl_trait_in_assoc_type): This computes the implied bounds
+    // while being able to normalize opaque types. This is unsound if checking that the
+    // opaque type is well-formed relies on an implied bound mentioning that opaque type.
+    // This should only affect TAIT as this function is not soundness critical for RPITs.
+    //
+    // cc trait-system-refactor-initiative#159
     let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
     ocx.resolve_regions_and_report_errors(defining_use_anchor, param_env, wf_tys)?;
 

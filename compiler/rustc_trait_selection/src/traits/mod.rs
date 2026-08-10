@@ -9,6 +9,7 @@ mod dyn_compatibility;
 pub mod effects;
 mod engine;
 mod fulfill;
+pub mod implied_outlives_bounds;
 pub mod misc;
 pub mod normalize;
 pub mod outlives_bounds;
