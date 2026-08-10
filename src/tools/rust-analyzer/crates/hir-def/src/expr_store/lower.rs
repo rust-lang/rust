@@ -1210,13 +1210,36 @@ impl<'db> ExprCollector<'db> {
                     (false, true) => CoroutineKind::Gen,
                     (false, false) => unreachable!(),
                 };
-                this.lower_coroutine_body_with_moved_arguments(
+                let coroutine = this.lower_coroutine_body_with_moved_arguments(
                     self_param,
                     params,
                     body,
                     kind,
                     CoroutineSource::Fn,
-                )
+                );
+                // *All* locals belong to the inner coroutine...
+                this.associate_unowned_bindings_with(0, coroutine);
+                // ...except the formal parameters, which are *not* necessarily what was passed as parameters into `collect()`,
+                // since `lower_coroutine_body_with_moved_arguments()` might have changed them.
+                params
+                    .iter()
+                    .filter_map(|param| {
+                        if let Pat::Bind { id, .. } = this.store.pats[param.formal] {
+                            Some(id)
+                        } else {
+                            never!(
+                                "`lower_coroutine_body_with_moved_arguments()` should make sure \
+                                the coroutine closure only have simple bind args"
+                            );
+                            None
+                        }
+                    })
+                    .chain(self_param.map(|param| param.formal))
+                    .for_each(|param| {
+                        // They are owned by the top-level function, so should not be present in `bindings_owner`.
+                        this.store.binding_owners.remove(&param);
+                    });
+                coroutine
             } else {
                 body
             }
@@ -2105,10 +2128,18 @@ impl<'db> ExprCollector<'db> {
     ) -> ExprId {
         let prev_unowned_bindings_len = self.unowned_bindings.len();
         let (bindings_owner, expr_to_return) = create_expr(self);
+        self.associate_unowned_bindings_with(prev_unowned_bindings_len, bindings_owner);
+        expr_to_return
+    }
+
+    fn associate_unowned_bindings_with(
+        &mut self,
+        prev_unowned_bindings_len: usize,
+        bindings_owner: ExprId,
+    ) {
         for binding in self.unowned_bindings.drain(prev_unowned_bindings_len..) {
             self.store.binding_owners.insert(binding, bindings_owner);
         }
-        expr_to_return
     }
 
     fn with_binding_owner(&mut self, create_expr: impl FnOnce(&mut Self) -> ExprId) -> ExprId {

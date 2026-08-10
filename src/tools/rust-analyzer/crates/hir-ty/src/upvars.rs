@@ -386,4 +386,17 @@ fn main() {
             expect![""],
         );
     }
+
+    #[test]
+    fn async_fn_local() {
+        check(
+            r#"
+async fn foo() {
+    let v = ();
+    v
+}
+        "#,
+            expect![[r#""#]],
+        );
+    }
 }
