@@ -17,7 +17,6 @@ labels_blocking_approval = [
     "S-waiting-on-MCP",
     "S-waiting-on-t-lang",
     "S-waiting-on-t-compiler",
-    "S-waiting-on-t-libs-api",
     "S-waiting-on-t-libs",
     "S-waiting-on-t-types",
     "S-waiting-on-t-opsem",

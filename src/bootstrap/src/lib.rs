@@ -32,6 +32,7 @@ use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
 use utils::exec::ExecutionContext;
 
+use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
@@ -759,8 +760,14 @@ impl Build {
 
             match &self.config.cmd {
                 Subcommand::Format { check, all } => {
+                    let builder = builder::Builder::new(self);
+                    let rustfmt_path = builder.ensure(InternalRustfmt).unwrap_or_else(|| {
+                        eprintln!("fmt error: `x fmt` is not supported on this channel");
+                        crate::exit!(1);
+                    });
                     return core::build_steps::format::format(
-                        &builder::Builder::new(self),
+                        &builder,
+                        rustfmt_path,
                         *check,
                         *all,
                         &self.config.paths,

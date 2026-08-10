@@ -53,9 +53,7 @@ use crate::core::config::{
     GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool,
     threads_from_config,
 };
-use crate::core::download::{
-    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
-};
+use crate::core::download::{DownloadContext, download_beta_toolchain, is_download_ci_available};
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, fail, get_host_target};
@@ -312,7 +310,11 @@ pub struct Config {
     pub initial_rustdoc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+
+    /// Externally configured `rustfmt` binary for formatting in-tree source code.
+    /// If you want to use rustfmt for formatting, use the `InternalRustfmt` step, instead of
+    /// accessing this directly.
+    pub external_rustfmt: Option<PathBuf>,
 
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
@@ -1169,8 +1171,6 @@ impl Config {
             }
         }
 
-        let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
-
         if matches!(bootstrap_override_lld, BootstrapOverrideLld::SelfContained)
             && !lld_enabled
             && flags_stage.unwrap_or(0) > 0
@@ -1448,6 +1448,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             explicit_stage_from_cli: flags_stage.is_some(),
             explicit_stage_from_config,
             extended: build_extended.unwrap_or(false),
+            external_rustfmt: build_rustfmt,
             free_args: flags_free_args,
             full_bootstrap: build_full_bootstrap.unwrap_or(false),
             gcc_ci_mode,
@@ -1462,7 +1463,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             initial_cargo_clippy: build_cargo_clippy,
             initial_rustc,
             initial_rustdoc,
-            initial_rustfmt,
             initial_sysroot,
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,

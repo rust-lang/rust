@@ -647,6 +647,25 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 None
             }
         } else {
+            // We are not checking dereferenceability, but we still want to ensure that the pointer
+            // *could* be dereferenceable in *some* memory: we have to be able to compute the
+            // address at the end of this range without overflowing..
+            let scalar = Scalar::from_maybe_pointer(place.ptr(), self.ecx);
+            // Skip this if we don't know the absolute address (during CTFE).
+            if let Ok(addr) = scalar.try_to_scalar_int() {
+                // Try to compute the end address.
+                let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx));
+                if addr.checked_add(size, self.ecx).is_none() {
+                    throw_validation_failure!(
+                        self.path,
+                        format!(
+                            "encountered a {ptr_kind} that is too close to the end of the address space for a pointee of {} bytes",
+                            size.bytes(),
+                        )
+                    )
+                }
+            }
+
             // Pointer remains unchanged.
             None
         };
@@ -657,20 +676,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         } else if self.reset_provenance_and_padding {
             self.reset_pointer_provenance(value, &ptr)?;
         }
-
-        // Check alignment after dereferenceable (if both are violated, trigger the error above).
-        try_validation!(
-            self.ecx.check_ptr_align(
-                place.ptr(),
-                align,
-            ),
-            self.path,
-            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => format!(
-                "encountered an unaligned {ptr_kind} (required {required_bytes} byte alignment but found {found_bytes})",
-                required_bytes = required.bytes(),
-                found_bytes = has.bytes()
-            ),
-        );
 
         // Make sure this is non-null. This is obviously needed when `may_dangle` is set,
         // but even if we did check dereferenceability above that would still allow null
@@ -686,6 +691,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 )
             )
         }
+
         // Do not allow references to uninhabited types.
         if !place.layout.ty.is_opsem_inhabited(*self.ecx.tcx, self.ecx.typing_env) {
             let ty = place.layout.ty;
@@ -694,6 +700,20 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 format!("encountered a {ptr_kind} pointing to uninhabited type `{ty}`")
             )
         }
+
+        // Check alignment after dereferenceable (if both are violated, trigger the error above).
+        try_validation!(
+            self.ecx.check_ptr_align(
+                place.ptr(),
+                align,
+            ),
+            self.path,
+            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => format!(
+                "encountered an unaligned {ptr_kind} (required {required_bytes} byte alignment but found {found_bytes})",
+                required_bytes = required.bytes(),
+                found_bytes = has.bytes()
+            ),
+        );
 
         // Recursive checking (but not inside `MaybeDangling` of course).
         if let Some(ref_tracking) = self.ref_tracking.as_deref_mut()
