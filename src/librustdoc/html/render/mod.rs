@@ -1882,10 +1882,12 @@ fn render_impl(
             let item_type = item.type_();
             let name = item.name.as_ref().unwrap();
 
+            let mut is_deref = false;
             let render_method_item = rendering_params.show_non_assoc_items
                 && match render_mode {
                     RenderMode::Normal => true,
                     RenderMode::ForDeref { mut_: deref_mut_ } => {
+                        is_deref = true;
                         should_render_item(item, deref_mut_, cx.tcx())
                     }
                 };
@@ -1995,117 +1997,125 @@ fn render_impl(
                     }
                 }
                 clean::RequiredAssocConstItem(generics, ty) => {
-                    let source_id = format!("{item_type}.{name}");
-                    let id = cx.derive_id(&source_id);
-                    write!(
-                        w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                            {}",
-                        render_rightside(cx, item, render_mode)
-                    )?;
-                    if trait_.is_some() {
-                        // Anchors are only used on trait impls.
-                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                    if !is_deref {
+                        let source_id = format!("{item_type}.{name}");
+                        let id = cx.derive_id(&source_id);
+                        write!(
+                            w,
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                                {}",
+                            render_rightside(cx, item, render_mode)
+                        )?;
+                        if trait_.is_some() {
+                            // Anchors are only used on trait impls.
+                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                        }
+                        write!(
+                            w,
+                            "<h4 class=\"code-header\">{}</h4></section>",
+                            assoc_const(
+                                item,
+                                generics,
+                                ty,
+                                AssocConstValue::None,
+                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                                0,
+                                cx,
+                            ),
+                        )?;
                     }
-                    write!(
-                        w,
-                        "<h4 class=\"code-header\">{}</h4></section>",
-                        assoc_const(
-                            item,
-                            generics,
-                            ty,
-                            AssocConstValue::None,
-                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                            0,
-                            cx,
-                        ),
-                    )?;
                 }
                 clean::ProvidedAssocConstItem(ci) | clean::ImplAssocConstItem(ci) => {
-                    let source_id = format!("{item_type}.{name}");
-                    let id = cx.derive_id(&source_id);
-                    write!(
-                        w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                            {}",
-                        render_rightside(cx, item, render_mode),
-                    )?;
-                    if trait_.is_some() {
-                        // Anchors are only used on trait impls.
-                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                    if !is_deref {
+                        let source_id = format!("{item_type}.{name}");
+                        let id = cx.derive_id(&source_id);
+                        write!(
+                            w,
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                                {}",
+                            render_rightside(cx, item, render_mode),
+                        )?;
+                        if trait_.is_some() {
+                            // Anchors are only used on trait impls.
+                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                        }
+                        write!(
+                            w,
+                            "<h4 class=\"code-header\">{}</h4></section>",
+                            assoc_const(
+                                item,
+                                &ci.generics,
+                                &ci.type_,
+                                match item.kind {
+                                    clean::ProvidedAssocConstItem(_) =>
+                                        AssocConstValue::TraitDefault(&ci.kind),
+                                    clean::ImplAssocConstItem(_) => AssocConstValue::Impl(&ci.kind),
+                                    _ => unreachable!(),
+                                },
+                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                                0,
+                                cx,
+                            ),
+                        )?;
                     }
-                    write!(
-                        w,
-                        "<h4 class=\"code-header\">{}</h4></section>",
-                        assoc_const(
-                            item,
-                            &ci.generics,
-                            &ci.type_,
-                            match item.kind {
-                                clean::ProvidedAssocConstItem(_) =>
-                                    AssocConstValue::TraitDefault(&ci.kind),
-                                clean::ImplAssocConstItem(_) => AssocConstValue::Impl(&ci.kind),
-                                _ => unreachable!(),
-                            },
-                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                            0,
-                            cx,
-                        ),
-                    )?;
                 }
                 clean::RequiredAssocTypeItem(generics, bounds) => {
-                    let source_id = format!("{item_type}.{name}");
-                    let id = cx.derive_id(&source_id);
-                    write!(
-                        w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                            {}",
-                        render_rightside(cx, item, render_mode),
-                    )?;
-                    if trait_.is_some() {
-                        // Anchors are only used on trait impls.
-                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                    if !is_deref {
+                        let source_id = format!("{item_type}.{name}");
+                        let id = cx.derive_id(&source_id);
+                        write!(
+                            w,
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                                {}",
+                            render_rightside(cx, item, render_mode),
+                        )?;
+                        if trait_.is_some() {
+                            // Anchors are only used on trait impls.
+                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                        }
+                        write!(
+                            w,
+                            "<h4 class=\"code-header\">{}</h4></section>",
+                            assoc_type(
+                                item,
+                                generics,
+                                bounds,
+                                None,
+                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                                0,
+                                cx,
+                            ),
+                        )?;
                     }
-                    write!(
-                        w,
-                        "<h4 class=\"code-header\">{}</h4></section>",
-                        assoc_type(
-                            item,
-                            generics,
-                            bounds,
-                            None,
-                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                            0,
-                            cx,
-                        ),
-                    )?;
                 }
                 clean::AssocTypeItem(tydef, _bounds) => {
-                    let source_id = format!("{item_type}.{name}");
-                    let id = cx.derive_id(&source_id);
-                    write!(
-                        w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                            {}",
-                        render_rightside(cx, item, render_mode),
-                    )?;
-                    if trait_.is_some() {
-                        // Anchors are only used on trait impls.
-                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                    if !is_deref {
+                        let source_id = format!("{item_type}.{name}");
+                        let id = cx.derive_id(&source_id);
+                        write!(
+                            w,
+                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
+                                {}",
+                            render_rightside(cx, item, render_mode),
+                        )?;
+                        if trait_.is_some() {
+                            // Anchors are only used on trait impls.
+                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
+                        }
+                        write!(
+                            w,
+                            "<h4 class=\"code-header\">{}</h4></section>",
+                            assoc_type(
+                                item,
+                                &tydef.generics,
+                                &[], // intentionally leaving out bounds
+                                Some(tydef.item_type.as_ref().unwrap_or(&tydef.type_)),
+                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                                0,
+                                cx,
+                            ),
+                        )?;
                     }
-                    write!(
-                        w,
-                        "<h4 class=\"code-header\">{}</h4></section>",
-                        assoc_type(
-                            item,
-                            &tydef.generics,
-                            &[], // intentionally leaving out bounds
-                            Some(tydef.item_type.as_ref().unwrap_or(&tydef.type_)),
-                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                            0,
-                            cx,
-                        ),
-                    )?;
                 }
                 clean::StrippedItem(..) => return Ok(()),
                 _ => panic!("can't make docs for trait item with name {:?}", item.name),
