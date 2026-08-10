@@ -389,7 +389,7 @@ impl<I: Interner> FlagComputation<I> {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 self.add_args(trait_pred.trait_ref.args.as_slice());
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref,
                 constness: _,
             })) => {

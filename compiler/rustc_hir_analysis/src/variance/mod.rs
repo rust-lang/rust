@@ -198,7 +198,7 @@ fn variance_of_opaque(
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
             })
-            | ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            | ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 constness: _,
             }) => {

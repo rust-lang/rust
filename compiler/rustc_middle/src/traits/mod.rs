@@ -127,10 +127,14 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn derived_host_cause(
         mut self,
-        parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        parent_host_clause: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
         variant: impl FnOnce(DerivedHostCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        self.code = variant(DerivedHostCause { parent_host_pred, parent_code: self.code }).into();
+        self.code = variant(DerivedHostCause {
+            parent_host_pred: parent_host_clause,
+            parent_code: self.code,
+        })
+        .into();
         self
     }
 
@@ -604,7 +608,7 @@ pub struct DerivedHostCause<'tcx> {
     /// current obligation. Note that only trait obligations lead to
     /// derived obligations, so we just store the trait predicate here
     /// directly.
-    pub parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+    pub parent_host_pred: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
 
     /// The parent trait had this cause.
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
