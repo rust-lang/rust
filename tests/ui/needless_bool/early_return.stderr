@@ -1,0 +1,50 @@
+error: this `if` guard returns a bool literal and is followed by another
+  --> tests/ui/needless_bool/early_return.rs:7:5
+   |
+LL | /     if blocks < size / 512 {
+LL | |         return Ok(true);
+LL | |     }
+LL | |     Ok(false)
+   | |_____________^ help: you can reduce it to: `Ok(blocks < size / 512)`
+   |
+   = note: `-D clippy::needless-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
+
+error: this `if` guard returns a bool literal and is followed by another
+  --> tests/ui/needless_bool/early_return.rs:15:5
+   |
+LL | /     if x {
+LL | |         return true;
+LL | |     }
+LL | |     false
+   | |_________^ help: you can reduce it to: `x`
+
+error: this `if` guard returns a bool literal and is followed by another
+  --> tests/ui/needless_bool/early_return.rs:23:5
+   |
+LL | /     if x {
+LL | |         return false;
+LL | |     }
+LL | |     true
+   | |________^ help: you can reduce it to: `!x`
+
+error: this `if` guard returns a bool literal and is followed by another
+  --> tests/ui/needless_bool/early_return.rs:31:5
+   |
+LL | /     if x {
+LL | |         return Some(false);
+LL | |     }
+LL | |     Some(true)
+   | |______________^ help: you can reduce it to: `Some(!x)`
+
+error: this `if` guard returns a bool literal and is followed by another
+  --> tests/ui/needless_bool/early_return.rs:39:5
+   |
+LL | /     if a < b && b > 0 {
+LL | |         return Ok(false);
+LL | |     }
+LL | |     Ok(true)
+   | |____________^ help: you can reduce it to: `Ok(!(a < b && b > 0))`
+
+error: aborting due to 5 previous errors
+
