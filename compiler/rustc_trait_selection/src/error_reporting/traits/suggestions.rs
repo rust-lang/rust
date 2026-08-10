@@ -4450,19 +4450,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::ImplDerivedHost(ref data) => {
                 let self_ty = tcx.short_string(
-                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty()),
+                    self.resolve_vars_if_possible(data.derived.parent_host_clause.self_ty()),
                     err.long_ty_path(),
                 );
                 let trait_path = tcx.short_string(
                     data.derived
-                        .parent_host_pred
-                        .map_bound(|pred| pred.trait_ref)
+                        .parent_host_clause
+                        .map_bound(|clause| clause.trait_ref)
                         .print_only_trait_path(),
                     err.long_ty_path(),
                 );
                 let msg = format!(
                     "required for `{self_ty}` to implement `{} {trait_path}`",
-                    data.derived.parent_host_pred.skip_binder().constness,
+                    data.derived.parent_host_clause.skip_binder().constness,
                 );
                 match tcx.hir_get_if_local(data.impl_def_id) {
                     Some(Node::Item(hir::Item {
@@ -4483,7 +4483,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_obligation_cause_code(
                     body_def_id,
                     err,
-                    data.derived.parent_host_pred,
+                    data.derived.parent_host_clause,
                     param_env,
                     &data.derived.parent_code,
                     obligated_types,
@@ -4494,7 +4494,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_obligation_cause_code(
                     body_def_id,
                     err,
-                    data.parent_host_pred,
+                    data.parent_host_clause,
                     param_env,
                     &data.parent_code,
                     obligated_types,
