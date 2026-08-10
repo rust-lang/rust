@@ -1408,30 +1408,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
-        candidates: Vec<SelectionCandidate<'tcx>>,
+        mut candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
         trace!("{candidates:#?}");
         let tcx = self.tcx();
-        let mut result = Vec::with_capacity(candidates.len());
 
-        // TODO: this should be a retain lmao?
-        for candidate in candidates {
-            if let ImplCandidate(def_id) = candidate {
+        candidates.retain(|candidate| {
+            if let &ImplCandidate(def_id) = candidate {
                 match (tcx.impl_polarity(def_id), obligation.polarity()) {
                     (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
-                    | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => {
-                        result.push(candidate);
-                    }
-                    _ => {}
+                    | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => true,
+
+                    // remove impl candidates with mismatched polarity to the obligation
+                    _ => false,
                 }
             } else {
-                result.push(candidate);
+                true
             }
-        }
+        });
 
-        trace!("{result:#?}");
-        result
+        trace!("{candidates:#?}");
+        candidates
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
