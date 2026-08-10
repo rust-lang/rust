@@ -74,6 +74,10 @@ implemented as a hard-coded list, these traits have a special marker attribute
 on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
+In addition to the "Notable traits" dialog, every type that implements a
+`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+of its page, making the relationship easy to spot when browsing the type.
+
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
 and [its tracking issue][issue-notable_trait].
@@ -206,17 +210,15 @@ This is very easy to use in scripts that manually invoke rustdoc, but it's also 
 performs O(crates) work on every crate, meaning it performs O(crates<sup>2</sup>) work. When
 `--write-doc-meta-dir` and/or `--read-doc-meta-dir` are supplied, this is turned off.
 
-When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's metadata to that directory.
-If this parameter is supplied but `--read-doc-meta-dir` isn't, it runs in *intermediate mode*:
-some pages may be written to the output dir, but there is a lot of functionality that won't work
-until rustdoc is run in *finalize mode*.
+When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's shared metadata to
+that directory. This is an *intermediate mode* where it may write some files to the doc output
+directory, but some features won't work until it is finalized.
 
-When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. It will read the data from
-the supplied directory, and will write it to the doc output directory in the form that the web
-frontend will use.
+When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. No crate source code is
+passed to rustdoc when it runs in this mode. Multiple `--read-doc-meta-dir` can be passed to
+rustdoc, so your build system can split the state between multiple directories if that helps.
 
-If both `--write-doc-meta-dir` and `--read-doc-meta-dir` are specified, the crate metadata will be
-written to both the HTML `--out-dir` and to the supplied `--write-doc-meta-dir`.
+`--write-doc-meta-dir` and `--read-doc-meta-dir` cannot both be passed to the same rustdoc invocation.
 
 ```console
 $ rustdoc crate1.rs --out-dir=doc
@@ -230,11 +232,30 @@ rd_("fcrate1fcrate2")
 To delay shared-data merging until the end of a build, so that you only have to perform O(crates)
 work, use `--write-doc-meta-dir` on every crate, and the last will use `--read-doc-meta-dir`.
 
+You can use separate metadata directories:
+
 ```console
-$ rustdoc +nightly crate1.rs --write-doc-meta=crate1.d -Zunstable-options
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=crate1.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 cat: 'doc/search.index/crateNames/*': No such file or directory
-$ rustdoc +nightly crate2.rs --read-doc-meta=crate1.d -Zunstable-options
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=crate1.d --read-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1fcrate2")
+```
+
+Or you can use a single metadata directory for all of the crates:
+
+```console
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=meta.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 rd_("fcrate1fcrate2")
 ```
@@ -501,6 +522,15 @@ Calculating code examples follows these rules:
   * static
   * typedef
 2. If one of the previously listed items has a code example, then it'll be counted.
+
+If you use the `-o` option with it, it will generate the file into the given older name. For example:
+
+```shell
+rustdoc foo.rs --show-coverage -o doc
+```
+
+Will generate a `foo.txt` into the `doc` folder. If the `-o` option isn't passed, it will display
+on stdout.
 
 ### JSON output
 

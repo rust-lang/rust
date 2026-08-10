@@ -450,10 +450,10 @@ pub(crate) fn create_cycle_error<'tcx>(
 
     let is_all_def_kind = |def_kind| {
         // Trivial type alias and trait alias cycles consists of `type_of` and
-        // `explicit_implied_predicates_of` queries, so we just check just these here.
+        // `explicit_implied_clauses_of` queries, so we just check just these here.
         frames.iter().all(|frame| match frame.tagged_key {
             TaggedQueryKey::type_of(def_id)
-            | TaggedQueryKey::explicit_implied_predicates_of(def_id)
+            | TaggedQueryKey::explicit_implied_clauses_of(def_id)
                 if tcx.def_kind(def_id) == def_kind =>
             {
                 true

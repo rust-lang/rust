@@ -848,10 +848,6 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
-        if self.config.llvm_enzyme {
-            features.insert("llvm_enzyme");
-        }
-
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -866,16 +862,14 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if let Some(allocator) = self.config.override_allocator(target)
-            && check(allocator.feature_name())
+
+        if let Some(allocator_feature_name) = self.config.allocator(target).feature_name()
+            && check(allocator_feature_name)
         {
-            features.push(allocator.feature_name());
+            features.push(allocator_feature_name);
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
-        }
-        if self.config.llvm_enzyme {
-            features.push("llvm_enzyme");
         }
         if self.config.llvm_offload {
             features.push("llvm_offload");
@@ -989,8 +983,12 @@ impl Build {
         self.out.join(&*target.triple).join("enzyme")
     }
 
-    fn offload_out(&self, target: TargetSelection) -> PathBuf {
+    fn omp_offload_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("offload")
+    }
+
+    fn rust_offload_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("rust-offload")
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
@@ -1324,10 +1322,10 @@ impl Build {
 
         if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
-            let cc = self.cc(target);
-            if cc.ends_with("clang") || cc.ends_with("gcc") {
+            let cc = self.cc_tool(target);
+            if cc.is_like_clang() || cc.is_like_gnu() {
                 base.push(format!("-fdebug-prefix-map={map}"));
-            } else if cc.ends_with("clang-cl.exe") {
+            } else if cc.is_like_clang_cl() {
                 base.push("-Xclang".into());
                 base.push(format!("-fdebug-prefix-map={map}"));
             }

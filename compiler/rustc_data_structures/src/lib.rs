@@ -25,6 +25,7 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(nonzero_internals)]
 #![feature(pattern_type_macro)]
 #![feature(pattern_types)]
 #![feature(ptr_alignment_type)]
@@ -88,7 +89,6 @@ pub mod unhash;
 pub mod union_find;
 pub mod unord;
 pub mod vec_cache;
-pub mod work_queue;
 
 mod atomic_ref;
 

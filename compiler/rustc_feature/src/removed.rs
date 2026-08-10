@@ -95,7 +95,7 @@ declare_features! (
     (removed, crate_visibility_modifier, "1.63.0", Some(53120), Some("removed in favor of `pub(crate)`"), 97254),
     /// Allows using custom attributes (RFC 572).
     (removed, custom_attribute, "1.0.0", Some(29642),
-     Some("removed in favor of `#![register_tool]` and `#![register_attr]`"), 66070),
+     Some("removed in favor of `#![register_tool]`"), 66070),
     /// Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
     (removed, custom_derive, "1.32.0", Some(29644),
      Some("subsumed by `#[proc_macro_derive]`")),

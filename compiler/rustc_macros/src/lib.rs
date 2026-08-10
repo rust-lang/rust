@@ -1,5 +1,12 @@
 // tidy-alphabetical-start
-#![allow(rustc::default_hash_types)]
+#![allow(
+    rustc::default_hash_types,
+    reason = "we like performance but can't use `rustc_data_structures`"
+)]
+#![deny(
+    rustc::potential_query_instability,
+    reason = "macros shall produce deterministic output/errors"
+)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]
@@ -173,7 +180,7 @@ decl_derive!(
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [Diagnostic, attributes(
-        // struct attributes
+        // struct and field attributes
         diag,
         help,
         help_once,
@@ -187,7 +194,9 @@ decl_derive!(
         suggestion,
         suggestion_short,
         suggestion_hidden,
-        suggestion_verbose)] => diagnostics::diagnostic_derive
+        suggestion_verbose)] =>
+        #[doc = "See <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#derivediagnostic>"]
+        diagnostics::diagnostic_derive
 );
 decl_derive!(
     [Subdiagnostic, attributes(

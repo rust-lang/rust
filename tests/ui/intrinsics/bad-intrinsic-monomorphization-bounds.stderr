@@ -2,7 +2,10 @@ error[E0277]: the trait bound `Foo: intrinsics::bounds::FloatPrimitive` is not s
   --> $DIR/bad-intrinsic-monomorphization-bounds.rs:16:5
    |
 LL |     intrinsics::fadd_fast(a, b)
-   |     ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |     ^^^^^^^^^^^^^^^^^^^^^ -  - `Foo` doesn't satisfy the trait bound
+   |     |                     |
+   |     |                     `Foo` doesn't satisfy the trait bound
+   |     unsatisfied trait bound
    |
 help: the nightly-only, unstable trait `intrinsics::bounds::FloatPrimitive` is not implemented for `Foo`
   --> $DIR/bad-intrinsic-monomorphization-bounds.rs:13:1

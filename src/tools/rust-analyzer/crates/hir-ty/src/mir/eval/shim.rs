@@ -28,13 +28,13 @@ enum EvalLangItem {
     DropInPlace,
 }
 
-impl<'a, 'db: 'a> Evaluator<'a, 'db> {
+impl<'a, 'db> Evaluator<'a, 'db> {
     pub(super) fn detect_and_exec_special_function(
         &mut self,
         def: FunctionId,
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         destination: Interval,
         span: MirSpan,
     ) -> Result<'db, bool> {
@@ -133,7 +133,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         def: FunctionId,
         args: &[IntervalAndTy<'db>],
         self_ty: Ty<'db>,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         destination: Interval,
         span: MirSpan,
     ) -> Result<'db, ()> {
@@ -191,7 +191,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         layout: Arc<Layout>,
         addr: Address,
         def: FunctionId,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         destination: Interval,
         span: MirSpan,
     ) -> Result<'db, ()> {
@@ -297,7 +297,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         it: EvalLangItem,
         generic_args: GenericArgs<'db>,
         args: &[IntervalAndTy<'db>],
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         span: MirSpan,
     ) -> Result<'db, Vec<u8>> {
         use EvalLangItem::*;
@@ -369,7 +369,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         id: i64,
         args: &[IntervalAndTy<'db>],
         destination: Interval,
-        _locals: &Locals<'a>,
+        _locals: &Locals<'a, 'db>,
         _span: MirSpan,
     ) -> Result<'db, ()> {
         match id {
@@ -400,7 +400,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         args: &[IntervalAndTy<'db>],
         _generic_args: GenericArgs<'db>,
         destination: Interval,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         span: MirSpan,
     ) -> Result<'db, ()> {
         match as_str {
@@ -564,7 +564,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
         destination: Interval,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         span: MirSpan,
         needs_override: bool,
     ) -> Result<'db, bool> {
@@ -733,9 +733,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
-            // FIXME: `min_align_of` was renamed to `align_of` in Rust 1.89
-            // (https://github.com/rust-lang/rust/pull/142410)
-            "min_align_of" | "align_of" => {
+            "align_of" => {
                 let Some(ty) = generic_args.as_slice().first().and_then(|it| it.ty()) else {
                     return Err(MirEvalError::InternalError(
                         "align_of generic arg is not provided".into(),
@@ -763,9 +761,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                     destination.write_from_bytes(self, &size.to_le_bytes())
                 }
             }
-            // FIXME: `min_align_of_val` was renamed to `align_of_val` in Rust 1.89
-            // (https://github.com/rust-lang/rust/pull/142410)
-            "min_align_of_val" | "align_of_val" => {
+            "align_of_val" => {
                 let Some(ty) = generic_args.as_slice().first().and_then(|it| it.ty()) else {
                     return Err(MirEvalError::InternalError(
                         "align_of_val generic arg is not provided".into(),
@@ -1015,6 +1011,43 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 let src = Interval { addr: src, size };
                 let dst = Interval { addr: dst, size };
                 dst.write_from_interval(self, src)
+            }
+            "slice_get_unchecked" => {
+                let [slice_ptr, index] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked args are not provided".into(),
+                    ));
+                };
+                let Some(ty) = generic_args.as_slice().get(2).and_then(|it| it.ty()) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked item type is not provided".into(),
+                    ));
+                };
+                let slice_ptr = slice_ptr.get(self)?;
+                let ptr_size = self.ptr_size();
+                let Some(data) = slice_ptr.get(..ptr_size) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked slice pointer is too small".into(),
+                    ));
+                };
+                let Some(len) = slice_ptr.get(ptr_size..2 * ptr_size) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked slice metadata is missing".into(),
+                    ));
+                };
+                let slice_ptr = Address::from_bytes(data)?;
+                let len = from_bytes!(usize, len);
+                let index = from_bytes!(usize, index.get(self)?);
+                if index >= len {
+                    return Err(MirEvalError::UndefinedBehavior(format!(
+                        "slice_get_unchecked index {index} is out of bounds for slice of length {len}"
+                    )));
+                }
+                let size = self.size_of_sized(ty, locals, "slice_get_unchecked item type")?;
+                let offset = index* size;
+                let addr = slice_ptr.to_usize() + offset;
+                let addr = Address::from_usize(addr);
+                destination.write_from_bytes(self, &addr.to_bytes()[..destination.size])
             }
             "offset" | "arith_offset" => {
                 let [ptr, offset] = args else {
@@ -1415,6 +1448,15 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 self.write_memory(location_addr, &location)?;
                 destination.write_from_bytes(self, &location_addr.to_bytes()[..ptr_size])
             }
+            "box_new" => {
+                let ty = generic_args.type_at(0);
+                let Some((size, align)) = self.size_align_of(ty, locals)? else {
+                    not_supported!("unsized box initialization");
+                };
+                let addr = self.heap_allocate(size, align)?;
+                self.copy_from_interval(addr, args[0].interval)?;
+                destination.write_from_bytes(self, &addr.to_bytes()[..self.ptr_size()])
+            }
             _ if needs_override => not_supported!("intrinsic {name} is not implemented"),
             _ => return Ok(false),
         }
@@ -1425,7 +1467,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         &mut self,
         ty: Ty<'db>,
         metadata: Interval,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
     ) -> Result<'db, (usize, usize)> {
         Ok(match ty.kind() {
             TyKind::Str => (from_bytes!(usize, metadata.get(self)?), 1),
@@ -1485,7 +1527,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
         destination: Interval,
-        locals: &Locals<'a>,
+        locals: &Locals<'a, 'db>,
         _span: MirSpan,
     ) -> Result<'db, ()> {
         // We are a single threaded runtime with no UB checking and no optimization, so

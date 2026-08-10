@@ -1,4 +1,22 @@
+use std::fmt::Debug;
+
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+
 use super::*;
+
+fn check_roundtrips<T: Serialize + DeserializeOwned + PartialEq + Debug>(t: T) {
+    let ser_json = serde_json::to_string(&t).expect("should be able to serialize to json");
+    let de_json: T =
+        serde_json::from_str(&ser_json).expect("should be able to deserialize from json");
+    assert_eq!(t, de_json, "value should be the same after json roundtrip");
+
+    let ser_postcard =
+        ::postcard::to_allocvec(&t).expect("should be able to serialize to postcard");
+    let de_postcard: T =
+        ::postcard::from_bytes(&ser_postcard).expect("should be able to deserialze from postcard");
+    assert_eq!(t, de_postcard, "value should be the same after postcard rountrip");
+}
 
 #[test]
 fn test_struct_info_roundtrip() {
@@ -8,15 +26,7 @@ fn test_struct_info_roundtrip() {
         impls: vec![],
     });
 
-    // JSON
-    let struct_json = serde_json::to_string(&s).unwrap();
-    let de_s = serde_json::from_str(&struct_json).unwrap();
-    assert_eq!(s, de_s);
-
-    // Postcard
-    let encoded: Vec<u8> = postcard::to_allocvec(&s).unwrap();
-    let decoded: ItemEnum = postcard::from_bytes(&encoded).unwrap();
-    assert_eq!(s, decoded);
+    check_roundtrips(s);
 }
 
 #[test]
@@ -28,15 +38,19 @@ fn test_union_info_roundtrip() {
         impls: vec![],
     });
 
-    // JSON
-    let union_json = serde_json::to_string(&u).unwrap();
-    let de_u = serde_json::from_str(&union_json).unwrap();
-    assert_eq!(u, de_u);
+    check_roundtrips(u);
+}
 
-    // Postcard
-    let encoded: Vec<u8> = postcard::to_allocvec(&u).unwrap();
-    let decoded: ItemEnum = postcard::from_bytes(&encoded).unwrap();
-    assert_eq!(u, decoded);
+#[test]
+fn test_stability() {
+    check_roundtrips(Stability {
+        feature: "guam_dotcom".to_owned(),
+        level: StabilityLevel::Stable { since: None },
+    });
+    check_roundtrips(Stability {
+        feature: "bing_mexico".to_owned(),
+        level: StabilityLevel::Unstable,
+    });
 }
 
 #[cfg(feature = "rkyv_0_8")]

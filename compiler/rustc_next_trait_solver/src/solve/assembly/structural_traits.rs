@@ -908,7 +908,7 @@ where
     // make impls coinductive always, since they'll always need to prove their supertraits.
     requirements.extend(elaborate::elaborate(
         cx,
-        cx.explicit_super_predicates_of(trait_ref.def_id)
+        cx.explicit_super_clauses_of(trait_ref.def_id)
             .iter_instantiated(cx, trait_ref.args)
             .map(Unnormalized::skip_norm_wip)
             .map(|(pred, _)| pred),

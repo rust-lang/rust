@@ -119,11 +119,23 @@
 //! fully contiguous (i.e., has no "holes"), there is no guarantee that this
 //! will not change in the future.
 //!
+//! An allocation can be either mutable (the common case) or *read-only*.
+//! Read-only allocations are implicitly introduced by the compiler for `static` items without
+//! interior mutability and for `const` items. Writing or creating a mutable reference to a
+//! read-only allocation is undefined behavior, and most atomic operations are not supported
+//! for read-only allocations either (see [here][atomic-ro] for exceptions).
+//! Additionally, some target-specific intrinsics are not supported on read-only
+//! allocations even if their memory write is masked off, such as [`_mm_maskmoveu_si128`].
+//!
+//! [atomic-ro]: crate::sync::atomic#atomic-accesses-to-read-only-memory
+//! [`_mm_maskmoveu_si128`]: ../../core/arch/x86/fn._mm_maskmoveu_si128.html
+//!
 //! Allocations must behave like "normal" memory: in particular, reads must not have
 //! side-effects, and writes must become visible to other threads using the usual synchronization
 //! primitives.
 //! Allocations must support all atomic operations that are available for the target (as
 //! determined by the `target_has_atomic*` set of cfg flags).
+//! Read-only allocations only have to support the operations [permitted there][atomic-ro].
 //! The precise instructions used for atomic operations are generally not guaranteed, so portable
 //! software should place all Rust allocations in memory regions that support all atomic
 //! instructions.
@@ -144,6 +156,13 @@
 //! - It is guaranteed that, given `o = a - base` (i.e., the offset of `a` within
 //!   the allocation), `base + o` will not wrap around the address space (in
 //!   other words, will not overflow `usize`)
+//!
+//! Allocations typically have a fixed size that cannot change. However, allocations created by
+//! directly invoking page table operations of the operating system, e.g. via `mmap`, are allowed to
+//! grow by adding more pages to them at the end. Unmapping parts of an allocation (i.e., shrinking
+//! it or punching holes into it) is currently not supported. Allocations created via
+//! "compiler-recognized" operations, such as `std::alloc` methods or `libc::malloc`, can never
+//! change their size, even if they use `mmap` under the hood.
 //!
 //! [`null()`]: null
 //!

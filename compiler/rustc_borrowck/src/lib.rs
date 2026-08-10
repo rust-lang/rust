@@ -38,8 +38,7 @@ use rustc_infer::infer::{
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, ParamEnv, RegionUtilitiesExt, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitable,
-    TypingMode, fold_regions,
+    self, ParamEnv, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypingMode, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
@@ -305,7 +304,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
-    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
@@ -2373,8 +2372,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if base.ty(this.body(), tcx).ty.is_union()
-                    && this.move_data.path_map[mpi].iter().any(|moi| {
-                        this.move_data.moves[*moi].source.is_predecessor_of(location, this.body)
+                    && this.move_data.move_out_path_map[mpi].iter().any(|moi| {
+                        this.move_data.move_outs[*moi].source.is_predecessor_of(location, this.body)
                     })
                 {
                     return;
@@ -2498,13 +2497,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
         // to do a partial initialization).
-        let previously_initialized = self.is_local_ever_initialized(place.local, state);
+        let previously_initialized = state.ever_inits.contains(place.local);
 
         // at this point, we have set up the error reporting state.
-        if let Some(init_index) = previously_initialized {
+        if previously_initialized {
             if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
                 // If this is a mutate access to an immutable local variable with no projections
                 // report the error as an illegal reassignment
+                let init_index = self.first_reaching_init(place.local, location).unwrap();
                 let init = &self.move_data.inits[init_index];
                 let assigned_span = init.span(self.body);
                 self.report_illegal_reassignment((place, span), assigned_span, place);
@@ -2517,10 +2517,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
-    fn is_local_ever_initialized(&self, local: Local, state: &BorrowckDomain) -> Option<InitIndex> {
+    /// Returns the first init of `local` (in gather order) that may have executed on some path
+    /// reaching `location` without an intervening `StorageDead(local)`.
+    fn first_reaching_init(&self, local: Local, location: Location) -> Option<InitIndex> {
         let mpi = self.move_data.rev_lookup.find_local(local)?;
-        let ii = &self.move_data.init_path_map[mpi];
-        ii.into_iter().find(|&&index| state.ever_inits.contains(index)).copied()
+        self.move_data.init_path_map[mpi].iter().copied().find(|&ii| {
+            let init = self.move_data.inits[ii];
+            EverInitializedPlaces::init_reaches_location(self.body, local, init, location)
+        })
     }
 
     /// Adds the place into the used mutable variables set
@@ -2531,7 +2535,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
                 if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
-                    && self.is_local_ever_initialized(local, state).is_some()
+                    && state.ever_inits.contains(local)
                 {
                     self.used_mut.insert(local);
                 }

@@ -1,8 +1,11 @@
-error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-missing-target-field.rs:17:13
+error: implementing `CoerceShared` requires every target field to have a corresponding source field
+  --> $DIR/coerce-shared-missing-target-field.rs:14:5
    |
+LL |     len: usize,
+   |     ^^^^^^^^^^ target field `len` has no corresponding source field
+...
 LL | impl<'a, T> CoerceShared<MissingSourceRef<'a, T>> for MissingSourceMut<'a, T> {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                       ----------------------- source type `MissingSourceMut` does not contain field `len`
 
 error: aborting due to 1 previous error
 

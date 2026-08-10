@@ -35,7 +35,7 @@ impl ChangeMethodNameTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 pub trait ChangeMethodNameTrait {
     #[rustc_clean(cfg="bpass3")]
@@ -148,12 +148,12 @@ pub trait ChangeMethodSelfnessTrait {
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]
@@ -186,12 +186,12 @@ pub trait RemoveMethodSelfnessTrait {
 #[rustc_clean(cfg="bpass6")]
 impl RemoveMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]
@@ -333,7 +333,7 @@ impl ChangeHasValueTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 pub trait ChangeHasValueTrait {
     #[rustc_clean(except="hir_owner", cfg="bpass2")]

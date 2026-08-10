@@ -6,7 +6,7 @@ use crate::{InferBodyId, db::HirDatabase, setup_tracing, test_db::TestDB};
 fn lower_mir(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    crate::attach_db(&db, || {
+    crate::attach_db(db.as_dyn(), || {
         let file_id = *file_ids.last().unwrap();
         let module_id = db.module_for_file(file_id.file_id(&db));
         let def_map = module_id.def_map(&db);
@@ -54,7 +54,7 @@ fn foo() {
 fn check_borrowck(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    crate::attach_db(&db, || {
+    crate::attach_db(db.as_dyn(), || {
         let file_id = *file_ids.last().unwrap();
         let module_id = db.module_for_file(file_id.file_id(&db));
         let def_map = module_id.def_map(&db);
@@ -78,7 +78,7 @@ fn check_borrowck(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         }
 
         for body in bodies {
-            let _ = InferBodyId::from(body).borrowck(&db);
+            let _ = InferBodyId::from(body).borrowck(db.as_dyn());
         }
     })
 }
@@ -146,6 +146,34 @@ fn opaque<T>(path: T) -> impl Sized {
 }
 fn caller(path: &PathBuf) {
     let Some(value) = opaque(path) else { return };
+}
+    "#,
+    );
+}
+
+#[test]
+fn borrowck_hrtb_closure_argument_does_not_panic() {
+    check_borrowck(
+        r#"
+//- minicore: fn, copy
+enum Res<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+struct S;
+
+impl S {
+    fn set<F>(&mut self, _: F)
+    where
+        F: for<'a> Fn(&mut (), &'a [u8]) -> Res<(), ()>,
+    {
+    }
+}
+
+fn main() {
+    let mut s = S;
+    s.set(|_, _| Res::Err(()));
 }
     "#,
     );

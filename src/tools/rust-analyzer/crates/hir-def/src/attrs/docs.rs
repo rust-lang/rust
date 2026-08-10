@@ -44,13 +44,13 @@ pub struct Docs {
     docs: String,
     /// A sorted map from an offset in `docs` to an offset in the source code.
     docs_source_map: Vec<DocsSourceMapLine>,
-    /// If the item is an outlined module (`mod foo;`), `docs_source_map` store the concatenated
+    /// If the item is an outlined module (`mod foo;`), `docs_source_map` stores the concatenated
     /// list of the outline and inline docs (outline first). Then, this field contains the [`HirFileId`]
     /// of the outline declaration, and the index in `docs` from which the inline docs
     /// begin.
     outline_mod: Option<(HirFileId, usize)>,
     inline_file: HirFileId,
-    /// The size the prepended prefix, which does not map to real doc comments.
+    /// The size of the prepended prefix, which does not map to real doc comments.
     prefix_len: TextSize,
     /// The offset in `docs` from which the docs are inner attributes/comments.
     inline_inner_docs_start: Option<TextSize>,

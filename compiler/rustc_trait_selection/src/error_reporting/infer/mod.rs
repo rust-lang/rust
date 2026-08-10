@@ -64,8 +64,8 @@ use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
-    self, List, Mutability, ParamEnv, Region, RegionUtilitiesExt, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, Unnormalized,
+    self, List, Mutability, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use thin_vec::ThinVec;
@@ -130,7 +130,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.probe(|_| {
             let ocx = ObligationCtxt::new(self);
             let normalized_fn_sig = ocx.normalize(&ObligationCause::dummy(), param_env, fn_sig);
-            if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+            if ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                 let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
                 if !normalized_fn_sig.has_infer() {
                     return normalized_fn_sig;
@@ -773,17 +773,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let (lt1, sig1) = get_lifetimes(sig1);
         let (lt2, sig2) = get_lifetimes(sig2);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
         let mut values =
             (DiagStyledString::normal("".to_string()), DiagStyledString::normal("".to_string()));
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        // ^^^^^^^^^^^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        // ^^^^^^^^^^^^^^^^^^^^^
         let fn_item_prefix_and_safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
             None => ("", sig.safety().prefix_str()),
             Some((did, _)) => {
                 if self.tcx.codegen_fn_attrs(did).safe_target_features {
-                    ("#[target_features] ", "")
+                    ("#[target_feature(..)] ", "")
                 } else {
                     ("", sig.safety().prefix_str())
                 }
@@ -794,19 +794,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         values.0.push(prefix1, prefix1 != prefix2);
         values.1.push(prefix2, prefix1 != prefix2);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                    ^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                       ^^^^^^^^
         let lifetime_diff = lt1 != lt2;
         values.0.push(lt1, lifetime_diff);
         values.1.push(lt2, lifetime_diff);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                            ^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                               ^^^^^^
         values.0.push(safety1, safety1 != safety2);
         values.1.push(safety2, safety1 != safety2);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                   ^^^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                      ^^^^^^^^^^
         if sig1.abi() != ExternAbi::Rust {
             values.0.push(format!("extern {} ", sig1.abi()), sig1.abi() != sig2.abi());
         }
@@ -814,13 +814,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             values.1.push(format!("extern {} ", sig2.abi()), sig1.abi() != sig2.abi());
         }
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                              ^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                 ^^^
         values.0.push_normal("fn(");
         values.1.push_normal("fn(");
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                                 ^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                    ^^^^^
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
         let splatted_arg_index1 = sig1.splatted().map(usize::from);
@@ -829,11 +829,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
                 self.push_comma(&mut values.0, &mut values.1, i);
                 if Some(i) == splatted_arg_index1 {
-                    values.0.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.0.push("#[rustc_splat]", splatted_arg_index1 != splatted_arg_index2);
                     values.0.push_normal(" ");
                 }
                 if Some(i) == splatted_arg_index2 {
-                    values.1.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.1.push("#[rustc_splat]", splatted_arg_index1 != splatted_arg_index2);
                     values.1.push_normal(" ");
                 }
                 let (x1, x2) = self.cmp(*l, *r);
@@ -868,13 +868,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             values.1.push("...", !sig1.c_variadic());
         }
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                                      ^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                         ^
         values.0.push_normal(")");
         values.1.push_normal(")");
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                                        ^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                           ^^^^^^^^
         let output1 = sig1.output();
         let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);
@@ -1366,8 +1366,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if kind1 == kind2 && alias1 == alias2 && !self.tcx.sess.opts.verbose =>
             {
                 let mut strs = (DiagStyledString::new(), DiagStyledString::new());
-                strs.0.push_normal(format!("_"));
-                strs.1.push_normal(format!("_"));
+                strs.0.push_normal("_");
+                strs.1.push_normal("_");
                 strs
             }
 
@@ -1376,14 +1376,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 match (alias1.kind, alias2.kind) {
                     (ty::Projection { def_id: def_id1 }, ty::Projection { def_id: def_id2 }) => {
                         // `<Type as Trait>::Name<args>`
-                        values.0.push_normal(format!("<"));
-                        values.1.push_normal(format!("<"));
+                        values.0.push_normal("<");
+                        values.1.push_normal("<");
                         let (trait_ref1, args1) = alias1.trait_ref_and_own_args(self.tcx);
                         let (trait_ref2, args2) = alias2.trait_ref_and_own_args(self.tcx);
                         self.recurse(trait_ref1.self_ty(), trait_ref2.self_ty(), &mut values);
 
-                        values.0.push_normal(format!(" as "));
-                        values.1.push_normal(format!(" as "));
+                        values.0.push_normal(" as ");
+                        values.1.push_normal(" as ");
                         if trait_ref1.def_id == trait_ref2.def_id {
                             if self.tcx.sess.opts.verbose {
                                 values
@@ -1414,8 +1414,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 .1
                                 .push_highlighted(format!("{}", trait_ref2.print_trait_sugared()));
                         }
-                        values.0.push_normal(format!(">::"));
-                        values.1.push_normal(format!(">::"));
+                        values.0.push_normal(">::");
+                        values.1.push_normal(">::");
                         let name1 = self.tcx.item_name(def_id1);
                         let name2 = self.tcx.item_name(def_id2);
                         if def_id1 == def_id2 {

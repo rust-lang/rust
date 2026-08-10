@@ -2,6 +2,7 @@ pub mod attr;
 mod attr_wrapper;
 mod diagnostics;
 mod expr;
+mod function;
 mod generics;
 mod item;
 mod nonterminal;
@@ -22,7 +23,7 @@ use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
 pub use expr::LetChainsPolicy;
-pub(crate) use item::{FnContext, FnParseMode};
+pub(crate) use function::{FnContext, FnParseMode, FrontMatterParsingMode, IsDotDotDot};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 use rustc_ast::token::{
@@ -987,12 +988,9 @@ impl<'a> Parser<'a> {
         let initial_semicolon = self.token.span;
 
         while self.eat(exp!(Semi)) {
-            let _ = self
-                .parse_stmt_without_recovery(false, ForceCollect::No, false)
-                .unwrap_or_else(|e| {
-                    e.cancel();
-                    None
-                });
+            if let Err(e) = self.parse_stmt_without_recovery(false, ForceCollect::No, false) {
+                e.cancel();
+            }
         }
 
         expect_err
@@ -1664,7 +1662,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, R> {
         // The only reason to call `collect_tokens_no_attrs` is if you want tokens, so use
         // `ForceCollect::Yes`
-        self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |this, _attrs| {
+        self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |this, _empty_attrs| {
             Ok((f(this)?, Trailing::No, UsePreAttrPos::No))
         })
     }

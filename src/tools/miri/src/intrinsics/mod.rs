@@ -1,13 +1,10 @@
 #![warn(clippy::arithmetic_side_effects)]
 
 mod aarch64;
-mod atomic;
 mod loongarch;
 mod math;
 mod simd;
 mod x86;
-
-pub use self::atomic::AtomicRmwOp;
 
 #[rustfmt::skip] // prevent `use` reordering
 use rand::RngExt;
@@ -16,7 +13,6 @@ use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::Arch;
 
-use self::atomic::EvalContextExt as _;
 use self::math::EvalContextExt as _;
 use self::simd::EvalContextExt as _;
 use crate::*;
@@ -57,12 +53,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        // FIXME: avoid allocating memory
-        let dest = this.force_allocation(dest)?;
-
-        let res =
-            this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, &dest, ret)?;
-        res.jump_to_next_block(this, &dest, ret, Some(unwind), |this| {
+        let res = this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
+        res.jump_to_next_block(this, dest, ret, Some(unwind), |this| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
             if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
@@ -92,14 +84,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
-        if let Some(name) = intrinsic_name.strip_prefix("atomic_") {
-            return this.emulate_atomic_intrinsic(name, generic_args, args, dest);
-        }
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
             return this.emulate_simd_intrinsic(name, args, dest);
         }
@@ -172,7 +161,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let link_name = this.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
 
-        // FIXME: avoid allocating memory
+        // These are anyway mostly vector intrinsics and vectors live in memory.
         let dest = this.force_allocation(dest)?;
 
         let res = 'handled: {
@@ -257,7 +246,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        res.jump_to_next_block(this, &dest, ret, None, |this| {
+        res.jump_to_next_block(this, &dest.clone().into(), ret, None, |this| {
             throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                 "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
                 arch = this.tcx.sess.target.arch,

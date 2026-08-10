@@ -51,14 +51,15 @@ use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
-    InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind, TyKind, TypeFoldable,
-    TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance, VisitorResult,
-    max_universe, set_aliases_to_non_rigid,
+    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind,
+    TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
+    Variance, VisitorResult, max_universe, set_aliases_to_non_rigid, try_visit,
+    walk_visitable_list,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct Assumptions<I: Interner> {
-    pub type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
+    pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
     pub region_outlives: TransitiveRelation<Region<I>>,
     pub inverse_region_outlives: TransitiveRelation<Region<I>>,
 }
@@ -73,7 +74,7 @@ impl<I: Interner> Assumptions<I> {
     }
 
     pub fn new(
-        type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
+        type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
         region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
         Self {
@@ -91,6 +92,7 @@ impl<I: Interner> Assumptions<I> {
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
 pub enum RegionConstraint<I: Interner> {
     Ambiguity,
     RegionOutlives(Region<I>, Region<I>),
@@ -219,44 +221,26 @@ impl<I: Interner> TypeFoldable<I> for RegionConstraint<I> {
 
 impl<I: Interner> TypeVisitable<I> for RegionConstraint<I> {
     fn visit_with<F: TypeVisitor<I>>(&self, f: &mut F) -> F::Result {
-        use core::ops::ControlFlow::*;
-
         use RegionConstraint::*;
 
         match self {
             Ambiguity => (),
             RegionOutlives(a, b) => {
-                if let b @ Break(_) = a.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
-                if let b @ Break(_) = b.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
+                try_visit!(a.visit_with(f));
+                try_visit!(b.visit_with(f));
             }
             AliasTyOutlivesViaEnv(outlives) => {
-                return outlives.visit_with(f);
+                try_visit!(outlives.visit_with(f));
             }
             PlaceholderTyOutlives(a, b) => {
-                if let b @ Break(_) = a.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
-                if let b @ Break(_) = b.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
+                try_visit!(a.visit_with(f));
+                try_visit!(b.visit_with(f));
             }
             And(and) => {
-                for a in and {
-                    if let b @ Break(_) = a.visit_with(f).branch() {
-                        return F::Result::from_branch(b);
-                    };
-                }
+                walk_visitable_list!(f, and);
             }
             Or(or) => {
-                for a in or {
-                    if let b @ Break(_) = a.visit_with(f).branch() {
-                        return F::Result::from_branch(b);
-                    };
-                }
+                walk_visitable_list!(f, or);
             }
         };
 
@@ -985,7 +969,7 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
     }
 
     assumptions.type_outlives.iter().flat_map(move |binder| match binder.no_bound_vars() {
-        Some(OutlivesPredicate(ty, r)) => (ty == t).then_some(r),
+        Some(OutlivesClause(ty, r)) => (ty == t).then_some(r),
         None => Some(Region::new_static(cx)),
     })
 }
@@ -1042,7 +1026,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
     infcx.enter_forall_with_empty_assumptions(bound_outlives, |(alias, r)| {
         for bound_type_outlives in assumptions.type_outlives.iter() {
-            let OutlivesPredicate(alias2, r2) =
+            let OutlivesClause(alias2, r2) =
                 infcx.instantiate_binder_with_infer(*bound_type_outlives);
 
             let mut relation = HigherRankedAliasMatcher {

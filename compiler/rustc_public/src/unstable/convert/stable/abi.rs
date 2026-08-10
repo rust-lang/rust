@@ -261,6 +261,18 @@ impl<'tcx> Stable<'tcx> for rustc_abi::NumScalableVectors {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_abi::BackendLaneCount {
+    type T = u64;
+
+    fn stable<'cx>(
+        &self,
+        _tables: &mut Tables<'cx, BridgeTys>,
+        _cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        self.as_u64()
+    }
+}
+
 impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
     type T = ValueAbi;
 
@@ -278,13 +290,14 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
                     b_offset: second_offset.stable(tables, cx),
                 }
             }
-            rustc_abi::BackendRepr::SimdVector { element, count } => {
-                ValueAbi::Vector { element: element.stable(tables, cx), count }
-            }
+            rustc_abi::BackendRepr::SimdVector { element, count } => ValueAbi::Vector {
+                element: element.stable(tables, cx),
+                count: count.stable(tables, cx),
+            },
             rustc_abi::BackendRepr::SimdScalableVector { element, count, number_of_vectors } => {
                 ValueAbi::ScalableVector {
                     element: element.stable(tables, cx),
-                    count,
+                    count: count.stable(tables, cx),
                     number_of_vectors: number_of_vectors.stable(tables, cx),
                 }
             }

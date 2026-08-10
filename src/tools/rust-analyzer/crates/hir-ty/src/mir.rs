@@ -15,6 +15,7 @@ use rustc_type_ir::{
     CollectAndApply, GenericTypeVisitable,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
+use salsa::Update;
 use smallvec::{SmallVec, smallvec};
 use stdx::impl_from;
 
@@ -318,7 +319,12 @@ impl<'db> PlaceRef<'db> {
     pub fn store(&self) -> Place {
         Place { local: self.local, projection: self.projection.store() }
     }
-    pub fn ty(&self, body: &MirBody, infcx: &InferCtxt<'db>, env: ParamEnv<'db>) -> PlaceTy<'db> {
+    pub fn ty(
+        &self,
+        body: &MirBody<'db>,
+        infcx: &InferCtxt<'db>,
+        env: ParamEnv<'db>,
+    ) -> PlaceTy<'db> {
         PlaceTy::from_ty(body.locals[self.local].ty.as_ref()).multi_projection_ty(
             infcx,
             env,
@@ -988,16 +994,6 @@ pub enum Rvalue {
     /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Box<[Operand]>),
 
-    /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
-    ///
-    /// This is different from a normal transmute because dataflow analysis will treat the box as
-    /// initialized but its content as uninitialized. Like other pointer casts, this in general
-    /// affects alias analysis.
-    ShallowInitBox(Operand, StoredTy),
-
-    /// NON STANDARD: allocates memory with the type's layout, and shallow init the box with the resulting pointer.
-    ShallowInitBoxWithAlloc(StoredTy),
-
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
     /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
@@ -1059,21 +1055,21 @@ pub struct BasicBlock {
     pub is_cleanup: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MirBody {
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
+pub struct MirBody<'db> {
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,
     pub start_block: BasicBlockId,
-    pub owner: InferBodyId,
+    pub owner: InferBodyId<'db>,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
     pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,
     /// This field stores the closures directly owned by this body. It is used
     /// in traversing every mir body.
-    pub closures: Vec<InternedClosureId>,
+    pub closures: Vec<InternedClosureId<'db>>,
 }
 
-impl MirBody {
+impl MirBody<'_> {
     pub fn local_to_binding_map(&self) -> ArenaMap<LocalId, BindingId> {
         self.binding_locals.iter().map(|(it, y)| (*y, it)).collect()
     }
@@ -1095,9 +1091,7 @@ impl MirBody {
                     StatementKind::Assign(p, r) => {
                         f(p);
                         match r {
-                            Rvalue::ShallowInitBoxWithAlloc(_) => (),
-                            Rvalue::ShallowInitBox(o, _)
-                            | Rvalue::UnaryOp(_, o)
+                            Rvalue::UnaryOp(_, o)
                             | Rvalue::Cast(_, o, _)
                             | Rvalue::Repeat(o, _)
                             | Rvalue::Use(o) => for_operand(o, &mut f),

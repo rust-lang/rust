@@ -5,23 +5,19 @@
 pub fn non_const_function() {}
 
 //@ set stable_const_fn = "$.index[?(@.name=='stable_const_fn')].id"
-//@ is "$.index[?(@.name=='stable_const_fn')].stability.level" '"stable"'
 //@ is "$.index[?(@.name=='stable_const_fn')].stability.feature" '"stable_const_fn_feature"'
-//@ is "$.index[?(@.name=='stable_const_fn')].stability.since" '"1.0.0"'
-//@ is "$.index[?(@.name=='stable_const_fn')].const_stability.level" '"stable"'
+//@ is "$.index[?(@.name=='stable_const_fn')].stability.level.stable.since" '"1.0.0"'
 //@ is "$.index[?(@.name=='stable_const_fn')].const_stability.feature" '"stable_const_fn_const_feature"'
-//@ is "$.index[?(@.name=='stable_const_fn')].const_stability.since" '"1.1.0"'
+//@ is "$.index[?(@.name=='stable_const_fn')].const_stability.level.stable.since" '"1.1.0"'
 //@ is "$.index[?(@.name=='stable_const_fn')].attrs" []
 #[stable(feature = "stable_const_fn_feature", since = "1.0.0")]
 #[rustc_const_stable(feature = "stable_const_fn_const_feature", since = "1.1.0")]
 pub const fn stable_const_fn() {}
 
-//@ is "$.index[?(@.name=='const_unstable_fn')].stability.level" '"stable"'
 //@ is "$.index[?(@.name=='const_unstable_fn')].stability.feature" '"const_unstable_fn_feature"'
-//@ is "$.index[?(@.name=='const_unstable_fn')].stability.since" '"2.0.0"'
+//@ is "$.index[?(@.name=='const_unstable_fn')].stability.level.stable.since" '"2.0.0"'
 //@ is "$.index[?(@.name=='const_unstable_fn')].const_stability.level" '"unstable"'
 //@ is "$.index[?(@.name=='const_unstable_fn')].const_stability.feature" '"const_unstable_fn_const_feature"'
-//@ !has "$.index[?(@.name=='const_unstable_fn')].const_stability.since"
 //@ is "$.index[?(@.name=='const_unstable_fn')].attrs" []
 #[stable(feature = "const_unstable_fn_feature", since = "2.0.0")]
 #[rustc_const_unstable(feature = "const_unstable_fn_const_feature", issue = "none")]
@@ -35,7 +31,6 @@ pub const fn const_unstable_fn() {}
 //@ !has "$.index[?(@.name=='unstable_fn_with_explicit_const_gate')].stability.since"
 //@ is "$.index[?(@.name=='unstable_fn_with_explicit_const_gate')].const_stability.level" '"unstable"'
 //@ is "$.index[?(@.name=='unstable_fn_with_explicit_const_gate')].const_stability.feature" '"explicit_const_gate_on_unstable_fn"'
-//@ !has "$.index[?(@.name=='unstable_fn_with_explicit_const_gate')].const_stability.since"
 //@ is "$.index[?(@.name=='unstable_fn_with_explicit_const_gate')].attrs" []
 #[unstable(feature = "unstable_fn_with_explicit_const_gate_feature", issue = "none")]
 #[rustc_const_unstable(feature = "explicit_const_gate_on_unstable_fn", issue = "none")]

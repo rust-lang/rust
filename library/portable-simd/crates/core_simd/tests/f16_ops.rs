@@ -2,7 +2,7 @@
 #![feature(f16)]
 #![expect(internal_features)]
 #![feature(cfg_target_has_reliable_f16_f128)]
-
+#![allow(unused_features)]
 #[macro_use]
 mod ops_macros;
 

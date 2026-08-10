@@ -394,7 +394,7 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
         &mut self,
         a_ty: Ty<'db>,
         _: Ty<'db>,
-        def_id: SolverDefId,
+        def_id: SolverDefId<'db>,
         a_args: GenericArgs<'db>,
         b_args: GenericArgs<'db>,
         mk: impl FnOnce(GenericArgs<'db>) -> Ty<'db>,

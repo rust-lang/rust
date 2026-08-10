@@ -126,6 +126,13 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
+    /// Synthetize a layout representing the variant-specific fields of an enum-like layout.
+    ///
+    /// Note that the resulting layout *does not* fully describes `self.ty` at that specific
+    /// variant: prefix fields (e.g. in coroutines) and tag information are lost.
+    ///
+    /// If you don't need type information about the variant's fields, prefer using
+    /// `self.layout.variants` directly.
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
         Ty: TyAbiInterface<'a, C>,

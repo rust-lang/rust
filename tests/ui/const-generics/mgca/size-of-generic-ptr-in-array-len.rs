@@ -4,7 +4,8 @@
 
 fn foo<T>() {
     [0; size_of::<*mut T>()];
-    //~^ ERROR: complex const arguments must be placed inside of a `const` block
+    //~^ ERROR function items cannot be used as const args
+    //~| ERROR tuple constructor with invalid base path
     [0; const { size_of::<*mut T>() }];
     //~^ ERROR: generic parameters may not be used in const operations
     [0; const { size_of::<*mut i32>() }];

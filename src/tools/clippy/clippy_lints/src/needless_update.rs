@@ -34,11 +34,10 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust,ignore
-    /// // Missing field `z`
     /// Point {
     ///     x: 1,
     ///     y: 1,
-    ///     ..zero_point
+    ///     z: 1
     /// };
     /// ```
     #[clippy::version = "pre 1.29.0"]

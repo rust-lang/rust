@@ -154,6 +154,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "known-bug",
     "lldb-check",
     "lldb-command",
+    "lldb-repr",
     "llvm-cov-flags",
     "max-llvm-major-version",
     "min-apple-lldb-version",

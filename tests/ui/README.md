@@ -770,10 +770,6 @@ Tests for the `{std,core}::intrinsics`, internal implementation detail.
 
 Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
 
-## `tests/ui/issues/`: Tests directly related to GitHub issues
-
-**FIXME (#133895)**: Random collection of regression tests and tests for issues, tests in this directory should be audited and rehomed.
-
 ## `tests/ui/iterators/`
 
 These tests revolve around anything to do with iterators, e.g. mismatched types.
@@ -1051,7 +1047,7 @@ Broad category of tests about panics in general, often but not necessarily using
 
 ## `tests/ui/parallel-rustc/`
 
-Efforts towards a [Parallel Rustc Front-end](https://github.com/rust-lang/rust/issues/113349). Includes `-Zthreads=`.
+Regression tests for [Parallel Rustc Front-end](https://github.com/rust-lang/rust/issues/113349).
 
 ## `tests/ui/parser/`
 

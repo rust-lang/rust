@@ -11,7 +11,7 @@
 
 extern crate dylib_default;
 
-#[unsafe(dylib_default::eii1)]
+#[dylib_default::eii1]
 fn other(x: u64) {
     //~^ ERROR multiple implementations of `#[eii1]`
     println!("1{x}");

@@ -179,7 +179,7 @@ fn lint_addr_of_local<'a>(
     expr: &'a Expr<'a>,
 ) {
     // peel casts as they do not interest us here, we want the inner expression.
-    let (inner, _) = super::utils::peel_casts(cx, expr);
+    let inner = super::utils::peel_casts(cx, expr);
 
     if let ExprKind::AddrOf(_, _, inner_of) = inner.kind
         && let ExprKind::Path(ref qpath) = inner_of.peel_blocks().kind

@@ -1,3 +1,7 @@
+//@no-rustfix
+//@error-in-other-file: use of a deprecated field
+//@error-in-other-file: use of a deprecated field
+
 fn main() {}
 
 #[warn(clippy::cognitive_complexity)]

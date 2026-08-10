@@ -30,9 +30,9 @@ use crate::{
     AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
     expr_store::path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     hir::{
-        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, InlineAsm, Label,
-        LabelId, MatchArm, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
-        Statement,
+        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked,
+        InlineAsm, Label, LabelId, MatchArm, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField,
+        RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
     signatures::VariantFields,
@@ -127,7 +127,7 @@ struct ExpressionOnlyStore {
     ///
     /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
-    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
 
     /// Maps expression roots to their origin.
     ///
@@ -154,9 +154,6 @@ struct ExpressionOnlyStore {
     /// and it does not bother us because we use this list for two things: constructing `ExprScopes`, which
     /// works fine with nested exprs, and retrieving inference results, and we copy the inner const's inference
     /// into the outer const.
-    // FIXME: Array repeat is not problematic indeed, but this could still break with exprs in types,
-    // which we do not visit for `ExprScopes` (they're fine for inference though). We either need to visit them,
-    // or use a more complicated search.
     expr_roots: SmallVec<[ExprRoot; 1]>,
 }
 
@@ -171,10 +168,10 @@ pub struct ExpressionStore {
 struct ExpressionOnlySourceMap {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
+    expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
     expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, ExprOrPatId>,
+    pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
@@ -270,15 +267,15 @@ pub struct ExpressionStoreBuilder {
     pub binding_owners: FxHashMap<BindingId, ExprId>,
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
-    ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
+    ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
     inference_roots: Option<SmallVec<[ExprRoot; 1]>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatId>,
+    expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
     expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, ExprOrPatId>,
+    pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
@@ -779,7 +776,6 @@ impl ExpressionStore {
             | Expr::Await { expr }
             | Expr::Ref { expr, mutability: _, rawness: _ }
             | Expr::UnaryOp { expr, op: _ }
-            | Expr::Box { expr }
             | Expr::Const(expr) => {
                 visitor.on_expr(*expr);
             }
@@ -874,7 +870,7 @@ impl ExpressionStore {
                 visitor.on_anon_const_expr(*len);
             }
             TypeRef::Fn(fn_type) => {
-                let FnType { params, is_varargs: _, is_unsafe: _, abi: _ } = &**fn_type;
+                let FnType { params, is_varargs: _, is_unsafe: _, abi: _, binder: _ } = &**fn_type;
                 params.iter().for_each(|(_, param_ty)| visitor.on_type(*param_ty));
             }
             TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
@@ -1175,7 +1171,7 @@ impl ExpressionStoreSourceMap {
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new);
-        self.expr_only()?.expr_map.get(&src).cloned()
+        self.expr_only()?.expr_map.get(&src).cloned().map(ExprOrPatIdPacked::unpack)
     }
 
     pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<MacroCallId> {
@@ -1192,7 +1188,11 @@ impl ExpressionStoreSourceMap {
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<ExprOrPatId> {
-        self.expr_only()?.pat_map.get(&node.map(AstPtr::new)).cloned()
+        self.expr_only()?
+            .pat_map
+            .get(&node.map(AstPtr::new))
+            .cloned()
+            .map(ExprOrPatIdPacked::unpack)
     }
 
     pub fn type_syntax(&self, id: TypeRefId) -> Result<TypeSource, SyntheticSyntax> {
@@ -1226,7 +1226,7 @@ impl ExpressionStoreSourceMap {
 
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprOrPatId> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::MacroExpr>).map(AstPtr::upcast);
-        self.expr_only()?.expr_map.get(&src).copied()
+        self.expr_only()?.expr_map.get(&src).copied().map(ExprOrPatIdPacked::unpack)
     }
 
     pub fn expansions(&self) -> impl Iterator<Item = (&InFile<MacroCallPtr>, &MacroCallId)> {

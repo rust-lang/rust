@@ -39,7 +39,7 @@ use crate::builder::gpu_offload::{
 };
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
-use crate::errors::{
+use crate::diagnostics::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
@@ -962,7 +962,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         for arg in args {
             match arg.val {
                 OperandValue::ZeroSized => {}
-                OperandValue::Uninit => {}
                 OperandValue::Immediate(a) => llargs.push(a),
                 OperandValue::Pair(a, b) => {
                     llargs.push(a);
@@ -1940,7 +1939,7 @@ fn get_args_from_tuple<'ll, 'tcx>(
             result
         }
 
-        OperandValue::ZeroSized | OperandValue::Uninit => vec![],
+        OperandValue::ZeroSized => vec![],
     }
 }
 

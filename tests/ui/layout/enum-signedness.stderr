@@ -1,0 +1,119 @@
+warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:88:5
+   |
+LL |     A = i64::MIN as isize,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+   = note: `#[warn(repr_c_enums_larger_than_int)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:91:5
+   |
+LL |     B = i64::MIN as isize + 1,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+
+warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:108:5
+   |
+LL |     A = i64::MAX as isize - 1,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+
+warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/enum-signedness.rs:111:5
+   |
+LL |     B = i64::MAX as isize,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 155..=156 })
+  --> $DIR/enum-signedness.rs:14:1
+   |
+LL | enum NegativeByteRust {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: 4294967195..=4294967196 })
+  --> $DIR/enum-signedness.rs:22:1
+   |
+LL | enum NegativeByteC {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: 155..=156 })
+  --> $DIR/enum-signedness.rs:30:1
+   |
+LL | enum PositiveByteRust {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u32, valid_range: 155..=156 })
+  --> $DIR/enum-signedness.rs:38:1
+   |
+LL | enum PositiveByteC {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: 0..=2147483648 })
+  --> $DIR/enum-signedness.rs:46:1
+   |
+LL | enum Negative32BitRust {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: 0..=2147483648 })
+  --> $DIR/enum-signedness.rs:54:1
+   |
+LL | enum Negative32BitC {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u32, valid_range: 0..=2147483648 })
+  --> $DIR/enum-signedness.rs:62:1
+   |
+LL | enum Positive32BitRust {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u32, valid_range: 0..=2147483648 })
+  --> $DIR/enum-signedness.rs:70:1
+   |
+LL | enum Positive32BitC {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i64, valid_range: 9223372036854775808..=9223372036854775809 })
+  --> $DIR/enum-signedness.rs:78:1
+   |
+LL | enum Negative64BitRust {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i64, valid_range: 9223372036854775808..=9223372036854775809 })
+  --> $DIR/enum-signedness.rs:86:1
+   |
+LL | enum Negative64BitC {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u64, valid_range: 9223372036854775806..=9223372036854775807 })
+  --> $DIR/enum-signedness.rs:98:1
+   |
+LL | enum Positive64BitRust {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u64, valid_range: 9223372036854775806..=9223372036854775807 })
+  --> $DIR/enum-signedness.rs:106:1
+   |
+LL | enum Positive64BitC {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors; 4 warnings emitted
+

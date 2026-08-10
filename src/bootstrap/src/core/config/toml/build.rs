@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::ReplaceOpt;
-use crate::core::config::{CompilerBuiltins, Merge, StringOrBool};
+use crate::core::config::{Allocator, CompilerBuiltins, DebuggerPath, Merge, StringOrBool};
 use crate::{HashSet, PathBuf, define_config, exit};
 
 define_config! {
@@ -33,8 +33,8 @@ define_config! {
         library_docs_private_items: Option<bool> = "library-docs-private-items",
         docs_minification: Option<bool> = "docs-minification",
         submodules: Option<bool> = "submodules",
-        gdb: Option<String> = "gdb",
-        lldb: Option<String> = "lldb",
+        gdb: Option<DebuggerPath> = "gdb",
+        lldb: Option<DebuggerPath> = "lldb",
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm", // unused, present for compatibility
         yarn: Option<String> = "yarn",
@@ -72,14 +72,12 @@ define_config! {
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
         compiletest_allow_stage0: Option<bool> = "compiletest-allow-stage0",
-        /// No longer has any effect; kept (for now) to avoid breaking people's configs.
-        /// FIXME(#146929): Remove this in 2026.
-        compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         tidy_extra_checks: Option<String> = "tidy-extra-checks",
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
         record_failed_tests_path: Option<String> = "record_failed_tests_path",
         sde: Option<String> = "sde",
+        allocator: Option<Allocator> = "allocator",
     }
 }
 

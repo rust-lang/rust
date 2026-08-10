@@ -17,6 +17,8 @@ use crate::traits::specialization_graph;
 pub enum CallDesugaringKind {
     /// for _ in x {} calls x.into_iter()
     ForLoopIntoIter,
+    /// for await _ in x {} calls x.into_async_iter()
+    ForLoopIntoAsyncIter,
     /// for _ in x {} calls iter.next()
     ForLoopNext,
     /// x? calls x.branch()
@@ -30,9 +32,22 @@ pub enum CallDesugaringKind {
 }
 
 impl CallDesugaringKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            CallDesugaringKind::ForLoopIntoIter => "`for` loop",
+            CallDesugaringKind::ForLoopIntoAsyncIter => "`for await` loop",
+            CallDesugaringKind::ForLoopNext => "`for` loop",
+            CallDesugaringKind::QuestionBranch => "question mark operator",
+            CallDesugaringKind::QuestionFromResidual => "question mark operator",
+            CallDesugaringKind::TryBlockFromOutput => "try block",
+            CallDesugaringKind::Await => "`await`",
+        }
+    }
+
     pub fn trait_def_id(self, tcx: TyCtxt<'_>) -> DefId {
         match self {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),
+            Self::ForLoopIntoAsyncIter => tcx.get_diagnostic_item(sym::IntoAsyncIterator).unwrap(),
             Self::ForLoopNext => tcx.require_lang_item(LangItem::Iterator, DUMMY_SP),
             Self::QuestionBranch | Self::TryBlockFromOutput => {
                 tcx.require_lang_item(LangItem::Try, DUMMY_SP)
@@ -136,6 +151,10 @@ pub fn call_kind<'tcx>(
         && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
     {
         Some((CallDesugaringKind::ForLoopIntoIter, method_args.type_at(0)))
+    } else if tcx.is_lang_item(method_did, LangItem::IntoAsyncIterIntoIter)
+        && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+    {
+        Some((CallDesugaringKind::ForLoopIntoAsyncIter, method_args.type_at(0)))
     } else if tcx.is_lang_item(method_did, LangItem::IteratorNext)
         && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
     {

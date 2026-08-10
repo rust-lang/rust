@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry::*;
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
@@ -16,6 +17,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
+use rustc_session::cstore::CrateDepKind;
 use rustc_span::Span;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
@@ -54,6 +56,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         return Default::default();
     }
 
+    reachable_non_generics_helper(tcx)
+}
+
+/// Exposed separately *without* the "should codegen" check so Miri can access it.
+pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportInfo> {
     let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
@@ -82,6 +89,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
 
             // Only consider nodes that actually have exported symbols.
             match tcx.def_kind(def_id) {
+                DefKind::Fn | DefKind::AssocFn
+                    if tcx.constness(def_id) == hir::Constness::Const { always: true } =>
+                {
+                    return None;
+                }
                 DefKind::Fn | DefKind::Static { .. } => {}
                 DefKind::AssocFn if tcx.impl_of_assoc(def_id.to_def_id()).is_some() => {}
                 _ => return None,
@@ -176,6 +188,13 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
         return &[];
     }
 
+    exported_non_generic_symbols_helper(tcx)
+}
+
+/// Exposed separately *without* the "should codegen" check so Miri can access it.
+pub fn exported_non_generic_symbols_helper<'tcx>(
+    tcx: TyCtxt<'tcx>,
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
     let sorted = tcx.with_stable_hashing_context(|mut hcx| {
@@ -416,6 +435,14 @@ fn upstream_monomorphizations_provider(
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
+        // It should be possible to compile to build a crate against a conditional dependency then
+        // later link that crate without the conditional dependency, so we cannot use exported
+        // generics from conditional dependencies.
+        // https://github.com/rust-lang/rust/issues/159682
+        if tcx.crate_dep_kind(cnum) == CrateDepKind::Conditional {
+            continue;
+        }
+
         for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),

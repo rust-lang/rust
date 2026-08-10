@@ -10,13 +10,13 @@ LL | #[inline(please,no)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(please,no)]
+LL + #[inline]
+   |
+LL - #[inline(please,no)]
 LL + #[inline(always)]
    |
 LL - #[inline(please,no)]
 LL + #[inline(never)]
-   |
-LL - #[inline(please,no)]
-LL + #[inline]
    |
 
 error[E0805]: malformed `inline` attribute input
@@ -30,13 +30,13 @@ LL | #[inline()]
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
+LL - #[inline()]
+LL + #[inline]
+   |
 LL | #[inline(always)]
    |          ++++++
 LL | #[inline(never)]
    |          +++++
-LL - #[inline()]
-LL + #[inline]
-   |
 
 error: aborting due to 2 previous errors
 

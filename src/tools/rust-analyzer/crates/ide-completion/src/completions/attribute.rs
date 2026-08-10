@@ -40,7 +40,6 @@ pub(crate) fn complete_known_attribute_input(
     let path = attribute.path()?;
     let segments = path.segments().map(|s| s.name_ref()).collect::<Option<Vec<_>>>()?;
     let segments = segments.iter().map(|n| n.text()).collect::<Vec<_>>();
-    let segments = segments.iter().map(|t| t.as_str()).collect::<Vec<_>>();
     let tt = attribute.token_tree()?;
 
     match segments.as_slice() {

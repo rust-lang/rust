@@ -355,6 +355,14 @@ impl<I: Interner, T: TypeVisitable<I>> EarlyBinder<I, T> {
 }
 
 impl<I: Interner, T> EarlyBinder<I, T> {
+    /// Use `bind/bind_iter/bind_no_rigid_aliases` instead.
+    /// Don't use this unless you know what you're doing.
+    pub fn bind_unchecked(value: T) -> EarlyBinder<I, T> {
+        EarlyBinder { value, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T> EarlyBinder<I, T> {
     pub fn as_ref(&self) -> EarlyBinder<I, &T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
@@ -658,7 +666,7 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
         // is unnecessary. We may want to track explicitly whether `EarlyBinder`
         // contains something that has been normalized already.
         // Also do that for other types who have `instantiate_identity` method,
-        // e.g., `GenericPredicates` and `ConstConditions`.
+        // e.g., `GenericClauses` and `ConstConditions`.
         //
         // This is annoying, as e.g. `type_of` for opaque types is normalized,
         // while `type_of` for free type aliases is not.

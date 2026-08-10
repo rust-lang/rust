@@ -60,7 +60,6 @@ This API is completely unstable and subject to change.
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
-#![feature(option_into_flat_iter)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
@@ -209,7 +208,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             variance::dump::variances(tcx);
             collect::dump::generics(tcx);
             collect::dump::opaque_hidden_types(tcx);
-            collect::dump::predicates_and_item_bounds(tcx);
+            collect::dump::clauses_and_item_bounds(tcx);
             collect::dump::def_parents(tcx);
             collect::dump::vtables(tcx);
         });

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ignore-tidy-file-linelength
 
 set -eu
@@ -11,23 +11,26 @@ X_PY="$1"
 # that bugs which only surface when the GC runs at a specific time are more likely to cause CI to fail.
 # This significantly increases the runtime of our test suite, or we'd do this in PR CI too.
 if [ -z "${PR_CI_JOB:-}" ]; then
-    MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri
+    MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 miri cargo-miri
 else
-    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri
+    python3 "$X_PY" test --stage 2 miri cargo-miri
 fi
+# Run the test suite again with mir optimizations, to catch some miscompilations.
+MIRIFLAGS="-O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 python3 "$X_PY" test --stage 2 miri -- tests/{pass,panic}
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets via cross-testing, in particular all tier 1 targets.
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Only this branch runs in PR CI.
     # Fully test all main OSes, and all main architectures.
-    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target aarch64-apple-darwin
-    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target i686-pc-windows-msvc
-    # Only run "pass" tests for the remaining targets, which is quite a bit faster.
-    python3 "$X_PY" test --stage 2 src/tools/miri --target x86_64-pc-windows-gnu --test-args pass
-    python3 "$X_PY" test --stage 2 src/tools/miri --target i686-unknown-linux-gnu --test-args pass
-    python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-unknown-linux-gnu --test-args pass
-    python3 "$X_PY" test --stage 2 src/tools/miri --target s390x-unknown-linux-gnu --test-args pass
+    python3 "$X_PY" test --stage 2 miri cargo-miri --target aarch64-apple-darwin
+    python3 "$X_PY" test --stage 2 miri cargo-miri --target i686-pc-windows-msvc
+    # Only run "pass" tests for the remaining targets, which is a bit faster. We have to use `miri`
+    # instead of `src/tools/miri` here to avoid also running the cargo-miri tests.
+    python3 "$X_PY" test --stage 2 miri --target x86_64-pc-windows-gnu -- tests/pass
+    python3 "$X_PY" test --stage 2 miri --target i686-unknown-linux-gnu -- tests/pass
+    python3 "$X_PY" test --stage 2 miri --target aarch64-unknown-linux-gnu -- tests/pass
+    python3 "$X_PY" test --stage 2 miri --target s390x-unknown-linux-gnu -- tests/pass
     ;;
   x86_64-pc-windows-msvc)
     # Strangely, Linux targets do not work here. cargo always says
@@ -36,7 +39,7 @@ case $HOST_TARGET in
     #FIXME: Re-enable this once CI issues are fixed
     # See <https://github.com/rust-lang/rust/issues/127883>
     # For now, these tests are moved to `x86_64-msvc-ext2` in `src/ci/github-actions/jobs.yml`.
-    #python3 "$X_PY" test --stage 2 src/tools/miri --target x86_64-apple-darwin --test-args pass
+    #python3 "$X_PY" test --stage 2 miri --target x86_64-apple-darwin -- pass
     ;;
   *)
     echo "FATAL: unexpected host $HOST_TARGET"
@@ -48,7 +51,7 @@ esac
 
 #FIXME: Re-enable this for msvc once CI issues are fixed
 if [ "$HOST_TARGET" != "x86_64-pc-windows-msvc" ]; then
-  python3 "$X_PY" miri --stage 2 library/core --test-args notest
-  python3 "$X_PY" miri --stage 2 library/alloc --test-args notest
-  python3 "$X_PY" miri --stage 2 library/std --test-args notest
+  python3 "$X_PY" miri --stage 2 library/core -- notest
+  python3 "$X_PY" miri --stage 2 library/alloc -- notest
+  python3 "$X_PY" miri --stage 2 library/std -- notest
 fi

@@ -10,7 +10,7 @@ use crate::*;
 fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let [f] = check_intrinsic_arg_count(args)?;
     math::sqrt_op::<F>(this, f, dest)
@@ -45,7 +45,7 @@ fn is_host_unary_float_op(intrinsic_name: &str) -> Option<(FloatTy, HostUnaryFlo
 fn pow_intrinsic<'tcx, S: Semantics>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
 where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
@@ -69,7 +69,7 @@ where
 fn powi_intrinsic<'tcx, S: Semantics>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
 where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
@@ -98,7 +98,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         intrinsic_name: &str,
         _generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
@@ -252,4 +252,40 @@ pub(crate) fn compute_crc32(crc: u32, data: u64, bit_size: u32, polynomial: u128
     }
 
     u32::try_from(dividend).unwrap().reverse_bits()
+}
+
+// sha256 primitives shared by the x86 and aarch64 intrinsics. Math helpers adapted from RustCrypto soft impl:
+// https://github.com/RustCrypto/hashes/blob/3d2bc57db40fd6aeb25d6c6da98d67e2784c2985/sha2/src/sha256/soft/compact.rs
+pub(crate) mod sha256 {
+    pub(crate) fn sigma0(x: u32) -> u32 {
+        x.rotate_right(7) ^ x.rotate_right(18) ^ (x >> 3)
+    }
+
+    pub(crate) fn sigma1(x: u32) -> u32 {
+        x.rotate_right(17) ^ x.rotate_right(19) ^ (x >> 10)
+    }
+
+    /// One round of the compression; `wk` is the round's `w[i] + k[i]`.
+    pub(crate) fn round(state: [u32; 8], wk: u32) -> [u32; 8] {
+        let [a, b, c, d, e, f, g, h] = state;
+
+        let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+        let ch = (e & f) ^ ((!e) & g);
+        let t1 = s1.wrapping_add(ch).wrapping_add(wk).wrapping_add(h);
+
+        let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+        let maj = (a & b) ^ (a & c) ^ (b & c);
+        let t2 = s0.wrapping_add(maj);
+
+        [
+            t1.wrapping_add(t2), // a
+            a,                   // b
+            b,                   // c
+            c,                   // d
+            d.wrapping_add(t1),  // e
+            e,                   // f
+            f,                   // g
+            g,                   // h
+        ]
+    }
 }

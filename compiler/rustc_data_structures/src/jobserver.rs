@@ -1,4 +1,4 @@
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, OnceLock};
 
 pub use jobserver_crate::Acquired;
 use jobserver_crate::{Client, FromEnv, FromEnvErrorKind, HelperThread};
@@ -6,68 +6,49 @@ use parking_lot::{Condvar, Mutex};
 
 // We stick the jobserver client into a global and initialize it once, because there could be
 // multiple compiler instances in this process, and the jobserver is per-process.
-static GLOBAL_CLIENT: LazyLock<Result<Client, String>> = LazyLock::new(|| {
-    // Safety: the checked client construction ensures that the jobserver file descriptors
-    // (if any) are open and valid. We also try to initialize the jobserver as early as possible
-    // to avoid unrelated file descriptors with matching values becoming open and valid between
-    // the process start and the jobserver initialization.
-    let FromEnv { client, var } = unsafe { Client::from_env_ext(true) };
-
-    let error = match client {
-        Ok(client) => return Ok(client),
-        Err(e) => e,
-    };
-
-    if matches!(
-        error.kind(),
-        FromEnvErrorKind::NoEnvVar
-            | FromEnvErrorKind::NoJobserver
-            | FromEnvErrorKind::NegativeFd
-            | FromEnvErrorKind::Unsupported
-    ) {
-        return Ok(default_client());
-    }
-
-    // Environment specifies jobserver, but it looks incorrect.
-    // Safety: `error.kind()` should be `NoEnvVar` if `var == None`.
-    let (name, value) = var.unwrap();
-    Err(format!(
-        "failed to connect to jobserver from environment variable `{name}={:?}`: {error}",
-        value
-    ))
-});
-
-// Creates a new jobserver if there's no inherited one.
-fn default_client() -> Client {
-    // Pick a "reasonable maximum" capping out at 32
-    // so we don't take everything down by hogging the process run queue.
-    // The fixed number is used to have deterministic compilation across machines.
-    let client = Client::new(32).expect("failed to create jobserver");
-
-    // Acquire the single token that is always held by the rustc process.
-    // This is an equivalent of the single token held by a higher level build tool while running
-    // this instance of rustc. This token is never released - if we are here, then rustc owns the
-    // jobserver, it is teared down when rustc exits, and there's no one to return the token to.
-    client.acquire_raw().ok();
-
-    client
-}
-
-static GLOBAL_CLIENT_CHECKED: OnceLock<Client> = OnceLock::new();
+static CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Initializes a jobserver client for the current rustc process.
 /// If inheriting jobserver from the environment fails for some reason, an new jobserver owned by
 /// the current rustc process will be created. If the inheritance failure reason is non-benign,
 /// the passed callback will be used to report the error.
-pub fn initialize_checked(report: impl FnOnce(&'static str)) {
-    let client_checked = match &*GLOBAL_CLIENT {
-        Ok(client) => client.clone(),
-        Err(e) => {
-            report(e);
-            default_client()
+pub fn initialize(limit: usize, report: impl FnOnce(String)) {
+    CLIENT.get_or_init(|| {
+        // Safety: the checked client construction ensures that the jobserver file descriptors
+        // (if any) are open and valid. We also try to initialize the jobserver as early as possible
+        // to avoid unrelated file descriptors with matching values becoming open and valid between
+        // the process start and the jobserver initialization.
+        let FromEnv { client, var } = unsafe { Client::from_env_ext(true) };
+
+        let error = match client {
+            Ok(client) => return client,
+            Err(error) => error,
+        };
+
+        if !matches!(
+            error.kind(),
+            FromEnvErrorKind::NoEnvVar
+                | FromEnvErrorKind::NoJobserver
+                | FromEnvErrorKind::NegativeFd
+                | FromEnvErrorKind::Unsupported
+        ) {
+            // Environment specifies jobserver, but it looks incorrect.
+            // Can unwrap because `var` is `None` only when the error kind is `NoEnvVar`.
+            let (name, value) = var.unwrap();
+            let msg = "failed to connect to jobserver from environment variable";
+            report(format!("{msg} `{name}={value:?}`: {error}"));
         }
-    };
-    GLOBAL_CLIENT_CHECKED.set(client_checked).ok();
+
+        // Create a new jobserver if there's no inherited one.
+        let client = Client::new(limit).expect("failed to create jobserver");
+        // Acquire the single token that is always held by the rustc process.
+        // This is an equivalent of the single token held by a higher level build tool while
+        // running this instance of rustc. This token is never released - if we are here, then
+        // rustc owns the jobserver, it is teared down when rustc exits, and there's no one to
+        // return the token to.
+        client.acquire_raw().ok();
+        client
+    });
 }
 
 /// Returns the jobserver client previously initialized by `initialize_checked`.
@@ -86,7 +67,7 @@ pub fn initialize_checked(report: impl FnOnce(&'static str)) {
 /// To avoid situations like this use the `jobserver::Proxy` wrapper instead,
 /// it will ensure that the last token is never released.
 pub fn client() -> Client {
-    GLOBAL_CLIENT_CHECKED.get().expect("uninitialized jobserver client").clone()
+    CLIENT.get().expect("uninitialized jobserver client").clone()
 }
 
 struct ProxyData {

@@ -11,6 +11,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -22,7 +23,7 @@ use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode}
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
-use super::operand::OperandValue::{self, Immediate, Pair, Ref, Uninit, ZeroSized};
+use super::operand::OperandValue::{self, Immediate, Pair, Ref, ZeroSized};
 use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
@@ -612,9 +613,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
-                    OperandValue::Uninit => {
-                        bug!("uninit return value shouldn't be in PassMode::Cast")
-                    }
                 };
 
                 if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) {
@@ -1489,13 +1487,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
                     let const_value = self.eval_mir_constant(value);
-                    let string = common::asm_const_to_str(
-                        bx.tcx(),
-                        span,
-                        const_value,
-                        bx.layout_of(value.ty()),
-                    );
-                    InlineAsmOperandRef::Const { string }
+                    let mir::ConstValue::Scalar(scalar) = const_value else {
+                        span_bug!(
+                            span,
+                            "expected Scalar for promoted asm const, but got {:#?}",
+                            const_value
+                        )
+                    };
+                    InlineAsmOperandRef::Const {
+                        value: common::asm_const_ptr_clean(bx.tcx(), scalar),
+                        ty: value.ty(),
+                    }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
@@ -1507,13 +1509,30 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
-                        InlineAsmOperandRef::SymFn { instance }
+
+                        InlineAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                bx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                                bx,
+                            ),
+                            ty: Ty::new_fn_ptr(bx.tcx(), const_.ty().fn_sig(bx.tcx())),
+                        }
                     } else {
                         span_bug!(span, "invalid type for asm sym (fn)");
                     }
                 }
                 mir::InlineAsmOperand::SymStatic { def_id } => {
-                    InlineAsmOperandRef::SymStatic { def_id }
+                    if bx.tcx().is_thread_local_static(def_id) {
+                        InlineAsmOperandRef::SymThreadLocalStatic { def_id }
+                    } else {
+                        InlineAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                bx.tcx().reserve_and_set_static_alloc(def_id).into(),
+                                bx,
+                            ),
+                            ty: bx.tcx().static_ptr_ty(def_id, bx.typing_env()),
+                        }
+                    }
                 }
                 mir::InlineAsmOperand::Label { target_index } => {
                     InlineAsmOperandRef::Label { label: self.llbb(targets[target_index]) }
@@ -1942,7 +1961,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
-            Immediate(_) | Pair(..) | Uninit => match arg.mode {
+            Immediate(_) | Pair(..) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     // Indirect argument may have higher alignment requirements than the type's
                     // alignment. This can happen, e.g. when passing types with <4 byte alignment
@@ -1962,14 +1981,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     op.store_with_annotation(bx, scratch);
                     (scratch.val.llval, scratch.val.align, true)
                 }
-                PassMode::Direct(_) => {
-                    if let Uninit = op.val {
-                        let ibty = bx.cx().immediate_backend_type(arg.layout);
-                        (bx.cx().const_undef(ibty), arg.layout.align.abi, false)
-                    } else {
-                        (op.immediate(), arg.layout.align.abi, false)
-                    }
-                }
+                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
                 PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {

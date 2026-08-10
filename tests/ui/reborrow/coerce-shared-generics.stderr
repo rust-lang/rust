@@ -1,8 +1,18 @@
-error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-generics.rs:26:38
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/coerce-shared-generics.rs:26:1
    |
-LL | impl<'a, T, U: Copy, const N: usize> CoerceShared<BufferRef<'a, T, U, N>>
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   impl<'a, T, U: Copy, const N: usize> CoerceShared<BufferRef<'a, T, U, N>>
+   |   ^                                                 ---------------------- target type has 2 non-ZST reborrow data fields
+   |  _|
+   | |
+LL | |
+LL | |     for BufferMut<'a, T, U, N>
+   | |         ---------------------- source type has 2 non-ZST reborrow data fields
+LL | | {
+LL | | }
+   | |_^ in this `CoerceShared` implementation
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
 
 error: aborting due to 1 previous error
 

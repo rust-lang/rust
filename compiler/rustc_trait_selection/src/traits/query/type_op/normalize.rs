@@ -89,13 +89,13 @@ impl<'tcx> Normalizable<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-/// This impl is not needed, since we never normalize type outlives predicates
+/// This impl is not needed, since we never normalize type outlives clauses
 /// in the old solver, but is required by trait bounds to be happy.
-impl<'tcx> Normalizable<'tcx> for ty::PolyTypeOutlivesPredicate<'tcx> {
+impl<'tcx> Normalizable<'tcx> for ty::PolyTypeOutlivesClause<'tcx> {
     fn type_op_method(
         _tcx: TyCtxt<'tcx>,
         _canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<'tcx, Self>>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self>, NoSolution> {
-        unreachable!("we never normalize PolyTypeOutlivesPredicate")
+        unreachable!("we never normalize PolyTypeOutlivesClause")
     }
 }

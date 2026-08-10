@@ -2,6 +2,7 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
+mod atomic;
 mod simd;
 
 use std::assert_matches;
@@ -20,9 +21,9 @@ use tracing::trace;
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format, err_unsup_format, interp_ok,
-    throw_inval, throw_ub, throw_ub_format,
+    AllocId, AtomicRmwOp, CheckInAllocMsg, ImmTy, Immediate, InterpCx, InterpResult, Machine, OpTy,
+    PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format,
+    err_unsup_format, interp_ok, throw_inval, throw_ub, throw_ub_format,
 };
 use crate::interpret::{MPlaceTy, Writeable};
 
@@ -177,6 +178,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
+        if intrinsic_name.as_str().starts_with("atomic_") {
+            return self.eval_atomic_intrinsic(intrinsic_name, instance_args, args, dest, ret);
+        }
         if intrinsic_name.as_str().starts_with("simd_") {
             return self.eval_simd_intrinsic(intrinsic_name, instance_args, args, dest, ret);
         }
@@ -472,7 +476,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Check that the memory between them is dereferenceable at all, starting from the
                 // origin pointer: `dist` is `a - b`, so it is based on `b`.
-                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable)
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable("pointer"))
                     .map_err_kind(|_| {
                         // This could mean they point to different allocations, or they point to the same allocation
                         // but not the entire range between the pointers is in-bounds.
@@ -494,7 +498,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_ptr_access_signed(
                     a,
                     dist.checked_neg().unwrap(), // i64::MIN is impossible as no allocation can be that large
-                    CheckInAllocMsg::Dereferenceable,
+                    CheckInAllocMsg::Dereferenceable("pointer"),
                 )
                 .map_err_kind(|_| {
                     // Make the error more specific.
@@ -1117,7 +1121,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // ourselves. This value is now in `left.` The one that started out in `left` already got
         // validated by the copy above.
         if M::enforce_validity(self, left.layout) {
-            self.validate_operand(
+            self.validate_place(
                 &left.clone().into(),
                 M::enforce_validity_recursively(self, left.layout),
                 /*reset_provenance_and_padding*/ true,

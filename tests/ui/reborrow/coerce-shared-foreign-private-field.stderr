@@ -1,0 +1,10 @@
+error: implementing `CoerceShared` requires all target type fields to be accessible from the impl
+  --> $DIR/coerce-shared-foreign-private-field.rs:16:1
+   |
+LL | impl<'a> CoerceShared<ForeignRef<'a>> for LocalMut<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       target type `ForeignRef` has inaccessible reborrow data fields
+
+error: aborting due to 1 previous error
+

@@ -6,12 +6,11 @@ use clippy_utils::{
     SpanlessEq, can_move_expr_to_closure_no_visit, desugar_await, higher, is_expr_final_block_expr,
     is_expr_used_or_unified, paths, peel_hir_expr_while, span_contains_non_whitespace, sym,
 };
-use core::fmt::{self, Write};
+use core::fmt::{self, Write as _};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
-use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
+use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{DUMMY_SP, Span, SyntaxContext};

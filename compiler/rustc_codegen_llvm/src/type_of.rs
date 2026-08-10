@@ -22,7 +22,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         BackendRepr::Scalar(_) => bug!("handled elsewhere"),
         BackendRepr::SimdVector { element, count } => {
             let element = layout.scalar_llvm_type_at(cx, element);
-            return cx.type_vector(element, count);
+            return cx.type_vector(element, count.as_u64());
         }
         BackendRepr::SimdScalableVector { ref element, count, number_of_vectors } => {
             let element = if element.is_bool() {
@@ -31,7 +31,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 layout.scalar_llvm_type_at(cx, *element)
             };
 
-            let vector_type = cx.type_scalable_vector(element, count);
+            let vector_type = cx.type_scalable_vector(element, count.as_u64());
             return match number_of_vectors.0 {
                 1 => vector_type,
                 2 => cx.type_struct(&[vector_type, vector_type], false),

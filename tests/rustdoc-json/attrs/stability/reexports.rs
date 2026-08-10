@@ -12,9 +12,8 @@
 #[unstable(feature = "unstable_source_mod", issue = "none")]
 pub mod unstable_source_mod {
     //@ set stable_in_unstable = "$.index[?(@.name=='StableInUnstable')].id"
-    //@ is "$.index[?(@.name=='StableInUnstable')].stability.level" '"stable"'
     //@ is "$.index[?(@.name=='StableInUnstable')].stability.feature" '"stable_in_unstable"'
-    //@ is "$.index[?(@.name=='StableInUnstable')].stability.since" '"1.0.0"'
+    //@ is "$.index[?(@.name=='StableInUnstable')].stability.level.stable.since" '"1.0.0"'
     #[stable(feature = "stable_in_unstable", since = "1.0.0")]
     pub struct StableInUnstable;
 
@@ -27,26 +26,22 @@ pub mod unstable_source_mod {
 }
 
 //@ is "$.index[?(@.inner.use.name=='ReexportedStableInUnstable')].inner.use.id" $stable_in_unstable
-//@ is "$.index[?(@.inner.use.name=='ReexportedStableInUnstable')].stability.level" '"stable"'
 //@ is "$.index[?(@.inner.use.name=='ReexportedStableInUnstable')].stability.feature" '"stable_reexport"'
-//@ is "$.index[?(@.inner.use.name=='ReexportedStableInUnstable')].stability.since" '"3.0.0"'
+//@ is "$.index[?(@.inner.use.name=='ReexportedStableInUnstable')].stability.level.stable.since" '"3.0.0"'
 //@ is "$.index[?(@.inner.use.name=='ReexportedStableInUnstable')].attrs" []
 #[stable(feature = "stable_reexport", since = "3.0.0")]
 pub use crate::unstable_source_mod::StableInUnstable as ReexportedStableInUnstable;
 //@ is "$.index[?(@.inner.use.source=='crate::unstable_source_mod')].inner.use.is_glob" true
-//@ is "$.index[?(@.inner.use.source=='crate::unstable_source_mod')].stability.level" '"stable"'
 //@ is "$.index[?(@.inner.use.source=='crate::unstable_source_mod')].stability.feature" '"stable_glob_reexport"'
-//@ is "$.index[?(@.inner.use.source=='crate::unstable_source_mod')].stability.since" '"4.0.0"'
+//@ is "$.index[?(@.inner.use.source=='crate::unstable_source_mod')].stability.level.stable.since" '"4.0.0"'
 #[stable(feature = "stable_glob_reexport", since = "4.0.0")]
 pub use crate::unstable_source_mod::*;
 //@ is "$.index[?(@.inner.use.name=='GroupedStableReexport')].inner.use.id" $stable_in_unstable
-//@ is "$.index[?(@.inner.use.name=='GroupedStableReexport')].stability.level" '"stable"'
 //@ is "$.index[?(@.inner.use.name=='GroupedStableReexport')].stability.feature" '"stable_grouped_reexport"'
-//@ is "$.index[?(@.inner.use.name=='GroupedStableReexport')].stability.since" '"3.5.0"'
+//@ is "$.index[?(@.inner.use.name=='GroupedStableReexport')].stability.level.stable.since" '"3.5.0"'
 //@ is "$.index[?(@.inner.use.name=='SecondGroupedStableReexport')].inner.use.id" $second_stable_in_unstable
-//@ is "$.index[?(@.inner.use.name=='SecondGroupedStableReexport')].stability.level" '"stable"'
 //@ is "$.index[?(@.inner.use.name=='SecondGroupedStableReexport')].stability.feature" '"stable_grouped_reexport"'
-//@ is "$.index[?(@.inner.use.name=='SecondGroupedStableReexport')].stability.since" '"3.5.0"'
+//@ is "$.index[?(@.inner.use.name=='SecondGroupedStableReexport')].stability.level.stable.since" '"3.5.0"'
 #[stable(feature = "stable_grouped_reexport", since = "3.5.0")]
 pub use crate::unstable_source_mod::{
     SecondStableInUnstable as SecondGroupedStableReexport,
@@ -74,23 +69,19 @@ pub mod unstable_reexport_source_mod {
 //@ is "$.index[?(@.inner.use.name=='UnstableReexportedStable')].inner.use.id" $stable_for_unstable_reexport
 //@ is "$.index[?(@.inner.use.name=='UnstableReexportedStable')].stability.level" '"unstable"'
 //@ is "$.index[?(@.inner.use.name=='UnstableReexportedStable')].stability.feature" '"unstable_reexport"'
-//@ !has "$.index[?(@.inner.use.name=='UnstableReexportedStable')].stability.since"
 #[unstable(feature = "unstable_reexport", issue = "none")]
 pub use crate::unstable_reexport_source_mod::StableForUnstableReexport as UnstableReexportedStable;
 //@ is "$.index[?(@.inner.use.source=='crate::unstable_reexport_source_mod')].inner.use.is_glob" true
 //@ is "$.index[?(@.inner.use.source=='crate::unstable_reexport_source_mod')].stability.level" '"unstable"'
 //@ is "$.index[?(@.inner.use.source=='crate::unstable_reexport_source_mod')].stability.feature" '"unstable_glob_reexport"'
-//@ !has "$.index[?(@.inner.use.source=='crate::unstable_reexport_source_mod')].stability.since"
 #[unstable(feature = "unstable_glob_reexport", issue = "none")]
 pub use crate::unstable_reexport_source_mod::*;
 //@ is "$.index[?(@.inner.use.name=='GroupedUnstableReexport')].inner.use.id" $grouped_stable_for_unstable_reexport
 //@ is "$.index[?(@.inner.use.name=='GroupedUnstableReexport')].stability.level" '"unstable"'
 //@ is "$.index[?(@.inner.use.name=='GroupedUnstableReexport')].stability.feature" '"unstable_grouped_reexport"'
-//@ !has "$.index[?(@.inner.use.name=='GroupedUnstableReexport')].stability.since"
 //@ is "$.index[?(@.inner.use.name=='SecondGroupedUnstableReexport')].inner.use.id" $second_grouped_stable_for_unstable_reexport
 //@ is "$.index[?(@.inner.use.name=='SecondGroupedUnstableReexport')].stability.level" '"unstable"'
 //@ is "$.index[?(@.inner.use.name=='SecondGroupedUnstableReexport')].stability.feature" '"unstable_grouped_reexport"'
-//@ !has "$.index[?(@.inner.use.name=='SecondGroupedUnstableReexport')].stability.since"
 #[unstable(feature = "unstable_grouped_reexport", issue = "none")]
 pub use crate::unstable_reexport_source_mod::{
     GroupedStableForUnstableReexport as GroupedUnstableReexport,

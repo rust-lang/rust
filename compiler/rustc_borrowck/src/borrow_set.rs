@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location, traversal};
 use rustc_middle::ty::data_structures::IndexSet;
-use rustc_middle::ty::{RegionUtilitiesExt, RegionVid, TyCtxt};
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_mir_dataflow::move_paths::MoveData;
 use smallvec::{SmallVec, smallvec};
@@ -80,34 +80,38 @@ impl<'tcx> BorrowSet<'tcx> {
         }
     }
 
-    // Public method to support Aquascope.
+    // Public method to support Aquascope and Creusot.
     /// Iterate through all BorrowData in the BorrowSet.
     pub fn iter(&self) -> impl Iterator<Item = &BorrowData<'tcx>> {
         self.borrows.iter()
     }
 
-    // The following functions are not depended upon by outside consumers.
-    pub(crate) fn locals_state_at_exit(&self) -> &LocalsStateAtExit {
+    // Public method to support Creusot.
+    pub fn locals_state_at_exit(&self) -> &LocalsStateAtExit {
         &self.locals_state_at_exit
     }
 
-    pub(crate) fn len(&self) -> usize {
+    // Public method to support Creusot.
+    pub fn len(&self) -> usize {
         self.borrows.len()
     }
 
-    pub(crate) fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
         self.borrows.iter_enumerated()
     }
 
-    pub(crate) fn activations_at_location(&self, location: &Location) -> &[BorrowIndex] {
+    // Public method to support Creusot.
+    pub fn activations_at_location(&self, location: &Location) -> &[BorrowIndex] {
         self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
     }
 
-    pub(crate) fn borrows_at_location(&self, location: &Location) -> Option<&[BorrowIndex]> {
+    // Public method to support Creusot.
+    pub fn borrows_at_location(&self, location: &Location) -> Option<&[BorrowIndex]> {
         self.location_map.get(location).map(|v| v.as_slice())
     }
 
-    pub(crate) fn borrows_on_local(&self, local: Local) -> Option<&IndexSet<BorrowIndex>> {
+    // Public method to support Creusot.
+    pub fn borrows_on_local(&self, local: Local) -> Option<&IndexSet<BorrowIndex>> {
         self.local_map.get(&local)
     }
 }
@@ -217,7 +221,7 @@ impl LocalsStateAtExit {
                 HasStorageDead(DenseBitSet::new_empty(body.local_decls.len()));
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
-            for move_out in &move_data.moves {
+            for move_out in &move_data.move_outs {
                 has_storage_dead_or_moved.insert(move_data.base_local(move_out.path));
             }
             LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved }

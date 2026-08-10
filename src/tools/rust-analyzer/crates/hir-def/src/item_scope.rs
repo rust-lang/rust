@@ -12,7 +12,7 @@ use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use span::Edition;
-use stdx::format_to;
+use stdx::{format_to, impl_from};
 use syntax::ast;
 use thin_vec::ThinVec;
 
@@ -37,14 +37,7 @@ pub enum ImportOrExternCrate {
     ExternCrate(ExternCrateId),
 }
 
-impl From<ImportOrGlob> for ImportOrExternCrate {
-    fn from(value: ImportOrGlob) -> Self {
-        match value {
-            ImportOrGlob::Glob(it) => ImportOrExternCrate::Glob(it),
-            ImportOrGlob::Import(it) => ImportOrExternCrate::Import(it),
-        }
-    }
-}
+impl_from!(ImportOrGlob { Glob, Import } for ImportOrExternCrate);
 
 impl ImportOrExternCrate {
     pub fn import_or_glob(self) -> Option<ImportOrGlob> {
@@ -101,24 +94,8 @@ pub enum ImportOrDef {
     Def(ModuleDefId),
 }
 
-impl From<ImportOrExternCrate> for ImportOrDef {
-    fn from(value: ImportOrExternCrate) -> Self {
-        match value {
-            ImportOrExternCrate::Import(it) => ImportOrDef::Import(it),
-            ImportOrExternCrate::Glob(it) => ImportOrDef::Glob(it),
-            ImportOrExternCrate::ExternCrate(it) => ImportOrDef::ExternCrate(it),
-        }
-    }
-}
-
-impl From<ImportOrGlob> for ImportOrDef {
-    fn from(value: ImportOrGlob) -> Self {
-        match value {
-            ImportOrGlob::Import(it) => ImportOrDef::Import(it),
-            ImportOrGlob::Glob(it) => ImportOrDef::Glob(it),
-        }
-    }
-}
+impl_from!(ImportOrExternCrate { Import, Glob, ExternCrate } for ImportOrDef);
+impl_from!(ImportOrGlob { Import, Glob } for ImportOrDef);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ImportId {
@@ -184,7 +161,7 @@ pub struct ItemScope {
     /// Module scoped macros will be inserted into `items` instead of here.
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
-    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 2]>>,
+    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 1]>>,
     /// The attribute macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The macro invocations in this scope.
@@ -644,7 +621,11 @@ impl ItemScope {
                             // for that.
                         }
                         _ => {
-                            if glob_imports.types.remove(&lookup) {
+                            // A non-glob import either shadows a glob import of the same
+                            // name, or re-resolves a stale binding it recorded earlier.
+                            if glob_imports.types.remove(&lookup)
+                                || entry.get().is_reresolved_by(&fld.def, import)
+                            {
                                 let prev = std::mem::replace(&mut fld.import, import);
                                 if let Some(import) = import {
                                     self.use_imports_types.insert(
@@ -682,19 +663,22 @@ impl ItemScope {
                     changed = true;
                 }
                 Entry::Occupied(mut entry)
-                    if !matches!(import, Some(ImportOrExternCrate::Glob(..)))
-                        && glob_imports.values.remove(&lookup) =>
+                    if !matches!(import, Some(ImportOrExternCrate::Glob(..))) =>
                 {
-                    cov_mark::hit!(import_shadowed);
-
                     let import = import.and_then(ImportOrExternCrate::import_or_glob);
-                    let prev = std::mem::replace(&mut fld.import, import);
-                    if let Some(import) = import {
-                        self.use_imports_values
-                            .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
+                    if glob_imports.values.remove(&lookup)
+                        || entry.get().is_reresolved_by(&fld.def, import)
+                    {
+                        cov_mark::hit!(import_shadowed);
+
+                        let prev = std::mem::replace(&mut fld.import, import);
+                        if let Some(import) = import {
+                            self.use_imports_values
+                                .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
+                        }
+                        entry.insert(fld);
+                        changed = true;
                     }
-                    entry.insert(fld);
-                    changed = true;
                 }
                 _ => {}
             }
@@ -722,7 +706,8 @@ impl ItemScope {
                 }
                 Entry::Occupied(mut entry)
                     if !matches!(import, Some(ImportOrExternCrate::Glob(..)))
-                        && glob_imports.macros.remove(&lookup) =>
+                        && (glob_imports.macros.remove(&lookup)
+                            || entry.get().is_reresolved_by(&fld.def, import)) =>
                 {
                     cov_mark::hit!(import_shadowed);
                     let prev = std::mem::replace(&mut fld.import, import);

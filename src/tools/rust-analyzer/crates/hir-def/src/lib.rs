@@ -492,7 +492,7 @@ mod tracked_struct_token {
     }
 }
 
-#[salsa_macros::tracked(constructor = new_)]
+#[salsa::tracked(constructor = new_)]
 #[derive(PartialOrd, Ord)]
 pub struct BlockIdLt<'db> {
     pub ast_id: AstId<ast::BlockExpr>,
@@ -534,7 +534,7 @@ impl BlockId {
     }
 }
 
-#[salsa_macros::tracked(debug)]
+#[salsa::tracked(debug)]
 #[derive(PartialOrd, Ord)]
 pub struct ModuleIdLt<'db> {
     /// The crate this module belongs to.
@@ -712,7 +712,13 @@ pub struct LifetimeParamId {
     pub local_id: LocalLifetimeParamId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HrtbLifetimeParamId {
+    pub scope: GenericDefId,
+    pub local_id: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum ItemContainerId {
     ExternBlockId(ExternBlockId),
     ModuleId(ModuleId),
@@ -722,7 +728,7 @@ pub enum ItemContainerId {
 impl_from!(ModuleId for ItemContainerId);
 
 /// A Data Type
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum AdtId {
     StructId(StructId),
     UnionId(UnionId),
@@ -731,7 +737,7 @@ pub enum AdtId {
 impl_from!(StructId, UnionId, EnumId for AdtId);
 
 /// A macro
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum MacroId {
     Macro2Id(Macro2Id),
     MacroRulesId(MacroRulesId),
@@ -853,7 +859,7 @@ impl From<DefWithBodyId> for ModuleDefId {
 }
 
 /// The defs which have a body.
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum DefWithBodyId {
     /// A function body.
     FunctionId(FunctionId),
@@ -883,7 +889,7 @@ impl DefWithBodyId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum AssocItemId {
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -896,17 +902,16 @@ pub enum AssocItemId {
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
 
-impl From<AssocItemId> for ModuleDefId {
-    fn from(item: AssocItemId) -> Self {
-        match item {
-            AssocItemId::FunctionId(f) => f.into(),
-            AssocItemId::ConstId(c) => c.into(),
-            AssocItemId::TypeAliasId(t) => t.into(),
-        }
+impl_from!(
+    AssocItemId {
+        FunctionId => FunctionId,
+        ConstId => ConstId,
+        TypeAliasId => TypeAliasId,
     }
-}
+    for ModuleDefId
+);
 
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum GenericDefId {
     AdtId(AdtId),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -1044,17 +1049,16 @@ impl GenericDefId {
     }
 }
 
-impl From<AssocItemId> for GenericDefId {
-    fn from(item: AssocItemId) -> Self {
-        match item {
-            AssocItemId::FunctionId(f) => f.into(),
-            AssocItemId::ConstId(c) => c.into(),
-            AssocItemId::TypeAliasId(t) => t.into(),
-        }
+impl_from!(
+    AssocItemId {
+        FunctionId => FunctionId,
+        ConstId => ConstId,
+        TypeAliasId => TypeAliasId,
     }
-}
+    for GenericDefId
+);
 
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum CallableDefId {
     FunctionId(FunctionId),
     StructId(StructId),
@@ -1062,15 +1066,14 @@ pub enum CallableDefId {
 }
 
 impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
-impl From<CallableDefId> for ModuleDefId {
-    fn from(def: CallableDefId) -> ModuleDefId {
-        match def {
-            CallableDefId::FunctionId(f) => ModuleDefId::FunctionId(f),
-            CallableDefId::StructId(s) => ModuleDefId::AdtId(AdtId::StructId(s)),
-            CallableDefId::EnumVariantId(e) => ModuleDefId::EnumVariantId(e),
-        }
+impl_from!(
+    CallableDefId {
+        FunctionId => FunctionId,
+        StructId => AdtId,
+        EnumVariantId => EnumVariantId,
     }
-}
+    for ModuleDefId
+);
 
 impl CallableDefId {
     pub fn krate(self, db: &dyn SourceDatabase) -> Crate {
@@ -1082,7 +1085,7 @@ impl CallableDefId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum AttrDefId {
     ModuleId(ModuleId),
     AdtId(AdtId),
@@ -1114,27 +1117,14 @@ impl_from!(
     for AttrDefId
 );
 
-impl From<AssocItemId> for AttrDefId {
-    fn from(assoc: AssocItemId) -> Self {
-        match assoc {
-            AssocItemId::FunctionId(it) => AttrDefId::FunctionId(it),
-            AssocItemId::ConstId(it) => AttrDefId::ConstId(it),
-            AssocItemId::TypeAliasId(it) => AttrDefId::TypeAliasId(it),
-        }
-    }
-}
-impl From<VariantId> for AttrDefId {
-    fn from(vid: VariantId) -> Self {
-        match vid {
-            VariantId::EnumVariantId(id) => id.into(),
-            VariantId::StructId(id) => id.into(),
-            VariantId::UnionId(id) => id.into(),
-        }
-    }
-}
+impl_from!(AssocItemId { FunctionId, ConstId, TypeAliasId } for AttrDefId);
+impl_from!(
+    VariantId { EnumVariantId => EnumVariantId, StructId => AdtId, UnionId => AdtId }
+    for AttrDefId
+);
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa_macros::Supertype, salsa::Update,
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Supertype, salsa::Update,
 )]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),

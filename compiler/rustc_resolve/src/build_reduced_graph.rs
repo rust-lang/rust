@@ -41,7 +41,8 @@ use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
     ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError, diagnostics,
+    ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used, VisResolutionError,
+    diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -279,7 +280,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         res,
                     ))
                 };
-                match self.cm().resolve_path(
+                match self.cm_mut().resolve_path(
                     &segments,
                     None,
                     parent_scope,
@@ -336,7 +337,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn build_reduced_graph_external(
         &self,
         module: ExternModule<'ra>,
-    ) -> FxIndexMap<BindingKey, NameResolutionRef<'ra>> {
+    ) -> ResolutionTable<'ra> {
         let mut resolutions = FxIndexMap::default();
         let def_id = module.def_id();
         let children = self.tcx.module_children(def_id);
@@ -1148,7 +1149,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let mut import_all = None;
         let mut single_imports = ThinVec::new();
         if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
-            AttributeParser::parse_limited(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
+            AttributeParser::parse_limited_sym(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
         {
             if self.parent_scope.module.expect_local().parent.is_some() {
                 self.r.dcx().emit_err(diagnostics::ExternCrateLoadingMacroNotAtCrateRoot {

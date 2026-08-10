@@ -62,7 +62,10 @@ impl [u8] {
             return false;
         }
 
-        #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+        #[cfg(any(
+            all(target_arch = "x86_64", target_feature = "sse2"),
+            all(target_arch = "aarch64", target_feature = "neon")
+        ))]
         {
             const CHUNK_SIZE: usize = 16;
             // The following function has two invariants:
@@ -108,7 +111,10 @@ impl [u8] {
     ///
     /// The caller must guarantee that the slices are equal in length, and the
     /// slice lengths are greater than or equal to `N` bytes.
-    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    #[cfg(any(
+        all(target_arch = "x86_64", target_feature = "sse2"),
+        all(target_arch = "aarch64", target_feature = "neon")
+    ))]
     #[inline]
     const fn eq_ignore_ascii_case_chunks<const N: usize>(&self, other: &[u8]) -> bool {
         // FIXME(const-hack): The while-loops that follow should be replaced by
@@ -451,7 +457,8 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
 /// (above) returns true, then we know the answer is false.
 #[cfg(not(any(
     all(target_arch = "x86_64", target_feature = "sse2"),
-    all(target_arch = "loongarch64", target_feature = "lsx")
+    all(target_arch = "loongarch64", target_feature = "lsx"),
+    all(target_arch = "aarch64", target_feature = "neon")
 )))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
@@ -584,16 +591,73 @@ fn is_ascii_sse2(bytes: &[u8]) -> bool {
     rest.iter().all(|b| b.is_ascii())
 }
 
-/// ASCII test optimized to use the `pmovmskb` instruction on `x86-64`.
-///
-/// Uses explicit SSE2 intrinsics to prevent LLVM from auto-vectorizing with
-/// broken AVX-512 code that extracts mask bits one-by-one.
-#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+/// Chunk size for NEON vectorized ASCII checking (4x 16-byte loads).
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+const NEON_CHUNK_SIZE: usize = 64;
+
+/// Width of a single NEON vector, used to vectorize the tail left over by the
+/// unrolled `NEON_CHUNK_SIZE` loop.
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+const NEON_VECTOR_SIZE: usize = 16;
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
+fn is_ascii_neon(bytes: &[u8]) -> bool {
+    use crate::arch::aarch64::{vld1q_u8, vmaxvq_u8, vorrq_u8};
+
+    let (chunks, rest) = bytes.as_chunks::<NEON_CHUNK_SIZE>();
+
+    for chunk in chunks {
+        let ptr = chunk.as_ptr();
+        // SAFETY: chunk is 64 bytes, and `vld1q_u8` has no alignment requirement.
+        let max = unsafe {
+            let a1 = vld1q_u8(ptr);
+            let a2 = vld1q_u8(ptr.add(16));
+            let b1 = vld1q_u8(ptr.add(32));
+            let b2 = vld1q_u8(ptr.add(48));
+            // OR all chunks - if any byte has high bit set, combined will too.
+            let combined = vorrq_u8(vorrq_u8(a1, a2), vorrq_u8(b1, b2));
+            // `vmaxvq_u8` is a horizontal reduction with a longer latency than
+            // `vorrq_u8`, so it runs once per 64 bytes rather than once per load.
+            vmaxvq_u8(combined)
+        };
+        if max >= 128 {
+            return false;
+        }
+    }
+
+    // The unrolled loop above leaves up to 63 bytes, so sweep those a vector at
+    // a time before falling back to a byte-at-a-time check.
+    let (vectors, rest) = rest.as_chunks::<NEON_VECTOR_SIZE>();
+
+    for vector in vectors {
+        // SAFETY: vector is 16 bytes, and `vld1q_u8` has no alignment requirement.
+        let max = unsafe { vmaxvq_u8(vld1q_u8(vector.as_ptr())) };
+        if max >= 128 {
+            return false;
+        }
+    }
+
+    // Handle remaining bytes
+    rest.iter().all(|b| b.is_ascii())
+}
+
+/// Uses explicit SIMD intrinsics to prevent LLVM from auto-vectorizing with
+/// broken code (e.g., AVX-512 on x86-64 that extracts mask bits one-by-one).
+#[cfg(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "aarch64", target_feature = "neon")
+))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn is_ascii(bytes: &[u8]) -> bool {
     const USIZE_SIZE: usize = size_of::<usize>();
     const NONASCII_MASK: usize = usize::MAX / 255 * 0x80;
+
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    const SIMD_MIN_LEN: usize = SSE2_CHUNK_SIZE;
+    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+    const SIMD_MIN_LEN: usize = NEON_CHUNK_SIZE;
 
     const_eval_select!(
         @capture { bytes: &[u8] } -> bool:
@@ -601,7 +665,7 @@ const fn is_ascii(bytes: &[u8]) -> bool {
             is_ascii_simple(bytes)
         } else {
             // For small inputs, use usize-at-a-time processing to avoid SSE2 call overhead.
-            if bytes.len() < SSE2_CHUNK_SIZE {
+            if bytes.len() < SIMD_MIN_LEN {
                 let chunks = bytes.chunks_exact(USIZE_SIZE);
                 let remainder = chunks.remainder();
                 for chunk in chunks {
@@ -613,7 +677,10 @@ const fn is_ascii(bytes: &[u8]) -> bool {
                 return remainder.iter().all(|b| b.is_ascii());
             }
 
-            is_ascii_sse2(bytes)
+            #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+            { is_ascii_sse2(bytes) }
+            #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+            { is_ascii_neon(bytes) }
         }
     )
 }

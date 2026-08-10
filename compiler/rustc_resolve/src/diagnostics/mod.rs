@@ -1230,16 +1230,6 @@ pub(crate) struct CannotFindBuiltinMacroWithName {
     pub(crate) ident: Ident,
 }
 
-#[derive(Diagnostic)]
-#[diag("tool `{$tool}` was already registered")]
-pub(crate) struct ToolWasAlreadyRegistered {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) tool: Ident,
-    #[label("already registered here")]
-    pub(crate) old_ident_span: Span,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum DefinedHere {
     #[label("similarly named {$candidate_descr} `{$candidate}` defined here")]
@@ -1511,30 +1501,6 @@ pub(crate) struct RedundantImportVisibility {
     pub help: (),
     pub import_vis: String,
     pub max_vis: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown diagnostic attribute")]
-pub(crate) struct UnknownDiagnosticAttribute {
-    #[subdiagnostic]
-    pub help: Option<UnknownDiagnosticAttributeHelp>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnknownDiagnosticAttributeHelp {
-    #[suggestion(
-        "an attribute with a similar name exists",
-        style = "verbose",
-        code = "{typo_name}",
-        applicability = "machine-applicable"
-    )]
-    Typo {
-        #[primary_span]
-        span: Span,
-        typo_name: Symbol,
-    },
-    #[help("add `#![feature({$feature})]` to the crate attributes to enable")]
-    UseFeature { feature: Symbol },
 }
 
 // FIXME: Make this properly translatable.

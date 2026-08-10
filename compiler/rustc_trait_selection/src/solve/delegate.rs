@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::ops::Deref;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
@@ -16,10 +16,12 @@ use rustc_infer::traits::solve::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt, TypingMode,
+    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques};
 use rustc_span::{DUMMY_SP, Span};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
@@ -53,12 +55,12 @@ impl<'tcx> SolverDelegate<'tcx> {
 /// Create a [`ComputeGoalFastPathOutcome`] signalling the goal is stalled
 /// on a list of [`ty::GenericArg`]
 fn goal_stalled_on_args<'tcx>(
-    stalled_vars: Vec<ty::GenericArg<'tcx>>,
+    stalled_vars: ThinVec<ty::GenericArg<'tcx>>,
 ) -> ComputeGoalFastPathOutcome<'tcx> {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
             stalled_vars,
-            sub_roots: Vec::new(),
+            sub_roots: ThinVec::new(),
             stalled_certainty: Certainty::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::No,
         },
@@ -69,12 +71,12 @@ fn goal_stalled_on_args<'tcx>(
 /// on a list of [`ty::GenericArg`] *or* the opaque type storage being nonempty.
 ///
 fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
-    stalled_vars: Vec<ty::GenericArg<'tcx>>,
+    stalled_vars: ThinVec<ty::GenericArg<'tcx>>,
 ) -> ComputeGoalFastPathOutcome<'tcx> {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
             stalled_vars,
-            sub_roots: Vec::new(),
+            sub_roots: ThinVec::new(),
             stalled_certainty: Certainty::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: 0,
@@ -84,6 +86,33 @@ fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
                 previously_succeeded_in_erased: SucceededInErased::No,
             },
         },
+    }
+}
+
+struct CollectNonRegionInfer<'tcx> {
+    infers: ThinVec<ty::GenericArg<'tcx>>,
+    visited: FxHashSet<Ty<'tcx>>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectNonRegionInfer<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        if self.visited.contains(&ty) {
+            return;
+        }
+
+        match ty.kind() {
+            ty::Infer(_) => self.infers.push(ty.into()),
+            _ => ty.super_visit_with(self),
+        }
+
+        self.visited.insert(ty);
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+        match ct.kind() {
+            ty::ConstKind::Infer(_) => self.infers.push(ct.into()),
+            _ => ct.super_visit_with(self),
+        }
     }
 }
 
@@ -134,7 +163,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // FIXME: Properly consider opaques here.
                 && self.known_no_opaque_types_in_storage()
                 {
-                    goal_stalled_on_args_or_nonempty_opaques(vec![self_ty.into()])
+                    goal_stalled_on_args_or_nonempty_opaques(thin_vec![self_ty.into()])
                 } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
@@ -189,6 +218,21 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     return Outcome::NoFastPath;
                 }
 
+                let ty = self.resolve_vars_if_possible(outlives.0);
+                let mut infer_collector = CollectNonRegionInfer {
+                    infers: Default::default(),
+                    visited: Default::default(),
+                };
+                ty.visit_with(&mut infer_collector);
+                let infers = infer_collector.infers;
+                if !infers.is_empty() {
+                    return goal_stalled_on_args(infers);
+                }
+
+                if ty.has_non_rigid_aliases() {
+                    return Outcome::NoFastPath;
+                }
+
                 self.0.register_type_outlives_constraint(
                     outlives.0,
                     outlives.1,
@@ -206,7 +250,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
-                        goal_stalled_on_args(vec![a.into(), b.into()])
+                        goal_stalled_on_args(thin_vec![a.into(), b.into()])
                     }
                     _ => Outcome::NoFastPath,
                 }
@@ -218,7 +262,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
                 let arg = self.shallow_resolve_const(ct);
                 if arg.is_ct_infer() {
-                    goal_stalled_on_args(vec![arg.into()])
+                    goal_stalled_on_args(thin_vec![arg.into()])
                 } else {
                     Outcome::NoFastPath
                 }
@@ -232,7 +276,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 if arg.is_trivially_wf(self.tcx) {
                     Outcome::TriviallyHolds
                 } else if arg.is_infer() {
-                    goal_stalled_on_args(vec![arg.into_arg()])
+                    goal_stalled_on_args(thin_vec![arg.into_arg()])
                 } else {
                     Outcome::NoFastPath
                 }

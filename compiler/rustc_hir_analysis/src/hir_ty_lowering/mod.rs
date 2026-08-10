@@ -25,6 +25,7 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
@@ -179,7 +180,7 @@ pub trait HirTyLowerer<'tcx> {
         span: Span,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>);
+    ) -> (Vec<InherentAssocCandidate>, ThinVec<FulfillmentError<'tcx>>);
 
     /// Lower a path to an associated item (of a trait) to a projection.
     ///
@@ -1483,13 +1484,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Ok(ct)
             }
             TypeRelativePath::Ctor { ctor_def_id, args } => match tcx.def_kind(ctor_def_id) {
-                DefKind::Ctor(_, CtorKind::Fn) => {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    Ok(ty::Const::zero_sized(
-                        tcx,
-                        Ty::new_fn_def(tcx, ctor_def_id, ty::Binder::dummy(args)),
-                    ))
-                }
+                DefKind::Ctor(_, CtorKind::Fn) => Ok(ty::Const::zero_sized(
+                    tcx,
+                    tcx.type_of(ctor_def_id).instantiate(tcx, args).skip_norm_wip(),
+                )),
                 DefKind::Ctor(ctor_of, CtorKind::Const) => {
                     Ok(self.construct_const_ctor_value(ctor_def_id, ctor_of, args))
                 }
@@ -2913,8 +2911,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &path.segments[generic_segments[0].1],
                 );
 
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
+                ty::Const::zero_sized(tcx, tcx.type_of(did).instantiate(tcx, args).skip_norm_wip())
             }
             Res::Def(DefKind::AssocConst { .. }, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
@@ -2938,42 +2935,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .span_err(path.span, "static items cannot be used as const arguments");
                 return Const::new_error(tcx, guar);
             }
-            // FIXME(const_generics): create real const to allow fn items as const paths
-            Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {
-                self.dcx().span_delayed_bug(span, "function items cannot be used as const args");
-                let args = self.lower_generic_args_of_path_segment(
-                    span,
-                    did,
-                    path.segments.last().unwrap(),
-                );
-
-                if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
-                } else {
-                    let tcx = self.tcx();
-                    let generics = tcx.generics_of(did);
-
-                    // Use infer tys for synthetic params; otherwise the impl header's trait ref may
-                    // contain callee-owned synthetic params and fail when instantiated with impl args.
-                    // See issue #155834
-                    let args = args.iter().enumerate().map(|(index, arg)| {
-                        let param = generics.param_at(index, tcx);
-                        if param.kind.is_synthetic() {
-                            self.ty_infer(Some(param), span).into()
-                        } else {
-                            arg
-                        }
-                    });
-
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(
-                        tcx,
-                        Ty::new_fn_def(tcx, did, ty::Binder::dummy(args.collect::<Box<_>>())),
-                    )
-                }
+            // FIXME(const_generics): create real consts to allow fn items as const paths.
+            // Lowering these to recovered `FnDef` consts currently interacts poorly with WF
+            // checking: WF of a `FnDef` walks the function signature, so a signature that mentions
+            // the same function item as a const arg can recurse until it overflows/segfaults.
+            Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
+                let guar = self
+                    .dcx()
+                    .struct_span_err(span, "function items cannot be used as const args")
+                    .emit();
+                Const::new_error(tcx, guar)
             }
-
             // Exhaustive match to be clear about what exactly we're considering to be
             // an invalid Res for a const path.
             res @ (Res::Def(

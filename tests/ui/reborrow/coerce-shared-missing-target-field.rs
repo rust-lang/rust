@@ -12,9 +12,9 @@ impl<'a, T> Reborrow for MissingSourceMut<'a, T> {}
 struct MissingSourceRef<'a, T> {
     value: &'a T,
     len: usize,
+    //~^ ERROR
 }
 
 impl<'a, T> CoerceShared<MissingSourceRef<'a, T>> for MissingSourceMut<'a, T> {}
-//~^ ERROR
 
 fn main() {}
