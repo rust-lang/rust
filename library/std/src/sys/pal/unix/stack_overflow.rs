@@ -359,28 +359,32 @@ mod imp {
         target_os = "l4re"
     ))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+        use crate::pin::pin;
+        use crate::sys::helpers::COpaque;
+
         let mut ret = None;
-        let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
+        let mut attr: COpaque<libc::pthread_attr_t> = COpaque::uninit();
         if !cfg!(target_os = "freebsd") {
-            attr = mem::MaybeUninit::zeroed();
+            attr = COpaque::zeroed();
         }
+        let attr = pin!(attr);
+        // FIXME(pin-ergonomics): remove the next line.
+        let attr = attr.into_ref();
+
         #[cfg(target_os = "freebsd")]
-        assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
+        assert_eq!(libc::pthread_attr_init(attr.get()), 0);
         #[cfg(target_os = "freebsd")]
-        let e = libc::pthread_attr_get_np(libc::pthread_self(), attr.as_mut_ptr());
+        let e = libc::pthread_attr_get_np(libc::pthread_self(), attr.get());
         #[cfg(not(target_os = "freebsd"))]
-        let e = libc::pthread_getattr_np(libc::pthread_self(), attr.as_mut_ptr());
+        let e = libc::pthread_getattr_np(libc::pthread_self(), attr.get());
         if e == 0 {
             let mut stackaddr = crate::ptr::null_mut();
             let mut stacksize = 0;
-            assert_eq!(
-                libc::pthread_attr_getstack(attr.as_ptr(), &mut stackaddr, &mut stacksize),
-                0
-            );
+            assert_eq!(libc::pthread_attr_getstack(attr.get(), &mut stackaddr, &mut stacksize), 0);
             ret = Some(stackaddr);
         }
         if e == 0 || cfg!(target_os = "freebsd") {
-            assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
+            assert_eq!(libc::pthread_attr_destroy(attr.get()), 0);
         }
         ret
     }
@@ -572,21 +576,28 @@ mod imp {
     ))]
     // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
+        use crate::pin::pin;
+        use crate::sys::helpers::COpaque;
+
         let mut ret = None;
 
-        let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
+        let mut attr: COpaque<libc::pthread_attr_t> = COpaque::uninit();
         if !cfg!(target_os = "freebsd") {
-            attr = mem::MaybeUninit::zeroed();
+            attr = COpaque::zeroed();
         }
+        let attr = pin!(attr);
+        // FIXME(pin-ergonomics): remove the next line.
+        let attr = attr.into_ref();
+
         #[cfg(target_os = "freebsd")]
-        assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
+        assert_eq!(libc::pthread_attr_init(attr.get()), 0);
         #[cfg(target_os = "freebsd")]
-        let e = libc::pthread_attr_get_np(libc::pthread_self(), attr.as_mut_ptr());
+        let e = libc::pthread_attr_get_np(libc::pthread_self(), attr.get());
         #[cfg(not(target_os = "freebsd"))]
-        let e = libc::pthread_getattr_np(libc::pthread_self(), attr.as_mut_ptr());
+        let e = libc::pthread_getattr_np(libc::pthread_self(), attr.get());
         if e == 0 {
             let mut guardsize = 0;
-            assert_eq!(libc::pthread_attr_getguardsize(attr.as_ptr(), &mut guardsize), 0);
+            assert_eq!(libc::pthread_attr_getguardsize(attr.get(), &mut guardsize), 0);
             if guardsize == 0 {
                 if cfg!(all(target_os = "linux", target_env = "musl")) {
                     // musl versions before 1.1.19 always reported guard
@@ -599,7 +610,7 @@ mod imp {
             }
             let mut stackptr = crate::ptr::null_mut::<libc::c_void>();
             let mut size = 0;
-            assert_eq!(libc::pthread_attr_getstack(attr.as_ptr(), &mut stackptr, &mut size), 0);
+            assert_eq!(libc::pthread_attr_getstack(attr.get(), &mut stackptr, &mut size), 0);
 
             let stackaddr = stackptr.addr();
             ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd", target_os = "hurd")) {
@@ -620,7 +631,7 @@ mod imp {
             };
         }
         if e == 0 || cfg!(target_os = "freebsd") {
-            assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
+            assert_eq!(libc::pthread_attr_destroy(attr.get()), 0);
         }
         ret
     }
