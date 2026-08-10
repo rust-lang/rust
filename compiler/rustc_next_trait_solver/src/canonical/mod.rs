@@ -168,7 +168,9 @@ where
             // opaque types no longer escape query responses with query-created placeholders.
             // Region constraints involving query-created placeholders were handled inside
             // the query. However, the placeholders can still escape in other response
-            // fields, such as opaque type constraints, so track their recreated universes.
+            // fields, such as opaque type constraints. To avoid triggering
+            // assertions, we explicitly insert empty assumptions for the
+            // recreated universes here.
             delegate.insert_placeholder_assumptions(
                 new_universe,
                 Some(rustc_type_ir::region_constraint::Assumptions::empty()),
