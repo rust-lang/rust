@@ -116,8 +116,11 @@ impl Thread {
     /// Creates a handle for the calling thread, recording its OS id.
     ///
     /// `id` must be the `ThreadId` of the calling thread.
-    pub(crate) fn new_current(id: ThreadId, name: Option<String>) -> Thread {
-        let thread = Thread::new(id, name);
+    ///
+    /// Takes no name because passing one into `Thread::new` allocates with the
+    /// global allocator, which `thread::current` is documented never to use.
+    pub(crate) fn new_current(id: ThreadId) -> Thread {
+        let thread = Thread::new(id, None);
         thread.set_os_id_to_current();
         thread
     }
@@ -127,9 +130,14 @@ impl Thread {
     /// May only be called from the thread to which this handle belongs. A
     /// spawned thread does this itself once it starts running, since its handle
     /// already exists by then.
+    ///
+    /// `imp::current_os_id` must not allocate with the global allocator or call
+    /// `thread::current`.
     pub(crate) fn set_os_id_to_current(&self) {
         if let Some(os_id) = imp::current_os_id() {
-            let _ = self.inner.os_id.set(os_id);
+            if self.inner.os_id.set(os_id).is_err() {
+                rtabort!("thread OS id already set");
+            }
         }
     }
 
@@ -235,12 +243,9 @@ impl Thread {
     /// it. `None` means the platform has no such id, the thread has not started
     /// running yet, or the id could not be read.
     ///
-    /// Ids are unique among threads running at the same moment, but the
-    /// operating system may reuse the id of a thread that has exited, and a
-    /// `Thread` handle can outlive the thread it refers to. As long as you know
-    /// the thread is running, the id still refers to that thread; for the
-    /// current thread you always know. When you do not, use the id only where a
-    /// repeated id is harmless, such as logging.
+    /// The operating system may reuse the id of a thread that has exited, and a
+    /// `Thread` handle can outlive the thread it refers to. Use the id only
+    /// where a reused id is harmless, such as logging.
     ///
     /// # Examples
     ///
