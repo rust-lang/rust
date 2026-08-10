@@ -22,8 +22,8 @@ use crate::vec::Vec;
 /// trait.
 ///
 /// Please note that each call to [`read()`] may involve a system call, and
-/// `BufReader`, will be more efficient.
 /// therefore, using something that implements [`BufRead`], such as
+/// `BufReader`, will be more efficient.
 ///
 /// [`BufRead`]: crate::io::BufRead
 ///
