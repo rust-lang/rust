@@ -845,7 +845,7 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sign-ext", Stable, &[]),
     ("simd128", Stable, &[]),
     ("tail-call", Stable, &[]),
-    ("wide-arithmetic", Unstable(sym::wasm_target_feature), &[]),
+    ("wide-arithmetic", Stable, &[]),
     // tidy-alphabetical-end
 ];
 
