@@ -38,8 +38,8 @@ use crate::vec::Vec;
 /// available on `ByteString`. Similarly, `ByteString` implements `DerefMut` to `&mut Vec<u8>`,
 /// so you can modify a `ByteString` using any method available on `&mut Vec<u8>`.
 ///
-/// The `Debug` and `Display` implementations for `ByteString` are the same as those for `ByteStr`,
-/// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
+/// The `Debug` implementation for `ByteString` is the same as the one for `ByteStr`,
+/// showing invalid UTF-8 as hex escapes.
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
 #[derive(Clone)]
@@ -89,14 +89,6 @@ impl fmt::Debug for ByteString {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.as_bytestr(), f)
-    }
-}
-
-#[unstable(feature = "bstr", issue = "134915")]
-impl fmt::Display for ByteString {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.as_bytestr(), f)
     }
 }
 
