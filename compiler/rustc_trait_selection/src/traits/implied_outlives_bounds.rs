@@ -123,9 +123,31 @@ pub fn query_compute_implied_outlives_bounds<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
-    span: Span,
     disable_implied_bounds_hack: bool,
 ) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
+    // When computing implied bounds by looking at types in the signature,
+    // we must be careful to never reveal the hidden types of opaques which
+    // the caller can not. That would be unsound as it may give us implied
+    // bounds which the caller never actually proves.
+    //
+    // FIXME(impl_trait_in_assoc_type): We currently do this incorrectly in
+    // `fn check_opaque_meets_bounds`, see trait-system-refactor-initiative#159.
+    /* if cfg!(debug_assertions) {
+        match ocx.infcx.typing_mode_raw() {
+            TypingMode::Typeck { defining_opaque_types_and_generators: opaque_types }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaque_types }
+            | TypingMode::PostBorrowck { defined_opaque_types: opaque_types } => {
+                assert!(opaque_types.is_empty())
+            }
+
+            TypingMode::Coherence
+            | TypingMode::Reflection
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => unreachable!(),
+        }
+    } */
+
     // FIXME: This doesn't seem right. All call sites already normalize `ty`.
     // We have to normalize in the caller as computing implied bounds from unnormalized
     // types would be unsound. See #100989
@@ -138,7 +160,7 @@ pub fn query_compute_implied_outlives_bounds<'tcx>(
         .map_err(|_| NoSolution)?;
 
     let mut outlives_bounds =
-        compute_implied_outlives_bounds_inner(ocx, param_env, ty, normalized_ty, span)?;
+        compute_implied_outlives_bounds_inner(ocx, param_env, ty, normalized_ty, DUMMY_SP)?;
 
     if !disable_implied_bounds_hack {
         outlives_bounds.extend(consider_implied_bounds_hack_for_ty(ocx, ty, || {
