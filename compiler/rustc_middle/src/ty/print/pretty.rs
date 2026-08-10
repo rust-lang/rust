@@ -3241,8 +3241,8 @@ define_print! {
     ty::ClauseKind<'tcx> {
         match *self {
             ty::ClauseKind::Trait(ref data) => data.print(p)?,
-            ty::ClauseKind::RegionOutlives(predicate) => predicate.print(p)?,
-            ty::ClauseKind::TypeOutlives(predicate) => predicate.print(p)?,
+            ty::ClauseKind::RegionOutlives(clause) => clause.print(p)?,
+            ty::ClauseKind::TypeOutlives(clause) => clause.print(p)?,
             ty::ClauseKind::Projection(predicate) => predicate.print(p)?,
             ty::ClauseKind::HostEffect(predicate) => predicate.print(p)?,
             ty::ClauseKind::ConstArgHasType(ct, ty) => {

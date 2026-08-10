@@ -776,10 +776,10 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
-                    ty::ClauseKind::TypeOutlives(outlives_predicate) => {
+                    ty::ClauseKind::TypeOutlives(outlives_clause) => {
                         assert_eq!(
-                            outlives_predicate.0, ty,
-                            "expected `Self` predicate when computing \
+                            outlives_clause.0, ty,
+                            "expected `Self` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
