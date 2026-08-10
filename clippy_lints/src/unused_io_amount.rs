@@ -156,10 +156,7 @@ fn non_consuming_ok_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
         return false;
     }
 
-    if is_ok_wild_or_dotdot_pattern(cx, arm.pat) {
-        return true;
-    }
-    false
+    is_ok_wild_or_dotdot_pattern(cx, arm.pat)
 }
 
 fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
