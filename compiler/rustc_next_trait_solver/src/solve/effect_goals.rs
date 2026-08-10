@@ -138,7 +138,7 @@ where
         goal: Goal<I, Self>,
         goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
@@ -156,11 +156,9 @@ where
             return Err(NoSolution.into());
         }
 
-        // TODO: certainty can only be yes here...
-        let impl_polarity = cx.impl_polarity(impl_def_id);
-        let certainty = match impl_polarity {
+        match cx.impl_polarity(impl_def_id) {
             ty::ImplPolarity::Negative => return Err(NoSolution.into()),
-            ty::ImplPolarity::Positive => Certainty::Yes,
+            ty::ImplPolarity::Positive => (),
         };
 
         if !cx.impl_is_const(impl_def_id) {
@@ -194,7 +192,7 @@ where
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions)?;
 
-            then(ecx, certainty)
+            then(ecx)
         })
     }
 
