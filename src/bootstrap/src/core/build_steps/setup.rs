@@ -109,7 +109,10 @@ impl CommandLineStep for Profile {
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         for choice in Profile::all() {
-            run = run.alias(choice.as_str());
+            // Some of the profile names happen to coincide with actual directory names
+            // ("compiler" and "library"), so avoid the usual assertion that aliases
+            // don't exist on disk.
+            run = run.alias_without_assert(choice.as_str());
         }
         run
     }
