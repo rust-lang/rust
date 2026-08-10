@@ -156,7 +156,8 @@ jobs:
       - name: check build
         run: |
           cd ../rust # ./x does not seem to like being invoked from elsewhere
-          ./x check miri
+          # checks every tool in that folder (including priroda)
+          ./x check src/tools/miri
 
   # This job is intentionally separate from `test` so that Priroda can be
   # developed as a separate crate inside the Miri repository for now.
