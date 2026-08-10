@@ -1200,16 +1200,18 @@ impl<'a, T> Iterator for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         if self.len == 0 {
-            None
-        } else {
-            self.head.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &*node.as_ptr();
-                self.len -= 1;
-                self.head = node.next;
-                &node.element
-            })
+            return None;
         }
+        // SAFETY: When `len > 0`, `head` and `tail` are guaranteed to be `Some`.
+        // The lifetime of the returned reference is bound to the lifetime of the iterator,
+        // which is valid because the iterator holds a reference to the list.
+        Some(unsafe {
+            // Need an unbound lifetime to get 'a
+            let node = &*self.head.unwrap_unchecked().as_ptr();
+            self.len -= 1;
+            self.head = node.next;
+            &node.element
+        })
     }
 
     #[inline]
@@ -1228,16 +1230,18 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
         if self.len == 0 {
-            None
-        } else {
-            self.tail.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &*node.as_ptr();
-                self.len -= 1;
-                self.tail = node.prev;
-                &node.element
-            })
+            return None;
         }
+        // SAFETY: When `len > 0`, `head` and `tail` are guaranteed to be `Some`.
+        // The lifetime of the returned reference is bound to the lifetime of the iterator,
+        // which is valid because the iterator holds a reference to the list.
+        Some(unsafe {
+            // Need an unbound lifetime to get 'a
+            let node = &*self.tail.unwrap_unchecked().as_ptr();
+            self.len -= 1;
+            self.tail = node.prev;
+            &node.element
+        })
     }
 }
 
@@ -1268,16 +1272,18 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.len == 0 {
-            None
-        } else {
-            self.head.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &mut *node.as_ptr();
-                self.len -= 1;
-                self.head = node.next;
-                &mut node.element
-            })
+            return None;
         }
+        // SAFETY: When `len > 0`, `head` and `tail` are guaranteed to be `Some`.
+        // The lifetime of the returned reference is bound to the lifetime of the iterator,
+        // which is valid because the iterator holds a reference to the list.
+        Some(unsafe {
+            // Need an unbound lifetime to get 'a
+            let node = &mut *self.head.unwrap_unchecked().as_ptr();
+            self.len -= 1;
+            self.head = node.next;
+            &mut node.element
+        })
     }
 
     #[inline]
@@ -1296,16 +1302,18 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.len == 0 {
-            None
-        } else {
-            self.tail.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &mut *node.as_ptr();
-                self.len -= 1;
-                self.tail = node.prev;
-                &mut node.element
-            })
+            return None;
         }
+        // SAFETY: When `len > 0`, `head` and `tail` are guaranteed to be `Some`.
+        // The lifetime of the returned reference is bound to the lifetime of the iterator,
+        // which is valid because the iterator holds a reference to the list.
+        Some(unsafe {
+            // Need an unbound lifetime to get 'a
+            let node = &mut *self.tail.unwrap_unchecked().as_ptr();
+            self.len -= 1;
+            self.tail = node.prev;
+            &mut node.element
+        })
     }
 }
 
