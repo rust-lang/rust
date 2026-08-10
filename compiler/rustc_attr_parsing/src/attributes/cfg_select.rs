@@ -87,7 +87,7 @@ pub fn parse_cfg_select(
             let underscore = p.prev_token;
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = underscore.span.to(p.token.span);
 
             match branches.wildcard {
@@ -126,7 +126,7 @@ pub fn parse_cfg_select(
 
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = cfg_span.to(p.token.span);
 
             match branches.wildcard {
