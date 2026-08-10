@@ -14,7 +14,7 @@
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::iter::FusedIterator;
+use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 use core::{fmt, mem};
@@ -1251,6 +1251,9 @@ impl<T> ExactSizeIterator for Iter<'_, T> {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Iter<'_, T> {}
+
 #[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for Iter<'_, T> {
     /// Creates an empty `linked_list::Iter`.
@@ -1322,6 +1325,9 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IterMut<'_, T> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for IterMut<'_, T> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for IterMut<'_, T> {
@@ -2038,6 +2044,9 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for IntoIter<T> {
