@@ -1,15 +1,15 @@
 #![crate_name = "foo"]
 
 //@ has 'foo/struct.Foo.html'
-//@ has - '//*[@id="deref-methods-i32"]' 'Methods from Deref<Target = i32>'
-//@ has - '//*[@id="deref-methods-i32-1"]//*[@id="associatedconstant.BITS"]/h4' \
-//        'pub const BITS: u32 = u32::BITS'
-pub struct Foo(i32);
+//@ has - '//*[@id="deref-methods-str"]' 'Methods from Deref<Target = str>'
+//@ has - '//*[@id="deref-methods-str-1"]//*[@id="method.len"]/h4' \
+//        'pub '
+pub struct Foo(&'static str);
 
 impl std::ops::Deref for Foo {
-    type Target = i32;
+    type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
