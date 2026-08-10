@@ -10,6 +10,8 @@
 use crate::ffi::CStr;
 use crate::mem::{self, DropGuard, ManuallyDrop};
 use crate::num::NonZero;
+use crate::pin::pin;
+use crate::sys::helpers::COpaque;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
 #[cfg(any(
@@ -50,11 +52,13 @@ impl Thread {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         let data = init;
-        let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
-        assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
-        let mut attr = DropGuard::new(&mut attr, |attr| {
-            assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0)
-        });
+        let attr = pin!(COpaque::<libc::pthread_attr_t>::uninit());
+        // FIXME(pin-ergonomics): remove the next line.
+        let attr = attr.into_ref();
+
+        assert_eq!(libc::pthread_attr_init(attr.get()), 0);
+        let attr =
+            DropGuard::new(attr, |attr| assert_eq!(libc::pthread_attr_destroy(attr.get()), 0));
 
         #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
         if stack > 0 {
@@ -62,7 +66,7 @@ impl Thread {
             // 0 is used as an indication that the default stack size configured in the ESP-IDF/NuttX menuconfig system should be used
             assert_eq!(
                 libc::pthread_attr_setstacksize(
-                    attr.as_mut_ptr(),
+                    attr.get(),
                     cmp::max(stack, min_stack_size(attr.as_ptr()))
                 ),
                 0
@@ -71,9 +75,9 @@ impl Thread {
 
         #[cfg(not(any(target_os = "espidf", target_os = "nuttx")))]
         {
-            let stack_size = cmp::max(stack, min_stack_size(attr.as_ptr()));
+            let stack_size = cmp::max(stack, min_stack_size(attr.get()));
 
-            match libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) {
+            match libc::pthread_attr_setstacksize(attr.get(), stack_size) {
                 0 => {}
                 n => {
                     assert_eq!(n, libc::EINVAL);
@@ -88,7 +92,7 @@ impl Thread {
                     // Some libc implementations, e.g. musl, place an upper bound
                     // on the stack size, in which case we can only gracefully return
                     // an error here.
-                    if libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) != 0 {
+                    if libc::pthread_attr_setstacksize(attr.get(), stack_size) != 0 {
                         return Err(io::const_error!(
                             io::ErrorKind::InvalidInput,
                             "invalid stack size"
@@ -100,7 +104,7 @@ impl Thread {
 
         let data = Box::into_raw(data);
         let mut native: libc::pthread_t = mem::zeroed();
-        let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, data as *mut _);
+        let ret = libc::pthread_create(&mut native, attr.get(), thread_start, data as *mut _);
         return if ret == 0 {
             Ok(Thread { id: native })
         } else {

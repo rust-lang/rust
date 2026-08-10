@@ -393,6 +393,7 @@
 #![feature(temporary_niche_types)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
+#![feature(unsafe_pinned)]
 #![feature(used_with_arg)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
