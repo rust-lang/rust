@@ -2673,56 +2673,6 @@ impl<'db> InferenceContext<'db> {
         }
     }
 
-    fn resolve_range_full(&self) -> Option<AdtId> {
-        let struct_ = self.lang_items.RangeFull?;
-        Some(struct_.into())
-    }
-
-    fn has_new_range_feature(&self) -> bool {
-        self.features.new_range
-    }
-
-    fn resolve_range(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeCopy?
-        } else {
-            self.lang_items.Range?
-        };
-        Some(struct_.into())
-    }
-
-    fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeInclusiveCopy?
-        } else {
-            self.lang_items.RangeInclusiveStruct?
-        };
-        Some(struct_.into())
-    }
-
-    fn resolve_range_from(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeFromCopy?
-        } else {
-            self.lang_items.RangeFrom?
-        };
-        Some(struct_.into())
-    }
-
-    fn resolve_range_to(&self) -> Option<AdtId> {
-        let struct_ = self.lang_items.RangeTo?;
-        Some(struct_.into())
-    }
-
-    fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeToInclusiveCopy?
-        } else {
-            self.lang_items.RangeToInclusive?
-        };
-        Some(struct_.into())
-    }
-
     fn resolve_va_list(&self) -> Option<AdtId> {
         let struct_ = self.lang_items.VaList?;
         Some(struct_.into())

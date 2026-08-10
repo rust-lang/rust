@@ -3148,3 +3148,15 @@ fn f<'a>(_: fn() -> &'a dyn Trait<'a>) {}
     "#,
     );
 }
+
+#[test]
+fn regression_23113() {
+    check_no_mismatches(
+        r#"
+//- minicore: range
+fn main() {
+    0..loop {};
+}
+    "#,
+    );
+}

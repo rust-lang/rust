@@ -780,6 +780,13 @@ pub mod ops {
             pub(crate) exhausted: bool,
         }
 
+        impl<Idx> RangeInclusive<Idx> {
+            #[lang = "range_inclusive_new"]
+            pub const fn new(start: Idx, end: Idx) -> Self {
+                Self { start, end, exhausted: false }
+            }
+        }
+
         #[lang = "RangeToInclusive"]
         pub struct RangeToInclusive<Idx> {
             pub end: Idx,
@@ -1250,12 +1257,12 @@ pub mod range {
     #[lang = "RangeInclusiveCopy"]
     pub struct RangeInclusive<Idx> {
         pub start: Idx,
-        pub end: Idx,
+        pub last: Idx,
     }
 
     #[lang = "RangeToInclusiveCopy"]
     pub struct RangeToInclusive<Idx> {
-        pub end: Idx,
+        pub last: Idx,
     }
 }
 // endregion:new_range

@@ -140,7 +140,7 @@ fn infer_path_qualified_macros_expanded() {
 fn expr_macro_def_expanded_in_various_places() {
     check_infer(
         r#"
-        //- minicore: iterator
+        //- minicore: iterator, range
         macro spam() {
             1isize
         }
@@ -224,7 +224,7 @@ fn expr_macro_def_expanded_in_various_places() {
             350..366 'spam!(... usize': usize
             372..380 '&spam!()': &'? isize
             386..394 '-spam!()': isize
-            400..416 'spam!(...pam!()': {unknown}
+            400..416 'spam!(...pam!()': Range<isize>
             422..439 'spam!(...pam!()': isize
         "#]],
     );
@@ -234,7 +234,7 @@ fn expr_macro_def_expanded_in_various_places() {
 fn expr_macro_rules_expanded_in_various_places() {
     check_infer(
         r#"
-        //- minicore: iterator
+        //- minicore: iterator, range
         macro_rules! spam {
             () => (1isize);
         }
@@ -318,7 +318,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             364..380 'spam!(... usize': usize
             386..394 '&spam!()': &'? isize
             400..408 '-spam!()': isize
-            414..430 'spam!(...pam!()': {unknown}
+            414..430 'spam!(...pam!()': Range<isize>
             436..453 'spam!(...pam!()': isize
         "#]],
     );
