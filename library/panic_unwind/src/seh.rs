@@ -232,8 +232,17 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
                 target_arch = "x86_64" => {
                     "lea {}, [rip + 2f]"
                 }
-                any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec") => {
-                    "adrl {}, 2f"
+                target_arch = "arm" => {
+                    concat!(
+                        "movw {0}, :lower16:2f\n",
+                        "movt {0}, :upper16:2f",
+                    )
+                }
+                any(target_arch = "aarch64", target_arch = "arm64ec") => {
+                    concat!(
+                        "adrp {0}, 2f\n",
+                        "add {0}, {0}, :lo12:2f",
+                    )
                 }
             },
             ".pushsection .rdata,\"dr\"",
