@@ -214,16 +214,28 @@ jobs:
         with:
           node-version: 22
 
-      - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
-        if: github.ref == 'refs/heads/release'
-      - run: echo "TAG=nightly" >> $GITHUB_ENV
-        if: github.ref != 'refs/heads/release'
-      - run: 'echo "TAG: $TAG"'
-
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - name: Set release tag
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/release" ]; then
+            git fetch --tags
+            today=$(date --iso -u)
+            last_tag=$(git tag -l "${today}*" | sort -V | tail -n1)
+            if [ -n "$last_tag" ]; then
+              last_v=$(echo "$last_tag" | grep -oP '(?<=\.)\d+' || echo 0)
+              new_v=$(($last_v + 1))
+              tag="${today}.${new_v}"
+            else
+              tag="$today"
+            fi
+            echo "TAG=$tag" >> $GITHUB_ENV
+          else
+            echo "TAG=nightly" >> $GITHUB_ENV
+          fi
 
       - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: 'echo "HEAD_SHA: $HEAD_SHA"'
