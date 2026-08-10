@@ -209,7 +209,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
             tcx,
             cause,
             env,
-            ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef::new(tcx, destruct_trait, [field_ty]),
                 constness: ty::BoundConstness::Maybe,
             }),

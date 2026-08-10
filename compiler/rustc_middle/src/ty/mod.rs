@@ -87,7 +87,7 @@ pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, AliasTermKind, ArgOutlivesClause, Clause, ClauseKind, CoercePredicate,
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
-    ExistentialTraitRef, HostEffectPredicate, NormalizesTo, OutlivesClause, PolyCoercePredicate,
+    ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionPredicate,

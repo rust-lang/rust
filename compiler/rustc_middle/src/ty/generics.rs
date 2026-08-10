@@ -537,7 +537,7 @@ impl<'tcx> GenericClauses<'tcx> {
 #[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct ConstConditions<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],
+    pub clauses: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],
 }
 
 impl<'tcx> ConstConditions<'tcx> {
@@ -559,7 +559,7 @@ impl<'tcx> ConstConditions<'tcx> {
     + DoubleEndedIterator
     + ExactSizeIterator
     + Clone {
-        EarlyBinder::bind_iter(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+        EarlyBinder::bind_iter(self.clauses).iter_instantiated_copied(tcx, args).map(|u| {
             let (trait_ref, span) = u.unzip();
             (trait_ref, span.skip_normalization())
         })
@@ -571,7 +571,7 @@ impl<'tcx> ConstConditions<'tcx> {
     + DoubleEndedIterator
     + ExactSizeIterator
     + Clone {
-        EarlyBinder::bind_iter(self.predicates).iter_identity_copied().map(|u| {
+        EarlyBinder::bind_iter(self.clauses).iter_identity_copied().map(|u| {
             let (trait_ref, span) = u.unzip();
             (trait_ref, span.skip_normalization())
         })
@@ -588,9 +588,9 @@ impl<'tcx> ConstConditions<'tcx> {
             tcx.const_conditions(def_id).instantiate_into(tcx, instantiated, args);
         }
         instantiated.extend(
-            self.predicates
+            self.clauses
                 .iter()
-                .map(|&(p, s)| (EarlyBinder::bind(tcx, p).instantiate(tcx, args), s)),
+                .map(|&(c, s)| (EarlyBinder::bind(tcx, c).instantiate(tcx, args), s)),
         );
     }
 
@@ -612,7 +612,7 @@ impl<'tcx> ConstConditions<'tcx> {
             tcx.const_conditions(def_id).instantiate_identity_into(tcx, instantiated);
         }
         instantiated.extend(
-            self.predicates
+            self.clauses
                 .iter()
                 .copied()
                 .map(|(trait_ref, span)| (Unnormalized::new(trait_ref), span)),
