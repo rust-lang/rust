@@ -2,7 +2,6 @@ use std::hash::Hash;
 use std::mem::ManuallyDrop;
 use std::num::NonZero;
 
-use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{Limit, defer, outline, sharded, sync};
@@ -23,16 +22,13 @@ use tracing::debug;
 
 use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
 use crate::handle_cycle_error;
+use crate::incremental::should_verify_loaded_value;
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, find_dep_kind_root};
 use crate::query_vtables::for_each_query_vtable;
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
     move |x| x.0 == k
-}
-
-pub(crate) fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
-    state.active.lock_shards().all(|shard| shard.is_empty())
 }
 
 #[derive(Clone, Copy)]
@@ -536,29 +532,6 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     (result, dep_node_index)
-}
-
-/// Whether a value loaded from the on-disk cache should have its fingerprint
-/// verified with `incremental_verify_ich`. If `-Zincremental-verify-ich` is
-/// specified, re-hash results from the cache and make sure that they have the
-/// expected fingerprint.
-///
-/// If not, we still verify a subset: re-hashing is too expensive to do for
-/// every value. The subset rotates with the session count, covering the whole
-/// cache every 32 sessions, and is deterministic so that a verification
-/// failure reproduces on retry.
-///
-/// `to_smaller_hash` mixes both fingerprint halves because neither half is
-/// evenly distributed on its own (`DefPathHash` keys share the
-/// `StableCrateId`, `HirId` keys contain a sequential id).
-pub(crate) fn should_verify_loaded_value(
-    tcx: TyCtxt<'_>,
-    dep_graph_data: &DepGraphData,
-    key_fingerprint: PackedFingerprint,
-) -> bool {
-    let hash = Fingerprint::from(key_fingerprint).to_smaller_hash().as_u64();
-    hash % 32 == dep_graph_data.session_count() % 32
-        || tcx.sess.opts.unstable_opts.incremental_verify_ich
 }
 
 /// Given that the dep node for this query+key is green, obtain a value for it

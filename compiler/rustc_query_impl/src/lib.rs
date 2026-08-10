@@ -22,8 +22,8 @@ mod dep_kind_vtables;
 mod diagnostics;
 mod execution;
 mod handle_cycle_error;
+mod incremental;
 mod job;
-mod plumbing;
 mod profiling_support;
 mod query_vtables;
 
@@ -62,6 +62,6 @@ pub fn query_system<'tcx>(
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings =
         profiling_support::alloc_self_profile_query_strings;
-    providers.hooks.verify_query_key_hashes = plumbing::verify_query_key_hashes;
-    providers.hooks.encode_query_values = plumbing::encode_query_values;
+    providers.hooks.verify_query_key_hashes = incremental::verify_query_key_hashes;
+    providers.hooks.encode_query_values = incremental::encode_query_values;
 }

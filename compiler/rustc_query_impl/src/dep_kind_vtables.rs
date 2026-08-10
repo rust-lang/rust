@@ -4,7 +4,7 @@ use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
 
 use crate::GetQueryVTable;
-use crate::plumbing::promote_from_disk_inner;
+use crate::incremental::promote_from_disk_inner;
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
 #[expect(non_snake_case, reason = "use non-snake case to avoid collision with query names")]

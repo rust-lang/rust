@@ -1,17 +1,23 @@
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::unord::UnordMap;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
-use rustc_middle::dep_graph::{DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{
+    DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
+};
 use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
-use rustc_middle::query::{QueryCache, QueryVTable, erase};
+use rustc_middle::query::{QueryCache, QueryState, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_serialize::{Decodable, Encodable};
 
-use crate::execution::{all_inactive, should_verify_loaded_value};
 use crate::query_vtables::for_each_query_vtable;
+
+fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
+    state.active.lock_shards().all(|shard| shard.is_empty())
+}
 
 pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEncoder<'_, 'tcx>) {
     for_each_query_vtable!(CACHE_ON_DISK, tcx, |query| {
@@ -71,6 +77,29 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
             );
         }
     });
+}
+
+/// Whether a value loaded from the on-disk cache should have its fingerprint
+/// verified with `incremental_verify_ich`. If `-Zincremental-verify-ich` is
+/// specified, re-hash results from the cache and make sure that they have the
+/// expected fingerprint.
+///
+/// If not, we still verify a subset: re-hashing is too expensive to do for
+/// every value. The subset rotates with the session count, covering the whole
+/// cache every 32 sessions, and is deterministic so that a verification
+/// failure reproduces on retry.
+///
+/// `to_smaller_hash` mixes both fingerprint halves because neither half is
+/// evenly distributed on its own (`DefPathHash` keys share the
+/// `StableCrateId`, `HirId` keys contain a sequential id).
+pub(crate) fn should_verify_loaded_value(
+    tcx: TyCtxt<'_>,
+    dep_graph_data: &DepGraphData,
+    key_fingerprint: PackedFingerprint,
+) -> bool {
+    let hash = Fingerprint::from(key_fingerprint).to_smaller_hash().as_u64();
+    hash % 32 == dep_graph_data.session_count() % 32
+        || tcx.sess.opts.unstable_opts.incremental_verify_ich
 }
 
 /// Inner implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.

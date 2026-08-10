@@ -149,7 +149,7 @@ macro_rules! define_queries {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
                             let loaded_value: ProvidedValue<'tcx> =
-                                $crate::plumbing::try_load_from_disk(tcx, prev_index)?;
+                                $crate::incremental::try_load_from_disk(tcx, prev_index)?;
 
                             // Arena-alloc the value if appropriate, and erase it.
                             Some(provided_to_erased(tcx, loaded_value))
