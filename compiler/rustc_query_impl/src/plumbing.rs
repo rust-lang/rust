@@ -18,7 +18,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, should_verify_loaded_value};
 use crate::job::find_dep_kind_root;
-use crate::query_impl::for_each_query_vtable;
+use crate::query_vtables::for_each_query_vtable;
 use crate::{CollectActiveJobsKind, collect_active_query_jobs};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {

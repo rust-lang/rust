@@ -33,7 +33,7 @@ macro_rules! define_queries {
         // Non-queries are unused here.
         non_queries { $($_:tt)* }
     ) => {
-        // This macro expects to be expanded into `crate::query_impl`, which is this file.
+        // This macro expects to be expanded into `crate::query_vtables`, which is this file.
         $(
             pub(crate) mod $name {
                 use super::*;
@@ -181,9 +181,9 @@ macro_rules! define_queries {
                         },
                         create_tagged_key: TaggedQueryKey::$name,
                         execute_query_fn: if incremental {
-                            crate::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
+                            crate::query_vtables::$name::execute_query_incr::__rust_end_short_backtrace
                         } else {
-                            crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
+                            crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
                     }
                 }
@@ -207,7 +207,7 @@ macro_rules! define_queries {
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_impl::$name::make_query_vtable(incremental),
+                    $name: crate::query_vtables::$name::make_query_vtable(incremental),
                 )*
             }
         }

@@ -166,7 +166,7 @@ macro_rules! define_dep_kind_vtables {
         let q_vtables: [DepKindVTable<'tcx>; _] = [
             $(
                 $crate::dep_kind_vtables::make_dep_kind_vtable_for_query::<
-                    $crate::query_impl::$name::VTableGetter,
+                    $crate::query_vtables::$name::VTableGetter,
                 >(
                     $cache_on_disk,
                     $eval_always,

@@ -25,7 +25,7 @@ mod handle_cycle_error;
 mod job;
 mod plumbing;
 mod profiling_support;
-mod query_impl;
+mod query_vtables;
 
 /// Trait that knows how to look up the [`QueryVTable`] for a particular query.
 ///
@@ -34,7 +34,7 @@ mod query_impl;
 /// expansion.
 ///
 /// There is one macro-generated implementation of this trait for each query,
-/// on the type `rustc_query_impl::query_impl::$name::VTableGetter`.
+/// on the type `rustc_query_impl::query_vtables::$name::VTableGetter`.
 trait GetQueryVTable<'tcx> {
     type Cache: QueryCache + 'tcx;
 
@@ -49,7 +49,7 @@ pub fn query_system<'tcx>(
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         arenas: Default::default(),
-        query_vtables: query_impl::make_query_vtables(incremental),
+        query_vtables: query_vtables::make_query_vtables(incremental),
         side_effects: Default::default(),
         on_disk_cache,
         local_providers,
