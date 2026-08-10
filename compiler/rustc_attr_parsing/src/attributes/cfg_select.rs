@@ -1,11 +1,11 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diagnostic, MultiSpan};
 use rustc_feature::Features;
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;

@@ -1,12 +1,12 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::{Applicability, msg};
-use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::{
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
 };
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_errors::{Applicability, msg};
+use rustc_feature::AttributeStability;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 

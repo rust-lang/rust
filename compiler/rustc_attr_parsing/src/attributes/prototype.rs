@@ -1,8 +1,8 @@
 //! Attributes that are only used on function prototypes.
 
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttributeKind, MirDialect, MirPhase};
 use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::SingleAttributeParser;
