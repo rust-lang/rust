@@ -9,7 +9,6 @@
 // tidy-alphabetical-end
 
 use rustc_data_structures::sync::{AtomicU64, Lock};
-use rustc_middle::dep_graph;
 use rustc_middle::queries::{ExternProviders, Providers};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_middle::query::{QueryCache, QuerySystem, QueryVTable};

@@ -6,7 +6,9 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
-use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{
+    DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
+};
 use rustc_middle::query::{
     ActiveKeyStatus, Cycle, QueryCache, QueryJob, QueryJobId, QueryKey, QueryLatch, QueryMode,
     QueryState, QueryVTable,
@@ -16,7 +18,6 @@ use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
-use crate::dep_graph::{DepNode, DepNodeIndex};
 use crate::handle_cycle_error;
 use crate::job::{QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
