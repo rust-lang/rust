@@ -1886,7 +1886,48 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
 
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cfg_select! {
-        any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "android") => {
+        target_os = "linux" => {
+            let res = cvt_r(|| unsafe {
+                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
+            })
+            .map(|_| ());
+
+            match res {
+                Ok(_) => return Ok(()),
+                Err(err) => {
+                    if err.kind() == crate::io::ErrorKind::Unsupported {
+                        use crate::fs::OpenOptions;
+                        use crate::fs::Permissions;
+                        use crate::os::unix::ffi::OsStrExt;
+                        use crate::os::unix::fs::OpenOptionsExt;
+
+                        let mut options = OpenOptions::new();
+                        options.read(true).custom_flags(libc::O_NOFOLLOW);
+
+                        let os_str = OsStr::from_bytes(p.to_bytes());
+                        let path = Path::new(os_str);
+                        match options.open(path) {
+                            Ok(file) => {
+                                return file.set_permissions(Permissions::from_inner(perm));
+                            },
+                            Err(e) => {
+                                if e.kind() == crate::io::ErrorKind::FilesystemLoop {
+                                    // When O_NOFOLLOW flag is enabled, if the trailing component of
+                                    // a path is a symbolic link, open should fail with ELOOP error
+                                    // For consistency with other Linux distributions, we return
+                                    // `ErrorKind::Unsupported`.
+                                    return Err(err);
+                                }
+                                return Err(e);
+                            }
+                        }
+                    }
+
+                    return Err(err);
+                }
+            }
+        }
+        any(target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "android") => {
             cvt_r(|| unsafe {
                 libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
             })
@@ -1906,7 +1947,7 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
                 use crate::os::wasi::fs::OpenOptionsExt;
                 #[cfg(not(target_os = "wasi"))]
                 use crate::os::unix::fs::OpenOptionsExt;
-                options.custom_flags(libc::O_NOFOLLOW);
+                options.read(true).custom_flags(libc::O_NOFOLLOW);
             }
 
             // SAFETY: Since this function is called with `with_native_path`

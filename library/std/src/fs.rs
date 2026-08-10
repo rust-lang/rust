@@ -3471,17 +3471,24 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the following underlying operations:
-/// * Linux, BSD-based platforms, Android: `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
+/// * Linux: `fchmodat` with `AT_SYMLINK_NOFOLLOW` with a fallback behavior to use
+/// `open` with `O_NOFOLLOW` followed by behavior denoted in [`fs::set_permissions`] when
+/// the former `fchmodat` call errors with `ENOTSUP`[^1].
+/// * BSD-based platforms, Android: `fchmodat` with `AT_SYMLINK_NOFOLLOW`
 /// * Other Unix-based platforms with symlinks: `open` with `O_NOFOLLOW` followed by behavior
 ///   denoted in [`fs::set_permissions`].
-/// * Other Unix-based platforms without symlinks: `open` with followed by behavior
+/// * Other Unix-based platforms without symlinks: `open` followed by behavior
 ///   denoted in [`fs::set_permissions`].
 /// * Windows: `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` followed
 ///   by `SetFileInformationByHandle`.
 ///
 /// Note that, this [may change in the future][changes].
 ///
+/// [^1]: Ubuntu 20.04, for example, makes `fchmodat` with `AT_SYMLINK_NOFOLLOW` return `ENOTSUP`
+/// on both symlinks and non-symlinks
+///
 /// [changes]: io#platform-specific-behavior
+///
 /// [`fs::set_permissions`]: crate::fs::set_permissions
 ///
 /// # Errors
@@ -3494,11 +3501,11 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 ///
 /// Note: On Linux, this will result in an [`Unsupported`] error
 /// if the final element is a symlink. On other Unix-based platforms
-/// with symlinks (non-BSD-based), this will result in an [`InvalidInput`]
+/// with symlinks (non-BSD-based), this will result in a [`FilesystemLoop`]
 /// error.
 ///
 /// [`Unsupported`]: crate::io::ErrorKind::Unsupported
-/// [`InvalidInput`]: crate::io::ErrorKind::InvalidInput
+/// [`FilesystemLoop`]: crate::io::ErrorKind::FilesystemLoop
 ///
 /// # Examples
 ///
