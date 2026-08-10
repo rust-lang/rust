@@ -1,0 +1,23 @@
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/closure-trait-ice-in-wfcheck-diagnostics.rs:11:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/closure-trait-ice-in-wfcheck-diagnostics.rs:11:5
+   |
+LL | /     fn foo() -> impl Sized
+LL | |
+LL | |
+LL | |     where
+LL | |         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
+   | |____________________________________________________^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
