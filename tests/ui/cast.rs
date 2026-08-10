@@ -592,3 +592,13 @@ fn issue16045() {
         Ok(())
     }
 }
+
+fn issue_17501() {
+    macro_rules! cast_from_macro {
+        () => {
+            5_i64
+        };
+    }
+    let _ = cast_from_macro!() as i32;
+    //~^ cast_possible_truncation
+}
