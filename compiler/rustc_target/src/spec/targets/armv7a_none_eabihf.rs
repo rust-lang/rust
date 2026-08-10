@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+vfp3d16,-neon,+strict-align".into(),
+            features: "-d32,+vfp3d16,+strict-align".into(),
             max_atomic_width: Some(64),
             has_thumb_interworking: true,
             ..base::arm_none::opts()

@@ -28,7 +28,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
-            features: "+v7,+thumb-mode,+thumb2,+vfp3d16,-neon".into(),
+            features: "-d32,+v7,+thumb-mode,+thumb2,+vfp3d16".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
             ..base
