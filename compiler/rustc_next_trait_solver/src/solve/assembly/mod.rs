@@ -85,7 +85,15 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
+        // We inline much of `probe_and_match_goal_against_assumption` and
+        // `TraitPredicate::match_assumption` here, as we never encounter
+        // `Sized` or `MetaSized` goals here, and we need to equate `goal`
+        // and `assumption`'s trait refs directly inside this function in
+        // order to prevent unsoundness (see below).
+
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
+
+        ecx.probe_trait_candidate(source).enter(|ecx| {
             let cx = ecx.cx();
             let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
@@ -105,6 +113,37 @@ where
                     unreachable!("expected trait or projection predicate as an assumption")
                 }
             });
+
+            // If we need to prove `dyn for<'x> Trait<'x> + '?temp: Trait<'static>` with
+            //
+            // ```rs
+            // trait Trait<'a>: 'a {}
+            // ```
+            //
+            // we have the goal's trait ref as `Trait<'static>` and a theoretical impl
+            // resembling:
+            //
+            // ```rs
+            // impl<'s, 'hr> Trait<'hr> for dyn for<'x> Trait<'x> + 's
+            // where
+            //     dyn for<'a> Trait<'a> + 's: 'hr
+            // {}
+            // ```
+            //
+            // where 'hr is our bound var. The where-clause elaborates to `'s: 'hr`;
+            // in this case we have 's := '?temp. Instantiating the binder gives us
+            // 'hr := '?infer, and our goal has 'hr := 'static, so we need to equate
+            // the instantiated trait ref to the goal in order to get '?infer := 'static,
+            // since what we want is the constraint `'?temp: 'static`.
+            //
+            // If we instead passed the binder to predicates_for_object_candidate and let
+            // it instantiate the binder itself, we would lose '?infer := 'static, since
+            // predicates_for_object_candidate has no way of equating the trait ref with
+            // the goal. We would simply have 'hr := '?infer, giving us the constraint
+            // `?temp: '?infer`, which is satisfiable for any lifetime, leading to
+            // unsoundness: trait-system-refactor-initiative#295.
+            let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
+            ecx.eq(goal.param_env, goal.predicate.trait_ref(cx), trait_ref)?;
 
             match structural_traits::predicates_for_object_candidate(
                 ecx,
