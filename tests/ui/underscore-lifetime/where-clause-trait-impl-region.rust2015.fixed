@@ -1,4 +1,8 @@
 //@ run-rustfix
+//@ revisions: rust2015 rust2018
+//@[rust2015] edition:2015
+//@[rust2018] edition:2018
+
 #![allow(dead_code)]
 
 trait WithType<T> {}
@@ -8,7 +12,7 @@ trait Foo { }
 
 impl<T> Foo for Vec<T>
 where
-    T: WithType<&u32>
+    T: for<'a> WithType<&'a u32>
 //~^ ERROR `&` without an explicit lifetime name cannot be used here
 { }
 

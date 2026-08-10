@@ -1,5 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/issue-116434-2021.rs:5:17
+  --> $DIR/bare_trait_objects.rs:8:17
    |
 LL |     fn foo() -> Clone;
    |                 ^^^^^
@@ -14,7 +14,7 @@ LL |     fn foo() -> Self::Clone;
    |                 ++++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/issue-116434-2021.rs:15:20
+  --> $DIR/bare_trait_objects.rs:26:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^
