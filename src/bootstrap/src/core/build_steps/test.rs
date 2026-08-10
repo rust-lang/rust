@@ -4605,7 +4605,7 @@ impl CommandLineStep for RemoteTestClientTests {
 }
 
 fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
-    command("cargo")
+    command(&builder.initial_cargo)
         .allow_failure()
         .arg("semver-checks")
         .arg("--version")
@@ -4618,7 +4618,13 @@ fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
 /// Run cargo-semver-checks on the standard library and compare its API
 /// versus a previous baseline, using rustdoc JSON data.
 ///
+/// The baseline commit can be configured using `rust.stdlib-semver-baseline`.
+/// If unset, the first upstream parent commit will be used.
+///
 /// Fails if a semver-breaking change is detected.
+///
+/// If you want to allow a breaking change in a given PR, or if cargo-semver-checks has a false
+/// positive, modify the `src/bootstrap/stdlib-semver-check-stamp` file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StdSemverCheck {
     build_compiler: Compiler,
@@ -4639,19 +4645,22 @@ impl CommandLineStep for StdSemverCheck {
             panic!("cargo-semver-checks was not found, please install it");
         }
 
-        let baseline_commit = match get_closest_upstream_commit(
-            Some(&run.builder.config.src),
-            &run.builder.config.git_config(),
-            run.builder.config.ci_env,
-        ) {
-            Ok(Some(commit)) => commit,
-            Ok(None) => {
-                panic!("No baseline parent commit found for std-semver-check");
-            }
-            Err(error) => {
-                panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
-            }
-        };
+        let baseline_commit =
+            run.builder.config.stdlib_semver_baseline.clone().unwrap_or_else(|| {
+                match get_closest_upstream_commit(
+                    Some(&run.builder.config.src),
+                    &run.builder.config.git_config(),
+                    run.builder.config.ci_env,
+                ) {
+                    Ok(Some(commit)) => commit,
+                    Ok(None) => {
+                        panic!("No baseline parent commit found for std-semver-check");
+                    }
+                    Err(error) => {
+                        panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
+                    }
+                }
+            });
 
         run.builder.ensure(Self {
             build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
@@ -4661,6 +4670,15 @@ impl CommandLineStep for StdSemverCheck {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        const STDLIB_SEMVER_CHECK_STAMP_PATH: &str = "src/bootstrap/stdlib-semver-check-stamp";
+
+        if builder.config.ci_env.is_running_in_ci()
+            && builder.config.has_changes_from_upstream(&[STDLIB_SEMVER_CHECK_STAMP_PATH])
+        {
+            builder.info(&format!("Skipping stdlib semver check, because {STDLIB_SEMVER_CHECK_STAMP_PATH} was modified."));
+            return;
+        }
+
         let Some(docs_dir) = builder.config.download_std_json_docs(self.target, &self.commit)
         else {
             return;
@@ -4675,7 +4693,7 @@ impl CommandLineStep for StdSemverCheck {
 
         for library in ["core", "alloc", "std"] {
             println!("Checking semver compatibility of {library}");
-            let mut cmd = command("cargo");
+            let mut cmd = command(&builder.initial_cargo);
             cmd.arg("semver-checks")
                 .arg("-Z")
                 .arg("unstable-options")
@@ -4686,7 +4704,41 @@ impl CommandLineStep for StdSemverCheck {
                 .arg(directory.join(format!("{library}.json")))
                 .arg("--baseline-rustdoc")
                 .arg(baseline_dir.join(format!("{library}.json")));
-            cmd.run(builder);
+
+            // We use run_capture to get the exit status
+            let res = cmd.allow_failure().run_capture(builder);
+            match res.status() {
+                Some(status) if status.success() => {
+                    println!("{}\n{}", res.stdout(), res.stderr());
+                }
+                // 101 marks that csc was unable to parse the JSON data, but it did not fail with a
+                // semver breakage.
+                Some(status) if status.code() == Some(101) => {
+                    eprintln!(
+                        "cargo-semver-checks was unable to process {library} (this is not a fatal error)\n{}\n{}",
+                        res.stderr(),
+                        res.stdout()
+                    );
+                }
+                // 100 marks semver breakage
+                Some(status) if status.code() == Some(100) => {
+                    let error = format!(
+                        "cargo-semver-checks found semver breakage in {library}\n{}\n{}",
+                        res.stderr(),
+                        res.stdout()
+                    );
+                    if builder.fail_fast {
+                        eprintln!("{error}",);
+                        exit!(1);
+                    } else {
+                        builder.config.exec_ctx().add_to_delay_failure(error);
+                    }
+                }
+                _ => {
+                    eprintln!("cargo-semver-checks failed.\n{}\n{}", res.stderr(), res.stdout());
+                    exit!(1);
+                }
+            }
         }
     }
 }

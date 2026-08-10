@@ -492,6 +492,10 @@ auto:
   - name: x86_64-gnu-miri
     <<: *job-linux-4c
 
+  - name: x86_64-gnu-stdlib-semver-check
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/stdlib-semver-check.html
+    <<: *job-linux-4c
+
   - name: optional-x86_64-gnu-autodiff
     continue_on_error: true
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/autodiff-ci-job.html
