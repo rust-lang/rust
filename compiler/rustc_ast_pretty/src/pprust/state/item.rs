@@ -834,15 +834,14 @@ impl<'a> State<'a> {
     }
 
     fn print_where_clause(&mut self, where_clause: &ast::WhereClause) {
-        let ast::WhereClause { has_where_token, ref predicates, span: _ } = *where_clause;
-        if predicates.is_empty() && !has_where_token {
+        if !where_clause.has_where_token() {
             return;
         }
 
         self.space();
         self.word_space("where");
 
-        for (i, predicate) in predicates.iter().enumerate() {
+        for (i, predicate) in where_clause.predicates().iter().enumerate() {
             if i != 0 {
                 self.word_space(",");
             }

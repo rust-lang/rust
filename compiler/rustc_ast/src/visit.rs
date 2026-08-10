@@ -488,6 +488,7 @@ macro_rules! common_visitor_and_walkers {
             VisibilityKind,
             WhereBoundPredicate,
             WhereClause,
+            WhereClauseData,
             WhereEqPredicate,
             WhereRegionPredicate,
             YieldKind,

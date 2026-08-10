@@ -13,7 +13,7 @@ use rustc_middle::ty::data_structures::IndexMap;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -41,15 +41,7 @@ fn add_ty_alias_where_clause(
     after_where_clause: &ast::WhereClause,
     prefer_first: bool,
 ) {
-    generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
-
-    let mut before = (generics.where_clause.has_where_token, generics.where_clause.span);
-    let mut after = (after_where_clause.has_where_token, after_where_clause.span);
-    if !prefer_first {
-        (before, after) = (after, before);
-    }
-    (generics.where_clause.has_where_token, generics.where_clause.span) =
-        if before.0 || !after.0 { before } else { after };
+    generics.where_clause.merge_from(after_where_clause, prefer_first);
 }
 
 impl<'hir> ItemLowerer<'_, 'hir> {
@@ -276,8 +268,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 define_opaque,
             }) => {
                 let ident = self.lower_ident(*ident);
+                let where_sp = body.as_ref().map(|b| b.span).unwrap_or(ty.span).shrink_to_hi();
                 let (generics, (ty, rhs)) = self.lower_generics(
                     generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = this.lower_ty_alloc(
@@ -305,7 +299,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }),
             ),
             ItemKind::Fn(Fn {
-                sig: FnSig { decl, header, span: fn_sig_span },
+                sig: sig @ FnSig { decl, header, span: fn_sig_span },
                 ident,
                 generics,
                 body,
@@ -331,7 +325,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
 
                     let itctx = ImplTraitContext::Universal;
-                    let (generics, decl) = this.lower_generics(generics, itctx, |this| {
+                    let where_sp = sig.where_insert_span(body.is_some());
+                    let (generics, decl) = this.lower_generics(generics, where_sp, itctx, |this| {
                         this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coroutine_kind)
                     });
                     let sig = hir::FnSig {
@@ -371,7 +366,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
                 hir::ItemKind::GlobalAsm { asm, fake_body }
             }
-            ItemKind::TyAlias(TyAlias { ident, generics, after_where_clause, ty, .. }) => {
+            ItemKind::TyAlias(TyAlias {
+                ident, generics, after_where_clause, ty, bounds, ..
+            }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -383,8 +380,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ident = self.lower_ident(*ident);
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, after_where_clause, true);
+                let where_sp = bounds
+                    .last()
+                    .map(|b| b.span().shrink_to_hi())
+                    .unwrap_or(generics.span.shrink_to_hi());
                 let (generics, ty) = self.lower_generics(
                     &generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
                         None => {
@@ -411,6 +413,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ident = self.lower_ident(*ident);
                 let (generics, variants) = self.lower_generics(
                     generics,
+                    generics.span.shrink_to_hi(),
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         this.arena.alloc_from_iter(
@@ -422,8 +425,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Struct(ident, generics, struct_def) => {
                 let ident = self.lower_ident(*ident);
+                let where_sp = if struct_def.requires_semi() {
+                    span.with_hi(span.hi() - BytePos(1)).shrink_to_hi()
+                } else {
+                    generics.span.shrink_to_hi()
+                };
                 let (generics, struct_def) = self.lower_generics(
                     generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, i, struct_def),
                 );
@@ -433,6 +442,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ident = self.lower_ident(*ident);
                 let (generics, vdata) = self.lower_generics(
                     generics,
+                    generics.span.shrink_to_hi(),
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, i, vdata),
                 );
@@ -459,8 +469,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
                 let itctx = ImplTraitContext::Universal;
+                // We always store a where-clause insertion span for impls.
+                if ast_generics.where_clause.span().is_none_or(|sp| sp.is_dummy()) {
+                    span_bug!(span, "Impl missing where-clause insertion span");
+                }
                 let (generics, (of_trait, lowered_ty)) =
-                    self.lower_generics(ast_generics, itctx, |this| {
+                    self.lower_generics(ast_generics, DUMMY_SP, itctx, |this| {
                         let of_trait = of_trait
                             .as_deref()
                             .map(|of_trait| this.lower_trait_impl_header(of_trait));
@@ -500,8 +514,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let constness = self.lower_constness(attrs, *constness);
                 let impl_restriction = self.lower_impl_restriction(impl_restriction);
                 let ident = self.lower_ident(*ident);
+                let where_sp = bounds
+                    .last()
+                    .map(|b| b.span().shrink_to_hi())
+                    .unwrap_or(generics.span.shrink_to_hi());
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let bounds = this.lower_param_bounds(
@@ -530,8 +549,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds }) => {
                 let constness = self.lower_constness(attrs, *constness);
                 let ident = self.lower_ident(*ident);
+                // Right before the semicolon
+                let where_sp = span.with_hi(span.hi() - BytePos(1)).shrink_to_hi();
                 let (generics, bounds) = self.lower_generics(
                     generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         this.lower_param_bounds(
@@ -729,14 +751,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (ident, kind) = match &i.kind {
             ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
                 let fdec = &sig.decl;
+                let where_sp = sig.where_insert_span(false);
                 let itctx = ImplTraitContext::Universal;
-                let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
-                    (
-                        // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
-                        this.lower_fn_params_to_idents(fdec),
-                    )
-                });
+                let (generics, (decl, fn_args)) =
+                    self.lower_generics(generics, where_sp, itctx, |this| {
+                        (
+                            // Disallow `impl Trait` in foreign items.
+                            this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
+                            this.lower_fn_params_to_idents(fdec),
+                        )
+                    });
 
                 // Unmarked safety in unsafe block defaults to unsafe.
                 let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe, attrs);
@@ -924,8 +948,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 define_opaque,
                 ..
             }) => {
+                let where_sp = body.as_ref().map(|b| b.span).unwrap_or(ty.span).shrink_to_hi();
                 let (generics, kind) = self.lower_generics(
                     generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = this.lower_ty_alloc(
@@ -962,6 +988,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
+                    false,
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
@@ -1002,6 +1029,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
+                    true,
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
@@ -1025,8 +1053,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, after_where_clause, false);
+                let where_sp = match ty {
+                    None => i.span.with_hi(i.span.hi() - BytePos(1)).shrink_to_hi(),
+                    Some(ty) => ty.span.shrink_to_hi(),
+                };
                 let (generics, kind) = self.lower_generics(
                     &generics,
+                    where_sp,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = ty.as_ref().map(|x| {
@@ -1190,6 +1223,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 *ident,
                 self.lower_generics(
                     generics,
+                    body.as_ref().map(|b| b.span).unwrap_or(ty.span).shrink_to_hi(),
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = this.lower_ty_alloc(
@@ -1218,6 +1252,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
+                    body.is_some(),
                     i.id,
                     if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_kind,
@@ -1230,10 +1265,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Type(TyAlias { ident, generics, after_where_clause, ty, .. }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, after_where_clause, false);
+                let where_sp = ty
+                    .as_ref()
+                    .map(|ty| ty.span.shrink_to_hi())
+                    .unwrap_or(generics.span.shrink_to_hi());
                 (
                     *ident,
                     self.lower_generics(
                         &generics,
+                        where_sp,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                         |this| match ty {
                             None => {
@@ -1664,14 +1704,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         sig: &FnSig,
+        has_body: bool,
         id: NodeId,
         kind: FnDeclKind,
         coroutine_kind: Option<CoroutineKind>,
         attrs: &[hir::Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
+        let where_sp = sig.where_insert_span(has_body);
         let itctx = ImplTraitContext::Universal;
-        let (generics, decl) = self.lower_generics(generics, itctx, |this| {
+        let (generics, decl) = self.lower_generics(generics, where_sp, itctx, |this| {
             this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
@@ -1847,6 +1889,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_generics<T>(
         &mut self,
         generics: &Generics,
+        where_clause_insert_span: Span,
         itctx: ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
@@ -1872,7 +1915,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 PredicateOrigin::GenericParam,
             )
         }));
-        predicates.extend(generics.where_clause.predicates.iter().map(|predicate| {
+        predicates.extend(generics.where_clause.predicates().iter().map(|predicate| {
             self.lower_where_predicate(predicate, &generics.params, &mut dedup_map)
         }));
 
@@ -1891,8 +1934,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
         }));
 
-        let has_where_clause_predicates = !generics.where_clause.predicates.is_empty();
-        let where_clause_span = self.lower_span(generics.where_clause.span);
+        let has_where_clause_predicates = !generics.where_clause.predicates().is_empty();
+        let where_clause_span = self.lower_span(match generics.where_clause.span() {
+            Some(span) if !span.is_dummy() => span,
+            _ => where_clause_insert_span,
+        });
         let span = self.lower_span(generics.span);
         let res = f(self);
 

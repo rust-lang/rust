@@ -282,7 +282,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
 
-            for predicate in &generics.where_clause.predicates {
+            for predicate in generics.where_clause.predicates() {
                 let ast::WherePredicateKind::BoundPredicate(where_bound) = &predicate.kind else {
                     continue;
                 };

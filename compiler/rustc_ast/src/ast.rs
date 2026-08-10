@@ -31,8 +31,8 @@ use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
-    sym,
+    BytePos, ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw,
+    respan, sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -475,20 +475,78 @@ pub struct Generics {
 }
 
 /// A where-clause in a definition.
+///
+/// This uses a thin representation, because many items don't have generics and many of those that
+/// do don't have where clauses.
+///
+/// - `None` means no where clause.
+/// - `Some` with an empty `predicates` and a non-empty span means an empty where clause, like
+///   `struct Foo where {}`. This allows us to pretty-print accurately and provide correct
+///   suggestion diagnostics.
+/// - `Some` with an empty `span` means a generated synthetic where clause where the `span` is the
+///   insertion point if a suggestion wants to add a where clause.
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
-pub struct WhereClause {
-    /// `true` if we ate a `where` token.
-    ///
-    /// This can happen if we parsed no predicates, e.g., `struct Foo where {}`.
-    /// This allows us to pretty-print accurately and provide correct suggestion diagnostics.
-    pub has_where_token: bool,
-    pub predicates: ThinVec<WherePredicate>,
-    pub span: Span,
+pub struct WhereClause(Option<Box<WhereClauseData>>);
+
+/// A where-clause in a definition.
+#[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
+pub struct WhereClauseData {
+    predicates: ThinVec<WherePredicate>,
+    span: Span,
 }
 
 impl WhereClause {
-    pub fn is_empty(&self) -> bool {
-        !self.has_where_token && self.predicates.is_empty()
+    /// Create a new `WhereClause` that has a `where` keyword (even if the clause is empty)
+    ///
+    /// This will panic if `span` is empty.
+    ///
+    /// If generating a synthetic where clause for an item that doesn't have an existing one to use
+    /// the span from, compute the appropriate insertion point and call `new_synthetic` instead.
+    ///
+    /// If generating a non-synthetic `WhereClause` with no insertion point and no predicates, use
+    /// `WhereClause::default()`.
+    pub fn new_with_where(span: Span, predicates: ThinVec<WherePredicate>) -> Self {
+        assert!(!span.is_empty());
+        WhereClause(Some(Box::new(WhereClauseData { predicates, span })))
+    }
+
+    /// Create a new synthetic `WhereClause` that has a maybe-empty insertion span
+    ///
+    /// Unlike `new_with_where`, this allows an empty span that serves as an insertion point, and
+    /// preserves it along with the predicates even if the predicates are empty.
+    pub fn new_synthetic(span: Span, predicates: ThinVec<WherePredicate>) -> Self {
+        WhereClause(Some(Box::new(WhereClauseData { predicates, span })))
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        self.0.as_ref().map(|d| d.span)
+    }
+
+    pub fn has_where_token(&self) -> bool {
+        // This handles the case from `new_synthetic`
+        self.0.as_ref().is_some_and(|d| !d.span.is_empty() || !d.predicates.is_empty())
+    }
+
+    pub fn predicates(&self) -> &[WherePredicate] {
+        match self.0 {
+            None => &[],
+            Some(ref d) => &d.predicates,
+        }
+    }
+
+    /// Merge another where clause into this one, to provide better spans and recovery.
+    ///
+    /// `prefer_first_span` determines which span to use if both where clauses exist.
+    pub fn merge_from(self: &mut WhereClause, w2: &WhereClause, prefer_first_span: bool) {
+        let Some(ref d2) = w2.0 else { return };
+        let Some(ref mut d) = self.0 else {
+            self.0 = Some(d2.clone());
+            return;
+        };
+        d.predicates.extend_from_slice(&d2.predicates);
+        if !prefer_first_span {
+            d.span = d2.span;
+        }
     }
 }
 
@@ -2348,6 +2406,21 @@ impl FnSig {
         self.header.span().unwrap_or(self.span.shrink_to_lo())
     }
 
+    /// Return a span for where to insert a `where` clause if there isn't one.
+    ///
+    /// This is only the right insertion point if there is not already a `where` clause.
+    ///
+    /// `has_body` is `true` if the function has a body, and `false` if the function ends in a `;`,
+    /// so that this span can go before the `;`.
+    pub fn where_insert_span(&self, has_body: bool) -> Span {
+        if has_body {
+            self.span.shrink_to_hi()
+        } else {
+            // Before the `;`
+            self.span.with_hi(self.span.hi() - BytePos(1)).shrink_to_hi()
+        }
+    }
+
     /// The span of the header's safety, or where to insert it if empty.
     pub fn safety_span(&self) -> Span {
         match self.header.safety {
@@ -3728,6 +3801,11 @@ impl VariantData {
             VariantData::Tuple(_, id) | VariantData::Unit(id) => Some(id),
         }
     }
+
+    /// Does this type of variant require a trailing semicolon?
+    pub fn requires_semi(&self) -> bool {
+        !matches!(*self, VariantData::Struct { .. })
+    }
 }
 
 /// An item definition.
@@ -4455,7 +4533,7 @@ mod size_asserts {
     static_assert_size!(Expr, 64);
     static_assert_size!(ExprKind, 32);
     static_assert_size!(FieldDef, 80);
-    static_assert_size!(Fn, 192);
+    static_assert_size!(Fn, 176);
     static_assert_size!(FnDecl, 24);
     static_assert_size!(FnHeader, 76);
     static_assert_size!(FnSig, 96);
@@ -4465,10 +4543,10 @@ mod size_asserts {
     static_assert_size!(GenericArgs, 40);
     static_assert_size!(GenericBound, 80);
     static_assert_size!(GenericParam, 80);
-    static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 80);
-    static_assert_size!(Item, 144);
-    static_assert_size!(ItemKind, 88);
+    static_assert_size!(Generics, 24);
+    static_assert_size!(Impl, 64);
+    static_assert_size!(Item, 128);
+    static_assert_size!(ItemKind, 72);
     static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
@@ -4487,5 +4565,6 @@ mod size_asserts {
     static_assert_size!(TraitImplHeader, 64);
     static_assert_size!(Ty, 56);
     static_assert_size!(TyKind, 40);
+    static_assert_size!(WhereClause, 8);
     // tidy-alphabetical-end
 }

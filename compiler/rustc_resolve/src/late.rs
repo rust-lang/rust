@@ -1284,7 +1284,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
         self.visit_generic_params(&generics.params, self.diag_metadata.current_self_item.is_some());
-        for p in &generics.where_clause.predicates {
+        for p in generics.where_clause.predicates() {
             self.visit_where_predicate(p);
         }
     }

@@ -41,7 +41,7 @@ impl EarlyLintPass for MultipleBoundLocations {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, _: Span, _: NodeId) {
         if let FnKind::Fn(_, _, Fn { generics, .. }) = kind
             && !generics.params.is_empty()
-            && !generics.where_clause.predicates.is_empty()
+            && !generics.where_clause.predicates().is_empty()
         {
             let mut generic_params_with_bounds = FxHashMap::default();
 
@@ -50,7 +50,7 @@ impl EarlyLintPass for MultipleBoundLocations {
                     generic_params_with_bounds.insert(param.ident.as_str(), param.ident.span);
                 }
             }
-            for clause in &generics.where_clause.predicates {
+            for clause in generics.where_clause.predicates() {
                 match &clause.kind {
                     WherePredicateKind::BoundPredicate(pred) => {
                         if (!pred.bound_generic_params.is_empty() || !pred.bounds.is_empty())

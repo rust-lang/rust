@@ -185,15 +185,7 @@ impl Bounds {
             .map(|&(name, ref bounds)| mk_ty_param(cx, span, name, bounds, self_ty, self_generics))
             .collect();
 
-        Generics {
-            params,
-            where_clause: ast::WhereClause {
-                has_where_token: false,
-                predicates: ThinVec::new(),
-                span,
-            },
-            span,
-        }
+        Generics { params, where_clause: ast::WhereClause::default(), span }
     }
 }
 

@@ -332,15 +332,7 @@ impl<'a> Parser<'a> {
         } else {
             (ThinVec::new(), self.prev_token.span.shrink_to_hi())
         };
-        Ok(ast::Generics {
-            params,
-            where_clause: WhereClause {
-                has_where_token: false,
-                predicates: ThinVec::new(),
-                span: self.prev_token.span.shrink_to_hi(),
-            },
-            span,
-        })
+        Ok(ast::Generics { params, where_clause: WhereClause::default(), span })
     }
 
     /// Parses an experimental fn contract
@@ -411,15 +403,10 @@ impl<'a> Parser<'a> {
         &mut self,
         struct_: Option<(Ident, Span)>,
     ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
-        let mut where_clause = WhereClause {
-            has_where_token: false,
-            predicates: ThinVec::new(),
-            span: self.prev_token.span.shrink_to_hi(),
-        };
         let mut tuple_struct_body = None;
 
         if !self.eat_keyword(exp!(Where)) {
-            return Ok((where_clause, None));
+            return Ok((WhereClause::default(), None));
         }
 
         if self.eat_noexpect(&token::Colon) {
@@ -435,7 +422,6 @@ impl<'a> Parser<'a> {
                 .emit();
         }
 
-        where_clause.has_where_token = true;
         let where_lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
@@ -446,6 +432,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(diagnostics::WhereOnGenerics { span: generics.span });
         }
 
+        let mut predicates = ThinVec::new();
         loop {
             let where_sp = where_lo.to(self.prev_token.span);
             let attrs = self.parse_outer_attributes()?;
@@ -498,7 +485,7 @@ impl<'a> Parser<'a> {
                 Ok((predicate, Trailing::No, UsePreAttrPos::No))
             })?;
             match predicate {
-                Some(predicate) => where_clause.predicates.push(predicate),
+                Some(predicate) => predicates.push(predicate),
                 None => break,
             }
 
@@ -516,8 +503,8 @@ impl<'a> Parser<'a> {
             }
         }
 
-        where_clause.span = where_lo.to(self.prev_token.span);
-        Ok((where_clause, tuple_struct_body))
+        let where_clause_span = where_lo.to(self.prev_token.span);
+        Ok((WhereClause::new_with_where(where_clause_span, predicates), tuple_struct_body))
     }
 
     fn parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
