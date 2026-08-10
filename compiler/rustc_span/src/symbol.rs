@@ -1869,7 +1869,6 @@ symbols! {
         rustc_pub_transparent,
         rustc_reallocator,
         rustc_regions,
-        rustc_reservation_impl,
         rustc_scalable_vector,
         rustc_should_not_be_called_on_const_items,
         rustc_simd_monomorphize_lane_limit,

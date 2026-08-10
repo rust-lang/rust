@@ -278,9 +278,6 @@ where
         let impl_polarity = cx.impl_polarity(impl_def_id);
         match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution.into()),
-            ty::ImplPolarity::Reservation => {
-                unimplemented!("reservation impl for trait with assoc item: {:?}", goal)
-            }
             ty::ImplPolarity::Positive => {}
         };
 

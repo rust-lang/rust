@@ -80,19 +80,11 @@ where
             return Err(NoSolution.into());
         }
 
+        // TODO: this comment is no longer true and maximal_certainty can only be `Yes`
         // An upper bound of the certainty of this goal, used to lower the certainty
         // of reservation impl to ambiguous during coherence.
         let impl_polarity = cx.impl_polarity(impl_def_id);
         let maximal_certainty = match (impl_polarity, goal.predicate.polarity) {
-            // In coherence mode, this is ambiguous. But outside of coherence, it's not a real impl.
-            (ty::ImplPolarity::Reservation, _) => {
-                if ecx.typing_mode().is_coherence() {
-                    Certainty::AMBIGUOUS
-                } else {
-                    return Err(NoSolution.into());
-                }
-            }
-
             // Impl matches polarity
             (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
             | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => {

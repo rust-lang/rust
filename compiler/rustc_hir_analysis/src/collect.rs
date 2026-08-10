@@ -1411,7 +1411,6 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
-    let is_rustc_reservation = find_attr!(tcx, def_id, RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
@@ -1420,7 +1419,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
     ty::ImplTraitHeader {
         trait_ref: ty::EarlyBinder::bind(tcx, trait_ref),
         safety: of_trait.safety,
-        polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
+        polarity: polarity_of_impl(of_trait),
         constness: impl_.constness,
     }
 }
@@ -1467,26 +1466,10 @@ fn check_impl_constness(
     });
 }
 
-fn polarity_of_impl(
-    tcx: TyCtxt<'_>,
-    of_trait: &hir::TraitImplHeader<'_>,
-    is_rustc_reservation: bool,
-) -> ty::ImplPolarity {
+fn polarity_of_impl(of_trait: &hir::TraitImplHeader<'_>) -> ty::ImplPolarity {
     match of_trait.polarity {
-        hir::ImplPolarity::Negative(span) => {
-            if is_rustc_reservation {
-                let span = span.to(of_trait.trait_ref.path.span);
-                tcx.dcx().span_err(span, "reservation impls can't be negative");
-            }
-            ty::ImplPolarity::Negative
-        }
-        hir::ImplPolarity::Positive => {
-            if is_rustc_reservation {
-                ty::ImplPolarity::Reservation
-            } else {
-                ty::ImplPolarity::Positive
-            }
-        }
+        hir::ImplPolarity::Negative(_) => ty::ImplPolarity::Negative,
+        hir::ImplPolarity::Positive => ty::ImplPolarity::Positive,
     }
 }
 
