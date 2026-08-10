@@ -1151,7 +1151,7 @@ pub(super) fn const_conditions<'tcx>(
 
     ty::ConstConditions {
         parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
-        predicates: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
+        clauses: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
                     ty::ClauseKind::HostEffect(ty::HostEffectClause {
