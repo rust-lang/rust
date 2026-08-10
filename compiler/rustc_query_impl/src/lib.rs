@@ -10,9 +10,8 @@
 
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_middle::queries::{ExternProviders, Providers};
+use rustc_middle::query::QuerySystem;
 use rustc_middle::query::on_disk_cache::OnDiskCache;
-use rustc_middle::query::{QueryCache, QuerySystem, QueryVTable};
-use rustc_middle::ty::TyCtxt;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
@@ -26,20 +25,6 @@ mod incremental;
 mod job;
 mod profiling_support;
 mod query_vtables;
-
-/// Trait that knows how to look up the [`QueryVTable`] for a particular query.
-///
-/// This trait allows some per-query code to be defined in generic functions
-/// with a trait bound, instead of having to be defined inline within a macro
-/// expansion.
-///
-/// There is one macro-generated implementation of this trait for each query,
-/// on the type `rustc_query_impl::query_vtables::$name::VTableGetter`.
-trait GetQueryVTable<'tcx> {
-    type Cache: QueryCache + 'tcx;
-
-    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache>;
-}
 
 pub fn query_system<'tcx>(
     local_providers: Providers,

@@ -1,10 +1,22 @@
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::{QueryKey, QueryMode, QueryVTable};
+use rustc_middle::query::{QueryCache, QueryKey, QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::GetQueryVTable;
+/// Trait that knows how to look up the [`QueryVTable`] for a particular query.
+///
+/// This trait allows some per-query code to be defined in generic functions
+/// with a trait bound, instead of having to be defined inline within a macro
+/// expansion.
+///
+/// There is one macro-generated implementation of this trait for each query,
+/// on the type `rustc_query_impl::query_vtables::$name::VTableGetter`.
+pub(crate) trait GetQueryVTable<'tcx> {
+    type Cache: QueryCache + 'tcx;
+
+    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache>;
+}
 
 macro_rules! define_queries {
     (
