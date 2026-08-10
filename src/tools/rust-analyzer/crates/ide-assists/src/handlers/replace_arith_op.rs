@@ -101,7 +101,7 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
     let (lhs, op, is_assign, rhs) = parse_binary_op(ctx)?;
     let op_expr = lhs.syntax().parent()?;
 
-    if !is_primitive_int(ctx, &lhs) || !is_primitive_int(ctx, &rhs) {
+    if !is_primitive_int_or_ref(ctx, &lhs) || !is_primitive_int_or_ref(ctx, &rhs) {
         return None;
     }
 
@@ -128,7 +128,7 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
     )
 }
 
-fn is_primitive_int(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> bool {
+fn is_primitive_int_or_ref(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> bool {
     match ctx.sema.type_of_expr(expr) {
         Some(ty) => ty.original.strip_reference().is_int_or_uint(),
         _ => false,
@@ -320,6 +320,25 @@ fn main() {
 fn main() {
     let mut x = 1;
     x = x.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_ref() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    let x = &1;
+    x $0+ 2;
+}
+"#,
+            r#"
+fn main() {
+    let x = &1;
+    x.wrapping_add(2);
 }
 "#,
         )
