@@ -286,6 +286,11 @@ pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + R
 #[rust_analyzer::prefer_underscore_import]
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
     fn count(&self) -> usize;
+    fn generics_of_early_param_region_def_id(
+        interner: I,
+        def_id: I::DefId,
+        ebr: I::EarlyParamRegion,
+    ) -> I::DefId;
 }
 
 #[rust_analyzer::prefer_underscore_import]
@@ -768,6 +773,17 @@ impl<'a, S: SliceLike> SliceLike for &'a S {
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait Symbol<I>: Copy + Hash + PartialEq + Eq + Debug {
-    fn is_kw_underscore_lifetime(self) -> bool;
+pub trait Symbol<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
+    fn get_kw_underscore_lifetime() -> I::Symbol;
+    fn get_kw_static_lifetime() -> I::Symbol;
+    fn get_sym_anon() -> I::Symbol;
+}
+
+pub trait RegionName<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
+    fn get_name(&self, interner: I) -> Option<I::Symbol>;
+    fn is_named(&self, interner: I) -> bool;
+}
+
+pub trait DefIdGetter<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
+    fn get_def_id(self) -> Option<I::DefId>;
 }
