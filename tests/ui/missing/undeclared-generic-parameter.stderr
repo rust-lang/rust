@@ -1,11 +1,14 @@
 error[E0425]: cannot find type `B` in this scope
   --> $DIR/undeclared-generic-parameter.rs:2:8
    |
-LL | struct A;
-   | --------- similarly named struct `A` defined here
 LL | impl A<B> {}
-   |        ^
+   |        ^ not found in this scope
    |
+note: similarly named struct `A` defined here
+  --> $DIR/undeclared-generic-parameter.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - impl A<B> {}

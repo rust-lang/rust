@@ -14,7 +14,7 @@ error[E0425]: cannot find value `g` in this scope
   --> $DIR/issue-114423-ice-regression-in-suggestion.rs:11:22
    |
 LL |     let _ = RGB { r, g, b };
-   |                      ^
+   |                      ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |

@@ -1,11 +1,14 @@
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/silenced-binding-typo.rs:4:14
    |
-LL |     let _x = 42;
-   |         -- `_x` defined here
 LL |     let _y = x;
-   |              ^
+   |              ^ not found in this scope
    |
+note: `_x` defined here
+  --> $DIR/silenced-binding-typo.rs:3:9
+   |
+LL |     let _x = 42;
+   |         ^^
 help: the leading underscore in `_x` marks it as unused, consider renaming it to `x`
    |
 LL -     let _x = 42;

@@ -22,11 +22,13 @@ error[E0425]: cannot find function `value` in this scope
   --> $DIR/ice-unhandled-type-122191.rs:9:5
    |
 LL |     value()
-   |     ^^^^^
-...
-LL | const VALUE: Foo = foo();
-   | ------------------------- similarly named constant `VALUE` defined here
+   |     ^^^^^ not found in this scope
    |
+note: similarly named constant `VALUE` defined here
+  --> $DIR/ice-unhandled-type-122191.rs:13:1
+   |
+LL | const VALUE: Foo = foo();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     value()

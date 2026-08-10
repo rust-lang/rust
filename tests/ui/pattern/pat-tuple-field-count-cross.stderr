@@ -20,9 +20,12 @@ LL |         Z0() => {}
    |
 LL | pub struct Z0;
    | ------------- `Z0` defined here
-LL | pub struct Z1();
-   | ------------- similarly named tuple struct `Z1` defined here
    |
+note: similarly named tuple struct `Z1` defined here
+  --> $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:2:1
+   |
+LL | pub struct Z1();
+   | ^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Z0() => {}
@@ -44,9 +47,12 @@ LL |         Z0(x) => {}
    |
 LL | pub struct Z0;
    | ------------- `Z0` defined here
-LL | pub struct Z1();
-   | ------------- similarly named tuple struct `Z1` defined here
    |
+note: similarly named tuple struct `Z1` defined here
+  --> $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:2:1
+   |
+LL | pub struct Z1();
+   | ^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Z0(x) => {}
@@ -67,10 +73,13 @@ LL |         E1::Z0() => {}
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:15
    |
 LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
-   |               --  -- similarly named tuple variant `Z1` defined here
-   |               |
-   |               `E1::Z0` defined here
+   |               -- `E1::Z0` defined here
    |
+note: similarly named tuple variant `Z1` defined here
+  --> $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:19
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                   ^^
 help: use this syntax instead
    |
 LL -         E1::Z0() => {}
@@ -91,10 +100,13 @@ LL |         E1::Z0(x) => {}
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:15
    |
 LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
-   |               --  -- similarly named tuple variant `Z1` defined here
-   |               |
-   |               `E1::Z0` defined here
+   |               -- `E1::Z0` defined here
    |
+note: similarly named tuple variant `Z1` defined here
+  --> $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:19
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                   ^^
 help: use this syntax instead
    |
 LL -         E1::Z0(x) => {}
@@ -115,10 +127,13 @@ LL |         E1::Z1 => {}
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:19
    |
 LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
-   |               --  -- `E1::Z1` defined here
-   |               |
-   |               similarly named unit variant `Z0` defined here
+   |                   -- `E1::Z1` defined here
    |
+note: similarly named unit variant `Z0` defined here
+  --> $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:15
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |               ^^
 help: use the tuple variant pattern syntax instead
    |
 LL |         E1::Z1() => {}

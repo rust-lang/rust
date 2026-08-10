@@ -20,7 +20,7 @@ error[E0425]: cannot find value `a` in this scope
 LL |     if let Foo::Bar { .. } = x {
    |            --------------- this pattern doesn't include `a`, which is available in `Bar`
 LL |         println!("{a}");
-   |                    ^
+   |                    ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |

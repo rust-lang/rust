@@ -198,11 +198,13 @@ error[E0425]: cannot find type `NoThing` in this scope
   --> $DIR/fn-ptr-pattern.rs:19:32
    |
 LL |     pat4: fn(NoThing { a, b }: NoThing),
-   |                                ^^^^^^^
-...
-LL | struct Thing { a: bool, b: bool }
-   | ------------ similarly named struct `Thing` defined here
+   |                                ^^^^^^^ not found in this scope
    |
+note: similarly named struct `Thing` defined here
+  --> $DIR/fn-ptr-pattern.rs:75:1
+   |
+LL | struct Thing { a: bool, b: bool }
+   | ^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL -     pat4: fn(NoThing { a, b }: NoThing),

@@ -72,12 +72,14 @@ LL + use other::import;
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:33:11
    |
-LL |     pub enum B {
-   |     ---------- similarly named enum `B` defined here
-...
 LL |     foo::<A>();
-   |           ^
+   |           ^ not found in this scope
    |
+note: similarly named enum `B` defined here
+  --> $DIR/glob-resolve1.rs:15:5
+   |
+LL |     pub enum B {
+   |     ^^^^^^^^^^
 note: enum `bar::A` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:12:5
    |
@@ -92,12 +94,14 @@ LL +     foo::<B>();
 error[E0425]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:34:11
    |
-LL |     pub enum B {
-   |     ---------- similarly named enum `B` defined here
-...
 LL |     foo::<C>();
-   |           ^
+   |           ^ not found in this scope
    |
+note: similarly named enum `B` defined here
+  --> $DIR/glob-resolve1.rs:15:5
+   |
+LL |     pub enum B {
+   |     ^^^^^^^^^^
 note: struct `bar::C` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:19:5
    |
@@ -112,12 +116,14 @@ LL +     foo::<B>();
 error[E0425]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:35:11
    |
-LL |     pub enum B {
-   |     ---------- similarly named enum `B` defined here
-...
 LL |     foo::<D>();
-   |           ^
+   |           ^ not found in this scope
    |
+note: similarly named enum `B` defined here
+  --> $DIR/glob-resolve1.rs:15:5
+   |
+LL |     pub enum B {
+   |     ^^^^^^^^^^
 note: type alias `bar::D` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:21:5
    |

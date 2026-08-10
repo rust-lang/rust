@@ -8,7 +8,7 @@ LL |         empty::blah => {}
    = note: note it works
 
 error[E0425]: it works `empty` `blah`
-  --> $DIR/late_res.rs:18:27
+  --> $DIR/late_res.rs:21:27
    |
 LL |     println!("{}", empty::blah);
    |                           ^^^^ label it works
@@ -17,7 +17,7 @@ LL |     println!("{}", empty::blah);
    = note: note it works
 
 error[E0425]: it works `empty` `blah`
-  --> $DIR/late_res.rs:22:16
+  --> $DIR/late_res.rs:28:16
    |
 LL |         empty::blah,
    |                ^^^^ label it works
@@ -26,7 +26,7 @@ LL |         empty::blah,
    = note: note it works
 
 error[E0425]: it works `empty` `blah2`
-  --> $DIR/late_res.rs:24:16
+  --> $DIR/late_res.rs:33:16
    |
 LL |         empty::blah2,
    |                ^^^^^ label it works
@@ -34,7 +34,26 @@ LL |         empty::blah2,
    = note: cannot find value `blah2` in module `empty`
    = note: note it works
 
-error: aborting due to 4 previous errors
+error[E0425]: message
+  --> $DIR/late_res.rs:47:19
+   |
+LL | const X: u32 = x::WAHT;
+   |                   ^^^^ label
+   |
+   = note: cannot find value `WAHT` in module `x`
+   = note: note
+note: similarly named constant `WHAT` defined here
+  --> $DIR/late_res.rs:43:5
+   |
+LL |     const WHAT: u32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: a constant with a similar name exists
+   |
+LL - const X: u32 = x::WAHT;
+LL + const X: u32 = x::WHAT;
+   |
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0425, E0531.
 For more information about an error, try `rustc --explain E0425`.

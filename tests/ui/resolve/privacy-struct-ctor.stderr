@@ -1,13 +1,15 @@
 error[E0423]: cannot find value `Z` in this scope
   --> $DIR/privacy-struct-ctor.rs:21:9
    |
-LL |     pub struct S(u8);
-   |     ----------------- similarly named tuple struct `S` defined here
-...
 LL |         Z;
    |         ^ constructor is not visible here due to private fields
    |
    = note: a struct named `Z` exists in another namespace
+note: similarly named tuple struct `S` defined here
+  --> $DIR/privacy-struct-ctor.rs:7:5
+   |
+LL |     pub struct S(u8);
+   |     ^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Z;

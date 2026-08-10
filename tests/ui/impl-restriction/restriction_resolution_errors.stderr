@@ -47,12 +47,14 @@ LL |         pub impl(in super::G) trait L2 {}
 error[E0577]: expected module, found enum `crate::a::E`
   --> $DIR/restriction_resolution_errors.rs:51:13
    |
-LL |     pub mod b {
-   |     --------- similarly named module `b` defined here
-...
 LL | pub impl(in crate::a::E) trait T14 {}
-   |             ^^^^^^^^^^^
+   |             ^^^^^^^^^^^ not a module
    |
+note: similarly named module `b` defined here
+  --> $DIR/restriction_resolution_errors.rs:9:5
+   |
+LL |     pub mod b {
+   |     ^^^^^^^^^
 help: a module with a similar name exists
    |
 LL - pub impl(in crate::a::E) trait T14 {}
@@ -62,12 +64,14 @@ LL + pub impl(in crate::a::b) trait T14 {}
 error[E0577]: expected module, found enum `crate::I`
   --> $DIR/restriction_resolution_errors.rs:63:13
    |
-LL | pub mod a {
-   | --------- similarly named module `a` defined here
-...
 LL | pub impl(in crate::I) trait L5 {}
-   |             ^^^^^^^^
+   |             ^^^^^^^^ not a module
    |
+note: similarly named module `a` defined here
+  --> $DIR/restriction_resolution_errors.rs:6:1
+   |
+LL | pub mod a {
+   | ^^^^^^^^^
 help: a module with a similar name exists
    |
 LL - pub impl(in crate::I) trait L5 {}

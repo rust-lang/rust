@@ -13,10 +13,13 @@ error[E0425]: cannot find type `U` in this scope
   --> $DIR/issue-78372.rs:3:31
    |
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
-   |      -                        ^
-   |      |
-   |      similarly named type parameter `T` defined here
+   |                               ^ not found in this scope
    |
+note: similarly named type parameter `T` defined here
+  --> $DIR/issue-78372.rs:3:6
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |      ^
 help: a type parameter with a similar name exists
    |
 LL - impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
