@@ -37,6 +37,7 @@
     - [Performance testing](./tests/perf.md)
     - [Autodiff CI job](./tests/autodiff-ci-job.md)
     - [Pre-stabilization CI job for the next solver and polonius alpha](./tests/x86_64-gnu-next-trait-solver-polonius-ci-job.md)
+    - [Standard library semver breakage test](./tests/stdlib-semver-check.md)
     - [Misc info](./tests/misc.md)
 - [Debugging the compiler](./compiler-debugging.md)
     - [Using the tracing/logging instrumentation](./tracing.md)

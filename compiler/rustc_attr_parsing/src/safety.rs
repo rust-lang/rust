@@ -1,6 +1,6 @@
 use rustc_ast::Safety;
+use rustc_attr_ir::AttrPath;
 use rustc_errors::{Diagnostic, MultiSpan};
-use rustc_hir::AttrPath;
 use rustc_lint_defs::builtin::UNSAFE_CODE;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;

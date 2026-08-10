@@ -12,7 +12,7 @@ use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, Path
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -1732,7 +1732,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
     parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
 ) -> RerunDecision {
     let parent_opaque_def_ids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
-    let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopyList<_>| {
+    let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopySet<_>| {
         if def_ids.as_ref().is_empty() {
             RerunDecision::No
         } else if opaques

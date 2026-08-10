@@ -1,8 +1,8 @@
 use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
+use rustc_attr_ir::IntType::{SignedInt, UnsignedInt};
+use rustc_attr_ir::ReprAttr;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::IntType::{SignedInt, UnsignedInt};
-use rustc_hir::attrs::ReprAttr;
 use rustc_session::diagnostics::feature_err;
 
 use super::prelude::*;
@@ -161,7 +161,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                 &AllowedTargets::AllowList(&[
                     Allow(Target::Struct),
                     Allow(Target::Enum),
-                    Allow(Target::Union), // Feature gated in `rustc_hir_analysis`
+                    Allow(Target::Union), // Feature gated in `rustc_attr_ir_analysis`
                     Warn(Target::MacroCall),
                 ]),
             );

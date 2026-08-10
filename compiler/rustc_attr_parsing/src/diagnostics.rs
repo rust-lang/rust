@@ -1,12 +1,11 @@
 use std::num::IntErrorKind;
 
+use rustc_attr_ir::{AttrPath, MirDialect, MirPhase};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, E0264, EmissionGuarantee, Level,
     MultiSpan,
 };
-use rustc_hir::AttrPath;
-use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 use rustc_target::spec::TargetTuple;

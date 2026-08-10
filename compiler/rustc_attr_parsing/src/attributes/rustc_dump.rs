@@ -1,6 +1,6 @@
+use rustc_attr_ir::target::{MethodKind, Target};
+use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{AttributeKind, RustcDumpLayoutKind};
-use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use super::prelude::*;

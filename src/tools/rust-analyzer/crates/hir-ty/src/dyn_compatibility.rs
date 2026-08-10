@@ -122,7 +122,7 @@ where
     ControlFlow::Continue(())
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 pub fn dyn_compatibility_of_trait_query(
     db: &dyn HirDatabase,
     trait_: TraitId,

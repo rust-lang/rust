@@ -18,8 +18,8 @@ mod llvm_enzyme {
         FnRetTy, FnSig, GenericArg, GenericArgs, GenericParamKind, Generics, ItemKind,
         MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
     };
+    use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
-    use rustc_hir::attrs::RustcAutodiff;
     use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};

@@ -23,7 +23,7 @@ use la_arena::{ArenaMap, RawIdx};
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
-use salsa::Update;
+use salsa::SalsaValue;
 use span::{Edition, FileId};
 use syntax::TextRange;
 
@@ -97,7 +97,7 @@ struct MirLowerCtx<'a, 'db> {
 }
 
 // FIXME: Make this smaller, its stored in database queries
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub enum MirLowerError<'db> {
     ConstEvalError(Box<str>, Box<ConstEvalError<'db>>),
     LayoutError(LayoutError),

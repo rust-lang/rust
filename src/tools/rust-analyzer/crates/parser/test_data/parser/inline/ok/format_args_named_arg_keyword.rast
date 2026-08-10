@@ -23,9 +23,9 @@ SOURCE_FILE
             COMMA ","
             WHITESPACE " "
             FORMAT_ARGS_ARG
-              FORMAT_ARGS_ARG_NAME
-                TYPE_KW "type"
-                EQ "="
+              NAME
+                IDENT "type"
+              EQ "="
               LITERAL
                 INT_NUMBER "1"
             R_PAREN ")"

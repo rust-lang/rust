@@ -19,8 +19,8 @@ use rustc_ast::{
     AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
 use rustc_session::diagnostics::create_lit_error;
@@ -41,7 +41,7 @@ pub type OwnedPathParser = PathParser<Path>;
 pub type RefPathParser<'p> = PathParser<&'p Path>;
 
 impl<P: Borrow<Path>> PathParser<P> {
-    pub fn get_attribute_path(&self) -> hir::AttrPath {
+    pub fn get_attribute_path(&self) -> AttrPath {
         AttrPath {
             segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
             span: self.span(),

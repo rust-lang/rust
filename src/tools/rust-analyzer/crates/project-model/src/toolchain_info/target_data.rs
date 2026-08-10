@@ -39,6 +39,7 @@ pub fn get(
     config: QueryConfig<'_>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, Option<String>>,
+    version: Option<&semver::Version>,
 ) -> anyhow::Result<target::TargetData> {
     const RUSTC_ARGS: [&str; 2] = ["--print", "target-spec-json"];
     let process = |output: String| {
@@ -55,9 +56,7 @@ pub fn get(
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
-            if let Some(target) = target {
-                cmd.args(["--target", target]);
-            }
+            toolchain::cargo_use_targets(version, &mut cmd, target.as_slice());
             cmd.args(["--", "-Z", "unstable-options"]);
             match utf8_stdout(&mut cmd) {
                 Ok(output) => return process(output),
@@ -95,13 +94,17 @@ mod tests {
         let manifest_path =
             ManifestPath::try_from(AbsPathBuf::assert(Utf8PathBuf::from(manifest_path))).unwrap();
         let cfg = QueryConfig::Cargo(&sysroot, &manifest_path, &None);
-        assert!(get(cfg, None, &FxHashMap::default()).is_ok());
+        let extra_env = &FxHashMap::default();
+        let Ok(version) = super::super::version::get(cfg, extra_env) else { return };
+        assert!(get(cfg, None, extra_env, version.as_ref()).is_ok());
     }
 
     #[test]
     fn rustc() {
         let sysroot = Sysroot::empty();
         let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
-        assert!(get(cfg, None, &FxHashMap::default()).is_ok());
+        let extra_env = &FxHashMap::default();
+        let Ok(version) = super::super::version::get(cfg, extra_env) else { return };
+        assert!(get(cfg, None, extra_env, version.as_ref()).is_ok());
     }
 }

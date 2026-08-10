@@ -1,5 +1,5 @@
+use rustc_attr_ir::diagnostic::Directive;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::diagnostic::Directive;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;

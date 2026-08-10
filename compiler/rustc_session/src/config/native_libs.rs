@@ -4,8 +4,8 @@
 //! (There is also a similar but separate syntax for `#[link]` attributes,
 //! which have their own parser in `rustc_metadata`.)
 
+use rustc_attr_ir::NativeLibKind;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::attrs::NativeLibKind;
 
 use crate::EarlyDiagCtxt;
 use crate::config::UnstableOptions;

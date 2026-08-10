@@ -167,7 +167,7 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>
             let holder_arg = ast::GenericArg::TypeArg(make.type_arg(make.ty_placeholder()));
             let missing_items = utils::filter_assoc_items(
                 &ctx.sema,
-                &hir_trait.items(ctx.db()),
+                &ide_db::traits::trait_items_with_required(ctx.db(), hir_trait),
                 DefaultMethods::No,
                 IgnoreAssocItems::DocHiddenAttrPresent,
             );
