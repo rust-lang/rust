@@ -15,7 +15,7 @@ use rustc_type_ir::{
     CollectAndApply, GenericTypeVisitable,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec::{SmallVec, smallvec};
 use stdx::impl_from;
 
@@ -32,13 +32,11 @@ use crate::{
     },
 };
 
-mod borrowck;
 mod eval;
 mod lower;
 mod monomorphization;
 mod pretty;
 
-pub use borrowck::{BorrowckResult, MutabilityReason};
 pub use eval::{
     Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
@@ -148,7 +146,7 @@ impl<'db> Operand {
 
 /// The index of a field (whether of a struct/enum variant, tuple, or closure).
 /// For a struct/enum it converts from and to the LocalFieldId, for a tuple or closure it's simply the index.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, salsa::Update, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, salsa::SalsaValue, PartialOrd, Ord, Debug)]
 pub struct FieldIndex(pub u32);
 
 impl FieldIndex {
@@ -1055,7 +1053,7 @@ pub struct BasicBlock {
     pub is_cleanup: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct MirBody<'db> {
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,
@@ -1180,7 +1178,7 @@ impl MirBody<'_> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, SalsaValue)]
 pub enum MirSpan {
     ExprId(ExprId),
     PatId(PatId),

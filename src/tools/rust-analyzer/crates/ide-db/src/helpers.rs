@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use base_db::SourceDatabase;
-use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
+use hir::{Crate, HasAttrs, ItemInNs, ModuleDef, Name, Semantics};
 use span::{Edition, FileId};
 use syntax::{
     AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,
@@ -110,7 +110,7 @@ pub fn visit_file_defs<'db>(
         .legacy_macros(db)
         .into_iter()
         // don't show legacy macros declared in the crate-root that were already covered in declarations earlier
-        .filter(|it| !(is_root && it.is_macro_export(db)))
+        .filter(|it| !(is_root && it.attrs(db).is_macro_export()))
         .for_each(|mac| cb(mac.into()));
 }
 

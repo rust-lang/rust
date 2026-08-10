@@ -231,8 +231,12 @@ fn impl_def_from_trait(
         IgnoreAssocItems::DocHiddenAttrPresent
     };
 
-    let trait_items =
-        filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No, ignore_items);
+    let trait_items = filter_assoc_items(
+        sema,
+        &ide_db::traits::trait_items_with_required(sema.db, trait_),
+        DefaultMethods::No,
+        ignore_items,
+    );
 
     if trait_items.is_empty() {
         return None;

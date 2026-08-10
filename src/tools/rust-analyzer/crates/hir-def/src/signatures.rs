@@ -1152,7 +1152,7 @@ impl EnumVariants {
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn extern_block_abi(db: &dyn SourceDatabase, extern_block: ExternBlockId) -> ExternAbi {
     let source = extern_block.lookup(db).source(db);
     source
