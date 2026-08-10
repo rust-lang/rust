@@ -58,6 +58,7 @@ pub use iter::{RSplitN, SplitN};
 pub use lossy::{Utf8Chunk, Utf8Chunks};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use traits::FromStr;
+pub(crate) use validations::next_code_point_reverse;
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{
     next_code_point, try_next_code_point, try_next_code_point_reverse, utf8_char_width,
