@@ -4,8 +4,7 @@ use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Diag, DiagCtxtHandle};
-use rustc_hir::def::DefKind;
+use rustc_errors::DiagCtxtHandle;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::{Cycle, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter};
 use rustc_middle::ty::TyCtxt;
@@ -406,92 +405,4 @@ pub fn print_query_stack<'tcx>(
         let _ = writeln!(file, "end of query stack");
     }
     count_total
-}
-
-#[inline(never)]
-#[cold]
-pub(crate) fn create_cycle_error<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    Cycle { usage, frames }: &Cycle<'tcx>,
-    nested: bool,
-) -> Diag<'tcx> {
-    assert!(!frames.is_empty());
-
-    let span = frames[0].tagged_key.catch_default_span(tcx, frames[1 % frames.len()].span);
-
-    let mut cycle_stack = Vec::new();
-
-    use crate::diagnostics::StackCount;
-    let stack_bottom = frames[0].tagged_key.catch_description(tcx);
-    let stack_count = if frames.len() == 1 {
-        StackCount::Single { stack_bottom: stack_bottom.clone() }
-    } else {
-        StackCount::Multiple { stack_bottom: stack_bottom.clone() }
-    };
-
-    let mut prev = span;
-    for i in 1..frames.len() {
-        let frame = &frames[i];
-        let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
-        cycle_stack.push(crate::diagnostics::CycleStack {
-            span: if span == prev { DUMMY_SP } else { span },
-            desc: frame.tagged_key.catch_description(tcx),
-        });
-        prev = span;
-    }
-
-    let cycle_usage = usage.as_ref().map(|usage| {
-        let cycle_span = usage.tagged_key.catch_default_span(tcx, usage.span);
-        crate::diagnostics::CycleUsage {
-            span: if cycle_span != span { cycle_span } else { DUMMY_SP },
-            usage: usage.tagged_key.catch_description(tcx),
-        }
-    });
-
-    let is_all_def_kind = |def_kind| {
-        // Trivial type alias and trait alias cycles consists of `type_of` and
-        // `explicit_implied_clauses_of` queries, so we just check just these here.
-        frames.iter().all(|frame| match frame.tagged_key {
-            TaggedQueryKey::type_of(def_id)
-            | TaggedQueryKey::explicit_implied_clauses_of(def_id)
-                if tcx.def_kind(def_id) == def_kind =>
-            {
-                true
-            }
-            _ => false,
-        })
-    };
-
-    let alias = if !nested {
-        if is_all_def_kind(DefKind::TyAlias) {
-            Some(crate::diagnostics::Alias::Ty)
-        } else if is_all_def_kind(DefKind::TraitAlias) {
-            Some(crate::diagnostics::Alias::Trait)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    if nested {
-        tcx.sess.dcx().create_err(crate::diagnostics::NestedCycle {
-            span,
-            cycle_stack,
-            stack_bottom: crate::diagnostics::NestedCycleBottom { stack_bottom },
-            cycle_usage,
-            stack_count,
-            note_span: (),
-        })
-    } else {
-        tcx.sess.dcx().create_err(crate::diagnostics::Cycle {
-            span,
-            cycle_stack,
-            stack_bottom,
-            alias,
-            cycle_usage,
-            stack_count,
-            note_span: (),
-        })
-    }
 }

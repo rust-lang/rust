@@ -19,7 +19,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::handle_cycle_error;
-use crate::job::{QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack};
+use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack};
 use crate::plumbing::{current_query_job, next_job_id, start_query};
 use crate::query_impl::for_each_query_vtable;
 
@@ -136,7 +136,7 @@ fn handle_cycle<'tcx, C: QueryCache>(
     }
     let _guard = defer(|| *tcx.query_system.cycle_handler_nesting.lock() -= 1);
 
-    let error = create_cycle_error(tcx, &cycle, nested);
+    let error = handle_cycle_error::create_cycle_error(tcx, &cycle, nested);
 
     if nested {
         // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
