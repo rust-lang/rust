@@ -994,11 +994,12 @@ impl CommandLineStep for RustOffload {
 
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let llvm_output = builder.ensure(Llvm { target });
 
-        let out_dir = builder.rust_offload_out(target);
+        let out_dir = builder.out.join(self.target.triple).join("rust-offload");
 
-        let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
+        let llvm_version_major =
+            llvm::get_llvm_version_major(builder, &llvm_output.host_llvm_config);
         let lib_ext = std::env::consts::DLL_EXTENSION;
         let lib_rust_offload = format!("libRustOffload-{llvm_version_major}");
         let build_dir = out_dir.join(libdir(target));
@@ -1017,16 +1018,12 @@ impl CommandLineStep for RustOffload {
 
         configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
 
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
-            (false, _) => "Debug",
-            (true, false) => "Release",
-            (true, true) => "RelWithDebInfo",
-        };
+        let profile = get_llvm_profile(&builder.config);
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &host_llvm_config)
-            .define("LLVM_DIR", llvm_cmake_dir);
+            .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
+            .define("LLVM_DIR", llvm_output.cmake_dir());
 
         cfg.build();
 
