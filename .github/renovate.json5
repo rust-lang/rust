@@ -73,6 +73,7 @@
       "matchManagers": [
         "npm"
       ],
+      "matchUpdateTypes": ["lockFileMaintenance"],
       "enabled": false,
     }
   ],
