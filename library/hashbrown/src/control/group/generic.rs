@@ -5,16 +5,17 @@ use core::ptr;
 // a 32-bit architecture will just end up being more expensive because
 // shifts and multiplies will need to be emulated.
 
-cfg_if! {
-    if #[cfg(any(
+cfg_select! {
+    any(
         target_pointer_width = "64",
         target_arch = "aarch64",
         target_arch = "x86_64",
         target_arch = "wasm32",
-    ))] {
+    ) => {
         type GroupWord = u64;
         type NonZeroGroupWord = core::num::NonZeroU64;
-    } else {
+    }
+    _ => {
         type GroupWord = u32;
         type NonZeroGroupWord = core::num::NonZeroU32;
     }
