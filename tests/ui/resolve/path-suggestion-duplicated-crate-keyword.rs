@@ -8,7 +8,7 @@ pub mod unix {
         pub mod utils {
             pub fn f() {
                 let _x = crate::linux::system::Y;
-                //~^ ERROR cannot find `linux` in `crate`
+                //~^ ERROR cannot find `linux` in the crate root
             }
         }
         pub mod system {
