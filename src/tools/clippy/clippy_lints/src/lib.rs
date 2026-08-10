@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(control_flow_into_value)]
 #![feature(exact_div)]
 #![feature(f128)]

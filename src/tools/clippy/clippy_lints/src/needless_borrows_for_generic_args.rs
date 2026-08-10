@@ -371,7 +371,7 @@ fn referent_used_exactly_once<'tcx>(
         && let [location] = *local_assignments(mir, local).as_slice()
         && let block_data = &mir.basic_blocks[location.block]
         && let Some(statement) = block_data.statements.get(location.statement_index)
-        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
+        && let StatementKind::Assign((_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.is_indirect_first_projection()
     {
         let body_owner_local_def_id = cx.tcx.hir_enclosing_body_owner(reference.hir_id);

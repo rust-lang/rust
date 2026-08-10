@@ -248,10 +248,16 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
         // FIXME(pin_ergonomics): handle pinned patterns
         | Ref(_, _, Mutability::Not)
         // Dealt with elsewhere.
-        | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
+        | Or(_) | Paren(_) | Guard(..) => false,
+        // Transform `deref!(x) | ... | deref!(y)` into `deref!(x | y)`.
+        //
         // The cases below until `Slice(...)` deal with *singleton* products.
         // These patterns have the shape `C(p)`, and not e.g., `C(p0, ..., pn)`.
-        // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
+        Deref(target) => extend_with_matching(
+            target, start, alternatives,
+            |k| matches!(k, Deref(_)),
+            |k| always_pat!(k, Deref(p) => *p),
+        ),
         Ref(target, _, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
             |k| matches!(k, Ref(_, _, Mutability::Mut)),
