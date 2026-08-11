@@ -3,7 +3,7 @@ use self::core_foundation::{
     kCFPropertyListImmutable, kCFStringEncodingUTF8,
 };
 use crate::borrow::Cow;
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::ffi::{CStr, c_char};
 use crate::num::{NonZero, ParseIntError};
 use crate::path::{Path, PathBuf};

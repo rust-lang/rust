@@ -320,8 +320,8 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
-#![feature(bstr_internals)]
+#![feature(byte_str)]
+#![feature(byte_str_internals)]
 #![feature(c_size_t)]
 #![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
@@ -629,8 +629,8 @@ pub mod f64;
 pub mod thread;
 pub mod ascii;
 pub mod backtrace;
-#[unstable(feature = "bstr", issue = "134915")]
-pub mod bstr;
+#[unstable(feature = "byte_str", issue = "134915")]
+pub mod byte_str;
 pub mod collections;
 pub mod env;
 pub mod error;

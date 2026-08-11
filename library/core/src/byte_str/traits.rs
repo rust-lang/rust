@@ -1,11 +1,11 @@
 //! Trait implementations for `ByteStr`.
 
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::cmp::Ordering;
 use crate::slice::SliceIndex;
 use crate::{hash, ops, range};
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Ord for ByteStr {
     #[inline]
     fn cmp(&self, other: &ByteStr) -> Ordering {
@@ -13,7 +13,7 @@ impl Ord for ByteStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl PartialOrd for ByteStr {
     #[inline]
     fn partial_cmp(&self, other: &ByteStr) -> Option<Ordering> {
@@ -21,7 +21,7 @@ impl PartialOrd for ByteStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl PartialEq<ByteStr> for ByteStr {
     #[inline]
     fn eq(&self, other: &ByteStr) -> bool {
@@ -29,10 +29,10 @@ impl PartialEq<ByteStr> for ByteStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Eq for ByteStr {}
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl hash::Hash for ByteStr {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -42,7 +42,7 @@ impl hash::Hash for ByteStr {
 
 #[doc(hidden)]
 #[macro_export]
-#[unstable(feature = "bstr_internals", issue = "none")]
+#[unstable(feature = "byte_str_internals", issue = "none")]
 macro_rules! impl_partial_eq {
     ($lhs:ty, $rhs:ty) => {
         impl PartialEq<$rhs> for $lhs {
@@ -64,17 +64,17 @@ macro_rules! impl_partial_eq {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "bstr_internals", issue = "none")]
+#[unstable(feature = "byte_str_internals", issue = "none")]
 pub use impl_partial_eq;
 
 #[doc(hidden)]
 #[macro_export]
-#[unstable(feature = "bstr_internals", issue = "none")]
+#[unstable(feature = "byte_str_internals", issue = "none")]
 macro_rules! impl_partial_eq_ord {
     ($lhs:ty, $rhs:ty) => {
-        $crate::bstr::impl_partial_eq!($lhs, $rhs);
+        $crate::byte_str::impl_partial_eq!($lhs, $rhs);
 
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<Ordering> {
@@ -83,7 +83,7 @@ macro_rules! impl_partial_eq_ord {
             }
         }
 
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<Ordering> {
@@ -95,15 +95,15 @@ macro_rules! impl_partial_eq_ord {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "bstr_internals", issue = "none")]
+#[unstable(feature = "byte_str_internals", issue = "none")]
 pub use impl_partial_eq_ord;
 
 #[doc(hidden)]
 #[macro_export]
-#[unstable(feature = "bstr_internals", issue = "none")]
+#[unstable(feature = "byte_str_internals", issue = "none")]
 macro_rules! impl_partial_eq_n {
     ($lhs:ty, $rhs:ty) => {
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl<const N: usize> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
@@ -112,7 +112,7 @@ macro_rules! impl_partial_eq_n {
             }
         }
 
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl<const N: usize> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
@@ -124,7 +124,7 @@ macro_rules! impl_partial_eq_n {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "bstr_internals", issue = "none")]
+#[unstable(feature = "byte_str_internals", issue = "none")]
 pub use impl_partial_eq_n;
 
 // PartialOrd with `[u8]` omitted to avoid inference failures
@@ -140,7 +140,7 @@ impl_partial_eq_n!(ByteStr, [u8; N]);
 // PartialOrd with `[u8; N]` omitted to avoid inference failures
 impl_partial_eq_n!(ByteStr, &[u8; N]);
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<I> ops::Index<I> for ByteStr
 where
     I: SliceIndex<ByteStr>,
@@ -153,7 +153,7 @@ where
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<I> ops::IndexMut<I> for ByteStr
 where
     I: SliceIndex<ByteStr>,
@@ -164,7 +164,7 @@ where
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 unsafe impl SliceIndex<ByteStr> for ops::RangeFull {
     type Output = ByteStr;
     #[inline]
@@ -193,7 +193,7 @@ unsafe impl SliceIndex<ByteStr> for ops::RangeFull {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 unsafe impl SliceIndex<ByteStr> for usize {
     type Output = u8;
     #[inline]
@@ -226,7 +226,7 @@ unsafe impl SliceIndex<ByteStr> for usize {
 
 macro_rules! impl_slice_index {
     ($index:ty) => {
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         unsafe impl SliceIndex<ByteStr> for $index {
             type Output = ByteStr;
             #[inline]

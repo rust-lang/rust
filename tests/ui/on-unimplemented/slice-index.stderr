@@ -9,7 +9,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `[i32]` to implement `Index<i32>`
@@ -25,10 +25,10 @@ help: `RangeTo<usize>` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
-  ::: $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  ::: $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: in this macro invocation
   --> $SRC_DIR/core/src/str/traits.rs:LL:COL

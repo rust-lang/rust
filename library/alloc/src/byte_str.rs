@@ -4,9 +4,9 @@
 #![cfg(not(no_global_oom_handling))]
 
 use core::borrow::{Borrow, BorrowMut};
-#[unstable(feature = "bstr", issue = "134915")]
-pub use core::bstr::ByteStr;
-use core::bstr::{impl_partial_eq, impl_partial_eq_n, impl_partial_eq_ord};
+#[unstable(feature = "byte_str", issue = "134915")]
+pub use core::byte_str::ByteStr;
+use core::byte_str::{impl_partial_eq, impl_partial_eq_n, impl_partial_eq_ord};
 use core::cmp::Ordering;
 use core::ops::{
     Deref, DerefMut, DerefPure, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive,
@@ -32,7 +32,7 @@ use crate::vec::Vec;
 /// need to round-trip whatever data the user provides.
 ///
 /// A `ByteString` owns its contents and can grow and shrink, like a `Vec` or `String`. For a
-/// borrowed byte string, see [`ByteStr`](../../std/bstr/struct.ByteStr.html).
+/// borrowed byte string, see [`ByteStr`](../../std/byte_str/struct.ByteStr.html).
 ///
 /// `ByteString` implements `Deref` to `&Vec<u8>`, so all methods available on `&Vec<u8>` are
 /// available on `ByteString`. Similarly, `ByteString` implements `DerefMut` to `&mut Vec<u8>`,
@@ -40,7 +40,7 @@ use crate::vec::Vec;
 ///
 /// The `Debug` and `Display` implementations for `ByteString` are the same as those for `ByteStr`,
 /// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 #[repr(transparent)]
 #[derive(Clone)]
 #[doc(alias = "BString")]
@@ -69,7 +69,7 @@ impl ByteString {
     /// implementation for types that implement `Display`, and the trait version
     /// will use the Unicode replacement character rather than returning a
     /// `Result` and allowing for the possibility of the content not being UTF-8.
-    #[unstable(feature = "bstr_to_string", issue = "134915")]
+    #[unstable(feature = "byte_str_to_string", issue = "134915")]
     #[rustc_allow_incoherent_impl]
     pub fn to_string(&self) -> Result<String, Utf8Error> {
         // Avoid allocating a copy of the contents for invalid UTF-8
@@ -81,7 +81,7 @@ impl ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Deref for ByteString {
     type Target = Vec<u8>;
 
@@ -91,7 +91,7 @@ impl Deref for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl DerefMut for ByteString {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -102,7 +102,7 @@ impl DerefMut for ByteString {
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl DerefPure for ByteString {}
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl fmt::Debug for ByteString {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -110,7 +110,7 @@ impl fmt::Debug for ByteString {
     }
 }
 
-#[unstable(feature = "bstr_to_string", issue = "134915")]
+#[unstable(feature = "byte_str_to_string", issue = "134915")]
 impl fmt::Display for ByteString {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -118,7 +118,7 @@ impl fmt::Display for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl AsRef<[u8]> for ByteString {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -126,7 +126,7 @@ impl AsRef<[u8]> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl AsRef<ByteStr> for ByteString {
     #[inline]
     fn as_ref(&self) -> &ByteStr {
@@ -134,7 +134,7 @@ impl AsRef<ByteStr> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl AsMut<[u8]> for ByteString {
     #[inline]
     fn as_mut(&mut self) -> &mut [u8] {
@@ -142,7 +142,7 @@ impl AsMut<[u8]> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl AsMut<ByteStr> for ByteString {
     #[inline]
     fn as_mut(&mut self) -> &mut ByteStr {
@@ -150,7 +150,7 @@ impl AsMut<ByteStr> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Borrow<[u8]> for ByteString {
     #[inline]
     fn borrow(&self) -> &[u8] {
@@ -158,7 +158,7 @@ impl Borrow<[u8]> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Borrow<ByteStr> for ByteString {
     #[inline]
     fn borrow(&self) -> &ByteStr {
@@ -169,7 +169,7 @@ impl Borrow<ByteStr> for ByteString {
 // `impl Borrow<ByteStr> for Vec<u8>` omitted to avoid inference failures
 // `impl Borrow<ByteStr> for String` omitted to avoid inference failures
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl BorrowMut<[u8]> for ByteString {
     #[inline]
     fn borrow_mut(&mut self) -> &mut [u8] {
@@ -177,7 +177,7 @@ impl BorrowMut<[u8]> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl BorrowMut<ByteStr> for ByteString {
     #[inline]
     fn borrow_mut(&mut self) -> &mut ByteStr {
@@ -187,7 +187,7 @@ impl BorrowMut<ByteStr> for ByteString {
 
 // `impl BorrowMut<ByteStr> for Vec<u8>` omitted to avoid inference failures
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Default for ByteString {
     fn default() -> Self {
         ByteString(Vec::new())
@@ -196,7 +196,7 @@ impl Default for ByteString {
 
 // Omitted due to inference failures
 //
-// #[unstable(feature = "bstr", issue = "134915")]
+// #[unstable(feature = "byte_str", issue = "134915")]
 // impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
 //     #[inline]
 //     fn from(s: &'a [u8; N]) -> Self {
@@ -204,7 +204,7 @@ impl Default for ByteString {
 //     }
 // }
 //
-// #[unstable(feature = "bstr", issue = "134915")]
+// #[unstable(feature = "byte_str", issue = "134915")]
 // impl<const N: usize> From<[u8; N]> for ByteString {
 //     #[inline]
 //     fn from(s: [u8; N]) -> Self {
@@ -212,7 +212,7 @@ impl Default for ByteString {
 //     }
 // }
 //
-// #[unstable(feature = "bstr", issue = "134915")]
+// #[unstable(feature = "byte_str", issue = "134915")]
 // impl<'a> From<&'a [u8]> for ByteString {
 //     #[inline]
 //     fn from(s: &'a [u8]) -> Self {
@@ -220,7 +220,7 @@ impl Default for ByteString {
 //     }
 // }
 //
-// #[unstable(feature = "bstr", issue = "134915")]
+// #[unstable(feature = "byte_str", issue = "134915")]
 // impl From<Vec<u8>> for ByteString {
 //     #[inline]
 //     fn from(s: Vec<u8>) -> Self {
@@ -228,7 +228,7 @@ impl Default for ByteString {
 //     }
 // }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl From<ByteString> for Vec<u8> {
     #[inline]
     fn from(s: ByteString) -> Self {
@@ -238,7 +238,7 @@ impl From<ByteString> for Vec<u8> {
 
 // Omitted due to inference failures
 //
-// #[unstable(feature = "bstr", issue = "134915")]
+// #[unstable(feature = "byte_str", issue = "134915")]
 // impl<'a> From<&'a str> for ByteString {
 //     #[inline]
 //     fn from(s: &'a str) -> Self {
@@ -246,7 +246,7 @@ impl From<ByteString> for Vec<u8> {
 //     }
 // }
 //
-// #[unstable(feature = "bstr", issue = "134915")]
+// #[unstable(feature = "byte_str", issue = "134915")]
 // impl From<String> for ByteString {
 //     #[inline]
 //     fn from(s: String) -> Self {
@@ -254,7 +254,7 @@ impl From<ByteString> for Vec<u8> {
 //     }
 // }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> From<&'a ByteStr> for ByteString {
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
@@ -262,7 +262,7 @@ impl<'a> From<&'a ByteStr> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> From<ByteString> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: ByteString) -> Self {
@@ -270,7 +270,7 @@ impl<'a> From<ByteString> for Cow<'a, ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: &'a ByteString) -> Self {
@@ -278,7 +278,7 @@ impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl FromIterator<char> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
@@ -286,7 +286,7 @@ impl FromIterator<char> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl FromIterator<u8> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
@@ -294,7 +294,7 @@ impl FromIterator<u8> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> FromIterator<&'a str> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
@@ -302,7 +302,7 @@ impl<'a> FromIterator<&'a str> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> FromIterator<&'a [u8]> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = &'a [u8]>>(iter: T) -> Self {
@@ -314,7 +314,7 @@ impl<'a> FromIterator<&'a [u8]> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> FromIterator<&'a ByteStr> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = &'a ByteStr>>(iter: T) -> Self {
@@ -326,7 +326,7 @@ impl<'a> FromIterator<&'a ByteStr> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl FromIterator<ByteString> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = ByteString>>(iter: T) -> Self {
@@ -338,7 +338,7 @@ impl FromIterator<ByteString> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl FromStr for ByteString {
     type Err = core::convert::Infallible;
 
@@ -348,7 +348,7 @@ impl FromStr for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<usize> for ByteString {
     type Output = u8;
 
@@ -358,7 +358,7 @@ impl Index<usize> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<RangeFull> for ByteString {
     type Output = ByteStr;
 
@@ -368,7 +368,7 @@ impl Index<RangeFull> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<Range<usize>> for ByteString {
     type Output = ByteStr;
 
@@ -378,7 +378,7 @@ impl Index<Range<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<RangeInclusive<usize>> for ByteString {
     type Output = ByteStr;
 
@@ -388,7 +388,7 @@ impl Index<RangeInclusive<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<RangeFrom<usize>> for ByteString {
     type Output = ByteStr;
 
@@ -398,7 +398,7 @@ impl Index<RangeFrom<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<RangeTo<usize>> for ByteString {
     type Output = ByteStr;
 
@@ -408,7 +408,7 @@ impl Index<RangeTo<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Index<RangeToInclusive<usize>> for ByteString {
     type Output = ByteStr;
 
@@ -418,7 +418,7 @@ impl Index<RangeToInclusive<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<usize> for ByteString {
     #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
@@ -426,7 +426,7 @@ impl IndexMut<usize> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<RangeFull> for ByteString {
     #[inline]
     fn index_mut(&mut self, _: RangeFull) -> &mut ByteStr {
@@ -434,7 +434,7 @@ impl IndexMut<RangeFull> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<Range<usize>> for ByteString {
     #[inline]
     fn index_mut(&mut self, r: Range<usize>) -> &mut ByteStr {
@@ -442,7 +442,7 @@ impl IndexMut<Range<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<RangeInclusive<usize>> for ByteString {
     #[inline]
     fn index_mut(&mut self, r: RangeInclusive<usize>) -> &mut ByteStr {
@@ -450,7 +450,7 @@ impl IndexMut<RangeInclusive<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<RangeFrom<usize>> for ByteString {
     #[inline]
     fn index_mut(&mut self, r: RangeFrom<usize>) -> &mut ByteStr {
@@ -458,7 +458,7 @@ impl IndexMut<RangeFrom<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<RangeTo<usize>> for ByteString {
     #[inline]
     fn index_mut(&mut self, r: RangeTo<usize>) -> &mut ByteStr {
@@ -466,7 +466,7 @@ impl IndexMut<RangeTo<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl IndexMut<RangeToInclusive<usize>> for ByteString {
     #[inline]
     fn index_mut(&mut self, r: RangeToInclusive<usize>) -> &mut ByteStr {
@@ -474,7 +474,7 @@ impl IndexMut<RangeToInclusive<usize>> for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl hash::Hash for ByteString {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -482,10 +482,10 @@ impl hash::Hash for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Eq for ByteString {}
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl PartialEq for ByteString {
     #[inline]
     fn eq(&self, other: &ByteString) -> bool {
@@ -495,7 +495,7 @@ impl PartialEq for ByteString {
 
 macro_rules! impl_partial_eq_ord_cow {
     ($lhs:ty, $rhs:ty) => {
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
@@ -504,7 +504,7 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
@@ -513,7 +513,7 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<Ordering> {
@@ -522,7 +522,7 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[unstable(feature = "bstr", issue = "134915")]
+        #[unstable(feature = "byte_str", issue = "134915")]
         impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<Ordering> {
@@ -555,7 +555,7 @@ impl_partial_eq_ord_cow!(ByteString, Cow<'_, ByteStr>);
 impl_partial_eq_ord_cow!(ByteString, Cow<'_, str>);
 impl_partial_eq_ord_cow!(ByteString, Cow<'_, [u8]>);
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Ord for ByteString {
     #[inline]
     fn cmp(&self, other: &ByteString) -> Ordering {
@@ -563,7 +563,7 @@ impl Ord for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl PartialOrd for ByteString {
     #[inline]
     fn partial_cmp(&self, other: &ByteString) -> Option<Ordering> {
@@ -571,7 +571,7 @@ impl PartialOrd for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl ToOwned for ByteStr {
     type Owned = ByteString;
 
@@ -581,7 +581,7 @@ impl ToOwned for ByteStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl TryFrom<ByteString> for String {
     type Error = crate::string::FromUtf8Error;
 
@@ -591,7 +591,7 @@ impl TryFrom<ByteString> for String {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> TryFrom<&'a ByteString> for &'a str {
     type Error = crate::str::Utf8Error;
 
@@ -603,7 +603,7 @@ impl<'a> TryFrom<&'a ByteString> for &'a str {
 
 // Additional impls for `ByteStr` that require types from `alloc`:
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl Clone for Box<ByteStr> {
     #[inline]
     fn clone(&self) -> Self {
@@ -611,7 +611,7 @@ impl Clone for Box<ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
@@ -619,7 +619,7 @@ impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl From<Box<[u8]>> for Box<ByteStr> {
     #[inline]
     fn from(s: Box<[u8]>) -> Box<ByteStr> {
@@ -628,7 +628,7 @@ impl From<Box<[u8]>> for Box<ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl From<Box<ByteStr>> for Box<[u8]> {
     #[inline]
     fn from(s: Box<ByteStr>) -> Box<[u8]> {
@@ -637,7 +637,7 @@ impl From<Box<ByteStr>> for Box<[u8]> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<[u8]>> for Rc<ByteStr> {
     #[inline]
@@ -647,7 +647,7 @@ impl From<Rc<[u8]>> for Rc<ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<ByteStr>> for Rc<[u8]> {
     #[inline]
@@ -657,7 +657,7 @@ impl From<Rc<ByteStr>> for Rc<[u8]> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<[u8]>> for Arc<ByteStr> {
     #[inline]
@@ -667,7 +667,7 @@ impl From<Arc<[u8]>> for Arc<ByteStr> {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<ByteStr>> for Arc<[u8]> {
     #[inline]
@@ -685,7 +685,7 @@ impl_partial_eq_ord_cow!(&ByteStr, Cow<'_, ByteStr>);
 impl_partial_eq_ord_cow!(&ByteStr, Cow<'_, str>);
 impl_partial_eq_ord_cow!(&ByteStr, Cow<'_, [u8]>);
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "byte_str", issue = "134915")]
 impl<'a> TryFrom<&'a ByteStr> for String {
     type Error = core::str::Utf8Error;
 
@@ -704,7 +704,7 @@ impl ByteStr {
     /// implementation for types that implement `Display`, and the trait version
     /// will use the Unicode replacement character rather than returning a
     /// `Result` and allowing for the possibility of the content not being UTF-8.
-    #[unstable(feature = "bstr_to_string", issue = "134915")]
+    #[unstable(feature = "byte_str_to_string", issue = "134915")]
     #[rustc_allow_incoherent_impl]
     pub fn to_string(&self) -> Result<String, Utf8Error> {
         // Avoid allocating a copy of the contents for invalid UTF-8

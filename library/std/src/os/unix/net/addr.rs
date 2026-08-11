@@ -1,4 +1,4 @@
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use crate::os::net::linux_ext;
