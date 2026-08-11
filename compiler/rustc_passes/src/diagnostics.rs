@@ -57,6 +57,17 @@ pub(crate) struct NonExhaustiveWithDefaultFieldValues {
 }
 
 #[derive(Diagnostic)]
+pub(crate) enum UnusedNonExhaustive {
+    #[diag("`#[non_exhaustive]` has no effect on an unreachable item")]
+    Unreachable,
+    #[diag("`#[non_exhaustive]` has no effect on a struct with non-public fields")]
+    #[note(
+        "non-public fields already prevent the struct from being constructed or exhaustively matched by downstream crates"
+    )]
+    StructWithNonPublicField,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[doc(alias = \"...\")]` isn't allowed on {$location}")]
 pub(crate) struct DocAliasBadLocation<'a> {
     #[primary_span]
