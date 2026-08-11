@@ -486,6 +486,7 @@ pub trait WriteThroughCursor: Sized {
 }
 
 #[doc(hidden)]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W: WriteThroughCursor> Write for Cursor<W> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
