@@ -1,5 +1,6 @@
 use core::alloc::Allocator;
 use core::borrow::Borrow;
+use core::{intrinsics, mem};
 
 use super::node::ForceResult::*;
 use super::node::Root;
@@ -44,12 +45,39 @@ impl<K, V> Root<K, V> {
         let mut left_node = left_root.borrow_mut();
         let mut right_node = right_root.borrow_mut();
 
+        // Once the first `move_suffix` below has run, `left_root` and
+        // `right_root` reference a common set of key-value pairs through two
+        // different tree structures, and neither is a valid, independently
+        // droppable `BTreeMap` until `fix_right_border`/`fix_left_border`
+        // have repaired them and the caller has recomputed both lengths. The
+        // only thing that can fail beyond this point is the caller-supplied
+        // `Ord`/`Borrow` impl invoked by `search_node`. If that panics, we
+        // cannot safely unwind with the trees in this intermediate state
+        // (doing so leads to a double free, see #158165), so abort instead,
+        // matching the panic-safety strategy used elsewhere in this module
+        // (see `mem::replace`).
+        struct AbortOnDrop;
+        impl Drop for AbortOnDrop {
+            fn drop(&mut self) {
+                intrinsics::abort()
+            }
+        }
+        let mut guard = None;
+
         loop {
             let mut split_edge = match left_node.search_node(key) {
                 // key is going to the right tree
                 Found(kv) => kv.left_edge(),
                 GoDown(edge) => edge,
             };
+
+            // From here on, `left_root` and `right_root` are both
+            // unsound to drop until the loop finishes and the borders
+            // are fixed up below. Use `get_or_insert_with` rather than
+            // `get_or_insert`: the latter takes its argument by value, so
+            // it would construct (and immediately drop, aborting) a fresh
+            // `AbortOnDrop` on every iteration after the first.
+            guard.get_or_insert_with(|| AbortOnDrop);
 
             split_edge.move_suffix(&mut right_node);
 
@@ -65,6 +93,7 @@ impl<K, V> Root<K, V> {
 
         left_root.fix_right_border(alloc.clone());
         right_root.fix_left_border(alloc);
+        mem::forget(guard);
         right_root
     }
 
