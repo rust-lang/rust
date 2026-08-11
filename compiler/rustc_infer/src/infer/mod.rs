@@ -1318,6 +1318,33 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// Resolve a const variable to a const, if known.
+    /// Otherwise return a const with the root const vid in it.
+    ///
+    /// `ct` is const type that we may already have available, which represents the `ConstVid`.
+    /// In cases where we do, this can aid performance.
+    #[inline(always)]
+    fn shallow_resolve_const_var_with_ct(
+        &self,
+        v: ConstVid,
+        ct: Option<ty::Const<'tcx>>,
+    ) -> ty::Const<'tcx> {
+        let (root, value) =
+            self.inner.borrow_mut().const_unification_table().inlined_probe_key_value(v);
+        match value {
+            ConstVariableValue::Known { value } => value,
+            ConstVariableValue::Unknown { .. } => {
+                if root.vid == v
+                    && let Some(ct) = ct
+                {
+                    ct
+                } else {
+                    ty::Const::new_var(self.tcx, root.vid)
+                }
+            }
+        }
+    }
+
     /// Shallow resolve a type/int infer var, panics on type variables.
     ///
     /// See docs on [`shallow_resolve_ty_var`](Self::shallow_resolve_ty_var) for why this exists.
@@ -1387,19 +1414,9 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
-                InferConst::Var(vid) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .const_unification_table()
-                        .inlined_probe_key_value(vid);
-                    value.known().unwrap_or_else(|| {
-                        if root.vid == vid { ct } else { ty::Const::new_var(self.tcx, root.vid) }
-                    })
-                }
+                InferConst::Var(vid) => self.shallow_resolve_const_var_with_ct(vid, Some(ct)),
                 InferConst::Fresh(_) => ct,
             },
-
             ty::ConstKind::Param(_)
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
@@ -1456,6 +1473,18 @@ impl<'tcx> InferCtxt<'tcx> {
     /// or else the root float var in the unification table.
     pub fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
         self.shallow_resolve_float_var_with_ty(vid, None)
+    }
+
+    /// Resolves a type var to a rigid type, if it was constrained to one,
+    /// or else the root type var in the unification table.
+    pub fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+        self.shallow_resolve_ty_var_with_ty(vid, None)
+    }
+
+    /// Resolves a type var to a rigid type, if it was constrained to one,
+    /// or else the root type var in the unification table.
+    pub fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
+        self.shallow_resolve_const_var_with_ct(vid, None)
     }
 
     /// Where possible, replaces type/const variables in
