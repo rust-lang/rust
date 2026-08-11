@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_automatically_derived;
 use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
@@ -40,6 +41,7 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
         if !block.span.from_expansion()
             && let Some(expr) = block.expr
             && !from_attr_macro(expr.span)
+            && !in_automatically_derived(cx.tcx, expr.hir_id)
             && let t_expr = cx.typeck_results().expr_ty(expr)
             && t_expr.is_unit()
             && let mut app = Applicability::MachineApplicable
