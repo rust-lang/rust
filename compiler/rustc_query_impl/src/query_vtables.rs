@@ -1,10 +1,22 @@
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::{QueryKey, QueryMode, QueryVTable};
+use rustc_middle::query::{QueryCache, QueryKey, QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::GetQueryVTable;
+/// Trait that knows how to look up the [`QueryVTable`] for a particular query.
+///
+/// This trait allows some per-query code to be defined in generic functions
+/// with a trait bound, instead of having to be defined inline within a macro
+/// expansion.
+///
+/// There is one macro-generated implementation of this trait for each query,
+/// on the type `rustc_query_impl::query_vtables::$name::VTableGetter`.
+pub(crate) trait GetQueryVTable<'tcx> {
+    type Cache: QueryCache + 'tcx;
+
+    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache>;
+}
 
 macro_rules! define_queries {
     (
@@ -33,7 +45,7 @@ macro_rules! define_queries {
         // Non-queries are unused here.
         non_queries { $($_:tt)* }
     ) => {
-        // This macro expects to be expanded into `crate::query_impl`, which is this file.
+        // This macro expects to be expanded into `crate::query_vtables`, which is this file.
         $(
             pub(crate) mod $name {
                 use super::*;
@@ -149,7 +161,7 @@ macro_rules! define_queries {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
                             let loaded_value: ProvidedValue<'tcx> =
-                                $crate::plumbing::try_load_from_disk(tcx, prev_index)?;
+                                $crate::incremental::try_load_from_disk(tcx, prev_index)?;
 
                             // Arena-alloc the value if appropriate, and erase it.
                             Some(provided_to_erased(tcx, loaded_value))
@@ -181,9 +193,9 @@ macro_rules! define_queries {
                         },
                         create_tagged_key: TaggedQueryKey::$name,
                         execute_query_fn: if incremental {
-                            crate::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
+                            crate::query_vtables::$name::execute_query_incr::__rust_end_short_backtrace
                         } else {
-                            crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
+                            crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
                     }
                 }
@@ -207,7 +219,7 @@ macro_rules! define_queries {
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_impl::$name::make_query_vtable(incremental),
+                    $name: crate::query_vtables::$name::make_query_vtable(incremental),
                 )*
             }
         }
