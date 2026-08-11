@@ -86,7 +86,7 @@
 // Library features:
 // tidy-alphabetical-start
 #![feature(asm_experimental_arch)]
-#![feature(bstr_internals)]
+#![feature(byte_str_internals)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_cmp)]
@@ -292,8 +292,8 @@ pub mod ascii;
 pub mod asserting;
 #[unstable(feature = "async_iterator", issue = "79024")]
 pub mod async_iter;
-#[unstable(feature = "bstr", issue = "134915")]
-pub mod bstr;
+#[unstable(feature = "byte_str", issue = "134915")]
+pub mod byte_str;
 pub mod cell;
 pub mod char;
 pub mod ffi;

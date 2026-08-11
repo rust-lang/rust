@@ -686,8 +686,8 @@ unsafe impl CloneToUninit for crate::ffi::CStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
-unsafe impl CloneToUninit for crate::bstr::ByteStr {
+#[unstable(feature = "byte_str", issue = "134915")]
+unsafe impl CloneToUninit for crate::byte_str::ByteStr {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {

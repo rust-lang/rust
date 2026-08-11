@@ -1,5 +1,5 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
 use crate::path::Path;
 #[cfg(not(doc))]
