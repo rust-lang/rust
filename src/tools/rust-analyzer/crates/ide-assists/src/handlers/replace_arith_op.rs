@@ -118,16 +118,17 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
             let receiver = wrap_paren(lhs.clone(), make, ast::prec::ExprPrecedence::Postfix);
 
             let mut rhs = rhs;
-            if let ast::Expr::RefExpr(ref_expr) = &rhs
-                && let Some(inner) = ref_expr.expr()
-            {
-                rhs = inner;
-            }
 
             if let Some(ty) = ctx.sema.type_of_expr(&rhs) {
                 let adjusted = ty.adjusted();
                 if adjusted.strip_reference() != adjusted {
-                    rhs = make.expr_prefix(T![*], rhs).into();
+                    rhs = if let ast::Expr::RefExpr(ref_expr) = &rhs
+                        && let Some(inner) = ref_expr.expr()
+                    {
+                        inner
+                    } else {
+                        make.expr_prefix(T![*], rhs).into()
+                    };
                 }
             }
 
