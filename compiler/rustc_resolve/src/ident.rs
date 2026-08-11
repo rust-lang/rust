@@ -1512,7 +1512,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
-                        RibKind::ConstantItem(_, item) => {
+                        RibKind::ConstantItem(_, item, _) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
@@ -1611,7 +1611,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial
                                 && !matches!(res, Res::SelfTyAlias { .. })
                             {
@@ -1705,7 +1705,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
 
-                        RibKind::ConstantItem(trivial, _) => {
+                        RibKind::ConstantItem(trivial, _, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
                                 if let Some(span) = finalize {
                                     let error = match cause {
