@@ -19,6 +19,7 @@ use enums::{
 use structs::{FunctionalRecord, MixedVisFields, NestedStruct, NormalStruct};
 use unstable::{OnlyUnstableEnum, OnlyUnstableStruct, UnstableEnum, UnstableStruct};
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 #[derive(Default)]
 pub struct Foo {

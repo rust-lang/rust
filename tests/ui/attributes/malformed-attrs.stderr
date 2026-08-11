@@ -23,7 +23,7 @@ LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |           ++++++++++++++++++++++++++++++
 
 error[E0463]: can't find crate for `wloop`
-  --> $DIR/malformed-attrs.rs:213:1
+  --> $DIR/malformed-attrs.rs:214:1
    |
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
@@ -755,7 +755,7 @@ LL + #[non_exhaustive]
    |
 
 error[E0565]: malformed `thread_local` attribute input
-  --> $DIR/malformed-attrs.rs:205:3
+  --> $DIR/malformed-attrs.rs:206:3
    |
 LL | #[thread_local()]
    |   ^^^^^^^^^^^^--
@@ -769,7 +769,7 @@ LL + #[thread_local]
    |
 
 error[E0565]: malformed `no_link` attribute input
-  --> $DIR/malformed-attrs.rs:209:3
+  --> $DIR/malformed-attrs.rs:210:3
    |
 LL | #[no_link()]
    |   ^^^^^^^--
@@ -783,7 +783,7 @@ LL + #[no_link]
    |
 
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/malformed-attrs.rs:211:3
+  --> $DIR/malformed-attrs.rs:212:3
    |
 LL | #[macro_use = 1]
    |   ^^^^^^^^^^---
@@ -801,7 +801,7 @@ LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0539]: malformed `macro_export` attribute input
-  --> $DIR/malformed-attrs.rs:216:3
+  --> $DIR/malformed-attrs.rs:217:3
    |
 LL | #[macro_export = 18]
    |   ^^^^^^^^^^^^^----
@@ -818,7 +818,7 @@ LL + #[macro_export(local_inner_macros)]
    |
 
 error[E0658]: the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
-  --> $DIR/malformed-attrs.rs:218:3
+  --> $DIR/malformed-attrs.rs:219:3
    |
 LL | #[allow_internal_unsafe = 1]
    |   ^^^^^^^^^^^^^^^^^^^^^
@@ -827,7 +827,7 @@ LL | #[allow_internal_unsafe = 1]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:218:3
+  --> $DIR/malformed-attrs.rs:219:3
    |
 LL | #[allow_internal_unsafe = 1]
    |   ^^^^^^^^^^^^^^^^^^^^^^---
@@ -851,6 +851,14 @@ LL | |     #[coroutine = 63] || {}
 ...  |
 LL | | }
    | |_- not a `const fn`
+
+warning: `#[non_exhaustive]` has no effect on an unreachable item
+  --> $DIR/malformed-attrs.rs:199:1
+   |
+LL | #[non_exhaustive = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-attributes`
 
 error: valid forms for the attribute are `doc = "string"`, `doc(alias)`, `doc(attribute)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(fake_variadic)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(include)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(keyword)`, `doc(masked)`, `doc(no_default_passes)`, `doc(no_inline)`, `doc(notable_trait)`, `doc(passes)`, `doc(plugins)`, `doc(rust_logo)`, `doc(search_unbox)`, `doc(spotlight)`, and `doc(test)`
   --> $DIR/malformed-attrs.rs:41:3
@@ -888,7 +896,6 @@ LL | |     #[coroutine = 63] || {}
 ...  |
 LL | | }
    | |_^
-   = note: requested on the command line with `-W unused-attributes`
 
 error: valid forms for the attribute are `doc = "string"`, `doc(alias)`, `doc(attribute)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(fake_variadic)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(include)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(keyword)`, `doc(masked)`, `doc(no_default_passes)`, `doc(no_inline)`, `doc(notable_trait)`, `doc(passes)`, `doc(plugins)`, `doc(rust_logo)`, `doc(search_unbox)`, `doc(spotlight)`, and `doc(test)`
   --> $DIR/malformed-attrs.rs:79:3
@@ -965,7 +972,7 @@ LL | #[automatically_derived = 18]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: valid forms for the attribute are `ignore` and `ignore = "reason"`
-  --> $DIR/malformed-attrs.rs:225:3
+  --> $DIR/malformed-attrs.rs:226:3
    |
 LL | #[ignore = 1]
    |   ^^^^^^^^^^
@@ -984,7 +991,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:118:23: 118:25}`
 
-error: aborting due to 74 previous errors; 8 warnings emitted
+error: aborting due to 74 previous errors; 9 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
@@ -1012,7 +1019,7 @@ LL | #[ignore()]
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `ignore` and `ignore = "reason"`
-  --> $DIR/malformed-attrs.rs:225:3
+  --> $DIR/malformed-attrs.rs:226:3
    |
 LL | #[ignore = 1]
    |   ^^^^^^^^^^
