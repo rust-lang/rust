@@ -702,6 +702,18 @@ pub(crate) struct SuggestRefMut {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider using `&raw mut` instead",
+    applicability = "maybe-incorrect",
+    style = "verbose",
+    code = "&raw mut "
+)]
+pub(crate) struct SuggestRawMut {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(
     "trivial {$numeric ->
