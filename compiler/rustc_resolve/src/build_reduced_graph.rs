@@ -438,12 +438,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 parent_module: Some(parent.to_module()),
                 edition_redirects,
             });
-            let resolution = self.arenas.alloc_name_resolution(NameResolution {
-                non_glob_decl: Some(decl),
-                orig_ident_span,
-                single_imports: Default::default(),
-                ..
-            });
+            let resolution =
+                self.arenas.alloc_name_resolution(NameResolution::new(Some(decl), orig_ident_span));
 
             let key =
                 BindingKey::new_disambiguated(ident, ns, || (child_index + 1).try_into().unwrap());
