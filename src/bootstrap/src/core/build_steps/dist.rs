@@ -2587,7 +2587,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
 
     // We need to figure out the link mode from a LLVM, if it is provided, but without forcing it
     // to be built if it isn't.
-    let config = get_llvm_build_status(builder, target, true);
+    let config = get_llvm_build_status(builder, target);
 
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
@@ -2616,7 +2616,7 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
 
     // We need to figure out the link mode from a LLVM, if it is provided, but without forcing it
     // to be built if it isn't.
-    let config = get_llvm_build_status(builder, target, false);
+    let config = get_llvm_build_status(builder, target);
 
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
@@ -2982,7 +2982,7 @@ impl CommandLineStep for RustDev {
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
 
-        let config = get_llvm_build_status(builder, target, true);
+        let config = get_llvm_build_status(builder, target);
         maybe_install_llvm(builder, &config, target, &dst_libdir, true);
 
         // Store the link type, so that it can be read by bootstrap after the archive is downloaded

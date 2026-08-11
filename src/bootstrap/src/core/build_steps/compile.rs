@@ -20,7 +20,7 @@ use serde_derive::Deserialize;
 use tracing::span;
 
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
-use crate::core::build_steps::llvm::LlvmFromCi;
+use crate::core::build_steps::llvm::{LlvmFromCi, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
@@ -1388,9 +1388,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     // (i.e. it's already built or is downloadable), we prefer to maintain a
     // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
-        let building_llvm_is_expensive =
-            crate::core::build_steps::llvm::get_llvm_build_status(builder, target, false)
-                .should_build();
+        let building_llvm_is_expensive = prebuilt_llvm_output(builder, target).is_none();
 
         let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
         if !skip_llvm {

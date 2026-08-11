@@ -86,13 +86,6 @@ pub enum LlvmBuildStatus {
 }
 
 impl LlvmBuildStatus {
-    pub fn should_build(&self) -> bool {
-        match self {
-            LlvmBuildStatus::AlreadyBuilt(_) => false,
-            LlvmBuildStatus::ShouldBuild(_) => true,
-        }
-    }
-
     pub fn llvm_output(&self) -> &LlvmOutput {
         match self {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
@@ -143,26 +136,19 @@ impl LdFlags {
     }
 }
 
-/// This returns whether we've already previously built LLVM.
+/// Attempt to return prebuilt LLVM output information, either downloaded from CI or through an
+/// externally provided LLVM.
 ///
-/// It's used to avoid busting caches during x.py check -- if we've already built
+/// It's used e.g. to avoid busting caches during x.py check -- if we've already built
 /// LLVM, it's fine for us to not try to avoid doing so.
 ///
-/// This will return the llvm-config if it can get it (but it will not build it
-/// if not).
-pub fn get_llvm_build_status(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-    // Certain commands (like `x test mir-opt --bless`) may call this function with different targets,
-    // which could bypass the CI LLVM early-return even if `builder.config.llvm_from_ci` is true.
-    // This flag should be `true` only if the caller needs the LLVM sources (e.g., if it will build LLVM).
-    handle_submodule_when_needed: bool,
-) -> LlvmBuildStatus {
+/// Calling this function should never attempt to checkout the LLVM submodule.
+pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> Option<LlvmOutput> {
     // Try to download LLVM from CI, if possible
     let llvm_ci = builder.ensure(LlvmFromCi { target });
     if let Some(llvm) = llvm_ci {
         // Just a sanity check that the downloaded LLVM has the correct version
-        return LlvmBuildStatus::AlreadyBuilt(llvm.output);
+        return Some(llvm.output);
     }
 
     // If it is not available, use an externally provided LLVM
@@ -175,19 +161,30 @@ pub fn get_llvm_build_status(
         llvm_root_dir.pop();
         llvm_root_dir.pop();
 
-        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput {
+        return Some(LlvmOutput {
             host_llvm_config,
             link_shared: llvm_link_shared(&builder.config),
             llvm_root_dir,
             kind: LlvmKind::External,
         });
     }
+    None
+}
+
+/// This returns whether we've already previously built LLVM.
+///
+/// This will return the llvm-config if it can get it (but it will not build it
+/// if not).
+///
+/// Note that calling this function *might* checkout the LLVM submodule!
+pub fn get_llvm_build_status(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
+    if let Some(prebuilt_output) = prebuilt_llvm_output(builder, target) {
+        return LlvmBuildStatus::AlreadyBuilt(prebuilt_output);
+    }
 
     // In remaining cases, build it locally
-    if handle_submodule_when_needed {
-        // If submodules are disabled, this does nothing.
-        builder.config.update_submodule("src/llvm-project");
-    }
+    // If submodules are disabled, this does nothing.
+    builder.config.update_submodule("src/llvm-project");
 
     let out_dir = builder.llvm_out(target);
 
@@ -245,18 +242,18 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
         LlvmCiMode::DownloadFromCi => {}
     }
 
+    // FIXME: this should eventually be relaxed
+    if target != builder.host_target {
+        crate::debug!("LLVM not available on CI for non-host target {}", self.target);
+        return None;
+    }
+
     if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
         crate::debug!(
             "LLVM not available on CI for target={} and assertions={}",
             self.target,
             builder.config.llvm_assertions
         );
-        return None;
-    }
-
-    // FIXME: this should eventually be relaxed
-    if target != builder.host_target {
-        crate::debug!("LLVM not available on CI for non-host target {}", self.target);
         return None;
     }
 
@@ -435,7 +432,7 @@ impl CommandLineStep for Llvm {
         };
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
-        let LlvmBuildInfo { stamp, output } = match get_llvm_build_status(builder, target, true) {
+        let LlvmBuildInfo { stamp, output } = match get_llvm_build_status(builder, target) {
             LlvmBuildStatus::AlreadyBuilt(p) => return p,
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
