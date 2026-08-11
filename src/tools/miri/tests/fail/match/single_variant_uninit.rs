@@ -2,7 +2,7 @@
 // at least the semantics don't depend on the crate you're in.
 //
 // See: rust-lang/rust#147722
-#![allow(dead_code)]
+#![allow(dead_code, unused_attributes)]
 #![allow(unreachable_patterns)]
 
 #[repr(u8)]
