@@ -93,8 +93,7 @@ impl LlvmBuildStatus {
         }
     }
 
-    #[cfg(test)]
-    pub fn llvm_result(&self) -> &LlvmOutput {
+    pub fn llvm_output(&self) -> &LlvmOutput {
         match self {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
             LlvmBuildStatus::ShouldBuild(meta) => &meta.output,
@@ -185,7 +184,7 @@ pub fn prebuilt_llvm_config(
             );
             (link_type == "dynamic", true)
         } else {
-            (builder.config.llvm_link_shared_raw(), false)
+            (llvm_link_shared(&builder.config), false)
         };
 
         return LlvmBuildStatus::AlreadyBuilt(LlvmOutput {
@@ -218,7 +217,7 @@ pub fn prebuilt_llvm_config(
 
     let res = LlvmOutput {
         host_llvm_config: build_llvm_config,
-        link_shared: builder.config.llvm_link_shared_raw(),
+        link_shared: llvm_link_shared(&builder.config),
         llvm_root_dir: out_dir.clone(),
         kind: LlvmKind::BuiltLocally,
     };
@@ -249,6 +248,18 @@ pub fn prebuilt_llvm_config(
     }
 
     LlvmBuildStatus::ShouldBuild(LlvmBuildInfo { stamp, output: res })
+}
+
+/// Determine whether llvm should be linked dynamically.
+/// **NOTE**: This only contains the value from the config.
+/// If you need to figure out the correct value for a specific LLVM instance, use
+/// `prebuilt_llvm_config` instead.
+///
+/// This function is not a method on Config to discourage calling it from outside this module.
+fn llvm_link_shared(config: &Config) -> bool {
+    // unclear how thought-through this default is, but it maintains compatibility with
+    // previous behavior
+    config.llvm_link_shared.unwrap_or(false)
 }
 
 /// Paths whose changes invalidate LLVM downloads.
@@ -424,7 +435,7 @@ impl CommandLineStep for Llvm {
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        let link_shared = builder.config.llvm_link_shared_raw();
+        let link_shared = llvm_link_shared(&builder.config);
 
         if link_shared && target.is_windows() && !target.is_windows_gnullvm() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);

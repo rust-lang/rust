@@ -24,7 +24,9 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::GccTargetPair;
-use crate::core::build_steps::llvm::LLVM_CI_LINK_TYPE_PATH;
+use crate::core::build_steps::llvm::{
+    LLVM_CI_LINK_TYPE_PATH, LlvmBuildStatus, prebuilt_llvm_config,
+};
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
@@ -2475,6 +2477,7 @@ fn install_llvm_file(
 )]
 fn maybe_install_llvm(
     builder: &Builder<'_>,
+    llvm: &LlvmBuildStatus,
     target: TargetSelection,
     dst_libdir: &Path,
     install_symlink: bool,
@@ -2495,7 +2498,14 @@ fn maybe_install_llvm(
     //
     // If the LLVM is coming from ourselves (just from CI) though, we
     // still want to install it, as it otherwise won't be available.
-    if builder.config.is_system_llvm(target) {
+
+    // FIXME: this should be simplified once we stop pre-setting LLVM CI llvm-config during
+    // config parsing.
+    let is_system_llvm =
+        builder.config.target_config.get(&target).and_then(|t| t.llvm_config.as_ref()).is_some()
+            && !(builder.config.llvm_ci_mode.download_from_ci()
+                && builder.config.is_host_target(target));
+    if is_system_llvm {
         trace!("system LLVM requested, no install");
         return false;
     }
@@ -2505,7 +2515,7 @@ fn maybe_install_llvm(
     // clear why this is the case, though. llvm-config will emit the versioned
     // paths and we don't want those in the sysroot (as we're expecting
     // unversioned paths).
-    if target.contains("apple-darwin") && builder.llvm_link_shared() {
+    if target.contains("apple-darwin") && llvm.llvm_output().link_shared() {
         let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
@@ -2533,7 +2543,7 @@ fn maybe_install_llvm(
         !builder.config.dry_run()
     } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmOutput {
         host_llvm_config, ..
-    }) = llvm::prebuilt_llvm_config(builder, target, true)
+    }) = llvm
     {
         trace!("LLVM already built, installing LLVM files");
         let mut cmd = command(host_llvm_config);
@@ -2566,7 +2576,7 @@ fn maybe_install_llvm(
         name = "maybe_install_llvm_target",
         skip_all,
         fields(
-            llvm_link_shared = ?builder.llvm_link_shared(),
+            llvm_link_shared = ?builder.config.llvm_link_shared(),
             target = ?target,
             sysroot = ?sysroot,
         ),
@@ -2574,11 +2584,16 @@ fn maybe_install_llvm(
 )]
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
+
+    // We need to figure out the link mode from a LLVM, if it is provided, but without forcing it
+    // to be built if it isn't.
+    let config = prebuilt_llvm_config(builder, target, true);
+
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
-    if builder.llvm_link_shared() {
-        maybe_install_llvm(builder, target, &dst_libdir, false);
+    if config.llvm_output().link_shared() {
+        maybe_install_llvm(builder, &config, target, &dst_libdir, false);
     }
 }
 
@@ -2590,7 +2605,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
         name = "maybe_install_llvm_runtime",
         skip_all,
         fields(
-            llvm_link_shared = ?builder.llvm_link_shared(),
+            llvm_link_shared = ?builder.config.llvm_link_shared(),
             target = ?target,
             sysroot = ?sysroot,
         ),
@@ -2598,18 +2613,23 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
 )]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join(builder.libdir_relative(Compiler::new(1, target)));
+
+    // We need to figure out the link mode from a LLVM, if it is provided, but without forcing it
+    // to be built if it isn't.
+    let config = prebuilt_llvm_config(builder, target, false);
+
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
-    if builder.llvm_link_shared() {
-        maybe_install_llvm(builder, target, &dst_libdir, false);
+    if config.llvm_output().link_shared() {
+        maybe_install_llvm(builder, &config, target, &dst_libdir, false);
 
         // To workaround lack of rpath on Windows, we bundle another copy of
         // the LLVM DLL to make rust-lld and llvm-tools work when `sysroot/bin`
         //  is missing from PATH, i.e. when they not launched by rustc.
         if target.triple.contains("windows") {
             let dst_libdir = sysroot.join("lib/rustlib").join(target).join("bin");
-            maybe_install_llvm(builder, target, &dst_libdir, false);
+            maybe_install_llvm(builder, &config, target, &dst_libdir, false);
         }
     }
 }
@@ -2961,7 +2981,9 @@ impl CommandLineStep for RustDev {
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
-        maybe_install_llvm(builder, target, &dst_libdir, true);
+
+        let config = prebuilt_llvm_config(builder, target, true);
+        maybe_install_llvm(builder, &config, target, &dst_libdir, true);
 
         // Store the link type, so that it can be read by bootstrap after the archive is downloaded
         let link_type = if llvm_output.link_shared() { "dynamic" } else { "static" };

@@ -13,8 +13,6 @@
 //! and the `bootstrap.toml` file—merging them, applying defaults, and performing
 //! cross-component validation. The main `parse_inner` function and its supporting
 //! helpers reside here, transforming raw `Toml` data into the structured `Config` type.
-
-use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
@@ -29,9 +27,7 @@ use serde::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
-use crate::core::build_steps::llvm::{
-    LLVM_CI_LINK_TYPE_PATH, LLVM_INVALIDATION_PATHS, LlvmKind, LlvmOutput,
-};
+use crate::core::build_steps::llvm::{LLVM_INVALIDATION_PATHS, LlvmKind, LlvmOutput};
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
@@ -169,9 +165,7 @@ pub struct Config {
     pub llvm_release_debuginfo: bool,
     pub llvm_static_stdcpp: bool,
     pub llvm_libzstd: bool,
-    pub llvm_link_shared: Cell<Option<bool>>,
-    // Temporary field to store the config value, without it being overwritten dynamically
-    pub llvm_link_shared_raw: Option<bool>,
+    pub llvm_link_shared: Option<bool>,
     pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: Option<String>,
@@ -1509,8 +1503,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
             llvm_libzstd: llvm_libzstd.unwrap_or(false),
             llvm_link_jobs,
-            llvm_link_shared: Cell::new(llvm_link_shared),
-            llvm_link_shared_raw: llvm_link_shared,
+            llvm_link_shared,
             llvm_offload: llvm_offload.unwrap_or(false),
             llvm_optimize: llvm_optimize.unwrap_or(true),
             llvm_pgo: pgo_llvm,
@@ -1749,44 +1742,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
         self.out.join(self.host_target).join("ci-rustc")
-    }
-
-    /// Determine whether llvm should be linked dynamically.
-    /// This contains the value from the config, without being overwritten.
-    ///
-    /// FIXME: migrate all users to this function.
-    pub(crate) fn llvm_link_shared_raw(&self) -> bool {
-        self.llvm_link_shared_raw.unwrap_or(false)
-    }
-
-    /// Determine whether llvm should be linked dynamically.
-    ///
-    /// If `false`, llvm should be linked statically.
-    /// This is computed on demand since LLVM might have to first be downloaded from CI.
-    pub(crate) fn llvm_link_shared(&self) -> bool {
-        let mut opt = self.llvm_link_shared.get();
-        if opt.is_none() && self.dry_run() {
-            // just assume static for now - dynamic linking isn't supported on all platforms
-            return false;
-        }
-
-        let llvm_link_shared = *opt.get_or_insert_with(|| {
-            if self.llvm_ci_mode.download_from_ci() {
-                self.maybe_download_ci_llvm();
-                let ci_llvm = self.ci_llvm_root();
-                let link_type = t!(
-                    std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
-                    format!("CI llvm missing: {}", ci_llvm.display())
-                );
-                link_type == "dynamic"
-            } else {
-                // unclear how thought-through this default is, but it maintains compatibility with
-                // previous behavior
-                false
-            }
-        });
-        self.llvm_link_shared.set(opt);
-        llvm_link_shared
     }
 
     /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
@@ -2039,19 +1994,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     /// Checks if the given target is the same as the host target.
     pub fn is_host_target(&self, target: TargetSelection) -> bool {
         self.host_target == target
-    }
-
-    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
-    /// In particular, we expect llvm sources to be available when this is false.
-    ///
-    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-    pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        is_system_llvm(
-            &self.target_config,
-            self.llvm_ci_mode.download_from_ci(),
-            self.host_target,
-            target,
-        )
     }
 
     /// Returns `true` if this is our custom, patched, version of LLVM.
@@ -2715,31 +2657,6 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
     // If not specified in config, the default is to only manage
     // submodules if we're currently inside a git repository.
     submodules.unwrap_or(rust_info.is_managed_git_subrepository())
-}
-
-/// Returns `true` if this is an external version of LLVM not managed by bootstrap.
-/// In particular, we expect llvm sources to be available when this is false.
-///
-/// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-pub fn is_system_llvm(
-    target_config: &HashMap<TargetSelection, Target>,
-    llvm_from_ci: bool,
-    host_target: TargetSelection,
-    target: TargetSelection,
-) -> bool {
-    match target_config.get(&target) {
-        Some(Target { llvm_config: Some(_), .. }) => {
-            let ci_llvm = llvm_from_ci && is_host_target(&host_target, &target);
-            !ci_llvm
-        }
-        // We're building from the in-tree src/llvm-project sources.
-        Some(Target { llvm_config: None, .. }) => false,
-        None => false,
-    }
-}
-
-pub fn is_host_target(host_target: &TargetSelection, target: &TargetSelection) -> bool {
-    host_target == target
 }
 
 pub(crate) fn ci_llvm_root<'a>(

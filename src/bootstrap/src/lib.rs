@@ -409,7 +409,6 @@ forward! {
     create(path: &Path, s: &str),
     remove(f: &Path),
     tempdir() -> PathBuf,
-    llvm_link_shared() -> bool,
     download_rustc() -> bool,
 }
 
