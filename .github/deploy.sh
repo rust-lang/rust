@@ -4,6 +4,7 @@ set -ex
 
 echo "Removing the current docs for master"
 rm -rf out/master/ || exit 0
+rm -rf out/main/ || exit 0
 
 echo "Making the docs for master"
 mkdir out/master/
@@ -11,6 +12,9 @@ cp util/gh-pages/index.html out/master
 cp util/gh-pages/theme.js out/master
 cp util/gh-pages/script.js out/master
 cp util/gh-pages/style.css out/master
+
+echo "Copying the docs into the main directory"
+cp -Tr out/master/ out/main/
 
 if [[ -n $TAG_NAME ]]; then
   echo "Save the doc for the current tag ($TAG_NAME) and point stable/ to it"
