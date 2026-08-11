@@ -283,7 +283,7 @@ enum ResolutionError<'ra> {
         suggestion: &'static str,
         current: &'static str,
         type_span: Option<Span>,
-        type_name: &'static str
+        type_name: &'static str,
     },
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {

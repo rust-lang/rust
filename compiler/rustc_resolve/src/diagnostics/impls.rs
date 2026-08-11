@@ -1173,7 +1173,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 current,
                 type_span,
-                type_name
+                type_name,
             } => {
                 // let foo =...
                 //     ^^^ given this Span

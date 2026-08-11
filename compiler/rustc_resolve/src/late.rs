@@ -3285,19 +3285,26 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         f: impl FnOnce(&mut Self),
     ) {
         let f = |this: &mut Self| {
-            this.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item, requires_type), |this| {
-                this.with_rib(
-                    TypeNS,
-                    RibKind::ConstantItem(
-                        may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
-                        item,
-                        requires_type
-                    ),
-                    |this| {
-                        this.with_label_rib(RibKind::ConstantItem(may_use_generics, item, requires_type), f);
-                    },
-                )
-            })
+            this.with_rib(
+                ValueNS,
+                RibKind::ConstantItem(may_use_generics, item, requires_type),
+                |this| {
+                    this.with_rib(
+                        TypeNS,
+                        RibKind::ConstantItem(
+                            may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                            item,
+                            requires_type,
+                        ),
+                        |this| {
+                            this.with_label_rib(
+                                RibKind::ConstantItem(may_use_generics, item, requires_type),
+                                f,
+                            );
+                        },
+                    )
+                },
+            )
         };
 
         if let ConstantHasGenerics::No(cause) = may_use_generics {
@@ -3852,9 +3859,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_static_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
         self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
-            this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, ConstantRequiresType::No, item, |this| {
-                this.visit_expr(expr)
-            });
+            this.with_constant_rib(
+                IsRepeatExpr::No,
+                ConstantHasGenerics::Yes,
+                ConstantRequiresType::No,
+                item,
+                |this| this.visit_expr(expr),
+            );
         })
     }
 
@@ -3865,9 +3876,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) {
         if let Some(body) = body {
             self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
-                this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, ConstantRequiresType::No, item, |this| {
-                    this.visit_expr(body)
-                })
+                this.with_constant_rib(
+                    IsRepeatExpr::No,
+                    ConstantHasGenerics::Yes,
+                    ConstantRequiresType::No,
+                    item,
+                    |this| this.visit_expr(body),
+                )
             })
         }
     }
@@ -5138,7 +5153,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
 
         let requires_type = match anon_const_kind {
-            AnonConstKind::ArrayLength | AnonConstKind::ConstArg(IsRepeatExpr::Yes) => ConstantRequiresType::Usize,
+            AnonConstKind::ArrayLength | AnonConstKind::ConstArg(IsRepeatExpr::Yes) => {
+                ConstantRequiresType::Usize
+            }
             _ => ConstantRequiresType::No,
         };
 
