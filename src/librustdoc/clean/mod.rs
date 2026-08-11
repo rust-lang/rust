@@ -183,7 +183,7 @@ fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
     if let hir::Node::Item(item) = tcx.hir_node_by_def_id(import_id)
         && let hir::ItemKind::Use(_, use_kind) = item.kind
     {
-        use_kind == hir::UseKind::Glob
+        matches!(use_kind, hir::UseKind::Glob)
     } else {
         false
     }
@@ -3229,7 +3229,7 @@ fn clean_use_statement_inner<'tcx>(
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
     let path = clean_path(path, cx);
-    let inner = if kind == hir::UseKind::Glob {
+    let inner = if matches!(kind, hir::UseKind::Glob) {
         if !denied {
             let mut visited = DefIdSet::default();
             if let Some(items) = inline::try_inline_glob(
