@@ -11,7 +11,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `str` to implement `Index<{integer}>`
@@ -31,7 +31,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
 note: required by a bound in `core::str::<impl str>::get`
@@ -52,7 +52,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
 note: required by a bound in `core::str::<impl str>::get_unchecked`
