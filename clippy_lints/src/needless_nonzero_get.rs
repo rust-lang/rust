@@ -46,24 +46,24 @@ declare_clippy_lint! {
     /// let _ = 4 / nz;
     /// ```
     #[clippy::version = "1.99.0"]
-    pub UNNECESSARY_NONZERO_GET,
+    pub NEEDLESS_NONZERO_GET,
     complexity,
     "unnecessary `NonZero::get` call"
 }
 
-impl_lint_pass!(UnnecessaryNonzeroGet => [UNNECESSARY_NONZERO_GET]);
+impl_lint_pass!(NeedlessNonzeroGet => [NEEDLESS_NONZERO_GET]);
 
-pub struct UnnecessaryNonzeroGet {
+pub struct NeedlessNonzeroGet {
     msrv: Msrv,
 }
 
-impl UnnecessaryNonzeroGet {
+impl NeedlessNonzeroGet {
     pub fn new(conf: &'static Conf) -> Self {
         Self { msrv: conf.msrv.into() }
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for UnnecessaryNonzeroGet {
+impl<'tcx> LateLintPass<'tcx> for NeedlessNonzeroGet {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         match expr.kind {
             // `<recv>.get().<method>()`
@@ -155,7 +155,7 @@ fn emit_unnecessary_get<'tcx>(
 
     span_lint_and_then(
         cx,
-        UNNECESSARY_NONZERO_GET,
+        NEEDLESS_NONZERO_GET,
         get_span,
         format!("unnecessary `get` before `{operation}`"),
         |diag| {

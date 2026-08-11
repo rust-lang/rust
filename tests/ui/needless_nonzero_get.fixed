@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 
-#![warn(clippy::unnecessary_nonzero_get)]
+#![warn(clippy::needless_nonzero_get)]
 // the `msrv` functions below deliberately use items newer than their MSRV
 #![allow(clippy::incompatible_msrv)]
 
@@ -11,83 +11,83 @@ use std::num::{NonZero, NonZeroI32, NonZeroU32};
 
 fn unsigned(nz: NonZero<u32>) {
     let _ = nz.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.trailing_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.is_power_of_two();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.ilog2();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.ilog10();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 fn signed(nz: NonZero<i32>) {
     let _ = nz.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.trailing_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.is_positive();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = nz.is_negative();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 fn unsigned_widths(a: NonZero<u8>, b: NonZero<u16>, c: NonZero<u64>, d: NonZero<u128>, e: NonZero<usize>) {
     let _ = a.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = b.trailing_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = c.ilog2();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = d.is_power_of_two();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = e.ilog10();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 fn signed_widths(f: NonZero<i8>, g: NonZero<i16>, h: NonZero<i64>, i: NonZero<i128>, j: NonZero<isize>) {
     let _ = f.is_negative();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = g.is_positive();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = h.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = i.trailing_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = j.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 fn aliases_and_receivers(a: NonZeroU32, b: NonZeroI32, r: &NonZero<u32>) {
     let _ = a.ilog2();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = b.is_positive();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = r.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 
     // more complex receiver expressions
     let _ = NonZero::new(5u32).unwrap().leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = (a).trailing_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 
     // multi-line chain
     let _ = a
-        //~^ unnecessary_nonzero_get
+        //~^ needless_nonzero_get
         .leading_zeros();
 }
 
 fn operators(mut value: u32, other: u32, nz: NonZero<u32>) {
     let _ = other / nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = other % nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     value /= nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     value %= nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 // The `NonZero` operator implementations carry `#[rustc_const_unstable(feature = "const_ops")]`,
@@ -100,7 +100,7 @@ const fn const_operators(mut value: u32, nz: NonZero<u32>) -> u32 {
 // `NonZero::leading_zeros` is const-stable since 1.53.0, so the `get` can go even in a `const fn`.
 const fn const_methods(nz: NonZero<u32>) -> u32 {
     nz.leading_zeros()
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 fn no_lint(nz: NonZero<u32>, signed: NonZero<i32>, plain: u32) {
@@ -181,7 +181,7 @@ fn below_msrv(nz: NonZero<u32>) {
 #[clippy::msrv = "1.53"]
 fn meets_msrv(nz: NonZero<u32>) {
     let _ = nz.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 // `NonZero::ilog2` was stabilized in 1.67.0, later than `leading_zeros`
@@ -189,7 +189,7 @@ fn meets_msrv(nz: NonZero<u32>) {
 fn below_ilog2_msrv(nz: NonZero<u32>) {
     let _ = nz.get().ilog2();
     let _ = nz.leading_zeros();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 // `Div<NonZero<_>>` and `Rem<NonZero<_>>` were stabilized in 1.51.0
@@ -202,9 +202,9 @@ fn below_nonzero_div_msrv(value: u32, nz: NonZero<u32>) {
 #[clippy::msrv = "1.51"]
 fn meets_nonzero_div_msrv(value: u32, nz: NonZero<u32>) {
     let _ = value / nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     let _ = value % nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 // `DivAssign<NonZero<_>>` and `RemAssign<NonZero<_>>` were stabilized in 1.79.0
@@ -217,9 +217,9 @@ fn below_nonzero_div_assign_msrv(mut value: u32, nz: NonZero<u32>) {
 #[clippy::msrv = "1.79"]
 fn meets_nonzero_div_assign_msrv(mut value: u32, nz: NonZero<u32>) {
     value /= nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
     value %= nz;
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
 
 // The whole expression is written in the macro, so the suggestion would point at code the caller

@@ -1,6 +1,6 @@
 //@no-rustfix: the suggestion would remove the comment before `.get()`
 
-#![warn(clippy::unnecessary_nonzero_get)]
+#![warn(clippy::needless_nonzero_get)]
 
 use std::num::NonZero;
 
@@ -11,16 +11,16 @@ fn main() {
     // This comment must not be removed by an automatic fix.
     let _ = nz /* keep this comment */
         .get()
-        //~^ unnecessary_nonzero_get
+        //~^ needless_nonzero_get
         .leading_zeros();
 
     // The operator suggestions share the same removal span, so they must preserve comments too.
     let _ = value
         / nz /* keep this comment */
             .get();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 
     value %= nz /* keep this comment */
         .get();
-    //~^ unnecessary_nonzero_get
+    //~^ needless_nonzero_get
 }
