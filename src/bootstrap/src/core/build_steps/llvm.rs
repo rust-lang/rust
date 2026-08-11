@@ -34,6 +34,8 @@ pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
+    /// Should we link dynamically to the built LLVM?
+    link_shared: bool,
     llvm_root_dir: PathBuf,
 }
 
@@ -146,7 +148,12 @@ pub fn prebuilt_llvm_config(
         let mut llvm_root_dir = host_llvm_config.clone();
         llvm_root_dir.pop();
         llvm_root_dir.pop();
-        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput { host_llvm_config, llvm_root_dir });
+        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput {
+            host_llvm_config,
+            // FIXME: remove this circular definition
+            link_shared: builder.llvm_link_shared(),
+            llvm_root_dir,
+        });
     }
 
     if handle_submodule_when_needed {
@@ -169,7 +176,11 @@ pub fn prebuilt_llvm_config(
         llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
     };
 
-    let res = LlvmOutput { host_llvm_config: build_llvm_config, llvm_root_dir: out_dir.clone() };
+    let res = LlvmOutput {
+        host_llvm_config: build_llvm_config,
+        link_shared: builder.llvm_link_shared(),
+        llvm_root_dir: out_dir.clone(),
+    };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -1559,7 +1570,7 @@ impl CommandLineStep for Lld {
         //
         if builder.config.rpath_enabled(target)
             && helpers::use_host_linker(target)
-            && builder.config.llvm_link_shared()
+            && llvm_output.link_shared
             && target.contains("linux")
         {
             // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the
