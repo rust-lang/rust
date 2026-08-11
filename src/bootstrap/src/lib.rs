@@ -961,18 +961,6 @@ impl Build {
         self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir(mode))
     }
 
-    /// Root output directory of LLVM for `target`
-    ///
-    /// Note that if LLVM is configured externally then the directory returned
-    /// will likely be empty.
-    fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_ci_mode.download_from_ci() && self.config.is_host_target(target) {
-            self.config.ci_llvm_root()
-        } else {
-            self.out.join(target).join("llvm")
-        }
-    }
-
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("doc")

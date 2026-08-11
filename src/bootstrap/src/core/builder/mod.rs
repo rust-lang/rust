@@ -1585,6 +1585,18 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         None
     }
 
+    /// Root output directory of LLVM for `target`
+    ///
+    /// Note that if LLVM is configured externally then the directory returned
+    /// will likely be empty.
+    pub fn llvm_out(&self, target: TargetSelection) -> PathBuf {
+        if self.config.llvm_ci_mode.download_from_ci() && self.config.is_host_target(target) {
+            self.config.ci_llvm_root()
+        } else {
+            self.out.join(target).join("llvm")
+        }
+    }
+
     /// Updates all submodules, and exits with an error if submodule
     /// management is disabled and the submodule does not exist.
     pub fn require_and_update_all_submodules(&self) {
