@@ -8,8 +8,7 @@ use std::path::PathBuf;
 use rustc_abi::ExternAbi;
 use rustc_attr_ir::{CfgEntry, NativeLibKind, PeImportNameType};
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
-// FIXME: Can we not depend on `rustc_hir` here? :)
-use rustc_hir::definitions::{DefKey, DefPath, Definitions};
+use rustc_hir_id::definitions::{DefKey, DefPath, Definitions};
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_span::def_id::{
     CrateNum, DefId, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap,

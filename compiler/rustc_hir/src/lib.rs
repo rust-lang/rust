@@ -16,8 +16,6 @@
 
 mod arena;
 pub mod def;
-pub mod def_path_hash_map;
-pub mod definitions;
 mod hir;
 pub mod intravisit;
 pub mod lints;

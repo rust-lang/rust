@@ -3913,7 +3913,7 @@ dependencies = [
  "rustc_abi",
  "rustc_attr_ir",
  "rustc_data_structures",
- "rustc_hir",
+ "rustc_hir_id",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
@@ -4107,7 +4107,6 @@ name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "odht",
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
@@ -4115,7 +4114,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_errors",
- "rustc_hashes",
  "rustc_hir_id",
  "rustc_index",
  "rustc_lint_defs",
@@ -4155,11 +4153,14 @@ dependencies = [
 name = "rustc_hir_id"
 version = "0.0.0"
 dependencies = [
+ "odht",
  "rustc_data_structures",
+ "rustc_hashes",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "tracing",
 ]
 
 [[package]]
