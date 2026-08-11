@@ -33,8 +33,16 @@ pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
+    #[cold]
+    fn fail() -> ! {
+        rtabort!("Failed to set value of thread local")
+    }
+
     let r = unsafe { libc::pthread_setspecific(key, value as *mut _) };
-    debug_assert_eq!(r, 0);
+    // May happen on memory exhaustion
+    if r != 0 {
+        fail()
+    }
 }
 
 #[inline]
