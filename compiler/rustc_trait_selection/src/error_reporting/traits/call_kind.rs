@@ -2,9 +2,9 @@
 //! as well as errors when attempting to call a non-const function in a const
 //! context.
 
+use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{LangItem, lang_items};
 use rustc_middle::ty::{
     self, AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv, Unnormalized,
 };

@@ -53,9 +53,7 @@ use crate::core::config::{
     GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool,
     threads_from_config,
 };
-use crate::core::download::{
-    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
-};
+use crate::core::download::{DownloadContext, download_beta_toolchain, is_download_ci_available};
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, fail, get_host_target};
@@ -240,6 +238,8 @@ pub struct Config {
     pub rustdoc_pgo: PgoConfig,
     pub cargo_pgo: PgoConfig,
 
+    pub stdlib_semver_baseline: Option<String>,
+
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
 
@@ -310,7 +310,11 @@ pub struct Config {
     pub initial_rustdoc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+
+    /// Externally configured `rustfmt` binary for formatting in-tree source code.
+    /// If you want to use rustfmt for formatting, use the `InternalRustfmt` step, instead of
+    /// accessing this directly.
+    pub external_rustfmt: Option<PathBuf>,
 
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
@@ -610,6 +614,7 @@ impl Config {
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
             rustflags: rust_rustflags,
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -1076,7 +1081,7 @@ impl Config {
             llvm_assertions,
         );
         let is_host_system_llvm =
-            is_system_llvm(&target_config, llvm_from_ci, host_target, host_target);
+            target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
         if llvm_from_ci {
             let warn = |option: &str| {
@@ -1111,17 +1116,15 @@ impl Config {
                     "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                 );
             }
-        }
 
-        if llvm_from_ci {
             let triple = &host_target.triple;
             let ci_llvm_bin = ci_llvm_root(&dwn_ctx, llvm_from_ci, &out).join("bin");
             let build_target =
                 target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
+            // FIXME: Do not overwrite the LLVM config here
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", host_target)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
         }
 
         for (target, linker_override) in default_linux_linker_overrides() {
@@ -1167,8 +1170,6 @@ impl Config {
                     .default_linker_linux_override = linker_override;
             }
         }
-
-        let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
 
         if matches!(bootstrap_override_lld, BootstrapOverrideLld::SelfContained)
             && !lld_enabled
@@ -1447,6 +1448,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             explicit_stage_from_cli: flags_stage.is_some(),
             explicit_stage_from_config,
             extended: build_extended.unwrap_or(false),
+            external_rustfmt: build_rustfmt,
             free_args: flags_free_args,
             full_bootstrap: build_full_bootstrap.unwrap_or(false),
             gcc_ci_mode,
@@ -1461,7 +1463,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             initial_cargo_clippy: build_cargo_clippy,
             initial_rustc,
             initial_rustdoc,
-            initial_rustfmt,
             initial_sysroot,
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,
@@ -1595,6 +1596,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
             stderr_is_tty: std::io::stderr().is_terminal(),
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
             stdout_is_tty: std::io::stdout().is_terminal(),
             submodules: build_submodules,
             sysconfdir: install_sysconfdir.map(PathBuf::from),

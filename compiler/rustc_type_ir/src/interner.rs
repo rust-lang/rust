@@ -30,7 +30,7 @@ pub trait Interner:
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
     + IrPrint<ty::TraitPredicate<Self>>
-    + IrPrint<ty::HostEffectPredicate<Self>>
+    + IrPrint<ty::HostEffectClause<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionPredicate<Self>>

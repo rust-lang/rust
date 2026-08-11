@@ -6,9 +6,10 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, listify, msg};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
-    self as hir, CoroutineKind, GenericBound, LangItem, WhereBoundPredicate, WherePredicateKind,
+    self as hir, CoroutineKind, GenericBound, WhereBoundPredicate, WherePredicateKind,
 };
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{BoundRegionConversionTime, NllRegionVariableOrigin};

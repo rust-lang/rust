@@ -85,8 +85,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::attrs::CfgEntry;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -95,9 +96,9 @@ use rustc_hir::{
     self as hir, AnonConst, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, CRATE_HIR_ID, Closure, ConstArg,
     ConstArgKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind,
     FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, HirIdSet, Impl, ImplItem, ImplItemKind, Item,
-    ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind,
-    PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
-    Variant, def, find_attr,
+    ItemKind, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind,
+    Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp, Variant, def,
+    find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext as _};

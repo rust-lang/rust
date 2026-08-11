@@ -392,8 +392,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     cfg.has_reliable_f128 = match (target_arch, target_os) {
         // Unsupported https://github.com/llvm/llvm-project/issues/121122
         (Arch::AmdGpu, _) => false,
-        // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
-        (Arch::Arm64EC, _) => false,
+        (Arch::Arm64EC, _) if major < 23 => false, // (fixed in llvm23)
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
         // but basic math still does not work.
         (Arch::Nvptx64, _) => false,

@@ -10,63 +10,6 @@ use crate::core::builder::{Builder, CommandLineStepDescription, Kind, PathSet, S
 #[cfg(test)]
 mod tests;
 
-pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
-    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
-    // actual path is `proc-macro-srv-cli`
-    ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
-    // Make `x test tests` function the same as `x t tests/*`
-    (
-        "tests",
-        &[
-            // tidy-alphabetical-start
-            "tests/assembly-llvm",
-            "tests/build-std",
-            "tests/codegen-llvm",
-            "tests/codegen-units",
-            "tests/coverage",
-            "tests/coverage-run-rustdoc",
-            "tests/crashes",
-            "tests/debuginfo",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make",
-            "tests/run-make-cargo",
-            "tests/rustdoc-gui",
-            "tests/rustdoc-html",
-            "tests/rustdoc-js",
-            "tests/rustdoc-js-std",
-            "tests/rustdoc-json",
-            "tests/rustdoc-ui",
-            "tests/ui",
-            "tests/ui-fulldeps",
-            // tidy-alphabetical-end
-        ],
-    ),
-];
-
-pub(crate) fn remap_paths(paths: &mut Vec<PathBuf>) {
-    let mut remove = vec![];
-    let mut add = vec![];
-    for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
-    {
-        for &(search, replace) in PATH_REMAP {
-            // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
-            if path.trim_matches(std::path::is_separator) == search {
-                remove.push(i);
-                add.extend(replace.iter().map(PathBuf::from));
-                break;
-            }
-        }
-    }
-    remove.sort();
-    remove.dedup();
-    for idx in remove.into_iter().rev() {
-        paths.remove(idx);
-    }
-    paths.append(&mut add);
-}
-
 #[derive(Clone, PartialEq)]
 pub(crate) struct CLIStepPath {
     pub(crate) path: PathBuf,
@@ -106,10 +49,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // paths to match it against.
     let steps = step_descs
         .iter()
-        .map(|desc| StepExtra {
-            desc,
-            should_run: (desc.should_run)(ShouldRun::new(builder, desc.kind)),
-        })
+        .map(|desc| StepExtra { desc, should_run: (desc.should_run)(ShouldRun::new(builder)) })
         .collect::<Vec<_>>();
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
@@ -136,39 +76,34 @@ pub(crate) fn match_paths_to_steps_and_run(
         }
     }
 
-    // Attempt to resolve paths to be relative to the builder source directory.
-    let mut paths: Vec<PathBuf> = paths
+    // Command-line paths are interpreted relative to the repository root
+    // (not the current working directory).
+    //
+    // If the user or shell passed an absolute path, try to strip off the
+    // repository root, to match the paths registered by command-line steps.
+    //
+    // E.g. `/home/ferris/rust/tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
+    let mut paths = paths
         .iter()
-        .map(|original_path| {
-            let mut path = original_path.clone();
-
-            // Someone could run `x <cmd> <path>` from a different repository than the source
-            // directory.
-            // In that case, we should not try to resolve the paths relative to the working
-            // directory, but rather relative to the source directory.
-            // So we forcefully "relocate" the path to the source directory here.
-            if !path.is_absolute() {
-                path = builder.src.join(path);
-            }
-
-            // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
-            if !path.exists() {
-                // Use the original path here
-                return original_path.clone();
-            }
-
-            // Make the path absolute, strip the prefix, and convert to a PathBuf.
-            match std::path::absolute(&path) {
-                Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
-                Err(e) => {
-                    eprintln!("ERROR: {e:?}");
-                    panic!("Due to the above error, failed to resolve path: {path:?}");
-                }
+        .map(|path| {
+            if path.is_absolute()
+                && path.exists()
+                && let Ok(relative) = path.strip_prefix(&builder.src)
+            {
+                relative
+            } else {
+                path
             }
         })
-        .collect();
+        .map(|p| p.to_owned())
+        .collect::<Vec<_>>();
 
-    remap_paths(&mut paths);
+    // If any absolute paths couldn't be made relative, stop now and report them.
+    let bad_abs_paths = paths.iter().filter(|path| path.is_absolute()).collect::<Vec<_>>();
+    if !bad_abs_paths.is_empty() {
+        eprintln!("ERROR: failed to resolve absolute paths: {bad_abs_paths:#?}");
+        crate::exit!(1);
+    }
 
     // Handle all test suite paths.
     // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)

@@ -36,8 +36,7 @@ fn expr_no_struct(p: &mut Parser<'_>) {
 /// It needs to be parsed with lower precedence than `&&`, so that
 /// `if let true = true && false` is parsed as `if (let true = true) && (true)`
 /// and not `if let true = (true && true)`.
-fn expr_let(p: &mut Parser<'_>) {
-    let r = Restrictions { forbid_structs: true, prefer_stmt: false };
+fn expr_let(p: &mut Parser<'_>, r: Restrictions) {
     expr_bp(p, None, r, 5);
 }
 

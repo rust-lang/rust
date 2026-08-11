@@ -71,7 +71,7 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
             .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
-        let mut visitor = Collector::new(tcx, body);
+        let mut visitor = Collector::new(tcx, body, &const_.analysis.map);
         debug_span!("collect").in_scope(|| {
             visit_results(body, traversal::reachable(body).map(|(bb, _)| bb), &const_, &mut visitor)
         });
@@ -767,23 +767,24 @@ struct Collector<'a, 'tcx> {
     patch: Patch<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
+    map: &'a Map<'tcx>,
 }
 
 impl<'a, 'tcx> Collector<'a, 'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: &'a Map<'tcx>) -> Self {
         Self {
             patch: Patch::new(tcx),
             local_decls: &body.local_decls,
             ecx: InterpCx::new(tcx, DUMMY_SP, body.typing_env(tcx), DummyMachine),
+            map,
         }
     }
 
-    #[instrument(level = "trace", skip(self, map), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_make_constant(
         &mut self,
         place: Place<'tcx>,
         state: &State<FlatSet<Scalar>>,
-        map: &Map<'tcx>,
     ) -> Option<Const<'tcx>> {
         let ty = place.ty(self.local_decls, self.patch.tcx).ty;
         let layout = self.ecx.layout_of(ty).ok()?;
@@ -796,9 +797,9 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             return None;
         }
 
-        let place = map.find(place.as_ref())?;
+        let place = self.map.find(place.as_ref())?;
         if layout.backend_repr.is_scalar()
-            && let Some(value) = propagatable_scalar(place, state, map)
+            && let Some(value) = propagatable_scalar(place, state, self.map)
         {
             return Some(Const::Val(ConstValue::Scalar(value), ty));
         }
@@ -807,7 +808,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             let alloc_id = self
                 .ecx
                 .intern_with_temp_alloc(layout, |ecx, dest| {
-                    try_write_constant(ecx, dest, place, ty, state, map)
+                    try_write_constant(ecx, dest, place, ty, state, self.map)
                 })
                 .discard_err()?;
             return Some(Const::Val(ConstValue::Indirect { alloc_id, offset: Size::ZERO }, ty));
@@ -940,27 +941,24 @@ fn try_write_constant<'tcx>(
 }
 
 impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
-    #[instrument(level = "trace", skip(self, analysis, statement))]
+    #[instrument(level = "trace", skip(self, statement))]
     fn visit_after_early_statement_effect(
         &mut self,
-        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
         match &statement.kind {
             StatementKind::Assign((_, rvalue)) => {
-                OperandCollector { state, visitor: self, map: &analysis.map }
-                    .visit_rvalue(rvalue, location);
+                OperandCollector { state, visitor: self }.visit_rvalue(rvalue, location);
             }
             _ => (),
         }
     }
 
-    #[instrument(level = "trace", skip(self, analysis, statement))]
+    #[instrument(level = "trace", skip(self, statement))]
     fn visit_after_primary_statement_effect(
         &mut self,
-        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -970,7 +968,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign((place, _)) => {
-                if let Some(value) = self.try_make_constant(place, state, &analysis.map) {
+                if let Some(value) = self.try_make_constant(place, state) {
                     self.patch.assignments.insert(location, value);
                 }
             }
@@ -980,13 +978,11 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         terminator: &Terminator<'tcx>,
         location: Location,
     ) {
-        OperandCollector { state, visitor: self, map: &analysis.map }
-            .visit_terminator(terminator, location);
+        OperandCollector { state, visitor: self }.visit_terminator(terminator, location);
     }
 }
 
@@ -1045,7 +1041,6 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
 struct OperandCollector<'a, 'b, 'tcx> {
     state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut Collector<'b, 'tcx>,
-    map: &'a Map<'tcx>,
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
@@ -1057,7 +1052,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
         location: Location,
     ) {
         if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state, self.map)
+            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state)
         {
             self.visitor.patch.before_effect.insert((location, local.into()), value);
         }
@@ -1065,7 +1060,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         if let Some(place) = operand.place() {
-            if let Some(value) = self.visitor.try_make_constant(place, self.state, self.map) {
+            if let Some(value) = self.visitor.try_make_constant(place, self.state) {
                 self.visitor.patch.before_effect.insert((location, place), value);
             } else if !place.projection.is_empty() {
                 // Try to propagate into `Index` projections.

@@ -451,24 +451,6 @@ pub(crate) struct InvalidCharacterInCrateNameSuggestion {
     pub(crate) suggested_name: String,
 }
 
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "parentheses are required to parse this as an expression",
-    applicability = "machine-applicable"
-)]
-pub struct ExprParenthesesNeeded {
-    #[suggestion_part(code = "(")]
-    left: Span,
-    #[suggestion_part(code = ")")]
-    right: Span,
-}
-
-impl ExprParenthesesNeeded {
-    pub fn surrounding(s: Span) -> Self {
-        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag("skipping const checks")]
 pub(crate) struct SkippingConstChecks {

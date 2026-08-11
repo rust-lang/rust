@@ -1,12 +1,12 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::{Applicability, msg};
-use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::{
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
 };
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_errors::{Applicability, msg};
+use rustc_feature::AttributeStability;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 
@@ -14,19 +14,17 @@ use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
-    AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
+    AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
+    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocTestLiteral, DocTestTakesList,
-    DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
-    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
+    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
+    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
+    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
-};
-use crate::session_diagnostics::{
-    DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
-    DocAttributeNotAttribute, DocKeywordNotKeyword, UnusedDuplicate,
 };
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {

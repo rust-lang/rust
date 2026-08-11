@@ -11,7 +11,6 @@ use rustc_errors::{
     Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -921,6 +920,24 @@ pub(crate) struct FoundExprWouldBeStmt {
     pub token: Cow<'static, str>,
     #[subdiagnostic]
     pub suggestion: ExprParenthesesNeeded,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "parentheses are required to parse this as an expression",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    left: Span,
+    #[suggestion_part(code = ")")]
+    right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub(crate) fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
+    }
 }
 
 #[derive(Diagnostic)]
@@ -2074,14 +2091,6 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
         style = "verbose"
     )]
     pub fn_token_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`Trait(...)` syntax does not support named parameters")]
-pub(crate) struct FnPathFoundNamedParams {
-    #[primary_span]
-    #[suggestion("remove the parameter name", applicability = "machine-applicable", code = "")]
-    pub named_param_span: Span,
 }
 
 #[derive(Diagnostic)]

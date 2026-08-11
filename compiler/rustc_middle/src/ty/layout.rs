@@ -11,7 +11,7 @@ use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
@@ -366,11 +366,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 Limit(0) => Limit(2),
                 limit => limit * 2,
             };
-            let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
-                span,
-                ty,
-                suggested_limit,
-            });
+            let reported =
+                tcx.dcx().emit_err(crate::diagnostics::RecursionLimitReachedSizeSkeleton {
+                    span,
+                    ty,
+                    suggested_limit,
+                });
             return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
         }
 

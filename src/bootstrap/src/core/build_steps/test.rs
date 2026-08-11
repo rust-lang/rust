@@ -17,6 +17,7 @@ use build_helper::git::get_closest_upstream_commit;
 
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
+use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
@@ -859,6 +860,64 @@ impl CommandLineStep for CargoMiri {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Priroda {
+    target: TargetSelection,
+}
+
+impl CommandLineStep for Priroda {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/miri/priroda")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Priroda { target: run.target });
+    }
+
+    /// Runs `cargo test` for priroda, reusing the Miri sysroot and binary.
+    fn run(self, builder: &Builder<'_>) {
+        let host = builder.build.host_target;
+        let target = self.target;
+        let stage = builder.top_stage;
+
+        // Priroda tests run under Miri, so reuse the Miri binary and sysroot.
+        let compilers = RustcPrivateCompilers::new(builder, stage, host);
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
+        let target_compiler = compilers.target_compiler();
+
+        let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
+        builder.std(target_compiler, host);
+        let host_sysroot = builder.sysroot(target_compiler);
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            miri.build_compiler,
+            Mode::ToolRustcPrivate,
+            host,
+            Kind::Test,
+            "src/tools/miri/priroda",
+            SourceType::InTree,
+            &[],
+        );
+
+        cargo.add_rustc_lib_path(builder);
+
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
+
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
+        cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
+
+        {
+            let _guard = builder.msg_test("priroda", target, target_compiler.stage);
+            let _time = helpers::timeit(builder);
+            cargo.run(builder);
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
     host: TargetSelection,
 }
@@ -1095,7 +1154,7 @@ impl CommandLineStep for IntrinsicTest {
         cmd.env("CFLAGS", cflags);
         // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
         // managed binaries findable by prepending their dirs to PATH.
-        let Some(rustfmt_path) = builder.config.initial_rustfmt.clone() else {
+        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
             eprintln!(
                 "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
             );
@@ -1629,7 +1688,10 @@ impl CommandLineStep for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
                 builder.info("fmt check");
-                if builder.config.initial_rustfmt.is_none() {
+
+                // Note: this actually sets up or downloads rustfmt, so running this step here is
+                // load-bearing
+                let Some(rustfmt) = builder.ensure(InternalRustfmt) else {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
                         "\
@@ -1641,10 +1703,11 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                         CHAN = builder.config.channel,
                     );
                     crate::exit!(1);
-                }
+                };
                 let all = false;
                 crate::core::build_steps::format::format(
                     builder,
+                    rustfmt,
                     !builder.config.cmd.bless(),
                     all,
                     &[],
@@ -2352,7 +2415,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--mode").arg(mode.as_str());
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--host").arg(&*test_compiler.host.triple);
-        cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
+
+        let filecheck = builder.ensure(llvm::FileCheck { target: builder.config.host_target });
+        cmd.arg("--llvm-filecheck").arg(filecheck);
 
         if let Some(codegen_backend) = builder.config.cmd.test_codegen_backend() {
             if !builder
@@ -2630,7 +2695,7 @@ Please disable assertions with `rust.debug-assertions = false`.
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(test_compiler.host) {
-            let llvm::LlvmResult { host_llvm_config, .. } =
+            let llvm::LlvmOutput { host_llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
                 let llvm_version = get_llvm_version(builder, &host_llvm_config);
@@ -4605,7 +4670,7 @@ impl CommandLineStep for RemoteTestClientTests {
 }
 
 fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
-    command("cargo")
+    command(&builder.initial_cargo)
         .allow_failure()
         .arg("semver-checks")
         .arg("--version")
@@ -4618,7 +4683,13 @@ fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
 /// Run cargo-semver-checks on the standard library and compare its API
 /// versus a previous baseline, using rustdoc JSON data.
 ///
+/// The baseline commit can be configured using `rust.stdlib-semver-baseline`.
+/// If unset, the first upstream parent commit will be used.
+///
 /// Fails if a semver-breaking change is detected.
+///
+/// If you want to allow a breaking change in a given PR, or if cargo-semver-checks has a false
+/// positive, modify the `src/bootstrap/stdlib-semver-check-stamp` file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StdSemverCheck {
     build_compiler: Compiler,
@@ -4639,19 +4710,22 @@ impl CommandLineStep for StdSemverCheck {
             panic!("cargo-semver-checks was not found, please install it");
         }
 
-        let baseline_commit = match get_closest_upstream_commit(
-            Some(&run.builder.config.src),
-            &run.builder.config.git_config(),
-            run.builder.config.ci_env,
-        ) {
-            Ok(Some(commit)) => commit,
-            Ok(None) => {
-                panic!("No baseline parent commit found for std-semver-check");
-            }
-            Err(error) => {
-                panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
-            }
-        };
+        let baseline_commit =
+            run.builder.config.stdlib_semver_baseline.clone().unwrap_or_else(|| {
+                match get_closest_upstream_commit(
+                    Some(&run.builder.config.src),
+                    &run.builder.config.git_config(),
+                    run.builder.config.ci_env,
+                ) {
+                    Ok(Some(commit)) => commit,
+                    Ok(None) => {
+                        panic!("No baseline parent commit found for std-semver-check");
+                    }
+                    Err(error) => {
+                        panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
+                    }
+                }
+            });
 
         run.builder.ensure(Self {
             build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
@@ -4661,6 +4735,15 @@ impl CommandLineStep for StdSemverCheck {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        const STDLIB_SEMVER_CHECK_STAMP_PATH: &str = "src/bootstrap/stdlib-semver-check-stamp";
+
+        if builder.config.ci_env.is_running_in_ci()
+            && builder.config.has_changes_from_upstream(&[STDLIB_SEMVER_CHECK_STAMP_PATH])
+        {
+            builder.info(&format!("Skipping stdlib semver check, because {STDLIB_SEMVER_CHECK_STAMP_PATH} was modified."));
+            return;
+        }
+
         let Some(docs_dir) = builder.config.download_std_json_docs(self.target, &self.commit)
         else {
             return;
@@ -4675,7 +4758,7 @@ impl CommandLineStep for StdSemverCheck {
 
         for library in ["core", "alloc", "std"] {
             println!("Checking semver compatibility of {library}");
-            let mut cmd = command("cargo");
+            let mut cmd = command(&builder.initial_cargo);
             cmd.arg("semver-checks")
                 .arg("-Z")
                 .arg("unstable-options")
@@ -4686,7 +4769,41 @@ impl CommandLineStep for StdSemverCheck {
                 .arg(directory.join(format!("{library}.json")))
                 .arg("--baseline-rustdoc")
                 .arg(baseline_dir.join(format!("{library}.json")));
-            cmd.run(builder);
+
+            // We use run_capture to get the exit status
+            let res = cmd.allow_failure().run_capture(builder);
+            match res.status() {
+                Some(status) if status.success() => {
+                    println!("{}\n{}", res.stdout(), res.stderr());
+                }
+                // 101 marks that csc was unable to parse the JSON data, but it did not fail with a
+                // semver breakage.
+                Some(status) if status.code() == Some(101) => {
+                    eprintln!(
+                        "cargo-semver-checks was unable to process {library} (this is not a fatal error)\n{}\n{}",
+                        res.stderr(),
+                        res.stdout()
+                    );
+                }
+                // 100 marks semver breakage
+                Some(status) if status.code() == Some(100) => {
+                    let error = format!(
+                        "cargo-semver-checks found semver breakage in {library}\n{}\n{}",
+                        res.stderr(),
+                        res.stdout()
+                    );
+                    if builder.fail_fast {
+                        eprintln!("{error}",);
+                        exit!(1);
+                    } else {
+                        builder.config.exec_ctx().add_to_delay_failure(error);
+                    }
+                }
+                _ => {
+                    eprintln!("cargo-semver-checks failed.\n{}\n{}", res.stderr(), res.stdout());
+                    exit!(1);
+                }
+            }
         }
     }
 }

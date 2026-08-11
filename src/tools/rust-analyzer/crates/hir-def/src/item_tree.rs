@@ -46,6 +46,7 @@ use std::{
 use ast::{AstNode, StructKind};
 use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
+use either::Either;
 use hir_expand::{
     ExpandTo, HirFileId,
     mod_path::{ModPath, PathKind},
@@ -53,7 +54,6 @@ use hir_expand::{
 };
 use intern::Interned;
 use la_arena::{Idx, RawIdx};
-use rustc_hash::FxHashMap;
 use span::{
     AstIdNode, Edition, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SpanAnchor,
     SyntaxContext,
@@ -128,10 +128,9 @@ pub fn file_item_tree(db: &dyn SourceDatabase, file_id: HirFileId, krate: Crate)
             static EMPTY: OnceLock<ItemTree> = OnceLock::new();
             EMPTY.get_or_init(|| ItemTree {
                 top_level: Box::new([]),
-                attrs: FxHashMap::default(),
-                small_data: FxHashMap::default(),
-                big_data: FxHashMap::default(),
-                top_attrs: AttrsOrCfg::empty(),
+                attrs: ThinVec::new(),
+                small_data: ThinVec::new(),
+                big_data: ThinVec::new(),
                 vis: ItemVisibilities { arena: ThinVec::new() },
             })
         }
@@ -146,7 +145,7 @@ fn file_item_tree_query(
 ) -> Option<Box<ItemTree>> {
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
 
-    let ctx = lower::Ctx::new(db, file_id, krate);
+    let mut ctx = lower::Ctx::new(db, file_id, krate);
     let syntax = file_id.parse_or_expand(db);
     let mut item_tree = match_ast! {
         match syntax {
@@ -162,9 +161,8 @@ fn file_item_tree_query(
                     Some(attrs @ AttrsOrCfg::CfgDisabled(_)) => attrs,
                     None => ctx.lower_attrs(&file)
                 };
-                let mut item_tree = ctx.lower_module_items(&file);
-                item_tree.top_attrs = top_attrs;
-                item_tree
+                ctx.add_attrs(ModItemId::TOP_OWNER, top_attrs);
+                ctx.lower_module_items(&file)
             },
             ast::MacroItems(items) => {
                 ctx.lower_module_items(&items)
@@ -182,17 +180,10 @@ fn file_item_tree_query(
             },
         }
     };
-    let ItemTree { top_level, top_attrs, attrs, vis, big_data, small_data } = &item_tree;
-    if small_data.is_empty()
-        && big_data.is_empty()
-        && top_level.is_empty()
-        && attrs.is_empty()
-        && top_attrs.is_empty()
-        && vis.arena.is_empty()
-    {
+    if item_tree.is_empty() {
         None
     } else {
-        item_tree.shrink_to_fit();
+        item_tree.finalize();
         Some(Box::new(item_tree))
     }
 }
@@ -209,7 +200,7 @@ pub(crate) fn block_item_tree_query(
 
     let ctx = lower::Ctx::new(db, ast_id.file_id, krate);
     let mut item_tree = ctx.lower_block(&block);
-    item_tree.shrink_to_fit();
+    item_tree.finalize();
     item_tree
 }
 
@@ -217,11 +208,11 @@ pub(crate) fn block_item_tree_query(
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: Box<[ModItemId]>,
-    top_attrs: AttrsOrCfg,
-    attrs: FxHashMap<FileAstId<ast::Item>, AttrsOrCfg>,
+    /// Sorted by the id. The last item, if it has [`ModItemId::TOP_OWNER`], is the top level attrs.
+    attrs: ThinVec<(ModItemId, AttrsOrCfg)>,
     vis: ItemVisibilities,
-    big_data: FxHashMap<FileAstId<ast::Item>, BigModItem>,
-    small_data: FxHashMap<FileAstId<ast::Item>, SmallModItem>,
+    big_data: ThinVec<(FileAstId<ast::Item>, BigModItem)>,
+    small_data: ThinVec<(FileAstId<ast::Item>, SmallModItem)>,
 }
 
 impl ItemTree {
@@ -232,12 +223,14 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub(crate) fn top_level_attrs(&self) -> &AttrsOrCfg {
-        &self.top_attrs
+    #[inline]
+    pub(crate) fn top_level_attrs(&self) -> Option<&AttrsOrCfg> {
+        self.attrs.last().filter(|(id, _)| *id == ModItemId::TOP_OWNER).map(|(_, attrs)| attrs)
     }
 
-    pub(crate) fn attrs(&self, of: FileAstId<ast::Item>) -> Option<&AttrsOrCfg> {
-        self.attrs.get(&of)
+    #[inline]
+    pub(crate) fn attrs(&self, of: ModItemId) -> Option<&AttrsOrCfg> {
+        self.attrs.binary_search_by_key(&of, |(id, _)| *id).ok().map(|index| &self.attrs[index].1)
     }
 
     /// Returns a count of a few, expensive items.
@@ -249,7 +242,7 @@ impl ItemTree {
         let mut mods = 0;
         let mut macro_calls = 0;
         let mut macro_rules = 0;
-        for item in self.small_data.values() {
+        for (_, item) in &self.small_data {
             match item {
                 SmallModItem::Trait(_) => traits += 1,
                 SmallModItem::Impl(_) => impls += 1,
@@ -258,7 +251,7 @@ impl ItemTree {
                 _ => {}
             }
         }
-        for item in self.big_data.values() {
+        for (_, item) in &self.big_data {
             match item {
                 BigModItem::Mod(_) => mods += 1,
                 _ => {}
@@ -271,11 +264,21 @@ impl ItemTree {
         pretty::print_item_tree(db, self, edition)
     }
 
-    fn shrink_to_fit(&mut self) {
-        let ItemTree { top_level: _, attrs, big_data, small_data, vis: _, top_attrs: _ } = self;
+    fn is_empty(&self) -> bool {
+        let ItemTree { top_level, attrs, vis: _, big_data: _, small_data: _ } = self;
+        // We don't need to check the rest since if those are empty, everything is empty.
+        // `attrs` might contain the top-level attrs so we need to check it separately.
+        top_level.is_empty() && attrs.is_empty()
+    }
+
+    fn finalize(&mut self) {
+        self.attrs.sort_unstable_by_key(|(id, _)| *id);
+
+        let ItemTree { top_level: _, attrs, big_data, small_data, vis } = self;
         attrs.shrink_to_fit();
         big_data.shrink_to_fit();
         small_data.shrink_to_fit();
+        vis.arena.shrink_to_fit();
     }
 }
 
@@ -295,7 +298,6 @@ enum SmallModItem {
     MacroCall(MacroCall),
     MacroRules(MacroRules),
     Static(Static),
-    Struct(Struct),
     Trait(Trait),
     TypeAlias(TypeAlias),
     Union(Union),
@@ -306,6 +308,7 @@ enum BigModItem {
     ExternCrate(ExternCrate),
     Mod(Mod),
     Use(Use),
+    Struct(Struct),
 }
 
 // `ModItem` is stored a bunch in `ItemTree`'s so we pay the max for each item. It should stay as
@@ -366,71 +369,105 @@ impl TreeId {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct ModItemId {
+    /// The LSB is 0 for small_data and 1 for big_data.
+    index: u32,
+}
+
+impl ModItemId {
+    const TOP_OWNER: ModItemId = ModItemId { index: u32::MAX };
+
+    #[inline]
+    fn new_small(index: u32) -> Self {
+        debug_assert!(
+            (index & 0x80_00_00_00) == 0 && index != (ModItemId::TOP_OWNER.index >> 1),
+            "too big index"
+        );
+        Self { index: index << 1 }
+    }
+    #[inline]
+    fn new_big(index: u32) -> Self {
+        debug_assert!(
+            (index & 0x80_00_00_00) == 0 && index != (ModItemId::TOP_OWNER.index >> 1),
+            "too big index"
+        );
+        Self { index: (index << 1) | 0b1 }
+    }
+
+    #[inline]
+    fn get(
+        self,
+        item_tree: &ItemTree,
+    ) -> (FileAstId<ast::Item>, Either<&SmallModItem, &BigModItem>) {
+        let index = self.index >> 1;
+        match self.index & 0b1 {
+            0 => {
+                let (ast_id, data) = &item_tree.small_data[index as usize];
+                (*ast_id, Either::Left(data))
+            }
+            1 => {
+                let (ast_id, data) = &item_tree.big_data[index as usize];
+                (*ast_id, Either::Right(data))
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn ast_id(self, item_tree: &ItemTree) -> FileAstId<ast::Item> {
+        self.get(item_tree).0
+    }
+}
+
 macro_rules! mod_items {
-    ($mod_item:ident -> $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
-        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-        pub(crate) enum $mod_item {
+    ($mod_item:ident -> $( $typ:ident by $either:ident -> $ast:ty ),+ $(,)? ) => {
+        #[derive(Debug, Copy, Clone)]
+        pub(crate) enum $mod_item<'a> {
             $(
-                $typ(FileAstId<$ast>),
+                $typ(FileAstId<$ast>, &'a $typ),
             )+
         }
 
-        impl $mod_item {
-            pub(crate) fn ast_id(self) -> FileAstId<ast::Item> {
-                match self {
-                    $($mod_item::$typ(it) => it.upcast()),+
+        impl ItemTree {
+            #[inline]
+            pub(crate) fn index(&self, id: ModItemId) -> $mod_item<'_> {
+                use BigModItem::*;
+                use SmallModItem::*;
+
+                let (ast_id, item) = id.get(self);
+                match item {
+                    $( Either::$either($typ(item)) => $mod_item::$typ(ast_id.downcast_unchecked(), item), )+
                 }
             }
         }
-
-        $(
-            impl From<FileAstId<$ast>> for $mod_item {
-                fn from(id: FileAstId<$ast>) -> $mod_item {
-                    ModItemId::$typ(id)
-                }
-            }
-        )+
 
         $(
             impl ItemTreeNode for $typ {
                 type Source = $ast;
-            }
-
-            impl Index<FileAstId<$ast>> for ItemTree {
-                type Output = $typ;
-
-                #[allow(unused_imports)]
-                fn index(&self, index: FileAstId<$ast>) -> &Self::Output {
-                    use BigModItem::*;
-                    use SmallModItem::*;
-                    match &self.$fld[&index.upcast()] {
-                        $typ(item) => item,
-                        _ => panic!("expected item of type `{}` at index `{:?}`", stringify!($typ), index),
-                    }
-                }
             }
         )+
     };
 }
 
 mod_items! {
-ModItemId ->
-    Const in small_data -> ast::Const,
-    Enum in small_data -> ast::Enum,
-    ExternBlock in small_data -> ast::ExternBlock,
-    ExternCrate in big_data -> ast::ExternCrate,
-    Function in small_data -> ast::Fn,
-    Impl in small_data -> ast::Impl,
-    Macro2 in small_data -> ast::MacroDef,
-    MacroCall in small_data -> ast::MacroCall,
-    MacroRules in small_data -> ast::MacroRules,
-    Mod in big_data -> ast::Module,
-    Static in small_data -> ast::Static,
-    Struct in small_data -> ast::Struct,
-    Trait in small_data -> ast::Trait,
-    TypeAlias in small_data -> ast::TypeAlias,
-    Union in small_data -> ast::Union,
-    Use in big_data -> ast::Use,
+ModItemKind ->
+    Const by Left -> ast::Const,
+    Enum by Left -> ast::Enum,
+    ExternBlock by Left -> ast::ExternBlock,
+    ExternCrate by Right -> ast::ExternCrate,
+    Function by Left -> ast::Fn,
+    Impl by Left -> ast::Impl,
+    Macro2 by Left -> ast::MacroDef,
+    MacroCall by Left -> ast::MacroCall,
+    MacroRules by Left -> ast::MacroRules,
+    Mod by Right -> ast::Module,
+    Static by Left -> ast::Static,
+    Struct by Right -> ast::Struct,
+    Trait by Left -> ast::Trait,
+    TypeAlias by Left -> ast::TypeAlias,
+    Union by Left -> ast::Union,
+    Use by Right -> ast::Use,
 }
 
 impl Index<RawVisibilityId> for ItemTree {
@@ -537,7 +574,14 @@ pub struct Function {
 pub struct Struct {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub shape: FieldsShape,
+    pub(crate) value_ns_ctor: StructValueNsCtor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum StructValueNsCtor {
+    NoValueNsCtor,
+    ValueNsCtorWithVis(RawVisibilityId),
+    ValueNsCtorWithMinVis(ThinVec<RawVisibilityId>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -557,6 +601,16 @@ pub enum FieldsShape {
     Record,
     Tuple,
     Unit,
+}
+
+impl FieldsShape {
+    #[inline]
+    pub fn has_value_ns_ctor(self) -> bool {
+        match self {
+            FieldsShape::Record => false,
+            FieldsShape::Tuple | FieldsShape::Unit => true,
+        }
+    }
 }
 
 /// Visibility of an item, not yet resolved.

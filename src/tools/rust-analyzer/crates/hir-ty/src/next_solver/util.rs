@@ -723,15 +723,3 @@ pub(crate) fn clauses_as_obligations<'db>(
         recursion_depth: 0,
     })
 }
-
-/// Copied from
-/// <https://github.com/jdonszelmann/rust/blob/180725cff61d00dd1b9c35fc720a8befaec5d46b/compiler/rustc_middle/src/ty/context/impl_interner.rs#L534-L541>
-#[macro_export]
-macro_rules! ret {
-    ($e: expr) => {
-        match $e.branch() {
-            ::std::ops::ControlFlow::Break(b) => return R::from_residual(b),
-            ::std::ops::ControlFlow::Continue(()) => {}
-        }
-    };
-}

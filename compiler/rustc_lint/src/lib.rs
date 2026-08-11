@@ -56,7 +56,6 @@ mod late;
 mod let_underscore;
 mod levels;
 pub mod lifetime_syntax;
-mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod multiple_supertrait_upcastable;

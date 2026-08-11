@@ -494,7 +494,7 @@ impl DapSession {
         let mut breakpoints = Vec::new();
         if let Some(ref req_bps) = args.breakpoints {
             for req_bp in req_bps {
-                let line = req_bp.line as usize;
+                let line = usize::try_from(req_bp.line).unwrap();
                 session.set_breakpoint(path.clone(), line);
                 breakpoints.push(DapBreakpoint {
                     verified: true,

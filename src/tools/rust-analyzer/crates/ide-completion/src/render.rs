@@ -3226,9 +3226,7 @@ fn main() {
     foo($0);
 }
             "#,
-            // FIXME: term_search exclude ssss.0 (field.ty().is_unknown())
             expect![[r#"
-                ex ssss.0  [type_could_unify]
                 lc ssss S<{unknown}> [local]
                 st S S<T> []
                 md core::  []

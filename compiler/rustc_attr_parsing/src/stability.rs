@@ -1,5 +1,5 @@
+use rustc_attr_ir::AttrPath;
 use rustc_feature::AttributeStability;
-use rustc_hir::AttrPath;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, sym};
 

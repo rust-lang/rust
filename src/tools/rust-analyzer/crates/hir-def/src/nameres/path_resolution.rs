@@ -22,7 +22,6 @@ use stdx::TupleExt;
 use crate::{
     AdtId, ModuleDefId, ModuleId,
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
-    item_tree::FieldsShape,
     nameres::{
         BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, assoc::TraitItems,
         crate_def_map, sub_namespace_match,
@@ -518,16 +517,10 @@ impl DefMap {
                     cov_mark::hit!(can_import_enum_variant);
 
                     let res = e.enum_variants(db).variants.get(segment).map(|&(variant, shape)| {
-                        match shape {
-                            FieldsShape::Record => {
-                                PerNs::types(variant.into(), Visibility::Public, None)
-                            }
-                            FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
-                                variant.into(),
-                                variant.into(),
-                                Visibility::Public,
-                                None,
-                            ),
+                        if shape.has_value_ns_ctor() {
+                            PerNs::both(variant.into(), variant.into(), curr.vis, None)
+                        } else {
+                            PerNs::types(variant.into(), curr.vis, None)
                         }
                     });
                     // FIXME: Need to filter visibility here and below? Not sure.

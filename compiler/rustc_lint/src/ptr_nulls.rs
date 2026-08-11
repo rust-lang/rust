@@ -4,7 +4,7 @@ use rustc_middle::ty::RawPtr;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};
 
-use crate::lints::{InvalidNullArgumentsDiag, UselessPtrNullChecksDiag};
+use crate::diagnostics::{InvalidNullArgumentsDiag, UselessPtrNullChecksDiag};
 use crate::utils::peel_casts;
 use crate::{LateContext, LateLintPass, LintContext};
 

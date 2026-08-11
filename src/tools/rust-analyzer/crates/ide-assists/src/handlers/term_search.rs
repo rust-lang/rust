@@ -30,15 +30,16 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
 
     let target_ty = ctx.sema.type_of_expr(&ast::Expr::cast(parent.clone())?)?.adjusted();
 
+    if target_ty.is_unit() || target_ty.is_never() {
+        cov_mark::hit!(term_search_useless_target_ty);
+        return None;
+    }
+
     let term_search_ctx = TermSearchCtx {
         sema: &ctx.sema,
         scope: &scope,
         goal: target_ty,
-        config: TermSearchConfig {
-            fuel: ctx.config.term_search_fuel,
-            enable_borrowcheck: ctx.config.term_search_borrowck,
-            ..Default::default()
-        },
+        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
     };
     let paths = hir::term_search::term_search(&term_search_ctx);
 
@@ -257,6 +258,21 @@ fn g() { let a = &1; let b: f32 = f(a); }"#,
             fn f(a: &i32) -> f32 { a as f32 }
             fn g() { let a = &mut 1; let b: f32 = todo$0!(); }"#,
         )
+    }
+
+    #[test]
+    fn test_not_search_unit() {
+        cov_mark::check_count!(term_search_useless_target_ty, 2);
+        check_assist_not_applicable(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a: () = (); let b: () = todo$0!() }"#,
+        );
+        check_assist_not_applicable(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+fn f() { let unknown; let unknown2 = todo$0!() }"#,
+        );
     }
 
     #[test]

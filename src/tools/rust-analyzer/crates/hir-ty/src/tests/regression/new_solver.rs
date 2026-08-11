@@ -1,5 +1,5 @@
 use expect_test::expect;
-use hir_def::ModuleDefId;
+use hir_def::{AdtId, ModuleDefId};
 use rustc_type_ir::inherent::IntoKind as _;
 use test_fixture::WithFixture;
 
@@ -421,6 +421,41 @@ fn oversized_array_len_does_not_panic() {
 fn f(_: [u8; 18446744073709551616]) {}
     "#,
     );
+}
+
+#[test]
+fn invalid_string_array_len_is_error() {
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+pub union U {
+    foo: [usize; ""],
+}
+"#,
+    );
+
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let union_id = def_map[module_id]
+            .scope
+            .declarations()
+            .find_map(|decl| match decl {
+                ModuleDefId::AdtId(AdtId::UnionId(id)) => Some(id),
+                _ => None,
+            })
+            .unwrap();
+        let field_ty = db
+            .field_types(union_id.into())
+            .iter()
+            .next()
+            .unwrap()
+            .1
+            .ty()
+            .instantiate_identity()
+            .skip_norm_wip();
+        let TyKind::Array(_, len) = field_ty.kind() else { unreachable!() };
+        assert!(len.is_error());
+    });
 }
 
 #[test]
@@ -912,5 +947,33 @@ fn test2<T: FooFactory>(factory: T) {
             454..478 'factor....bar()': <impl Foo + Bar<Baz = u8> + ?Sized as Foo>::Bar
             454..484 'factor....baz()': u8
         "#]],
+    );
+}
+
+#[test]
+fn infer_method_call_recovery_hrtb_does_not_panic() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn, fn, option, phantom_data, sized
+use core::marker::PhantomData;
+
+trait Any {}
+
+impl<T: 'static> Any for T {}
+
+struct Bar<'a>(PhantomData<&'a ()>);
+
+type FooFn = for<'a> fn(&'a dyn Any) -> Option<Bar<'a>>;
+
+struct Foo {
+    bar: FooFn,
+}
+
+impl Foo {
+    fn baz<'a, T: 'static>(&self, x: &'a T) -> Option<Bar<'a>> {
+        self.bar(x)
+    }
+}
+"#,
     );
 }

@@ -79,17 +79,21 @@ impl From<RerunNonErased> for NoSolutionOrRerunNonErased {
     }
 }
 
+/// A small set of up to 3 `Copy` elements, used as an optimization in [`RerunCondition`].
+/// The entire set can be `Copy`ed because of this requirement.
+///
+/// Set properties maintained using [`union`](SmallCopySet::union), which deduplicates values.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub enum SmallCopyList<T: Copy + Debug + Hash + Eq> {
+pub enum SmallCopySet<T: Copy + Debug + Hash + Eq> {
     Empty,
     One([T; 1]),
     Two([T; 2]),
     Three([T; 3]),
 }
 
-impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
+impl<T: Copy + Debug + Hash + Eq> SmallCopySet<T> {
     fn empty() -> Self {
         Self::Empty
     }
@@ -127,7 +131,7 @@ impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
     }
 }
 
-impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
+impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopySet<T> {
     fn as_ref(&self) -> &[T] {
         match self {
             Self::Empty => &[],
@@ -165,12 +169,12 @@ pub enum RerunCondition<I: Interner> {
     /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
     AnyOpaqueHasInferAsHidden,
     /// Note: unconditionally reruns in postanalysis
-    OpaqueInStorage(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorage(SmallCopySet<I::LocalDefId>),
 
     /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
     /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
     /// condition only matters in [`TypingMode::Typeck`]
-    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopySet<I::LocalDefId>),
 
     Always,
 }
@@ -327,7 +331,7 @@ impl<I: Interner> AccessedOpaques<I> {
         debug!("set rerun if post analysis");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::empty()),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::empty()),
         })
     }
 
@@ -339,7 +343,7 @@ impl<I: Interner> AccessedOpaques<I> {
         debug!("set rerun if opaque type {defid:?} in storage");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid.into())),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::new(defid.into())),
         })
     }
 

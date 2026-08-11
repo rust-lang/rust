@@ -144,7 +144,7 @@ struct AssocItemCollector<'db> {
     diagnostics: Vec<DefDiagnostic>,
     container: ItemContainerId,
 
-    depth: usize,
+    macro_depth: u32,
     items: Vec<(Name, AssocItemId)>,
     macro_calls: ThinVec<(AstId<ast::Item>, MacroCallId)>,
 }
@@ -169,7 +169,7 @@ impl<'db> AssocItemCollector<'db> {
             container,
             items: Vec::new(),
 
-            depth: 0,
+            macro_depth: file_id.macro_expansion_depth(db),
             macro_calls: ThinVec::new(),
             diagnostics: Vec::new(),
         }
@@ -215,6 +215,7 @@ impl<'db> AssocItemCollector<'db> {
                 ast_id_with_path,
                 attr,
                 attr_id,
+                self.macro_depth + 1,
             ) {
                 Ok(ResolvedAttr::Macro(call_id)) => {
                     let loc = call_id.loc(self.db);
@@ -321,6 +322,7 @@ impl<'db> AssocItemCollector<'db> {
                     ctxt,
                     ExpandTo::Items,
                     self.module_id.krate(self.db),
+                    self.macro_depth + 1,
                     resolver,
                     &mut |ptr, call_id| {
                         self.macro_calls.push((ptr.map(|(_, it)| it.upcast()), call_id))
@@ -351,7 +353,7 @@ impl<'db> AssocItemCollector<'db> {
     }
 
     fn collect_macro_items(&mut self, macro_call_id: MacroCallId) {
-        if self.depth > self.def_map.recursion_limit() as usize {
+        if self.macro_depth > self.def_map.recursion_limit() {
             tracing::warn!("macro expansion is too deep");
             return;
         }
@@ -360,7 +362,7 @@ impl<'db> AssocItemCollector<'db> {
         let old_file_id = mem::replace(&mut self.file_id, macro_call_id.into());
         let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.file_id.ast_id_map(self.db));
         let old_span_map = mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(span_map));
-        self.depth += 1;
+        self.macro_depth += 1;
 
         let items = ast::MacroItems::cast(syntax.syntax_node()).expect("not `MacroItems`");
         for item in items.items() {
@@ -375,7 +377,7 @@ impl<'db> AssocItemCollector<'db> {
             self.collect_item(item);
         }
 
-        self.depth -= 1;
+        self.macro_depth -= 1;
         self.file_id = old_file_id;
         self.ast_id_map = old_ast_id_map;
         self.span_map = old_span_map;

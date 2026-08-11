@@ -1,22 +1,22 @@
 use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_feature::AttributeStability;
-use rustc_hir::LangItem;
-use rustc_hir::attrs::{
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::GenericParamKind;
+use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
     DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
-use rustc_hir::target::GenericParamKind;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_feature::AttributeStability;
 use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::diagnostics;
-use crate::diagnostics::UnknownExternLangItem;
-use crate::session_diagnostics::{
-    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
+use crate::diagnostics::{
+    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange,
+    UnknownExternLangItem, UnknownLangItem,
 };
 
 pub(crate) struct RustcMainParser;

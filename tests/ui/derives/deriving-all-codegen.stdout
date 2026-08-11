@@ -1275,9 +1275,9 @@ enum Fieldless10 {
 impl ::core::fmt::Debug for Fieldless10 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        const __NAMES: &str =
+        static __NAMES: &str =
             "AAAAABBBBCCDDDDDDDDEFFFFFFFFFFFFFGGGGGGHatsuneIIIIIIIJJJJJJJJJ";
-        const __OFFSET: [usize; 11] =
+        static __OFFSET: [usize; 11] =
             [0usize, 5usize, 9usize, 11usize, 19usize, 20usize, 33usize,
                     39usize, 46usize, 53usize, 62usize];
         let __d = ::core::intrinsics::discriminant_value(self) as usize;

@@ -1,6 +1,5 @@
 //! Deeply normalize types using the old trait solver.
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -124,9 +123,7 @@ where
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| {
-        AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization())
-    });
+    let result = AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization());
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result

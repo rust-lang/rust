@@ -39,10 +39,9 @@ pub use {
     attrs::target::{self, MethodKind, Target},
     attrs::{
         AttrArgs, AttrItem, AttrPath, Attribute, ConstStability, DefaultBodyStability,
-        HashIgnoredAttrId, LangItem, LanguageItems, PartialConstStability, Stability,
-        StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER,
+        HashIgnoredAttrId, PartialConstStability, Stability, StabilityLevel, StableSince,
+        UnstableReason, VERSION_PLACEHOLDER,
     },
-    attrs::{diagnostic_items, lang_items, weak_lang_items},
 };
 
 pub use crate::arena::Arena;

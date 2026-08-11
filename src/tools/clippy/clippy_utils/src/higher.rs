@@ -7,6 +7,7 @@ use crate::res::MaybeDef as _;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, LoopSource, MatchSource, Node, Pat, QPath,
     StructTailExpr,
@@ -221,40 +222,40 @@ impl<'a> Range<'a> {
         let (ty, start, end) = match expr.kind {
             ExprKind::Call(path, [arg1, arg2])
                 if let ExprKind::Path(qpath) = path.kind
-                    && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::RangeInclusiveNew) =>
+                    && cx.tcx.qpath_is_lang_item(qpath, LangItem::RangeInclusiveNew) =>
             {
                 (RangeTy::OpsInclusive, Some(arg1), Some(arg2))
             },
             ExprKind::Struct(&qpath, fields, StructTailExpr::None) => match (cx.tcx.qpath_lang_item(qpath)?, fields) {
-                (hir::LangItem::RangeFull, []) => (RangeTy::OpsFull, None, None),
-                (hir::LangItem::RangeFrom, [start]) if start.ident.name == sym::start => {
+                (LangItem::RangeFull, []) => (RangeTy::OpsFull, None, None),
+                (LangItem::RangeFrom, [start]) if start.ident.name == sym::start => {
                     (RangeTy::OpsFrom, Some(start.expr), None)
                 },
-                (hir::LangItem::RangeFromCopy, [start]) if start.ident.name == sym::start => {
+                (LangItem::RangeFromCopy, [start]) if start.ident.name == sym::start => {
                     (RangeTy::RangeFrom, Some(start.expr), None)
                 },
-                (hir::LangItem::Range, [start, end] | [end, start])
+                (LangItem::Range, [start, end] | [end, start])
                     if start.ident.name == sym::start && end.ident.name == sym::end =>
                 {
                     (RangeTy::OpsRange, Some(start.expr), Some(end.expr))
                 },
-                (hir::LangItem::RangeCopy, [start, end] | [end, start])
+                (LangItem::RangeCopy, [start, end] | [end, start])
                     if start.ident.name == sym::start && end.ident.name == sym::end =>
                 {
                     (RangeTy::RangeRange, Some(start.expr), Some(end.expr))
                 },
-                (hir::LangItem::RangeInclusiveCopy, [start, last] | [last, start])
+                (LangItem::RangeInclusiveCopy, [start, last] | [last, start])
                     if start.ident.name == sym::start && last.ident.name == sym::last =>
                 {
                     (RangeTy::RangeInclusive, Some(start.expr), Some(last.expr))
                 },
-                (hir::LangItem::RangeToInclusive, [end]) if end.ident.name == sym::end => {
+                (LangItem::RangeToInclusive, [end]) if end.ident.name == sym::end => {
                     (RangeTy::OpsToInclusive, None, Some(end.expr))
                 },
-                (hir::LangItem::RangeToInclusiveCopy, [last]) if last.ident.name == sym::last => {
+                (LangItem::RangeToInclusiveCopy, [last]) if last.ident.name == sym::last => {
                     (RangeTy::RangeToInclusive, None, Some(last.expr))
                 },
-                (hir::LangItem::RangeTo, [end]) if end.ident.name == sym::end => (RangeTy::OpsTo, None, Some(end.expr)),
+                (LangItem::RangeTo, [end]) if end.ident.name == sym::end => (RangeTy::OpsTo, None, Some(end.expr)),
                 _ => return None,
             },
             _ => return None,

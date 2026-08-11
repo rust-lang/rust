@@ -2,13 +2,13 @@ use rustc_ast::util::{classify, parser};
 use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
-use rustc_hir::{self as hir};
+use rustc_hir as hir;
 use rustc_middle::ty::{self, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition::Edition2015;
 use rustc_span::{BytePos, Span, kw, sym};
 
-use crate::lints::{
+use crate::diagnostics::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
     UnusedAllocationMutDiag, UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag,
 };

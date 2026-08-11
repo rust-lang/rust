@@ -1,13 +1,14 @@
 use rustc_ast::visit::{visit_opt, walk_list};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, LangItem, TyKind, find_attr};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, TyKind, find_attr};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{Span, sym};
 
-use crate::lints::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
+use crate::diagnostics::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {

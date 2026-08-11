@@ -1,10 +1,9 @@
 use rustc_ast::visit::{self, AssocCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::Features;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
@@ -511,6 +510,10 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
+    );
+    gate_all!(
+        named_fn_trait_parameters,
+        "named parameters in parenthesized generic argument lists are experimental"
     );
 
     // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.

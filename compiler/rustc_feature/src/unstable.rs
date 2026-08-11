@@ -429,9 +429,6 @@ declare_features! (
     /// Allows defining c-variadic functions on targets where this feature has not yet
     /// undergone sufficient testing for stabilization.
     (unstable, c_variadic_experimental_arch, "1.97.0", Some(155973)),
-    /// Allows defining c-variadic naked functions with any extern ABI that is allowed
-    /// on c-variadic foreign functions.
-    (unstable, c_variadic_naked_functions, "1.93.0", Some(148767)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
     (unstable, cfg_contract_checks, "1.86.0", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
@@ -668,6 +665,8 @@ declare_features! (
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
+    /// Allows providing names to parameters of `impl Fn` etc
+    (incomplete, named_fn_trait_parameters, "CURRENT_RUSTC_VERSION", Some(158499)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.

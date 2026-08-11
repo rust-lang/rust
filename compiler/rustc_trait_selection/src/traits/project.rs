@@ -3,10 +3,9 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
@@ -1946,27 +1945,23 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     let mut cache_projection = cache_entry.projection_term;
     let mut nested_obligations = PredicateObligations::new();
     let obligation_projection = obligation.predicate;
-    let obligation_projection = ensure_sufficient_stack(|| {
-        normalize_with_depth_to(
+    let obligation_projection = normalize_with_depth_to(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        ty::Unnormalized::new_wip(obligation_projection),
+        &mut nested_obligations,
+    );
+    if potentially_unnormalized_candidate {
+        cache_projection = normalize_with_depth_to(
             selcx,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            ty::Unnormalized::new_wip(obligation_projection),
+            ty::Unnormalized::new_wip(cache_projection),
             &mut nested_obligations,
-        )
-    });
-    if potentially_unnormalized_candidate {
-        cache_projection = ensure_sufficient_stack(|| {
-            normalize_with_depth_to(
-                selcx,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                ty::Unnormalized::new_wip(cache_projection),
-                &mut nested_obligations,
-            )
-        });
+        );
     }
 
     debug!(?cache_projection, ?obligation_projection);

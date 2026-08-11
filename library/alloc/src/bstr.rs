@@ -12,7 +12,7 @@ use core::ops::{
     Deref, DerefMut, DerefPure, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive,
     RangeTo, RangeToInclusive,
 };
-use core::str::FromStr;
+use core::str::{FromStr, Utf8Error};
 use core::{fmt, hash};
 
 use crate::borrow::{Cow, ToOwned};
@@ -61,6 +61,24 @@ impl ByteString {
     pub(crate) fn as_mut_bytestr(&mut self) -> &mut ByteStr {
         ByteStr::from_bytes_mut(&mut self.0)
     }
+    /// Try to get a `String` representation of the `&ByteString`, if it is
+    /// valid UTF-8.
+    ///
+    /// This method is named `to_string()` because we want `ByteString` to
+    /// implement `Display`, but the `ToString` trait has a blanket
+    /// implementation for types that implement `Display`, and the trait version
+    /// will use the Unicode replacement character rather than returning a
+    /// `Result` and allowing for the possibility of the content not being UTF-8.
+    #[unstable(feature = "bstr_to_string", issue = "134915")]
+    #[rustc_allow_incoherent_impl]
+    pub fn to_string(&self) -> Result<String, Utf8Error> {
+        // Avoid allocating a copy of the contents for invalid UTF-8
+        if let Err(e) = str::from_utf8(&self.0) {
+            return Err(e);
+        }
+        // SAFETY: we just checked that the contents are valid UTF-8
+        Ok(unsafe { String::from_utf8_unchecked(self.0.clone()) })
+    }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
@@ -92,7 +110,7 @@ impl fmt::Debug for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "bstr_to_string", issue = "134915")]
 impl fmt::Display for ByteString {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -674,5 +692,26 @@ impl<'a> TryFrom<&'a ByteStr> for String {
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
         Ok(core::str::from_utf8(&s.0)?.into())
+    }
+}
+
+impl ByteStr {
+    /// Try to get a `String` representation of the `&ByteStr`, if it is valid
+    /// UTF-8.
+    ///
+    /// This method is named `to_string()` because we want `ByteStr` to
+    /// implement `Display`, but the `ToString` trait has a blanket
+    /// implementation for types that implement `Display`, and the trait version
+    /// will use the Unicode replacement character rather than returning a
+    /// `Result` and allowing for the possibility of the content not being UTF-8.
+    #[unstable(feature = "bstr_to_string", issue = "134915")]
+    #[rustc_allow_incoherent_impl]
+    pub fn to_string(&self) -> Result<String, Utf8Error> {
+        // Avoid allocating a copy of the contents for invalid UTF-8
+        if let Err(e) = str::from_utf8(&self.0) {
+            return Err(e);
+        }
+        // SAFETY: we just checked that the contents are valid UTF-8
+        Ok(unsafe { String::from_utf8_unchecked(self.0.to_vec()) })
     }
 }

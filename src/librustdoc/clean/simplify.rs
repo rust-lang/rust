@@ -14,6 +14,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{TyCtxt, Unnormalized};
 
@@ -161,8 +162,8 @@ pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Ge
         let Some(param_sizedness) = type_params.get_mut(param) else { return true };
 
         let sizedness = match cx.tcx.as_lang_item(trait_ref.trait_.def_id()) {
-            Some(hir::LangItem::Sized) => Sizedness::Sized,
-            Some(hir::LangItem::MetaSized) => Sizedness::MetaSized,
+            Some(LangItem::Sized) => Sizedness::Sized,
+            Some(LangItem::MetaSized) => Sizedness::MetaSized,
             _ => return true,
         };
 
