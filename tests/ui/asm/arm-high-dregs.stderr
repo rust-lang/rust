@@ -1,0 +1,8 @@
+error: register class `dreg` requires at least one of the following target features: d32, neon
+  --> $DIR/arm-high-dregs.rs:19:30
+   |
+LL |     asm!("vmov.f64 d16, d0", in("d16") x);
+   |                              ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
