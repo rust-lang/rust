@@ -340,7 +340,7 @@ pub struct MovePathLookup<'tcx> {
 mod builder;
 
 #[derive(Copy, Clone, Debug)]
-pub enum LookupResult<'tcx> {
+pub enum LookupResult {
     /// This exact thing has a move path. E.g. we looked up `x` or `x.m` and it has been moved.
     Exact(MovePathIndex),
 
@@ -349,8 +349,8 @@ pub enum LookupResult<'tcx> {
     Parent {
         mpi: MovePathIndex,
 
-        /// The PlaceElem in the place immediately projecting from the parent move path.
-        next_elem: PlaceElem<'tcx>,
+        /// The projection in the place immediately projecting from the parent move path.
+        next_elem: ProjectionKind,
     },
 
     /// Neither the exact thing nor any ancestor of it has a move path.
@@ -363,7 +363,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult<'tcx> {
+    pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
         // Look first in the locals (roots).
         let Some(mut result) = self.find_local(place.local) else {
             return LookupResult::None;
@@ -379,7 +379,7 @@ impl<'tcx> MovePathLookup<'tcx> {
             };
 
             let Some(&subpath) = subpath else {
-                return LookupResult::Parent { mpi: result, next_elem: elem };
+                return LookupResult::Parent { mpi: result, next_elem: elem.kind() };
             };
             result = subpath;
         }
