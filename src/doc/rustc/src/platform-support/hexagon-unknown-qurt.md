@@ -123,11 +123,6 @@ fn main() {
     // the virtual memory pool (starting at page 0x40 = address 0x40000).
     println!("cargo:rustc-link-arg=-Wl,--section-start=.start=0x40000");
 
-    // Stub symbols not available on QuRT
-    for sym in ["_Unwind_Backtrace", "_Unwind_GetIPInfo"] {
-        println!("cargo:rustc-link-arg=-Wl,--defsym={sym}=abort");
-    }
-
     // Library search paths
     println!("cargo:rustc-link-search=native={}", qurtlib.display());
     println!("cargo:rustc-link-search=native={}", hexlib.display());
@@ -181,8 +176,6 @@ rustc program.rs \
     -C "link-args=-nostdlib" \
     -C "link-args=${QURTLIB}/crt1.o ${HEXLIB}/crt0.o ${HEXLIB}/init.o ${QURTLIB}/debugmon.o" \
     -C "link-args=-Wl,--section-start=.start=0x40000" \
-    -C "link-args=-Wl,--defsym=_Unwind_Backtrace=abort" \
-    -C "link-args=-Wl,--defsym=_Unwind_GetIPInfo=abort" \
     -C "link-args=-L${QURTLIB} -L${HEXLIB}" \
     -C "link-args=-Wl,--start-group" \
     -C "link-args=-lqurt -lposix -lqurtcfs -ltimer_main -ltimer_island" \
@@ -330,8 +323,11 @@ The following `std` features are expected to work:
 
 ## Known limitations
 
-- **`panic=unwind` not functional at runtime**: The target compiles with
-  `panic=unwind` but panics abort instead of unwinding. Use `-C panic=abort`.
+- **No unwinding**: The SDK ships a DWARF unwinder in `libc_eh.a`, but it
+  does not provide `_Unwind_GetIPInfo`, which Rust's `eh_personality`
+  requires (only the plain `_Unwind_GetIP` is available). The target
+  therefore sets `panic_strategy = "abort"`: panics abort the process and
+  `extern "C-unwind"` cannot propagate foreign exceptions.
 - **No process spawning**: `Command` / `process::exit` are not available
 - **No networking**: Socket APIs are not supported
 - **32-bit atomics maximum**: Use `AtomicU32`/`AtomicI32`, not
@@ -344,8 +340,8 @@ The following `std` features are expected to work:
 - **File I/O quirks**: QuRT's CFS (cosim filesystem) has known issues:
   `write()` may report one extra byte written, `read()` may return 0 bytes
   in the emulator, and `stat()` is not supported
-
-- **`_Unwind_Backtrace`**: Stubbed to `abort`; backtraces are not available
+- **Backtraces**: `std::backtrace` uses the no-op backend on this target, so
+  captured backtraces are empty
 
 ## Cross-compilation toolchains and C code
 
