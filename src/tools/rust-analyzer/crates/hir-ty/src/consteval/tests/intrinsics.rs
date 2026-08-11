@@ -466,7 +466,7 @@ fn floating_point() {
         "#,
         i128::from_le_bytes(pad16(
             &f32::to_le_bytes(1.2f32.sqrt() + 3.4f32.powf(5.6) + (-7.8f32).mul_add(1.3, 2.4)),
-            true,
+            IsSigned::Yes,
         )),
     );
     #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
@@ -483,7 +483,7 @@ fn floating_point() {
         "#,
         i128::from_le_bytes(pad16(
             &f64::to_le_bytes(1.2f64.powi(5) + 3.4f64.sin() + (-7.8f64).min(1.3)),
-            true,
+            IsSigned::Yes,
         )),
     );
 }
