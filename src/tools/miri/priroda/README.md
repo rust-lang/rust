@@ -40,8 +40,9 @@ cargo run -- ../tests/pass/empty_main.rs
 
 ## DAP Prototype
 
-Priroda's `--dap` mode speaks a bounded Debug Adapter Protocol prototype over
-stdio. It currently supports the startup handshake, stops at the first
+Priroda speaks a bounded Debug Adapter Protocol prototype over stdio with
+`--dap`, or over TCP with `--port N`. It currently supports the startup
+handshake, stops at the first
 user-relevant source location after `configurationDone`, reports one current
 stack frame, exposes one flat Locals scope, and maps `list_locals()` into DAP
 variables with no child expansion.
