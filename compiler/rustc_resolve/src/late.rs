@@ -1390,7 +1390,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             self.resolve_fn_signature(
                                 binder,
                                 false,
-                                p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                p_args.inputs.iter().map(|param| (None, &*param.ty)),
                                 &p_args.output,
                                 false,
                             );
