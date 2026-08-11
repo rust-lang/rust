@@ -63,6 +63,10 @@ You can refer to the [arm-none-eabi](arm-none-eabi.md) documentation for a
 generic guide on target feature and target CPU specification and how to enable
 and disable them via `.cargo/config.toml` file.
 
+> **Note**: From version 1.94 up to 1.99 the hardfloat targets required `VFPv3-D32` as a minimum as
+> they erroneously enabled the `d32` feature. Breakage introduced as a result of correcting this can
+> be fixed by passing `-Ctarget-feature=+d32` to Rust.
+
 [vfp]: https://developer.arm.com/documentation/den0013/0400/Floating-Point/Floating-point-basics-and-the-IEEE-754-standard/ARM-VFP
 
 ## Start-up and Low-Level Code

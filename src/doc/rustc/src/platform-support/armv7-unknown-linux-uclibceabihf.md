@@ -44,6 +44,10 @@ cc = "/TOOLCHAIN_PATH/bin/arm-buildroot-linux-uclibcgnueabihf-gcc"
 ./x.py build --stage 2
 ```
 
+> **Note**: From version 1.94 up to 1.99 this target required `VFPv3-D32` as a minimum as it
+> erroneously enabled the `d32` feature. Breakage introduced as a result of correcting this can be
+> fixed by passing `-Ctarget-feature=+d32` to Rust.
+
 ## Building and Running Rust Programs
 
 To test cross-compiled binaries on a `x86_64` system, you can use the `qemu-arm` [userspace emulation](https://qemu-project.gitlab.io/qemu/user/main.html) program.  This avoids having a full emulated ARM system by doing dynamic binary translation and dynamic system call translation.  It lets you run ARM programs directly on your `x86_64` kernel.  It's very convenient!
