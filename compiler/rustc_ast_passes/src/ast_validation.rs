@@ -1771,7 +1771,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
             }
             GenericArgs::Parenthesized(data) => {
-                walk_list!(self, visit_ty, &data.inputs);
+                walk_list!(self, visit_param, &data.inputs);
                 if let FnRetTy::Ty(ty) = &data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
