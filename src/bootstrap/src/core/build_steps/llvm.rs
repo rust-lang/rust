@@ -264,15 +264,20 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
     builder.config.maybe_download_ci_llvm();
 
     let ci_llvm = builder.config.ci_llvm_root();
-    let link_type = t!(
-        std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
-        format!("LLVM downloaded from CI is missing the following file: {}", ci_llvm.display())
-    );
+    let link_shared = if !builder.config.dry_run() {
+        let link_type = t!(
+            std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
+            format!("LLVM downloaded from CI is missing the following file: {}", ci_llvm.display())
+        );
+        link_type == "dynamic"
+    } else {
+        false
+    };
 
     Some(DownloadedLlvm {
         output: LlvmOutput {
             host_llvm_config: ci_llvm.join("bin").join("llvm-config"),
-            link_shared: link_type == "dynamic",
+            link_shared,
             llvm_root_dir: ci_llvm,
             kind: LlvmKind::DownloadedFromCi,
         },
