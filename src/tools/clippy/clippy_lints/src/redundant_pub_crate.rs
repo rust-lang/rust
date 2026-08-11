@@ -86,7 +86,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
 // We ignore macro exports. And `ListStem` uses, which aren't interesting.
 fn is_ignorable_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
     if let ItemKind::Use(path, kind) = item.kind {
-        let ignore = matches!(path.res.macro_ns, Some(Res::Def(DefKind::Macro(_), _))) || kind == UseKind::ListStem;
+        let ignore =
+            matches!(path.res.macro_ns, Some(Res::Def(DefKind::Macro(_), _))) || matches!(kind, UseKind::ListStem);
         if ignore {
             return true;
         }
