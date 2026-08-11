@@ -147,9 +147,9 @@ This infrastructure is used by the external fuzzing project:
 ## Derived Traits
 
 - [`trait TypeVisitable` and `TypeVisitable_Generic`][type-visitable-trait-macro]
+- [`trait TypeFoldable` and `TypeFoldable_Generic`][type-foldable-trait-macro]
 - [`trait Lift` and `Lift_Generic`][lift-trait-macro]
 - [`trait GenericTypeVisitable`][generictypevisitable]
-- [`trait TypeFoldable` and `TypeFoldable_Generic`][type-foldable-trait-macro]
 
 These traits are used heavily in `rustc_type_ir`, their associated macros 
 primarily exist to reduce the amount of boilerplate otherwise required to
@@ -162,20 +162,14 @@ This trait requires a struct or enum implements the method `visit_with(...)`,
 which in turn will transfer control to `TypeVisitor`, this can be
 [seen in detail here][rustc_typevisitable].
 
-The trait has two macros that can derive `TypeVisitable`,
-`TypeVisitable_Generic` and [`GenericTypeVisitable`][generictypevisitable] of
-which both, none or one of these macros can be used on a struct or enum.
-
-While ostensibly similar due to their names, they implement two different
+While ostensibly similar due to their names, `TypeVisitable_Generic` and
+[`GenericTypeVisitable`][generictypevisitable] they implement two different
 visiting systems.
 
 - `TypeVisitable_Generic` means: derive the ordinary `TypeVisitable` trait
   generically over an `Interner`.
 - `GenericTypeVisitable` means: derive the separate `GenericTypeVisitable` trait
   used by non-nightly consumers such as rust-analyzer.
-
-As such a struct or enum can derive both `TypeVisitable_Generic` and
-`GenericTypeVisitable`
 
 #### `TypeVisitable_Generic`
 [typevisitable_generic]: #typevisitable_generic
@@ -244,7 +238,7 @@ associated type is expected to work with `Lift_Generic`, it needs an appropriate
 `Lift` implementation and normally needs to be included in the
 `declare_lift_into!` invocation.
 
-If you want to ignore a file, such as a primitive like a `u32` which can't be
+If you want to ignore a field, such as a primitive like a `u32` which can't be
 lifted you can skip the field with `#[lift(ignore)]`.
 
 ### `trait GenericTypeVisitable`
@@ -253,6 +247,9 @@ lifted you can skip the field with `#[lift(ignore)]`.
 This a separate more general traversal trait purely used by `rust-analyzer`.
 The visitor type is a parameter of the trait rather than a parameter of the
 method, and visiting neither returns a result nor supports short-circuiting.
+
+As such a struct or enum can derive both `TypeVisitable_Generic` and
+`GenericTypeVisitable`
 
 There is intentionally no ignore attribute. The traversal must visit every
 field. This is a soundness requirement for rust-analyzer's use of the traversal
