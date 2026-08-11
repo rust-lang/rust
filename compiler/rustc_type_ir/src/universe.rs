@@ -57,7 +57,7 @@ fn max_universe_inner<
     let mut visitor = MaxUniverse::<_, _, VISIT_PLACEHOLDER, VISIT_INFER>::new(infcx);
     // FIXME: make this a debug_assert and let callers resolve vars. Then the input only needs to
     // be `TypeVisitable`.
-    let t = infcx.resolve_vars_if_possible(t);
+    let t = infcx.deeply_resolve_ignoring_regions(t);
     t.visit_with(&mut visitor);
     visitor.max_universe()
 }

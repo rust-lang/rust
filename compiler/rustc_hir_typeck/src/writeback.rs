@@ -807,8 +807,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
         if self.fcx.tainted_by_errors().is_none() {
             for obligation in obligations {
-                let (predicate, mut cause) =
-                    self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
+                let (predicate, mut cause) = self
+                    .fcx
+                    .deeply_resolve_ignoring_regions((obligation.predicate, obligation.cause));
                 if predicate.has_non_region_infer() {
                     self.fcx.dcx().span_delayed_bug(
                         cause.span,
@@ -833,7 +834,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = self.fcx.deeply_resolve_ignoring_regions(value);
 
         let mut goals = vec![];
         let value =
@@ -847,7 +848,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             goals
                 .into_iter()
                 .map(|pred| {
-                    self.fcx.resolve_vars_if_possible(pred).fold_with(&mut Resolver::new(
+                    self.fcx.deeply_resolve_ignoring_regions(pred).fold_with(&mut Resolver::new(
                         self.fcx,
                         span,
                         self.body,
@@ -876,7 +877,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = self.fcx.deeply_resolve_ignoring_regions(value);
 
         let mut goals = vec![];
         let value =

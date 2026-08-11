@@ -145,7 +145,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                 ty,
             )?;
             let new_var =
-                infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid)));
+                infcx.deeply_resolve_ignoring_regions(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid)));
 
             // Any regions in this new type must be live everywhere, so we mark them as such.
             // (It may be that it only needs to be live where the opaque type itself is - which

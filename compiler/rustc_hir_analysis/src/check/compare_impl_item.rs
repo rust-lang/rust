@@ -584,9 +584,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .iter()
         .map(|(_, &(ty, _))| {
             assert!(
-                infcx.resolve_vars_if_possible(ty) == ty && ty.is_ty_var(),
+                infcx.deeply_resolve_ignoring_regions(ty) == ty && ty.is_ty_var(),
                 "{ty:?} should not have been constrained via normalization",
-                ty = infcx.resolve_vars_if_possible(ty)
+                ty = infcx.deeply_resolve_ignoring_regions(ty)
             );
             idx += 1;
             (

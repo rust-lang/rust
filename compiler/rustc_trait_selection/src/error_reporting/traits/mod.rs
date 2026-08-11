@@ -280,7 +280,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // roots, like `need_type_info` does when looking for the annotation source.
         let ambiguity_infer_var = |error: &FulfillmentError<'tcx>| match error.code {
             FulfillmentErrorCode::Ambiguity { overflow: None } => self
-                .ambiguity_term(self.resolve_vars_if_possible(error.obligation.predicate))
+                .ambiguity_term(self.deeply_resolve_ignoring_regions(error.obligation.predicate))
                 .and_then(|term| {
                     ty::GenericArg::from(term)
                         .walk()

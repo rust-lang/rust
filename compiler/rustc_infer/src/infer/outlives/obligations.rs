@@ -66,7 +66,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, Upcast, eager_resolve_vars,
+    TypeVisitableExt, Upcast, deeply_resolve_via_unification_table,
 };
 use rustc_span::Span;
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
@@ -371,7 +371,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // `TypeOutlives` is structural, so we should try to opportunistically resolve all
                 // region vids before processing regions, so we have a better chance to match clauses
                 // in our param-env.
-                let (sup_type, sub_region) = eager_resolve_vars(self, (sup_type, sub_region));
+                let (sup_type, sub_region) = deeply_resolve_via_unification_table(self, (sup_type, sub_region));
 
                 if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
                     && outlives_env

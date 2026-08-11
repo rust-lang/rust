@@ -36,7 +36,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Process the region constraints and return any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    /// `deeply_resolve_ignoring_regions` as well as `fully_resolve`.
     ///
     /// Don't call this directly unless you know what you're doing.
     /// You probably want to use `resolve_regions` instead.

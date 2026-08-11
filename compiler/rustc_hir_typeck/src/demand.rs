@@ -261,7 +261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
     ) -> Result<Ty<'tcx>, Diag<'a>> {
-        let expected = self.resolve_vars_with_obligations(expected);
+        let expected = self.deeply_resolve_ignoring_regions_with_obligations(expected);
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
             Ok(ty) => return Ok(ty),
@@ -276,7 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
-        let expr_ty = self.resolve_vars_if_possible(checked_ty);
+        let expr_ty = self.deeply_resolve_ignoring_regions(checked_ty);
         let mut err =
             self.err_ctxt().report_mismatched_types(&cause, self.param_env, expected, expr_ty, e);
 
@@ -423,7 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Yeet the errors, we're already reporting errors.
                         errs.clear();
                     });
-                    Some(self.resolve_vars_if_possible(possible_rcvr_ty))
+                    Some(self.deeply_resolve_ignoring_regions(possible_rcvr_ty))
                 });
                 let Some(rcvr_ty) = possible_rcvr_ty else { return false };
                 rcvr_ty
@@ -546,7 +546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .borrow()
                                 .type_dependent_def_id(parent_expr.hir_id)
                         && let ideal_arg_ty =
-                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
+                            self.deeply_resolve_ignoring_regions(ideal_method.sig.inputs()[idx + 1])
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(

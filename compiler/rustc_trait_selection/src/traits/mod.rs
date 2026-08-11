@@ -232,7 +232,8 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // is not smart enough, so we fall back to fulfillment when we're not certain
         // that an obligation holds or not. Even still, we must make sure that
         // the we do no inference in the process of checking this obligation.
-        let goal = infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+        let goal =
+            infcx.deeply_resolve_ignoring_regions((obligation.predicate, obligation.param_env));
         infcx.probe(|_| {
             let ocx = ObligationCtxt::new(infcx);
             ocx.register_obligation(obligation);
@@ -240,7 +241,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
             match errors {
                 // Only known to hold if we did no inference.
-                TraitErrors::NoErrors => infcx.resolve_vars_if_possible(goal) == goal,
+                TraitErrors::NoErrors => infcx.deeply_resolve_ignoring_regions(goal) == goal,
 
                 TraitErrors::HasErrors(errors) => {
                     debug!(?errors);
@@ -631,7 +632,7 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
     normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
 ) -> Result<ty::Const<'tcx>, EvaluateConstErr<E>> {
     let tcx = infcx.tcx;
-    let ct = infcx.resolve_vars_if_possible(ct);
+    let ct = infcx.deeply_resolve_ignoring_regions(ct);
     debug!(?ct);
 
     match ct.kind() {
