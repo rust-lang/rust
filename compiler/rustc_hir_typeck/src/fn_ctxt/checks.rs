@@ -38,7 +38,7 @@ use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
-use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut};
+use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut, SuggestRefMut};
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
@@ -1000,6 +1000,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The user provided `ptr::null()`, but the function expects
             // `ptr::null_mut()`.
             err.subdiagnostic(SuggestPtrNullMut { span: arg.span });
+        }
+    }
+
+    fn suggest_ref_mut(
+        &self,
+        expected_ty: Ty<'tcx>,
+        provided_ty: Ty<'tcx>,
+        arg: &hir::Expr<'tcx>,
+        err: &mut Diag<'_>,
+    ) {
+        if let ty::Ref(_, expected_ty, hir::Mutability::Mut) = expected_ty.kind() 
+            && let ty::Ref(_, provided_ty, hir::Mutability::Not) = provided_ty.kind()
+            && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr) = arg.kind
+            && expected_ty == provided_ty
+        {
+            // The user provided `&T`, but the function expects `&mut T`.
+            let ref_span = arg.span.until(expr.span);
+            err.subdiagnostic(SuggestRefMut { span: ref_span });
         }
     }
 
@@ -2499,6 +2517,13 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                 provided_ty,
                 self.provided_args[provided_idx],
                 &mut err,
+            );
+
+            self.suggest_ref_mut(
+                expected_ty, 
+                provided_ty,
+                self.provided_args[provided_idx], 
+                &mut err
             );
 
             self.suggest_deref_unwrap_or(

@@ -690,6 +690,18 @@ pub(crate) struct SuggestPtrNullMut {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider using `&mut` instead",
+    applicability = "maybe-incorrect",
+    style = "verbose",
+    code = "&mut "
+)]
+pub(crate) struct SuggestRefMut {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(
     "trivial {$numeric ->
