@@ -51,8 +51,8 @@ use crate::core::config::toml::target::{
 };
 use crate::core::config::{
     Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
-    GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool,
-    TargetSelection, threads_from_config,
+    GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
+    StringOrBool, TargetSelection, threads_from_config,
 };
 use crate::core::download::{DownloadContext, download_beta_toolchain, is_download_ci_available};
 use crate::utils::channel::{self, GitInfo};
@@ -179,7 +179,7 @@ pub struct Config {
     pub llvm_polly: bool,
     pub llvm_clang: bool,
     pub llvm_enable_warnings: bool,
-    pub llvm_from_ci: bool,
+    pub llvm_ci_mode: LlvmCiMode,
     pub llvm_build_config: HashMap<String, String>,
 
     pub bootstrap_override_lld: BootstrapOverrideLld,
@@ -1082,6 +1082,12 @@ impl Config {
             llvm_download_ci_llvm,
             llvm_assertions,
         );
+
+        // FIXME: llvm_ci_mode should eventually represent what was used in the config, not the
+        // dynamic value used for determining whether it is actually available.
+        let llvm_ci_mode =
+            if llvm_from_ci { LlvmCiMode::DownloadFromCi } else { LlvmCiMode::BuildLocally };
+
         let is_host_system_llvm =
             target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
@@ -1487,7 +1493,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
             llvm_experimental_targets,
-            llvm_from_ci,
+            llvm_ci_mode,
             llvm_ldflags,
             llvm_libunwind_default: rust_llvm_libunwind
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
@@ -1731,7 +1737,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         let dwn_ctx = DownloadContext::from(self);
-        ci_llvm_root(dwn_ctx, self.llvm_from_ci, &self.out)
+        ci_llvm_root(dwn_ctx, self.llvm_ci_mode.download_from_ci(), &self.out)
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
@@ -1752,7 +1758,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         }
 
         let llvm_link_shared = *opt.get_or_insert_with(|| {
-            if self.llvm_from_ci {
+            if self.llvm_ci_mode.download_from_ci() {
                 self.maybe_download_ci_llvm();
                 let ci_llvm = self.ci_llvm_root();
                 let link_type = t!(
@@ -1791,7 +1797,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                     // CI-rustc can't be used without CI-LLVM. If `self.llvm_from_ci` is false, it means the "if-unchanged"
                     // logic has detected some changes in the LLVM submodule (download-ci-llvm=false can't happen here as
                     // we don't allow it while parsing the configuration).
-                    if !self.llvm_from_ci {
+                    if !self.llvm_ci_mode.download_from_ci() {
                         // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
                         // to not break CI. For non-CI environments, we should return an error.
                         if self.is_running_on_ci() {
@@ -2027,7 +2033,12 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     ///
     /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
     pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        is_system_llvm(&self.target_config, self.llvm_from_ci, self.host_target, target)
+        is_system_llvm(
+            &self.target_config,
+            self.llvm_ci_mode.download_from_ci(),
+            self.host_target,
+            target,
+        )
     }
 
     /// Returns `true` if this is our custom, patched, version of LLVM.

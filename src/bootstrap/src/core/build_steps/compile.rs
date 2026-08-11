@@ -506,7 +506,7 @@ pub fn std_crates_for_make_run(run: &RunConfig<'_>) -> Vec<String> {
 /// there instead, which lets us avoid checking out the LLVM submodule.
 fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
     // Try to use `compiler-rt` sources from downloaded CI LLVM, if possible.
-    if builder.config.llvm_from_ci {
+    if builder.config.llvm_ci_mode.download_from_ci() {
         // CI LLVM might not have been downloaded yet, so try to download it now.
         builder.config.maybe_download_ci_llvm();
         let ci_llvm_compiler_rt = builder.config.ci_llvm_root().join("compiler-rt");
@@ -2185,7 +2185,7 @@ impl CommandLineStep for Assemble {
                     let src_path = llvm_bin_dir.join(&tool_exe);
 
                     // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
-                    if !src_path.exists() && builder.config.llvm_from_ci {
+                    if !src_path.exists() && builder.config.llvm_ci_mode.download_from_ci() {
                         eprintln!("{} does not exist; skipping copy", src_path.display());
                         continue;
                     }

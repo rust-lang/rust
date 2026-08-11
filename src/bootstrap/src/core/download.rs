@@ -276,7 +276,7 @@ impl Config {
             return;
         }
 
-        if !self.llvm_from_ci {
+        if !self.llvm_ci_mode.download_from_ci() {
             return;
         }
 

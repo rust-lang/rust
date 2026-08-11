@@ -124,7 +124,7 @@ mod dist {
     #[test]
     fn llvm_out_behaviour() {
         let mut config = configure(&[], &[TEST_TRIPLE_2]);
-        config.llvm_from_ci = true;
+        config.llvm_ci_mode = true;
         let build = Build::new(config.clone());
 
         let target = TargetSelection::from_user(&host_target());
@@ -132,7 +132,7 @@ mod dist {
         let target = TargetSelection::from_user(TEST_TRIPLE_2);
         assert!(build.llvm_out(target).ends_with("llvm"));
 
-        config.llvm_from_ci = false;
+        config.llvm_ci_mode = false;
         let build = Build::new(config.clone());
         let target = TargetSelection::from_user(TEST_TRIPLE_1);
         assert!(build.llvm_out(target).ends_with("llvm"));
@@ -322,7 +322,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     );
 
     // CI-LLVM isn't always available; check if it's enabled before testing.
-    if config.llvm_from_ci {
+    if config.llvm_ci_mode {
         let build = Build::new(config.clone());
         let builder = Builder::new(&build);
 

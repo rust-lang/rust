@@ -967,7 +967,7 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_from_ci && self.config.is_host_target(target) {
+        if self.config.llvm_ci_mode.download_from_ci() && self.config.is_host_target(target) {
             self.config.ci_llvm_root()
         } else {
             self.out.join(target).join("llvm")
