@@ -8,28 +8,28 @@ use super::{FixupError, FixupResult, InferCtxt};
 use crate::infer::TyOrConstInferVar;
 
 ///////////////////////////////////////////////////////////////////////////
-// OPPORTUNISTIC VAR RESOLVER
+// DEEP VAR RESOLVER
 
-/// The opportunistic resolver can be used at any time. It simply replaces
+/// The type and const resolver can be used at any time. It simply replaces
 /// type/const variables that have been unified with the things they have
 /// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
 /// points for correctness.
-pub struct OpportunisticVarResolver<'a, 'tcx> {
+pub struct DeepResolverIgnoringRegions<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     /// We're able to use a cache here as the folder does
     /// not have any mutable state.
     cache: DelayedMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
-impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
+impl<'a, 'tcx> DeepResolverIgnoringRegions<'a, 'tcx> {
     #[inline]
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        OpportunisticVarResolver { infcx, cache: Default::default() }
+        DeepResolverIgnoringRegions { infcx, cache: Default::default() }
     }
 }
 
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepResolverIgnoringRegions<'a, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -66,24 +66,24 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
     }
 }
 
-/// The opportunistic region resolver opportunistically resolves regions
-/// variables to the variable with the least variable id. It is used when
-/// normalizing projections to avoid hitting the recursion limit by creating
-/// many versions of a predicate for types that in the end have to unify.
+/// The region resolver resolves region variables to the variable with the
+/// least variable id. It is used when normalizing projections to avoid
+/// hitting the recursion limit by creating many versions of a predicate
+/// for types that in the end have to unify.
 ///
 /// If you want to resolve type and const variables as well, call
-/// [InferCtxt::resolve_vars_if_possible] first.
-pub struct OpportunisticRegionResolver<'a, 'tcx> {
+/// [InferCtxt::deeply_resolve_ignoring_regions] first.
+pub struct DeepRegionResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
+impl<'a, 'tcx> DeepRegionResolver<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        OpportunisticRegionResolver { infcx }
+        DeepRegionResolver { infcx }
     }
 }
 
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepRegionResolver<'a, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

@@ -45,7 +45,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
     fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted(expr);
-        let ty = self.fcx.resolve_vars_with_obligations(ty);
+        let ty = self.fcx.deeply_resolve_ignoring_regions_with_obligations(ty);
         if ty.has_non_region_infer() {
             Ty::new_misc_error(self.tcx())
         } else {
@@ -60,7 +60,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if self.fcx.type_is_sized_modulo_regions(self.fcx.param_env, ty) {
             return true;
         }
-        if let ty::Foreign(..) = self.fcx.resolve_vars_with_obligations(ty).kind() {
+        if let ty::Foreign(..) =
+            self.fcx.deeply_resolve_ignoring_regions_with_obligations(ty).kind()
+        {
             return true;
         }
         false

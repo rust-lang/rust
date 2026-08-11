@@ -141,11 +141,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Resolves type and const variables in `t` if possible. Unlike the infcx
-    /// version (resolve_vars_if_possible), this version will
+    /// version (deeply_resolve_ignoring_regions), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
+    pub(crate) fn deeply_resolve_ignoring_regions_with_obligations<
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    >(
         &self,
         mut t: T,
     ) -> T {
@@ -156,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If `t` is a type variable, see whether we already know what it is.
-        t = self.resolve_vars_if_possible(t);
+        t = self.deeply_resolve_ignoring_regions(t);
         if !t.has_non_region_infer() {
             debug!(?t);
             return t;
@@ -167,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(|_| {});
-        self.resolve_vars_if_possible(t)
+        self.deeply_resolve_ignoring_regions(t)
     }
 
     pub(crate) fn record_deferred_call_resolution(
@@ -199,7 +201,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[inline]
     pub(crate) fn write_ty(&self, id: HirId, ty: Ty<'tcx>) {
-        debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
+        debug!(
+            "write_ty({:?}, {:?}) in fcx {}",
+            id,
+            self.deeply_resolve_ignoring_regions(ty),
+            self.tag()
+        );
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
 
@@ -1518,7 +1525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         ct: ty::Const<'tcx>,
     ) -> ty::Const<'tcx> {
-        let ct = self.resolve_vars_with_obligations(ct);
+        let ct = self.deeply_resolve_ignoring_regions_with_obligations(ct);
 
         if self.next_trait_solver()
             && let ty::ConstKind::Alias(..) = ct.kind()
@@ -1553,7 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub(crate) fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.resolve_vars_with_obligations(ty);
+        let ty = self.deeply_resolve_ignoring_regions_with_obligations(ty);
 
         if !ty.is_ty_var() { ty } else { self.type_must_be_known_at_this_point(sp, ty) }
     }

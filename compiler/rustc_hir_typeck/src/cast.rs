@@ -96,14 +96,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Result<Option<PointerKind<'tcx>>, ErrorGuaranteed> {
         debug!("pointer_kind({:?}, {:?})", t, span);
 
-        let t = self.resolve_vars_if_possible(t);
+        let t = self.deeply_resolve_ignoring_regions(t);
         t.error_reported()?;
 
         if self.type_is_sized_modulo_regions(self.param_env, t) {
             return Ok(Some(PointerKind::Thin));
         }
 
-        let t = self.resolve_vars_with_obligations(t);
+        let t = self.deeply_resolve_ignoring_regions_with_obligations(t);
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
@@ -396,7 +396,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::CastToBool => {
-                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
                 let help = if self.expr_ty.is_numeric() {
                     diagnostics::CannotCastToBoolHelp::Numeric(
                         self.expr_span.shrink_to_hi().with_hi(self.span.hi()),
@@ -539,8 +539,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 ) {
                     // Check `impl From<self.expr_ty> for self.cast_ty {}` for accurate suggestion:
                     if let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::From) {
-                        let ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                        let ty = fcx.deeply_resolve_ignoring_regions(self.cast_ty);
+                        let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
                         if fcx
                             .infcx
                             .type_implements_trait(from_trait, [ty, expr_ty], fcx.param_env)
@@ -604,8 +604,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                let cast_ty = fcx.deeply_resolve_ignoring_regions(self.cast_ty);
+                let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
                 fcx.dcx().emit_err(diagnostics::CastThinPointerToWidePointer {
                     span: self.span,
                     expr_ty,
@@ -615,8 +615,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::IntToWideCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
-                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                let cast_ty = fcx.deeply_resolve_ignoring_regions(self.cast_ty);
+                let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
@@ -659,8 +659,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 });
             }
             CastError::CastEnumDrop => {
-                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+                let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
+                let cast_ty = fcx.deeply_resolve_ignoring_regions(self.cast_ty);
 
                 fcx.dcx().emit_err(diagnostics::CastEnumDrop { span: self.span, expr_ty, cast_ty });
             }
@@ -707,7 +707,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             self.expr_ty,
             E0620,
             "cast to unsized type: `{}` as `{}`",
-            fcx.resolve_vars_if_possible(self.expr_ty),
+            fcx.deeply_resolve_ignoring_regions(self.expr_ty),
             tstr
         );
         match self.expr_ty.kind() {
@@ -747,8 +747,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             (false, lint::builtin::TRIVIAL_CASTS)
         };
-        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+        let expr_ty = fcx.deeply_resolve_ignoring_regions(self.expr_ty);
+        let cast_ty = fcx.deeply_resolve_ignoring_regions(self.cast_ty);
         fcx.tcx.emit_node_span_lint(
             lint,
             self.expr.hir_id,
@@ -788,8 +788,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     fn expr_span_for_type_resolution(&self, fcx: &FnCtxt<'a, 'tcx>) -> Span {
         if let hir::ExprKind::Index(_, idx, _) = self.expr.kind
-            && fcx.resolve_vars_if_possible(self.expr_ty).is_ty_var()
-            && fcx.resolve_vars_if_possible(fcx.node_ty(idx.hir_id)).is_ty_var()
+            && fcx.deeply_resolve_ignoring_regions(self.expr_ty).is_ty_var()
+            && fcx.deeply_resolve_ignoring_regions(fcx.node_ty(idx.hir_id)).is_ty_var()
         {
             index_operand_ambiguity_span(idx)
         } else {
@@ -801,7 +801,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
         let expr_span = self.expr_span_for_type_resolution(fcx);
         self.expr_ty = fcx.structurally_resolve_type(expr_span, self.expr_ty);
-        self.cast_ty = fcx.resolve_vars_with_obligations(self.cast_ty);
+        self.cast_ty = fcx.deeply_resolve_ignoring_regions_with_obligations(self.cast_ty);
         if self.cast_ty.is_ty_var() {
             self.cast_ty = if let Some(guar) = self.try_report_ambiguous_binop_for_infer_cast(fcx) {
                 let err = Ty::new_error(fcx.tcx, guar);
@@ -863,7 +863,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(|mut obligation| {
-                let predicate = fcx.resolve_vars_if_possible(obligation.predicate);
+                let predicate = fcx.deeply_resolve_ignoring_regions(obligation.predicate);
                 if !matches!(
                     predicate.kind().skip_binder(),
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
@@ -877,8 +877,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 else {
                     return None;
                 };
-                let lhs_ty = fcx.resolve_vars_if_possible(fcx.node_ty(*lhs_hir_id));
-                let rhs_ty = fcx.resolve_vars_if_possible(fcx.node_ty(*rhs_hir_id));
+                let lhs_ty = fcx.deeply_resolve_ignoring_regions(fcx.node_ty(*lhs_hir_id));
+                let rhs_ty = fcx.deeply_resolve_ignoring_regions(fcx.node_ty(*rhs_hir_id));
 
                 if (fcx.tcx.hir_span(*lhs_hir_id).contains(cast_span)
                     && lhs_ty.contains(self.cast_ty))
@@ -1203,8 +1203,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         mut m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError<'tcx>> {
         // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
-        m_expr.ty = fcx.resolve_vars_with_obligations(m_expr.ty);
-        m_cast.ty = fcx.resolve_vars_with_obligations(m_cast.ty);
+        m_expr.ty = fcx.deeply_resolve_ignoring_regions_with_obligations(m_expr.ty);
+        m_cast.ty = fcx.deeply_resolve_ignoring_regions_with_obligations(m_cast.ty);
 
         if m_expr.mutbl >= m_cast.mutbl
             && let ty::Array(ety, _) = m_expr.ty.kind()

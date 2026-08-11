@@ -960,7 +960,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             tcx,
             self.infcx.typing_env(self.infcx.param_env),
             fn_did,
-            self.infcx.resolve_vars_if_possible(args.no_bound_vars().unwrap()),
+            self.infcx.deeply_resolve_ignoring_regions(args.no_bound_vars().unwrap()),
         ) else {
             return;
         };

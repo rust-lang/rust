@@ -194,7 +194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         };
-        let args = self.resolve_vars_if_possible(args);
+        let args = self.deeply_resolve_ignoring_regions(args);
         let closure_def_id = closure_def_id.expect_local();
 
         assert_eq!(self.tcx.hir_body_owner_def_id(body.id()), closure_def_id);
@@ -1242,7 +1242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
-        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.deeply_resolve_ignoring_regions(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
             hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
@@ -1340,7 +1340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_clause: hir::CaptureBy,
         var_hir_id: HirId,
     ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
-        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.deeply_resolve_ignoring_regions(self.node_ty(var_hir_id));
 
         // FIXME(#132279): Using `non_body_analysis` here feels wrong.
         if !ty.has_significant_drop(

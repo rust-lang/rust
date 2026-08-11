@@ -1215,7 +1215,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        self.resolve_vars_if_possible(t).to_string()
+        self.deeply_resolve_ignoring_regions(t).to_string()
     }
 
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
@@ -1404,7 +1404,8 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// The "shallow" part of the name refers to the fact that types may themselves contain more
     /// type variables. e.g. The field types of a struct. `shallow_resolve` does not recurse into
-    /// these nested variables. If that's what you want, use [`resolve_vars_if_possible`](Self::resolve_vars_if_possible)
+    /// these nested variables. If that's what you want, use [`deeply_resolve_ignoring_regions`](Self::deeply_resolve_ignoring_regions),
+    /// or better [`deeply_resolve`](rustc_type_ir::deeply_resolve), if you can, which *does* resolve regions.
     pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Infer(infer) = *ty.kind() { self.shallow_resolve_infer(infer, ty) } else { ty }
     }
@@ -1487,13 +1488,14 @@ impl<'tcx> InferCtxt<'tcx> {
         self.shallow_resolve_const_var_with_ct(vid, None)
     }
 
-    /// Where possible, replaces type/const variables in
-    /// `value` with their final value. Note that region variables
-    /// are unaffected. If a type/const variable has not been unified, it
-    /// is left as is. This is an idempotent operation that does
-    /// not affect inference state in any way and so you can do it
-    /// at will.
-    pub fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    /// Where possible, replaces type/const variables in `value` with their final value.
+    /// If a type/const variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    ///
+    /// Region variables are unaffected.
+    pub fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -1503,7 +1505,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if !value.has_non_region_infer() {
             return value;
         }
-        let mut r = resolve::OpportunisticVarResolver::new(self);
+        let mut r = resolve::DeepResolverIgnoringRegions::new(self);
         value.fold_with(&mut r)
     }
 

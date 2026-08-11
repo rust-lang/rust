@@ -88,7 +88,7 @@ impl InferenceDiagnosticsData {
             ""
         } else if self.name == "_" {
             let displayed_ty = infcx
-                .resolve_vars_if_possible(in_type)
+                .deeply_resolve_ignoring_regions(in_type)
                 .fold_with(&mut ClosureEraser { infcx, depth: 0 });
             if displayed_ty.is_ty_or_numeric_infer() {
                 ""
@@ -308,7 +308,7 @@ fn ty_to_string<'tcx>(
     called_method_def_id: Option<DefId>,
 ) -> String {
     let mut p = fmt_printer(infcx, Namespace::TypeNS);
-    let ty = infcx.resolve_vars_if_possible(ty);
+    let ty = infcx.deeply_resolve_ignoring_regions(ty);
     // We use `fn` ptr syntax for closures, but this only works when the closure does not capture
     // anything. We also remove all type parameters that are fully known to the type system.
     let ty = ty.fold_with(&mut ClosureEraser { infcx, depth: 0 });
@@ -507,7 +507,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         should_label_span: bool,
         ty: Option<Ty<'tcx>>,
     ) -> Diag<'a> {
-        let term = self.resolve_vars_if_possible(term);
+        let term = self.deeply_resolve_ignoring_regions(term);
         let arg_data = self
             .extract_inference_diagnostics_data(term, ty::print::RegionHighlightMode::default());
 
@@ -1019,12 +1019,12 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 
     fn node_args_opt(&self, hir_id: HirId) -> Option<GenericArgsRef<'tcx>> {
         let args = self.typeck_results.node_args_opt(hir_id);
-        self.tecx.resolve_vars_if_possible(args)
+        self.tecx.deeply_resolve_ignoring_regions(args)
     }
 
     fn opt_node_type(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty = self.typeck_results.node_type_opt(hir_id);
-        self.tecx.resolve_vars_if_possible(ty)
+        self.tecx.deeply_resolve_ignoring_regions(ty)
     }
 
     // Check whether this generic argument is the inference variable we
@@ -1412,7 +1412,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 .iter()
                 .position(|&arg| self.generic_arg_contains_target(arg))
             {
-                let args = self.tecx.resolve_vars_if_possible(args);
+                let args = self.tecx.deeply_resolve_ignoring_regions(args);
                 let generic_args =
                     &generics.own_args_no_defaults(tcx, args)[generics.own_counts().lifetimes..];
                 let span = match expr.kind {
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
-            let args = self.tecx.resolve_vars_if_possible(args);
+            let args = self.tecx.deeply_resolve_ignoring_regions(args);
             self.update_infer_source(InferSource {
                 span: path.ident.span,
                 kind: InferSourceKind::FullyQualifiedMethodCall {

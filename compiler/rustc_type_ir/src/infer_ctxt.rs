@@ -487,7 +487,7 @@ pub trait InferCtxtLike: Sized {
         ty: <Self::Interner as Interner>::Const,
     ) -> <Self::Interner as Interner>::Const;
 
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<Self::Interner>;
 
@@ -600,20 +600,24 @@ where
     }
 }
 
-/// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub fn eager_resolve_vars<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
+/// Where possible, replaces type/const/region variables in `value` with their final value.
+/// If a type/const/region variable has not (yet) been unified, it is left as is.
+///
+/// This is an idempotent operation that does not affect inference state in any way,
+/// which means it's safe to call this function at will.
+pub fn deeply_resolve<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
     infcx: &Infcx,
     value: T,
 ) -> T {
     if value.has_infer() {
-        let mut folder = EagerResolver::new(infcx);
+        let mut folder = DeepVariableResolver::new(infcx);
         value.fold_with(&mut folder)
     } else {
         value
     }
 }
 
-struct EagerResolver<'a, D, I = <D as InferCtxtLike>::Interner>
+struct DeepVariableResolver<'a, D, I = <D as InferCtxtLike>::Interner>
 where
     D: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -624,13 +628,15 @@ where
     cache: DelayedMap<I::Ty, I::Ty>,
 }
 
-impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
+impl<'a, Infcx: InferCtxtLike> DeepVariableResolver<'a, Infcx> {
     fn new(delegate: &'a Infcx) -> Self {
-        EagerResolver { delegate, cache: Default::default() }
+        DeepVariableResolver { delegate, cache: Default::default() }
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+    for DeepVariableResolver<'_, Infcx>
+{
     fn cx(&self) -> I {
         self.delegate.cx()
     }

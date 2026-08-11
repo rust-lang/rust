@@ -97,7 +97,7 @@ pub fn unnormalized_obligations<'tcx>(
     span: Span,
     body_def_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
-    debug_assert_eq!(term, infcx.resolve_vars_if_possible(term));
+    debug_assert_eq!(term, infcx.deeply_resolve_ignoring_regions(term));
 
     // However, if `term` IS an unresolved inference variable, returns `None`,
     // because we are not able to make any progress at all. This is to prevent

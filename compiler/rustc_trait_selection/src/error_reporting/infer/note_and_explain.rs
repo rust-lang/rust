@@ -991,7 +991,7 @@ fn foo(&self) -> Self::T { String::new() }
         msg: impl Fn() -> String,
         is_bound_surely_present: bool,
     ) -> bool {
-        // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
+        // FIXME: we would want to call `deeply_resolve_ignoring_regions` on `ty` before suggesting.
 
         let trait_bounds = bounds.iter().filter_map(|bound| match bound {
             hir::GenericBound::Trait(ptr) if ptr.modifiers == hir::TraitBoundModifiers::NONE => {

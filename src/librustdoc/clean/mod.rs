@@ -1991,7 +1991,7 @@ fn normalize<'tcx>(
     let normalized = infcx
         .at(&ObligationCause::dummy(), cx.param_env)
         .query_normalize(ty)
-        .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
+        .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value));
     match normalized {
         Ok(normalized_value) => {
             debug!("normalized {ty:?} to {normalized_value:?}");

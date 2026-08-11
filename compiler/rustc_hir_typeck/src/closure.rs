@@ -60,9 +60,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => {
-                self.deduce_closure_signature(self.resolve_vars_with_obligations(ty), closure.kind)
-            }
+            Some(ty) => self.deduce_closure_signature(
+                self.deeply_resolve_ignoring_regions_with_obligations(ty),
+                closure.kind,
+            ),
             None => (None, None),
         };
 
@@ -411,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
                     self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
 
-                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
+                    let resolved_sig = self.deeply_resolve_ignoring_regions(generalized_fnptr_sig);
 
                     if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
                         expected_sig = Some(ExpectedSig {
@@ -517,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Option<Span>,
         projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let projection = self.resolve_vars_if_possible(projection);
+        let projection = self.deeply_resolve_ignoring_regions(projection);
 
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
@@ -562,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Option<Span>,
         projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let projection = self.resolve_vars_if_possible(projection);
+        let projection = self.deeply_resolve_ignoring_regions(projection);
 
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
@@ -851,8 +852,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )?;
             all_obligations.extend(obligations);
 
-            let inputs =
-                supplied_sig.inputs().into_iter().map(|&ty| self.resolve_vars_if_possible(ty));
+            let inputs = supplied_sig
+                .inputs()
+                .into_iter()
+                .map(|&ty| self.deeply_resolve_ignoring_regions(ty));
 
             let fn_sig_kind = FnSigKind::default()
                 .set_abi(ExternAbi::RustCall)
@@ -959,7 +962,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_span = self.tcx.def_span(body_def_id);
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let ret_ty = self.resolve_vars_with_obligations(ret_ty);
+        let ret_ty = self.deeply_resolve_ignoring_regions_with_obligations(ret_ty);
 
         let get_future_output = |clause: ty::Clause<'tcx>, span| {
             // Search for a pending obligation like
@@ -1064,7 +1067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(predicate.term);
+        let output_ty = self.deeply_resolve_ignoring_regions(predicate.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         // This is a projection on a Fn trait so will always be a type.
         Some(output_ty.expect_type())
