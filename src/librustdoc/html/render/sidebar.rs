@@ -5,7 +5,8 @@ use std::fmt;
 use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet};
+use rustc_hir::def_id::{DefIdMap, DefIdSet};
+use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
 use super::{Context, ItemSection, impl_trait_key, item_ty_to_section};
@@ -453,7 +454,7 @@ fn sidebar_assoc_items<'a>(
                     impl_,
                     GetMethodsMode::AlsoCollectAssocFns { assoc_fns: &mut assoc_fns },
                     used_links_bor,
-                    cx,
+                    cx.tcx(),
                 ));
             }
             // We want links' order to be reproducible so we don't use unstable sort.
@@ -547,7 +548,8 @@ fn sidebar_deref_methods<'a>(
             // Avoid infinite cycles
             return;
         }
-        let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+        let tcx = cx.tcx();
+        let deref_mut = v.iter().any(|i| i.trait_did() == tcx.lang_items().deref_mut_trait());
         let inner_impl = target
             .def_id(c)
             .or_else(|| {
@@ -556,6 +558,8 @@ fn sidebar_deref_methods<'a>(
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
             debug!("found inner_impl: {impls:?}");
+            let is_deref_target_copy =
+                super::compute_if_deref_target_implements_copy(tcx, impl_.def_id());
             let mut ret = impls
                 .iter()
                 .filter(|i| {
@@ -565,12 +569,9 @@ fn sidebar_deref_methods<'a>(
                 .flat_map(|i| {
                     get_methods(
                         i.inner_impl(),
-                        GetMethodsMode::Deref {
-                            deref_mut,
-                            target_id: real_target.def_id(cx.cache()),
-                        },
+                        GetMethodsMode::Deref { deref_mut, is_deref_target_copy },
                         used_links,
-                        cx,
+                        tcx,
                     )
                     .collect::<Vec<_>>()
                 })
@@ -604,7 +605,7 @@ fn sidebar_deref_methods<'a>(
                 i.inner_impl()
                     .trait_
                     .as_ref()
-                    .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                    .map(|t| Some(t.def_id()) == tcx.lang_items().deref_trait())
                     .unwrap_or(false)
                     && !i.is_negative_trait_impl()
             })
@@ -759,7 +760,7 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
 }
 
 enum GetMethodsMode<'r, 'l> {
-    Deref { deref_mut: bool, target_id: Option<DefId> },
+    Deref { deref_mut: bool, is_deref_target_copy: bool },
     AlsoCollectAssocFns { assoc_fns: &'r mut Vec<Link<'l>> },
 }
 
@@ -767,16 +768,8 @@ fn get_methods<'a>(
     i: &'a clean::Impl,
     mut mode: GetMethodsMode<'_, 'a>,
     used_links: &mut FxHashSet<String>,
-    cx: &Context<'_>,
+    tcx: TyCtxt<'_>,
 ) -> impl Iterator<Item = Link<'a>> {
-    let is_copy_target = if let GetMethodsMode::Deref { target_id, .. } = mode {
-        target_id.is_some_and(|def_id| {
-            cx.shared.cache.types_which_deref_to_copy_target.contains(&def_id)
-        })
-    } else {
-        false
-    };
-
     i.items.iter().filter_map(move |item| {
         if let Some(ref name) = item.name
             && item.is_method()
@@ -788,8 +781,8 @@ fn get_methods<'a>(
                 )
             };
             match &mut mode {
-                &mut GetMethodsMode::Deref { deref_mut, .. } => {
-                    if super::should_render_item(item, deref_mut, cx.tcx(), is_copy_target) {
+                &mut GetMethodsMode::Deref { deref_mut, is_deref_target_copy } => {
+                    if super::should_render_item(item, deref_mut, tcx, is_deref_target_copy) {
                         Some(build_link())
                     } else {
                         None

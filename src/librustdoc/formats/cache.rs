@@ -129,10 +129,6 @@ pub(crate) struct Cache {
     /// to check if a stripped item should get its file generated or not: if it's inside a
     /// `#[doc(hidden)]` item or a private one and not inlined, it shouldn't get a file.
     pub(crate) inlined_items: DefIdSet,
-
-    /// Contains the list of types `DefId` implementing `Deref` where the `Target` associated item
-    /// is a type implementing the `Copy` trait.
-    pub(crate) types_which_deref_to_copy_target: DefIdSet,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
