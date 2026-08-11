@@ -17,7 +17,7 @@ use std::{env, fs};
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun, StepMetadata};
 use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -272,7 +272,7 @@ pub struct Llvm {
     pub target: TargetSelection,
 }
 
-impl Step for Llvm {
+impl CommandLineStep for Llvm {
     type Output = LlvmResult;
 
     const IS_HOST: bool = true;
@@ -410,6 +410,8 @@ impl Step for Llvm {
         // equally well everywhere.
         if builder.llvm_link_shared() {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+            // Keep the pre-LLVM23 behavior for now.
+            cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
         }
 
         if (target.starts_with("csky")
@@ -442,6 +444,12 @@ impl Step for Llvm {
             // know it's linking as Arm64EC (vs Arm64X).
             ldflags.exe.push(" -machine:arm64ec");
             ldflags.shared.push(" -machine:arm64ec");
+        }
+
+        // cc-rs deprecated `static_flag`, which used to supply `-static` for musl
+        // targets, so pass it here instead.
+        if target.contains("musl") && builder.crt_static(target).unwrap_or(true) {
+            ldflags.exe.push(" -static");
         }
 
         if target.is_msvc() {
@@ -935,6 +943,96 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
 }
 
 #[derive(Clone)]
+pub struct BuiltRustOffload {
+    /// Path to the rust offload dylib
+    offload: PathBuf,
+}
+
+impl BuiltRustOffload {
+    pub fn rust_offload_path(&self) -> PathBuf {
+        self.offload.clone()
+    }
+
+    pub fn rust_offload_filename(&self) -> String {
+        self.offload.file_name().unwrap().to_str().unwrap().to_owned()
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustOffload {
+    pub target: TargetSelection,
+}
+
+impl CommandLineStep for RustOffload {
+    type Output = BuiltRustOffload;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rust-offload")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustOffload { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.config.dry_run() {
+            return BuiltRustOffload {
+                offload: builder.config.tempdir().join("rust-offload-dry-run"),
+            };
+        }
+
+        let target = self.target;
+
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+
+        let out_dir = builder.rust_offload_out(target);
+
+        let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
+        let lib_ext = std::env::consts::DLL_EXTENSION;
+        let lib_rust_offload = format!("libRustOffload-{llvm_version_major}");
+        let build_dir = out_dir.join(libdir(target));
+        let dylib = build_dir.join(&lib_rust_offload).with_extension(lib_ext);
+
+        let mut cfg =
+            cmake::Config::new(builder.src.join("compiler/rustc_llvm/llvm-wrapper/offload/"));
+
+        // Logic copied from `configure_llvm`
+        // ThinLTO is only available when building with LLVM, enabling LLD is required.
+        // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+        let mut ldflags = LdFlags::default();
+        if builder.config.llvm_thin_lto && !target.contains("apple") {
+            ldflags.push_all("-fuse-ld=lld");
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
+
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", &host_llvm_config)
+            .define("LLVM_DIR", llvm_cmake_dir);
+
+        cfg.build();
+
+        if !dylib.exists() {
+            eprintln!(
+                "`{lib_rust_offload}` not found in `{}`. Either the build has failed or RustOffload was built with a wrong version of LLVM",
+                build_dir.display()
+            );
+            exit!(1);
+        }
+
+        BuiltRustOffload { offload: dylib }
+    }
+}
+
+#[derive(Clone)]
 pub struct BuiltOmpOffload {
     /// Path to the omp and offload dylibs.
     offload: Vec<PathBuf>,
@@ -962,7 +1060,7 @@ pub struct OmpOffload {
     pub target: TargetSelection,
 }
 
-impl Step for OmpOffload {
+impl CommandLineStep for OmpOffload {
     type Output = BuiltOmpOffload;
     const IS_HOST: bool = true;
 
@@ -990,7 +1088,7 @@ impl Step for OmpOffload {
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own folder, instead of
         // using the llvm build dir.
-        let out_dir = builder.offload_out(target);
+        let out_dir = builder.omp_offload_out(target);
 
         let mut files = vec![];
         let lib_ext = std::env::consts::DLL_EXTENSION;
@@ -1142,7 +1240,7 @@ pub struct Enzyme {
     pub target: TargetSelection,
 }
 
-impl Step for Enzyme {
+impl CommandLineStep for Enzyme {
     type Output = BuiltEnzyme;
     const IS_HOST: bool = true;
 
@@ -1278,7 +1376,7 @@ pub struct Lld {
     pub target: TargetSelection,
 }
 
-impl Step for Lld {
+impl CommandLineStep for Lld {
     type Output = PathBuf;
     const IS_HOST: bool = true;
 
@@ -1402,7 +1500,7 @@ pub struct Sanitizers {
     pub target: TargetSelection,
 }
 
-impl Step for Sanitizers {
+impl CommandLineStep for Sanitizers {
     type Output = Vec<SanitizerRuntime>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1525,10 +1623,14 @@ fn supported_sanitizers(
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
             .iter()
-            .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{c}_{os}_dynamic"),
-                path: out_dir.join(format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
-                name: format!("librustc-{channel}_rt.{c}.dylib"),
+            .map(move |c| {
+                let cmake_c = if *c == "ubsan" { "ubsan_standalone" } else { *c };
+                SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{cmake_c}_{os}_dynamic"),
+                    path: out_dir
+                        .join(format!("build/lib/darwin/libclang_rt.{cmake_c}_{os}_dynamic.dylib")),
+                    name: format!("librustc-{channel}_rt.{c}.dylib"),
+                }
             })
             .collect()
     };
@@ -1536,10 +1638,13 @@ fn supported_sanitizers(
     let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
             .iter()
-            .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{c}-{arch}"),
-                path: out_dir.join(format!("build/lib/{os}/libclang_rt.{c}-{arch}.a")),
-                name: format!("librustc-{channel}_rt.{c}.a"),
+            .map(move |c| {
+                let cmake_c = if *c == "ubsan" { "ubsan_standalone" } else { *c };
+                SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{cmake_c}-{arch}"),
+                    path: out_dir.join(format!("build/lib/{os}/libclang_rt.{cmake_c}-{arch}.a")),
+                    name: format!("librustc-{channel}_rt.{c}.a"),
+                }
             })
             .collect()
     };
@@ -1550,9 +1655,11 @@ fn supported_sanitizers(
         "aarch64-apple-ios-sim" => darwin_libs("iossim", &["asan", "tsan", "rtsan"]),
         "aarch64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
-        "aarch64-unknown-linux-gnu" => {
-            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan", "rtsan"])
-        }
+        "aarch64-unknown-linux-gnu" => common_libs(
+            "linux",
+            "aarch64",
+            &["asan", "lsan", "msan", "tsan", "hwasan", "rtsan", "ubsan"],
+        ),
         "aarch64-unknown-linux-ohos" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
@@ -1572,7 +1679,7 @@ fn supported_sanitizers(
         "x86_64-unknown-linux-gnu" => common_libs(
             "linux",
             "x86_64",
-            &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
+            &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan", "ubsan"],
         ),
         "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnumsan" => common_libs("linux", "x86_64", &["msan"]),
@@ -1598,7 +1705,7 @@ pub struct CrtBeginEnd {
     pub target: TargetSelection,
 }
 
-impl Step for CrtBeginEnd {
+impl CommandLineStep for CrtBeginEnd {
     type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1676,7 +1783,7 @@ pub struct Libunwind {
     pub target: TargetSelection,
 }
 
-impl Step for Libunwind {
+impl CommandLineStep for Libunwind {
     type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1738,7 +1845,6 @@ impl Step for Libunwind {
             cfg.out_dir(&out_dir);
 
             if self.target.contains("x86_64-fortanix-unknown-sgx") {
-                cfg.static_flag(true);
                 cfg.flag("-fno-stack-protector");
                 cfg.flag("-ffreestanding");
                 cfg.flag("-fexceptions");

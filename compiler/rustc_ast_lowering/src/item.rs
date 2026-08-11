@@ -155,7 +155,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::attrs::EiiImpl {
             span: self.lower_span(*span),
             inner_span: self.lower_span(*inner_span),
-            impl_marked_unsafe: self.lower_safety(*impl_safety, hir::Safety::Safe).is_unsafe(),
+            impl_unsafe_span: match *impl_safety {
+                Safety::Unsafe(span) => Some(self.lower_span(span)),
+                Safety::Safe(_) | Safety::Default => None,
+            },
             is_default: *is_default,
             resolution,
         }
@@ -167,15 +170,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         i: &ItemKind,
     ) -> Vec<hir::Attribute> {
         match i {
-            ItemKind::Fn(Fn { eii_impls, .. }) | ItemKind::Static(StaticItem { eii_impls, .. })
-                if eii_impls.is_empty() =>
-            {
-                Vec::new()
-            }
-            ItemKind::Fn(Fn { eii_impls, .. }) | ItemKind::Static(StaticItem { eii_impls, .. }) => {
-                vec![hir::Attribute::Parsed(AttributeKind::EiiImpls(
-                    eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
-                ))]
+            ItemKind::Fn(Fn { eii_impl: None, .. })
+            | ItemKind::Static(StaticItem { eii_impl: None, .. }) => Vec::new(),
+            ItemKind::Fn(Fn { eii_impl: Some(eii_impl), .. })
+            | ItemKind::Static(StaticItem { eii_impl: Some(eii_impl), .. }) => {
+                vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(Box::new(
+                    self.lower_eii_impl(eii_impl),
+                )))]
             }
             ItemKind::MacroDef(name, MacroDef { eii_declaration: Some(target), .. }) => self
                 .lower_eii_decl(id, *name, target)
@@ -223,7 +224,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span,
             span: self.lower_span(i.span),
-            eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
+            eii: find_attr!(attrs, EiiImpl(..) | EiiDeclaration(..)),
         };
         self.arena.alloc(item)
     }
@@ -256,7 +257,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 mutability: m,
                 expr: e,
                 define_opaque,
-                eii_impls: _,
+                eii_impl: _,
             }) => {
                 let ident = self.lower_ident(*ident);
                 let ty = self
@@ -693,7 +694,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             kind,
                             vis_span,
                             span: this.lower_span(use_tree.span()),
-                            eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
+                            eii: find_attr!(attrs, EiiImpl(..) | EiiDeclaration(..)),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
@@ -760,7 +761,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 expr: _,
                 safety,
                 define_opaque,
-                eii_impls: _,
+                eii_impl: _,
             }) => {
                 let ty = self
                     .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));

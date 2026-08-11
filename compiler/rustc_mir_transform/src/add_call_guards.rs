@@ -21,6 +21,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
+use crate::PassPolicy;
+
 #[derive(PartialEq)]
 pub(super) enum AddCallGuards {
     AllCallEdges,
@@ -127,8 +129,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         basic_blocks.extend(new_blocks);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Breaks critical edges so codegen can place edge-specific actions without affecting
+        // other control-flow edges.
+        PassPolicy::Required
     }
 }
 

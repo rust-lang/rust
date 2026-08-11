@@ -124,6 +124,7 @@ where
             combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
         }
     }
+
     fn relate_with_variance<T: Relate<I>>(
         &mut self,
         variance: ty::Variance,
@@ -191,6 +192,25 @@ where
                         unreachable!("Expected bivariance to be handled in relate_with_variance")
                     }
                 }
+            }
+
+            (ty::Alias(ty::IsRigid::No, alias), _) if infcx.next_trait_solver() => {
+                let new_var = infcx.next_ty_infer();
+                self.goals.push(Goal::new(
+                    self.cx(),
+                    self.param_env,
+                    ty::ProjectionPredicate { projection_term: alias.into(), term: new_var.into() },
+                ));
+                self.tys(new_var, b)?;
+            }
+            (_, ty::Alias(ty::IsRigid::No, alias)) if infcx.next_trait_solver() => {
+                let new_var = infcx.next_ty_infer();
+                self.goals.push(Goal::new(
+                    self.cx(),
+                    self.param_env,
+                    ty::ProjectionPredicate { projection_term: alias.into(), term: new_var.into() },
+                ));
+                self.tys(a, new_var)?;
             }
 
             (ty::Infer(ty::TyVar(a_vid)), _) => {
@@ -341,9 +361,5 @@ where
 
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>) {
         self.goals.extend(obligations);
-    }
-
-    fn ambient_variance(&self) -> ty::Variance {
-        self.ambient_variance
     }
 }

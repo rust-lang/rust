@@ -19,6 +19,7 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir as hir;
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FormatArgs};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
@@ -163,6 +164,7 @@ struct BaseError {
     could_be_expr: bool,
     suggestion: Option<(Span, &'static str, String)>,
     module: Option<DefId>,
+    notes: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -188,11 +190,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         assoc_name: Symbol,
     ) -> Option<DefId> {
         let module = self.r.get_module(trait_def_id)?;
-        self.r.resolutions(module).borrow().iter().find_map(|(key, resolution)| {
+        self.r.resolutions(module).iter().find_map(|(key, resolution)| {
             if key.ident.name != assoc_name {
                 return None;
             }
-            let resolution = resolution.borrow();
+            let resolution = resolution.borrow(self.r);
             let binding = resolution.best_decl()?;
             match binding.res() {
                 Res::Def(DefKind::AssocTy, def_id) => Some(def_id),
@@ -388,7 +390,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // Make the base error.
         let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
-        let item_str = path.last().unwrap().ident;
 
         if let Some(res) = res {
             BaseError {
@@ -404,12 +405,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 could_be_expr,
                 suggestion: None,
                 module: None,
+                notes: Vec::new(),
             }
         } else {
             let mut span_label = None;
             let item_ident = path.last().unwrap().ident;
             let item_span = item_ident.span;
-            let (mod_prefix, mod_str, module, suggestion) = if path.len() == 1 {
+            let (tick, mod_prefix, mod_str, module, suggestion) = if path.len() == 1 {
                 debug!(?self.diag_metadata.current_impl_items);
                 debug!(?self.diag_metadata.current_function);
                 let suggestion = if self.current_trait_ref.is_none()
@@ -420,7 +422,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     && let Some(item) = items.iter().find(|i| {
                         i.kind.ident().is_some_and(|ident| {
                             // Don't suggest if the item is in Fn signature arguments (#112590).
-                            ident.name == item_str.name && !sig.span.contains(item_span)
+                            ident.name == item_ident.name && !sig.span.contains(item_span)
                         })
                     }) {
                     let sp = item_span.shrink_to_lo();
@@ -490,15 +492,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 } else {
                     None
                 };
-                (String::new(), "this scope".to_string(), None, suggestion)
+                ("", String::new(), "this scope".to_string(), None, suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 if self.r.tcx.sess.edition() > Edition::Edition2015 {
                     // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
                     // which overrides all other expectations of item type
                     expected = "crate";
-                    (String::new(), "the list of imported crates".to_string(), None, None)
+                    ("", String::new(), "the list of imported crates".to_string(), None, None)
                 } else {
                     (
+                        "",
                         String::new(),
                         "the crate root".to_string(),
                         Some(CRATE_DEF_ID.to_def_id()),
@@ -506,7 +509,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     )
                 }
             } else if path.len() == 2 && path[0].ident.name == kw::Crate {
-                (String::new(), "the crate root".to_string(), Some(CRATE_DEF_ID.to_def_id()), None)
+                (
+                    "",
+                    String::new(),
+                    "the crate root".to_string(),
+                    Some(CRATE_DEF_ID.to_def_id()),
+                    None,
+                )
             } else {
                 let mod_path = &path[..path.len() - 1];
                 let mod_res = self.resolve_path(mod_path, Some(TypeNS), None, source);
@@ -519,41 +528,66 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                 let mod_prefix =
                     mod_prefix.map_or_else(String::new, |res| format!("{} ", res.descr()));
-                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), module_did, None)
+                ("`", mod_prefix, Segment::names_to_string(mod_path), module_did, None)
             };
 
-            let (fallback_label, suggestion) = if path_str == "async"
-                && expected.starts_with("struct")
-            {
-                ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
+            let suggestion =
+                if ["true", "false"].contains(&item_ident.to_string().to_lowercase().as_str()) {
+                    // check if we are in situation of typo like `True` instead of `true`.
+                    let item_typo = item_ident.to_string().to_lowercase();
+                    Some((item_span, "you may want to use a bool value instead", item_typo))
+                // FIXME(vincenzopalazzo): make the check smarter,
+                // and maybe expand with levenshtein distance checks
+                } else if item_ident.as_str() == "printf" {
+                    Some((
+                        item_span,
+                        "you may have meant to use the `print` macro",
+                        "print!".to_owned(),
+                    ))
+                } else {
+                    suggestion
+                };
+            let mut msg = format!(
+                "cannot find {expected} `{item_ident}` in {mod_prefix}{tick}{mod_str}{tick}"
+            );
+            let mut fallback_label = if path_str == "async" && expected.starts_with("struct") {
+                "`async` blocks are only allowed in Rust 2018 or later".to_string()
             } else {
-                // check if we are in situation of typo like `True` instead of `true`.
-                let override_suggestion =
-                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
-                        let item_typo = item_str.to_string().to_lowercase();
-                        Some((item_span, "you may want to use a bool value instead", item_typo))
-                    // FIXME(vincenzopalazzo): make the check smarter,
-                    // and maybe expand with levenshtein distance checks
-                    } else if item_str.as_str() == "printf" {
-                        Some((
-                            item_span,
-                            "you may have meant to use the `print` macro",
-                            "print!".to_owned(),
-                        ))
-                    } else {
-                        suggestion
-                    };
-                (format!("not found in {mod_str}"), override_suggestion)
+                format!("not found in {tick}{mod_str}{tick}")
             };
+            let mut notes = Vec::new();
+            if let Some(module_def_id) = module
+                && let Some(directive) = self.r.on_unknown_data(module_def_id)
+            {
+                let args = FormatArgs { unresolved: item_ident.to_string(), this: mod_str, .. };
+                let CustomDiagnostic {
+                    message,
+                    label,
+                    notes: custom_notes,
+                    parent_label: _unreachable,
+                } = directive.eval(None, &args);
+                if let Some(message) = message {
+                    notes.push(msg);
+                    msg = message;
+                }
+                if let Some(label) = label {
+                    fallback_label = label;
+                    if let Some((_, span_label)) = span_label.take() {
+                        notes.push(span_label.to_string());
+                    }
+                }
+                notes.extend(custom_notes);
+            }
 
             BaseError {
-                msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
+                msg,
                 fallback_label,
                 span: item_span,
                 span_label,
                 could_be_expr,
                 suggestion,
                 module,
+                notes,
             }
         }
     }
@@ -614,7 +648,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             && self
                                 .r
                                 .resolutions(module)
-                                .borrow()
                                 .iter()
                                 .any(|(key, _r)| key.ident.name == following_seg.ident.name)
                     } else {
@@ -678,6 +711,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         if let Some((span, label)) = base_error.span_label {
             err.span_label(span, label);
+        }
+        for note in &base_error.notes {
+            err.note(note.clone());
         }
 
         if let Some(ref sugg) = base_error.suggestion {
@@ -1127,9 +1163,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
         let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
-            for resolution in r.resolutions(m).borrow().values() {
+            for resolution in r.resolutions(m).values() {
                 let Some(did) =
-                    resolution.borrow().best_decl().and_then(|binding| binding.res().opt_def_id())
+                    resolution.borrow(r).best_decl().and_then(|binding| binding.res().opt_def_id())
                 else {
                     continue;
                 };
@@ -1867,10 +1903,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let targets: Vec<_> = self
                     .r
                     .resolutions(module)
-                    .borrow()
                     .iter()
                     .filter_map(|(key, resolution)| {
-                        let resolution = resolution.borrow();
+                        let resolution = resolution.borrow(self.r);
                         resolution.best_decl().map(|binding| binding.res()).and_then(|res| {
                             if filter_fn(res) {
                                 Some((key.ident.name, resolution.orig_ident_span, res))
@@ -2030,7 +2065,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn update_err_for_private_tuple_struct_fields(
-        &mut self,
+        &self,
         err: &mut Diag<'_>,
         source: &PathSource<'_, '_, '_>,
         def_id: DefId,
@@ -2140,7 +2175,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         };
 
-        let bad_struct_syntax_suggestion = |this: &mut Self, err: &mut Diag<'_>, def_id: DefId| {
+        let bad_struct_syntax_suggestion = |this: &Self, err: &mut Diag<'_>, def_id: DefId| {
             let (followed_by_brace, closing_brace) = this.followed_by_brace(span);
 
             match source {
@@ -2592,7 +2627,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_alternative_construction_methods(
-        &mut self,
+        &self,
         def_id: DefId,
         err: &mut Diag<'_>,
         path_span: Span,
@@ -2730,9 +2765,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let targets = self
             .r
             .resolutions(*module)
-            .borrow()
             .iter()
-            .filter_map(|(key, res)| res.borrow().best_decl().map(|binding| (key, binding.res())))
+            .filter_map(|(key, res)| {
+                res.borrow(self.r).best_decl().map(|binding| (key, binding.res()))
+            })
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst { .. }, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
@@ -2747,7 +2783,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn lookup_assoc_candidate<FilterFn>(
-        &mut self,
+        &self,
         ident: Ident,
         ns: Namespace,
         filter_fn: FilterFn,
@@ -2933,7 +2969,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let module = self.r.expect_module(def_id);
                     self.r
                         .resolutions(module)
-                        .borrow()
                         .iter()
                         .any(|(key, _)| key.ident.name == following_seg.ident.name)
                 }
@@ -4338,7 +4373,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             "instead, you are more likely to want"
                         };
                         let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
-                        let mut sugg_is_str_to_string = false;
+                        let mut sugg_slice_to_vec_or_string = false;
                         let mut sugg = vec![(lt.span, String::new())];
                         if let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
@@ -4383,7 +4418,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                                         lt.span.with_hi(ty.span.hi()),
                                                         "String".to_string(),
                                                     )];
-                                                    sugg_is_str_to_string = true;
+                                                    sugg_slice_to_vec_or_string = true;
                                                 }
                                                 Some(Res::PrimTy(..)) => {}
                                                 Some(Res::Def(
@@ -4410,7 +4445,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                                         lt.span.with_hi(ty.span.hi()),
                                                         "String".to_string(),
                                                     )];
-                                                    sugg_is_str_to_string = true;
+                                                    sugg_slice_to_vec_or_string = true;
                                                 }
                                                 Res::PrimTy(..) => {}
                                                 Res::Def(
@@ -4441,13 +4476,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                         (lt.span.with_hi(inner_ty.span.lo()), "Vec<".to_string()),
                                         (ty.span.with_lo(inner_ty.span.hi()), ">".to_string()),
                                     ];
+                                    sugg_slice_to_vec_or_string = true;
                                 }
                             }
                         }
                         if owned_sugg {
+                            // Suggest to remove the ref prefix (usually an &) from the return type.
                             if let Some(span) =
                                 self.find_ref_prefix_span_for_owned_suggestion(lt.span)
-                                && !sugg_is_str_to_string
+                                && !sugg_slice_to_vec_or_string
                             {
                                 sugg = vec![(span, String::new())];
                             }

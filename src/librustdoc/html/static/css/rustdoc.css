@@ -1119,6 +1119,7 @@ rustdoc-toolbar {
 	flex-direction: row;
 	flex-wrap: nowrap;
 	min-height: 60px;
+	height: fit-content;
 }
 
 .docblock code, .item-table dd code,
@@ -1645,6 +1646,36 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-weight: normal;
 	font-size: initial;
 }
+
+.notable-trait-badge-container {
+	padding: 0.5rem 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.notable-trait-badge-container > a {
+	display: flex;
+	align-items: center;
+	width: fit-content;
+	height: 1.5rem;
+	padding: 0 0.5rem;
+	border-radius: 0.75rem;
+	font-size: 1rem;
+	font-weight: normal;
+	color: var(--main-color);
+}
+
+.notable-trait-badge-container > a:hover {
+	text-decoration: none;
+}
+
+.notable-trait-badge-container > .badge-0 { background: var(--notable-badge-pink); }
+.notable-trait-badge-container > .badge-1 { background: var(--notable-badge-red); }
+.notable-trait-badge-container > .badge-2 { background: var(--notable-badge-orange); }
+.notable-trait-badge-container > .badge-3 { background: var(--notable-badge-green); }
+.notable-trait-badge-container > .badge-4 { background: var(--notable-badge-blue); }
+.notable-trait-badge-container > .badge-5 { background: var(--notable-badge-violet); }
 
 .rightside {
 	padding-left: 12px;
@@ -3279,6 +3310,12 @@ by default.
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
+	--notable-badge-pink: oklch(0.88 0.21 0);
+	--notable-badge-red: oklch(0.88 0.21 40);
+	--notable-badge-orange: oklch(0.88 0.21 70);
+	--notable-badge-green: oklch(0.88 0.21 150);
+	--notable-badge-blue: oklch(0.88 0.21 240);
+	--notable-badge-violet: oklch(0.88 0.21 300);
 }
 /* End theme: light */
 
@@ -3389,6 +3426,12 @@ by default.
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 	--sidebar-resizer-hover: hsl(207, 30%, 54%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
+	--notable-badge-pink: oklch(0.55 0.21 0);
+	--notable-badge-red: oklch(0.55 0.21 40);
+	--notable-badge-orange: oklch(0.55 0.21 70);
+	--notable-badge-green: oklch(0.55 0.21 150);
+	--notable-badge-blue: oklch(0.55 0.21 240);
+	--notable-badge-violet: oklch(0.55 0.21 300);
 }
 /* End theme: dark */
 
@@ -3503,6 +3546,12 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
 	--sidebar-resizer-hover: hsl(34, 50%, 33%);
 	--sidebar-resizer-active: hsl(34, 100%, 66%);
+	--notable-badge-pink: oklch(0.49 0.21 0);
+	--notable-badge-red: oklch(0.49 0.21 40);
+	--notable-badge-orange: oklch(0.49 0.21 70);
+	--notable-badge-green: oklch(0.49 0.21 150);
+	--notable-badge-blue: oklch(0.49 0.21 240);
+	--notable-badge-violet: oklch(0.49 0.21 300);
 }
 
 :root[data-theme="ayu"] h1,

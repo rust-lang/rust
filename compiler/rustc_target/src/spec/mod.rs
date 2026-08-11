@@ -1569,6 +1569,7 @@ supported_targets! {
 
     ("avr-none", avr_none),
 
+    ("aarch64-unknown-l4re-uclibc", aarch64_unknown_l4re_uclibc),
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
@@ -1667,7 +1668,7 @@ supported_targets! {
     ("thumbv7a-none-eabihf", thumbv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
-    ("armv7a-vex-v5", armv7a_vex_v5),
+    ("thumbv7a-vex-v5", thumbv7a_vex_v5),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -3835,7 +3836,7 @@ impl Target {
 
     pub fn object_architecture(
         &self,
-        unstable_target_features: &FxIndexSet<Symbol>,
+        internal_target_features: &FxIndexSet<Symbol>,
     ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
         use object::Architecture;
         Some(match self.arch {
@@ -3878,7 +3879,7 @@ impl Target {
             Arch::RiscV32 => (Architecture::Riscv32, None),
             Arch::RiscV64 => (Architecture::Riscv64, None),
             Arch::Sparc => {
-                if unstable_target_features.contains(&sym::v8plus) {
+                if internal_target_features.contains(&sym::v8plus) {
                     // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
                     (Architecture::Sparc32Plus, None)
                 } else {

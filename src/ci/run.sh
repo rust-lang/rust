@@ -140,6 +140,11 @@ else
   # No need to compress debuginfo for tests, and we do not want to depend on zlib
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.compress-debuginfo=off"
 
+  # Enable GDB/LLDB automatic discovery on CI
+  # Ideally, we should later change this to provide the paths explicitly
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.gdb=discover"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.lldb=discover"
+
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
   if [ "$NO_DEBUG_ASSERTIONS" = "" ]; then

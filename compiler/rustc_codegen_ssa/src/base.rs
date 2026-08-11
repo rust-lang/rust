@@ -22,12 +22,12 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::{Dependencies, Linkage};
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
-use rustc_middle::mir::BinOp;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, ErrorHandled, Scalar};
+use rustc_middle::mir::{BinOp, ConstValue};
 use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, UintTy, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
@@ -143,7 +143,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 ) else {
                     return false;
                 };
-                if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                     return false;
                 }
                 infcx.leak_check(universe, None).is_ok()
@@ -287,7 +287,7 @@ pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
                 OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
-                OperandValue::Ref(..) | OperandValue::ZeroSized | OperandValue::Uninit => bug!(),
+                OperandValue::Ref(..) | OperandValue::ZeroSized => bug!(),
             };
             OperandValue::Pair(base, info).store(bx, dst);
         }
@@ -419,20 +419,26 @@ where
                         Ok(const_value) => {
                             let ty =
                                 cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                            let string = common::asm_const_to_str(
-                                cx.tcx(),
-                                *op_sp,
-                                const_value,
-                                cx.layout_of(ty),
-                            );
-                            GlobalAsmOperandRef::Const { string }
+                            let ConstValue::Scalar(scalar) = const_value else {
+                                span_bug!(
+                                    *op_sp,
+                                    "expected Scalar for promoted asm const, but got {:#?}",
+                                    const_value
+                                )
+                            };
+                            GlobalAsmOperandRef::Const {
+                                value: common::asm_const_ptr_clean(cx.tcx(), scalar),
+                                ty,
+                            }
                         }
                         Err(ErrorHandled::Reported { .. }) => {
                             // An error has already been reported and
                             // compilation is guaranteed to fail if execution
-                            // hits this path. So an empty string instead of
-                            // a stringified constant value will suffice.
-                            GlobalAsmOperandRef::Const { string: String::new() }
+                            // hits this path. So anything will suffice.
+                            GlobalAsmOperandRef::Const {
+                                value: Scalar::from_u32(0),
+                                ty: Ty::new_uint(cx.tcx(), UintTy::U32),
+                            }
                         }
                         Err(ErrorHandled::TooGeneric(_)) => {
                             span_bug!(*op_sp, "asm const cannot be resolved; too generic")
@@ -452,10 +458,26 @@ where
                         _ => span_bug!(*op_sp, "asm sym is not a function"),
                     };
 
-                    GlobalAsmOperandRef::SymFn { instance }
+                    GlobalAsmOperandRef::Const {
+                        value: Scalar::from_pointer(
+                            cx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                            cx,
+                        ),
+                        ty: Ty::new_fn_ptr(cx.tcx(), ty.fn_sig(cx.tcx())),
+                    }
                 }
                 rustc_hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                    GlobalAsmOperandRef::SymStatic { def_id }
+                    if cx.tcx().is_thread_local_static(def_id) {
+                        GlobalAsmOperandRef::SymThreadLocalStatic { def_id }
+                    } else {
+                        GlobalAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                cx.tcx().reserve_and_set_static_alloc(def_id).into(),
+                                cx,
+                            ),
+                            ty: cx.tcx().static_ptr_ty(def_id, cx.typing_env()),
+                        }
+                    }
                 }
                 rustc_hir::InlineAsmOperand::In { .. }
                 | rustc_hir::InlineAsmOperand::Out { .. }
@@ -785,14 +807,14 @@ pub fn codegen_crate<
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let mut pre_compiled_cgus = if let Some(threads) = tcx.sess.threads() {
+    let mut pre_compiled_cgus = if let Some(threads) = tcx.sess.opts.jobs.frontend {
         tcx.sess.time("compile_first_CGU_batch", || {
             // Try to find one CGU to compile per thread.
             let cgus: Vec<_> = cgu_reuse
                 .iter()
                 .enumerate()
                 .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                .take(threads)
+                .take(threads.get())
                 .collect();
 
             // Compile the found CGUs in parallel.

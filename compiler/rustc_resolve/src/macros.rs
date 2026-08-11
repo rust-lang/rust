@@ -7,7 +7,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
+use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
     SyntaxExtensionKind,
@@ -25,11 +25,9 @@ use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-    UNUSED_MACRO_RULES, UNUSED_MACROS,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_span::def_id::ModId;
-use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -122,37 +120,52 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+const PREDEFINED_TOOLS: &[Symbol] =
+    &[sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
+
+pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
+
+    let mut registered_tools =
+        if let Some(Attribute::Parsed(AttributeKind::RegisterTool { attr_tools, .. })) =
+            AttributeParser::parse_limited(tcx.sess, pre_configured_attrs, &|attr| {
+                attr.path_matches(&[sym::register_tool])
+                    || attr.path_matches(&[sym::register_attribute_tool])
+            })
+        {
+            attr_tools.into_iter().collect::<RegisteredTools>()
+        } else {
+            Default::default()
+        };
+
+    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
+    registered_tools
 }
 
-pub fn registered_tools_ast(
-    dcx: DiagCtxtHandle<'_>,
-    pre_configured_attrs: &[ast::Attribute],
+pub(crate) fn registered_lint_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+    let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
+    registered_lint_tools_ast(tcx.sess, pre_configured_attrs)
+}
+
+pub fn registered_lint_tools_ast(
     sess: &Session,
+    pre_configured_attrs: &[ast::Attribute],
 ) -> RegisteredTools {
-    let mut registered_tools = RegisteredTools::default();
+    let mut registered_tools =
+        if let Some(Attribute::Parsed(AttributeKind::RegisterTool { lint_tools, .. })) =
+            AttributeParser::parse_limited(sess, pre_configured_attrs, &|attr| {
+                attr.path_matches(&[sym::register_tool])
+                    || attr.path_matches(&[sym::register_lint_tool])
+            })
+        {
+            lint_tools.into_iter().collect::<RegisteredTools>()
+        } else {
+            Default::default()
+        };
 
-    if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
-        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
-    {
-        for tool in tools {
-            if let Some(old_tool) = registered_tools.replace(tool) {
-                dcx.emit_err(diagnostics::ToolWasAlreadyRegistered {
-                    span: tool.span,
-                    tool,
-                    old_ident_span: old_tool.span,
-                });
-            }
-        }
-    }
-
-    // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
-    // tools, but it's not an error to register them explicitly.
-    let predefined_tools =
-        [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
-    registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
+    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
 
@@ -528,8 +541,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
     }
 
-    fn registered_tools(&self) -> &RegisteredTools {
-        self.registered_tools
+    fn registered_attr_tools(&self) -> &RegisteredTools {
+        self.registered_attr_tools
+    }
+
+    fn registered_lint_tools(&self) -> &RegisteredTools {
+        self.registered_lint_tools
     }
 
     fn register_glob_delegation(&mut self, invoc_id: LocalExpnId) {
@@ -543,7 +560,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
-        if target_trait.has_unexpanded_invocations() {
+        if target_trait.has_unexpanded_invocations(self) {
             return Err(Indeterminate);
         }
         // FIXME: Instead of waiting try generating all trait methods, and pruning
@@ -594,7 +611,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(&'ra Arc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
+        let (ext, res) = match self.cm_mut().resolve_macro_or_delegation_path(
             path,
             kind,
             parent_scope,
@@ -721,60 +738,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 "custom inner attributes are unstable"
             };
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
-        }
-
-        const DIAGNOSTIC_ATTRIBUTES: &[(Symbol, Option<Symbol>)] = &[
-            (sym::on_unimplemented, None),
-            (sym::do_not_recommend, None),
-            (sym::on_move, Some(sym::diagnostic_on_move)),
-            (sym::on_const, Some(sym::diagnostic_on_const)),
-            (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
-            (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
-            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
-            (sym::opaque, Some(sym::diagnostic_opaque)),
-        ];
-
-        if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
-            && let [namespace, attribute, ..] = &*path.segments
-            && namespace.ident.name == sym::diagnostic
-            && !DIAGNOSTIC_ATTRIBUTES.iter().any(|(attr, feature)| {
-                attribute.ident.name == *attr && feature.is_none_or(|f| self.features.enabled(f))
-            })
-        {
-            let name = attribute.ident.name;
-            let span = attribute.span();
-
-            let help = 'help: {
-                if self.tcx.sess.is_nightly_build() {
-                    for (attr, feature) in DIAGNOSTIC_ATTRIBUTES {
-                        if let Some(feature) = *feature
-                            && *attr == name
-                        {
-                            break 'help Some(
-                                diagnostics::UnknownDiagnosticAttributeHelp::UseFeature { feature },
-                            );
-                        }
-                    }
-                }
-
-                let candidates = DIAGNOSTIC_ATTRIBUTES
-                    .iter()
-                    .filter_map(|(attr, feature)| {
-                        feature.is_none_or(|f| self.features.enabled(f)).then_some(*attr)
-                    })
-                    .collect::<Vec<_>>();
-
-                find_best_match_for_name(&candidates, name, None).map(|typo_name| {
-                    diagnostics::UnknownDiagnosticAttributeHelp::Typo { span, typo_name }
-                })
-            };
-
-            self.tcx.sess.psess.buffer_lint(
-                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-                span,
-                node_id,
-                diagnostics::UnknownDiagnosticAttribute { help },
-            );
         }
 
         Ok((ext, res))
@@ -947,7 +910,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             for seg in &mut path {
                 seg.id = None;
             }
-            match self.cm().resolve_path(
+            match self.cm_mut().resolve_path(
                 &path,
                 Some(ns),
                 &parent_scope,
@@ -1044,7 +1007,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
-            match self.cm().resolve_ident_in_scope_set(
+            match self.cm_mut().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
@@ -1098,7 +1061,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
-            let _ = self.cm().resolve_ident_in_scope_set(
+            let _ = self.cm_mut().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
@@ -1276,7 +1239,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn path_accessible(
-        &mut self,
+        &self,
         expn_id: LocalExpnId,
         path: &ast::Path,
         namespaces: &[Namespace],

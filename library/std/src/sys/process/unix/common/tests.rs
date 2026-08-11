@@ -19,6 +19,8 @@ macro_rules! t {
         // newly spawned process may just be raced in the macOS, so to prevent this
         // test from being flaky we ignore it on macOS.
         target_os = "macos",
+        // cat not available
+        target_os = "l4re",
         // When run under our current QEMU emulation test suite this test fails,
         // although the reason isn't very clear as to why. For now this test is
         // ignored there.
@@ -84,6 +86,8 @@ fn test_process_mask() {
     any(
         // See test_process_mask
         target_os = "macos",
+        // cat not available
+        target_os = "l4re",
         target_arch = "arm",
         target_arch = "aarch64",
         target_arch = "riscv64",
@@ -116,6 +120,8 @@ fn test_process_group_posix_spawn() {
     any(
         // See test_process_mask
         target_os = "macos",
+        // cat not available
+        target_os = "l4re",
         target_arch = "arm",
         target_arch = "aarch64",
         target_arch = "riscv64",
@@ -154,6 +160,8 @@ fn test_process_group_no_posix_spawn() {
     any(
         // See test_process_mask
         target_os = "macos",
+        // cat not available
+        target_os = "l4re",
         target_arch = "arm",
         target_arch = "aarch64",
         target_arch = "riscv64",
@@ -192,6 +200,8 @@ fn test_setsid_posix_spawn() {
     any(
         // See test_process_mask
         target_os = "macos",
+        // cat not available
+        target_os = "l4re",
         target_arch = "arm",
         target_arch = "aarch64",
         target_arch = "riscv64",

@@ -1,0 +1,65 @@
+error[E0392]: type parameter `P` is never used
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:10:11
+   |
+LL | struct S2<P>();
+   |           ^ unused type parameter
+   |
+   = help: consider removing `P`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `P` to be a const parameter, use `const P: /* Type */` instead
+
+error[E0277]: the trait bound `<A as Foo<B>>::Out: Qux<S>` is not satisfied
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:29:16
+   |
+LL |       type Out = <<A as Foo<B>>::Out as Bar<
+   |  ________________^
+...  |
+LL | |     >>::Out;
+   | |___________^ the trait `Qux<S>` is not implemented for `<A as Foo<B>>::Out`
+   |
+help: consider further restricting the associated type
+   |
+LL | impl<A: Foo<B>, B> Fuzz<S2<B>> for S2<A> where <A as Foo<B>>::Out: Qux<S> {
+   |                                          ++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `<A as Foo<B>>::Out: Bar<S2<A>, _>` is not satisfied
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:29:16
+   |
+LL |       type Out = <<A as Foo<B>>::Out as Bar<
+   |  ________________^
+...  |
+LL | |     >>::Out;
+   | |___________^ the trait `Bar<S2<A>, _>` is not implemented for `<A as Foo<B>>::Out`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:16:1
+   |
+LL | trait Bar<A, B> {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `<A as Foo<B>>::Out: Qux<S>` is not satisfied
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:34:10
+   |
+LL |         <<<A as Foo<B>>::Out as Qux<S>>::Out as Fuzz<S2<B>>>::Out,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Qux<S>` is not implemented for `<A as Foo<B>>::Out`
+   |
+help: consider further restricting the associated type
+   |
+LL | impl<A: Foo<B>, B> Fuzz<S2<B>> for S2<A> where <A as Foo<B>>::Out: Qux<S> {
+   |                                          ++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `<A as Foo<B>>::Out: Bar<S2<A>, _>` is not satisfied
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:29:5
+   |
+LL |     type Out = <<A as Foo<B>>::Out as Bar<
+   |     ^^^^^^^^ the trait `Bar<S2<A>, _>` is not implemented for `<A as Foo<B>>::Out`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/nested-assoc-type-projection-ice-109864.rs:16:1
+   |
+LL | trait Bar<A, B> {
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0392.
+For more information about an error, try `rustc --explain E0277`.

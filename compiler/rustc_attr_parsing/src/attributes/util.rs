@@ -3,7 +3,7 @@ use std::num::IntErrorKind;
 use rustc_ast::{LitKind, ast};
 use rustc_data_structures::Limit;
 use rustc_feature::is_builtin_attr_name;
-use rustc_hir::RustcVersion;
+use rustc_hir::attrs::RustcVersion;
 use rustc_span::Symbol;
 
 use crate::context::AcceptContext;
@@ -12,7 +12,7 @@ use crate::session_diagnostics::LimitInvalid;
 
 /// Parse a rustc version number written inside string literal in an attribute,
 /// like appears in `since = "1.0.0"`. Suffixes like "-dev" and "-nightly" are
-/// not accepted in this position, unlike when parsing CFG_RELEASE.
+/// not accepted in this position, unlike when parsing `CFG_RELEASE`.
 pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
     let mut components = s.as_str().split('-');
     let d = components.next()?;
@@ -70,7 +70,7 @@ impl AcceptContext<'_, '_> {
                 IntErrorKind::Zero => {
                     panic!("zero is a valid `limit` so should have returned Ok() when parsing")
                 }
-                kind => panic!("unimplemented IntErrorKind variant: {:?}", kind),
+                kind => panic!("unimplemented IntErrorKind variant: {kind:?}"),
             },
         };
 

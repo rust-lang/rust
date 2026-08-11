@@ -4,11 +4,13 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+use crate::PassPolicy;
+
 pub(super) struct RemoveZsts;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(sess.mir_opt_level() > 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -26,10 +28,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
         for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
             replacer.visit_basic_block_data(bb, data);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 

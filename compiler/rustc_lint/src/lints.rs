@@ -226,20 +226,6 @@ pub(crate) enum BuiltinUnusedDocCommentSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("functions generic over types or consts must be mangled")]
-pub(crate) struct BuiltinNoMangleGeneric {
-    // Use of `#[no_mangle]` suggests FFI intent; correct
-    // fix may be to monomorphize source by hand
-    #[suggestion(
-        "remove this attribute",
-        style = "short",
-        code = "",
-        applicability = "maybe-incorrect"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("const items should never be `#[no_mangle]`")]
 pub(crate) struct BuiltinConstNoMangle {
     #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]
@@ -384,12 +370,10 @@ impl<'a> Diagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters"
-)]
+#[diag("{$clause_kind_name} bound {$clause} does not depend on any type or lifetime parameters")]
 pub(crate) struct BuiltinTrivialBounds<'a> {
-    pub predicate_kind_name: &'a str,
-    pub predicate: Clause<'a>,
+    pub clause_kind_name: &'a str,
+    pub clause: Clause<'a>,
 }
 
 #[derive(Diagnostic)]
@@ -840,7 +824,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}`
+        "expected `{$expected_fn_sig}` (for the current target)
     found    `{$found_fn_sig}`"
     )]
     #[help(
@@ -851,7 +835,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "suspicious definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}`
+        "expected `{$expected_fn_sig}` (for the current target)
     found    `{$found_fn_sig}`"
     )]
     #[help(
@@ -993,10 +977,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     BorrowAsMut {
         #[label("casting happened here")]
         orig_cast: Option<Span>,
-        #[note(
-            "even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`"
-        )]
-        ty_has_interior_mutability: bool,
     },
     #[diag("assigning to `&T` is undefined behavior, consider using an `UnsafeCell`")]
     #[note(
@@ -1005,10 +985,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     AssignToRef {
         #[label("casting happened here")]
         orig_cast: Option<Span>,
-        #[note(
-            "even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`"
-        )]
-        ty_has_interior_mutability: bool,
     },
     #[diag(
         "casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused"
@@ -1888,7 +1864,7 @@ pub(crate) struct RedundantSemicolonsSuggestion {
 
 // traits.rs
 pub(crate) struct DropTraitConstraintsDiag<'a> {
-    pub predicate: Clause<'a>,
+    pub clause: Clause<'a>,
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
 }
@@ -1896,8 +1872,8 @@ pub(crate) struct DropTraitConstraintsDiag<'a> {
 // Needed for def_path_str
 impl<'a> Diagnostic<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        Diag::new(dcx, level, msg!("bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"))
-            .with_arg("predicate", self.predicate)
+        Diag::new(dcx, level, msg!("bounds on `{$clause}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"))
+            .with_arg("clause", self.clause)
             .with_arg("needs_drop", self.tcx.def_path_str(self.def_id))
     }
 }
@@ -2040,18 +2016,33 @@ pub(crate) enum OverflowingBinHexSub<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    "to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`",
-    code = "{lit_no_suffix}{uint_ty} as {int_ty}",
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct OverflowingBinHexSignBitSub<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub lit_no_suffix: &'a str,
-    pub negative_val: String,
-    pub uint_ty: &'a str,
-    pub int_ty: &'a str,
+pub(crate) enum OverflowingBinHexSignBitSub<'a> {
+    #[suggestion(
+        "to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`",
+        code = "{lit_no_suffix}{uint_ty}.cast_signed()",
+        applicability = "maybe-incorrect"
+    )]
+    CastSigned {
+        #[primary_span]
+        span: Span,
+        lit_no_suffix: &'a str,
+        negative_val: String,
+        uint_ty: &'a str,
+        int_ty: &'a str,
+    },
+    #[suggestion(
+        "to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`",
+        code = "{lit_no_suffix}{uint_ty} as {int_ty}",
+        applicability = "maybe-incorrect"
+    )]
+    AsCast {
+        #[primary_span]
+        span: Span,
+        lit_no_suffix: &'a str,
+        negative_val: String,
+        uint_ty: &'a str,
+        int_ty: &'a str,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -3025,4 +3016,30 @@ pub(crate) enum Ptr2IntSuggestion<'tcx> {
         #[primary_span]
         cast_span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers"
+)]
+pub(crate) struct RawBorrowViaReference<'a> {
+    #[subdiagnostic]
+    pub suggestion: RawBorrowViaReferenceSuggestion<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
+    #[multipart_suggestion(
+        "consider using `&raw {$mutbl}` for a safer and more explicit raw pointer",
+        applicability = "machine-applicable"
+    )]
+    Spanful {
+        #[suggestion_part(code = "&raw {mutbl} ")]
+        left: Span,
+        #[suggestion_part(code = "")]
+        right: Span,
+        mutbl: &'a str,
+    },
+    #[help("consider using `&raw {$mutbl}` for a safer and more explicit raw pointer")]
+    Spanless { mutbl: &'a str },
 }

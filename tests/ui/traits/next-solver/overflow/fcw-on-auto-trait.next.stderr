@@ -1,0 +1,28 @@
+warning: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync`
+  --> $DIR/fcw-on-auto-trait.rs:22:5
+   |
+LL |     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`fcw_on_auto_trait`)
+   = help: or consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved
+   = note: this lint is attached to the whole crate and can't be disabled on a per-function basis
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #159228 <https://github.com/rust-lang/rust/issues/159228>
+   = note: `#[warn(recursion_depth_exceeding_limit)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync`
+  --> $DIR/fcw-on-auto-trait.rs:22:5
+   |
+LL |     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`fcw_on_auto_trait`)
+   = help: or consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved
+   = note: this lint is attached to the whole crate and can't be disabled on a per-function basis
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #159228 <https://github.com/rust-lang/rust/issues/159228>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 2 warnings emitted
+

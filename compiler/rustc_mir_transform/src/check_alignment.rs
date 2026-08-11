@@ -7,13 +7,15 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::Session;
 
+use crate::PassPolicy;
 use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_pointers};
 
 pub(super) struct CheckAlignment;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.ub_checks()
+    fn policy(&self, sess: &Session) -> PassPolicy {
+        // When UB checks are enabled this is part of their semantics, not an optimization.
+        PassPolicy::optional_non_optimization(sess.ub_checks())
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -30,10 +32,6 @@ impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
             insert_alignment_check,
             BorrowedFieldProjectionMode::FollowProjections,
         );
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 

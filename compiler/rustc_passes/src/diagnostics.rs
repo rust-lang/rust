@@ -216,15 +216,6 @@ pub(crate) struct ReprConflicting {
 pub(crate) struct ReprConflictingLint;
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to a macro")]
-pub(crate) struct MacroOnlyAttribute {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a macro")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("couldn't read {$file}: {$error}")]
 pub(crate) struct DebugVisualizerUnreadable<'a> {
     #[primary_span]
@@ -334,26 +325,6 @@ pub(crate) struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$name ->
-    [panic_impl] `#[panic_handler]`
-    *[other] `{$name}` lang item
-} function is not allowed to have `#[track_caller]`"
-)]
-pub(crate) struct LangItemWithTrackCaller {
-    #[primary_span]
-    pub attr_span: Span,
-    pub name: Symbol,
-    #[label(
-        "{$name ->
-            [panic_impl] `#[panic_handler]`
-            *[other] `{$name}` lang item
-        } function is not allowed to have `#[track_caller]`"
-    )]
-    pub sig_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("duplicate diagnostic item in crate `{$crate_name}`: `{$name}`")]
 pub(crate) struct DuplicateDiagnosticItemInCrate {
     #[primary_span]
@@ -405,7 +376,7 @@ pub(crate) struct AbiNe {
 
 #[derive(Diagnostic)]
 #[diag(
-    "`#[rustc_abi]` can only be applied to function items, type aliases, and associated functions"
+    "the `rustc_abi` attribute can only be applied to function items, type aliases, and associated functions"
 )]
 pub(crate) struct AbiInvalidAttribute {
     #[primary_span]
@@ -515,10 +486,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
         if self.add_teach_note {
             diag.note(msg!("if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/"));
         }
+
         diag
     }
 }
-
 pub(crate) struct DuplicateLangItem {
     pub local_span: Option<Span>,
     pub lang_item_name: Symbol,
@@ -810,13 +781,13 @@ pub(crate) struct MissingConstErr {
 
 #[derive(Diagnostic)]
 #[diag(
-    "attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`"
+    "the `rustc_const_stable` attribute can only be applied to functions marked with the `stable` attribute"
 )]
 pub(crate) struct ConstStableNotStable {
     #[primary_span]
     pub fn_sig_span: Span,
     #[label("attribute specified here")]
-    pub const_span: Span,
+    pub path_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1057,13 +1028,6 @@ pub(crate) enum UnexportableItem<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`eii_macro_for` is only valid on functions and statics")]
-pub(crate) struct EiiImplTarget {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$name}]` is unsafe to implement")]
 pub(crate) struct EiiImplRequiresUnsafe {
     #[primary_span]
@@ -1080,6 +1044,16 @@ pub(crate) struct EiiImplRequiresUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$name}` is not unsafe to implement")]
+pub(crate) struct EiiImplCannotBeUnsafe {
+    #[primary_span]
+    pub impl_span: Span,
+    #[label("`unsafe` is not allowed here")]
+    pub unsafe_span: Span,
+    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1138,14 +1112,6 @@ pub(crate) struct FunctionNotFoundInTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag("functions names are duplicated")]
-#[note("all `#[rustc_must_implement_one_of]` arguments must be unique")]
-pub(crate) struct FunctionNamesDuplicated {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
 pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     pub argument_name: Symbol,
@@ -1189,4 +1155,24 @@ pub(crate) struct OnTypeErrorMalformedFormatLiterals {
 )]
 pub(crate) struct OnTypeErrorNotExactlyOneGeneric {
     pub count: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag("extern mutable statics are incompatible with the `linkage` attribute")]
+#[note(
+    "the `linkage` attribute on extern statics generates a symbol that contains the address of \
+    another static. Making the extern static mutable would allow changing the address, rather \
+    than the static the address is pointing to"
+)]
+pub(crate) struct StaticMutLinkage {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const fn` are incompatible with the `linkage` attribute")]
+#[note("`const fn` may be called at compile time, which happens before linking")]
+pub(crate) struct ConstFnLinkage {
+    #[primary_span]
+    pub span: Span,
 }

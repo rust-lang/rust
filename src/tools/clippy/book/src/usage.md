@@ -36,16 +36,40 @@ You can configure lint levels on the command line by adding
 cargo clippy -- -Aclippy::style -Wclippy::box_default -Dclippy::perf
 ```
 
+#### Elevating warning to errors
+
 For [CI] all warnings can be elevated to errors which will in turn fail
 the build and cause Clippy to exit with a code other than `0`.
 
+Since Cargo 1.97, the recommended way to do this is by using the [`build.warnings`] config option.
+
+It can be enabled on the command line using the environment variable:
+
+```bash
+CARGO_BUILD_WARNINGS=deny cargo clippy
 ```
+
+.. or permanently, in `.cargo/config.toml`:
+
+```toml
+# .cargo/config.toml
+[build]
+warnings = "deny"
+```
+
+> _Note:_ Using `CARGO_BUILD_WARNINGS=deny` (or `-D warnings`) will cause your build to fail if **any** warnings
+> are found in your code. That includes warnings found by rustc (e.g.
+> `dead_code`, etc.)
+
+If you use an older version of Cargo, you can use the following instead:
+
+```bash
 cargo clippy -- -Dwarnings
 ```
 
-> _Note:_ Adding `-D warnings` will cause your build to fail if **any** warnings
-> are found in your code. That includes warnings found by rustc (e.g.
-> `dead_code`, etc.).
+Note, however, that this will invalidate build caches and is therefore not recommended.
+
+[`build.warnings`]: https://doc.rust-lang.org/cargo/reference/config.html#buildwarnings
 
 For more information on configuring lint levels, see the [rustc documentation].
 

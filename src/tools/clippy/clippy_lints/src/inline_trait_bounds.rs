@@ -5,7 +5,7 @@ use rustc_ast::ast::{Fn, FnRetTy, GenericParam, GenericParamKind};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{HasAttrs as _, NodeId};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 

@@ -347,7 +347,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         contract: None,
         body: Some(main_body),
         define_opaque: None,
-        eii_impls: ThinVec::new(),
+        eii_impl: None,
     }));
 
     let main = Box::new(ast::Item {
@@ -391,7 +391,7 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
 }
 
 fn get_test_runner(sess: &Session, krate: &ast::Crate) -> Option<ast::Path> {
-    match AttributeParser::parse_limited(sess, &krate.attrs, &[sym::test_runner]) {
+    match AttributeParser::parse_limited_sym(sess, &krate.attrs, &[sym::test_runner]) {
         Some(rustc_hir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
         _ => None,
     }

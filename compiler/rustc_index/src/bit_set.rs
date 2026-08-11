@@ -275,6 +275,21 @@ impl<T: Idx> DenseBitSet<T> {
         BitIter::new(&self.words)
     }
 
+    /// Finds the first set bit at or after `elem`, if there is one.
+    pub fn first_set_at_or_after(&self, elem: T) -> Option<T> {
+        assert!(elem.index() < self.domain_size);
+        let (mut word_index, mask) = word_index_and_mask(elem);
+        // Mask out all bits below `elem`.
+        let mut word = self.words[word_index] & !(mask - 1);
+        loop {
+            if word != 0 {
+                return Some(T::new(WORD_BITS * word_index + word.trailing_zeros() as usize));
+            }
+            word_index += 1;
+            word = *self.words.get(word_index)?;
+        }
+    }
+
     pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
         let (start, end) = inclusive_start_end(range, self.domain_size)?;
         let (start_word_index, _) = word_index_and_mask(start);

@@ -98,10 +98,6 @@ pub(crate) struct Ld64UnimplementedModifier;
 pub(crate) struct LinkerUnsupportedModifier;
 
 #[derive(Diagnostic)]
-#[diag("exporting symbols not implemented yet for L4Bender")]
-pub(crate) struct L4BenderExportingSymbolsUnimplemented;
-
-#[derive(Diagnostic)]
 #[diag("error enumerating natvis directory: {$error}")]
 pub(crate) struct NoNatvisDirectory {
     pub error: Error,
@@ -260,9 +256,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
             }
             thorin::Error::ParseUnitAbbreviations(_) => {
                 build(msg!("failed to parse unit abbreviations"))
-            }
-            thorin::Error::ParseUnitAttribute(_) => {
-                build(msg!("failed to parse unit attribute"))
             }
             thorin::Error::ParseUnitHeader(_) => {
                 build(msg!("failed to parse unit header"))
@@ -1103,7 +1096,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct InternalOnlyTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1201,7 +1194,7 @@ pub(crate) struct XcrunSdkPathWarning {
 pub(crate) struct Aarch64SoftfloatNeon;
 
 #[derive(Diagnostic)]
-#[diag("unknown feature specified for `-Ctarget-feature`: `{$feature}`")]
+#[diag("ignoring feature with missing prefix in `-Ctarget-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
     pub feature: &'a str,
@@ -1236,7 +1229,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}")]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
+pub(crate) struct InternalOnlyCTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
     pub reason: &'a str,
@@ -1340,3 +1333,43 @@ pub(crate) struct LtoProcMacro;
 #[diag("cannot prefer dynamic linking when performing LTO")]
 #[note("only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO")]
 pub(crate) struct DynamicLinkingWithLTO;
+
+#[derive(Diagnostic)]
+#[diag("could not find native static library `{$libname}`, perhaps an -L flag is missing?")]
+pub(crate) struct MissingNativeLibrary<'a> {
+    libname: &'a str,
+    #[subdiagnostic]
+    suggest_name: Option<SuggestLibraryName<'a>>,
+}
+
+impl<'a> MissingNativeLibrary<'a> {
+    pub(crate) fn new(libname: &'a str, verbatim: bool) -> Self {
+        // if it looks like the user has provided a complete filename rather just the bare lib name,
+        // then provide a note that they might want to try trimming the name
+        let suggested_name = if !verbatim {
+            if let Some(libname) = libname.strip_circumfix("lib", ".a") {
+                // this is a unix style filename so trim prefix & suffix
+                Some(libname)
+            } else if let Some(libname) = libname.strip_suffix(".lib") {
+                // this is a Windows style filename so just trim the suffix
+                Some(libname)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Self {
+            libname,
+            suggest_name: suggested_name
+                .map(|suggested_name| SuggestLibraryName { suggested_name }),
+        }
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[help("only provide the library name `{$suggested_name}`, not the full filename")]
+pub(crate) struct SuggestLibraryName<'a> {
+    suggested_name: &'a str,
+}

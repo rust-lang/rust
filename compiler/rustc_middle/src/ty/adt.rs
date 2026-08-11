@@ -23,7 +23,7 @@ use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
 use super::{
-    AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
+    AsyncDestructor, Destructor, FieldDef, GenericClauses, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::util::{Discr, IntTypeExt};
@@ -562,8 +562,8 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     #[inline]
-    pub fn predicates(self, tcx: TyCtxt<'tcx>) -> GenericPredicates<'tcx> {
-        tcx.predicates_of(self.did())
+    pub fn clauses(self, tcx: TyCtxt<'tcx>) -> GenericClauses<'tcx> {
+        tcx.clauses_of(self.did())
     }
 
     /// Returns an iterator over all fields contained

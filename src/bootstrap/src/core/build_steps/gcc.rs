@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 
 use build_helper::git::PathFreshness;
 
-use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -76,7 +76,7 @@ impl GccOutput {
     }
 }
 
-impl Step for Gcc {
+impl CommandLineStep for Gcc {
     type Output = GccOutput;
 
     const IS_HOST: bool = true;

@@ -101,6 +101,7 @@ windows_link::link!("kernel32.dll" "system" fn SetFilePointerEx(hfile : HANDLE, 
 windows_link::link!("kernel32.dll" "system" fn SetFileTime(hfile : HANDLE, lpcreationtime : *const FILETIME, lplastaccesstime : *const FILETIME, lplastwritetime : *const FILETIME) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn SetHandleInformation(hobject : HANDLE, dwmask : u32, dwflags : HANDLE_FLAGS) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn SetLastError(dwerrcode : WIN32_ERROR));
+windows_link::link!("kernel32.dll" "system" fn SetStdHandle(nstdhandle : STD_HANDLE, hhandle : HANDLE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn SetThreadStackGuarantee(stacksizeinbytes : *mut u32) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn SetWaitableTimer(htimer : HANDLE, lpduetime : *const i64, lperiod : i32, pfncompletionroutine : PTIMERAPCROUTINE, lpargtocompletionroutine : *const core::ffi::c_void, fresume : BOOL) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn Sleep(dwmilliseconds : u32));

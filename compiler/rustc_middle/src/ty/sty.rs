@@ -369,7 +369,6 @@ impl ParamConst {
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
     /// The more specific methods will often optimize their creation.
-    #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
@@ -725,6 +724,7 @@ impl<'tcx> Ty<'tcx> {
         T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
     }
 
+    /// Prefer using the [TyCtxt::type_of] query over this, that makes it easier to get all the pieces correct
     #[inline]
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
@@ -735,7 +735,6 @@ impl<'tcx> Ty<'tcx> {
             tcx.def_kind(def_id),
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
-        // FIXME(156581): check that the binder is being used correctly (turbofishing/fndef changes)
         let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
         Ty::new(tcx, FnDef(def_id, args))
     }
@@ -771,7 +770,7 @@ impl<'tcx> Ty<'tcx> {
                 .map(|principal| {
                     tcx.associated_items(principal.def_id())
                         .in_definition_order()
-                        .filter(|item| item.is_type() || item.is_type_const())
+                        .filter(|item| item.can_have_equality_constraint(tcx))
                         .filter(|item| !item.is_impl_trait_in_trait())
                         .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                         .count()
@@ -1192,6 +1191,15 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_self_param(self) -> bool {
+        if let Param(param) = self.kind() {
+            param.index == 0 && param.name == kw::SelfUpper
+        } else {
+            false
+        }
+    }
+
+    #[inline]
     pub fn is_ref(self) -> bool {
         matches!(self.kind(), Ref(..))
     }
@@ -1225,6 +1233,11 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_phantom_data(self) -> bool {
         if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
+    }
+
+    #[inline]
+    pub fn is_unsafe_cell(self) -> bool {
+        if let Adt(def, _) = self.kind() { def.is_unsafe_cell() } else { false }
     }
 
     #[inline]

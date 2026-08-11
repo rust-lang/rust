@@ -818,7 +818,7 @@ impl<'test> TestCx<'test> {
             if !unexpected.is_empty() {
                 writeln!(
                     self.stdout,
-                    "\n{prefix}: {n} diagnostics reported in JSON output but not expected in test file",
+                    "\n{prefix}: {n} diagnostics reported in rustc output but not expected in test file",
                     prefix = self.error_prefix(),
                     n = unexpected.len(),
                 );
@@ -853,7 +853,7 @@ impl<'test> TestCx<'test> {
             if !not_found.is_empty() {
                 writeln!(
                     self.stdout,
-                    "\n{prefix}: {n} diagnostics expected in test file but not reported in JSON output",
+                    "\n{prefix}: {n} diagnostics expected in test file but not reported in rustc output",
                     prefix = self.error_prefix(),
                     n = not_found.len(),
                 );
@@ -1575,9 +1575,6 @@ impl<'test> TestCx<'test> {
             }
         };
         compiler.arg(input_file);
-
-        // Use a single thread for efficiency and a deterministic error message order
-        compiler.arg("-Zthreads=1");
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.

@@ -253,20 +253,20 @@ pub(crate) fn render_type_inference(
     builder.build(ctx.db)
 }
 
-pub(crate) fn render_path_resolution(
-    ctx: RenderContext<'_, '_>,
+pub(crate) fn render_path_resolution<'db>(
+    ctx: RenderContext<'_, 'db>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
-    resolution: ScopeDef,
+    resolution: ScopeDef<'db>,
 ) -> Builder {
     render_resolution_path(ctx, path_ctx, local_name, None, resolution)
 }
 
-pub(crate) fn render_pattern_resolution(
-    ctx: RenderContext<'_, '_>,
+pub(crate) fn render_pattern_resolution<'db>(
+    ctx: RenderContext<'_, 'db>,
     pattern_ctx: &PatternContext,
     local_name: hir::Name,
-    resolution: ScopeDef,
+    resolution: ScopeDef<'db>,
 ) -> Builder {
     render_resolution_pat(ctx, pattern_ctx, local_name, None, resolution)
 }
@@ -356,9 +356,9 @@ pub(crate) fn render_expr<'db>(
     Some(item)
 }
 
-fn get_import_name(
-    resolution: ScopeDef,
-    ctx: &RenderContext<'_, '_>,
+fn get_import_name<'db>(
+    resolution: ScopeDef<'db>,
+    ctx: &RenderContext<'_, 'db>,
     import_edit: &LocatedImport,
 ) -> Option<hir::Name> {
     // FIXME: Temporary workaround for handling aliased import.
@@ -374,9 +374,9 @@ fn get_import_name(
     }
 }
 
-fn scope_def_to_name(
-    resolution: ScopeDef,
-    ctx: &RenderContext<'_, '_>,
+fn scope_def_to_name<'db>(
+    resolution: ScopeDef<'db>,
+    ctx: &RenderContext<'_, 'db>,
     import_edit: &LocatedImport,
 ) -> Option<hir::Name> {
     Some(match resolution {
@@ -387,12 +387,12 @@ fn scope_def_to_name(
     })
 }
 
-fn render_resolution_pat(
-    ctx: RenderContext<'_, '_>,
+fn render_resolution_pat<'db>(
+    ctx: RenderContext<'_, 'db>,
     pattern_ctx: &PatternContext,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
-    resolution: ScopeDef,
+    resolution: ScopeDef<'db>,
 ) -> Builder {
     let _p = tracing::info_span!("render_resolution_pat").entered();
     use hir::ModuleDef::*;
@@ -410,7 +410,7 @@ fn render_resolution_path<'db>(
     path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
-    resolution: ScopeDef,
+    resolution: ScopeDef<'db>,
 ) -> Builder {
     let _p = tracing::info_span!("render_resolution_path").entered();
     use hir::ModuleDef::*;
@@ -528,11 +528,11 @@ fn render_resolution_path<'db>(
     item
 }
 
-fn render_resolution_simple_(
-    ctx: RenderContext<'_, '_>,
+fn render_resolution_simple_<'db>(
+    ctx: RenderContext<'_, 'db>,
     local_name: &hir::Name,
     import_to_add: Option<LocatedImport>,
-    resolution: ScopeDef,
+    resolution: ScopeDef<'db>,
 ) -> Builder {
     let _p = tracing::info_span!("render_resolution_simple_").entered();
 
@@ -558,7 +558,7 @@ fn render_resolution_simple_(
     item
 }
 
-fn res_to_kind(resolution: ScopeDef) -> CompletionItemKind {
+fn res_to_kind(resolution: ScopeDef<'_>) -> CompletionItemKind {
     use hir::ModuleDef::*;
     match resolution {
         ScopeDef::Unknown => CompletionItemKind::UnresolvedReference,
@@ -589,7 +589,10 @@ fn res_to_kind(resolution: ScopeDef) -> CompletionItemKind {
     }
 }
 
-fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentation<'_>> {
+fn scope_def_docs<'db>(
+    db: &'db RootDatabase,
+    resolution: ScopeDef<'db>,
+) -> Option<Documentation<'db>> {
     use hir::ModuleDef::*;
     match resolution {
         ScopeDef::ModuleDef(Module(it)) => it.docs(db),
@@ -603,7 +606,7 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentati
     }
 }
 
-fn scope_def_is_deprecated(ctx: &RenderContext<'_, '_>, resolution: ScopeDef) -> bool {
+fn scope_def_is_deprecated(ctx: &RenderContext<'_, '_>, resolution: ScopeDef<'_>) -> bool {
     let db = ctx.db();
     match resolution {
         ScopeDef::ModuleDef(hir::ModuleDef::EnumVariant(it)) => ctx.is_variant_deprecated(it),

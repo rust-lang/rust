@@ -22,9 +22,11 @@ use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceCollectionMode, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
-use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
+use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_results};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, debug_span, instrument};
+
+use crate::PassPolicy;
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
@@ -34,8 +36,8 @@ const PLACE_LIMIT: usize = 100;
 pub(super) struct DataflowConstProp;
 
 impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 3)
     }
 
     #[instrument(skip_all level = "debug")]
@@ -70,13 +72,11 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, body);
-        debug_span!("collect").in_scope(|| visit_reachable_results(body, &const_, &mut visitor));
+        debug_span!("collect").in_scope(|| {
+            visit_results(body, traversal::reachable(body).map(|(bb, _)| bb), &const_, &mut visitor)
+        });
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -124,16 +124,31 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         }
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn get_terminator_edges<'mir>(
         &self,
-        state: &mut Self::Domain,
+        state: &Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
         if state.is_reachable() {
-            self.handle_terminator(terminator, state)
+            if let TerminatorKind::SwitchInt { discr, targets } = &terminator.kind {
+                self.get_switch_int_edges(discr, targets, state)
+            } else {
+                terminator.edges()
+            }
         } else {
             TerminatorEdges::None
+        }
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        terminator: &Terminator<'tcx>,
+        _location: Location,
+    ) {
+        if state.is_reachable() {
+            self.handle_terminator(terminator, state)
         }
     }
 
@@ -206,16 +221,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
-    fn handle_operand(
-        &self,
-        operand: &Operand<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) -> ValueOrPlace<FlatSet<Scalar>> {
+    fn handle_operand(&self, operand: &Operand<'tcx>) -> ValueOrPlace<FlatSet<Scalar>> {
         match operand {
             Operand::RuntimeChecks(_) => ValueOrPlace::TOP,
-            Operand::Constant(constant) => {
-                ValueOrPlace::Value(self.handle_constant(constant, state))
-            }
+            Operand::Constant(constant) => ValueOrPlace::Value(self.handle_constant(constant)),
             Operand::Copy(place) | Operand::Move(place) => {
                 // On move, we would ideally flood the place with bottom. But with the current
                 // framework this is not possible (similar to `InterpCx::eval_operand`).
@@ -230,7 +239,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         &self,
         terminator: &'mir Terminator<'tcx>,
         state: &mut State<FlatSet<Scalar>>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
@@ -242,14 +251,12 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
-            TerminatorKind::SwitchInt { discr, targets } => {
-                return self.handle_switch_int(discr, targets, state);
-            }
             TerminatorKind::TailCall { .. } => {
                 // FIXME(explicit_tail_calls): determine if we need to do something here (probably
                 // not)
             }
-            TerminatorKind::Goto { .. }
+            TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
@@ -261,7 +268,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 // These terminators have no effect on the analysis.
             }
         }
-        terminator.edges()
     }
 
     fn handle_call_return(
@@ -378,7 +384,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 operand,
                 _,
             ) => {
-                let pointer = self.handle_operand(operand, state);
+                let pointer = self.handle_operand(operand);
                 state.assign(target.as_ref(), pointer, &self.map);
 
                 if let Some(target_len) = self.map.find_len(target.as_ref())
@@ -463,7 +469,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
-            Rvalue::Use(operand, _) => return self.handle_operand(operand, state),
+            Rvalue::Use(operand, _) => return self.handle_operand(operand),
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Ref(..) | Rvalue::Reborrow(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
@@ -482,24 +488,20 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         ValueOrPlace::Value(val)
     }
 
-    fn handle_constant(
-        &self,
-        constant: &ConstOperand<'tcx>,
-        _state: &mut State<FlatSet<Scalar>>,
-    ) -> FlatSet<Scalar> {
+    fn handle_constant(&self, constant: &ConstOperand<'tcx>) -> FlatSet<Scalar> {
         constant
             .const_
             .try_eval_scalar(self.tcx, self.typing_env)
             .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
-    fn handle_switch_int<'mir>(
+    fn get_switch_int_edges<'mir>(
         &self,
         discr: &'mir Operand<'tcx>,
         targets: &'mir SwitchTargets,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        let value = match self.handle_operand(discr, state) {
+        let value = match self.handle_operand(discr) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };
@@ -678,7 +680,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         op: &Operand<'tcx>,
         state: &mut State<FlatSet<Scalar>>,
     ) -> FlatSet<ImmTy<'tcx>> {
-        let value = match self.handle_operand(op, state) {
+        let value = match self.handle_operand(op) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };

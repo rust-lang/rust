@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::{Region, RegionUtilitiesExt, RegionVid};
+use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::DUMMY_SP;
 use tracing::debug;
 
@@ -168,13 +168,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_bound(ObligationCause::dummy(), full_env, ty, trait_did);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             panic!("Unable to fulfill trait {trait_did:?} for '{ty:?}': {errors:?}");
         }
 
         let outlives_env = OutlivesEnvironment::new(&infcx, CRATE_DEF_ID, full_env, []);
-        let _ =
-            infcx.process_registered_region_obligations(&outlives_env, |ty, _| Ok(ty), DUMMY_SP);
+        let _ = infcx.process_registered_region_obligations(&outlives_env, DUMMY_SP);
 
         let region_data = infcx.inner.borrow_mut().unwrap_region_constraints().data().clone();
 
@@ -246,7 +245,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_bound(ObligationCause::dummy(), orig_env, fresh_ty, trait_did);
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             return AutoTraitResult::NegativeImpl;
         }
 
@@ -845,7 +844,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 &dummy_cause,
                             );
                         }
-                        (Some(ty::OutlivesPredicate(t_a, r_b)), _) => {
+                        (Some(ty::OutlivesClause(t_a, r_b)), _) => {
                             selcx.infcx.register_type_outlives_constraint(t_a, r_b, &dummy_cause);
                         }
                         _ => {}

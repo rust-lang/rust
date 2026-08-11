@@ -7,11 +7,9 @@ use hir_def::{
 
 use crate::db::HirDatabase;
 
-use super::SolverDefId;
+use super::{Ctor, DbInterner, SolverDefId};
 
-use super::DbInterner;
-
-pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'_> {
+pub(crate) fn generics<'db>(interner: DbInterner<'db>, def: SolverDefId<'db>) -> Generics<'db> {
     let db = interner.db;
     let (def, consider_late_bound) = match (def.try_into(), def) {
         (Ok(def), _) => (def, false),
@@ -24,6 +22,10 @@ pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'
         (_, SolverDefId::BuiltinDeriveImplId(id)) => {
             return crate::builtin_derive::generics_of(interner, id);
         }
+        (_, SolverDefId::EnumVariantId(id) | SolverDefId::Ctor(Ctor::Enum(id))) => {
+            (id.loc(db).parent.into(), false)
+        }
+        (_, SolverDefId::Ctor(Ctor::Struct(id))) => (id.into(), false),
         (_, SolverDefId::AnonConstId(id)) => {
             let loc = id.loc(db);
             let generic_def = loc.owner.generic_def(db);
@@ -94,7 +96,7 @@ impl<'db> Generics<'db> {
                     (id, None)
                 }
             })
-            .chain(self.additional_param.zip(None))
+            .chain(self.additional_param.map(|param| (param, None)))
     }
 }
 

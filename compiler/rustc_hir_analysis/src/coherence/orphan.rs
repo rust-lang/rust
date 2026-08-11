@@ -319,7 +319,8 @@ fn orphan_check<'tcx>(
     }
 
     // (1)  Instantiate all generic params with fresh inference vars.
-    let infcx = tcx.infer_ctxt().build(TypingMode::Coherence);
+    let infcx =
+        tcx.infer_ctxt().enable_next_solver_overflow_fcw(false).build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();
     let args = infcx.fresh_args_for_item(cause.span, impl_def_id.to_def_id());
     let trait_ref = trait_ref.instantiate(tcx, args).skip_norm_wip();
@@ -331,7 +332,7 @@ fn orphan_check<'tcx>(
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), Unnormalized::new_wip(user_ty));
         let ty = infcx.resolve_vars_if_possible(ty);
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             return Ok(user_ty);
         }
 

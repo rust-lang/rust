@@ -44,9 +44,9 @@ where
     }
 }
 
-pub(crate) fn complete_expr_path(
+pub(crate) fn complete_expr_path<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_, '_>,
+    ctx: &CompletionContext<'_, 'db>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     expr_ctx: &PathExprCtx<'_>,
 ) {
@@ -87,7 +87,7 @@ pub(crate) fn complete_expr_path(
         false
     };
 
-    let scope_def_applicable = |def| match def {
+    let scope_def_applicable = |def: ScopeDef<'db>| match def {
         ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => false,
         ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
         _ => true,

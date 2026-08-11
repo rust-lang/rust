@@ -315,6 +315,7 @@ impl MetaItemOrLitParser {
 ///   `= value` part
 ///
 /// The syntax of `MetaItems` can be found at <https://doc.rust-lang.org/reference/attributes.html>
+#[derive(Debug)]
 pub struct MetaItemParser {
     path: OwnedPathParser,
     args: ArgParser,
@@ -323,15 +324,6 @@ pub struct MetaItemParser {
     /// This is tracked because if the arguments of a `MetaItemParser` are ignored, this is probably a mistake
     #[cfg(debug_assertions)]
     args_checked: AtomicBool,
-}
-
-impl Debug for MetaItemParser {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MetaItemParser")
-            .field("path", &self.path)
-            .field("args", &self.args)
-            .finish()
-    }
 }
 
 impl MetaItemParser {
@@ -385,21 +377,11 @@ impl MetaItemParser {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NameValueParser {
     pub eq_span: Span,
     value: MetaItemLit,
     pub value_span: Span,
-}
-
-impl Debug for NameValueParser {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NameValueParser")
-            .field("eq_span", &self.eq_span)
-            .field("value", &self.value)
-            .field("value_span", &self.value_span)
-            .finish()
-    }
 }
 
 impl NameValueParser {
@@ -489,7 +471,7 @@ fn expr_to_lit<'sess>(
     }
 }
 
-/// Whether expansions of `expr` metavariables from decrarative macros
+/// Whether expansions of `expr` metavariables from declarative  macros
 /// are permitted. Used when parsing meta items; currently, only `cfg` predicates
 /// enable this option
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -660,9 +642,8 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         // don't `uninterpolate` the token to avoid suggesting anything butchered or questionable
         // when macro metavariables are involved.
         let snapshot = self.parser.create_snapshot_for_diagnostic();
-        let stmt = self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false);
-        match stmt {
-            Ok(Some(stmt)) => {
+        match self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false) {
+            Ok(stmt) => {
                 // The user tried to write something like
                 // `#[deprecated(note = concat!("a", "b"))]`.
                 err.descr = stmt.kind.descr().to_string();
@@ -692,7 +673,6 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
                     });
                 }
             }
-            Ok(None) => {}
             Err(e) => {
                 e.cancel();
                 self.parser.restore_snapshot(snapshot);

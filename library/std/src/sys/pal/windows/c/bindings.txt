@@ -2394,6 +2394,7 @@ SetFileTime
 SetHandleInformation
 SetLastError
 setsockopt
+SetStdHandle
 SetThreadStackGuarantee
 SetWaitableTimer
 shutdown

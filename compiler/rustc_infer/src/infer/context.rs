@@ -25,6 +25,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
+    fn enable_next_solver_overflow_fcw(&self) -> bool {
+        self.enable_next_solver_overflow_fcw
+    }
+
     fn disable_trait_solver_fast_paths(&self) -> bool {
         self.disable_trait_solver_fast_paths()
     }
@@ -326,6 +330,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.probe(|_| probe())
     }
 
+    fn commit_if_ok<T, E>(&self, f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+        self.commit_if_ok(|_| f())
+    }
+
     fn sub_regions(
         &self,
         sub: ty::Region<'tcx>,
@@ -521,7 +529,10 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                 let vid = self.infcx.root_const_var(vid);
-                let universe = self.infcx.try_resolve_const_var(vid).unwrap_err();
+                let universe = match self.infcx.try_resolve_const_var(vid) {
+                    Ok(value) => return value.fold_with(self),
+                    Err(universe) => universe,
+                };
                 if self.for_universe.can_name(universe) {
                     c
                 } else {

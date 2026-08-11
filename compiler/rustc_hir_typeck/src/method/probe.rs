@@ -2003,7 +2003,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             if self.next_trait_solver() {
                 ocx.register_obligations(instantiate_self_ty_obligations.iter().cloned());
                 let errors = ocx.try_evaluate_obligations();
-                if !errors.is_empty() {
+                if !errors.no_errors() {
                     unreachable!("unexpected autoderef error {errors:?}");
                 }
             }
@@ -2037,7 +2037,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
                     let impl_bounds =
-                        self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
+                        self.tcx.clauses_of(impl_def_id).instantiate(self.tcx, impl_args);
                     // Convert the bounds into obligations.
                     ocx.register_obligations(traits::predicates_for_generics(
                         |idx, span| {
@@ -2049,7 +2049,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             );
                             self.cause(self.span, code)
                         },
-                        |pred| ocx.normalize(cause, self.param_env, pred),
+                        |clause| ocx.normalize(cause, self.param_env, clause),
                         self.param_env,
                         impl_bounds,
                     ));
@@ -2331,7 +2331,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     };
                     let ocx = ObligationCtxt::new(self);
                     let self_ty = ocx.register_infer_ok_obligations(ok);
-                    if !ocx.try_evaluate_obligations().is_empty() {
+                    if !ocx.try_evaluate_obligations().no_errors() {
                         debug!("failed to prove instantiate self_ty obligations");
                         return false;
                     }
@@ -2526,23 +2526,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             if applicable_close_candidates.is_empty() {
                 Ok(None)
             } else {
-                let best_name = {
-                    let names = applicable_close_candidates
-                        .iter()
-                        .map(|cand| cand.name())
-                        .collect::<Vec<Symbol>>();
-                    find_best_match_for_name_with_substrings(
-                        &names,
-                        self.method_name.unwrap().name,
-                        None,
-                    )
-                }
-                .or_else(|| {
-                    applicable_close_candidates
-                        .iter()
-                        .find(|cand| self.matches_by_doc_alias(cand.def_id))
-                        .map(|cand| cand.name())
-                });
+                let best_name = applicable_close_candidates
+                    .iter()
+                    .find(|cand| self.matches_by_doc_alias(cand.def_id))
+                    .map(|cand| cand.name())
+                    .or_else(|| {
+                        let names = applicable_close_candidates
+                            .iter()
+                            .map(|cand| cand.name())
+                            .collect::<Vec<Symbol>>();
+                        find_best_match_for_name_with_substrings(
+                            &names,
+                            self.method_name.unwrap().name,
+                            None,
+                        )
+                    });
                 Ok(best_name.and_then(|best_name| {
                     applicable_close_candidates
                         .into_iter()

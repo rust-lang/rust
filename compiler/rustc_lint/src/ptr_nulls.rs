@@ -112,7 +112,7 @@ fn useless_check<'a, 'tcx: 'a>(
 
 /// Checks if the given expression is a null pointer (modulo casting)
 fn is_null_ptr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Span> {
-    let (expr, _) = peel_casts(cx, expr);
+    let expr = peel_casts(cx, expr);
 
     if let ExprKind::Call(path, []) = expr.kind
         && let ExprKind::Path(ref qpath) = path.kind

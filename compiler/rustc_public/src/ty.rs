@@ -294,6 +294,11 @@ impl Span {
     pub fn diagnostic(&self) -> String {
         with(|c| c.span_to_string(*self))
     }
+
+    /// Create a `&'static core::panic::Location<'static>` constant from this span.
+    pub(crate) fn as_caller_location(&self) -> MirConst {
+        with(|c| c.span_as_caller_location(*self))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -1461,12 +1466,12 @@ impl TraitDecl {
         with(|cx| cx.generics_of(self.def_id.0))
     }
 
-    pub fn predicates_of(&self) -> GenericPredicates {
-        with(|cx| cx.predicates_of(self.def_id.0))
+    pub fn clauses_of(&self) -> GenericClauses {
+        with(|cx| cx.clauses_of(self.def_id.0))
     }
 
-    pub fn explicit_predicates_of(&self) -> GenericPredicates {
-        with(|cx| cx.explicit_predicates_of(self.def_id.0))
+    pub fn explicit_clauses_of(&self) -> GenericClauses {
+        with(|cx| cx.explicit_clauses_of(self.def_id.0))
     }
 }
 
@@ -1545,9 +1550,9 @@ pub struct GenericParamDef {
     pub kind: GenericParamDefKind,
 }
 
-pub struct GenericPredicates {
+pub struct GenericClauses {
     pub parent: Option<TraitDef>,
-    pub predicates: Vec<(PredicateKind, Span)>,
+    pub clauses: Vec<(ClauseKind, Span)>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1563,8 +1568,8 @@ pub enum PredicateKind {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ClauseKind {
     Trait(TraitPredicate),
-    RegionOutlives(RegionOutlivesPredicate),
-    TypeOutlives(TypeOutlivesPredicate),
+    RegionOutlives(RegionOutlivesClause),
+    TypeOutlives(TypeOutlivesClause),
     Projection(ProjectionPredicate),
     ConstArgHasType(TyConst, Ty),
     WellFormed(TermKind),
@@ -1597,10 +1602,17 @@ pub struct TraitPredicate {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct OutlivesPredicate<A, B>(pub A, pub B);
+pub struct OutlivesClause<A, B>(pub A, pub B);
 
-pub type RegionOutlivesPredicate = OutlivesPredicate<Region, Region>;
-pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
+pub type RegionOutlivesClause = OutlivesClause<Region, Region>;
+pub type TypeOutlivesClause = OutlivesClause<Ty, Region>;
+
+#[deprecated = "renamed to [`OutlivesClause`]"]
+pub type OutlivesPredicate<A, B> = OutlivesClause<A, B>;
+#[deprecated = "renamed to [`RegionOutlivesClause`]"]
+pub type RegionOutlivesPredicate = RegionOutlivesClause;
+#[deprecated = "renamed to [`TypeOutlivesClause`]"]
+pub type TypeOutlivesPredicate = TypeOutlivesClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ProjectionPredicate {

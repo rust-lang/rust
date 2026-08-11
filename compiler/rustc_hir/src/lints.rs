@@ -1,9 +1,8 @@
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
 use rustc_errors::{Diag, DiagCtxtHandle, Level};
+use rustc_hir_id::HirId;
 use rustc_lint_defs::LintId;
-
-use crate::HirId;
 
 pub type DelayedLints = Box<[DelayedLint]>;
 

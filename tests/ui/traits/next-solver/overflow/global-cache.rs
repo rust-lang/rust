@@ -1,4 +1,4 @@
-//@ compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver -Awarnings
 
 // Check that we consider the reached depth of global cache
 // entries when detecting overflow. We would otherwise be unstable
@@ -19,5 +19,6 @@ type Four<T> = Inc<Inc<Inc<Inc<T>>>>;
 fn main() {
     impls_trait::<Four<Four<()>>>();
     impls_trait::<Four<Four<Four<Four<()>>>>>();
+    impls_trait::<Four<Four<Four<Four<Four<Four<()>>>>>>>();
     //~^ ERROR overflow evaluating the requirement
 }

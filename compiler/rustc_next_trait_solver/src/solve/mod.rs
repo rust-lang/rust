@@ -23,7 +23,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, Region};
+use rustc_type_ir::{self as ty, Interner, Region, TypeVisitableExt};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -87,27 +87,36 @@ where
     #[instrument(level = "trace", skip(self))]
     fn compute_type_outlives_goal(
         &mut self,
-        goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
+        goal: Goal<I, ty::OutlivesClause<I, I::Ty>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let ty::OutlivesPredicate(ty, lt) = goal.predicate;
+        let ty::OutlivesClause(ty, lt) = goal.predicate;
+        let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
         if self.cx().assumptions_on_binders() {
-            // FIXME(-Zassumptions-on-binders): we need to normalize `ty`
             let constraint = self.destructure_type_outlives(ty, lt);
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_ty_outlives(ty, lt);
         }
 
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        // The normalized type can still contain non-rigid higher ranked aliases if their
+        // normalization ends up with ambiguity. Or we have non-rigid aliases inside rigid ones.
+        // Infer vars may be resolved to types/consts containing non-rigid aliases later.
+        // Thus we should stall this goal to avoid registering non-rigid type outlives into
+        // the outer infcx.
+        if ty.has_non_region_infer() || ty.has_non_rigid_aliases() {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+        } else {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        }
     }
 
     #[instrument(level = "trace", skip(self))]
     fn compute_region_outlives_goal(
         &mut self,
-        goal: Goal<I, ty::OutlivesPredicate<I, Region<I>>>,
+        goal: Goal<I, ty::OutlivesClause<I, Region<I>>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let ty::OutlivesPredicate(a, b) = goal.predicate;
+        let ty::OutlivesClause(a, b) = goal.predicate;
 
         if self.cx().assumptions_on_binders() {
             let constraint =

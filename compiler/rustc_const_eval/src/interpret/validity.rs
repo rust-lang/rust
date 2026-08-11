@@ -32,7 +32,6 @@ use super::machine::AllocMap;
 use super::{
     AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
     Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
-    format_interp_error,
 };
 use crate::enter_trace_span;
 
@@ -363,7 +362,7 @@ struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     /// we only store a (range) set of offsets -- the base pointer is the same throughout the entire
     /// visit, after all.
     /// If this is `Some`, then `reset_provenance_and_padding` must be true (but not vice versa:
-    /// we might not track data vs padding bytes if the operand isn't stored in memory anyway).
+    /// we might not track data vs padding bytes if the place isn't stored in memory anyway).
     data_bytes: Option<RangeSet>,
     /// True if we are inside of `MaybeDangling`. This disables pointer access checks.
     may_dangle: bool,
@@ -565,6 +564,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         ty: Ty<'tcx>,
         ptr_kind: PtrKind,
     ) -> InterpResult<'tcx> {
+        // Note that some of those checks (those that encode the basic validity invariant of
+        // pointers) are duplicated in `place_deref`, so changes here might need updates there.
         let ptr = self.read_immediate(value, ptr_kind.into())?;
         if self.reset_provenance_and_padding {
             // There's no padding in a pointer.
@@ -604,7 +605,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 self.ecx.check_ptr_access(
                     place.ptr(),
                     size,
-                    CheckInAllocMsg::Dereferenceable, // will anyway be replaced by validity message
+                    CheckInAllocMsg::Dereferenceable("pointer"), // will anyway be replaced by validity message
                 ),
                 self.path,
                 Ub(DanglingIntPointer { addr: 0, .. }) =>
@@ -1573,7 +1574,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// The internal core entry point for all validation operations.
-    fn validate_operand_internal(
+    fn validate_place_internal(
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
         path: Path<'tcx>,
@@ -1582,7 +1583,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         reset_provenance_and_padding: bool,
         start_in_may_dangle: bool,
     ) -> InterpResult<'tcx> {
-        trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
+        trace!("validate_place_internal: {:?}, {:?}", *val, val.layout.ty);
 
         // Run the visitor.
         self.run_for_validation_mut(|ecx| {
@@ -1604,7 +1605,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             v.reset_padding(val)?;
             interp_ok(())
         })
-        .map_err_info(|err| {
+        .inspect_err_info(|err| {
             if !matches!(
                 err.kind(),
                 InterpErrorKind::UndefinedBehavior(ValidationError { .. })
@@ -1614,14 +1615,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // during validation.
                 | InterpErrorKind::MachineStop(_)
             ) {
-                bug!("Unexpected error during validation: {}", format_interp_error(err));
+                bug!("Unexpected error during validation: {}", err.to_string());
             }
-            err
         })
     }
 
     /// This function checks the data at `val` to be const-valid.
-    /// `val` is assumed to cover valid memory if it is an indirect operand.
+    /// `val` is assumed to cover valid memory.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
     /// `ref_tracking` is used to record references that we encounter so that they
@@ -1631,14 +1631,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - no pointers to statics.
     /// - no `UnsafeCell` or non-ZST `&mut`.
     #[inline(always)]
-    pub(crate) fn const_validate_operand(
+    pub(crate) fn const_validate_place(
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
         path: Path<'tcx>,
         ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::Provenance>, Path<'tcx>>,
         ctfe_mode: CtfeValidationMode,
     ) -> InterpResult<'tcx> {
-        self.validate_operand_internal(
+        self.validate_place_internal(
             val,
             path,
             Some(ref_tracking),
@@ -1649,27 +1649,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// This function checks the data at `val` to be runtime-valid.
-    /// `val` is assumed to cover valid memory if it is an indirect operand.
+    /// `val` is assumed to cover valid memory.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
-    pub fn validate_operand(
+    pub fn validate_place(
         &mut self,
         val: &PlaceTy<'tcx, M::Provenance>,
         recursive: bool,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
-        let _trace = enter_trace_span!(
-            M,
-            "validate_operand",
-            recursive,
-            reset_provenance_and_padding,
-            ?val,
-        );
+        let _trace =
+            enter_trace_span!(M, "validate_place", recursive, reset_provenance_and_padding, ?val,);
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places.
         if !recursive {
-            return self.validate_operand_internal(
+            return self.validate_place_internal(
                 val,
                 Path::new(val.layout.ty),
                 None,
@@ -1680,7 +1675,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
         // Do a recursive check.
         let mut ref_tracking = RefTracking::empty();
-        self.validate_operand_internal(
+        self.validate_place_internal(
             val,
             Path::new(val.layout.ty),
             Some(&mut ref_tracking),
@@ -1692,7 +1687,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Things behind reference do *not* have the provenance reset. In fact
             // we treat the entire thing as being inside MaybeDangling, i.e., references
             // do not have to be dereferenceable.
-            self.validate_operand_internal(
+            self.validate_place_internal(
                 &mplace.into(),
                 path,
                 None, // no further recursion

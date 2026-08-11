@@ -8,7 +8,7 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, AliasTy, Interner, OutlivesPredicate, Region, Unnormalized};
+use crate::{self as ty, AliasTy, Interner, OutlivesClause, Region, Unnormalized};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
@@ -26,7 +26,10 @@ pub enum Component<I: Interner> {
     // is not in a position to judge which is the best technique, so
     // we just product the projection as a component and leave it to
     // the consumer to decide (but see `EscapingProjection` below).
-    Alias(ty::AliasTy<I>),
+    //
+    // We have to track rigidness because it's also used in param env
+    // elaboration where things are not normalized yet.
+    Alias(ty::IsRigid, ty::AliasTy<I>),
 
     // In the case where a projection has escaping regions -- meaning
     // regions bound within the type itself -- we always use
@@ -149,7 +152,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(_, alias_ty) => {
+            ty::Alias(is_rigid, alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -157,7 +160,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                     // the rules OutlivesProjectionEnv,
                     // OutlivesProjectionTraitDef, and
                     // OutlivesProjectionComponents to regionck.
-                    self.out.push(Component::Alias(alias_ty));
+                    self.out.push(Component::Alias(is_rigid, alias_ty));
                 } else {
                     // fallback case: hard code
                     // OutlivesProjectionComponents. Continue walking
@@ -276,7 +279,7 @@ pub fn declared_bounds_from_definition<I: Interner>(
     bounds
         .iter_instantiated(cx, alias_ty.args)
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|p| p.as_type_outlives_clause())
-        .filter_map(|p| p.no_bound_vars())
-        .map(|OutlivesPredicate(_, r)| r)
+        .filter_map(|c| c.as_type_outlives_clause())
+        .filter_map(|c| c.no_bound_vars())
+        .map(|OutlivesClause(_, r)| r)
 }

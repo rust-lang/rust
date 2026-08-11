@@ -2,8 +2,8 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanExt, snippet, snippet_with_context};
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::source::{SpanExt as _, snippet, snippet_with_context};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_expr_temporary_value, return_ty, sym};
@@ -11,7 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, OverloadedDeref};
@@ -737,8 +737,8 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && cx.tcx.trait_of_assoc(method_def_id).is_none()
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
-        && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
-            if let ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
+        && cx.tcx.clauses_of(method_def_id).clauses.iter().any(|(clause, _)| {
+            if let ClauseKind::Trait(trait_pred) = clause.kind().skip_binder()
                 && trait_pred.polarity == ty::PredicatePolarity::Positive
                 && trait_pred.trait_ref.def_id == borrow_id
             {

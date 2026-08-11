@@ -1,5 +1,8 @@
 //@ check-fail
 
+use std::cell::UnsafeCell;
+use std::marker::PhantomData;
+
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as
     // in C, the default is mutable pointers.
@@ -9,6 +12,18 @@ extern "C" {
 
 fn static_u8() -> &'static u8 {
     &8
+}
+
+#[repr(transparent)]
+struct FakeUnsafeCell<T> {
+    data: T,
+    _p: PhantomData<UnsafeCell<T>>,
+}
+
+#[repr(transparent)]
+struct MyUnsafeCell<T> {
+    data: UnsafeCell<T>,
+    _zst: (),
 }
 
 unsafe fn ref_to_mut() {
@@ -37,8 +52,8 @@ unsafe fn ref_to_mut() {
     let _num = &mut *(std::mem::transmute::<_, *mut i32>(num) as *mut i32);
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     let _num = &mut *std::cell::UnsafeCell::raw_get(
-    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
-        num as *const i32 as *const std::cell::UnsafeCell<i32>
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+        num as *const i32 as *const std::cell::UnsafeCell<i32>,
     );
 
     let deferred = num as *const i32 as *mut i32;
@@ -62,10 +77,6 @@ unsafe fn ref_to_mut() {
     let _num = &mut *num;
     //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
-    let cell = &std::cell::UnsafeCell::new(0);
-    let _num = &mut *(cell as *const _ as *mut i32);
-    //~^ ERROR casting `&T` to `&mut T` is undefined behavior
-
     unsafe fn generic_ref_cast_mut<T>(this: &T) -> &mut T {
         &mut *((this as *const _) as *mut _)
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
@@ -78,6 +89,36 @@ unsafe fn ref_to_mut() {
 
     fn as_mut_i32(x: &i32) -> &mut i32 {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_option<T>(ptr: &Option<T>) -> &mut T {
+        let t = ptr as *const Option<T> as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_option_unsafe<T>(ptr: &Option<UnsafeCell<T>>) -> &mut T {
+        let t = ptr as *const Option<UnsafeCell<T>> as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_tuple<T>(ptr: &(T, UnsafeCell<T>)) -> &mut T {
+        let t = ptr as *const (T, UnsafeCell<T>) as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_slice<T>(ptr: &[T]) -> &mut [T] {
+        let t = ptr as *const _ as *mut [T];
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_fake<T>(ptr: &FakeUnsafeCell<T>) -> &mut T {
+        let t = ptr as *const FakeUnsafeCell<T> as *mut T;
+        unsafe { &mut *t }
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     }
 }
@@ -104,12 +145,10 @@ unsafe fn assign_to_ref() {
     *(std::mem::transmute::<_, *mut i32>(num) as *mut i32) += 1;
     //~^ ERROR assigning to `&T` is undefined behavior
     std::ptr::write(
-    //~^ ERROR assigning to `&T` is undefined behavior
+        //~^ ERROR assigning to `&T` is undefined behavior
         std::mem::transmute::<*const i32, *mut i32>(num),
         -1i32,
     );
-    *((&std::cell::UnsafeCell::new(0)) as *const _ as *mut i32) = 5;
-    //~^ ERROR assigning to `&T` is undefined behavior
 
     let value = num as *const i32 as *mut i32;
     *value = 1;
@@ -207,14 +246,16 @@ unsafe fn bigger_layout() {
     }
 
     {
-        let mut l: [u8; 2] = [0,1];
+        let mut l: [u8; 2] = [0, 1];
         let w: *mut [u16; 2] = &mut l as *mut [u8; 2] as *mut _;
-        let w: *mut [u16] = unsafe {&mut *w};
+        let w: *mut [u16] = unsafe { &mut *w };
         //~^ ERROR casting references to a bigger memory layout
     }
 
     {
-        fn foo() -> [i32; 1] { todo!() }
+        fn foo() -> [i32; 1] {
+            todo!()
+        }
 
         let num = foo();
         let _num = &*(&num as *const i32 as *const i64);
@@ -224,7 +265,9 @@ unsafe fn bigger_layout() {
     }
 
     {
-        fn bar(_a: &[i32; 2]) -> &[i32; 1] { todo!() }
+        fn bar(_a: &[i32; 2]) -> &[i32; 1] {
+            todo!()
+        }
 
         let num = bar(&[0, 0]);
         let _num = &*(num as *const i32 as *const i64);
@@ -232,7 +275,9 @@ unsafe fn bigger_layout() {
     }
 
     {
-        fn foi<T>() -> T { todo!() }
+        fn foi<T>() -> T {
+            todo!()
+        }
 
         let num = foi::<i32>();
         let _num = &*(&num as *const i32 as *const i64);
@@ -286,23 +331,50 @@ unsafe fn no_warn() {
     let value: *const i32 = &mut value;
     *(value as *const i16 as *mut i16) = 42;
     *RAW_PTR = 42; // RAW_PTR is defined outside the function body,
-                   // make sure we don't ICE on it when trying to
-                   // determine if we should lint on it or not.
+    // make sure we don't ICE on it when trying to
+    // determine if we should lint on it or not.
+    *((&std::cell::UnsafeCell::new(0)) as *const _ as *mut i32) = 5;
+
     let cell = &std::cell::UnsafeCell::new(0);
     let _num = &mut *(cell.get() as *mut i32);
+    let _num = &mut *(cell as *const _ as *mut i32);
 
-    fn safe_as_mut<T>(x: &std::cell::UnsafeCell<T>) -> &mut T {
+    unsafe fn get_mut_unchecked<T>(x: &std::cell::UnsafeCell<T>) -> &mut T {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
     }
 
-    fn cell_as_mut(x: &std::cell::Cell<i32>) -> &mut i32 {
+    unsafe fn get_mut_unchecked2<T>(ptr: &std::cell::UnsafeCell<T>) -> &mut T {
+        let t = ptr as *const std::cell::UnsafeCell<T> as *mut T;
+        unsafe { &mut *t }
+    }
+
+    unsafe fn cell_as_mut(x: &std::cell::Cell<i32>) -> &mut i32 {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+    }
+
+    unsafe fn cell_as_mut2(x: &std::cell::Cell<i32>) -> &mut i32 {
+        unsafe { &mut *(x as *const std::cell::Cell<i32> as *mut i32) }
     }
 
     #[repr(transparent)]
     struct DoesContainUnsafeCell(std::cell::UnsafeCell<i32>);
-    fn safe_as_mut2(x: &DoesContainUnsafeCell) -> &mut DoesContainUnsafeCell {
+
+    unsafe fn get_mut_unchecked3(x: &DoesContainUnsafeCell) -> &mut DoesContainUnsafeCell {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+    }
+
+    unsafe fn get_mut_unchecked4(x: &DoesContainUnsafeCell) -> &mut DoesContainUnsafeCell {
+        unsafe { &mut *(x as *const DoesContainUnsafeCell as *mut _) }
+    }
+
+    unsafe fn cast<T>(ptr: &MyUnsafeCell<T>) -> &mut T {
+        let t = ptr as *const MyUnsafeCell<T> as *mut T;
+        unsafe { &mut *t }
+    }
+
+    unsafe fn cast_slice<T>(ptr: &[std::cell::UnsafeCell<T>]) -> &mut [T] {
+        let t = ptr as *const _ as *mut [T];
+        unsafe { &mut *t }
     }
 }
 

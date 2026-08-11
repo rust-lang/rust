@@ -14,12 +14,12 @@ use std::assert_matches;
 use rustc_infer::infer::InferCtxt;
 use rustc_macros::extension;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
-use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
+use rustc_middle::ty::{TyCtxt, VisitorResult, eager_resolve_vars, try_visit};
 use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::canonical::instantiate_canonical_state;
-use rustc_next_trait_solver::resolve::eager_resolve_vars;
 use rustc_next_trait_solver::solve::{MaybeCause, MaybeInfo, SolverDelegateEvalExt as _, inspect};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::solve::delegate::SolverDelegate;
@@ -31,7 +31,7 @@ pub struct InspectConfig {
 pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a SolverDelegate<'tcx>,
     depth: usize,
-    orig_values: Vec<ty::GenericArg<'tcx>>,
+    orig_values: ThinVec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
     final_revision: &'tcx inspect::Probe<TyCtxt<'tcx>>,

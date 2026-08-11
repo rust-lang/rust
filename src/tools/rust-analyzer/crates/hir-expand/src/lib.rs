@@ -1544,7 +1544,7 @@ impl ExpandTo {
 ///
 /// We encode macro definitions into ids of macro calls, this what allows us
 /// to be incremental.
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[salsa::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[doc(alias = "MacroFileId")]
 pub struct MacroCallId {
     #[returns(ref)]
@@ -1565,7 +1565,7 @@ impl From<MacroCallId> for span::MacroCallId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum HirFileId {
     FileId(EditionedFileId),
     MacroFile(MacroCallId),

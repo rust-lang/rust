@@ -456,7 +456,7 @@ pub fn apply_args_to_binder<'db, T: TypeFoldable<DbInterner<'db>>>(
 
 pub fn explicit_item_bounds<'db>(
     interner: DbInterner<'db>,
-    def_id: SolverDefId,
+    def_id: SolverDefId<'db>,
 ) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
     let db = interner.db();
     let clauses = match def_id {
@@ -469,7 +469,7 @@ pub fn explicit_item_bounds<'db>(
 
 pub fn explicit_item_self_bounds<'db>(
     interner: DbInterner<'db>,
-    def_id: SolverDefId,
+    def_id: SolverDefId<'db>,
 ) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
     let db = interner.db();
     let clauses = match def_id {
@@ -722,4 +722,16 @@ pub(crate) fn clauses_as_obligations<'db>(
         predicate: clause.as_predicate(),
         recursion_depth: 0,
     })
+}
+
+/// Copied from
+/// <https://github.com/jdonszelmann/rust/blob/180725cff61d00dd1b9c35fc720a8befaec5d46b/compiler/rustc_middle/src/ty/context/impl_interner.rs#L534-L541>
+#[macro_export]
+macro_rules! ret {
+    ($e: expr) => {
+        match $e.branch() {
+            ::std::ops::ControlFlow::Break(b) => return R::from_residual(b),
+            ::std::ops::ControlFlow::Continue(()) => {}
+        }
+    };
 }

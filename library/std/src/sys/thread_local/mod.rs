@@ -25,7 +25,7 @@
 
 cfg_select! {
     any(
-        all(target_family = "wasm", not(target_feature = "atomics")),
+        all(target_family = "wasm", not(target_feature = "atomics"), not(target_os = "wasi")),
         target_os = "uefi",
         target_os = "zkvm",
         target_os = "trusty",
@@ -54,7 +54,10 @@ cfg_select! {
 /// destructor for each variable. On these platforms, we keep track of the
 /// destructors ourselves and register (through the [`guard`] module) only a
 /// single callback that runs all of the destructors in the list.
-#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics")))))]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"), not(target_os = "wasi")))
+))]
 pub(crate) mod destructors {
     cfg_select! {
         any(
@@ -93,9 +96,7 @@ pub(crate) mod guard {
             pub(crate) use windows::enable;
         }
         any(
-            all(target_family = "wasm", not(
-                all(target_os = "wasi", target_env = "p1", target_feature = "atomics")
-            )),
+            all(target_family = "wasm", not(target_os = "wasi")),
             target_os = "uefi",
             target_os = "zkvm",
             target_os = "trusty",
@@ -150,7 +151,7 @@ pub(crate) mod key {
             ),
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "teeos",
-            all(target_os = "wasi", target_env = "p1", target_feature = "atomics"),
+            target_os = "wasi",
         ) => {
             mod racy;
             mod unix;

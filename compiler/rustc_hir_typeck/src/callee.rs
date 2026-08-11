@@ -31,6 +31,18 @@ use crate::method::TreatNotYetDefinedOpaques;
 use crate::method::confirm::ConfirmContext;
 use crate::method::probe::{IsSuggestion, Mode};
 
+/// Side-table info for lowering splatted function arguments.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) enum SplatLoweringInfo<'tcx> {
+    /// The DefId of the FnDef being called, used to look up the function type.
+    /// Also used during argument suggestion for non-splatted function calls.
+    FnDef(DefId),
+    /// The type of the FnPtr being called.
+    FnPtr(Ty<'tcx>),
+    /// Type resolution errored.
+    Error(ErrorGuaranteed),
+}
+
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).
@@ -559,23 +571,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
                 if self.has_rustc_attrs && find_attr!(self.tcx, def_id, RustcEvaluateWhereClauses) {
-                    let predicates = self.tcx.predicates_of(def_id);
-                    let predicates = predicates.instantiate(self.tcx, args);
-                    for (predicate, predicate_span) in predicates {
-                        let predicate = predicate.skip_norm_wip();
+                    let clauses = self.tcx.clauses_of(def_id);
+                    let clauses = clauses.instantiate(self.tcx, args);
+                    for (clause, clause_span) in clauses {
+                        let clause = clause.skip_norm_wip();
                         let obligation = Obligation::new(
                             self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
-                            predicate,
+                            clause,
                         );
                         let result = self.evaluate_obligation(&obligation);
                         self.dcx()
                             .struct_span_err(
                                 callee_expr.span,
-                                format!("evaluate({predicate:?}) = {result:?}"),
+                                format!("evaluate({clause:?}) = {result:?}"),
                             )
-                            .with_span_label(predicate_span, "predicate")
+                            .with_span_label(clause_span, "predicate")
                             .emit();
                     }
                 }
@@ -600,13 +612,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let fn_sig = self.normalize(call_expr.span, Unnormalized::new_wip(fn_sig));
 
+        // Splatted FnDefs use the DefId to look up the type, FnPtrs need it directly
+        let fn_id = match def_id {
+            Some(x) => SplatLoweringInfo::FnDef(x),
+            None => SplatLoweringInfo::FnPtr(callee_ty),
+        };
+
         self.check_argument_types_maybe_method_like(
             &fn_sig,
             call_expr,
             arg_exprs,
             expected,
             TupleArgumentsFlag::with_fn_sig_kind(fn_sig.fn_sig_kind, false),
-            def_id,
+            fn_id,
             callee_generic_args,
         );
 
@@ -643,7 +661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         tuple_arguments_flag: TupleArgumentsFlag,
-        def_id: Option<DefId>,
+        fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
     ) {
         let do_check = || {
@@ -656,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg_exprs,
                 fn_sig.c_variadic(),
                 tuple_arguments_flag,
-                def_id,
+                fn_id,
                 callee_generic_args,
             );
         };
@@ -903,7 +921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
             unit_variant =
-                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(&self.tcx, qpath)));
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(self, qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -1074,7 +1092,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.fn_sig_kind.c_variadic(),
             TupleArgumentsFlag::rust_fn_trait_call(),
-            Some(closure_def_id.to_def_id()),
+            SplatLoweringInfo::FnDef(closure_def_id.to_def_id()),
             None,
         );
 
@@ -1172,7 +1190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             method.sig.fn_sig_kind.c_variadic(),
             TupleArgumentsFlag::rust_fn_trait_call(),
-            Some(method.def_id),
+            SplatLoweringInfo::FnDef(method.def_id),
             None,
         );
 

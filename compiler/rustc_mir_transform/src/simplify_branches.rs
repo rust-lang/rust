@@ -2,6 +2,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 pub(super) enum SimplifyConstCondition {
@@ -20,6 +21,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
             SimplifyConstCondition::AfterConstProp => "SimplifyConstCondition-after-const-prop",
             SimplifyConstCondition::Final => "SimplifyConstCondition-final",
         }
+    }
+
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(true)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -90,9 +95,5 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
             patch.patch_terminator(bb, terminator);
         }
         patch.apply(body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }

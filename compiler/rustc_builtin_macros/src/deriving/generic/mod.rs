@@ -493,7 +493,7 @@ impl<'a> TraitDef<'a> {
         match item {
             Annotatable::Item(item) => {
                 let is_packed = matches!(
-                    AttributeParser::parse_limited(cx.sess, &item.attrs, &[sym::repr]),
+                    AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
                     Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 
@@ -1083,7 +1083,7 @@ impl<'a> MethodDef<'a> {
                 contract: None,
                 body: Some(body_block),
                 define_opaque: None,
-                eii_impls: ThinVec::new(),
+                eii_impl: None,
             })),
             tokens: None,
         })

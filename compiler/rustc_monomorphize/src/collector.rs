@@ -503,10 +503,18 @@ fn collect_items_rec<'tcx>(
             if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
                 for (op, op_sp) in asm.operands {
                     match *op {
-                        hir::InlineAsmOperand::Const { .. } => {
-                            // Only constants which resolve to a plain integer
-                            // are supported. Therefore the value should not
-                            // depend on any other items.
+                        hir::InlineAsmOperand::Const { anon_const } => {
+                            match tcx.const_eval_poly(anon_const.def_id.to_def_id()) {
+                                Ok(val) => {
+                                    collect_const_value(tcx, val, &mut used_items);
+                                }
+                                Err(ErrorHandled::TooGeneric(..)) => {
+                                    span_bug!(*op_sp, "asm const cannot be resolved; too generic")
+                                }
+                                Err(ErrorHandled::Reported(..)) => {
+                                    continue;
+                                }
+                            }
                         }
                         hir::InlineAsmOperand::SymFn { expr } => {
                             let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
@@ -1540,7 +1548,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                     // This type is impossible to instantiate, so we should not try to
                     // generate a `drop_glue` instance for it.
-                    if self.tcx.instantiate_and_check_impossible_predicates((
+                    if self.tcx.instantiate_and_check_impossible_clauses((
                         id.owner_id.to_def_id(),
                         id_args,
                     )) {
@@ -1669,6 +1677,15 @@ impl<'v> RootCollector<'_, 'v> {
             && match self.strategy {
                 MonoItemCollectionStrategy::Eager => {
                     !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+                    // comptime fns can't be codegenned, so we need to prevent collecting them even
+                    // with link-dead-code. Lazy mode prevents them by them not showing up in
+                    // `is_reachable_non_generic` (and `entry_fn` can't be comptime).
+                    && match self.tcx.def_kind(def_id) {
+                        DefKind::Fn | DefKind::AssocFn => {
+                            self.tcx.constness(def_id) != hir::Constness::Const { always: true }
+                        }
+                        _ => true,
+                    }
                 }
                 MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
@@ -1783,8 +1800,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     // Even though this impl has no type or const generic parameters, because we don't
     // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
     // be trivially false. We must now check that the impl has no impossible-to-satisfy
-    // predicates.
-    if tcx.instantiate_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_args)) {
+    // clauses.
+    if tcx.instantiate_and_check_impossible_clauses((item.owner_id.to_def_id(), impl_args)) {
         return;
     }
 

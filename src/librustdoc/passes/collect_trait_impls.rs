@@ -3,10 +3,13 @@
 //! struct implements that trait.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::FatalError;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Attribute, find_attr};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::kw;
+use tracing::debug;
 
 use super::Pass;
 use crate::clean::*;
@@ -48,32 +51,33 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
         for &cnum in tcx.crates(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
-                cx.with_param_env(impl_def_id, |cx| {
-                    let opt_trait_ref = tcx.impl_opt_trait_ref(impl_def_id);
-                    if opt_trait_ref.is_some_and(|trait_ref| {
-                        crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
-                            || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
-                            || tcx.is_doc_notable_trait(trait_ref.def_id())
-                    }) {
+                let trait_ref = tcx.impl_trait_ref(impl_def_id);
+                debug!("considering extern trait impl {trait_ref:?}");
+                if crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
+                    || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
+                    || tcx.is_doc_notable_trait(trait_ref.def_id())
+                {
+                    debug!("-> inlining due to trait");
+                    cx.with_param_env(impl_def_id, |cx| {
                         inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
-                    } else {
-                        let self_ty =
-                            tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
-                        let self_ty = clean_middle_ty(
-                            ty::Binder::dummy(self_ty),
-                            cx,
-                            Some(impl_def_id),
-                            None,
-                        );
-                        if self_ty.is_full_generic()
-                            || self_ty
-                                .def_id(&cx.cache)
-                                .is_some_and(|did| crate_items.contains(&ItemId::DefId(did)))
-                        {
+                    });
+                } else {
+                    let self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+                    debug!(?self_ty);
+                    let self_ty_head = SelfTyHead::of(ty::Binder::dummy(self_ty), tcx, impl_def_id);
+                    debug!(?self_ty_head);
+                    let keep_impl = match self_ty_head {
+                        SelfTyHead::Generic => true,
+                        SelfTyHead::Item(def_id) => crate_items.contains(&ItemId::DefId(def_id)),
+                        SelfTyHead::Primitive | SelfTyHead::Other => false,
+                    };
+                    if keep_impl {
+                        debug!("-> inlining due to self ty");
+                        cx.with_param_env(impl_def_id, |cx| {
                             inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
-                        }
+                        });
                     }
-                });
+                }
             }
         }
     }
@@ -158,6 +162,113 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     krate.external_traits.extend(cx.external_traits.drain(..));
 
     krate
+}
+
+#[derive(Debug)]
+enum SelfTyHead {
+    Generic,
+    Primitive,
+    Item(DefId),
+    Other,
+}
+
+impl SelfTyHead {
+    /// Compute the "head" (top-level structure) of a type.
+    ///
+    /// When deciding whether to inline an impl, one of the things we look at is
+    /// whether the Self type (the `Foo` in `impl Foo` or `impl Tr for Foo`) is
+    /// present in the current crate (usually itself through inlining). However,
+    /// constructing a full [`clean::Type`](Type) is expensive and more than we need,
+    /// so this function computes just enough information to determine if the type
+    /// is in the current crate.
+    // FIXME: once -Znormalize-docs works properly / becomes the default,
+    // this should invoke normalization where needed (e.g. if the head is an Alias).
+    // we'll need to fetch the param_env too.
+    fn of<'tcx>(bound_ty: ty::Binder<'tcx, Ty<'tcx>>, tcx: TyCtxt<'tcx>, parent: DefId) -> Self {
+        match *bound_ty.skip_binder().kind() {
+            ty::Never
+            | ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Str
+            | ty::Slice(..)
+            | ty::Array(..)
+            | ty::RawPtr(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Tuple(_) => Self::Primitive,
+            ty::Pat(ty, _) => Self::of(bound_ty.rebind(ty), tcx, parent),
+            ty::Ref(_, ty, _) => match Self::of(bound_ty.rebind(ty), tcx, parent) {
+                Self::Generic => Self::Primitive,
+                head => head,
+            },
+            // FIXME(unsafe_binders): this should probably recurse through the unsafe binder,
+            // but clean_middle_ty doesn't handle this correctly yet either
+            ty::UnsafeBinder(_) => Self::Other,
+            ty::Adt(def, _) => Self::Item(def.did()),
+            ty::Foreign(did) => Self::Item(did),
+            ty::Dynamic(obj, _) => {
+                // HACK: pick the first `did` as the `did` of the trait object. Someone
+                // might want to implement "native" support for marker-trait-only
+                // trait objects.
+                let mut dids = obj.auto_traits();
+                let did = obj
+                    .principal_def_id()
+                    .or_else(|| dids.next())
+                    .unwrap_or_else(|| panic!("found trait object `{obj:?}` with no traits?"));
+                Self::Item(did)
+            }
+
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) => {
+                debug_assert!(!tcx.is_impl_trait_in_trait(def_id));
+                Self::of(bound_ty.rebind(alias_ty.self_ty()), tcx, parent)
+            }
+
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
+                let alias_ty = bound_ty.rebind(alias_ty);
+                Self::of(alias_ty.map_bound(|ty| ty.self_ty()), tcx, parent)
+            }
+
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
+                if tcx.features().checked_type_aliases() {
+                    // Free type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
+                    // we need to use `type_of`.
+                    Self::Item(def_id)
+                } else {
+                    let ty = tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip();
+                    Self::of(bound_ty.rebind(ty), tcx, parent)
+                }
+            }
+
+            ty::Param(ref p) => {
+                // FIXME: there's a slight behavior difference from clean_middle_ty here
+                // since here we represent impl traits as Generic not ImplTrait.
+                // probably doesn't matter for collect trait impls since impl trait
+                // can't be a self ty
+                if p.name == kw::SelfUpper { Self::Other } else { Self::Generic }
+            }
+
+            ty::Bound(_, ref ty) => match ty.kind {
+                ty::BoundTyKind::Param(_) => Self::Generic,
+                ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
+            },
+
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+                panic!("{bound_ty} should not appear as impl self ty")
+            }
+
+            ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::Placeholder(..)
+            | ty::CoroutineWitness(..)
+            | ty::Infer(..) => panic!("unexpected impl self ty {bound_ty}"),
+
+            ty::Error(_) => FatalError.raise(),
+        }
+    }
 }
 
 struct SyntheticImplCollector<'a, 'tcx> {

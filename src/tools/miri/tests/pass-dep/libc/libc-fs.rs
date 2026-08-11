@@ -21,6 +21,7 @@ use libc_utils::{errno_check, errno_result};
 fn main() {
     test_dup();
     test_dup_stdout_stderr();
+    test_fcntl_getfd();
     test_canonicalize_too_long();
     test_rename();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
@@ -308,6 +309,13 @@ fn test_dup() {
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
     }
+}
+
+fn test_fcntl_getfd() {
+    // This should succeed for FDs that exist and fail for those that do not.
+    let _success = errno_result(unsafe { libc::fcntl(0, libc::F_GETFD) }).unwrap();
+    let err = errno_result(unsafe { libc::fcntl(1337, libc::F_GETFD) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 }
 
 fn test_canonicalize_too_long() {
@@ -994,21 +1002,7 @@ fn test_readdir() {
         assert!(!dirp.is_null());
         let mut entries = Vec::new();
         loop {
-            cfg_select! {
-                target_os = "macos" => {
-                    // On macos we only support readdir_r as that's what std uses there.
-                    use std::mem::MaybeUninit;
-                    use libc::dirent;
-                    let mut entry: MaybeUninit<dirent> = MaybeUninit::uninit();
-                    let mut result: *mut dirent = std::ptr::null_mut();
-                    let ret = libc::readdir_r(dirp, entry.as_mut_ptr(), &mut result);
-                    assert_eq!(ret, 0);
-                    let entry_ptr = result;
-                }
-                _ => {
-                    let entry_ptr = libc::readdir(dirp);
-                }
-            }
+            let entry_ptr = libc::readdir(dirp);
             if entry_ptr.is_null() {
                 break;
             }

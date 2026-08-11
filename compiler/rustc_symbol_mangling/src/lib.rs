@@ -87,6 +87,7 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -103,7 +104,7 @@ mod v0;
 
 pub mod test;
 
-pub use v0::mangle_internal_symbol;
+pub use v0::{mangle_cgu, mangle_internal_symbol};
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is
@@ -240,6 +241,10 @@ fn compute_symbol_name<'tcx>(
 ) -> String {
     let def_id = instance.def_id();
     let args = instance.args;
+    let def_kind = tcx.def_kind(instance.def_id());
+    if let DefKind::Fn | DefKind::AssocFn = def_kind {
+        debug_assert!(tcx.constness(instance.def_id()) != hir::Constness::Const { always: true });
+    }
 
     debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
 
@@ -254,7 +259,7 @@ fn compute_symbol_name<'tcx>(
     // visibility) symbol. This means that multiple crates may do the same
     // and we want to be sure to avoid any symbol conflicts here.
     let is_globally_shared_function = matches!(
-        tcx.def_kind(instance.def_id()),
+        def_kind,
         DefKind::Fn
             | DefKind::AssocFn
             | DefKind::Closure

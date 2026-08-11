@@ -5,7 +5,7 @@ use rustc_errors::msg;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
 use rustc_middle::span_bug;
@@ -14,6 +14,7 @@ use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
     TypeVisitableExt, TypingMode, Unnormalized,
 };
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use super::{BoundVarReplacer, PlaceholderReplacer, SelectionContext, project};
@@ -58,7 +59,7 @@ impl<'tcx> At<'_, 'tcx> {
         self,
         value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<T, Vec<E>>
+    ) -> Result<T, ThinVec<E>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -79,14 +80,15 @@ impl<'tcx> At<'_, 'tcx> {
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
-            if errors.is_empty() {
-                Ok(value)
-            } else {
-                // Drop pending obligations, since deep normalization may happen
-                // in a loop and we don't want to trigger the assertion on the next
-                // iteration due to pending ambiguous obligations we've left over.
-                let _ = fulfill_cx.collect_remaining_errors(self.infcx);
-                Err(errors)
+            match errors {
+                TraitErrors::NoErrors => Ok(value),
+                TraitErrors::HasErrors(errors) => {
+                    // Drop pending obligations, since deep normalization may happen
+                    // in a loop and we don't want to trigger the assertion on the next
+                    // iteration due to pending ambiguous obligations we've left over.
+                    let _ = fulfill_cx.collect_remaining_errors(self.infcx);
+                    Err(errors)
+                }
             }
         }
     }
@@ -324,20 +326,20 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.obligations.extend(
             infcx
                 .tcx
-                .predicates_of(def_id)
+                .clauses_of(def_id)
                 .instantiate_own(infcx.tcx, free.args)
-                .map(|(pred, span)| (pred.skip_norm_wip(), span))
-                .map(|(mut predicate, span)| {
+                .map(|(clause, span)| (clause.skip_norm_wip(), span))
+                .map(|(mut clause, span)| {
                     if free.has_escaping_bound_vars() {
-                        (predicate, ..) = BoundVarReplacer::replace_bound_vars(
+                        (clause, ..) = BoundVarReplacer::replace_bound_vars(
                             infcx,
                             &mut self.universes,
-                            predicate,
+                            clause,
                         );
                     }
                     let mut cause = self.cause.clone();
                     cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, def_id));
-                    Obligation::new(infcx.tcx, cause, self.param_env, predicate)
+                    Obligation::new(infcx.tcx, cause, self.param_env, clause)
                 }),
         );
         self.depth += 1;

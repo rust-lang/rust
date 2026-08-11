@@ -6,13 +6,14 @@ use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 
+use crate as hir;
 use crate::definitions::DefPathData;
-use crate::hir;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
@@ -472,7 +473,7 @@ impl DefKind {
 ///   pointing to the definition of `str_to_string` in the current crate.
 //
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
-pub enum Res<Id = hir::HirId> {
+pub enum Res<Id = HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
     /// **Not bound to a specific namespace.**

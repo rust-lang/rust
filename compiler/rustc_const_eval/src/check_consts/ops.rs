@@ -247,7 +247,9 @@ fn build_error_for_const_call<'tcx>(
             // Don't point at the trait if this is a desugaring...
             // FIXME(const_trait_impl): we could perhaps do this for `Iterator`.
             match kind {
-                CallDesugaringKind::ForLoopIntoIter | CallDesugaringKind::ForLoopNext => {
+                CallDesugaringKind::ForLoopIntoIter
+                | CallDesugaringKind::ForLoopIntoAsyncIter
+                | CallDesugaringKind::ForLoopNext => {
                     error!(NonConstForLoopIntoIter)
                 }
                 CallDesugaringKind::QuestionBranch => {

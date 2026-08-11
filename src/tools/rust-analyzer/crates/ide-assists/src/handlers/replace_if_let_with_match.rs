@@ -102,7 +102,7 @@ pub(crate) fn replace_if_let_with_match(
 
     if !pat_seen && cond_bodies.len() != 1 {
         // Don't offer turning an if (chain) without patterns into a match,
-        // unless its a simple `if cond { .. } (else { .. })`
+        // unless it's a simple `if cond { .. } (else { .. })`
         return None;
     }
 

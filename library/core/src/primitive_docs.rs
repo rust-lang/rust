@@ -146,7 +146,7 @@ mod prim_bool {}
 ///
 /// ```ignore (hypothetical-example)
 /// loop {
-///     let (client, request) = get_request().expect("disconnected");
+///     let (client, request) = get_request().expect("server should stay connected");
 ///     let response = request.process();
 ///     response.send(client);
 /// }
@@ -1333,10 +1333,12 @@ mod prim_f16 {}
 /// such as NaN, +/-Inf, or -0.0 may behave in unexpected ways, but these operations
 /// will never cause undefined behavior.
 ///
-/// Because of the unpredictable nature of compiler optimizations, the same inputs may produce
-/// different results even within a single program run. **Unsafe code must not rely on any property
-/// of the return value for soundness.** However, implementations will generally do their best to
-/// pick a reasonable tradeoff between performance and accuracy of the result.
+/// Algebraic operations are non-deterministic. This means that two invocations of such an operation
+/// with the same inputs may produce different results even within a single program run. No
+/// guarantees are made about the results of individual operations, except that they produce *some*
+/// valid floating-point value. **Unsafe code must not rely on any property of the return value for
+/// soundness.** However, implementations will generally do their best to pick a reasonable tradeoff
+/// between performance and accuracy of the result.
 ///
 /// For example:
 ///
@@ -1361,6 +1363,21 @@ mod prim_f16 {}
 /// # let d: f32 = 4.0;
 /// x = ((a + b) + c) + d; // As written
 /// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
+/// ```
+///
+/// The following example demonstrates the non-determinism:
+///
+/// ```
+/// # #![allow(unused_assignments)]
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// let x1 = a.algebraic_add(b);
+/// let x2 = a.algebraic_add(b);
+/// assert_eq!(x1.to_bits(), x1.to_bits()); // this is guaranteed
+/// # if false {
+/// assert_eq!(x1.to_bits(), x2.to_bits()); // but this may fail
+/// assert!(!x2.is_nan()); // this may also fail, even if there was no NaN input
+/// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}

@@ -91,6 +91,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         true
     }
 
+    fn is_entirely_uninit_const(&self, operand: &mir::Operand<'tcx>) -> bool {
+        let mir::Operand::Constant(const_op) = operand else { return false };
+        self.eval_mir_constant(const_op).all_bytes_uninit(self.cx.tcx())
+    }
+
     #[instrument(level = "trace", skip(self, bx))]
     pub(crate) fn codegen_rvalue(
         &mut self,
@@ -100,6 +105,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match *rvalue {
             mir::Rvalue::Use(ref operand, with_retag) => {
+                if self.is_entirely_uninit_const(operand) {
+                    return;
+                }
                 let cg_operand = self.codegen_operand(bx, operand);
                 // Crucially, we do *not* use `OperandValue::Ref` for types with
                 // `BackendRepr::Scalar | BackendRepr::ScalarPair`. This ensures we match the MIR
@@ -170,9 +178,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandValue::ZeroSized => {
                         bug!("unsized coercion on a ZST rvalue");
                     }
-                    OperandValue::Uninit => {
-                        bug!("unsized coercion on an uninit rvalue");
-                    }
                 }
             }
 
@@ -191,11 +196,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                let cg_elem = self.codegen_operand(bx, elem);
-
-                if let OperandValue::Uninit = cg_elem.val {
+                // When the element is a const with all bytes uninit, emit a single memset that
+                // writes undef to the entire destination.
+                if self.is_entirely_uninit_const(elem) {
+                    let size = bx.const_usize(dest.layout.size.bytes());
+                    bx.memset(
+                        dest.val.llval,
+                        bx.const_undef(bx.type_i8()),
+                        size,
+                        dest.val.align,
+                        MemFlags::empty(),
+                    );
                     return;
                 }
+
+                let cg_elem = self.codegen_operand(bx, elem);
 
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
@@ -254,6 +269,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     assert_eq!(operands.len(), 1);
                 }
                 for (i, operand) in operands.iter_enumerated() {
+                    // Do not generate stores for entirely uninit constant fields, for the same
+                    // reason as in `Rvalue::Use` above.
+                    if self.is_entirely_uninit_const(operand) {
+                        continue;
+                    }
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
@@ -356,7 +376,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cx = bx.cx();
         match (operand.val, operand.layout.backend_repr, cast.backend_repr) {
             _ if cast.is_zst() => OperandValue::ZeroSized,
-            (OperandValue::Uninit, _, _) => OperandValue::Uninit,
             (OperandValue::Ref(source_place_val), abi::BackendRepr::Memory { .. }, _) => {
                 assert_eq!(source_place_val.llextra, None);
                 // The existing alignment is part of `source_place_val`,
@@ -600,7 +619,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Unsupported cast of {operand:?} to {cast:?}");
                         })
                     }
-                    mir::CastKind::Transmute | mir::CastKind::Subtype => {
+                    mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute | mir::CastKind::Subtype => {
                         self.codegen_transmute_operand(bx, operand, cast)
                     }
                 };

@@ -1,14 +1,16 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_infer::traits::TraitErrors;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::solve::NextSolverError;
 use crate::traits::query::NoSolution;
 use crate::traits::query::normalize::QueryNormalizeExt;
-use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt};
+use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt, OldSolverError};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to
@@ -104,9 +106,9 @@ pub fn compute_dropck_outlives_with_errors<'tcx, E>(
     ocx: &ObligationCtxt<'_, 'tcx, E>,
     goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
     span: Span,
-) -> Result<DropckOutlivesResult<'tcx>, Vec<E>>
+) -> Result<DropckOutlivesResult<'tcx>, ThinVec<E>>
 where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
@@ -200,7 +202,7 @@ where
                 // obligations, and we may have pending obligations from the
                 // branch above (from other types).
                 let errors = ocx.evaluate_obligations_error_on_ambiguity();
-                if !errors.is_empty() {
+                if let TraitErrors::HasErrors(errors) = errors {
                     return Err(errors);
                 }
 

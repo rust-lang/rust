@@ -142,6 +142,9 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 
+    /// A counter that is used for generating global symbol names
+    global_gen_sym_counter: Cell<usize>,
+
     /// `codegen_static` will sometimes create a second global variable with a
     /// different type and clear the symbol name of the original global.
     /// `global_asm!` needs to be able to find this new global so that it can
@@ -235,7 +238,7 @@ pub(crate) unsafe fn create_module<'ll>(
                 .expect("got a non-UTF8 data-layout from LLVM");
 
         if target_data_layout != llvm_data_layout {
-            tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
+            tcx.dcx().emit_err(crate::diagnostics::MismatchedDataLayout {
                 rustc_target: sess.opts.target_triple.to_string().as_str(),
                 rustc_layout: target_data_layout.as_str(),
                 llvm_target: sess.target.llvm_target.borrow(),
@@ -402,8 +405,7 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
-    {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
         if sess.target.arch == Arch::AArch64 {
             llvm::add_module_flag_u32(
                 llmod,
@@ -417,7 +419,11 @@ pub(crate) unsafe fn create_module<'ll>(
                 "sign-return-address",
                 pac_ret.is_some().into(),
             );
-            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, pc: false, key: PAuthKey::A });
+            let pac_opts = pac_ret.unwrap_or_else(|| {
+                // Windows on Arm only supports PAC key B.
+                let key = if sess.target.os == Os::Windows { PAuthKey::B } else { PAuthKey::A };
+                PacRet { leaf: false, pc: false, key }
+            });
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Min,
@@ -679,6 +685,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),
                 local_gen_sym_counter: Cell::new(0),
+                global_gen_sym_counter: Cell::new(0),
                 renamed_statics: Default::default(),
                 objc_class_t: Cell::new(None),
                 objc_classrefs: Default::default(),
@@ -1116,6 +1123,20 @@ impl CodegenCx<'_, '_> {
         self.local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
         // user defined names
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push('.');
+        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        name
+    }
+
+    /// Generates a new global symbol name with the given prefix.
+    pub(crate) fn generate_global_symbol_name(&self) -> String {
+        let idx = self.global_gen_sym_counter.get();
+        self.global_gen_sym_counter.set(idx + 1);
+
+        let sym = self.codegen_unit.symbol_name();
+        let prefix = sym.as_str();
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');

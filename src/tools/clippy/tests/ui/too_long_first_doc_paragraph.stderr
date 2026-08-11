@@ -48,5 +48,14 @@ LL | | ///
 LL | | /// Here's a second paragraph. It would be preferable to put the details here.
    | |_^
 
-error: aborting due to 4 previous errors
+error: first doc comment paragraph is too long
+  --> tests/ui/too_long_first_doc_paragraph.rs:77:1
+   |
+LL | / /// Some function. This doc-string paragraph is too long. Lorem Ipsum is simply dummy text of the printing and typesetting industr...
+LL | |
+LL | | ///
+LL | | /// Here's a second paragraph. It would be preferable to put the details here.
+   | |_^
+
+error: aborting due to 5 previous errors
 

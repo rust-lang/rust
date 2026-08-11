@@ -11,6 +11,6 @@
 #![allow(incomplete_features)]
 trait Trait {}
 impl Trait for [(); N] {}
-//~^ ERROR: missing generics for function `N`
+//~^ ERROR function items cannot be used as const args
 fn N<T>() {}
 pub fn main() {}

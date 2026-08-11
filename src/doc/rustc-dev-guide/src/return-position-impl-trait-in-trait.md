@@ -47,7 +47,7 @@ The main addition for RPITITs is that during lowering we track the
 relationship between the captured lifetimes and the corresponding
 duplicated lifetimes in an additional field,
 [`OpaqueTy::lifetime_mapping`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.OpaqueTy.html#structfield.lifetime_mapping).
-We use this lifetime mapping later on in `predicates_of` to install
+We use this lifetime mapping later on in `clauses_of` to install
 bounds that enforce equality between these duplicated lifetimes and
 their source lifetimes in order to properly typecheck these GATs, which
 will be discussed below.
@@ -171,18 +171,18 @@ perhaps by a interested new contributor.
 ##### `opt_rpitit_info`
 
 Some queries rely on computing information that would result in cycles
-if we were to feed them eagerly, like `explicit_predicates_of`.
-Therefore we defer to the `predicates_of` provider to return the right
+if we were to feed them eagerly, like `explicit_clauses_of`.
+Therefore we defer to the `clauses_of` provider to return the right
 value for our RPITIT's GAT. We do this by detecting early on in the
 query if the associated type is synthetic by using
 [`opt_rpitit_info`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.opt_rpitit_info),
 which returns `Some` if the associated type is synthetic.
 
-Then, during a query like `explicit_predicates_of`, we can detect if an
+Then, during a query like `explicit_clauses_of`, we can detect if an
 associated type is synthetic like:
 
 ```rust
-fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ... {
+fn explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ... {
     if let Some(rpitit_info) = tcx.opt_rpitit_info(def_id) {
         // Do something special for RPITITs...
         return ...;
@@ -192,13 +192,13 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ... {
 }
 ```
 
-##### `explicit_predicates_of`
+##### `explicit_clauses_of`
 
 RPITITs begin by copying the predicates of the method that defined it,
 both on the trait and impl side.
 
 Additionally, we install "bidirectional outlives" predicates.
-Specifically, we add region-outlives predicates in both directions for
+Specifically, we add region-outlives clauses in both directions for
 each captured early-bound lifetime that constrains it to be equal to the
 duplicated early-bound lifetime that results from lowering. This is best
 illustrated in an example:
@@ -306,7 +306,7 @@ come after the `=` in `type Assoc = ...` for each RPITIT.
 Since `collect_return_position_impl_trait_in_trait_tys` does fulfillment and
 region resolution, we must provide it `assumed_wf_types` so that we can prove
 region obligations with the same expected implied bounds as
-`compare_method_predicate_entailment` does.
+`compare_method_clause_entailment` does.
 
 Since the return type of a method is understood to be one of the assumed WF
 types, and we eagerly fold the return type with inference variables to do
@@ -378,7 +378,7 @@ error[E0308]: mismatched types
 
 We check well-formedness of RPITITs just like regular associated types.
 
-Since we added lifetime bounds in `predicates_of` that link the
+Since we added lifetime bounds in `clauses_of` that link the
 duplicated early-bound lifetimes to their original lifetimes, and we
 implemented `assumed_wf_types` which inherits the WF types of the method
 from which the RPITIT originates ([#113704]), we have no issues

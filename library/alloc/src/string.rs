@@ -1314,7 +1314,7 @@ impl String {
     ///
     ///     Ok(output)
     /// }
-    /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
+    /// # process_data("rust").expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1355,7 +1355,7 @@ impl String {
     ///
     ///     Ok(output)
     /// }
-    /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
+    /// # process_data("rust").expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {

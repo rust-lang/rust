@@ -87,9 +87,11 @@
 //! [`rustc_passes::check_attr`]: ../rustc_passes/check_attr/index.html
 
 // tidy-alphabetical-start
+#![expect(internal_features, reason = "rustc_attrs")]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
+#![feature(rustc_attrs)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
@@ -119,4 +121,4 @@ pub use context::{OmitDoc, ShouldEmit};
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
 pub use session_diagnostics::ParsedDescription;
-pub use template::{AttrSuggestionStyle, AttributeTemplate};
+pub use template::AttributeTemplate;

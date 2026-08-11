@@ -21,15 +21,15 @@ pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
 pub type CoercePredicate<'tcx> = ir::CoercePredicate<TyCtxt<'tcx>>;
 pub type SubtypePredicate<'tcx> = ir::SubtypePredicate<TyCtxt<'tcx>>;
-pub type OutlivesPredicate<'tcx, T> = ir::OutlivesPredicate<TyCtxt<'tcx>, T>;
-pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, ty::Region<'tcx>>;
-pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, Ty<'tcx>>;
-pub type ArgOutlivesPredicate<'tcx> = OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>;
+pub type OutlivesClause<'tcx, T> = ir::OutlivesClause<TyCtxt<'tcx>, T>;
+pub type RegionOutlivesClause<'tcx> = OutlivesClause<'tcx, ty::Region<'tcx>>;
+pub type TypeOutlivesClause<'tcx> = OutlivesClause<'tcx, Ty<'tcx>>;
+pub type ArgOutlivesClause<'tcx> = OutlivesClause<'tcx, ty::GenericArg<'tcx>>;
 pub type RegionEqPredicate<'tcx> = ir::RegionEqPredicate<TyCtxt<'tcx>>;
 pub type RegionConstraint<'tcx> = ir::RegionConstraint<TyCtxt<'tcx>>;
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
-pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;
-pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>;
+pub type PolyRegionOutlivesClause<'tcx> = ty::Binder<'tcx, RegionOutlivesClause<'tcx>>;
+pub type PolyTypeOutlivesClause<'tcx> = ty::Binder<'tcx, TypeOutlivesClause<'tcx>>;
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 pub type PolyProjectionPredicate<'tcx> = ty::Binder<'tcx, ProjectionPredicate<'tcx>>;
@@ -195,7 +195,7 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
-    pub fn as_type_outlives_clause(self) -> Option<ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>> {
+    pub fn as_type_outlives_clause(self) -> Option<ty::Binder<'tcx, TypeOutlivesClause<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::TypeOutlives(o) = clause.skip_binder() {
             Some(clause.rebind(o))
@@ -204,9 +204,7 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
-    pub fn as_region_outlives_clause(
-        self,
-    ) -> Option<ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>> {
+    pub fn as_region_outlives_clause(self) -> Option<ty::Binder<'tcx, RegionOutlivesClause<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::RegionOutlives(o) = clause.skip_binder() {
             Some(clause.rebind(o))
@@ -540,20 +538,20 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitPredicate<'tcx>> for Clause<'tcx> {
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, RegionOutlivesPredicate<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: RegionOutlivesPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, RegionOutlivesClause<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: RegionOutlivesClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::RegionOutlives(from))).upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyRegionOutlivesPredicate<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: PolyRegionOutlivesPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).upcast(tcx)
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyRegionOutlivesClause<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: PolyRegionOutlivesClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+        from.map_bound(|c| PredicateKind::Clause(ClauseKind::RegionOutlives(c))).upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TypeOutlivesPredicate<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: TypeOutlivesPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TypeOutlivesClause<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: TypeOutlivesClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(from))).upcast(tcx)
     }
 }

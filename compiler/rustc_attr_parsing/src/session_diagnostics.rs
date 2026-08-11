@@ -14,6 +14,15 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("`#[rustc_force_inline]` and `#[inline]` cannot be used together")]
+pub(crate) struct InlineForceInlineConflict {
+    #[primary_span]
+    pub force_inline_span: Span,
+    #[label("the inline attribute is specified here")]
+    pub inline_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
@@ -26,6 +35,15 @@ pub(crate) struct RustcPubTransparent {
     #[primary_span]
     pub attr_span: Span,
     #[label("not a `#[repr(transparent)]` type")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to a macro")]
+pub(crate) struct MacroOnlyAttribute {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a macro")]
     pub span: Span,
 }
 
@@ -107,6 +125,26 @@ pub(crate) struct TargetFeatureOnLangItem {
         } function is not allowed to have `#[target_feature]`"
     )]
     pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$name ->
+    [panic_impl] `#[panic_handler]`
+    *[other] `{$name}` lang item
+} function is not allowed to have `#[track_caller]`"
+)]
+pub(crate) struct TrackCallerOnLangItem {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label(
+        "{$name ->
+            [panic_impl] `#[panic_handler]`
+            *[other] `{$name}` lang item
+        } function is not allowed to have `#[track_caller]`"
+    )]
+    pub sig_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -403,6 +441,18 @@ pub(crate) struct InvalidTarget {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidTargetHelp {
+    #[multipart_suggestion(
+        "did you mean to use `#[export_name]`?",
+        applicability = "maybe-incorrect"
+    )]
+    UseExportName {
+        #[suggestion_part(code = "unsafe(")]
+        unsafe_open: Option<Span>,
+        #[suggestion_part(code = "export_name")]
+        name: Span,
+        #[suggestion_part(code = ")")]
+        unsafe_close: Option<Span>,
+    },
     #[help("use `#[rustc_align(...)]` instead")]
     UseRustcAlign,
     #[help("use `#[rustc_align_static(...)]` instead")]
@@ -509,7 +559,6 @@ pub enum ParsedDescription {
 
 pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
-    pub(crate) attr_span: Span,
     pub(crate) inner_span: Span,
     pub(crate) template: AttributeTemplate,
     pub(crate) path: AttrPath,
@@ -604,7 +653,7 @@ impl<'a> AttributeParseError<'a> {
         match &self.suggestions {
             AttributeParseErrorSuggestions::CreatedByTemplate(suggestions) => {
                 diag.span_suggestions(
-                        self.attr_span,
+                        self.inner_span,
                         if suggestions.len() == 1 {
                             "must be of the form".to_string()
                         } else {

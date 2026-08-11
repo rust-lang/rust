@@ -5,7 +5,7 @@ use tracing::debug;
 
 use crate::attr::MetaVisitor;
 use crate::parse::macros::cfg_if::parse_cfg_if;
-use crate::parse::macros::cfg_select::parse_cfg_select;
+use crate::parse::macros::cfg_select::parse_items_from_cfg_select;
 use crate::parse::session::ParseSess;
 
 pub(crate) struct ModItem {
@@ -123,7 +123,7 @@ impl<'a, 'ast: 'a> CfgSelectVisitor<'a> {
             }
         };
 
-        let items = parse_cfg_select(self.psess, mac)?;
+        let items = parse_items_from_cfg_select(self.psess, mac)?;
         self.mods
             .append(&mut items.into_iter().map(|item| ModItem { item }).collect());
 

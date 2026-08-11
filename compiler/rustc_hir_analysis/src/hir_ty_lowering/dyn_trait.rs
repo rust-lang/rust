@@ -11,8 +11,8 @@ use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, RegionUtilitiesExt, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, Upcast,
+    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Upcast,
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -231,9 +231,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ordered_associated_items.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
-                                // Only associated types & type consts can possibly be
-                                // constrained in a trait object type via a binding.
-                                .filter(|item| item.is_type() || item.is_type_const())
+                                .filter(|item| item.can_have_equality_constraint(tcx))
                                 // Traits with RPITITs are simply not dyn compatible (for now).
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| (item.def_id, trait_ref)),

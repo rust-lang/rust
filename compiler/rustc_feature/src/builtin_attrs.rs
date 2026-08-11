@@ -185,6 +185,8 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
 
     sym::ffi_pure,
     sym::ffi_const,
+    sym::register_attribute_tool,
+    sym::register_lint_tool,
     sym::register_tool,
     // `#[cfi_encoding = ""]`
     sym::cfi_encoding,
@@ -209,16 +211,18 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/130494
     sym::pin_v2,
 
-    // The `#[splat]` attribute is part of the `splat` experiment
+    // The `#[rustc_splat]` attribute is part of the `splat` experiment
     // that improves the ergonomics of function overloading, tracked in:
     //
     // - https://github.com/rust-lang/rust/issues/153629
-    sym::splat,
+    sym::rustc_splat,
 
-    // The `#[unroll]` attribute.
+    // The `#[rustc_unroll]` attribute.
     //
     // - https://github.com/rust-lang/rust/pull/156816
-    sym::unroll,
+    //
+    // FIXME(#159429): temporarily renamed to mitigate `#[unroll]` nameres ambiguity
+    sym::rustc_unroll,
 
     // `#[instrument_fn = "on|off"]` to insert or inhibit instrumentation function
     // calls inside a function, usually around the prologue.
@@ -353,6 +357,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_dyn_incompatible_trait,
     sym::rustc_has_incoherent_inherent_impls,
     sym::rustc_non_const_trait_method,
+    sym::rustc_panics_when_zero,
 
     sym::rustc_canonical_symbol,
     sym::rustc_diagnostic_item,
@@ -362,7 +367,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_reservation_impl,
     sym::rustc_test_entrypoint_marker,
     sym::rustc_test_marker,
-    sym::rustc_unsafe_specialization_marker,
+    sym::rustc_allow_lifetime_dependent_specialization,
     sym::rustc_specialization_trait,
     sym::rustc_main,
     sym::rustc_skip_during_method_dispatch,

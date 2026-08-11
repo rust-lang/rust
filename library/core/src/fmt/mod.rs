@@ -1611,7 +1611,7 @@ pub trait UpperExp: PointeeSized {
 ///
 /// let mut output = String::new();
 /// fmt::write(&mut output, format_args!("Hello {}!", "world"))
-///     .expect("Error occurred while trying to write in String");
+///     .expect("Writing to a `String` should not fail");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
@@ -1622,7 +1622,7 @@ pub trait UpperExp: PointeeSized {
 ///
 /// let mut output = String::new();
 /// write!(&mut output, "Hello {}!", "world")
-///     .expect("Error occurred while trying to write in String");
+///     .expect("Writing to a `String` should not fail");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
@@ -2575,6 +2575,21 @@ impl<'a> Formatter<'a> {
             builder.field(name, value);
         }
         builder.finish()
+    }
+
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For C-like enums with concatenated variant name strings.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_c_like_enum_write_str<'b>(
+        &'b mut self,
+        names: &str,
+        offset: &[usize],
+        discr: usize,
+    ) -> Result {
+        let start = offset[discr];
+        let end = offset[discr + 1];
+        self.write_str(&names[start..end])
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of

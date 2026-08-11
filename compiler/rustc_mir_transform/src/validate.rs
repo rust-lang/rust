@@ -20,6 +20,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::PassPolicy;
 use crate::util::{self, most_packed_projection};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -97,8 +98,8 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(true)
     }
 }
 
@@ -621,7 +622,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 }
 
@@ -1385,7 +1386,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    CastKind::Transmute => {
+                    CastKind::Transmute | CastKind::BoxDerefTransmute => {
                         // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                         // for any two `Sized` types, just potentially UB to run.
 
@@ -1414,6 +1415,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
+                        }
+
+                        if matches!(kind, CastKind::BoxDerefTransmute) {
+                            if !target_type.is_raw_ptr() {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Cannot BoxDerefTransmute to non-pointer type {target_type}"
+                                    ),
+                                );
+                            }
                         }
                     }
                     CastKind::Subtype => {
