@@ -20,6 +20,7 @@ use serde_derive::Deserialize;
 use tracing::span;
 
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
+use crate::core::build_steps::llvm::LlvmFromCi;
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
@@ -505,14 +506,14 @@ pub fn std_crates_for_make_run(run: &RunConfig<'_>) -> Vec<String> {
 /// downloaded copy of CI LLVM, then we try to use the `compiler-rt` sources from
 /// there instead, which lets us avoid checking out the LLVM submodule.
 fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
-    // Try to use `compiler-rt` sources from downloaded CI LLVM, if possible.
-    if builder.config.llvm_ci_mode.download_from_ci() {
-        // CI LLVM might not have been downloaded yet, so try to download it now.
-        builder.config.maybe_download_ci_llvm();
-        let ci_llvm_compiler_rt = builder.config.ci_llvm_root().join("compiler-rt");
-        if ci_llvm_compiler_rt.exists() {
-            return ci_llvm_compiler_rt;
-        }
+    // Try to use `compiler-rt` sources from downloaded CI LLVM, if available
+    if let Some(downloaded_llvm) = builder.ensure(LlvmFromCi { target: builder.host_target }) {
+        let ci_llvm_compiler_rt = downloaded_llvm.output.root_dir().join("compiler-rt");
+        assert!(
+            ci_llvm_compiler_rt.exists(),
+            "compiler-rt sources not found in LLVM downloaded from CI at {ci_llvm_compiler_rt:?}"
+        );
+        return ci_llvm_compiler_rt;
     }
 
     // Otherwise, fall back to requiring the LLVM submodule.

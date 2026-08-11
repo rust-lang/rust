@@ -20,7 +20,7 @@ use crate::core::build_steps::llvm;
 use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
 };
-use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
+use crate::core::config::{Config, LlvmCiMode, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
@@ -273,6 +273,62 @@ pub(crate) fn is_ci_llvm_available_for_target(
     }
 
     true
+}
+
+#[derive(Clone)]
+pub struct DownloadedLlvm {
+    pub output: LlvmOutput,
+}
+
+/// This step explicitly represents the output of *downloaded* LLVM.
+/// The step will provide an output only if all the following is true:
+/// - `llvm.download-ci-llvm` is `true` or `if-unchanged`
+/// - If the previous value is `if-unchanged`, the local LLVM inputs are not modified
+/// - Artifacts for LLVM for the given target (and debug assertions) are available on CI
+///
+/// There are some places in bootstrap that explicitly want to do something special about the
+/// downloaded LLVM, this step serves for them to do it in an explicit way.
+/// For all other use-cases, the normal `Llvm` step should be used.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LlvmFromCi {
+    pub target: TargetSelection,
+}
+
+impl Step for LlvmFromCi {
+    type Output = Option<DownloadedLlvm>;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        match builder.config.llvm_ci_mode {
+            LlvmCiMode::BuildLocally => return None,
+            LlvmCiMode::DownloadFromCi => {}
+        }
+
+        if !is_ci_llvm_available_for_target(&self.target, builder.config.llvm_assertions) {
+            crate::debug!(
+                "LLVM not available on CI for target={} and assertions={}",
+                self.target,
+                builder.config.llvm_assertions
+            );
+            return None;
+        }
+
+        // FIXME: this should eventually be relaxed
+        if self.target != builder.host_target {
+            crate::debug!("LLVM not available on CI for non-host target {}", self.target);
+            return None;
+        }
+
+        // FIXME: the function below should *only* be called from this place, and nowhere else in
+        // bootstrap.
+        builder.config.maybe_download_ci_llvm();
+
+        // FIXME: uses of the function below should be replaced with either this step or the `Llvm`
+        // step.
+        match prebuilt_llvm_config(builder, self.target, true) {
+            LlvmBuildStatus::AlreadyBuilt(output) => Some(DownloadedLlvm { output }),
+            LlvmBuildStatus::ShouldBuild(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
