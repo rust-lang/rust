@@ -49,7 +49,7 @@ where
 
 pub fn on_lookup_result_bits<'tcx, F>(
     move_data: &MoveData<'tcx>,
-    lookup_result: LookupResult<'tcx>,
+    lookup_result: LookupResult,
     each_child: F,
 ) where
     F: FnMut(MovePathIndex),

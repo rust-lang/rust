@@ -2083,13 +2083,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             // Subslice and ConstantIndex projections of slices also overlap siblings,
             // but the parent slice will never have a move path
             // Subslice projections of arrays are specifically checked in `check_if_subslice_element_is_moved`
-            LookupResult::Parent { mpi, next_elem: PlaceElem::Index(..) } => self
+            LookupResult::Parent { mpi, next_elem: ProjectionKind::Index(..) } => self
                 .move_data
                 .find_in_move_path_or_its_descendants(mpi, |mpi| maybe_uninits.contains(mpi)),
 
-            LookupResult::Exact(mpi) | LookupResult::Parent { mpi, next_elem: _ } => {
-                maybe_uninits.contains(mpi).then_some(mpi)
-            }
+            LookupResult::Exact(mpi)
+            | LookupResult::Parent {
+                mpi,
+                next_elem:
+                    ProjectionKind::Deref
+                    | ProjectionKind::Field(..)
+                    | ProjectionKind::ConstantIndex { .. }
+                    | ProjectionKind::Subslice { .. }
+                    | ProjectionKind::Downcast(..)
+                    | ProjectionKind::OpaqueCast(..)
+                    | ProjectionKind::UnwrapUnsafeBinder(..),
+            } => maybe_uninits.contains(mpi).then_some(mpi),
 
             LookupResult::None => bug!("should have move path for every Local"),
         };
