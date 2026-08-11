@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_crate_store::CrateDepKind;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -17,7 +18,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
-use rustc_session::cstore::CrateDepKind;
 use rustc_span::Span;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};

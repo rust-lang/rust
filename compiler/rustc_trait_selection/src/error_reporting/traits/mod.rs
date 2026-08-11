@@ -7,6 +7,7 @@ pub mod suggestions;
 
 use std::{fmt, iter};
 
+use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
@@ -20,7 +21,6 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use thin_vec::ThinVec;
 use tracing::{info, instrument};

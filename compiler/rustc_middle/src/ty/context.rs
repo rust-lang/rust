@@ -17,6 +17,7 @@ use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
+use rustc_crate_store::{CrateStoreDyn, Untracked};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -37,7 +38,6 @@ use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_att
 use rustc_index::IndexVec;
 use rustc_macros::Diagnostic;
 use rustc_session::config::CrateType;
-use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
