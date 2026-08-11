@@ -1242,7 +1242,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Resolve a type variable to a type, if known.
     /// Otherwise return a type with the root vid in it.
     #[inline(always)]
-    fn shallow_resolve_ty_var(&self, v: TyVid, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn shallow_resolve_ty_var_with_ty(&self, v: TyVid, ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         let (root_vid, value) = self.inner.borrow_mut().type_variables().inlined_probe_with_vid(v);
         match value {
             // Not entirely obvious:
@@ -1260,7 +1260,9 @@ impl<'tcx> InferCtxt<'tcx> {
             // In cases where we do, this can aid performance.
             TypeVariableValue::Known { value } => self.shallow_resolve_non_recursive(value),
             TypeVariableValue::Unknown { .. } => {
-                if root_vid == v {
+                if root_vid == v
+                    && let Some(ty) = ty
+                {
                     ty
                 } else {
                     Ty::new_var(self.tcx, root_vid)
@@ -1271,15 +1273,20 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Resolve a type variable to an integer type, if known.
     /// Otherwise return a type with the root int vid in it.
+    ///
+    /// `ty` is a type that we may already have available, which represents the `IntVid`.
+    /// In cases where we do, this can aid performance.
     #[inline(always)]
-    fn shallow_resolve_int_var(&self, v: IntVid, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn shallow_resolve_int_var_with_ty(&self, v: IntVid, ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         let (root, value) =
             self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
         match value {
             ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
             ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
             ty::IntVarValue::Unknown => {
-                if root == v {
+                if root == v
+                    && let Some(ty) = ty
+                {
                     ty
                 } else {
                     Ty::new_int_var(self.tcx, root)
@@ -1290,14 +1297,19 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Resolve a type variable to a float type, if known.
     /// Otherwise return a type with the root float vid in it.
+    ///
+    /// `ty` is a type that we may already have available, which represents the `FloatVid`.
+    /// In cases where we do, this can aid performance.
     #[inline(always)]
-    fn shallow_resolve_float_var(&self, v: FloatVid, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn shallow_resolve_float_var_with_ty(&self, v: FloatVid, ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         let (root, value) =
             self.inner.borrow_mut().float_unification_table().inlined_probe_key_value(v);
         match value {
             ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
             ty::FloatVarValue::Unknown => {
-                if root == v {
+                if root == v
+                    && let Some(ty) = ty
+                {
                     ty
                 } else {
                     Ty::new_float_var(self.tcx, root)
@@ -1318,8 +1330,8 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::TyVar(_) => {
                 unreachable!()
             }
-            ty::IntVar(v) => self.shallow_resolve_int_var(v, ty),
-            ty::FloatVar(v) => self.shallow_resolve_float_var(v, ty),
+            ty::IntVar(v) => self.shallow_resolve_int_var_with_ty(v, Some(ty)),
+            ty::FloatVar(v) => self.shallow_resolve_float_var_with_ty(v, Some(ty)),
             ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
         }
     }
@@ -1327,9 +1339,9 @@ impl<'tcx> InferCtxt<'tcx> {
     #[inline(always)]
     fn shallow_resolve_infer(&self, infer: InferTy, ty: Ty<'tcx>) -> Ty<'tcx> {
         match infer {
-            ty::TyVar(v) => self.shallow_resolve_ty_var(v, ty),
-            ty::IntVar(v) => self.shallow_resolve_int_var(v, ty),
-            ty::FloatVar(v) => self.shallow_resolve_float_var(v, ty),
+            ty::TyVar(v) => self.shallow_resolve_ty_var_with_ty(v, Some(ty)),
+            ty::IntVar(v) => self.shallow_resolve_int_var_with_ty(v, Some(ty)),
+            ty::FloatVar(v) => self.shallow_resolve_float_var_with_ty(v, Some(ty)),
             ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
         }
     }
@@ -1436,29 +1448,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Resolves an int var to a rigid int type, if it was constrained to one,
     /// or else the root int var in the unification table.
-    pub fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
-        let mut inner = self.inner.borrow_mut();
-        let value = inner.int_unification_table().probe_value(vid);
-        match value {
-            ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
-            ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
-            ty::IntVarValue::Unknown => {
-                Ty::new_int_var(self.tcx, inner.int_unification_table().find(vid))
-            }
-        }
+    pub fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+        self.shallow_resolve_int_var_with_ty(vid, None)
     }
 
     /// Resolves a float var to a rigid int type, if it was constrained to one,
     /// or else the root float var in the unification table.
-    pub fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
-        let mut inner = self.inner.borrow_mut();
-        let value = inner.float_unification_table().probe_value(vid);
-        match value {
-            ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
-            ty::FloatVarValue::Unknown => {
-                Ty::new_float_var(self.tcx, inner.float_unification_table().find(vid))
-            }
-        }
+    pub fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+        self.shallow_resolve_float_var_with_ty(vid, None)
     }
 
     /// Where possible, replaces type/const variables in
