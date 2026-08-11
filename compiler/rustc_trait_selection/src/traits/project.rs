@@ -7,7 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::infer::resolve::DeepRegionResolver;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
@@ -309,7 +309,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
 ) -> Result<Option<Term<'tcx>>, InProgress> {
     let infcx = selcx.infcx;
     debug_assert!(!selcx.infcx.next_trait_solver());
-    let projection_term = infcx.resolve_vars_if_possible(projection_term);
+    let projection_term = infcx.deeply_resolve_ignoring_regions(projection_term);
     let cache_key = ProjectionCacheKey::new(projection_term, param_env);
 
     // FIXME(#20304) For now, I am caching here, which is good, but it
@@ -388,7 +388,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             // an impl, where-clause etc) and hence we must
             // re-normalize it
 
-            let projected_term = selcx.infcx.resolve_vars_if_possible(projected_term);
+            let projected_term = selcx.infcx.deeply_resolve_ignoring_regions(projected_term);
 
             let mut result = if projected_term.has_aliases() {
                 let normalized_ty = normalize_with_depth_to(
@@ -579,7 +579,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         tcx.const_of_item(def_id).instantiate(tcx, args).map(Into::into)
     };
 
-    let term = selcx.infcx.resolve_vars_if_possible(term);
+    let term = selcx.infcx.deeply_resolve_ignoring_regions(term);
     let term =
         normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, term, obligations);
 
@@ -1042,7 +1042,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                     // NOTE(eddyb) inference variables can resolve to parameters, so
                                     // assume `poly_trait_ref` isn't monomorphic, if it contains any.
                                     let poly_trait_ref =
-                                        selcx.infcx.resolve_vars_if_possible(trait_ref);
+                                        selcx.infcx.deeply_resolve_ignoring_regions(trait_ref);
                                     !poly_trait_ref.still_further_specializable()
                                 }
                             }
@@ -1315,7 +1315,7 @@ fn confirm_candidate<'cx, 'tcx>(
     if let Ok(Projected::Progress(progress)) = &mut result
         && progress.term.has_infer_regions()
     {
-        progress.term = progress.term.fold_with(&mut OpportunisticRegionResolver::new(selcx.infcx));
+        progress.term = progress.term.fold_with(&mut DeepRegionResolver::new(selcx.infcx));
     }
 
     result
@@ -2204,7 +2204,7 @@ impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
                 // from a specific call to `opt_normalize_projection_type` - if
                 // there's no precise match, the original cache entry is "stranded"
                 // anyway.
-                infcx.resolve_vars_if_possible(predicate.projection_term),
+                infcx.deeply_resolve_ignoring_regions(predicate.projection_term),
                 obligation.param_env,
             )
         })
