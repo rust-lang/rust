@@ -1020,6 +1020,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmBitcodeLinker,
                 dist::RustDev,
                 dist::Enzyme,
+                dist::Offload,
                 dist::Bootstrap,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
