@@ -660,3 +660,50 @@ fn str_searcher_reject_back_preserves_start_on_bad_input() {
     assert_eq!(searcher.next_reject_back(), Some((0, 1)));
     assert_eq!(searcher.next_reject_back(), None);
 }
+
+#[test]
+fn backward_search_predicate() {
+    assert_eq!("abc".rfind(|c| c == 'a'), Some(0));
+    assert_eq!("abcabc".rfind(|c| c == 'c'), Some(5));
+    assert_eq!("éabc".rfind(['é']), Some(0));
+    assert_eq!("éabc".rfind(|c| c == 'é'), Some(0));
+    assert_eq!("éabcé".rfind(|c| c == 'é'), Some(5));
+    assert_eq!("€abc".rfind(|c| c == '€'), Some(0));
+    assert_eq!("😀abc".rfind(|c| c == '😀'), Some(0));
+
+    assert_eq!("abc".strip_suffix(|c| c == 'c'), Some("ab"));
+    assert_eq!("éabc".strip_suffix(|c| c == 'é'), None);
+}
+
+#[test]
+fn backward_search_predicate_pat() {
+    use core::pattern::{Pattern, ReverseSearcher};
+    use core::str_bytes::Bytes;
+
+    let haystack = Bytes::from_str("abc");
+    let mut searcher = (|c: char| c == 'a').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((0, 1)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("abcabc");
+    let mut searcher = (|c: char| c == 'c').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((5, 6)));
+    assert_eq!(searcher.next_match_back(), Some((2, 3)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("éabc");
+    let mut searcher = (|c: char| c == 'é').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((0, 2)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("éabcé");
+    let mut searcher = (|c: char| c == 'é').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((5, 7)));
+    assert_eq!(searcher.next_match_back(), Some((0, 2)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("éabc");
+    let mut searcher = (|c: char| c == 'c').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((4, 5)));
+    assert_eq!(searcher.next_match_back(), None);
+}
