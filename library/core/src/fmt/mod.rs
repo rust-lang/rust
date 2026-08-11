@@ -1176,7 +1176,7 @@ pub use macros::Debug;
     ),
     on(
         from_desugaring = "FormatLiteral",
-        note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead",
+        note = "in format strings you may be able to use `{{:?}}` (or `{{:#?}}` for pretty-print) instead",
         label = "`{Self}` cannot be formatted with the default formatter",
     ),
     message = "`{Self}` doesn't implement `{This}`"
