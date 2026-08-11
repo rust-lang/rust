@@ -286,7 +286,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given the expected type, figures out what it can about this closure we
-    /// are about to type check:
+    /// are about to type check.
+    ///
+    /// WARNING: `expected_ty` must be resolved, to ensure that tyvars refer to root vids.
     #[instrument(skip(self), level = "debug", ret)]
     fn deduce_closure_signature(
         &self,
@@ -313,13 +315,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|did| self.tcx.fn_trait_kind_from_def_id(did));
                 (sig, kind)
             }
-            ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
-                Ty::new_var(self.tcx, self.root_var(vid)),
-                closure_kind,
-                self.obligations_for_self_ty(vid, UseSubtyping::No)
-                    .into_iter()
-                    .filter_map(|obl| Some((obl.predicate.as_clause()?, obl.cause.span))),
-            ),
+            ty::Infer(ty::TyVar(vid)) => {
+                // assert that the precondition (documented in the doc comments) is maintained.
+                debug_assert_eq!(self.root_ty_var(vid), vid);
+                self.deduce_closure_signature_from_predicates(
+                    Ty::new_var(self.tcx, vid),
+                    closure_kind,
+                    self.obligations_for_self_ty(vid, UseSubtyping::No)
+                        .into_iter()
+                        .filter_map(|obl| Some((obl.predicate.as_clause()?, obl.cause.span))),
+                )
+            }
             ty::FnPtr(sig_tys, hdr) => match closure_kind {
                 hir::ClosureKind::Closure => {
                     let expected_sig = ExpectedSig { cause_span: None, sig: sig_tys.with(hdr) };

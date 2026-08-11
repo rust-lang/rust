@@ -334,7 +334,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 // We need to canonicalize the *root* of our ty var.
                 // This is so that our canonical response correctly reflects
                 // any equated inference vars correctly!
-                let root_vid = self.infcx.unwrap().root_var(vid);
+                let root_vid = self.infcx.unwrap().root_ty_var(vid);
                 if root_vid != vid {
                     t = Ty::new_var(self.tcx, root_vid);
                     vid = root_vid;

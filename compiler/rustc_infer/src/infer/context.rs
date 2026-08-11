@@ -97,7 +97,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
-        self.root_var(var)
+        self.root_ty_var(var)
     }
 
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -449,7 +449,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
 
         let folded = match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let vid = self.infcx.root_var(*vid);
+                let vid = self.infcx.root_ty_var(*vid);
                 let probe = self.infcx.inner.borrow_mut().type_variables().probe(vid);
                 match probe {
                     TypeVariableValue::Known { value: u } => u.super_fold_with(self),
@@ -481,8 +481,8 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
 
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let vid = self.infcx.root_const_var(vid);
-                let universe = match self.infcx.try_resolve_const_var(vid) {
+                let (res, vid) = self.infcx.try_resolve_const_var_with_root(vid);
+                let universe = match res {
                     Ok(value) => return value.fold_with(self),
                     Err(universe) => universe,
                 };
