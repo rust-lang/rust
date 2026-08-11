@@ -3044,19 +3044,15 @@ fn clean_impl<'tcx>(
         .map(|&ii| clean_impl_item(tcx.hir_impl_item(ii), cx))
         .collect::<Vec<_>>();
 
-    let for_ = clean_ty(impl_.self_ty, cx);
-
     // If this impl block is a positive implementation of the Deref trait, then we
     // need to try inlining the target's inherent impl blocks as well.
     if trait_.as_ref().is_some_and(|t| tcx.lang_items().deref_trait() == Some(t.def_id()))
         && tcx.impl_polarity(def_id) != ty::ImplPolarity::Negative
     {
         build_deref_target_impls(cx, &items, &mut ret);
-        if let Some(for_def_id) = for_.def_id(&cx.cache) {
-            compute_if_deref_target_implements_copy(cx, for_def_id, impl_);
-        }
     }
 
+    let for_ = clean_ty(impl_.self_ty, cx);
     let type_alias =
         for_.def_id(&cx.cache).and_then(|alias_def_id: DefId| match tcx.def_kind(alias_def_id) {
             DefKind::TyAlias => Some(clean_middle_ty(

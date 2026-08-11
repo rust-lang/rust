@@ -295,33 +295,6 @@ pub(crate) fn build_deref_target_impls(
                     inline::build_impls(cx, did, None, ret);
                 });
             }
-        } else {
-            break;
-        }
-    }
-}
-
-pub(crate) fn compute_if_deref_target_implements_copy(
-    cx: &mut DocContext<'_>,
-    for_item_id: DefId,
-    impl_item: &hir::Impl<'_>,
-) {
-    let tcx = cx.tcx;
-    for item in impl_item.items {
-        let item = tcx.hir_impl_item(*item);
-        if matches!(item.kind, hir::ImplItemKind::Type(_)) {
-            let item_def_id = item.owner_id.to_def_id();
-            // If it's a Ctor, we need to retrieve the actual type.
-            let item_def_id = match tcx.def_kind(item_def_id) {
-                hir::def::DefKind::Ctor(_, _) => tcx.parent(item_def_id),
-                _ => item_def_id,
-            };
-            let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
-            let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
-            if tcx.type_is_copy_modulo_regions(typing_env, ty) {
-                cx.cache.types_which_deref_to_copy_target.insert(for_item_id);
-            }
-            break;
         }
     }
 }
