@@ -1096,7 +1096,7 @@ where
             }
             ty::TermKind::Const(ct) => {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
-                    self.delegate.universe_of_ct(vid).unwrap()
+                    self.delegate.universe_of_const(vid).unwrap()
                 } else {
                     return false;
                 }
@@ -1163,7 +1163,7 @@ where
                             return ControlFlow::Break(());
                         }
 
-                        self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())
+                        self.check_nameable(self.delegate.universe_of_const(vid).unwrap())
                     }
                     ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {
@@ -1311,7 +1311,7 @@ where
 
     pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
-            self.delegate.opportunistic_resolve_lt_var(vid)
+            self.delegate.shallow_resolve_region_var(vid)
         } else {
             r
         }
