@@ -104,6 +104,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-nto",
     "ignore-nvptx64",
     "ignore-nvptx64-nvidia-cuda",
+    "ignore-ohos",
     "ignore-openbsd",
     "ignore-parallel-frontend",
     "ignore-pauthtest",
