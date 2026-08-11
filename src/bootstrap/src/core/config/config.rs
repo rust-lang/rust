@@ -1123,14 +1123,10 @@ impl Config {
                 );
             }
 
-            let triple = &host_target.triple;
-            let ci_llvm_bin = ci_llvm_root(&dwn_ctx, llvm_from_ci, &out).join("bin");
-            let build_target =
-                target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
-            check_ci_llvm!(build_target.llvm_config);
-            check_ci_llvm!(build_target.llvm_filecheck);
-            // FIXME: Do not overwrite the LLVM config here
-            build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", host_target)));
+            if let Some(target) = target_config.get(&host_target) {
+                check_ci_llvm!(target.llvm_config);
+                check_ci_llvm!(target.llvm_filecheck);
+            }
         }
 
         for (target, linker_override) in default_linux_linker_overrides() {
