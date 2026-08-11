@@ -53,7 +53,7 @@ rm tests/ui/c-variadic/roundtrip.rs
 
 # inline assembly features
 rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
-rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/naked-functions/mono-sym-fn.rs # same
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/asm/label-operand.rs # same
 rm tests/ui/asm/may_unwind.rs # asm unwinding not supported
