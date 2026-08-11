@@ -207,7 +207,8 @@ pub(crate) fn compile_fn(
                     Some(Box::new(&clif_comments)),
                     err,
                 );
-                dcx.fatal(format!("cranelift verify error:\n{pretty_error}"));
+                eprintln!("{pretty_error}");
+                bug!("cranelift verify error");
             }
             Err(err) => {
                 let mut clif = format_clif_ir_header(module.isa(), &codegened_func.symbol_name);
@@ -218,8 +219,9 @@ pub(crate) fn compile_fn(
                 )
                 .unwrap();
 
-                panic!(
-                    "Error while defining {name}: {err:?}\n\nPost-optimization Cranelift IR:\n{clif}",
+                bug!(
+                    "Error while defining {name}: {err:?}\n\n
+                    Post-optimization Cranelift IR:\n{clif}",
                     name = codegened_func.symbol_name
                 );
             }
@@ -274,7 +276,8 @@ fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.dcx().fatal(format!("cranelift verify error:\n{}", pretty_error));
+                eprintln!("{pretty_error}");
+                bug!("cranelift verify error");
             }
         }
     });
