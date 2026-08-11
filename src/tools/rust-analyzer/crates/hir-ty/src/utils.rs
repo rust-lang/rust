@@ -16,7 +16,7 @@ use crate::{
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     lower::SupertraitsInfo,
-    mir::pad16,
+    mir::{IsSigned, pad16},
 };
 
 pub(crate) fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
@@ -108,7 +108,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
             let size = tag.size(target_data_layout).bytes_usize();
             let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
-            let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], false));
+            let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], IsSigned::No));
             match tag_encoding {
                 TagEncoding::Direct => {
                     let (var_idx, layout) =

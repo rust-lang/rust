@@ -38,7 +38,8 @@ mod monomorphization;
 mod pretty;
 
 pub use eval::{
-    Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
+    Evaluator, IsSigned, MirEvalError, VTableMap, interpret_mir, pad16,
+    render_const_using_debug_impl,
 };
 pub use lower::{
     MirLowerError, lower_body_to_mir, lower_to_mir_with_store, mir_body_for_closure_query,
