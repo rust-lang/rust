@@ -23,9 +23,6 @@ pub mod pat_util;
 mod stable_hash_impls;
 mod target_impls;
 
-#[cfg(test)]
-mod tests;
-
 #[doc(no_inline)]
 pub use hir::*;
 pub use rustc_attr_ir::{self as attrs, find_attr};
