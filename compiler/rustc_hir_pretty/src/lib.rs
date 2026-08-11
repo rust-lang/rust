@@ -608,18 +608,7 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("use");
                 self.print_path(path, false);
 
-                match kind {
-                    hir::UseKind::Single(ident) => {
-                        if path.segments.last().unwrap().ident != ident {
-                            self.space();
-                            self.word_space("as");
-                            self.print_ident(ident);
-                        }
-                        self.word(";");
-                    }
-                    hir::UseKind::Glob => self.word("::*;"),
-                    hir::UseKind::ListStem => self.word("::{};"),
-                }
+                self.print_use_kind(path, kind);
                 self.end(ib);
                 self.end(cb);
             }
@@ -809,6 +798,21 @@ impl<'a> State<'a> {
             }
         }
         self.ann.post(self, AnnNode::Item(item))
+    }
+
+    fn print_use_kind(&mut self, path: &hir::UsePath<'_>, kind: hir::UseKind) {
+        match kind {
+            hir::UseKind::Single(ident) => {
+                if path.segments.last().unwrap().ident != ident {
+                    self.space();
+                    self.word_space("as");
+                    self.print_ident(ident);
+                }
+                self.word(";");
+            }
+            hir::UseKind::Glob => self.word("::*;"),
+            hir::UseKind::ListStem => self.word("::{};"),
+        }
     }
 
     fn print_trait_ref(&mut self, t: &hir::TraitRef<'_>) {
