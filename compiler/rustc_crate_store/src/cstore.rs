@@ -16,8 +16,6 @@ use rustc_span::def_id::{
 };
 use rustc_span::{Span, Symbol};
 
-// lonely orphan structs and enums looking for a better home
-
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
 #[derive(PartialEq, Clone, Debug, StableHash, Encodable, Decodable)]

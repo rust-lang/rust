@@ -11,6 +11,7 @@ odht = { version = "0.3.1", features = ["nightly"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }

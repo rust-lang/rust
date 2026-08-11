@@ -866,7 +866,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// be shown in `impl` suggestions.
     ///
     /// [public]: TyCtxt::is_private_dep
-    /// [direct]: rustc_session::cstore::ExternCrate::is_direct
+    /// [direct]: rustc_crate_store::ExternCrate::is_direct
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
         // `#![rustc_private]` overrides defaults to make private dependencies usable.
         if self.features().enabled(sym::rustc_private) {

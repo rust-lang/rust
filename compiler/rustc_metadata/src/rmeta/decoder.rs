@@ -8,6 +8,7 @@ use std::{io, mem};
 
 pub(super) use cstore_impl::provide;
 use rustc_ast as ast;
+use rustc_crate_store::{CrateSource, ExternCrate};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -32,7 +33,6 @@ use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{

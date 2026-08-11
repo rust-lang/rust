@@ -1,11 +1,11 @@
 use std::hash::Hash;
 
+use rustc_crate_store::Untracked;
 use rustc_data_structures::stable_hash::{
     RawDefId, RawDefPathHash, RawSpan, StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
-use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
 

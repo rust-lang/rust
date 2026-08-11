@@ -8,6 +8,7 @@ use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
+use rustc_crate_store::DllImport;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
@@ -15,7 +16,6 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::{Instance, TyCtxt};
-use rustc_session::cstore::DllImport;
 use rustc_session::{PointerAuthAddressDiscriminator, PointerAuthSchema};
 use tracing::debug;
 
