@@ -1290,23 +1290,26 @@ where
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
     ) -> Result<(Option<I::Const>, Certainty), NoSolutionOrRerunNonErased> {
-        let cx = self.cx();
-        let goal = Goal::new(
-            cx,
-            param_env,
-            ty::ClauseKind::WellFormed(alias_const.to_const(cx, ty::IsRigid::Yes).into()),
-        );
-        self.add_goal(GoalSource::AliasWellFormed, goal)?;
-
-        let certainty = self.try_evaluate_added_goals()?;
-
-        if matches!(certainty, Certainty::Maybe(_)) {
-            return Ok((None, certainty));
-        }
-
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
+        let cx = self.cx();
+        let certainty = if cx.features().generic_const_exprs() {
+            Certainty::Yes
+        } else {
+            let goal = Goal::new(
+                cx,
+                param_env,
+                ty::ClauseKind::WellFormed(alias_const.to_const(cx, ty::IsRigid::Yes).into()),
+            );
+            self.add_goal(GoalSource::AliasWellFormed, goal)?;
+            let certainty = self.try_evaluate_added_goals()?;
+
+            if matches!(certainty, Certainty::Maybe(_)) {
+                return Ok((None, certainty));
+            }
+            certainty
+        };
 
         Ok((self.delegate.evaluate_const(param_env, alias_const), certainty))
     }

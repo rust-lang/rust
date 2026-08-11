@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/154805>.
 //@ compile-flags: -Znext-solver=globally
 #![feature(min_generic_const_args)]
 #![feature(macroless_generic_const_args)]
