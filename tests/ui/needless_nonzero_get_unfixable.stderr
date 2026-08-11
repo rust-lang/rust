@@ -1,11 +1,11 @@
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get_unfixable.rs:13:10
+  --> tests/ui/needless_nonzero_get_unfixable.rs:13:10
    |
 LL |         .get()
    |          ^^^^^
    |
-   = note: `-D clippy::unnecessary-nonzero-get` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_nonzero_get)]`
+   = note: `-D clippy::needless-nonzero-get` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_nonzero_get)]`
 help: remove this
    |
 LL -     let _ = nz /* keep this comment */
@@ -14,7 +14,7 @@ LL +     let _ = nz
    |
 
 error: unnecessary `get` before `/`
-  --> tests/ui/unnecessary_nonzero_get_unfixable.rs:20:14
+  --> tests/ui/needless_nonzero_get_unfixable.rs:20:14
    |
 LL |             .get();
    |              ^^^^^
@@ -27,7 +27,7 @@ LL +         / nz;
    |
 
 error: unnecessary `get` before `%=`
-  --> tests/ui/unnecessary_nonzero_get_unfixable.rs:24:10
+  --> tests/ui/needless_nonzero_get_unfixable.rs:24:10
    |
 LL |         .get();
    |          ^^^^^

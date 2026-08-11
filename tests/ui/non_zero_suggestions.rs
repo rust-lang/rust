@@ -1,5 +1,5 @@
 #![warn(clippy::non_zero_suggestions)]
-#![allow(clippy::unnecessary_nonzero_get)]
+#![allow(clippy::needless_nonzero_get)]
 
 use std::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 

@@ -1,11 +1,11 @@
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:13:16
+  --> tests/ui/needless_nonzero_get.rs:13:16
    |
 LL |     let _ = nz.get().leading_zeros();
    |                ^^^^^
    |
-   = note: `-D clippy::unnecessary-nonzero-get` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_nonzero_get)]`
+   = note: `-D clippy::needless-nonzero-get` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_nonzero_get)]`
 help: remove this
    |
 LL -     let _ = nz.get().leading_zeros();
@@ -13,7 +13,7 @@ LL +     let _ = nz.leading_zeros();
    |
 
 error: unnecessary `get` before `trailing_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:15:16
+  --> tests/ui/needless_nonzero_get.rs:15:16
    |
 LL |     let _ = nz.get().trailing_zeros();
    |                ^^^^^
@@ -25,7 +25,7 @@ LL +     let _ = nz.trailing_zeros();
    |
 
 error: unnecessary `get` before `is_power_of_two`
-  --> tests/ui/unnecessary_nonzero_get.rs:17:16
+  --> tests/ui/needless_nonzero_get.rs:17:16
    |
 LL |     let _ = nz.get().is_power_of_two();
    |                ^^^^^
@@ -37,7 +37,7 @@ LL +     let _ = nz.is_power_of_two();
    |
 
 error: unnecessary `get` before `ilog2`
-  --> tests/ui/unnecessary_nonzero_get.rs:19:16
+  --> tests/ui/needless_nonzero_get.rs:19:16
    |
 LL |     let _ = nz.get().ilog2();
    |                ^^^^^
@@ -49,7 +49,7 @@ LL +     let _ = nz.ilog2();
    |
 
 error: unnecessary `get` before `ilog10`
-  --> tests/ui/unnecessary_nonzero_get.rs:21:16
+  --> tests/ui/needless_nonzero_get.rs:21:16
    |
 LL |     let _ = nz.get().ilog10();
    |                ^^^^^
@@ -61,7 +61,7 @@ LL +     let _ = nz.ilog10();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:26:16
+  --> tests/ui/needless_nonzero_get.rs:26:16
    |
 LL |     let _ = nz.get().leading_zeros();
    |                ^^^^^
@@ -73,7 +73,7 @@ LL +     let _ = nz.leading_zeros();
    |
 
 error: unnecessary `get` before `trailing_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:28:16
+  --> tests/ui/needless_nonzero_get.rs:28:16
    |
 LL |     let _ = nz.get().trailing_zeros();
    |                ^^^^^
@@ -85,7 +85,7 @@ LL +     let _ = nz.trailing_zeros();
    |
 
 error: unnecessary `get` before `is_positive`
-  --> tests/ui/unnecessary_nonzero_get.rs:30:16
+  --> tests/ui/needless_nonzero_get.rs:30:16
    |
 LL |     let _ = nz.get().is_positive();
    |                ^^^^^
@@ -97,7 +97,7 @@ LL +     let _ = nz.is_positive();
    |
 
 error: unnecessary `get` before `is_negative`
-  --> tests/ui/unnecessary_nonzero_get.rs:32:16
+  --> tests/ui/needless_nonzero_get.rs:32:16
    |
 LL |     let _ = nz.get().is_negative();
    |                ^^^^^
@@ -109,7 +109,7 @@ LL +     let _ = nz.is_negative();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:37:15
+  --> tests/ui/needless_nonzero_get.rs:37:15
    |
 LL |     let _ = a.get().leading_zeros();
    |               ^^^^^
@@ -121,7 +121,7 @@ LL +     let _ = a.leading_zeros();
    |
 
 error: unnecessary `get` before `trailing_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:39:15
+  --> tests/ui/needless_nonzero_get.rs:39:15
    |
 LL |     let _ = b.get().trailing_zeros();
    |               ^^^^^
@@ -133,7 +133,7 @@ LL +     let _ = b.trailing_zeros();
    |
 
 error: unnecessary `get` before `ilog2`
-  --> tests/ui/unnecessary_nonzero_get.rs:41:15
+  --> tests/ui/needless_nonzero_get.rs:41:15
    |
 LL |     let _ = c.get().ilog2();
    |               ^^^^^
@@ -145,7 +145,7 @@ LL +     let _ = c.ilog2();
    |
 
 error: unnecessary `get` before `is_power_of_two`
-  --> tests/ui/unnecessary_nonzero_get.rs:43:15
+  --> tests/ui/needless_nonzero_get.rs:43:15
    |
 LL |     let _ = d.get().is_power_of_two();
    |               ^^^^^
@@ -157,7 +157,7 @@ LL +     let _ = d.is_power_of_two();
    |
 
 error: unnecessary `get` before `ilog10`
-  --> tests/ui/unnecessary_nonzero_get.rs:45:15
+  --> tests/ui/needless_nonzero_get.rs:45:15
    |
 LL |     let _ = e.get().ilog10();
    |               ^^^^^
@@ -169,7 +169,7 @@ LL +     let _ = e.ilog10();
    |
 
 error: unnecessary `get` before `is_negative`
-  --> tests/ui/unnecessary_nonzero_get.rs:50:15
+  --> tests/ui/needless_nonzero_get.rs:50:15
    |
 LL |     let _ = f.get().is_negative();
    |               ^^^^^
@@ -181,7 +181,7 @@ LL +     let _ = f.is_negative();
    |
 
 error: unnecessary `get` before `is_positive`
-  --> tests/ui/unnecessary_nonzero_get.rs:52:15
+  --> tests/ui/needless_nonzero_get.rs:52:15
    |
 LL |     let _ = g.get().is_positive();
    |               ^^^^^
@@ -193,7 +193,7 @@ LL +     let _ = g.is_positive();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:54:15
+  --> tests/ui/needless_nonzero_get.rs:54:15
    |
 LL |     let _ = h.get().leading_zeros();
    |               ^^^^^
@@ -205,7 +205,7 @@ LL +     let _ = h.leading_zeros();
    |
 
 error: unnecessary `get` before `trailing_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:56:15
+  --> tests/ui/needless_nonzero_get.rs:56:15
    |
 LL |     let _ = i.get().trailing_zeros();
    |               ^^^^^
@@ -217,7 +217,7 @@ LL +     let _ = i.trailing_zeros();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:58:15
+  --> tests/ui/needless_nonzero_get.rs:58:15
    |
 LL |     let _ = j.get().leading_zeros();
    |               ^^^^^
@@ -229,7 +229,7 @@ LL +     let _ = j.leading_zeros();
    |
 
 error: unnecessary `get` before `ilog2`
-  --> tests/ui/unnecessary_nonzero_get.rs:63:15
+  --> tests/ui/needless_nonzero_get.rs:63:15
    |
 LL |     let _ = a.get().ilog2();
    |               ^^^^^
@@ -241,7 +241,7 @@ LL +     let _ = a.ilog2();
    |
 
 error: unnecessary `get` before `is_positive`
-  --> tests/ui/unnecessary_nonzero_get.rs:65:15
+  --> tests/ui/needless_nonzero_get.rs:65:15
    |
 LL |     let _ = b.get().is_positive();
    |               ^^^^^
@@ -253,7 +253,7 @@ LL +     let _ = b.is_positive();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:67:15
+  --> tests/ui/needless_nonzero_get.rs:67:15
    |
 LL |     let _ = r.get().leading_zeros();
    |               ^^^^^
@@ -265,7 +265,7 @@ LL +     let _ = r.leading_zeros();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:71:41
+  --> tests/ui/needless_nonzero_get.rs:71:41
    |
 LL |     let _ = NonZero::new(5u32).unwrap().get().leading_zeros();
    |                                         ^^^^^
@@ -277,7 +277,7 @@ LL +     let _ = NonZero::new(5u32).unwrap().leading_zeros();
    |
 
 error: unnecessary `get` before `trailing_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:73:17
+  --> tests/ui/needless_nonzero_get.rs:73:17
    |
 LL |     let _ = (a).get().trailing_zeros();
    |                 ^^^^^
@@ -289,7 +289,7 @@ LL +     let _ = (a).trailing_zeros();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:78:10
+  --> tests/ui/needless_nonzero_get.rs:78:10
    |
 LL |         .get()
    |          ^^^^^
@@ -302,7 +302,7 @@ LL +     let _ = a
    |
 
 error: unnecessary `get` before `/`
-  --> tests/ui/unnecessary_nonzero_get.rs:84:24
+  --> tests/ui/needless_nonzero_get.rs:84:24
    |
 LL |     let _ = other / nz.get();
    |                        ^^^^^
@@ -314,7 +314,7 @@ LL +     let _ = other / nz;
    |
 
 error: unnecessary `get` before `%`
-  --> tests/ui/unnecessary_nonzero_get.rs:86:24
+  --> tests/ui/needless_nonzero_get.rs:86:24
    |
 LL |     let _ = other % nz.get();
    |                        ^^^^^
@@ -326,7 +326,7 @@ LL +     let _ = other % nz;
    |
 
 error: unnecessary `get` before `/=`
-  --> tests/ui/unnecessary_nonzero_get.rs:88:17
+  --> tests/ui/needless_nonzero_get.rs:88:17
    |
 LL |     value /= nz.get();
    |                 ^^^^^
@@ -338,7 +338,7 @@ LL +     value /= nz;
    |
 
 error: unnecessary `get` before `%=`
-  --> tests/ui/unnecessary_nonzero_get.rs:90:17
+  --> tests/ui/needless_nonzero_get.rs:90:17
    |
 LL |     value %= nz.get();
    |                 ^^^^^
@@ -350,7 +350,7 @@ LL +     value %= nz;
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:103:8
+  --> tests/ui/needless_nonzero_get.rs:103:8
    |
 LL |     nz.get().leading_zeros()
    |        ^^^^^
@@ -362,7 +362,7 @@ LL +     nz.leading_zeros()
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:184:16
+  --> tests/ui/needless_nonzero_get.rs:184:16
    |
 LL |     let _ = nz.get().leading_zeros();
    |                ^^^^^
@@ -374,7 +374,7 @@ LL +     let _ = nz.leading_zeros();
    |
 
 error: unnecessary `get` before `leading_zeros`
-  --> tests/ui/unnecessary_nonzero_get.rs:192:16
+  --> tests/ui/needless_nonzero_get.rs:192:16
    |
 LL |     let _ = nz.get().leading_zeros();
    |                ^^^^^
@@ -386,7 +386,7 @@ LL +     let _ = nz.leading_zeros();
    |
 
 error: unnecessary `get` before `/`
-  --> tests/ui/unnecessary_nonzero_get.rs:205:24
+  --> tests/ui/needless_nonzero_get.rs:205:24
    |
 LL |     let _ = value / nz.get();
    |                        ^^^^^
@@ -398,7 +398,7 @@ LL +     let _ = value / nz;
    |
 
 error: unnecessary `get` before `%`
-  --> tests/ui/unnecessary_nonzero_get.rs:207:24
+  --> tests/ui/needless_nonzero_get.rs:207:24
    |
 LL |     let _ = value % nz.get();
    |                        ^^^^^
@@ -410,7 +410,7 @@ LL +     let _ = value % nz;
    |
 
 error: unnecessary `get` before `/=`
-  --> tests/ui/unnecessary_nonzero_get.rs:220:17
+  --> tests/ui/needless_nonzero_get.rs:220:17
    |
 LL |     value /= nz.get();
    |                 ^^^^^
@@ -422,7 +422,7 @@ LL +     value /= nz;
    |
 
 error: unnecessary `get` before `%=`
-  --> tests/ui/unnecessary_nonzero_get.rs:222:17
+  --> tests/ui/needless_nonzero_get.rs:222:17
    |
 LL |     value %= nz.get();
    |                 ^^^^^
