@@ -5,6 +5,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
+use tracing::debug;
 
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
@@ -104,6 +105,7 @@ impl LocalizedConstraintGraph {
         borrow_set: &BorrowSet<'tcx>,
         visitor: &mut impl LocalizedConstraintGraphVisitor,
     ) {
+        debug!("Traversing localised constraint graph");
         let live_regions = liveness.points();
 
         let mut visited = FxHashSet::default();
@@ -112,6 +114,7 @@ impl LocalizedConstraintGraph {
         // Compute reachability per loan by traversing each loan's subgraph starting from where it
         // is introduced.
         for (loan_idx, loan) in borrow_set.iter_enumerated() {
+            debug!("Handling loan {loan:?}");
             visited.clear();
             stack.clear();
 
@@ -119,6 +122,7 @@ impl LocalizedConstraintGraph {
                 region: loan.region,
                 point: liveness.point_from_location(loan.reserve_location),
             };
+            debug!("Starting at {:?}, {:?}", start_node.region, start_node.point);
             stack.push(start_node);
 
             while let Some(node) = stack.pop() {
@@ -255,6 +259,7 @@ fn compute_forward_successor(
 
     // 2. Otherwise, gather the edges due to explicit region liveness, when applicable.
     if !live_regions.contains(region, next_point) {
+        debug!("Region {region:?} isn't live at successor {next_point:?}; traversal stops.");
         return None;
     }
 
@@ -299,6 +304,9 @@ fn compute_backward_successor(
     // Liveness flows into the regions live at the next point. So, in a backwards view, we'll link
     // the region from the current point, if it's live there, to the previous point.
     if !live_regions.contains(region, current_point) {
+        debug!(
+            "Backwards successor: {region:?} not live at current point {current_point:?}; bailing out!"
+        );
         return None;
     }
 
