@@ -12,12 +12,13 @@ use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
-use rustc_span::def_id::LocalDefIdMap;
+pub use rustc_span::def_id::DefPathHash;
+use rustc_span::def_id::{
+    CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateId,
+};
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
-pub use crate::def_id::DefPathHash;
-use crate::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 use crate::def_path_hash_map::DefPathHashMap;
 
 #[derive(Debug, Default, Clone)]
