@@ -26,7 +26,7 @@ use super::{
     FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy,
 };
-use crate::diagnostics::ConstComptimeFn;
+use crate::diagnostics::{ConstComptimeFn, ResolvingRestrictionKind, RestrictionAncestorOnly};
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -498,7 +498,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 items,
             }) => {
                 let constness = self.lower_constness(attrs, *constness);
-                let impl_restriction = self.lower_impl_restriction(impl_restriction);
+                let impl_restriction = self.lower_impl_restriction(impl_restriction, hir_id);
                 let ident = self.lower_ident(*ident);
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
@@ -895,7 +895,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
-            mut_restriction: self.lower_mut_restriction(f.mut_restriction()),
+            mut_restriction: self.lower_mut_restriction(f.mut_restriction(), hir_id),
             default: f
                 .default_value()
                 .map(|v| self.lower_anon_const_to_anon_const(v, v.value.span)),
@@ -1797,26 +1797,46 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_restriction_kind(&mut self, kind: &RestrictionKind) -> hir::RestrictionKind<'hir> {
-        match kind {
+    fn lower_restriction_kind(
+        &mut self,
+        restriction_kind: &RestrictionKind,
+        hir_id: HirId,
+        resolving_kind: ResolvingRestrictionKind,
+    ) -> hir::RestrictionKind<'hir> {
+        match restriction_kind {
             RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
             RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 let res = self.get_partial_res(*id);
+                let parent_module = self.tcx.parent_module(hir_id);
                 if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
-                    hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
-                        res: did,
-                        segments: self.arena.alloc_from_iter(path.segments.iter().map(|segment| {
-                            self.lower_path_segment(
-                                path.span,
-                                segment,
-                                ParamMode::Explicit,
-                                GenericArgsMode::Err,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                                None,
-                            )
-                        })),
-                        span: self.lower_span(path.span),
-                    }))
+                    if !self.tcx.is_descendant_of(parent_module, did) {
+                        // If the restriction path is not an ancestor of the item,
+                        // emit an error and recover by lowering the restriction to `Unrestricted`.
+                        self.dcx()
+                            .create_err(RestrictionAncestorOnly {
+                                span: path.span,
+                                kind: resolving_kind,
+                            })
+                            .emit();
+                        hir::RestrictionKind::Unrestricted
+                    } else {
+                        hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
+                            res: did,
+                            segments: self.arena.alloc_from_iter(path.segments.iter().map(
+                                |segment| {
+                                    self.lower_path_segment(
+                                        path.span,
+                                        segment,
+                                        ParamMode::Explicit,
+                                        GenericArgsMode::Err,
+                                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                        None,
+                                    )
+                                },
+                            )),
+                            span: self.lower_span(path.span),
+                        }))
+                    }
                 } else {
                     self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                     hir::RestrictionKind::Unrestricted
@@ -1828,16 +1848,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_impl_restriction(
         &mut self,
         r: &ImplRestriction,
+        hir_id: HirId,
     ) -> &'hir hir::ImplRestriction<'hir> {
-        let kind = self.lower_restriction_kind(&r.kind);
+        let kind = self.lower_restriction_kind(&r.kind, hir_id, ResolvingRestrictionKind::Impl);
         self.arena.alloc(hir::ImplRestriction { kind, span: self.lower_span(r.span) })
     }
 
     pub(super) fn lower_mut_restriction(
         &mut self,
         r: &MutRestriction,
+        hir_id: HirId,
     ) -> &'hir hir::MutRestriction<'hir> {
-        let kind = self.lower_restriction_kind(&r.kind);
+        let kind = self.lower_restriction_kind(&r.kind, hir_id, ResolvingRestrictionKind::Mut);
         self.arena.alloc(hir::MutRestriction { kind, span: self.lower_span(r.span) })
     }
 
