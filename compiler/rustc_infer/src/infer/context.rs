@@ -278,11 +278,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.shallow_resolve_const(ct)
     }
 
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.resolve_vars_if_possible(value)
+        self.deeply_resolve_ignoring_regions(value)
     }
 
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {

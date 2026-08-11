@@ -333,7 +333,7 @@ fn overlap<'tcx>(
         .iter()
         .any(|c| c.0.involves_placeholders());
 
-    let mut impl_header = infcx.resolve_vars_if_possible(impl1_header);
+    let mut impl_header = infcx.deeply_resolve_ignoring_regions(impl1_header);
 
     // Deeply normalize the impl header for diagnostics, ignoring any errors if this fails.
     if infcx.next_trait_solver() {
@@ -451,7 +451,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
                 .filter(|error| {
                     matches!(error.code, FulfillmentErrorCode::Ambiguity { overflow: Some(true) })
                 })
-                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+                .map(|e| infcx.deeply_resolve_ignoring_regions(e.obligation.predicate))
                 .collect(),
         }
     } else {
@@ -540,8 +540,9 @@ fn impl_intersection_has_negative_obligation(
     // Right above we plug inference variables with placeholders,
     // this gets us new impl1_header_args with the inference variables actually resolved
     // to those placeholders.
-    let impl1_header_args = infcx.resolve_vars_if_possible(impl1_header.impl_args);
-    // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
+    let impl1_header_args = infcx.deeply_resolve_ignoring_regions(impl1_header.impl_args);
+    // So there are no infer variables left now, except regions which aren't resolved by
+    // `deeply_resolve_ignoring_regions`.
     assert!(!impl1_header_args.has_non_region_infer());
 
     let param_env = ty::EarlyBinder::bind(tcx, tcx.param_env(impl1_def_id))

@@ -72,7 +72,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
         return Err(CodegenObligationError::Unimplemented);
     }
 
-    let impl_source = infcx.resolve_vars_if_possible(impl_source);
+    let impl_source = infcx.deeply_resolve_ignoring_regions(impl_source);
     let impl_source = tcx.erase_and_anonymize_regions(impl_source);
     if impl_source.has_non_region_infer() {
         // Unused generic types or consts on an impl get replaced with inference vars,

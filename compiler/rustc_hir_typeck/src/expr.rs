@@ -82,7 +82,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
-        if self.resolve_vars_with_obligations(ty).is_never()
+        if self.deeply_resolve_ignoring_regions_with_obligations(ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
@@ -271,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) => self.check_expr_path(qpath, expr, call_expr_and_args),
             _ => self.check_expr_kind(expr, expected),
         };
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // unless it's a place expression that isn't being read from, in which case
         // diverging would be unsound since we may never actually read the `!`.
         // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
-        if self.resolve_vars_with_obligations(ty).is_never()
+        if self.deeply_resolve_ignoring_regions_with_obligations(ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
@@ -454,7 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-            match self.resolve_vars_with_obligations(ty).kind() {
+            match self.deeply_resolve_ignoring_regions_with_obligations(ty).kind() {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
@@ -1467,7 +1467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let rcvr_t = self.check_expr(rcvr);
-        let rcvr_t = self.resolve_vars_with_obligations(rcvr_t);
+        let rcvr_t = self.deeply_resolve_ignoring_regions_with_obligations(rcvr_t);
 
         match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args) {
             Ok(method) => {
@@ -1538,9 +1538,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Find the type of `e`. Supply hints based on the type we are casting to,
         // if appropriate.
         let t_cast = self.lower_ty_saving_user_provided_ty(t);
-        let t_cast = self.resolve_vars_if_possible(t_cast);
+        let t_cast = self.deeply_resolve_ignoring_regions(t_cast);
         let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-        let t_expr = self.resolve_vars_if_possible(t_expr);
+        let t_expr = self.deeply_resolve_ignoring_regions(t_expr);
 
         // Eagerly check for some obvious errors.
         if let Err(guar) = (t_expr, t_cast).error_reported() {
@@ -1662,11 +1662,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| {
-                    self.resolve_vars_with_obligations(uty)
+                    self.deeply_resolve_ignoring_regions_with_obligations(uty)
                         .builtin_index()
                         // Avoid using the original type variable as the coerce_to type, as it may resolve
                         // during the first coercion instead of being the LUB type.
-                        .filter(|t| !self.resolve_vars_with_obligations(*t).is_ty_var())
+                        .filter(|t| {
+                            !self.deeply_resolve_ignoring_regions_with_obligations(*t).is_ty_var()
+                        })
                 })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
@@ -1791,7 +1793,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let mut expectations = expected
             .only_has_type(self)
-            .and_then(|ty| self.resolve_vars_with_obligations(ty).opt_tuple_fields())
+            .and_then(|ty| {
+                self.deeply_resolve_ignoring_regions_with_obligations(ty).opt_tuple_fields()
+            })
             .unwrap_or_default()
             .iter();
 
@@ -1865,7 +1869,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let adt_ty = self.resolve_vars_with_obligations(adt_ty);
+        let adt_ty = self.deeply_resolve_ignoring_regions_with_obligations(adt_ty);
         let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
@@ -1873,7 +1877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !ocx.try_evaluate_obligations().no_errors() {
                     return Err(TypeError::Mismatch);
                 }
-                Ok(self.resolve_vars_if_possible(adt_ty))
+                Ok(self.deeply_resolve_ignoring_regions(adt_ty))
             })
             .ok()
         });
@@ -2131,7 +2135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         }
                                     }
                                 }
-                                self.resolve_vars_if_possible(fru_ty)
+                                self.deeply_resolve_ignoring_regions(fru_ty)
                             })
                             .collect();
                         // The use of fresh args that we have subtyped against
@@ -2155,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let fresh_base_ty = Ty::new_adt(self.tcx, *adt, fresh_args);
                         self.check_expr_has_type_or_error(
                             base_expr,
-                            self.resolve_vars_if_possible(fresh_base_ty),
+                            self.deeply_resolve_ignoring_regions(fresh_base_ty),
                             |_| {},
                         );
                         fru_tys
