@@ -200,7 +200,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::NonExhaustive(attr_span) => {
-                self.check_non_exhaustive(*attr_span, span, target, item)
+                self.check_non_exhaustive(hir_id, *attr_span, span, target, item)
             }
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
@@ -802,30 +802,60 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
+    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid and effective.
     fn check_non_exhaustive(
         &self,
+        hir_id: HirId,
         attr_span: Span,
         span: Span,
         target: Target,
         item: Option<&'tcx Item<'tcx>>,
     ) {
-        match target {
-            Target::Struct => {
-                if let hir::Item {
-                    kind: hir::ItemKind::Struct(_, _, hir::VariantData::Struct { fields, .. }),
-                    ..
-                } = item.unwrap()
-                    && !fields.is_empty()
-                    && fields.iter().any(|f| f.default.is_some())
-                {
-                    self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {
-                        attr_span,
-                        defn_span: span,
-                    });
+        if matches!(target, Target::Enum | Target::Variant)
+            && !self.tcx.effective_visibilities(()).is_reachable(hir_id.owner.def_id)
+        {
+            self.tcx.emit_node_span_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                diagnostics::UnusedNonExhaustive::Unreachable,
+            );
+        } else if target == Target::Struct {
+            let (_, _, data) = item.unwrap().expect_struct();
+            let fields = data.fields();
+
+            if !fields.is_empty() && fields.iter().any(|f| f.default.is_some()) {
+                self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {
+                    attr_span,
+                    defn_span: span,
+                });
+            }
+
+            if !self.tcx.effective_visibilities(()).is_reachable(hir_id.owner.def_id) {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr_span,
+                    diagnostics::UnusedNonExhaustive::Unreachable,
+                );
+                return;
+            }
+
+            let mut spans = MultiSpan::from_span(attr_span);
+            for field in fields.iter() {
+                if !self.tcx.visibility(field.def_id).is_public() {
+                    spans.push_primary_span(field.span);
                 }
             }
-            _ => {}
+
+            if spans.primary_spans().len() > 1 {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    spans,
+                    diagnostics::UnusedNonExhaustive::StructWithNonPublicField,
+                );
+            }
         }
     }
 
