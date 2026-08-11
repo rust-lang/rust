@@ -2281,9 +2281,9 @@ impl CommandLineStep for Assemble {
 
         if builder.config.llvm_offload && !builder.config.dry_run() {
             debug!("`llvm_offload` requested");
-            let rust_offload = builder.ensure(llvm::RustOffload { target: build_compiler.host });
-            let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
+                let rust_offload =
+                    builder.ensure(llvm::RustOffload { target: build_compiler.host });
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
                 let rust_offload_dst_lib = target_libdir.join(rust_offload.rust_offload_filename());
@@ -2293,15 +2293,12 @@ impl CommandLineStep for Assemble {
                     FileType::NativeLibrary,
                 );
 
-                for p in offload_install.offload_paths() {
+                let omp_offload = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
+                for p in omp_offload.artifact_paths_with_symlink_targets() {
                     let libname = p.file_name().unwrap();
                     let dst_lib = target_libdir.join(libname);
                     builder.resolve_symlink_and_copy(&p, &dst_lib);
                 }
-                // FIXME(offload): Add amdgcn-amd-amdhsa and nvptx64-nvidia-cuda folder
-                // This one is slightly more tricky, since we have the same file twice, in two
-                // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
-                // Intel and Spir-V support lands in offload.
             }
         }
 

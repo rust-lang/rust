@@ -76,37 +76,34 @@ pub(crate) fn match_paths_to_steps_and_run(
         }
     }
 
-    // Attempt to resolve paths to be relative to the builder source directory.
-    let mut paths: Vec<PathBuf> = paths
+    // Command-line paths are interpreted relative to the repository root
+    // (not the current working directory).
+    //
+    // If the user or shell passed an absolute path, try to strip off the
+    // repository root, to match the paths registered by command-line steps.
+    //
+    // E.g. `/home/ferris/rust/tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
+    let mut paths = paths
         .iter()
-        .map(|original_path| {
-            let mut path = original_path.clone();
-
-            // Someone could run `x <cmd> <path>` from a different repository than the source
-            // directory.
-            // In that case, we should not try to resolve the paths relative to the working
-            // directory, but rather relative to the source directory.
-            // So we forcefully "relocate" the path to the source directory here.
-            if !path.is_absolute() {
-                path = builder.src.join(path);
-            }
-
-            // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
-            if !path.exists() {
-                // Use the original path here
-                return original_path.clone();
-            }
-
-            // Make the path absolute, strip the prefix, and convert to a PathBuf.
-            match std::path::absolute(&path) {
-                Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
-                Err(e) => {
-                    eprintln!("ERROR: {e:?}");
-                    panic!("Due to the above error, failed to resolve path: {path:?}");
-                }
+        .map(|path| {
+            if path.is_absolute()
+                && path.exists()
+                && let Ok(relative) = path.strip_prefix(&builder.src)
+            {
+                relative
+            } else {
+                path
             }
         })
-        .collect();
+        .map(|p| p.to_owned())
+        .collect::<Vec<_>>();
+
+    // If any absolute paths couldn't be made relative, stop now and report them.
+    let bad_abs_paths = paths.iter().filter(|path| path.is_absolute()).collect::<Vec<_>>();
+    if !bad_abs_paths.is_empty() {
+        eprintln!("ERROR: failed to resolve absolute paths: {bad_abs_paths:#?}");
+        crate::exit!(1);
+    }
 
     // Handle all test suite paths.
     // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
