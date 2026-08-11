@@ -1486,6 +1486,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_bitcode_linker_enabled: rust_llvm_bitcode_linker.unwrap_or(false),
             llvm_build_config: llvm_build_config.clone().unwrap_or(Default::default()),
             llvm_cflags,
+            llvm_ci_mode,
             llvm_clang: llvm_clang.unwrap_or(false),
             llvm_clang_cl,
             llvm_clang_dir: llvm_clang_dir.map(PathBuf::from),
@@ -1493,7 +1494,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
             llvm_experimental_targets,
-            llvm_ci_mode,
             llvm_ldflags,
             llvm_libunwind_default: rust_llvm_libunwind
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
