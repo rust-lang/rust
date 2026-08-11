@@ -486,7 +486,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
                         FnRetTy::Default(_) => {
                             if let Some(last) = par_args.inputs.last() {
                                 // `B` in `(A, B)` -- `)` gets stripped
-                                ast_ty_search_pat(last).1
+                                ast_ty_search_pat(&last.ty).1
                             } else {
                                 // `(` in `()` -- `)` gets stripped
                                 Pat::Str("(")

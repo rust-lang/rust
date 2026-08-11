@@ -564,7 +564,7 @@ fn rewrite_generic_args(
             }
         }
         ast::GenericArgs::Parenthesized(ref data) => format_function_type(
-            data.inputs.iter().map(|x| &**x),
+            data.inputs.iter().map(|x| &*x.ty),
             &data.output,
             false,
             data.span,
