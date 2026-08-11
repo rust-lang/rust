@@ -14,7 +14,7 @@ use rustc_infer::traits::solve::{
     ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, SucceededInErased,
 };
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::Certainty;
+use rustc_middle::traits::solve::{Certainty, MaybeInfo};
 use rustc_middle::ty::{
     self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode,
@@ -61,7 +61,7 @@ fn goal_stalled_on_args<'tcx>(
         stalled_on: GoalStalledOn {
             stalled_vars,
             sub_roots: ThinVec::new(),
-            stalled_certainty: Certainty::AMBIGUOUS,
+            stalled_maybe_info: MaybeInfo::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::No,
         },
     }
@@ -77,7 +77,7 @@ fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
         stalled_on: GoalStalledOn {
             stalled_vars,
             sub_roots: ThinVec::new(),
-            stalled_certainty: Certainty::AMBIGUOUS,
+            stalled_maybe_info: MaybeInfo::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: 0,
                 // This function should only be called when not in erased mode,

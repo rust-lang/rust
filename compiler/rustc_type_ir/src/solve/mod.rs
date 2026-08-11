@@ -993,9 +993,9 @@ pub struct GoalStalledOn<I: Interner> {
     pub stalled_vars: ThinVec<TyOrConstInferVar>,
     // `ThinVec` is important for performance. See #160005.
     pub sub_roots: ThinVec<TyVid>,
-    /// The certainty that will be returned on subsequent evaluations if this
+    /// The `MaybeInfo` that will be returned on subsequent evaluations if this
     /// goal remains stalled.
-    pub stalled_certainty: Certainty,
+    pub stalled_maybe_info: MaybeInfo,
     pub opaques: GoalStalledOnOpaques<I>,
 }
 

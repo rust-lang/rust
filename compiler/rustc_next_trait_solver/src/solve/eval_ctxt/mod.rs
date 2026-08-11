@@ -181,8 +181,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
 
     /// Checks whether a stalled goal would remain stalled if re-evaluated, without consuming
     /// `stalled_on`.
-    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>)
-    -> Option<Certainty>;
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool;
 
     /// Checks whether evaluating `goal` may hold while treating not-yet-defined
     /// opaque types as being kind of rigid.
@@ -231,12 +230,12 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+        if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
-                certainty: stalled_certainty,
+                certainty: Certainty::Maybe(stalled_maybe_info),
                 has_changed: HasChanged::No,
                 stalled_on,
             });
@@ -265,13 +264,10 @@ where
         }
     }
 
-    fn goal_remains_stalled(
-        &self,
-        stalled_on: &GoalStalledOn<Self::Interner>,
-    ) -> Option<Certainty> {
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
         match rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
-            RerunStalled::WontMakeProgress(certainty) => Some(certainty),
-            RerunStalled::MayMakeProgress => None,
+            RerunStalled::WontMakeProgress(_) => true,
+            RerunStalled::MayMakeProgress => false,
         }
     }
 
@@ -608,12 +604,12 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+        if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
-                certainty: stalled_certainty,
+                certainty: Certainty::Maybe(stalled_maybe_info),
                 has_changed: HasChanged::No,
                 stalled_on,
             });
@@ -814,7 +810,7 @@ where
 
         let stalled_on = match certainty {
             Certainty::Yes => None,
-            Certainty::Maybe { .. } => match has_changed {
+            Certainty::Maybe(maybe_info) => match has_changed {
                 // FIXME: We could recompute a *new* set of stalled variables by walking
                 // through the orig values, resolving, and computing the root vars of anything
                 // that is not resolved. Only when *these* have changed is it meaningful
@@ -822,7 +818,7 @@ where
                 HasChanged::Yes => None,
                 HasChanged::No => Some(self.build_stalled_on(
                     canonical_goal,
-                    certainty,
+                    maybe_info,
                     orig_values,
                     succeeded_in_erased,
                 )),
@@ -838,7 +834,7 @@ where
     fn build_stalled_on(
         &self,
         canonical_goal: CanonicalInput<I>,
-        certainty: Certainty,
+        maybe_info: MaybeInfo,
         stalled_vars: ThinVec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
@@ -872,7 +868,7 @@ where
         GoalStalledOn {
             stalled_vars,
             sub_roots,
-            stalled_certainty: certainty,
+            stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: canonical_goal
                     .canonical
