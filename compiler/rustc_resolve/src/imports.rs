@@ -274,28 +274,64 @@ impl<'ra> ImportData<'ra> {
     }
 }
 
-/// Records information about the resolution of a name in a namespace of a module.
-#[derive(Debug)]
-pub(crate) struct NameResolution<'ra> {
-    /// Single imports that may define the name in the namespace.
-    /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    pub single_imports: FxIndexSet<Import<'ra>>,
-    /// The non-glob declaration for this name, if it is known to exist.
-    pub non_glob_decl: Option<Decl<'ra>> = None,
-    /// The glob declaration for this name, if it is known to exist.
-    pub glob_decl: Option<Decl<'ra>> = None,
-    pub orig_ident_span: Span,
+mod name_resolution {
+    use super::*;
+
+    /// Records information about the resolution of a name in a namespace of a module.
+    #[derive(Debug)]
+    pub(crate) struct NameResolution<'ra> {
+        /// Single imports that may define the name in the namespace.
+        /// Imports are arena-allocated, so it's ok to use pointers as keys.
+        pub single_imports: FxIndexSet<Import<'ra>>,
+        /// The non-glob declaration for this name, if it is known to exist.
+        non_glob_decl: Option<Decl<'ra>>,
+        /// The glob declaration for this name, if it is known to exist.
+        pub glob_decl: Option<Decl<'ra>> = None,
+        pub orig_ident_span: Span,
+    }
+
+    impl<'ra> NameResolution<'ra> {
+        pub(crate) fn new(non_glob_decl: Option<Decl<'ra>>, orig_ident_span: Span) -> Self {
+            NameResolution {
+                single_imports: FxIndexSet::default(),
+                non_glob_decl,
+                orig_ident_span,
+                ..
+            }
+        }
+
+        pub(crate) fn non_glob_decl(&self) -> Option<Decl<'ra>> {
+            self.non_glob_decl.map(|decl| {
+                assert!(decl.edition_redirects.is_empty());
+                decl
+            })
+        }
+
+        pub(crate) fn non_glob_decl_redir(&self, span: Span) -> Option<Decl<'ra>> {
+            self.non_glob_decl.map(|decl| {
+                if decl.edition_redirects.is_empty() {
+                    return decl;
+                }
+                let edition = span.edition();
+                match decl.edition_redirects.iter().find(|redirect| edition < redirect.before) {
+                    Some(redirect) => redirect.target,
+                    None => decl,
+                }
+            })
+        }
+
+        pub(super) fn set_non_glob_decl(&mut self, decl: Decl<'ra>) {
+            self.non_glob_decl = Some(decl);
+        }
+    }
 }
+pub(crate) use name_resolution::NameResolution;
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
 /// they have the same contents.
 pub(crate) type NameResolutionRef<'ra> = Interned<'ra, CmRefCell<NameResolution<'ra>>>;
 
 impl<'ra> NameResolution<'ra> {
-    pub(crate) fn new(orig_ident_span: Span) -> Self {
-        NameResolution { single_imports: FxIndexSet::default(), orig_ident_span, .. }
-    }
-
     /// Returns the best declaration if it is not going to change, and `None` if the best
     /// declaration may still change to something else.
     /// FIXME: this function considers `single_imports`, but not `unexpanded_invocations`, so
@@ -305,8 +341,19 @@ impl<'ra> NameResolution<'ra> {
     /// code breakage in practice.
     /// FIXME: relationship between this function and similar `DeclData::determined` is unclear.
     pub(crate) fn determined_decl(&self) -> Option<Decl<'ra>> {
-        if self.non_glob_decl.is_some() {
-            self.non_glob_decl
+        if self.non_glob_decl().is_some() {
+            self.non_glob_decl()
+        } else if self.glob_decl.is_some() && self.single_imports.is_empty() {
+            self.glob_decl
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn determined_decl_redir(&self, span: Span) -> Option<Decl<'ra>> {
+        let non_glob_decl = self.non_glob_decl_redir(span);
+        if non_glob_decl.is_some() {
+            non_glob_decl
         } else if self.glob_decl.is_some() && self.single_imports.is_empty() {
             self.glob_decl
         } else {
@@ -315,7 +362,11 @@ impl<'ra> NameResolution<'ra> {
     }
 
     pub(crate) fn best_decl(&self) -> Option<Decl<'ra>> {
-        self.non_glob_decl.or(self.glob_decl)
+        self.non_glob_decl().or(self.glob_decl)
+    }
+
+    pub(crate) fn best_decl_redir(&self, span: Span) -> Option<Decl<'ra>> {
+        self.non_glob_decl_redir(span).or(self.glob_decl)
     }
 }
 
@@ -468,12 +519,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     /// Given an import and the declaration that it points to,
     /// create the corresponding import declaration.
-    pub(crate) fn new_import_decl(&self, mut decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
-        // Without `edition_redirect`, the first import consumes the redirect
-        // using that import's edition. The resulting binding is fixed for
-        // downstream users.
-        decl = self.edition_adjusted_decl(decl, import.span);
-
+    pub(crate) fn new_import_decl(&self, decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
         let vis = self.import_decl_vis(decl, import.summary());
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind
@@ -484,38 +530,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             max_vis.set(Some(vis), self)
         }
 
-        // Imports in crates with `edition_redirect` preserve redirects. Wrap
-        // each target in this import so a downstream edition adjustment retains
-        // its visibility and re-export provenance. Other crates consume the
-        // redirects above and produce re-exports with no redirects.
-        let edition_redirects = if decl.edition_redirects.is_empty() {
-            // Fast path when there are no edition redirects.
-            &[]
-        } else {
-            let edition_redirects = if self.features.edition_redirect() {
-                decl.edition_redirects
-                    .iter()
-                    .map(|redirect| crate::EditionRedirectDecl {
-                        before: redirect.before,
-                        target: self.arenas.alloc_decl(DeclData {
-                            kind: DeclKind::Import { source_decl: redirect.target, import },
-                            ambiguity: CmCell::new(None),
-                            span: import.span,
-                            initial_vis: vis.to_mod_id(),
-                            ambiguity_vis_max: CmCell::new(None),
-                            ambiguity_vis_min: CmCell::new(None),
-                            expansion: import.parent_scope.expansion,
-                            parent_module: Some(import.parent_scope.module),
-                            edition_redirects: &[],
-                        }),
-                    })
-                    .collect::<SmallVec<[_; 1]>>()
-            } else {
-                SmallVec::new()
-            };
-            self.arenas.alloc_edition_redirects(&edition_redirects)
-        };
-
         self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { source_decl: decl, import },
             ambiguity: CmCell::new(None),
@@ -525,7 +539,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity_vis_min: CmCell::new(None),
             expansion: import.parent_scope.expansion,
             parent_module: Some(import.parent_scope.module),
-            edition_redirects,
+            edition_redirects: &[],
         })
     }
 
@@ -634,15 +648,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 glob_decl.ambiguity.set(Some((old_ambig, true)), self);
             }
             glob_decl
-        } else if glob_decl.res() != old_glob_decl.res()
-            || (!(old_glob_decl.edition_redirects.is_empty()
-                && glob_decl.edition_redirects.is_empty())
-                && !Self::same_edition_redirects(old_glob_decl, glob_decl))
-        {
-            // Redirects are part of a binding's behavior. If two globs resolve
-            // to the same item but redirect differently, retaining either
-            // declaration would make the result depend on glob insertion order,
-            // so keep an ambiguity witness just as we do for distinct `Res`s.
+        } else if glob_decl.res() != old_glob_decl.res() {
             let warning = self.is_noise_0_7_0(old_glob_decl, glob_decl)
                 || self.is_rustybuzz_0_4_0(old_glob_decl, glob_decl)
                 || self.is_pdf_0_9_0(old_glob_decl, glob_decl)
@@ -671,27 +677,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         } else {
             old_glob_decl
         }
-    }
-
-    /// Whether two declarations imported from other crates have the same
-    /// edition-dependent behavior.
-    ///
-    /// Redirects declared in the current crate are intentionally not
-    /// considered: they affect only the metadata produced for downstream
-    /// crates, not local name resolution.
-    fn same_edition_redirects(decl1: Decl<'ra>, decl2: Decl<'ra>) -> bool {
-        // Fast path when there are no edition redirects.
-        if decl1.edition_redirects.is_empty() && decl2.edition_redirects.is_empty() {
-            return true;
-        }
-
-        decl1.edition_redirects.len() == decl2.edition_redirects.len()
-            && decl1.edition_redirects.iter().zip(decl2.edition_redirects).all(
-                |(redirect1, redirect2)| {
-                    redirect1.before == redirect2.before
-                        && redirect1.target.res() == redirect2.target.res()
-                },
-            )
     }
 
     /// Attempt to put the declaration with the given name and namespace into the module,
@@ -733,10 +718,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None => decl,
                 });
             } else {
-                resolution.non_glob_decl = Some(match resolution.non_glob_decl {
+                match resolution.non_glob_decl() {
                     Some(old_decl) => return Err(old_decl),
-                    None => decl,
-                })
+                    None => resolution.set_non_glob_decl(decl),
+                }
             }
 
             Ok(())
@@ -1119,7 +1104,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 // Report "cannot reexport" errors for exotic cases involving macros 2.0
                 // privacy bending or invariant-breaking code under deprecation lints.
-                for decl in [resolution.non_glob_decl, resolution.glob_decl] {
+                for decl in [resolution.non_glob_decl(), resolution.glob_decl] {
                     if let Some(decl) = decl
                         && let DeclKind::Import { source_decl, import } = decl.kind
                         // FIXME: Do not check visibility-ambiguous imports for now. To check them
@@ -1163,7 +1148,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 if let Some(glob_decl) = resolution.glob_decl
-                    && resolution.non_glob_decl.is_some()
+                    && resolution.non_glob_decl().is_some()
                 {
                     if binding.res() != Res::Err
                         && glob_decl.res() != Res::Err
@@ -1912,7 +1897,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|(key, resolution)| {
                     let res = resolution.borrow(self);
-                    let decl = self.edition_adjusted_decl(res.determined_decl()?, import.span);
+                    let decl = res.determined_decl_redir(res.orig_ident_span)?;
                     let mut key = *key;
                     let scope = match key.ident.ctxt.update_unchecked(|ctxt| {
                         ctxt.reverse_glob_adjust(module.expansion, import.span)
@@ -2048,47 +2033,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Returns the redirects to encode for `decl`.
     fn edition_redirects_for_decl(
         &self,
-        mut decl: Decl<'ra>,
+        decl: Decl<'ra>,
     ) -> SmallVec<[MetadataEditionRedirect; 1]> {
-        let original_decl = decl;
-        if !self.local_edition_redirects.is_empty() {
-            // Redirects declared in this crate are attached to their default
-            // declaration. Follow the import chain to preserve them through
-            // named and glob re-exports.
-            loop {
-                // A module child can be wrapped in one or more
-                // `DeclKind::Import`s. Prefer an attribute on a re-export
-                // itself; otherwise continue to the item at the end of the
-                // import chain.
-                let mut redirects = self
-                    .local_edition_redirects
-                    .iter()
-                    .filter(|redirect| redirect.default_decl == Some(decl))
-                    .collect::<SmallVec<[_; 1]>>();
-                if !redirects.is_empty() {
-                    redirects.sort_by_key(|redirect| redirect.before);
-                    return redirects
-                        .into_iter()
-                        .map(|redirect| MetadataEditionRedirect {
-                            before: redirect.before,
-                            target: redirect.import_decl.res().expect_non_local(),
-                        })
-                        .collect();
-                }
-
-                let DeclKind::Import { source_decl, .. } = decl.kind else { break };
-                decl = source_decl;
-            }
-        }
-
-        // Otherwise use the fully resolved redirects already attached to the
-        // original declaration.
-        original_decl
-            .edition_redirects
+        let mut redirects = self
+            .local_edition_redirects
             .iter()
+            .filter(|redirect| redirect.default_decl == Some(decl))
+            .collect::<SmallVec<[_; 1]>>();
+        redirects.sort_by_key(|redirect| redirect.before);
+        redirects
+            .into_iter()
             .map(|redirect| MetadataEditionRedirect {
                 before: redirect.before,
-                target: redirect.target.res().expect_non_local(),
+                target: redirect.import_decl.res().expect_non_local(),
             })
             .collect()
     }
@@ -2124,14 +2081,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         res,
                         vis,
                         reexport_chain: ambig_binding1.reexport_chain(),
-                        edition_redirects: this.edition_redirects_for_decl(ambig_binding1),
+                        edition_redirects: Default::default(),
                     };
                     let second = ModChild {
                         ident,
                         res: ambig_binding2.res().expect_non_local(),
                         vis: ambig_binding2.vis(),
                         reexport_chain: ambig_binding2.reexport_chain(),
-                        edition_redirects: this.edition_redirects_for_decl(ambig_binding2),
+                        edition_redirects: Default::default(),
                     };
                     ambig_children.push(AmbigModChild { main, second })
                 } else {

@@ -8,21 +8,17 @@
 //@ check-pass
 
 fn main() {
-    // Crates with `edition_redirect` preserve redirects even when the re-export
-    // itself is written in an older edition.
-    #[cfg(old)]
+    // A redirect is consumed by the first crate that imports it. The resulting
+    // re-export is therefore fixed to that crate's edition for all downstream
+    // users.
     let _: reexport_preserving::Item = reexport_source::old();
-    #[cfg(current)]
-    let _: reexport_preserving::Item = reexport_source::current();
+    let _: reexport_preserving::Child = reexport_source::old_child();
 
-    // Other crates consume a redirect at the first `use`, fixing the re-export
-    // to the item selected by that import's edition.
     let _: reexport_old::Item = reexport_source::old();
     let _: reexport_current::Item = reexport_source::current();
 
     // Redirecting a module changes path traversal at the first ordinary `use`,
     // but does not make the module's children independently redirected.
-    let _: reexport_preserving::Child = reexport_source::current_child();
     let _: reexport_old::Child = reexport_source::old_child();
     let _: reexport_current::Child = reexport_source::current_child();
 }

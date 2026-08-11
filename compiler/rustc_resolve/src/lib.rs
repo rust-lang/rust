@@ -809,7 +809,7 @@ impl<'ra> Module<'ra> {
     ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).iter() {
             let name_resolution = name_resolution.borrow(resolver.as_mut());
-            if let Some(decl) = name_resolution.best_decl() {
+            if let Some(decl) = name_resolution.best_decl_redir(name_resolution.orig_ident_span) {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
         }
@@ -2063,34 +2063,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn edition_adjusted_decl(&self, decl: Decl<'ra>, span: Span) -> Decl<'ra> {
-        // Nothing to do if the decl has no redirects.
-        if decl.edition_redirects.is_empty() {
-            return decl;
-        }
-
-        // Crates with `edition_redirect` resolve canonical bindings so
-        // redirects can be preserved through their re-exports. Other crates
-        // select using the use-site edition.
-        if self.features.edition_redirect() {
-            return decl;
-        }
-
-        // Glob selection has already determined that this name has multiple
-        // distinct candidates. Applying only the representative declaration's
-        // redirect would discard the ambiguity and make the result depend on
-        // which glob happened to be retained.
-        if decl.is_ambiguity_recursive() {
-            return decl;
-        }
-
-        let edition = span.edition();
-        decl.edition_redirects
-            .iter()
-            .find(|redirect| edition < redirect.before)
-            .map_or(decl, |redirect| redirect.target)
-    }
-
     fn is_builtin_macro(&self, res: Res) -> bool {
         self.get_macro(res).is_some_and(|ext| ext.builtin_name.is_some())
     }
@@ -2281,7 +2253,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident_span: Span,
     ) -> NameResolutionRef<'ra> {
         *self.resolutions_mut(module).entry(key).or_insert_with(|| {
-            self.arenas.alloc_name_resolution(NameResolution::new(orig_ident_span))
+            self.arenas.alloc_name_resolution(NameResolution::new(None, orig_ident_span))
         })
     }
 

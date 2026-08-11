@@ -11,21 +11,22 @@ extern crate basic as edition_redirect;
 use edition_redirect::{
     Redirected as ImportedRedirected, redirected_macro as imported_redirected_macro,
 };
+use edition_redirect::{
+    reexport_scope::Current as ExpectedScopedRedirected,
+    use_targets::CurrentUse as ExpectedReexportedUse,
+};
 
 #[cfg(edition2018)]
 use edition_redirect::{
-    Oldest as ExpectedRedirected, reexport_scope::Old as ExpectedScopedRedirected,
-    use_targets::OldestUse as ExpectedRedirectedUse,
+    Oldest as ExpectedRedirected, use_targets::OldestUse as ExpectedRedirectedUse,
 };
 #[cfg(edition2021)]
 use edition_redirect::{
-    Middle as ExpectedRedirected, reexport_scope::Old as ExpectedScopedRedirected,
-    use_targets::MiddleUse as ExpectedRedirectedUse,
+    Middle as ExpectedRedirected, use_targets::MiddleUse as ExpectedRedirectedUse,
 };
 #[cfg(edition2024)]
 use edition_redirect::{
-    Redirected as ExpectedRedirected, reexport_scope::Current as ExpectedScopedRedirected,
-    use_targets::CurrentUse as ExpectedRedirectedUse,
+    Redirected as ExpectedRedirected, use_targets::CurrentUse as ExpectedRedirectedUse,
 };
 
 #[cfg(edition2018)]
@@ -39,7 +40,7 @@ fn explicit() {
     let _: ExpectedRedirected = edition_redirect::Redirected;
     let _: ExpectedRedirectedUse = edition_redirect::RedirectedUse;
     let _: ExpectedScopedRedirected = edition_redirect::ScopedRedirected;
-    let _: edition_redirect::same_redirects::Item = ExpectedRedirectedUse;
+    let _: edition_redirect::same_redirects::Item = ExpectedReexportedUse;
     const _: [(); EXPECTED_VALUE] = [(); edition_redirect::redirected_module::VALUE];
     const _: [(); EXPECTED_VALUE] = [(); edition_redirect::redirected_macro!()];
     const _: [(); EXPECTED_VALUE] = [(); redirected_macro!()];

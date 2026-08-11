@@ -713,7 +713,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
-                Some(decl) => Ok(self.edition_adjusted_decl(decl, orig_ident_span)),
+                Some(decl) => Ok(decl),
                 None => {
                     Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations(&self)))
                 }
@@ -1112,16 +1112,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let resolution =
             &*self.resolution(module.to_module(), key).ok_or(ControlFlow::Continue(Determined))?;
 
-        let binding = resolution.non_glob_decl.filter(|b| Some(*b) != ignore_decl).map(|binding| {
-            // This check is redundant with the one inside
-            // edition_adjusted_decl, but this is a hot path and we want to
-            // avoid the call if it isn't necessary.
-            if !binding.edition_redirects.is_empty() {
-                self.edition_adjusted_decl(binding, orig_ident_span)
-            } else {
-                binding
-            }
-        });
+        let binding =
+            resolution.non_glob_decl_redir(orig_ident_span).filter(|b| Some(*b) != ignore_decl);
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(
@@ -1161,7 +1153,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let resolution = self.resolution(module.to_module(), key);
 
         let binding =
-            resolution.as_ref().and_then(|r| r.non_glob_decl).filter(|b| Some(*b) != ignore_decl);
+            resolution.as_ref().and_then(|r| r.non_glob_decl()).filter(|b| Some(*b) != ignore_decl);
 
         if let Some(finalize) = finalize {
             // finalize implies that the module is fully expanded
@@ -1406,7 +1398,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
     ) -> bool {
         for single_import in &resolution.single_imports {
-            if let Some(decl) = resolution.non_glob_decl
+            if let Some(decl) = resolution.non_glob_decl()
                 && let DeclKind::Import { import, .. } = decl.kind
                 && import == *single_import
             {
