@@ -9,7 +9,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_middle::query::{QueryCache, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 
-use crate::query_impl::for_each_query_vtable;
+use crate::query_vtables::for_each_query_vtable;
 
 pub(crate) struct QueryKeyStringCache {
     def_id_cache: FxHashMap<DefId, StringId>,

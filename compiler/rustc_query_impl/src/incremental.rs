@@ -1,78 +1,22 @@
-use std::num::NonZero;
-
-use rustc_data_structures::Limit;
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::unord::UnordMap;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
-use rustc_middle::dep_graph::{DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{
+    DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
+};
 use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
-use rustc_middle::query::{QueryCache, QueryJobId, QueryVTable, erase};
+use rustc_middle::query::{QueryCache, QueryState, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::def_id::LOCAL_CRATE;
 
-use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
-use crate::execution::{all_inactive, should_verify_loaded_value};
-use crate::job::find_dep_kind_root;
-use crate::query_impl::for_each_query_vtable;
-use crate::{CollectActiveJobsKind, collect_active_query_jobs};
+use crate::query_vtables::for_each_query_vtable;
 
-fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
-    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
-    let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
-
-    let suggested_limit = match tcx.recursion_limit() {
-        Limit(0) => Limit(2),
-        limit => limit * 2,
-    };
-
-    tcx.dcx().emit_fatal(QueryOverflow {
-        span,
-        note: QueryOverflowNote { desc, depth },
-        suggested_limit,
-        crate_name: tcx.crate_name(LOCAL_CRATE),
-    });
-}
-
-#[inline]
-pub(crate) fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
-    QueryJobId(
-        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-            .unwrap(),
-    )
-}
-
-#[inline]
-pub(crate) fn current_query_job() -> Option<QueryJobId> {
-    tls::with_context(|icx| icx.query)
-}
-
-/// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
-#[inline(always)]
-pub(crate) fn start_query<R>(
-    job_id: QueryJobId,
-    depth_limit: bool,
-    compute: impl FnOnce() -> R,
-) -> R {
-    tls::with_context(move |icx| {
-        if depth_limit && !icx.tcx.recursion_limit().value_within_limit(icx.query_depth) {
-            depth_limit_error(icx.tcx, job_id);
-        }
-
-        // Update the `ImplicitCtxt` to point to our new query job.
-        let icx = ImplicitCtxt {
-            query: Some(job_id),
-            query_depth: icx.query_depth + if depth_limit { 1 } else { 0 },
-            ..*icx
-        };
-
-        // Use the `ImplicitCtxt` while we execute the query.
-        tls::enter_context(&icx, compute)
-    })
+fn all_inactive<'tcx, K>(state: &QueryState<'tcx, K>) -> bool {
+    state.active.lock_shards().all(|shard| shard.is_empty())
 }
 
 pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEncoder<'_, 'tcx>) {
@@ -133,6 +77,29 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
             );
         }
     });
+}
+
+/// Whether a value loaded from the on-disk cache should have its fingerprint
+/// verified with `incremental_verify_ich`. If `-Zincremental-verify-ich` is
+/// specified, re-hash results from the cache and make sure that they have the
+/// expected fingerprint.
+///
+/// If not, we still verify a subset: re-hashing is too expensive to do for
+/// every value. The subset rotates with the session count, covering the whole
+/// cache every 32 sessions, and is deterministic so that a verification
+/// failure reproduces on retry.
+///
+/// `to_smaller_hash` mixes both fingerprint halves because neither half is
+/// evenly distributed on its own (`DefPathHash` keys share the
+/// `StableCrateId`, `HirId` keys contain a sequential id).
+pub(crate) fn should_verify_loaded_value(
+    tcx: TyCtxt<'_>,
+    dep_graph_data: &DepGraphData,
+    key_fingerprint: PackedFingerprint,
+) -> bool {
+    let hash = Fingerprint::from(key_fingerprint).to_smaller_hash().as_u64();
+    hash % 32 == dep_graph_data.session_count() % 32
+        || tcx.sess.opts.unstable_opts.incremental_verify_ich
 }
 
 /// Inner implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
