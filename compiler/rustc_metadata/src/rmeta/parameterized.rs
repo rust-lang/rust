@@ -106,6 +106,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,
     rustc_index::bit_set::DenseBitSet<u32>,
+    rustc_index::bit_set::DenseBitSet<usize>,
     rustc_middle::metadata::AmbigModChild,
     rustc_middle::metadata::ModChild,
     rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs,
