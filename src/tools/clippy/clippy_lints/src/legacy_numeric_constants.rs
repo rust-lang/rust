@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                     let def_path = cx.get_def_path(def_id);
 
                     if module && let [.., module_name] = &*def_path {
-                        if kind == UseKind::Glob {
+                        if matches!(kind, UseKind::Glob) {
                             diag.help(format!("remove this import and use associated constants `{module_name}::<CONST>` from the primitive type instead"));
                         } else {
                             diag.help("remove this import").note(format!(
