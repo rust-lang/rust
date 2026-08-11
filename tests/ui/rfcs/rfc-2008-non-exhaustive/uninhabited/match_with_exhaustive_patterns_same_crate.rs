@@ -5,6 +5,7 @@
 pub enum UninhabitedEnum {
 }
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 pub struct UninhabitedStruct {
     pub never: !,
