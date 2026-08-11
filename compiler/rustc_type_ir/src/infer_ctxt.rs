@@ -419,25 +419,19 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_float_var(
-        &self,
-        vid: ty::FloatVid,
-    ) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_ct_var(
-        &self,
-        vid: ty::ConstVid,
-    ) -> <Self::Interner as Interner>::Const;
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> <Self::Interner as Interner>::Const;
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
@@ -668,15 +662,15 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let resolved = self.delegate.opportunistic_resolve_ty_var(vid);
+                let resolved = self.delegate.shallow_resolve_ty_var(vid);
                 if t != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
                     resolved
                 }
             }
-            ty::Infer(ty::IntVar(vid)) => self.delegate.opportunistic_resolve_int_var(vid),
-            ty::Infer(ty::FloatVar(vid)) => self.delegate.opportunistic_resolve_float_var(vid),
+            ty::Infer(ty::IntVar(vid)) => self.delegate.shallow_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.delegate.shallow_resolve_float_var(vid),
             _ => {
                 if t.has_infer() {
                     if let Some(&ty) = self.cache.get(&t) {
@@ -694,7 +688,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReVar(vid) => self.delegate.opportunistic_resolve_lt_var(vid),
+            ty::ReVar(vid) => self.delegate.shallow_resolve_region_var(vid),
             _ => r,
         }
     }
@@ -702,7 +696,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
     fn fold_const(&mut self, c: I::Const) -> I::Const {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let resolved = self.delegate.opportunistic_resolve_ct_var(vid);
+                let resolved = self.delegate.shallow_resolve_const_var(vid);
                 if c != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
