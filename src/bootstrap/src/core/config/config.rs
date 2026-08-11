@@ -29,7 +29,9 @@ use serde::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
-use crate::core::build_steps::llvm::{LLVM_CI_LINK_TYPE_PATH, LLVM_INVALIDATION_PATHS};
+use crate::core::build_steps::llvm::{
+    LLVM_CI_LINK_TYPE_PATH, LLVM_INVALIDATION_PATHS, LlvmKind, LlvmOutput,
+};
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
@@ -2055,7 +2057,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     /// Returns `true` if this is our custom, patched, version of LLVM.
     ///
     /// This does not necessarily imply that we're managing the `llvm-project` submodule.
-    pub fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+    pub fn is_rust_llvm(&self, llvm: &LlvmOutput, target: TargetSelection) -> bool {
         match self.target_config.get(&target) {
             // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
             // (They might be wrong, but that's not a supported use-case.)
@@ -2063,7 +2065,10 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
             // The user hasn't promised the patches match.
             // This only has our patches if it's downloaded from CI or built from source.
-            _ => !self.is_system_llvm(target),
+            _ => match llvm.kind() {
+                LlvmKind::BuiltLocally | LlvmKind::DownloadedFromCi => true,
+                LlvmKind::External => false,
+            },
         }
     }
 

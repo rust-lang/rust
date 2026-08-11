@@ -31,6 +31,16 @@ use crate::{CLang, GitRepo, exit, trace};
 /// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
 pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
 
+#[derive(Copy, Clone)]
+pub enum LlvmKind {
+    /// The LLVM was built from in-tree sources
+    BuiltLocally,
+    /// The LLVM was downloaded from the `rust-dev` CI artifact.
+    DownloadedFromCi,
+    /// The LLVM was provided externally through a `llvm-config` file.
+    External,
+}
+
 /// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
 pub struct LlvmOutput {
@@ -39,6 +49,7 @@ pub struct LlvmOutput {
     pub host_llvm_config: PathBuf,
     link_shared: bool,
     llvm_root_dir: PathBuf,
+    kind: LlvmKind,
 }
 
 impl LlvmOutput {
@@ -56,6 +67,11 @@ impl LlvmOutput {
     /// Should we link dynamically to the built LLVM?
     pub fn link_shared(&self) -> bool {
         self.link_shared
+    }
+
+    /// How was the LLVM produced?
+    pub fn kind(&self) -> LlvmKind {
+        self.kind
     }
 }
 
@@ -158,7 +174,7 @@ pub fn prebuilt_llvm_config(
 
         // FIXME: remove this once we stop overriding the llvm config when download-ci-llvm is
         // enabled
-        let link_shared = if builder.config.llvm_ci_mode.download_from_ci() {
+        let (link_shared, ci) = if builder.config.llvm_ci_mode.download_from_ci() {
             let ci_llvm = builder.config.ci_llvm_root();
             let link_type = t!(
                 std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
@@ -167,15 +183,16 @@ pub fn prebuilt_llvm_config(
                     ci_llvm.display()
                 )
             );
-            link_type == "dynamic"
+            (link_type == "dynamic", true)
         } else {
-            builder.config.llvm_link_shared_raw()
+            (builder.config.llvm_link_shared_raw(), false)
         };
 
         return LlvmBuildStatus::AlreadyBuilt(LlvmOutput {
             host_llvm_config,
             link_shared,
             llvm_root_dir,
+            kind: if ci { LlvmKind::DownloadedFromCi } else { LlvmKind::External },
         });
     }
 
@@ -203,6 +220,7 @@ pub fn prebuilt_llvm_config(
         host_llvm_config: build_llvm_config,
         link_shared: builder.config.llvm_link_shared_raw(),
         llvm_root_dir: out_dir.clone(),
+        kind: LlvmKind::BuiltLocally,
     };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();

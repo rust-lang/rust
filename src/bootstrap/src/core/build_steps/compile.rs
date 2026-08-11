@@ -1420,13 +1420,13 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 /// Note that this has the side-effect of _building LLVM_, which is sometimes
 /// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    if builder.config.is_rust_llvm(target) {
+    let llvm_output = builder.ensure(llvm::Llvm { target });
+    if builder.config.is_rust_llvm(&llvm_output, target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
-    let llvm_output = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
