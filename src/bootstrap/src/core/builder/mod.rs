@@ -1590,8 +1590,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     pub fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_ci_mode.download_from_ci() && self.config.is_host_target(target) {
-            self.config.ci_llvm_root()
+        // We don't want to eagerly build LLVM by calling this function, so we only check if it
+        // was already downloaded from CI.
+        // The first part of the condition ensures that we don't download LLVM for non-host targets
+        // from CI eagerly (FIXME: this could be relaxed in the future).
+        if self.config.is_host_target(target)
+            && let Some(llvm_ci) = self.ensure(llvm::LlvmFromCi { target })
+        {
+            llvm_ci.output.root_dir().to_path_buf()
         } else {
             self.out.join(target).join("llvm")
         }

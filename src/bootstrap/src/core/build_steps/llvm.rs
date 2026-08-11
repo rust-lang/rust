@@ -260,10 +260,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
         return None;
     }
 
-    // FIXME: make this function at least return the path to the downloaded LLVM CI root
-    builder.config.maybe_download_ci_llvm();
-
-    let ci_llvm = builder.config.ci_llvm_root();
+    let ci_llvm = builder.config.maybe_download_ci_llvm()?;
     let link_shared = if !builder.config.dry_run() {
         let link_type = t!(
             std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),

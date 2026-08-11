@@ -1728,12 +1728,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         }
     }
 
-    /// The absolute path to the downloaded LLVM artifacts.
-    pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        let dwn_ctx = DownloadContext::from(self);
-        ci_llvm_root(dwn_ctx, self.llvm_ci_mode.download_from_ci(), &self.out)
-    }
-
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
@@ -2653,16 +2647,6 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
     // If not specified in config, the default is to only manage
     // submodules if we're currently inside a git repository.
     submodules.unwrap_or(rust_info.is_managed_git_subrepository())
-}
-
-pub(crate) fn ci_llvm_root<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    llvm_from_ci: bool,
-    out: &Path,
-) -> PathBuf {
-    let dwn_ctx = dwn_ctx.as_ref();
-    assert!(llvm_from_ci);
-    out.join(dwn_ctx.host_target).join("ci-llvm")
 }
 
 /// Returns the content of the given file at a specific commit.
