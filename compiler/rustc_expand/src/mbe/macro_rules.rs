@@ -10,13 +10,12 @@ use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::diagnostic::Directive;
+use rustc_attr_ir::{self as attrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_feature::Features;
-use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::def::MacroKinds;
-use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
     SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS,
@@ -783,7 +782,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     macro_def: &ast::MacroDef,
     ident: Ident,
-    attrs: &[hir::Attribute],
+    attrs: &[attrs::Attribute],
     span: Span,
     node_id: NodeId,
     edition: Edition,

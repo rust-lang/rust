@@ -10,7 +10,7 @@
 
 use std::iter;
 
-use hir_ty::{db::HirDatabase, mir::BorrowKind};
+use hir_ty::db::HirDatabase;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
@@ -46,41 +46,16 @@ pub(super) fn trivial<'a, 'lt, 'db, DB: HirDatabase>(
             ScopeDef::ModuleDef(ModuleDef::Const(it)) => Some(Expr::Const(*it)),
             ScopeDef::ModuleDef(ModuleDef::Static(it)) => Some(Expr::Static(*it)),
             ScopeDef::GenericParam(GenericParam::ConstParam(it)) => Some(Expr::ConstParam(*it)),
-            ScopeDef::Local(it) => {
-                if ctx.config.enable_borrowcheck {
-                    let borrowck = it.parent_infer.borrowck(db).ok()?;
-
-                    let invalid = borrowck.iter().any(|b| {
-                        let mir_body = b.mir_body(ctx.sema.db);
-                        b.partially_moved.iter().any(|moved| {
-                            Some(&moved.local) == mir_body.binding_locals.get(it.binding_id)
-                        }) || b.borrow_regions.iter().any(|region| {
-                            // Shared borrows are fine
-                            Some(&region.local) == mir_body.binding_locals.get(it.binding_id)
-                                && region.kind != BorrowKind::Shared
-                        })
-                    });
-
-                    if invalid {
-                        return None;
-                    }
-                }
-
-                Some(Expr::Local(*it))
-            }
+            ScopeDef::Local(it) => Some(Expr::Local(*it)),
             _ => None,
         }?;
 
         let ty = expr.ty(db);
-        lookup.insert(ty.clone(), std::iter::once(expr.clone()));
-
-        // Don't suggest local references as they are not valid for return
-        if matches!(expr, Expr::Local(_))
-            && ty.contains_reference(db)
-            && ctx.config.enable_borrowcheck
-        {
+        if ty.contains_unknown() {
             return None;
         }
+
+        lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
         ty.instantiate_with_errors().could_unify_with_deeply(db, &ctx.goal).then_some(expr)
     })
@@ -182,10 +157,6 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
                     return None;
                 }
 
-                // Ignore types that have something to do with lifetimes
-                if ctx.config.enable_borrowcheck && ty.contains_reference(db) {
-                    return None;
-                }
                 let fields = strukt.fields(db);
                 // Check if all fields are visible, otherwise we cannot fill them
                 if fields.iter().any(|it| !it.is_visible_from(db, module)) {
@@ -231,11 +202,6 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
                 }
 
                 if ty.contains_unknown() {
-                    return None;
-                }
-
-                // Ignore types that have something to do with lifetimes
-                if ctx.config.enable_borrowcheck && ty.contains_reference(db) {
                     return None;
                 }
 
@@ -372,7 +338,6 @@ pub(super) fn free_function<'a, 'lt, 'db, DB: HirDatabase>(
                                 crate::Crate::from(ctx.scope.resolver().krate()).edition(db),
                             )
                             || it.is_unstable(db)
-                            || ctx.config.enable_borrowcheck && ret_ty.contains_reference(db)
                             || ret_ty.is_raw_ptr()
                         {
                             return None;
@@ -495,11 +460,6 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
             }
 
             let ret_ty = it.ret_type(db).instantiate(ty.type_arguments());
-            // Filter out functions that return references
-            if ctx.config.enable_borrowcheck && ret_ty.contains_reference(db) || ret_ty.is_raw_ptr()
-            {
-                return None;
-            }
 
             // Ignore functions that do not change the type
             if ty.instantiate_with_errors().could_unify_with_deeply(db, &ret_ty) {
@@ -695,11 +655,6 @@ pub(super) fn impl_static_method<'a, 'lt, 'db, DB: HirDatabase>(
             }
 
             let ret_ty = it.ret_type(db).instantiate(ty.type_arguments());
-            // Filter out functions that return references
-            if ctx.config.enable_borrowcheck && ret_ty.contains_reference(db) || ret_ty.is_raw_ptr()
-            {
-                return None;
-            }
 
             // Early exit if some param cannot be filled from lookup
             let param_exprs: Vec<Vec<Expr<'_>>> = it
@@ -760,11 +715,6 @@ pub(super) fn make_tuple<'a, 'lt, 'db, DB: HirDatabase>(
         .filter_map(move |ty| {
             // Double check to not contain unknown
             if ty.contains_unknown() {
-                return None;
-            }
-
-            // Ignore types that have something to do with lifetimes
-            if ctx.config.enable_borrowcheck && ty.contains_reference(db) {
                 return None;
             }
 

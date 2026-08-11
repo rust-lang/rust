@@ -530,25 +530,20 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 
 /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
 /// reuse target directories or artifacts
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    out: &Path,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt(config: &Config, out: &Path) -> Option<PathBuf> {
     // Don't actually download rustfmt during unit tests.
     if cfg!(test) {
         return Some(PathBuf::new());
     }
 
-    let dwn_ctx = dwn_ctx.as_ref();
-
-    if dwn_ctx.exec_ctx.dry_run() {
+    if config.dry_run() {
         return Some(PathBuf::new());
     }
 
-    let VersionMetadata { date, version, .. } = dwn_ctx.stage0_metadata.rustfmt.as_ref()?;
+    let VersionMetadata { date, version, .. } = config.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
 
-    let host = dwn_ctx.host_target;
+    let host = config.host_target;
     let bin_root = out.join(host).join("rustfmt");
     let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
     let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
@@ -557,7 +552,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     }
 
     download_component(
-        dwn_ctx,
+        DownloadContext::from(config),
         out,
         DownloadSource::Dist,
         format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
@@ -567,7 +562,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     );
 
     download_component(
-        dwn_ctx,
+        DownloadContext::from(config),
         out,
         DownloadSource::Dist,
         format!("rustc-{version}-{build}.tar.xz", build = host.triple),
@@ -576,14 +571,14 @@ pub(crate) fn maybe_download_rustfmt<'a>(
         "rustfmt",
     );
 
-    if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
-        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), dwn_ctx.exec_ctx);
-        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), dwn_ctx.exec_ctx);
+    if should_fix_bins_and_dylibs(config.patch_binaries_for_nix, &config.exec_ctx) {
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), &config.exec_ctx);
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), &config.exec_ctx);
         let lib_dir = bin_root.join("lib");
         for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if path_is_dylib(&lib.path()) {
-                fix_bin_or_dylib(out, &lib.path(), dwn_ctx.exec_ctx);
+                fix_bin_or_dylib(out, &lib.path(), &config.exec_ctx);
             }
         }
     }

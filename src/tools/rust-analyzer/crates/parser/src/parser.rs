@@ -154,6 +154,12 @@ impl<'t> Parser<'t> {
         true
     }
 
+    /// This consumes the next token as an identifier, even if it is a strict keyword.
+    pub(crate) fn bump_remap_any_ident(&mut self) {
+        assert!(self.current().is_any_identifier());
+        self.bump_remap(T![ident]);
+    }
+
     fn at_composite2(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind) -> bool {
         self.inp.kind(self.pos + n) == k1
             && self.inp.kind(self.pos + n + 1) == k2

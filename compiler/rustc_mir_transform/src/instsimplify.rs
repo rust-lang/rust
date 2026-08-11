@@ -1,7 +1,8 @@
 //! Performs various peephole optimizations.
 
 use rustc_abi::{ExternAbi, Integer};
-use rustc_hir::{LangItem, find_attr};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::MutVisitor;

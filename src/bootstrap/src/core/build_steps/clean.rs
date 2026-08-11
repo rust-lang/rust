@@ -177,6 +177,16 @@ fn clean_default(build: &Build) {
 }
 
 fn rm_rf(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => return,
+        // Already deleted, nothing for us to do.
+        Err(e) if e.kind() == ErrorKind::NotFound => return,
+        _ => {}
+    }
+
+    // If remove_dir_all fails then retry.
+    // We do so manually so we can provide better diagnostics,
+    // e.g. pointing to the exact file that failed.
     match path.symlink_metadata() {
         Err(e) => {
             if e.kind() == ErrorKind::NotFound {
@@ -235,7 +245,7 @@ where
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
                 // Delete symlinked directories on Windows
-                if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
+                if fs::remove_dir(path).is_ok() {
                     return;
                 }
                 panic!("failed to {} {}: {}", desc, path.display(), e);

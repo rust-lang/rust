@@ -8,3 +8,6 @@ expression: test src/tools/miri src/tools/miri/cargo-miri
 [Test] test::CargoMiri
     targets: [aarch64-unknown-linux-gnu]
     - Set({src/tools/miri/cargo-miri})
+[Test] test::Priroda
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({src/tools/miri/priroda})

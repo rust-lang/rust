@@ -14,10 +14,9 @@ pub struct CfgSelectBranchAttrSpans {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a `TokenTree` consisting either of `{ /* ... */ }` optionally followed by a comma
-    /// (and strip the braces and the optional comma) or an expression followed by a comma
-    /// (and strip the comma).
-    pub fn parse_delimited_token_tree(&mut self) -> PResult<'a, TokenStream> {
+    /// Parses the right-hand side of a `cfg_select!` branch,
+    /// which can be either a braced block or an expression.
+    pub fn parse_cfg_select_branch_rhs(&mut self) -> PResult<'a, TokenStream> {
         if self.token == token::OpenBrace {
             // Strip the outer '{' and '}'.
             match self.parse_token_tree() {

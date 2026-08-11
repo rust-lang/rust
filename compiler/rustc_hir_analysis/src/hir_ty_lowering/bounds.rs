@@ -4,6 +4,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{PolyTraitRef, find_attr};
@@ -110,13 +111,13 @@ fn collect_sizedness_bounds<'tcx>(
     context: ImpliedBoundsContext<'tcx>,
     span: Span,
 ) -> CollectedSizednessBounds {
-    let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
+    let sized_did = tcx.require_lang_item(LangItem::Sized, span);
     let sized = collect_bounds(hir_bounds, context, sized_did);
 
-    let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
+    let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
     let meta_sized = collect_bounds(hir_bounds, context, meta_sized_did);
 
-    let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
+    let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
     let pointee_sized = collect_bounds(hir_bounds, context, pointee_sized_did);
 
     CollectedSizednessBounds { sized, meta_sized, pointee_sized }
@@ -160,8 +161,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
-        let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
+        let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
+        let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
 
         // If adding sizedness bounds to a trait, then there are some relevant early exits
         match context {
@@ -200,7 +201,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
                     // If there are no explicit sizedness bounds on a parameter then add a default
                     // `Sized` bound.
-                    let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
+                    let sized_did = tcx.require_lang_item(LangItem::Sized, span);
                     add_trait_bound(tcx, bounds, self_ty, sized_did, span);
                 }
             }
@@ -225,7 +226,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Doesn't add the bound if the HIR bounds contain any of `Trait`, `?Trait` or `!Trait`.
     pub(crate) fn add_default_trait(
         &self,
-        trait_: hir::LangItem,
+        trait_: LangItem,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &[hir::GenericBound<'tcx>],
@@ -268,7 +269,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
-            && (tcx.is_lang_item(def_id, hir::LangItem::Sized) || tcx.is_default_trait(def_id))
+            && (tcx.is_lang_item(def_id, LangItem::Sized) || tcx.is_default_trait(def_id))
         {
             return;
         }

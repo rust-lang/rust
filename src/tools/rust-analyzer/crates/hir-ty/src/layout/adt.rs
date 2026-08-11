@@ -19,7 +19,7 @@ use crate::{
     traits::StoredParamEnvAndCrate,
 };
 
-#[salsa::tracked(cycle_result = layout_of_adt_cycle_result)]
+#[salsa::tracked(cycle_result = layout_of_adt_cycle_result, returns(clone))]
 pub fn layout_of_adt_query(
     db: &dyn HirDatabase,
     def: AdtId,

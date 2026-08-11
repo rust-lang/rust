@@ -256,6 +256,7 @@ impl RootDatabase {
 pub fn line_index(db: &dyn SourceDatabase, file_id: FileId) -> &Arc<LineIndex> {
     #[salsa::interned]
     pub struct InternedFileId {
+        #[returns(copy)]
         id: FileId,
     }
     #[salsa::tracked(returns(ref))]

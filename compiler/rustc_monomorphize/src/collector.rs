@@ -214,9 +214,9 @@ use rustc_data_structures::sync::{Lock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
@@ -471,26 +471,24 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
-                    // Normalization errors here are usually due to trait solving overflow.
-                    // FIXME: I assume that there are few type errors at post-analysis stage, but not
-                    // entirely sure.
-                    // We have to emit the error outside of `items_of_instance` to access the
-                    // span of the `starting_item`.
-                    let def_id = instance.def_id();
-                    let def_span = tcx.def_span(def_id);
-                    let def_path_str = tcx.def_path_str(def_id);
-                    tcx.dcx().emit_fatal(RecursionLimit {
-                        span: starting_item.span,
-                        instance,
-                        def_span,
-                        def_path_str,
-                    });
-                };
-                used_items.extend(used.into_iter().copied());
-                mentioned_items.extend(mentioned.into_iter().copied());
-            });
+            let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                // Normalization errors here are usually due to trait solving overflow.
+                // FIXME: I assume that there are few type errors at post-analysis stage, but not
+                // entirely sure.
+                // We have to emit the error outside of `items_of_instance` to access the
+                // span of the `starting_item`.
+                let def_id = instance.def_id();
+                let def_span = tcx.def_span(def_id);
+                let def_path_str = tcx.def_path_str(def_id);
+                tcx.dcx().emit_fatal(RecursionLimit {
+                    span: starting_item.span,
+                    instance,
+                    def_span,
+                    def_path_str,
+                });
+            };
+            used_items.extend(used.into_iter().copied());
+            mentioned_items.extend(mentioned.into_iter().copied());
         }
         MonoItem::GlobalAsm(item_id) => {
             assert!(
@@ -1288,13 +1286,10 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             let ptrs = alloc.inner().provenance().ptrs();
-            // avoid `ensure_sufficient_stack` in the common case of "no pointers"
             if !ptrs.is_empty() {
-                rustc_data_structures::stack::ensure_sufficient_stack(move || {
-                    for &prov in ptrs.values() {
-                        collect_alloc(tcx, prov.alloc_id(), output);
-                    }
-                });
+                for &prov in ptrs.values() {
+                    collect_alloc(tcx, prov.alloc_id(), output);
+                }
             }
         }
         GlobalAlloc::Function { instance, .. } => {

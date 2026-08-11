@@ -100,6 +100,9 @@ expression: fix
 [Fix] check::CargoMiri
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/miri/cargo-miri})
+[Fix] check::Priroda
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({src/tools/miri/priroda})
 [Fix] check::MiroptTestTools
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/miropt-test-tools})

@@ -3358,4 +3358,22 @@ fn foo<'r#fn$0>(s: &'r#fn str) {
             "#]],
         );
     }
+
+    #[test]
+    fn pub_macro_2_scope() {
+        check(
+            r#"
+//- /foo.rs crate:foo
+pub macro m$0() {}
+
+//- /bar.rs new_source_root:local crate:bar deps:foo
+foo::m!();
+        "#,
+            expect![[r#"
+                m Macro FileId(0) 0..16 10..11
+
+                FileId(1) 5..6
+            "#]],
+        );
+    }
 }

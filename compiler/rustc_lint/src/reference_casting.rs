@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::InvalidReferenceCastingDiag;
+use crate::diagnostics::InvalidReferenceCastingDiag;
 use crate::utils::peel_casts;
 use crate::{LateContext, LateLintPass, LintContext};
 

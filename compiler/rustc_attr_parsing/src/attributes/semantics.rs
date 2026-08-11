@@ -1,5 +1,5 @@
+use rustc_attr_ir::target::GenericParamKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::target::GenericParamKind;
 
 use super::prelude::*;
 

@@ -18,7 +18,7 @@ use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution, assembly,
 };
 
-impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
+impl<D, I> assembly::GoalKind<D> for ty::HostEffectClause<I>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -481,7 +481,7 @@ where
     #[instrument(level = "trace", skip(self))]
     pub(super) fn compute_host_effect_goal(
         &mut self,
-        goal: Goal<I, ty::HostEffectPredicate<I>>,
+        goal: Goal<I, ty::HostEffectClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
             let trait_goal: Goal<I, ty::TraitPredicate<I>> =

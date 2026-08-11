@@ -1617,6 +1617,19 @@ fn main() {
         expect!("const fn(&'foo mut self, &Foo) -> !"),
         expect!("pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> !"),
     );
+
+    check_signatures(
+        r#"
+struct Foo;
+impl Foo {
+    pub fn method(&self, first: bool, second: bool, third: bool, fourth: bool) {}
+}
+fn main() { Foo.m$0 }
+"#,
+        CompletionItemKind::SymbolKind(SymbolKind::Method),
+        expect!("fn(&self, bool, bool, bool, bool)"),
+        expect!("pub fn method(&self, first: bool, second: bool, third: bool, fourth: bool)"),
+    );
 }
 
 #[test]

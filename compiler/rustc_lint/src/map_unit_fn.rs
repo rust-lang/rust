@@ -3,7 +3,7 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::MappingToUnit;
+use crate::diagnostics::MappingToUnit;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

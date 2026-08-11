@@ -108,6 +108,16 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.sub_unification_table_root_var(var)
     }
 
+    #[inline]
+    fn is_sub_unification_table_root_var(&self, vid: ty::TyVid) -> bool {
+        self.inner
+            .borrow()
+            .type_variable_storage
+            .sub_unification_table_ref()
+            .try_probe_value(vid)
+            .is_some()
+    }
+
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
         self.root_const_var(var)
     }
@@ -147,25 +157,18 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             ty::GenericArgKind::Type(ty) => {
                 if let ty::Infer(infer_ty) = *ty.kind() {
                     match infer_ty {
-                        ty::InferTy::TyVar(vid) => {
-                            !self.try_resolve_ty_var(vid).is_err_and(|_| self.root_var(vid) == vid)
-                        }
-                        ty::InferTy::IntVar(vid) => {
-                            let mut inner = self.inner.borrow_mut();
-                            !matches!(
-                                inner.int_unification_table().probe_value(vid),
-                                ty::IntVarValue::Unknown
-                                    if inner.int_unification_table().find(vid) == vid
-                            )
-                        }
-                        ty::InferTy::FloatVar(vid) => {
-                            let mut inner = self.inner.borrow_mut();
-                            !matches!(
-                                inner.float_unification_table().probe_value(vid),
-                                ty::FloatVarValue::Unknown
-                                    if inner.float_unification_table().find(vid) == vid
-                            )
-                        }
+                        ty::InferTy::TyVar(vid) => !matches!(
+                            self.inner.borrow().try_type_variables_probe_ref(vid),
+                            Some(TypeVariableValue::Unknown { .. })
+                        ),
+                        ty::InferTy::IntVar(vid) => !matches!(
+                            self.inner.borrow().int_unification_storage.try_probe_value(vid),
+                            Some(ty::IntVarValue::Unknown)
+                        ),
+                        ty::InferTy::FloatVar(vid) => !matches!(
+                            self.inner.borrow().float_unification_storage.try_probe_value(vid),
+                            Some(ty::FloatVarValue::Unknown)
+                        ),
                         ty::InferTy::FreshTy(_)
                         | ty::InferTy::FreshIntTy(_)
                         | ty::InferTy::FreshFloatTy(_) => true,
@@ -177,9 +180,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             ty::GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(infer_ct) = ct.kind() {
                     match infer_ct {
-                        ty::InferConst::Var(vid) => !self
-                            .try_resolve_const_var(vid)
-                            .is_err_and(|_| self.root_const_var(vid) == vid),
+                        ty::InferConst::Var(vid) => !matches!(
+                            self.inner.borrow().const_unification_storage.try_probe_value(vid),
+                            Some(ConstVariableValue::Unknown { .. })
+                        ),
                         ty::InferConst::Fresh(_) => true,
                     }
                 } else {
@@ -372,7 +376,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         use rustc_data_structures::undo_log::UndoLogs;
 
         use crate::infer::UndoLog;
-        inner.undo_log.push(UndoLog::PushSolverRegionConstraint);
+        let previous_was_and = inner.solver_region_constraint_storage.is_and();
+        inner.undo_log.push(UndoLog::PushSolverRegionConstraint { previous_was_and });
         inner.solver_region_constraint_storage.push(c);
     }
 
