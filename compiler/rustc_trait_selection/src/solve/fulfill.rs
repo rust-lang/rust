@@ -326,7 +326,7 @@ where
             // Conservative here: if a stalled var no longer resolves to an
             // infer var, some unification happened, so the goal is no longer
             // stalled. Include it to be re-evaluated downstream.
-            stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type()).any(|ty| {
+            stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type(infcx.tcx)).any(|ty| {
                 match *infcx.shallow_resolve(ty).kind() {
                     ty::Infer(ty::TyVar(tv)) => infcx.sub_unification_table_root_var(tv) == vid,
                     _ => true,
@@ -351,7 +351,7 @@ where
             stalled_on
                 .stalled_vars
                 .iter()
-                .filter_map(|arg| arg.as_type())
+                .filter_map(|arg| arg.as_type(infcx.tcx))
                 .any(|ty| matches!(infcx.shallow_resolve(ty).kind(), ty::Infer(ty::FloatVar(_))))
         })
     }

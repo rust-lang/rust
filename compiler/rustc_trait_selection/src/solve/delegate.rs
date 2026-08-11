@@ -19,7 +19,7 @@ use rustc_middle::ty::{
     self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode,
 };
-use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques};
+use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -55,7 +55,7 @@ impl<'tcx> SolverDelegate<'tcx> {
 /// Create a [`ComputeGoalFastPathOutcome`] signalling the goal is stalled
 /// on a list of [`ty::GenericArg`]
 fn goal_stalled_on_args<'tcx>(
-    stalled_vars: ThinVec<ty::GenericArg<'tcx>>,
+    stalled_vars: ThinVec<TyOrConstInferVar>,
 ) -> ComputeGoalFastPathOutcome<'tcx> {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
@@ -71,7 +71,7 @@ fn goal_stalled_on_args<'tcx>(
 /// on a list of [`ty::GenericArg`] *or* the opaque type storage being nonempty.
 ///
 fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
-    stalled_vars: ThinVec<ty::GenericArg<'tcx>>,
+    stalled_vars: ThinVec<TyOrConstInferVar>,
 ) -> ComputeGoalFastPathOutcome<'tcx> {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
@@ -156,14 +156,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 let trait_pred = pred.rebind(trait_pred);
 
                 let self_ty = self.shallow_resolve(trait_pred.self_ty().skip_binder());
-                if self_ty.is_ty_var()
+                if let Some(vid) = self_ty.ty_vid()
                 // We don't do this fast path when opaques are defined since we may
                 // eventually use opaques to incompletely guide inference via ty var
                 // self types.
                 // FIXME: Properly consider opaques here.
                 && self.known_no_opaque_types_in_storage()
                 {
-                    goal_stalled_on_args_or_nonempty_opaques(thin_vec![self_ty.into()])
+                    goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
@@ -226,7 +226,15 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 ty.visit_with(&mut infer_collector);
                 let infers = infer_collector.infers;
                 if !infers.is_empty() {
-                    return goal_stalled_on_args(infers);
+                    return goal_stalled_on_args(
+                        infers
+                            .into_iter()
+                            .map(|i| {
+                                TyOrConstInferVar::maybe_from_generic_arg::<Self::Interner>(i)
+                                    .unwrap()
+                            })
+                            .collect(),
+                    );
                 }
 
                 if ty.has_non_rigid_aliases() {
@@ -250,7 +258,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
-                        goal_stalled_on_args(thin_vec![a.into(), b.into()])
+                        goal_stalled_on_args(thin_vec![
+                            TyOrConstInferVar::Ty(a_vid),
+                            TyOrConstInferVar::Ty(b_vid),
+                        ])
                     }
                     _ => Outcome::NoFastPath,
                 }
@@ -261,8 +272,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
 
                 let arg = self.shallow_resolve_const(ct);
-                if arg.is_ct_infer() {
-                    goal_stalled_on_args(thin_vec![arg.into()])
+                if let Some(vid) = arg.ct_vid() {
+                    goal_stalled_on_args(thin_vec![TyOrConstInferVar::Const(vid)])
                 } else {
                     Outcome::NoFastPath
                 }
@@ -276,7 +287,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 if arg.is_trivially_wf(self.tcx) {
                     Outcome::TriviallyHolds
                 } else if arg.is_infer() {
-                    goal_stalled_on_args(thin_vec![arg.into_arg()])
+                    goal_stalled_on_args(thin_vec![
+                        TyOrConstInferVar::maybe_from_term::<TyCtxt<'tcx>>(arg)
+                            .expect("its an infer var"),
+                    ])
                 } else {
                     Outcome::NoFastPath
                 }
