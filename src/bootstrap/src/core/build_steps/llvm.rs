@@ -158,10 +158,14 @@ pub fn prebuilt_llvm_config(
     // This flag should be `true` only if the caller needs the LLVM sources (e.g., if it will build LLVM).
     handle_submodule_when_needed: bool,
 ) -> LlvmBuildStatus {
-    builder.config.maybe_download_ci_llvm();
+    // Try to download LLVM from CI, if possible
+    let llvm_ci = builder.ensure(LlvmFromCi { target });
+    if let Some(llvm) = llvm_ci {
+        // Just a sanity check that the downloaded LLVM has the correct version
+        return LlvmBuildStatus::AlreadyBuilt(llvm.output);
+    }
 
-    // If we're using a custom LLVM bail out here, but we can only use a
-    // custom LLVM for the build triple.
+    // If it is not available, use an externally provided LLVM
     if let Some(config) = builder.config.target_config.get(&target)
         && let Some(ref s) = config.llvm_config
     {
@@ -171,30 +175,15 @@ pub fn prebuilt_llvm_config(
         llvm_root_dir.pop();
         llvm_root_dir.pop();
 
-        // FIXME: remove this once we stop overriding the llvm config when download-ci-llvm is
-        // enabled
-        let (link_shared, ci) = if builder.config.llvm_ci_mode.download_from_ci() {
-            let ci_llvm = builder.config.ci_llvm_root();
-            let link_type = t!(
-                std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
-                format!(
-                    "LLVM downloaded from CI is missing the following file: {}",
-                    ci_llvm.display()
-                )
-            );
-            (link_type == "dynamic", true)
-        } else {
-            (llvm_link_shared(&builder.config), false)
-        };
-
         return LlvmBuildStatus::AlreadyBuilt(LlvmOutput {
             host_llvm_config,
-            link_shared,
+            link_shared: llvm_link_shared(&builder.config),
             llvm_root_dir,
-            kind: if ci { LlvmKind::DownloadedFromCi } else { LlvmKind::External },
+            kind: LlvmKind::External,
         });
     }
 
+    // In remaining cases, build it locally
     if handle_submodule_when_needed {
         // If submodules are disabled, this does nothing.
         builder.config.update_submodule("src/llvm-project");
@@ -248,6 +237,46 @@ pub fn prebuilt_llvm_config(
     }
 
     LlvmBuildStatus::ShouldBuild(LlvmBuildInfo { stamp, output: res })
+}
+
+fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Option<DownloadedLlvm> {
+    match builder.config.llvm_ci_mode {
+        LlvmCiMode::BuildLocally => return None,
+        LlvmCiMode::DownloadFromCi => {}
+    }
+
+    if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
+        crate::debug!(
+            "LLVM not available on CI for target={} and assertions={}",
+            self.target,
+            builder.config.llvm_assertions
+        );
+        return None;
+    }
+
+    // FIXME: this should eventually be relaxed
+    if target != builder.host_target {
+        crate::debug!("LLVM not available on CI for non-host target {}", self.target);
+        return None;
+    }
+
+    // FIXME: make this function at least return the path to the downloaded LLVM CI root
+    builder.config.maybe_download_ci_llvm();
+
+    let ci_llvm = builder.config.ci_llvm_root();
+    let link_type = t!(
+        std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
+        format!("LLVM downloaded from CI is missing the following file: {}", ci_llvm.display())
+    );
+
+    Some(DownloadedLlvm {
+        output: LlvmOutput {
+            host_llvm_config: ci_llvm.join("bin").join("llvm-config"),
+            link_shared: link_type == "dynamic",
+            llvm_root_dir: ci_llvm,
+            kind: LlvmKind::DownloadedFromCi,
+        },
+    })
 }
 
 /// Determine whether llvm should be linked dynamically.
@@ -361,36 +390,10 @@ impl Step for LlvmFromCi {
     type Output = Option<DownloadedLlvm>;
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        match builder.config.llvm_ci_mode {
-            LlvmCiMode::BuildLocally => return None,
-            LlvmCiMode::DownloadFromCi => {}
-        }
-
-        if !is_ci_llvm_available_for_target(&self.target, builder.config.llvm_assertions) {
-            crate::debug!(
-                "LLVM not available on CI for target={} and assertions={}",
-                self.target,
-                builder.config.llvm_assertions
-            );
-            return None;
-        }
-
-        // FIXME: this should eventually be relaxed
-        if self.target != builder.host_target {
-            crate::debug!("LLVM not available on CI for non-host target {}", self.target);
-            return None;
-        }
-
-        // FIXME: the function below should *only* be called from this place, and nowhere else in
-        // bootstrap.
-        builder.config.maybe_download_ci_llvm();
-
-        // FIXME: uses of the function below should be replaced with either this step or the `Llvm`
-        // step.
-        match prebuilt_llvm_config(builder, self.target, true) {
-            LlvmBuildStatus::AlreadyBuilt(output) => Some(DownloadedLlvm { output }),
-            LlvmBuildStatus::ShouldBuild(_) => None,
-        }
+        let llvm_ci = try_download_ci_llvm(builder, self.target)?;
+        // Sanity check
+        check_llvm_version(builder, &llvm_ci.output.host_llvm_config);
+        Some(llvm_ci)
     }
 }
 
