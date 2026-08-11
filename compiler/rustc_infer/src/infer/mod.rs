@@ -29,9 +29,10 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, RegionExt, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    GenericArgsRef, GenericParamDefKind, InferConst, InferTy, IntVid, OpaqueTypeKey,
+    ProvisionalHiddenType, PseudoCanonicalInput, RegionExt, Term, Ty, TyCtxt, TyVid, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode,
+    fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::{CanonicalizerState, MayBeErased};
@@ -1220,10 +1221,10 @@ impl<'tcx> InferCtxt<'tcx> {
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
     /// universe index of `TyVar(vid)`.
     pub fn try_resolve_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
-        use self::type_variable::TypeVariableValue;
+        let value = self.inner.borrow_mut().type_variables().probe(vid);
 
-        match self.inner.borrow_mut().type_variables().probe(vid) {
-            TypeVariableValue::Known { value } => Ok(value),
+        match value {
+            TypeVariableValue::Known { value } => Ok(self.shallow_resolve_non_recursive(value)),
             TypeVariableValue::Unknown { universe } => Err(universe),
         }
     }
@@ -1233,76 +1234,144 @@ impl<'tcx> InferCtxt<'tcx> {
         let (root, value) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
 
         match value {
-            TypeVariableValue::Known { value } => Ok(value),
+            TypeVariableValue::Known { value } => Ok(self.shallow_resolve_non_recursive(value)),
             TypeVariableValue::Unknown { universe: _ } => Err(root),
         }
     }
 
-    pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Infer(v) = *ty.kind() {
-            match v {
-                ty::TyVar(v) => {
-                    // Not entirely obvious: if `typ` is a type variable,
-                    // it can be resolved to an int/float variable, which
-                    // can then be recursively resolved, hence the
-                    // recursion. Note though that we prevent type
-                    // variables from unifying to other type variables
-                    // directly (though they may be embedded
-                    // structurally), and we prevent cycles in any case,
-                    // so this recursion should always be of very limited
-                    // depth.
-                    //
-                    // Note: if these two lines are combined into one we get
-                    // dynamic borrow errors on `self.inner`.
-                    let (root_vid, value) =
-                        self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
-                    value.known().map_or_else(
-                        || if root_vid == v { ty } else { Ty::new_var(self.tcx, root_vid) },
-                        |t| self.shallow_resolve(t),
-                    )
+    /// Resolve a type variable to a type, if known.
+    /// Otherwise return a type with the root vid in it.
+    #[inline(always)]
+    fn shallow_resolve_ty_var(&self, v: TyVid, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let (root_vid, value) = self.inner.borrow_mut().type_variables().inlined_probe_with_vid(v);
+        match value {
+            // Not entirely obvious:
+            // It's possible for a type variable to resolve to an int/float variable.
+            // When that happens, the int/float variable may itself already be resolved
+            // to an int/float, which is the type we actually want to return, not the variable.
+            //
+            // Only one step of this is ever possible. We never resolve type variables to other
+            // type variables. Therefore, we use [`shallow_resolve_non_recursive`](Self::shallow_resolve_non_recursive),
+            // to call into a version of shallow_resolve that only knows about int/float variables
+            // and panics (and notably: doesn't recurse again) when it sees type variables.
+            // That way the compiler knows the recursion can only ever go two deep, which helps performance.
+            //
+            // `ty` is a type that we may already have available, which represents the `TyVid`.
+            // In cases where we do, this can aid performance.
+            TypeVariableValue::Known { value } => self.shallow_resolve_non_recursive(value),
+            TypeVariableValue::Unknown { .. } => {
+                if root_vid == v {
+                    ty
+                } else {
+                    Ty::new_var(self.tcx, root_vid)
                 }
-
-                ty::IntVar(v) => {
-                    let (root, value) =
-                        self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
-                    match value {
-                        ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
-                        ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
-                        ty::IntVarValue::Unknown => {
-                            if root == v {
-                                ty
-                            } else {
-                                Ty::new_int_var(self.tcx, root)
-                            }
-                        }
-                    }
-                }
-
-                ty::FloatVar(v) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .float_unification_table()
-                        .inlined_probe_key_value(v);
-                    match value {
-                        ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
-                        ty::FloatVarValue::Unknown => {
-                            if root == v {
-                                ty
-                            } else {
-                                Ty::new_float_var(self.tcx, root)
-                            }
-                        }
-                    }
-                }
-
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
             }
+        }
+    }
+
+    /// Resolve a type variable to an integer type, if known.
+    /// Otherwise return a type with the root int vid in it.
+    #[inline(always)]
+    fn shallow_resolve_int_var(&self, v: IntVid, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let (root, value) =
+            self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
+        match value {
+            ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
+            ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
+            ty::IntVarValue::Unknown => {
+                if root == v {
+                    ty
+                } else {
+                    Ty::new_int_var(self.tcx, root)
+                }
+            }
+        }
+    }
+
+    /// Resolve a type variable to a float type, if known.
+    /// Otherwise return a type with the root float vid in it.
+    #[inline(always)]
+    fn shallow_resolve_float_var(&self, v: FloatVid, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let (root, value) =
+            self.inner.borrow_mut().float_unification_table().inlined_probe_key_value(v);
+        match value {
+            ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
+            ty::FloatVarValue::Unknown => {
+                if root == v {
+                    ty
+                } else {
+                    Ty::new_float_var(self.tcx, root)
+                }
+            }
+        }
+    }
+
+    /// Shallow resolve a type/int infer var, panics on type variables.
+    ///
+    /// See docs on [`shallow_resolve_ty_var`](Self::shallow_resolve_ty_var) for why this exists.
+    #[inline(never)]
+    // Cold because the case in which a tyvar resolves to an intvar which resolves to a type is
+    // quite rare. It's way more common for `shallow_resolve_non_recursive` to return ty.
+    #[cold]
+    fn shallow_resolve_infer_non_recursive(&self, infer: InferTy, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match infer {
+            ty::TyVar(_) => {
+                unreachable!()
+            }
+            ty::IntVar(v) => self.shallow_resolve_int_var(v, ty),
+            ty::FloatVar(v) => self.shallow_resolve_float_var(v, ty),
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
+        }
+    }
+
+    #[inline(always)]
+    fn shallow_resolve_infer(&self, infer: InferTy, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match infer {
+            ty::TyVar(v) => self.shallow_resolve_ty_var(v, ty),
+            ty::IntVar(v) => self.shallow_resolve_int_var(v, ty),
+            ty::FloatVar(v) => self.shallow_resolve_float_var(v, ty),
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
+        }
+    }
+
+    /// Shallow resolve a type, panics on type variables.
+    /// See [`shallow_resolve`](Self::shallow_resolve) for more docs.
+    ///
+    /// See docs on [`shallow_resolve_ty_var`](Self::shallow_resolve_ty_var) for why this alternate
+    /// version of shallow_resolve exists.
+    #[inline(always)]
+    fn shallow_resolve_non_recursive(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Infer(infer) = *ty.kind() {
+            self.shallow_resolve_infer_non_recursive(infer, ty)
         } else {
             ty
         }
     }
 
+    /// Resolve a type variable. Resolving means the following:
+    ///
+    /// - If a `Ty` is a rigid type (like, an integer, or some ADT), do nothing.
+    /// - If a `Ty` is a type infer variable, but has been equated with an actual type,
+    ///   return that type.
+    /// - If a `Ty` is an int or float infer variable, and has been equated with an integer
+    ///   or floating point type, return that type.
+    /// - If a `Ty` is any kind of infer variable that has been equated, but not yet with a rigid
+    ///   type, then this set of equated variables forms an equivalence class. One of the variables
+    ///   in that equivalent class is said to be the root variable, and resolving makes sure to
+    ///   consistently return this root variable. This is beneficial for caching.
+    ///   This behavior, of returning roots, changed in <https://github.com/rust-lang/rust/pull/158447>.
+    ///
+    /// Otherwise, resolving simply does nothing.
+    ///
+    /// The "shallow" part of the name refers to the fact that types may themselves contain more
+    /// type variables. e.g. The field types of a struct. `shallow_resolve` does not recurse into
+    /// these nested variables. If that's what you want, use [`resolve_vars_if_possible`](Self::resolve_vars_if_possible)
+    pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Infer(infer) = *ty.kind() { self.shallow_resolve_infer(infer, ty) } else { ty }
+    }
+
+    /// See docs on [`shallow_resolve`](Self::shallow_resolve) for more explanation.
+    /// It's the same, but for consts.
     pub fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
@@ -1329,6 +1398,8 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// See docs on [`shallow_resolve`](Self::shallow_resolve) for more explanation.
+    /// It's the same, but for terms (types or consts).
     pub fn shallow_resolve_term(&self, term: ty::Term<'tcx>) -> ty::Term<'tcx> {
         match term.kind() {
             ty::TermKind::Ty(ty) => self.shallow_resolve(ty).into(),
