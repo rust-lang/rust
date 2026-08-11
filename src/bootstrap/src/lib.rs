@@ -28,36 +28,31 @@ use std::{env, fs, io, str};
 use build_helper::ci::gha;
 use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
-use utils::build_stamp::BuildStamp;
-use utils::channel::GitInfo;
-use utils::exec::ExecutionContext;
-
-use crate::core::build_steps::format::InternalRustfmt;
-use crate::core::builder;
-use crate::core::builder::Kind;
-use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
-
-mod core;
-mod utils;
-
-#[cfg(feature = "tracing")]
-pub use core::builder::STEP_SPAN_TARGET;
-pub use core::builder::{PathSet, StepStack};
-pub use core::config::flags::{Flags, Subcommand};
-pub use core::config::{ChangeId, Config};
-
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
-pub use utils::change_tracker::{
+
+use crate::core::build_steps::format::InternalRustfmt;
+use crate::core::build_steps::vendor::VENDOR_DIR;
+#[cfg(feature = "tracing")]
+use crate::core::builder::STEP_SPAN_TARGET;
+use crate::core::builder::{self, Kind, StepStack};
+use crate::core::config::flags::{Flags, Subcommand};
+use crate::core::config::{
+    BootstrapOverrideLld, ChangeId, Config, DryRun, LlvmLibunwind, TargetSelection, flags,
+};
+use crate::utils::build_stamp::BuildStamp;
+use crate::utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
-pub use utils::helpers::{PanicTracker, symlink_dir};
-#[cfg(feature = "tracing")]
-pub use utils::tracing::setup_tracing;
+use crate::utils::channel::GitInfo;
+use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
+use crate::utils::helpers::{
+    self, PanicTracker, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
+};
 
-use crate::core::build_steps::vendor::VENDOR_DIR;
+pub mod cli_main;
+mod core;
+mod utils;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
