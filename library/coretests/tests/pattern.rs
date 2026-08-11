@@ -145,6 +145,20 @@ fn test_simple_iteration() {
 }
 
 #[test]
+fn backward_search_predicate() {
+    assert_eq!("abc".rfind(|c| c == 'a'), Some(0));
+    assert_eq!("abcabc".rfind(|c| c == 'c'), Some(5));
+    assert_eq!("éabc".rfind(['é']), Some(0));
+    assert_eq!("éabc".rfind(|c| c == 'é'), Some(0));
+    assert_eq!("éabcé".rfind(|c| c == 'é'), Some(5));
+    assert_eq!("€abc".rfind(|c| c == '€'), Some(0));
+    assert_eq!("😀abc".rfind(|c| c == '😀'), Some(0));
+
+    assert_eq!("abc".strip_suffix(|c| c == 'c'), Some("ab"));
+    assert_eq!("éabc".strip_suffix(|c| c == 'é'), None);
+}
+
+#[test]
 fn test_simple_search() {
     search_asserts!(
         "abcdeabcdeabcde",
