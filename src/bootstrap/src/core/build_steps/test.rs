@@ -860,6 +860,64 @@ impl CommandLineStep for CargoMiri {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Priroda {
+    target: TargetSelection,
+}
+
+impl CommandLineStep for Priroda {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/miri/priroda")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Priroda { target: run.target });
+    }
+
+    /// Runs `cargo test` for priroda, reusing the Miri sysroot and binary.
+    fn run(self, builder: &Builder<'_>) {
+        let host = builder.build.host_target;
+        let target = self.target;
+        let stage = builder.top_stage;
+
+        // Priroda tests run under Miri, so reuse the Miri binary and sysroot.
+        let compilers = RustcPrivateCompilers::new(builder, stage, host);
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
+        let target_compiler = compilers.target_compiler();
+
+        let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
+        builder.std(target_compiler, host);
+        let host_sysroot = builder.sysroot(target_compiler);
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            miri.build_compiler,
+            Mode::ToolRustcPrivate,
+            host,
+            Kind::Test,
+            "src/tools/miri/priroda",
+            SourceType::InTree,
+            &[],
+        );
+
+        cargo.add_rustc_lib_path(builder);
+
+        let mut cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
+
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
+        cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
+
+        {
+            let _guard = builder.msg_test("priroda", target, target_compiler.stage);
+            let _time = helpers::timeit(builder);
+            cargo.run(builder);
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
     host: TargetSelection,
 }

@@ -3223,7 +3223,7 @@ define_print! {
         self.trait_ref.print_trait_sugared().print(p)?;
     }
 
-    ty::HostEffectPredicate<'tcx> {
+    ty::HostEffectClause<'tcx> {
         let constness = match self.constness {
             ty::BoundConstness::Const => { "const" }
             ty::BoundConstness::Maybe => { "[const]" }
@@ -3241,10 +3241,10 @@ define_print! {
     ty::ClauseKind<'tcx> {
         match *self {
             ty::ClauseKind::Trait(ref data) => data.print(p)?,
-            ty::ClauseKind::RegionOutlives(predicate) => predicate.print(p)?,
-            ty::ClauseKind::TypeOutlives(predicate) => predicate.print(p)?,
+            ty::ClauseKind::RegionOutlives(clause) => clause.print(p)?,
+            ty::ClauseKind::TypeOutlives(clause) => clause.print(p)?,
             ty::ClauseKind::Projection(predicate) => predicate.print(p)?,
-            ty::ClauseKind::HostEffect(predicate) => predicate.print(p)?,
+            ty::ClauseKind::HostEffect(clause) => clause.print(p)?,
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 write!(p, "the constant `")?;
                 ct.print(p)?;

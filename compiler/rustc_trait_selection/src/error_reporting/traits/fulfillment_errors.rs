@@ -636,9 +636,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err
                     }
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => self
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(clause)) => self
                         .report_host_effect_error(
-                            bound_predicate.rebind(predicate),
+                            bound_predicate.rebind(clause),
                             &obligation,
                             span,
                         ),
@@ -858,22 +858,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn report_host_effect_error(
         &self,
-        predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        clause: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
         main_obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Diag<'a> {
-        // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
+        // FIXME(const_trait_impl): We should recompute the clause with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
         // *conditionally* holds.
-        let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
-            trait_ref: predicate.trait_ref,
+        let trait_ref = clause.map_bound(|clause| ty::TraitPredicate {
+            trait_ref: clause.trait_ref,
             polarity: ty::PredicatePolarity::Positive,
         });
         let mut file = None;
 
         let err_msg = self.get_standard_error_message(
             trait_ref,
-            Some(predicate.constness()),
+            Some(clause.constness()),
             String::new(),
             &mut file,
         );
@@ -1512,8 +1512,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_host_effect(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        goal: ty::HostEffectPredicate<'tcx>,
-        assumption: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        goal: ty::HostEffectClause<'tcx>,
+        assumption: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
     ) -> bool {
         let assumption = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
@@ -1527,9 +1527,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn as_host_effect_clause(
         predicate: ty::Predicate<'tcx>,
-    ) -> Option<ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>> {
+    ) -> Option<ty::Binder<'tcx, ty::HostEffectClause<'tcx>>> {
         predicate.as_clause().and_then(|clause| match clause.kind().skip_binder() {
-            ty::ClauseKind::HostEffect(pred) => Some(clause.kind().rebind(pred)),
+            ty::ClauseKind::HostEffect(host_clause) => Some(clause.kind().rebind(host_clause)),
             _ => None,
         })
     }
