@@ -87,14 +87,14 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
         match self.inner.borrow_mut().unwrap_region_constraints().try_resolve_region_var(lt) {
             Err(universe) => Some(universe),
             Ok(_) => None,
         }
     }
 
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
         match self.try_resolve_const_var(ct) {
             Err(universe) => Some(universe),
             Ok(_) => None,
@@ -136,13 +136,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
-        match self.try_resolve_const_var(vid) {
-            Ok(ct) => ct,
-            Err(_) => ty::Const::new_var(self.tcx, self.root_const_var(vid)),
-        }
+        self.shallow_resolve_const_var(vid)
     }
 
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
         self.inner
             .borrow_mut()
             .unwrap_region_constraints()

@@ -140,7 +140,7 @@ impl<
                 self.max_universe = self.max_universe.max(p.universe)
             }
             ConstKind::Infer(rustc_type_ir::InferConst::Var(inf)) if VISIT_INFER => {
-                let u = self.infcx.universe_of_ct(inf).unwrap();
+                let u = self.infcx.universe_of_const(inf).unwrap();
                 debug!("var {inf:?} in universe {u:?}");
                 self.max_universe = self.max_universe.max(u);
             }
@@ -154,12 +154,12 @@ impl<
                 self.max_universe = self.max_universe.max(p.universe)
             }
             RegionKind::ReVar(var) if VISIT_INFER => {
-                match self.infcx.opportunistic_resolve_lt_var(var).kind() {
+                match self.infcx.shallow_resolve_region_var(var).kind() {
                     RegionKind::RePlaceholder(p) if VISIT_PLACEHOLDER => {
                         self.max_universe = self.max_universe.max(p.universe)
                     }
                     RegionKind::ReVar(var) if VISIT_INFER => {
-                        let u = self.infcx.universe_of_lt(var).unwrap();
+                        let u = self.infcx.universe_of_region(var).unwrap();
                         debug!("var {var:?} in universe {u:?}");
                         self.max_universe = self.max_universe.max(u);
                     }

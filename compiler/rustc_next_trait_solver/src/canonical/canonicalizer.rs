@@ -489,7 +489,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
             ty::ReVar(vid) => {
                 debug_assert_eq!(
-                    self.delegate.opportunistic_resolve_lt_var(vid),
+                    self.delegate.shallow_resolve_region_var(vid),
                     r,
                     "region vid should have been resolved fully before canonicalization"
                 );
@@ -501,7 +501,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                         ))
                     }
                     CanonicalizeMode::Response { .. } => {
-                        CanonicalVarKind::Region(self.delegate.universe_of_lt(vid).unwrap())
+                        CanonicalVarKind::Region(self.delegate.universe_of_region(vid).unwrap())
                     }
                 }
             }
@@ -544,7 +544,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                             CanonicalVarKind::Const(ty::UniverseIndex::ROOT)
                         }
                         CanonicalizeMode::Response { .. } => {
-                            CanonicalVarKind::Const(self.delegate.universe_of_ct(vid).unwrap())
+                            CanonicalVarKind::Const(self.delegate.universe_of_const(vid).unwrap())
                         }
                     }
                 }

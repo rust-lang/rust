@@ -402,8 +402,8 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
@@ -414,7 +414,7 @@ pub trait InferCtxtLike: Sized {
     fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
     fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> <Self::Interner as Interner>::Ty;
     fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> <Self::Interner as Interner>::Const;
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
@@ -670,7 +670,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReVar(vid) => self.delegate.opportunistic_resolve_lt_var(vid),
+            ty::ReVar(vid) => self.delegate.shallow_resolve_region_var(vid),
             _ => r,
         }
     }
