@@ -3124,6 +3124,38 @@ fn main() {
 }
 
 #[test]
+fn regression_23065() {
+    check_no_mismatches(
+        r#"
+trait Trait {
+    type Assoc<const N: usize>;
+}
+
+struct Struct;
+struct GenericStruct<'a>(&'a ());
+
+impl<const X: usize> Trait for Struct {
+    type Assoc<'a, const N: usize> = GenericStruct<'a>;
+
+    fn g(&self) -> Self::Assoc<{ X }> {
+        loop {}
+    }
+}
+
+struct OtherStruct;
+
+impl Trait for OtherStruct {
+    type Assoc<'a> = &'a ();
+}
+
+fn other() -> <OtherStruct as Trait>::Assoc<0> {
+    loop {}
+}
+    "#,
+    );
+}
+
+#[test]
 fn regression_23083() {
     check_no_mismatches(
         r#"
