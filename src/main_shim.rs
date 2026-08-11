@@ -1,5 +1,5 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::{AssocTag, GenericArg, Unnormalized};
 use rustc_session::config::EntryFnType;
 use rustc_span::{DUMMY_SP, Ident};
