@@ -79,6 +79,7 @@ enum AnonConstKind {
     FieldDefaultValue,
     InlineConst,
     ConstArg(IsRepeatExpr),
+    ArrayLength,
 }
 
 impl PatternSource {
@@ -1021,7 +1022,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             }
             TyKind::Array(element_ty, length) => {
                 self.visit_ty(element_ty);
-                self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
+                self.resolve_anon_const(length, AnonConstKind::ArrayLength);
             }
             TyKind::DirectConstArg(expr) => self.resolve_anon_const_manual(
                 true,
@@ -5112,7 +5113,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
-            AnonConstKind::ConstArg(_) => {
+            AnonConstKind::ConstArg(_) | AnonConstKind::ArrayLength => {
                 if self.r.features.generic_const_exprs()
                     || self.r.features.min_generic_const_args()
                     || is_trivial_const_arg
