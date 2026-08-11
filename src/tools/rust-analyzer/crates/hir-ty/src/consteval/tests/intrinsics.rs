@@ -469,7 +469,7 @@ fn floating_point() {
             IsSigned::Yes,
         )),
     );
-    #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
+    #[allow(clippy::unnecessary_min_or_max)]
     check_number(
         r#"
         #[rustc_intrinsic]

@@ -10,7 +10,7 @@
 
 #![cfg(feature = "in-rust-tree")]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
-#![expect(internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![expect(internal_features)]
 #![allow(unused_features, unused_crate_dependencies)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 #![cfg_attr(test, expect(unreachable_pub))]
