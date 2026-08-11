@@ -1,0 +1,17 @@
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
+  --> tests/ui/double_must_use_proc_macro.rs:33:1
+   |
+LL | fn user_must_use() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `must_use`
+  --> tests/ui/double_must_use_proc_macro.rs:31:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+   = note: `-D clippy::double-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
+
+error: aborting due to 1 previous error
+
