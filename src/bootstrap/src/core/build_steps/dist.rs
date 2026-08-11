@@ -24,6 +24,7 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::GccTargetPair;
+use crate::core::build_steps::llvm::LLVM_CI_LINK_TYPE_PATH;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
@@ -2961,8 +2962,10 @@ impl CommandLineStep for RustDev {
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
         maybe_install_llvm(builder, target, &dst_libdir, true);
+
+        // Store the link type, so that it can be read by bootstrap after the archive is downloaded
         let link_type = if llvm_output.link_shared() { "dynamic" } else { "static" };
-        t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
+        t!(std::fs::write(tarball.image_dir().join(LLVM_CI_LINK_TYPE_PATH), link_type), dst_libdir);
 
         // Copy the `compiler-rt` source, so that `library/profiler_builtins`
         // can potentially use it to build the profiler runtime without needing

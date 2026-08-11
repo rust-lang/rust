@@ -29,7 +29,7 @@ use serde::Deserialize;
 use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
-use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
+use crate::core::build_steps::llvm::{LLVM_CI_LINK_TYPE_PATH, LLVM_INVALIDATION_PATHS};
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
@@ -1773,7 +1773,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 self.maybe_download_ci_llvm();
                 let ci_llvm = self.ci_llvm_root();
                 let link_type = t!(
-                    std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                    std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
                     format!("CI llvm missing: {}", ci_llvm.display())
                 );
                 link_type == "dynamic"

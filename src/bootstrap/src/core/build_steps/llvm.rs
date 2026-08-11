@@ -28,6 +28,9 @@ use crate::utils::helpers::{
 };
 use crate::{CLang, GitRepo, exit, trace};
 
+/// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
+pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
+
 /// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
 pub struct LlvmOutput {
@@ -158,7 +161,7 @@ pub fn prebuilt_llvm_config(
         let link_shared = if builder.config.llvm_ci_mode.download_from_ci() {
             let ci_llvm = builder.config.ci_llvm_root();
             let link_type = t!(
-                std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
                 format!(
                     "LLVM downloaded from CI is missing the following file: {}",
                     ci_llvm.display()
