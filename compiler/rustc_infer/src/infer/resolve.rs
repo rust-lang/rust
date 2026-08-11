@@ -103,7 +103,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(TypeFolder::cx(self), vid),
+                .shallow_resolve_region_var(TypeFolder::cx(self), vid),
             _ => r,
         }
     }

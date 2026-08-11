@@ -164,7 +164,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(canonicalizer.tcx, vid);
+                .shallow_resolve_region_var(canonicalizer.tcx, vid);
             debug!(
                 "canonical: region var found with vid {vid:?}, \
                      opportunistically resolved to {r:?}",
@@ -182,7 +182,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
-                    .probe_value(vid)
+                    .try_resolve_region_var(vid)
                     .unwrap_err();
                 canonicalizer.canonical_var_for_region(CanonicalVarKind::Region(universe), r)
             }
