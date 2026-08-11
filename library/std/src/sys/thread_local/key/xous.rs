@@ -134,14 +134,14 @@ pub fn create(dtor: Option<Dtor>) -> Key {
 
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    assert!((key < 1022) && (key >= 1));
+    rtassert!((key < 1022) && (key >= 1));
     let table = tls_table();
     table[key] = value;
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    assert!((key < 1022) && (key >= 1));
+    rtassert!((key < 1022) && (key >= 1));
     tls_table()[key]
 }
 
