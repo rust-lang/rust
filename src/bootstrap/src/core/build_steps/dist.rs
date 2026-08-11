@@ -2961,7 +2961,7 @@ impl CommandLineStep for RustDev {
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
         maybe_install_llvm(builder, target, &dst_libdir, true);
-        let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
+        let link_type = if llvm_output.link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
         // Copy the `compiler-rt` source, so that `library/profiler_builtins`

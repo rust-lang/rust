@@ -34,7 +34,6 @@ pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
-    /// Should we link dynamically to the built LLVM?
     link_shared: bool,
     llvm_root_dir: PathBuf,
 }
@@ -49,6 +48,11 @@ impl LlvmOutput {
     /// Path to LLVM cmake directory.
     pub fn cmake_dir(&self) -> PathBuf {
         self.llvm_root_dir.join("lib").join("cmake").join("llvm")
+    }
+
+    /// Should we link dynamically to the built LLVM?
+    pub fn link_shared(&self) -> bool {
+        self.link_shared
     }
 }
 
@@ -148,10 +152,26 @@ pub fn prebuilt_llvm_config(
         let mut llvm_root_dir = host_llvm_config.clone();
         llvm_root_dir.pop();
         llvm_root_dir.pop();
+
+        // FIXME: remove this once we stop overriding the llvm config when download-ci-llvm is
+        // enabled
+        let link_shared = if builder.config.llvm_ci_mode.download_from_ci() {
+            let ci_llvm = builder.config.ci_llvm_root();
+            let link_type = t!(
+                std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                format!(
+                    "LLVM downloaded from CI is missing the following file: {}",
+                    ci_llvm.display()
+                )
+            );
+            link_type == "dynamic"
+        } else {
+            builder.config.llvm_link_shared_raw()
+        };
+
         return LlvmBuildStatus::AlreadyBuilt(LlvmOutput {
             host_llvm_config,
-            // FIXME: remove this circular definition
-            link_shared: builder.llvm_link_shared(),
+            link_shared,
             llvm_root_dir,
         });
     }
@@ -178,7 +198,7 @@ pub fn prebuilt_llvm_config(
 
     let res = LlvmOutput {
         host_llvm_config: build_llvm_config,
-        link_shared: builder.llvm_link_shared(),
+        link_shared: builder.config.llvm_link_shared_raw(),
         llvm_root_dir: out_dir.clone(),
     };
 
@@ -383,7 +403,9 @@ impl CommandLineStep for Llvm {
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        if builder.llvm_link_shared() && target.is_windows() && !target.is_windows_gnullvm() {
+        let link_shared = builder.config.llvm_link_shared_raw();
+
+        if link_shared && target.is_windows() && !target.is_windows_gnullvm() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -479,7 +501,7 @@ impl CommandLineStep for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        if builder.llvm_link_shared() {
+        if link_shared {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
             // Keep the pre-LLVM23 behavior for now.
             cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
@@ -649,7 +671,7 @@ impl CommandLineStep for Llvm {
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
         // link to make llvm-config happy.
-        if builder.llvm_link_shared() && target.contains("apple-darwin") {
+        if link_shared && target.contains("apple-darwin") {
             let lib_name = find_llvm_lib_name("dylib");
             let lib_llvm = output.root_dir().join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
@@ -660,10 +682,7 @@ impl CommandLineStep for Llvm {
         // When building LLVM as a shared library on linux, it can contain unexpected debuginfo:
         // some can come from the C++ standard library. Unless we're explicitly requesting LLVM to
         // be built with debuginfo, strip it away after the fact, to make dist artifacts smaller.
-        if builder.llvm_link_shared()
-            && builder.config.llvm_optimize
-            && !builder.config.llvm_release_debuginfo
-        {
+        if link_shared && builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
             // Find the name of the LLVM shared library that we just built.
             let lib_name = find_llvm_lib_name("so");
 
@@ -1570,7 +1589,7 @@ impl CommandLineStep for Lld {
         //
         if builder.config.rpath_enabled(target)
             && helpers::use_host_linker(target)
-            && llvm_output.link_shared
+            && llvm_output.link_shared()
             && target.contains("linux")
         {
             // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the

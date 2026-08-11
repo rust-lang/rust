@@ -1485,7 +1485,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         );
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
-    if builder.llvm_link_shared() {
+    if llvm_output.link_shared() {
         cargo.env("LLVM_LINK_SHARED", "1");
     }
     if builder.config.llvm_use_libcxx {

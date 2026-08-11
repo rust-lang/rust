@@ -168,6 +168,8 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_libzstd: bool,
     pub llvm_link_shared: Cell<Option<bool>>,
+    // Temporary field to store the config value, without it being overwritten dynamically
+    pub llvm_link_shared_raw: Option<bool>,
     pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: Option<String>,
@@ -1404,6 +1406,12 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             paths
         };
 
+        // If we're building with ThinLTO on, by default we want to link
+        // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+        // the link step) with each stage.
+        let llvm_link_shared =
+            llvm_link_shared.or((!llvm_from_ci && llvm_thin_lto.unwrap_or(false)).then_some(true));
+
         Config {
             // tidy-alphabetical-start
             allocator: reconcile_jemalloc(rust_jemalloc, build_allocator, "rust", "build"),
@@ -1499,13 +1507,8 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
             llvm_libzstd: llvm_libzstd.unwrap_or(false),
             llvm_link_jobs,
-            // If we're building with ThinLTO on, by default we want to link
-            // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-            // the link step) with each stage.
-            llvm_link_shared: Cell::new(
-                llvm_link_shared
-                    .or((!llvm_from_ci && llvm_thin_lto.unwrap_or(false)).then_some(true)),
-            ),
+            llvm_link_shared: Cell::new(llvm_link_shared),
+            llvm_link_shared_raw: llvm_link_shared,
             llvm_offload: llvm_offload.unwrap_or(false),
             llvm_optimize: llvm_optimize.unwrap_or(true),
             llvm_pgo: pgo_llvm,
@@ -1744,6 +1747,14 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
         self.out.join(self.host_target).join("ci-rustc")
+    }
+
+    /// Determine whether llvm should be linked dynamically.
+    /// This contains the value from the config, without being overwritten.
+    ///
+    /// FIXME: migrate all users to this function.
+    pub(crate) fn llvm_link_shared_raw(&self) -> bool {
+        self.llvm_link_shared_raw.unwrap_or(false)
     }
 
     /// Determine whether llvm should be linked dynamically.
