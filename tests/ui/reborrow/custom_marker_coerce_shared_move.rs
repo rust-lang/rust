@@ -1,12 +1,11 @@
 #![feature(reborrow)]
 use std::marker::{CoerceShared, PhantomData, Reborrow};
 
+#[derive(Reborrow, CoerceShared)]
+#[coerce_shared(CustomMarkerRef<'a>)]
 struct CustomMarker<'a>(PhantomData<&'a ()>);
-impl<'a> Reborrow for CustomMarker<'a> {}
 #[derive(Clone, Copy)]
 struct CustomMarkerRef<'a>(PhantomData<&'a ()>);
-impl<'a> CoerceShared<CustomMarkerRef<'a>> for CustomMarker<'a> {}
-
 
 fn method<'a>(_a: CustomMarkerRef<'a>) -> &'a () {
     &()
