@@ -1,0 +1,18 @@
+error: incompatible link kind for `example`
+  --> $DIR/issue-159771-attribute-disambiguator.rs:17:32
+   |
+LL | /// Wrong bang disambiguator: [example!]
+   |                                ^^^^^^^^ this link resolved to an attribute macro, which is not a macro
+   |
+note: the lint level is defined here
+  --> $DIR/issue-159771-attribute-disambiguator.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the attribute macro, prefix with `attribute@`
+   |
+LL - /// Wrong bang disambiguator: [example!]
+LL + /// Wrong bang disambiguator: [attribute@example]
+   |
+
+error: aborting due to 1 previous error

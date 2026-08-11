@@ -116,8 +116,7 @@ impl Res {
 
         let prefix = match kind {
             DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
-            // FIXME: handle macros with multiple kinds, and attribute/derive macros that aren't
-            // proc macros
+            // FIXME: handle macros with multiple kinds (e.g. bang+attr).
             DefKind::Macro(MacroKinds::ATTR) => "attribute",
             DefKind::Macro(MacroKinds::DERIVE) => "derive",
             DefKind::Macro(_) => return Suggestion::Macro,
@@ -1764,6 +1763,7 @@ impl Disambiguator {
                     safety: Safety::Safe,
                 }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
+                "attribute" => Kind(DefKind::Macro(MacroKinds::ATTR)),
                 "derive" => Kind(DefKind::Macro(MacroKinds::DERIVE)),
                 "field" => Kind(DefKind::Field),
                 "variant" => Kind(DefKind::Variant),
