@@ -107,7 +107,7 @@ impl rustc_driver::Callbacks for PrirodaCompilerCalls {
         let mut session = PrirodaContext::new(ecx);
         let result = match self.frontend {
             Frontend::Cli => frontend::Cli {}.run_cli_loop(&mut session),
-            Frontend::Dap => frontend::Dap {}.run_dap_loop(&mut session),
+            Frontend::Dap => frontend::Dap { port: None }.run_dap_loop(&mut session),
         };
 
         match result.report_err() {

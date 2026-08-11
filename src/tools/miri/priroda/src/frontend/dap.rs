@@ -1,4 +1,5 @@
 use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::net::{TcpListener, TcpStream};
 
 use emmy_dap_types::errors::ServerError;
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
@@ -56,15 +57,23 @@ enum ExecutionOutcome {
 }
 
 /// Debug Adapter Protocol frontend.
-pub(crate) struct Dap;
+pub(crate) struct Dap {
+    pub(crate) port: Option<u16>,
+}
 
 impl Dap {
-    /// Serve DAP requests on stdin/stdout.
+    /// Serve DAP requests on stdin/stdout, or on a TCP socket if `port` is set.
     pub(crate) fn run_dap_loop<'tcx>(
         &self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
-        if let Err(err) = DapSession::stdio().run_requests(session) {
+        let result = if let Some(port) = self.port {
+            DapSession::tcp(port).run_requests(session)
+        } else {
+            DapSession::stdio().run_requests(session)
+        };
+
+        if let Err(err) = result {
             eprintln!("priroda dap error: {err:?}");
         }
 
@@ -85,6 +94,20 @@ impl DapSession<io::StdinLock<'static>, io::StdoutLock<'static>> {
                 BufReader::new(io::stdin().lock()),
                 BufWriter::new(io::stdout().lock()),
             ),
+            state: DapState::Fresh,
+        }
+    }
+}
+
+impl DapSession<TcpStream, TcpStream> {
+    fn tcp(port: u16) -> Self {
+        let listener =
+            TcpListener::bind(("127.0.0.1", port)).expect("failed to listen on DAP TCP socket");
+        let (stream, _) = listener.accept().expect("failed to accept DAP TCP connection");
+        let reader = stream.try_clone().expect("failed to clone DAP TCP stream");
+
+        Self {
+            server: Server::new(BufReader::new(reader), BufWriter::new(stream)),
             state: DapState::Fresh,
         }
     }
