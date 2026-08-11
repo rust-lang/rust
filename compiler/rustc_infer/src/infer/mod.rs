@@ -1218,8 +1218,29 @@ impl<'tcx> InferCtxt<'tcx> {
         self.deeply_resolve_ignoring_regions(t).to_string()
     }
 
-    /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
-    /// universe index of `TyVar(vid)`.
+    /// If `TyVar(vid)` resolves to a type, return that type.
+    /// Else, return the universe index of `TyVar(vid)`.
+    ///
+    /// Also return the root `TyVid` of `vid`.
+    /// This is more efficient than calling [`try_resolve_ty_var`](Self::try_resolve_ty_var)
+    /// followed by [`root_ty_var`](Self::root_ty_var).
+    pub fn try_resolve_ty_var_with_root(
+        &self,
+        vid: TyVid,
+    ) -> (Result<Ty<'tcx>, ty::UniverseIndex>, TyVid) {
+        let (root, value) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
+
+        (
+            match value {
+                TypeVariableValue::Known { value } => Ok(self.shallow_resolve_non_recursive(value)),
+                TypeVariableValue::Unknown { universe } => Err(universe),
+            },
+            root,
+        )
+    }
+
+    /// If `TyVar(vid)` resolves to a type, return that type.
+    /// Else, return the universe index of `TyVar(vid)`.
     pub fn try_resolve_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
         let value = self.inner.borrow_mut().type_variables().probe(vid);
 
@@ -1231,12 +1252,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// If `vid` resolves to a type, return that type. Otherwise return the root variable id for `vid`.
     pub fn shallow_resolve_ty_var_or_get_root(&self, vid: TyVid) -> Result<Ty<'tcx>, TyVid> {
-        let (root, value) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
-
-        match value {
-            TypeVariableValue::Known { value } => Ok(self.shallow_resolve_non_recursive(value)),
-            TypeVariableValue::Unknown { universe: _ } => Err(root),
-        }
+        let (res, root) = self.try_resolve_ty_var_with_root(vid);
+        res.map_err(|_| root)
     }
 
     /// Resolve a type variable to a type, if known.
@@ -1437,7 +1454,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
+    pub fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
     }
 
@@ -1520,6 +1537,29 @@ impl<'tcx> InferCtxt<'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// If `ConstVar(vid)` resolves to a const, return that const.
+    /// Else, return the universe index of `ConstVar(vid)`.
+    ///
+    /// Also return the root `ConstVid` of `vid`.
+    /// This is more efficient than calling [`try_resolve_const_var`](Self::try_resolve_const_var)
+    /// followed by [`root_const_var`](Self::root_const_var).
+    pub fn try_resolve_const_var_with_root(
+        &self,
+        vid: ty::ConstVid,
+    ) -> (Result<ty::Const<'tcx>, ty::UniverseIndex>, ty::ConstVid) {
+        let (root, value) =
+            self.inner.borrow_mut().const_unification_table().inlined_probe_key_value(vid);
+        (
+            match value {
+                ConstVariableValue::Known { value } => Ok(value),
+                ConstVariableValue::Unknown { origin: _, universe } => Err(universe),
+            },
+            root.vid,
+        )
+    }
+
+    /// If `ConstVar(vid)` resolves to a const, return that const.
+    /// Else, return the universe index of `ConstVar(vid)`.
     pub fn try_resolve_const_var(
         &self,
         vid: ty::ConstVid,
