@@ -208,6 +208,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
+            AttributeKind::NonExhaustive(attr_span) => {
+                self.check_non_exhaustive(hir_id, *attr_span, target, item)
+            }
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
@@ -290,7 +293,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoMain => (),
             AttributeKind::NoMangle(..) => (),
             AttributeKind::NoStd { .. } => (),
-            AttributeKind::NonExhaustive(_) => (),
             AttributeKind::OnUnknown { .. } => (),
             AttributeKind::OnUnmatchedArgs { .. } => (),
             AttributeKind::Opaque => (),
@@ -792,6 +794,54 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid and effective.
+    fn check_non_exhaustive(
+        &self,
+        hir_id: HirId,
+        attr_span: Span,
+        target: Target,
+        item: Option<&'tcx Item<'tcx>>,
+    ) {
+        if matches!(target, Target::Enum | Target::Variant)
+            && !self.tcx.effective_visibilities(()).is_reachable(hir_id.owner.def_id)
+        {
+            self.tcx.emit_node_span_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                diagnostics::UnusedNonExhaustive::Unreachable,
+            );
+        } else if target == Target::Struct {
+            let (_, _, data) = item.unwrap().expect_struct();
+
+            if !self.tcx.effective_visibilities(()).is_reachable(hir_id.owner.def_id) {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr_span,
+                    diagnostics::UnusedNonExhaustive::Unreachable,
+                );
+                return;
+            }
+
+            let mut spans = MultiSpan::from_span(attr_span);
+            for field in data.fields().iter() {
+                if !self.tcx.visibility(field.def_id).is_public() {
+                    spans.push_primary_span(field.span);
+                }
+            }
+
+            if spans.primary_spans().len() > 1 {
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    spans,
+                    diagnostics::UnusedNonExhaustive::StructWithNonPublicField,
+                );
+            }
         }
     }
 
