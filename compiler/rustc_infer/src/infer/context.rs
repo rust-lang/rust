@@ -123,22 +123,19 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_const_var(var)
     }
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
-        match self.try_resolve_ty_var(vid) {
-            Ok(ty) => ty,
-            Err(_) => Ty::new_var(self.tcx, self.root_var(vid)),
-        }
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+        self.shallow_resolve_ty_var_with_ty(vid, None)
     }
 
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
         self.shallow_resolve_int_var(vid)
     }
 
-    fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
         self.shallow_resolve_float_var(vid)
     }
 
-    fn opportunistic_resolve_ct_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
+    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
         match self.try_resolve_const_var(vid) {
             Ok(ct) => ct,
             Err(_) => ty::Const::new_var(self.tcx, self.root_const_var(vid)),
