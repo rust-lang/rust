@@ -1,4 +1,4 @@
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Read, Write};
 
 use emmy_dap_types::errors::ServerError;
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
@@ -72,15 +72,13 @@ impl Dap {
     }
 }
 
-type DapServer = Server<io::StdinLock<'static>, io::StdoutLock<'static>>;
-
-/// Owns the DAP stdio transport and dispatches requests into Priroda handlers.
-struct DapSession {
-    server: DapServer,
+/// Owns a DAP transport and dispatches requests into Priroda handlers.
+struct DapSession<R: Read, W: Write> {
+    server: Server<R, W>,
     state: DapState,
 }
 
-impl DapSession {
+impl DapSession<io::StdinLock<'static>, io::StdoutLock<'static>> {
     fn stdio() -> Self {
         Self {
             server: Server::new(
@@ -90,7 +88,9 @@ impl DapSession {
             state: DapState::Fresh,
         }
     }
+}
 
+impl<R: Read, W: Write> DapSession<R, W> {
     fn run_requests<'tcx>(
         &mut self,
         session: &mut PrirodaContext<'tcx>,
