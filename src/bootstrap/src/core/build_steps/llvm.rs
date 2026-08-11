@@ -244,14 +244,13 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
 
     // FIXME: this should eventually be relaxed
     if target != builder.host_target {
-        crate::debug!("LLVM not available on CI for non-host target {}", self.target);
+        crate::debug!("LLVM not available on CI for non-host target {target}");
         return None;
     }
 
     if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
         crate::debug!(
-            "LLVM not available on CI for target={} and assertions={}",
-            self.target,
+            "LLVM not available on CI for target={target} and assertions={}",
             builder.config.llvm_assertions
         );
         return None;

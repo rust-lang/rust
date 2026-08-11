@@ -2576,7 +2576,6 @@ fn maybe_install_llvm(
         name = "maybe_install_llvm_target",
         skip_all,
         fields(
-            llvm_link_shared = ?builder.config.llvm_link_shared(),
             target = ?target,
             sysroot = ?sysroot,
         ),
@@ -2605,7 +2604,6 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
         name = "maybe_install_llvm_runtime",
         skip_all,
         fields(
-            llvm_link_shared = ?builder.config.llvm_link_shared(),
             target = ?target,
             sysroot = ?sysroot,
         ),
