@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Priroda: Run and Attach",
+            // Requires a VS Code debug extension that contributes the "priroda" type.
+            // The debugServer field only tells VS Code to connect to an already-running
+            // adapter; it does not register a new debugger type by itself.
+            "type": "priroda",
+            "request": "launch",
+            "preLaunchTask": "Priroda: Start DAP Server",
+            "debugServer": 4711
+        }
+    ]
+}

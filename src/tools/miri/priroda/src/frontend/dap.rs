@@ -103,6 +103,7 @@ impl DapSession<TcpStream, TcpStream> {
     fn tcp(port: u16) -> Self {
         let listener =
             TcpListener::bind(("127.0.0.1", port)).expect("failed to listen on DAP TCP socket");
+        eprintln!("priroda dap listening on 127.0.0.1:{port}");
         let (stream, _) = listener.accept().expect("failed to accept DAP TCP connection");
         let reader = stream.try_clone().expect("failed to clone DAP TCP stream");
 

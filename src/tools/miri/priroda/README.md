@@ -51,6 +51,90 @@ The `next` and `stepIn` requests are wired to Priroda's existing source-line
 step so VS Code can drive one visible step. They are not true DAP step-over or
 step-in semantics yet.
 
+### VS Code
+
+VS Code can start Priroda as a TCP DAP server and then attach to that server
+when you run the debugger configuration. The launch configuration does not spawn
+Priroda directly; it starts a background task and then connects through
+`debugServer`.
+
+This requires a VS Code debug extension that contributes the `priroda` debugger
+type. The `debugServer` setting only tells VS Code to connect to an
+already-running adapter; it does not register a new debugger type. On a clean VS
+Code install, copying these JSON files is not enough for the launch
+configuration to be accepted.
+
+After that debugger type is registered, copy the example files into the
+workspace you want to debug:
+
+```sh
+mkdir -p /path/to/project/.vscode
+cp vscode_launch.json /path/to/project/.vscode/launch.json
+cp vscode_tasks.json /path/to/project/.vscode/tasks.json
+```
+
+Before running the debugger configuration, make sure:
+
+- Priroda has been built, so the binary path in `command` exists.
+- `MIRI_SYSROOT` points at a Miri sysroot, for example from
+  `cargo +miri miri setup --print-sysroot`.
+- If running the `priroda` binary directly, `LD_LIBRARY_PATH` may need to point
+  at the pinned `miri` toolchain's `lib` directory.
+- The Rust file path at the end of `args` is the file you want Priroda to run.
+- Port `4711` is free, or both `--port` and `debugServer` use the same different
+  port.
+- VS Code has a debugger contribution installed that accepts
+  `type: "priroda"` debug configurations.
+
+Then edit `.vscode/tasks.json` for your local paths. Set `command` to the
+Priroda binary you want VS Code to run:
+
+```json
+"command": "${workspaceFolder}/target/debug/priroda"
+```
+
+If the binary cannot find rustc libraries, add an `env` block under
+`options`:
+
+```json
+"options": {
+    "cwd": "${workspaceFolder}",
+    "env": {
+        "LD_LIBRARY_PATH": "/path/to/miri-toolchain/lib",
+        "MIRI_SYSROOT": "/path/to/miri-sysroot"
+    }
+}
+```
+
+Also edit the final argument in `args` to point at the Rust file you want
+Priroda to run. This task argument, not `launch.json`, selects the interpreted
+program:
+
+```json
+"${workspaceFolder}/src/main.rs"
+```
+
+The task runs Priroda like this:
+
+```sh
+cargo run -- --dap --port 4711 /path/to/project/src/main.rs
+```
+
+Once Priroda prints `priroda dap listening on 127.0.0.1:4711`, VS Code treats
+the background task as ready and connects with:
+
+```json
+{
+    "type": "priroda",
+    "request": "launch",
+    "preLaunchTask": "Priroda: Start DAP Server",
+    "debugServer": 4711
+}
+```
+
+Priroda accepts one TCP connection and waits for VS Code before running the DAP
+handshake.
+
 ## Test
 
 Priroda's CLI tests also need `MIRI_SYSROOT`. Run them from `miri/priroda/`:
