@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // The user provided `&raw const T`, but the function expects `&raw mut T`.
             let raw_span = arg.span.until(expr.span);
-            err.subdiagnostic(SuggestRawMut { span: raw_span });
+            err.subdiagnostic(SuggestRawMut { raw_span });
         }
 
         if let ty::Ref(_, expected_ty, hir::Mutability::Mut) = expected_ty.kind() 
@@ -1019,7 +1019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // The user provided `&T`, but the function expects `&mut T`.
             let ref_span = arg.span.until(expr.span);
-            err.subdiagnostic(SuggestRefMut { span: ref_span });
+            err.subdiagnostic(SuggestRefMut { ref_span });
         }
     }
 

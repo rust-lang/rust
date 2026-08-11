@@ -699,7 +699,7 @@ pub(crate) struct SuggestPtrNullMut {
 )]
 pub(crate) struct SuggestRefMut {
     #[primary_span]
-    pub span: Span,
+    pub ref_span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -711,7 +711,7 @@ pub(crate) struct SuggestRefMut {
 )]
 pub(crate) struct SuggestRawMut {
     #[primary_span]
-    pub span: Span,
+    pub raw_span: Span,
 }
 
 #[derive(Diagnostic)]
