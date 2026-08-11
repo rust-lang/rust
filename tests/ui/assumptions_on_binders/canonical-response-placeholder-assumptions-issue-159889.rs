@@ -5,6 +5,10 @@
 // Regression test for #159889. Normalizing `FooAssoc<'a>` returns an opaque type constraint
 // containing a query-created placeholder. Applying that response recreates its universe in the
 // caller, where it must have an assumptions entry before eager placeholder handling visits it.
+//
+// Adding `impl Trait for ()` to this same shape still ICEs on nightly (same
+// `assumptions` unwrap). A separately rewritten check-pass does not hit this path, so it is not
+// a useful regression guard.
 
 trait Trait {
     type Assoc<'a>;
