@@ -24,7 +24,7 @@ mod tests;
 
 mod version;
 use regex::Regex;
-use version::Version;
+pub use version::Version;
 
 const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
