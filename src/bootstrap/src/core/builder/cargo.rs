@@ -699,7 +699,7 @@ impl Builder<'_> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target, false)
+            if crate::core::build_steps::llvm::get_llvm_build_status(self, target, false)
                 .should_build()
             {
                 cargo.env("RUST_CHECK", "1");

@@ -1389,7 +1389,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
         let building_llvm_is_expensive =
-            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
+            crate::core::build_steps::llvm::get_llvm_build_status(builder, target, false)
                 .should_build();
 
         let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;

@@ -2,7 +2,7 @@
 use std::panic;
 
 use build_helper::stage0_parser::parse_stage0_file;
-use llvm::prebuilt_llvm_config;
+use llvm::get_llvm_build_status;
 
 use super::*;
 use crate::core::config::Config;
@@ -274,7 +274,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     let expected = PathBuf::from("/some/path/to/llvm-config");
 
-    let actual = prebuilt_llvm_config(
+    let actual = get_llvm_build_status(
         &builder,
         TargetSelection::from_user("arm-unknown-linux-gnueabihf"),
         false,
@@ -285,7 +285,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
+    let actual = get_llvm_build_status(&builder, builder.config.host_target, false)
         .llvm_output()
         .host_llvm_config
         .clone();
@@ -303,7 +303,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let build = Build::new(config.clone());
     let builder = Builder::new(&build);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
+    let actual = get_llvm_build_status(&builder, builder.config.host_target, false)
         .llvm_output()
         .host_llvm_config
         .clone();
@@ -326,7 +326,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
         let build = Build::new(config.clone());
         let builder = Builder::new(&build);
 
-        let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
+        let actual = get_llvm_build_status(&builder, builder.config.host_target, false)
             .llvm_output()
             .host_llvm_config
             .clone();

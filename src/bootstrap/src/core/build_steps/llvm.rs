@@ -150,7 +150,7 @@ impl LdFlags {
 ///
 /// This will return the llvm-config if it can get it (but it will not build it
 /// if not).
-pub fn prebuilt_llvm_config(
+pub fn get_llvm_build_status(
     builder: &Builder<'_>,
     target: TargetSelection,
     // Certain commands (like `x test mir-opt --bless`) may call this function with different targets,
@@ -435,7 +435,7 @@ impl CommandLineStep for Llvm {
         };
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
-        let LlvmBuildInfo { stamp, output } = match prebuilt_llvm_config(builder, target, true) {
+        let LlvmBuildInfo { stamp, output } = match get_llvm_build_status(builder, target, true) {
             LlvmBuildStatus::AlreadyBuilt(p) => return p,
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
