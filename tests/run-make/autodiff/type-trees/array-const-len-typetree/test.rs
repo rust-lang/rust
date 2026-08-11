@@ -3,10 +3,13 @@
 
 use std::autodiff::autodiff_reverse;
 
-// Regression test for #160635: non-literal array lengths (anon consts) in struct
-// fields must be normalized before typetree recursion. Without that, `*mut [f32; N]`
-// ICEs in `struct_tail_for_codegen`, and a plain `[f32; N]` field silently yields
-// an empty TypeTree.
+// Regression for #160635: anon-const array lengths in struct fields need
+// normalization before typetree walks. `*mut [f32; N]` used to ICE in
+// `struct_tail_for_codegen` (deepest trailing field / unsizing tail), and a
+// plain `[f32; N]` field used to emit an empty TypeTree.
+//
+// `scale` is `i32` (not `f32`) so a naive `[-1]:Float` over the whole struct
+// would misclassify it. Array metadata has to stay bounded to `data`.
 
 const N: usize = 8;
 
@@ -24,7 +27,6 @@ pub unsafe fn copy_ptr_array(a: &PtrArray, b: &mut PtrArray) {
     *b = *a;
 }
 
-// Run Enzyme over the ICE-shaped type so metadata is not only emitted but accepted.
 #[autodiff_reverse(d_ptr_array_sum, Duplicated, Active)]
 #[no_mangle]
 #[inline(never)]
@@ -41,7 +43,7 @@ pub fn exercise_ptr_array_sum(s: &PtrArray, ds: &mut PtrArray) -> f32 {
 #[repr(C)]
 pub struct InlineArray {
     pub data: [f32; N],
-    pub scale: f32,
+    pub scale: i32,
 }
 
 #[no_mangle]
