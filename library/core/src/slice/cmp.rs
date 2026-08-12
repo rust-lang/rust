@@ -41,17 +41,6 @@ const impl<T: [const] Ord> Ord for [T] {
     }
 }
 
-#[inline]
-const fn as_underlying(x: ControlFlow<bool>) -> u8 {
-    // SAFETY: This will only compile if `bool` and `ControlFlow<bool>` have the same
-    // size (which isn't guaranteed but this is libcore). Because they have the same
-    // size, it's a niched implementation, which in one byte means there can't be
-    // any uninitialized memory. The callers then only check for `0` or `1` from this,
-    // which must necessarily match the `Break` variant, and we're fine no matter
-    // what ends up getting picked as the value representing `Continue(())`.
-    unsafe { crate::mem::transmute(x) }
-}
-
 /// Implements comparison of slices [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -62,27 +51,19 @@ const impl<T: [const] PartialOrd> PartialOrd for [T] {
     }
     #[inline]
     fn lt(&self, other: &Self) -> bool {
-        // This is certainly not the obvious way to implement these methods.
-        // Unfortunately, using anything that looks at the discriminant means that
-        // LLVM sees a check for `2` (aka `ControlFlow<bool>::Continue(())`) and
-        // gets very distracted by that, ending up generating extraneous code.
-        // This should be changed to something simpler once either LLVM is smarter,
-        // see <https://github.com/llvm/llvm-project/issues/132678>, or we generate
-        // niche discriminant checks in a way that doesn't trigger it.
-
-        as_underlying(self.__chaining_lt(other)) == 1
+        SliceChain::lt(self, other)
     }
     #[inline]
     fn le(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_le(other)) != 0
+        SliceChain::le(self, other)
     }
     #[inline]
     fn gt(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_gt(other)) == 1
+        SliceChain::gt(self, other)
     }
     #[inline]
     fn ge(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_ge(other)) != 0
+        SliceChain::ge(self, other)
     }
     #[inline]
     fn __chaining_lt(&self, other: &Self) -> ControlFlow<bool> {
@@ -174,6 +155,11 @@ const trait SliceChain: Sized {
     fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
     fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
     fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+
+    fn lt(left: &[Self], right: &[Self]) -> bool;
+    fn le(left: &[Self], right: &[Self]) -> bool;
+    fn gt(left: &[Self], right: &[Self]) -> bool;
+    fn ge(left: &[Self], right: &[Self]) -> bool;
 }
 
 type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
@@ -207,6 +193,42 @@ const impl<A: [const] PartialOrd> SliceChain for A {
     default fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
         chaining_impl(left, right, PartialOrd::__chaining_ge, usize::__chaining_ge)
     }
+
+    #[inline]
+    default fn lt(left: &[Self], right: &[Self]) -> bool {
+        // This is certainly not the obvious way to implement these methods.
+        // Unfortunately, using anything that looks at the discriminant means that
+        // LLVM sees a check for `2` (aka `ControlFlow<bool>::Continue(())`) and
+        // gets very distracted by that, ending up generating extraneous code.
+        // This should be changed to something simpler once either LLVM is smarter,
+        // see <https://github.com/llvm/llvm-project/issues/132678>, or we generate
+        // niche discriminant checks in a way that doesn't trigger it.
+
+        as_underlying(left.__chaining_lt(right)) == 1
+    }
+    #[inline]
+    default fn le(left: &[Self], right: &[Self]) -> bool {
+        as_underlying(left.__chaining_le(right)) != 0
+    }
+    #[inline]
+    default fn gt(left: &[Self], right: &[Self]) -> bool {
+        as_underlying(left.__chaining_gt(right)) == 1
+    }
+    #[inline]
+    default fn ge(left: &[Self], right: &[Self]) -> bool {
+        as_underlying(left.__chaining_ge(right)) != 0
+    }
+}
+
+#[inline]
+const fn as_underlying(x: ControlFlow<bool>) -> u8 {
+    // SAFETY: This will only compile if `bool` and `ControlFlow<bool>` have the same
+    // size (which isn't guaranteed but this is libcore). Because they have the same
+    // size, it's a niched implementation, which in one byte means there can't be
+    // any uninitialized memory. The callers then only check for `0` or `1` from this,
+    // which must necessarily match the `Break` variant, and we're fine no matter
+    // what ends up getting picked as the value representing `Continue(())`.
+    unsafe { crate::mem::transmute(x) }
 }
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -375,6 +397,25 @@ const impl<A: [const] PartialOrd + [const] UnsignedBytewiseOrd> SliceChain for A
             Ordering::Equal => ControlFlow::Continue(()),
             ne => ControlFlow::Break(ne.is_ge()),
         }
+    }
+
+    // We don't need the redirect through `ControlFlow` for the non-chaining ones
+
+    #[inline]
+    fn lt(left: &[Self], right: &[Self]) -> bool {
+        SliceOrd::compare(left, right).is_lt()
+    }
+    #[inline]
+    fn le(left: &[Self], right: &[Self]) -> bool {
+        SliceOrd::compare(left, right).is_le()
+    }
+    #[inline]
+    fn gt(left: &[Self], right: &[Self]) -> bool {
+        SliceOrd::compare(left, right).is_gt()
+    }
+    #[inline]
+    fn ge(left: &[Self], right: &[Self]) -> bool {
+        SliceOrd::compare(left, right).is_ge()
     }
 }
 
