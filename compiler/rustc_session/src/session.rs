@@ -776,7 +776,7 @@ impl Session {
 
     /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
     ///
-    /// This unifies the logic used for resolving `include_X!`.
+    /// This unifies the logic used for resolving `include_*!` and debugger visualizers.
     pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
         let path = path.into();
 
