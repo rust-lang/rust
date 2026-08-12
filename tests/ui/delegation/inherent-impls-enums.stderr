@@ -106,7 +106,7 @@ LL +     reuse S::<A, C> as foo_static_2;
    |
 
 error[E0284]: type annotations needed
-  --> $DIR/inherent-impls-enums.rs:60:26
+  --> $DIR/inherent-impls-enums.rs:59:26
    |
 LL |     reuse S::<'_, _, 1>::foo_static::<'static, _, _> as foo_static_4;
    |                          ^^^^^^^^^^ cannot infer the value of const parameter `B` declared on the associated function `foo_static`
@@ -118,7 +118,7 @@ LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<'a, A, C>::foo_static`
 
 error[E0107]: method takes 1 lifetime argument but 2 lifetime arguments were supplied
-  --> $DIR/inherent-impls-enums.rs:63:14
+  --> $DIR/inherent-impls-enums.rs:62:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -133,7 +133,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^ --
 
 error[E0107]: method takes at most 2 generic arguments but 4 generic arguments were supplied
-  --> $DIR/inherent-impls-enums.rs:63:14
+  --> $DIR/inherent-impls-enums.rs:62:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -148,7 +148,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^             -  -------------
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-enums.rs:63:14
+  --> $DIR/inherent-impls-enums.rs:62:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -169,7 +169,7 @@ LL |     reuse S::S::A(foo_self);
    |              +++++        +
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-enums.rs:68:14
+  --> $DIR/inherent-impls-enums.rs:67:14
    |
 LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
    |              ^^^^^^^^
@@ -190,7 +190,7 @@ LL |     reuse S::S::A(foo_self)::<'static, (), true> as foo_self_2;
    |              +++++        +
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-enums.rs:71:26
+  --> $DIR/inherent-impls-enums.rs:70:26
    |
 LL |     reuse S::<'_, _, 1>::foo_self::<'static, _, _> as foo_self_4;
    |                          ^^^^^^^^
@@ -211,7 +211,7 @@ LL |     reuse S::<'_, _, 1>::S::A(foo_self)::<'static, _, _> as foo_self_4;
    |                          +++++        +
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-enums.rs:86:14
+  --> $DIR/inherent-impls-enums.rs:85:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -228,7 +228,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-enums.rs:89:14
+  --> $DIR/inherent-impls-enums.rs:88:14
    |
 LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
    |              ^^^^^^^^
@@ -245,7 +245,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-enums.rs:92:26
+  --> $DIR/inherent-impls-enums.rs:91:26
    |
 LL |     reuse S::<'_, _, 1>::foo_self::<'static, _, _> as foo_self_4;
    |                          ^^^^^^^^
