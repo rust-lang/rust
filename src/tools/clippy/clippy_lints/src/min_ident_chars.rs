@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir::{
     FieldDef, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatKind, TraitFn, TraitItem,
-    TraitItemKind, UseKind, Variant,
+    TraitItemKind, UseKind, UseTree, Variant,
 };
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Ident, Symbol};
@@ -112,6 +112,24 @@ impl MinIdentChars {
             });
         }
     }
+
+    fn check_tree(&self, cx: &LateContext<'_>, tree: &UseTree<'_>) {
+        match tree.kind {
+            UseKind::Single(ident) => {
+                if tree.prefix.segments.last().is_some_and(|p| p.ident.span != ident.span)
+                    && let Some(missing) = self.check_sym(ident.name)
+                {
+                    self.emit(cx, ident, missing);
+                }
+            },
+            UseKind::Glob => {},
+            UseKind::Nested { items } => {
+                for (tree, _, _) in items {
+                    self.check_tree(cx, tree);
+                }
+            },
+        }
+    }
 }
 
 impl LateLintPass<'_> for MinIdentChars {
@@ -132,17 +150,15 @@ impl LateLintPass<'_> for MinIdentChars {
             | ItemKind::TraitAlias(_, ident, ..)
             | ItemKind::TyAlias(ident, ..)
             | ItemKind::Union(ident, ..) => ident,
-            ItemKind::Use(path, UseKind::Single(ident))
-                if path.segments.last().is_some_and(|p| p.ident.span != ident.span) =>
-            {
-                ident
+            ItemKind::Use(ref tree) => {
+                self.check_tree(cx, tree);
+                return;
             },
 
             ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
-            | ItemKind::Impl(_)
-            | ItemKind::Use(..) => return,
+            | ItemKind::Impl(_) => return,
         };
         if let Some(missing) = self.check_sym(ident.name)
             && !(matches!(i.kind, ItemKind::Fn { .. })

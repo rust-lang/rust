@@ -15,7 +15,7 @@ use rustc_hir::{
     GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap, InlineAsmOperand, ItemId, ItemKind,
     LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat, PatExpr, PatExprKind, PatField, PatKind,
     Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, WherePredicate, WherePredicateKind,
+    TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, UseTree, WherePredicate, WherePredicateKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -245,14 +245,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ItemKind::TyAlias(l_ident, l_generics, l_ty), ItemKind::TyAlias(r_ident, r_generics, r_ty)) => {
                 l_ident.name == r_ident.name && self.eq_generics(l_generics, r_generics) && self.eq_ty(l_ty, r_ty)
             },
-            (ItemKind::Use(l_path, l_kind), ItemKind::Use(r_path, r_kind)) => {
-                self.eq_path_segments(l_path.segments, r_path.segments)
-                    && match (l_kind, r_kind) {
-                        (UseKind::Single(l_ident), UseKind::Single(r_ident)) => l_ident.name == r_ident.name,
-                        (UseKind::Glob, UseKind::Glob) | (UseKind::ListStem, UseKind::ListStem) => true,
-                        _ => false,
-                    }
-            },
+            (ItemKind::Use(ref l_tree), ItemKind::Use(ref r_tree)) => self.eq_use_tree(l_tree, r_tree),
             (ItemKind::Mod(l_ident, l_mod), ItemKind::Mod(r_ident, r_mod)) => {
                 l_ident.name == r_ident.name && over(l_mod.item_ids, r_mod.item_ids, |l, r| self.eq_item(*l, *r))
             },
@@ -262,6 +255,22 @@ impl HirEqInterExpr<'_, '_, '_> {
             self.local_items.insert(l.owner_id.to_def_id(), r.owner_id.to_def_id());
         }
         eq
+    }
+
+    fn eq_use_tree(&mut self, l_tree: &UseTree<'_>, r_tree: &UseTree<'_>) -> bool {
+        self.eq_path_segments(l_tree.prefix.segments, r_tree.prefix.segments)
+            && match (l_tree.kind, r_tree.kind) {
+                (UseKind::Single(l_ident), UseKind::Single(r_ident)) => l_ident.name == r_ident.name,
+                (UseKind::Glob, UseKind::Glob) => true,
+                (UseKind::Nested { items: l_items }, UseKind::Nested { items: r_items }) => {
+                    l_items.len() == r_items.len()
+                        && l_items
+                            .iter()
+                            .zip(r_items)
+                            .all(|((l, _, _), (r, _, _))| self.eq_use_tree(l, r))
+                },
+                _ => false,
+            }
     }
 
     fn eq_fn_sig(&mut self, left: &FnSig<'_>, right: &FnSig<'_>) -> bool {
