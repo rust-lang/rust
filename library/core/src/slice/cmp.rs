@@ -1,13 +1,13 @@
 //! Comparison traits for `[T]`.
 
 use super::{from_raw_parts, memchr};
-use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
 use crate::marker::Destruct;
 use crate::mem::SizedTypeProperties;
 use crate::num::NonZero;
 use crate::ops::ControlFlow;
+use crate::{ascii, ptr};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -142,15 +142,20 @@ where
 
 #[doc(hidden)]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-// intermediate trait for specialization of slice's PartialOrd
-const trait SlicePartialOrd: Sized {
+// intermediate trait for specialization of slices' and arrays' PartialOrd
+pub(crate) const trait SlicePartialOrd: Sized {
     fn partial_compare(left: &[Self], right: &[Self]) -> Option<Ordering>;
+    fn partial_compare_array<const N: usize>(
+        left: &[Self; N],
+        right: &[Self; N],
+    ) -> Option<Ordering>;
 }
 
 #[doc(hidden)]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-// intermediate trait for specialization of slice's PartialOrd chaining methods
-const trait SliceChain: Sized {
+// intermediate trait for specialization of slices' and arrays' PartialOrd chaining methods,
+// as well as the ordinary versions which use them by default.
+pub(crate) const trait SliceChain: Sized {
     fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
     fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
     fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
@@ -160,6 +165,11 @@ const trait SliceChain: Sized {
     fn le(left: &[Self], right: &[Self]) -> bool;
     fn gt(left: &[Self], right: &[Self]) -> bool;
     fn ge(left: &[Self], right: &[Self]) -> bool;
+
+    fn lt_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool;
+    fn le_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool;
+    fn gt_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool;
+    fn ge_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool;
 }
 
 type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
@@ -176,6 +186,12 @@ const impl<A: [const] PartialOrd> SlicePartialOrd for A {
 
         let AlwaysBreak::Break(b) = chaining_impl(left, right, elem_chain, len_chain);
         b
+    }
+    default fn partial_compare_array<const N: usize>(
+        left: &[Self; N],
+        right: &[Self; N],
+    ) -> Option<Ordering> {
+        Self::partial_compare(left, right)
     }
 }
 
@@ -217,6 +233,23 @@ const impl<A: [const] PartialOrd> SliceChain for A {
     #[inline]
     default fn ge(left: &[Self], right: &[Self]) -> bool {
         as_underlying(left.__chaining_ge(right)) != 0
+    }
+
+    #[inline]
+    default fn lt_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceChain::lt(left, right)
+    }
+    #[inline]
+    default fn le_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceChain::le(left, right)
+    }
+    #[inline]
+    default fn gt_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceChain::gt(left, right)
+    }
+    #[inline]
+    default fn ge_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceChain::ge(left, right)
     }
 }
 
@@ -274,6 +307,12 @@ const impl<A: [const] AlwaysApplicableOrd> SlicePartialOrd for A {
     fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
         Some(SliceOrd::compare(left, right))
     }
+    fn partial_compare_array<const N: usize>(
+        left: &[Self; N],
+        right: &[Self; N],
+    ) -> Option<Ordering> {
+        Some(SliceOrd::compare_array(left, right))
+    }
 }
 
 #[rustc_specialization_trait]
@@ -301,6 +340,7 @@ always_applicable_ord! {
 // intermediate trait for specialization of slice's Ord
 const trait SliceOrd: Sized {
     fn compare(left: &[Self], right: &[Self]) -> Ordering;
+    fn compare_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> Ordering;
 }
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -315,6 +355,9 @@ const impl<A: [const] Ord> SliceOrd for A {
 
         let AlwaysBreak::Break(b) = chaining_impl(left, right, elem_chain, len_chain);
         b
+    }
+    default fn compare_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> Ordering {
+        Self::compare(left, right)
     }
 }
 
@@ -362,6 +405,17 @@ const impl<A: [const] Ord + [const] UnsignedBytewiseOrd> SliceOrd for A {
         if order == 0 {
             order = diff;
         }
+        order.cmp(&0)
+    }
+
+    #[inline]
+    fn compare_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> Ordering {
+        let left = ptr::from_ref(left).cast();
+        let right = ptr::from_ref(right).cast();
+        // SAFETY: `left` and `right` are references and are thus guaranteed to
+        // be valid. `UnsignedBytewiseOrd` is only implemented for types that
+        // are valid u8s and can be compared the same way.
+        let order = unsafe { compare_bytes(left, right, N) };
         order.cmp(&0)
     }
 }
@@ -416,6 +470,23 @@ const impl<A: [const] PartialOrd + [const] UnsignedBytewiseOrd> SliceChain for A
     #[inline]
     fn ge(left: &[Self], right: &[Self]) -> bool {
         SliceOrd::compare(left, right).is_ge()
+    }
+
+    #[inline]
+    fn lt_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceOrd::compare_array(left, right).is_lt()
+    }
+    #[inline]
+    fn le_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceOrd::compare_array(left, right).is_le()
+    }
+    #[inline]
+    fn gt_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceOrd::compare_array(left, right).is_gt()
+    }
+    #[inline]
+    fn ge_array<const N: usize>(left: &[Self; N], right: &[Self; N]) -> bool {
+        SliceOrd::compare_array(left, right).is_ge()
     }
 }
 

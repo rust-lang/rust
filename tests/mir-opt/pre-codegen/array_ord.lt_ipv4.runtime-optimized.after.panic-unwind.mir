@@ -6,15 +6,34 @@ fn lt_ipv4(_1: &[u8; 4], _2: &[u8; 4]) -> bool {
     let mut _0: bool;
     scope 1 (inlined std::cmp::impls::<impl PartialOrd for &[u8; 4]>::lt) {
         scope 2 (inlined array::<impl PartialOrd for [u8; 4]>::lt) {
-            let mut _3: &[u8];
-            let mut _4: &[u8];
-            scope 3 (inlined core::slice::cmp::<impl PartialOrd for [u8]>::lt) {
-                scope 4 (inlined <u8 as core::slice::cmp::SliceChain>::lt) {
-                    let mut _5: std::cmp::Ordering;
-                    scope 5 (inlined std::cmp::Ordering::is_lt) {
-                        let mut _6: i8;
-                        scope 6 (inlined std::cmp::Ordering::as_raw) {
+            scope 3 (inlined <u8 as core::slice::cmp::SliceChain>::lt_array::<4>) {
+                let mut _8: std::cmp::Ordering;
+                scope 4 (inlined <u8 as core::slice::cmp::SliceOrd>::compare_array::<4>) {
+                    let mut _3: *const [u8; 4];
+                    let _4: *const u8;
+                    let mut _5: *const [u8; 4];
+                    scope 5 {
+                        let _6: *const u8;
+                        scope 6 {
+                            let _7: i32;
+                            scope 7 {
+                                scope 12 (inlined std::cmp::impls::<impl Ord for i32>::cmp) {
+                                }
+                            }
                         }
+                        scope 10 (inlined std::ptr::from_ref::<[u8; 4]>) {
+                        }
+                        scope 11 (inlined std::ptr::const_ptr::<impl *const [u8; 4]>::cast::<u8>) {
+                        }
+                    }
+                    scope 8 (inlined std::ptr::from_ref::<[u8; 4]>) {
+                    }
+                    scope 9 (inlined std::ptr::const_ptr::<impl *const [u8; 4]>::cast::<u8>) {
+                    }
+                }
+                scope 13 (inlined std::cmp::Ordering::is_lt) {
+                    let mut _9: i8;
+                    scope 14 (inlined std::cmp::Ordering::as_raw) {
                     }
                 }
             }
@@ -22,22 +41,31 @@ fn lt_ipv4(_1: &[u8; 4], _2: &[u8; 4]) -> bool {
     }
 
     bb0: {
-        StorageLive(_3);
-        _3 = copy _1 as &[u8] (PointerCoercion(Unsize, Implicit));
+        StorageLive(_8);
         StorageLive(_4);
-        _4 = copy _2 as &[u8] (PointerCoercion(Unsize, Implicit));
+        StorageLive(_3);
+        _3 = &raw const (*_1);
+        _4 = copy _3 as *const u8 (PtrToPtr);
+        StorageDead(_3);
+        StorageLive(_6);
         StorageLive(_5);
-        _5 = <u8 as core::slice::cmp::SliceOrd>::compare(move _3, move _4) -> [return: bb1, unwind continue];
+        _5 = &raw const (*_2);
+        _6 = copy _5 as *const u8 (PtrToPtr);
+        StorageDead(_5);
+        StorageLive(_7);
+        _7 = compare_bytes(move _4, move _6, const 4_usize) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        StorageLive(_6);
-        _6 = discriminant(_5);
-        _0 = Lt(move _6, const 0_i8);
+        _8 = Cmp(copy _7, const 0_i32);
+        StorageDead(_7);
         StorageDead(_6);
-        StorageDead(_5);
         StorageDead(_4);
-        StorageDead(_3);
+        StorageLive(_9);
+        _9 = discriminant(_8);
+        _0 = Lt(move _9, const 0_i8);
+        StorageDead(_9);
+        StorageDead(_8);
         return;
     }
 }

@@ -18,7 +18,7 @@ use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
 use crate::ptr::{null, null_mut};
-use crate::slice::{Iter, IterMut};
+use crate::slice::{Iter, IterMut, SliceChain, SlicePartialOrd};
 use crate::{fmt, ptr};
 
 mod ascii;
@@ -410,23 +410,23 @@ where
 const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
-        <[T] as PartialOrd>::partial_cmp(self, other)
+        SlicePartialOrd::partial_compare_array(self, other)
     }
     #[inline]
     fn lt(&self, other: &[T; N]) -> bool {
-        <[T] as PartialOrd>::lt(self, other)
+        SliceChain::lt_array(self, other)
     }
     #[inline]
     fn le(&self, other: &[T; N]) -> bool {
-        <[T] as PartialOrd>::le(self, other)
+        SliceChain::le_array(self, other)
     }
     #[inline]
     fn ge(&self, other: &[T; N]) -> bool {
-        <[T] as PartialOrd>::ge(self, other)
+        SliceChain::ge_array(self, other)
     }
     #[inline]
     fn gt(&self, other: &[T; N]) -> bool {
-        <[T] as PartialOrd>::gt(self, other)
+        SliceChain::gt_array(self, other)
     }
 }
 

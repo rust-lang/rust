@@ -6,10 +6,13 @@
 // EMIT_MIR array_ord.lt_ipv4.runtime-optimized.after.mir
 pub unsafe fn lt_ipv4<T: Copy>(a: &[u8; 4], b: &[u8; 4]) -> bool {
     // CHECK-LABEL: fn lt_ipv4(_1: &[u8; 4], _2: &[u8; 4]) -> bool
-    // CHECK: [[A:_.+]] = copy _1 as &[u8] (PointerCoercion(Unsize, Implicit));
-    // CHECK: [[B:_.+]] = copy _2 as &[u8] (PointerCoercion(Unsize, Implicit));
-    // CHECK: [[C:_.+]] = <u8 as core::slice::cmp::SliceOrd>::compare(move [[A]], move [[B]])
-    // CHECK: [[D:_.+]] = discriminant(_5);
+    // CHECK: [[A1:_.+]] = &raw const (*_1);
+    // CHECK: [[A2:_.+]] = copy [[A1]] as *const u8 (PtrToPtr);
+    // CHECK: [[B1:_.+]] = &raw const (*_2);
+    // CHECK: [[B2:_.+]] = copy [[B1]] as *const u8 (PtrToPtr);
+    // CHECK: [[C1:_.+]] = compare_bytes(move [[A2]], move [[B2]], const 4_usize)
+    // CHECK: [[C2:_.+]] = Cmp(copy [[C1]], const 0_i32);
+    // CHECK: [[D:_.+]] = discriminant([[C2]]);
     // CHECK: _0 = Lt(move [[D]], const 0_i8);
     a < b
 }
