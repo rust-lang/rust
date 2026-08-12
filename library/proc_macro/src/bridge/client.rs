@@ -347,6 +347,6 @@ fn __rustc_proc_macro_call_client(
     Box::into_raw(Box::new(client(BridgeConfig {
         input: input.take(),
         dispatch,
-        force_show_panics: false,
+        force_show_panics: true,
     })))
 }
