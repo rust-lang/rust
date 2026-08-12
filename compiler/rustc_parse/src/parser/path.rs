@@ -407,23 +407,19 @@ impl<'a> Parser<'a> {
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, false, false);
-                        param.map(|param| {
-                            if !matches!(param.pat.kind, PatKind::Missing) {
-                                self.psess
-                                    .gated_spans
-                                    .gate(sym::named_fn_trait_parameters, param.pat.span);
-                            }
-                            if matches!(param.ty.kind, TyKind::CVarArgs) {
-                                dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
-                            }
-                            if !param.attrs.is_empty() {
-                                dcx.emit_err(PathFoundAttributeInParams {
-                                    span: param.attrs[0].span,
-                                });
-                            }
-                            param.ty
-                        })
+                        let param = p.parse_param_general(&mode, false, false)?;
+                        if !matches!(param.pat.kind, PatKind::Missing) {
+                            self.psess
+                                .gated_spans
+                                .gate(sym::named_fn_trait_parameters, param.pat.span);
+                        }
+                        if matches!(param.ty.kind, TyKind::CVarArgs) {
+                            dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
+                        }
+                        if !param.attrs.is_empty() {
+                            dcx.emit_err(PathFoundAttributeInParams { span: param.attrs[0].span });
+                        }
+                        Ok(param)
                     });
 
                     let (inputs, _) = match parse_params_result {
