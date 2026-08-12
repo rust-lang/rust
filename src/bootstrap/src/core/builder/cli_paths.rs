@@ -83,14 +83,30 @@ pub(crate) fn match_paths_to_steps_and_run(
     // repository root, to match the paths registered by command-line steps.
     //
     // E.g. `/home/ferris/rust/tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
+    //
+    // It is also possible that someone passed a relative path starting with . or ..
+    // In that case, we have to remove that path prefix.
     let mut paths = paths
         .iter()
         .map(|path| {
+            // Here we "launder" the path through builder.src, to normalize relative path prefixes
+            // so ./tests/foo becomes just tests/foo
+            let path = if path.is_relative() {
+                builder
+                    .src
+                    .join(path)
+                    .strip_prefix(&builder.src)
+                    .expect("Cannot strip src path prefix")
+                    .to_path_buf()
+            } else {
+                path.to_path_buf()
+            };
+
             if path.is_absolute()
                 && path.exists()
                 && let Ok(relative) = path.strip_prefix(&builder.src)
             {
-                relative
+                relative.to_path_buf()
             } else {
                 path
             }
@@ -101,7 +117,9 @@ pub(crate) fn match_paths_to_steps_and_run(
     // If any absolute paths couldn't be made relative, stop now and report them.
     let bad_abs_paths = paths.iter().filter(|path| path.is_absolute()).collect::<Vec<_>>();
     if !bad_abs_paths.is_empty() {
-        eprintln!("ERROR: failed to resolve absolute paths: {bad_abs_paths:#?}");
+        eprintln!(
+            "ERROR: the following paths do not exist on disk or point outside the source directory: {bad_abs_paths:#?}"
+        );
         crate::exit!(1);
     }
 

@@ -199,6 +199,7 @@ declare_tests!(
     (x_test_tests, "test tests"),
     (x_test_tests_skip_coverage, "test tests --skip=coverage"),
     (x_test_tests_ui, "test tests/ui"),
+    (x_test_tests_ui_dot_prefix, "test ./tests/ui"),
     (x_test_tidy, "test tidy"),
     (x_test_tidyselftest, "test tidyselftest"),
     (x_test_ui, "test ui"),
