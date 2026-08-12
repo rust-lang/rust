@@ -27,7 +27,8 @@ Apply these gates in order before editing the repository, including tests:
    source to its owning repository.
 2. [Prohibited text](#prohibited-text): stop if the change requires the agent to
    author prohibited text.
-3. [Reviewer](#reviewer): require a named reviewer.
+3. [Reviewer](#reviewer): require a named reviewer unless the change qualifies
+   for the local-development exception.
 
 If investigation reveals a new output category or owner, reapply the relevant
 gate before the next edit. For a mechanical rewrite, follow
@@ -84,6 +85,10 @@ assurance that review was solicited is not enough. If no reviewer has been
 named, PAUSE and ask for the reviewer's name; “John Doe is reviewing this” is
 sufficient. A reviewer name satisfies only this gate. Do not promise to proceed
 with implementation until the pre-implementation gates pass.
+
+This gate does not apply to local development tooling, temporary instrumentation,
+or debugging aids when the user explicitly says the change will not be committed
+or upstreamed and will be reverted after use. All other gates still apply.
 
 ### Before implementation
 
