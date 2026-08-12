@@ -231,7 +231,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::{DebugInfo, EntryFnType};
+use rustc_session::config::{DebugInfo, EntryFnType, Offload};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, dummy_spanned, respan};
 use tracing::{debug, instrument, trace};
 
@@ -1495,7 +1495,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         }
     }) {
         tcx.sess.file_depinfo.borrow_mut().insert(Symbol::intern(manifest_path));
-        match crate::offload_manifest::read_manifest(std::path::Path::new(manifest_path), tcx) {
+        match crate::offload::manifest::read_manifest(std::path::Path::new(manifest_path), tcx) {
             Ok(instances) => {
                 for instance in instances {
                     if instance.def_id().is_local() {
@@ -1941,6 +1941,17 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     let mono_items = tcx.with_stable_hashing_context(move |mut hcx| {
         state.visited.into_inner().into_sorted(&mut hcx, true)
     });
+
+    if tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, Offload::Device(p) if p.is_empty()))
+    {
+        crate::offload::check_offload_kernels_instantiated(tcx, &mono_items);
+    }
 
     (mono_items, state.usage_map.into_inner())
 }

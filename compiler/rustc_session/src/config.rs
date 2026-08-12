@@ -196,12 +196,14 @@ pub enum CoverageLevel {
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
-    /// Entry point for `std::offload`, enables kernel compilation for a gpu device
+    /// Second step in the offload pipeline, enables kernel compilation for a gpu device
     /// Reads a manifest of required generic kernel instantiations
     /// produced by a previous `HostMetadata` pass. An empty manifest
-    /// means all kernel instantiations are discovered via monomorphization.
+    /// means there are no generic kernels at all, or that generic kernels are only
+    /// called from non-generic device entry points and never from the host, so we
+    /// don't need to track their instantiations.
     Device(String),
-    /// Second step in the offload pipeline, generates the host code to call kernels.
+    /// Third step in the offload pipeline, generates the host code to call kernels.
     Host(String),
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,

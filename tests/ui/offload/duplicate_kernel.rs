@@ -1,4 +1,4 @@
-//@ compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat --crate-name collision_kernels_a
+//@ compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat -Csymbol-mangling-version=v0 --crate-name collision_kernels_a
 //@ build-fail
 
 // An offload kernel whose mangled symbol collides with another item in the
