@@ -5,7 +5,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, trace};
 
 use crate::common::IntPredicate;
@@ -16,8 +16,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     t: Ty<'tcx>,
     info: Option<Bx::Value>,
+    span: Span,
 ) -> (Bx::Value, Bx::Value) {
-    let layout = bx.layout_of(t);
+    let layout = bx.spanned_layout_of(t, span);
     trace!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
     if layout.is_sized() {
         let size = bx.const_usize(layout.size.bytes());
@@ -107,7 +108,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
             let field_ty = layout.field(bx, i).ty;
-            let (unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info);
+            let (unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info, span);
 
             // # First compute the dynamic alignment
 
