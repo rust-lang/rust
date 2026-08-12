@@ -461,7 +461,7 @@ impl str {
                 }
             }
         }
-        return s;
+        s
     }
 
     /// Returns the titlecase equivalent of this string slice,
