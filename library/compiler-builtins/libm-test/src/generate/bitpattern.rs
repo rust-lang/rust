@@ -46,8 +46,34 @@ fn most_wanted_bitmask<F: Float>(count: u32) -> F::Int {
     mask |= low_mask_bits(n, F::EXP_MASK);
     mask |= high_mask_bits(n, F::EXP_MASK);
     mask |= high_mask_bits(n, F::SIG_MASK);
-    // spend the remaining budget on the least significant bits
+    // spend most of the remaining budget on the least significant bits, then use up remainders
     mask |= low_mask_bits(count - mask.count_ones(), F::SIG_MASK);
+    mask |= high_mask_bits(n + count - mask.count_ones(), F::SIG_MASK);
+    mask |= high_mask_bits(n + count - mask.count_ones(), F::EXP_MASK);
+    mask |= low_mask_bits(n + count - mask.count_ones(), F::EXP_MASK);
+    mask
+}
+
+/// Similar to `most_wanted_bitmask` but adds bits around the middle of the int rather than at
+/// a sign/exponent/significand boundary.
+fn most_wanted_int_bitmask<I: Int<Unsigned = I>>(count: u32) -> I {
+    if count == 0 {
+        return I::ZERO;
+    }
+    let mut mask = I::ZERO;
+    let n = count / 4;
+
+    let low_mask = I::MAX >> (I::BITS / 2);
+    let high_mask = low_mask << (I::BITS / 2);
+
+    mask |= low_mask_bits(n, high_mask);
+    mask |= high_mask_bits(n, high_mask);
+    mask |= high_mask_bits(n, low_mask);
+    // spend most of the remaining budget on the least significant bits, then use up remainders
+    mask |= low_mask_bits(count - mask.count_ones(), low_mask);
+    mask |= high_mask_bits(n + count - mask.count_ones(), low_mask);
+    mask |= high_mask_bits(n + count - mask.count_ones(), high_mask);
+    mask |= low_mask_bits(n + count - mask.count_ones(), high_mask);
     mask
 }
 
@@ -85,9 +111,24 @@ where
         .map(F::from_bits)
 }
 
+/// See [`float_gen`] docs for details.
+#[cfg_attr(not(test), expect(dead_code))]
+fn int_gen<I>(bits_to_vary: u32, fillers: impl IntoIterator<Item = I>) -> impl Iterator<Item = I>
+where
+    I: Int<Unsigned = I>,
+{
+    let varying = most_wanted_int_bitmask::<I>(bits_to_vary);
+    let patterns = bitwise_subsets(varying);
+
+    fillers
+        .into_iter()
+        .flat_map(move |preset| patterns.clone().map(move |x| x ^ preset))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::f8;
 
     #[test]
     fn equivalence() {
@@ -100,7 +141,20 @@ mod test {
 
     #[test]
     fn most_wanted() {
-        let expected = [
+        let expected8 = [
+            0b0_0000_000,
+            //
+            0b1_0000_000,
+            0b1_0000_001,
+            0b1_0000_011,
+            0b1_0000_111,
+            //
+            0b1_1001_101,
+            0b1_1001_111,
+            0b1_1101_111,
+            0b1_1111_111,
+        ];
+        let expected32 = [
             0b0_00000000_00000000000000000000000,
             //
             0b1_00000000_00000000000000000000000,
@@ -143,8 +197,47 @@ mod test {
             0b1_11111111_11111110111111111111111,
             0b1_11111111_11111111111111111111111,
         ];
+        for k in 0..=8 {
+            let mask = most_wanted_bitmask::<f8>(k);
+            assert_eq!(mask, expected8[k as usize], "{k}");
+            assert_eq!(mask.count_ones(), k);
+        }
         for k in 0..=32 {
             let mask = most_wanted_bitmask::<f32>(k);
+            assert_eq!(mask, expected32[k as usize], "{k}");
+            assert_eq!(mask.count_ones(), k);
+        }
+    }
+
+    #[test]
+    fn most_wanted_int() {
+        let expected = [
+            0b0000_0000_0000_0000,
+            0b0000_0000_0000_0001,
+            0b0000_0000_0000_0011,
+            0b0000_0000_0000_0111,
+            //
+            0b1000_0001_1000_0001,
+            0b1000_0001_1000_0011,
+            0b1000_0001_1000_0111,
+            0b1000_0001_1000_1111,
+            //
+            0b1100_0011_1100_0011,
+            0b1100_0011_1100_0111,
+            0b1100_0011_1100_1111,
+            0b1100_0011_1101_1111,
+            //
+            0b1110_0111_1110_0111,
+            0b1110_0111_1110_1111,
+            0b1110_0111_1111_1111,
+            0b1111_0111_1111_1111,
+            //
+            0b1111_1111_1111_1111,
+        ];
+        let mut x = vec![];
+        for k in 0..=16 {
+            let mask = most_wanted_int_bitmask::<u16>(k);
+            x.push(mask);
             assert_eq!(mask, expected[k as usize], "{k}");
             assert_eq!(mask.count_ones(), k);
         }
@@ -185,6 +278,41 @@ mod test {
         let v = float_gen::<f16>(3, [0, u16::MAX, 0b1_00110_1000101011])
             .map(|x| x.to_bits())
             .collect::<Vec<_>>();
+        assert_eq!(expected.as_slice(), v);
+    }
+
+    #[test]
+    fn gen_int_with_fillers() {
+        let expected = [
+            // Filler: zeros
+            0b0000_0000_0000_0000,
+            0b0000_0000_0000_0001,
+            0b0000_0000_0000_0010,
+            0b0000_0000_0000_0011,
+            0b0000_0000_0000_0100,
+            0b0000_0000_0000_0101,
+            0b0000_0000_0000_0110,
+            0b0000_0000_0000_0111,
+            // Filler: ones
+            0b1111_1111_1111_1111,
+            0b1111_1111_1111_1110,
+            0b1111_1111_1111_1101,
+            0b1111_1111_1111_1100,
+            0b1111_1111_1111_1011,
+            0b1111_1111_1111_1010,
+            0b1111_1111_1111_1001,
+            0b1111_1111_1111_1000,
+            // Filler: pattern
+            0b1001_1010_0010_1011,
+            0b1001_1010_0010_1010,
+            0b1001_1010_0010_1001,
+            0b1001_1010_0010_1000,
+            0b1001_1010_0010_1111,
+            0b1001_1010_0010_1110,
+            0b1001_1010_0010_1101,
+            0b1001_1010_0010_1100,
+        ];
+        let v = int_gen::<u16>(3, [0, u16::MAX, 0b1001_1010_0010_1011]).collect::<Vec<_>>();
         assert_eq!(expected.as_slice(), v);
     }
 
