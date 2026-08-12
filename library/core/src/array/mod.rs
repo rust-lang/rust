@@ -410,23 +410,41 @@ where
 const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&&self[..], &&other[..])
+        <[T] as PartialOrd>::partial_cmp(self, other)
     }
+
     #[inline]
     fn lt(&self, other: &[T; N]) -> bool {
-        PartialOrd::lt(&&self[..], &&other[..])
+        <[T] as PartialOrd>::lt(self, other)
     }
     #[inline]
     fn le(&self, other: &[T; N]) -> bool {
-        PartialOrd::le(&&self[..], &&other[..])
+        <[T] as PartialOrd>::le(self, other)
     }
     #[inline]
     fn ge(&self, other: &[T; N]) -> bool {
-        PartialOrd::ge(&&self[..], &&other[..])
+        <[T] as PartialOrd>::ge(self, other)
     }
     #[inline]
     fn gt(&self, other: &[T; N]) -> bool {
-        PartialOrd::gt(&&self[..], &&other[..])
+        <[T] as PartialOrd>::gt(self, other)
+    }
+
+    #[inline]
+    fn __chaining_lt(&self, other: &[T; N]) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_lt(self, other)
+    }
+    #[inline]
+    fn __chaining_le(&self, other: &[T; N]) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_le(self, other)
+    }
+    #[inline]
+    fn __chaining_ge(&self, other: &[T; N]) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_ge(self, other)
+    }
+    #[inline]
+    fn __chaining_gt(&self, other: &[T; N]) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_gt(self, other)
     }
 }
 
