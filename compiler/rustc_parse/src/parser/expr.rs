@@ -2777,6 +2777,17 @@ impl<'a> Parser<'a> {
                                 "you likely meant to continue parsing the let-chain starting here",
                             );
                         } else {
+                            if self.prev_token == token::Semi
+                                && (self.token == token::OpenBrace || AssocOp::from_token(&self.token).is_some())
+                            {
+                                err.span_suggestion_verbose(
+                                    self.prev_token.span,
+                                    "remove this semicolon",
+                                    "",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+
                             // Look for usages of '=>' where '>=' might be intended
                             if maybe_fatarrow == token::FatArrow {
                                 err.span_suggestion_verbose(
