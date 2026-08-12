@@ -22,7 +22,7 @@ use crate::core::builder::{
 };
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{add_dylib_path, exe, t};
+use crate::utils::helpers::{self, add_dylib_path, exe, t};
 use crate::{Compiler, FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -160,7 +160,7 @@ impl Step for ToolBuild {
         );
 
         if !build_success {
-            crate::exit!(1);
+            helpers::exit_process(1);
         } else {
             // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
             // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something

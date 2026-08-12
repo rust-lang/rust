@@ -143,7 +143,7 @@ impl CommandLineStep for Profile {
                 }
                 _ => {
                     println!("Exiting.");
-                    crate::exit!(1);
+                    helpers::exit_process(1);
                 }
             }
         }
@@ -415,7 +415,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         io::stdin().read_line(&mut input)?;
         if input.is_empty() {
             eprintln!("EOF on stdin, when expecting answer to question.  Giving up.");
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
