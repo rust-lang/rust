@@ -970,17 +970,19 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
     }
 }
 
-/// A function to fetch about all macros inside a proc-macro crate.
+/// A function to fetch all macros inside a proc-macro crate.
 ///
 /// Used by rust-analyzer-proc-macro-srv.
 pub fn get_proc_macros(
-    target: &Target,
     path: &Path,
     metadata_loader: &dyn MetadataLoader,
     cfg_version: &'static str,
 ) -> IoResult<Vec<(ProcMacroClient, ProcMacroKind)>> {
+    let host_tuple = TargetTuple::from_tuple(config::host_tuple());
+    let (host, _) = Target::search(&host_tuple, Path::new(""), false).unwrap();
+
     let metadata =
-        get_metadata_section(target, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)
+        get_metadata_section(&host, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)
             .map_err(|err| io::Error::other(err.to_string()))?;
     let stable_crate_id = metadata.get_root().stable_crate_id();
 
