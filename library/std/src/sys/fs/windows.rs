@@ -1662,7 +1662,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     } else {
         // Get an absolute path and then convert the prefix to `\??\`
         let abs_path = crate::path::absolute(original)?.into_os_string().into_encoded_bytes();
-        if abs_path.len() > 0 && abs_path[1..].starts_with(br":\") {
+        if !abs_path.is_empty() && abs_path[1..].starts_with(br":\") {
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path) };
             r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else if abs_path.starts_with(br"\\.\") {

@@ -392,7 +392,7 @@ impl<'a> fmt::Display for EscapeAscii<'a> {
             b > 0x7E || b < 0x20 || b == b'\\' || b == b'\'' || b == b'"'
         }
 
-        while bytes.len() > 0 {
+        while !bytes.is_empty() {
             // fast path for the printable, non-escaped subset of ascii
             let prefix = bytes.iter().take_while(|&&b| !needs_escape(b)).count();
             // SAFETY: prefix length was derived by counting bytes in the same splice, so it's in-bounds

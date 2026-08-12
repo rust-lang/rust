@@ -926,7 +926,7 @@ impl<T, A: Allocator> Arc<T, A> {
 
         // Now we can properly initialize the inner value and turn our weak
         // reference into a strong reference.
-        let strong = unsafe {
+        unsafe {
             let inner = init_ptr.as_ptr();
             ptr::write(&raw mut (*inner).data, data);
 
@@ -952,9 +952,7 @@ impl<T, A: Allocator> Arc<T, A> {
             let alloc = weak.into_raw_with_allocator().1;
 
             Arc::from_inner_in(init_ptr, alloc)
-        };
-
-        strong
+        }
     }
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
@@ -1523,14 +1521,12 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Arc<T, A> {
         let mut in_progress: UniqueArcUninit<T, A> = UniqueArcUninit::new(value, alloc);
 
         // Initialize with clone of value.
-        let initialized_clone = unsafe {
+        unsafe {
             // Clone. If the clone panics, `in_progress` will be dropped and clean up.
             value.clone_to_uninit(in_progress.data_ptr().cast());
             // Cast type of pointer, now that it is initialized.
             in_progress.into_arc()
-        };
-
-        initialized_clone
+        }
     }
 
     /// Constructs a new `Arc<T>` with a clone of `value` in the provided allocator, returning an error if allocation fails

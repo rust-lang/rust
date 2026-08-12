@@ -286,7 +286,7 @@ pub trait OpenOptionsExt {
     /// For information about possible values, see [Impersonation Levels] on the
     /// Windows Dev Center site. The `SECURITY_SQOS_PRESENT` flag is set
     /// automatically when using this method.
-
+    ///
     /// # Examples
     ///
     #[cfg_attr(windows, doc = "```no_run")]

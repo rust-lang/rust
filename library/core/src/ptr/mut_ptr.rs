@@ -256,7 +256,6 @@ impl<T: PointeeSized> *mut T {
     /// [`as_uninit_ref`]: #method.as_uninit_ref-1
     /// [`as_ref_unchecked`]: #method.as_ref_unchecked-1
     /// [`as_mut`]: #method.as_mut
-
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
@@ -1127,6 +1126,7 @@ impl<T: PointeeSized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[allow(clippy::ptr_offset_with_cast)]
     #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where

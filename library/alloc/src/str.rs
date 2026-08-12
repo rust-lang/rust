@@ -461,7 +461,7 @@ impl str {
                 }
             }
         }
-        return s;
+        s
     }
 
     /// Returns the titlecase equivalent of this string slice,
@@ -965,7 +965,7 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
     }
 
     // handle the remainder as individual bytes
-    while slice.len() > 0 {
+    while !slice.is_empty() {
         let byte = slice[0];
         if byte > 127 {
             break;

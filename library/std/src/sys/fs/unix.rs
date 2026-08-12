@@ -1334,7 +1334,7 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
-                return Ok(());
+                Ok(())
             }
             _ => {
                 Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported"))
@@ -1358,7 +1358,7 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
-                return Ok(());
+                Ok(())
             }
             _ => {
                 Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
@@ -1452,7 +1452,7 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
-                return Ok(());
+                Ok(())
             }
             _ => {
                 Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
