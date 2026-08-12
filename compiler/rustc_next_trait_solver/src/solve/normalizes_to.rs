@@ -253,13 +253,13 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, NormalizesTo<I>>,
+        goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let alias_def_id = goal.predicate.alias.expect_projection_def_id();
-        let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
