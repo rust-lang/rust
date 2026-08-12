@@ -987,7 +987,7 @@ impl<'b> Pattern for &'b str {
     /// Checks whether the pattern matches anywhere in the haystack
     #[inline]
     fn is_contained_in(self, haystack: &str) -> bool {
-        if self.len() == 0 {
+        if self.is_empty() {
             return true;
         }
 

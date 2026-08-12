@@ -123,7 +123,7 @@ where
                 Err(e) => return Err(e),
             }
             let buf = self.buffer();
-            if self.buffer().len() == 0 {
+            if self.buffer().is_empty() {
                 return Ok(len);
             }
 
