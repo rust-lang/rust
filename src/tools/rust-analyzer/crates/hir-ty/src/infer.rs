@@ -1399,28 +1399,22 @@ enum BreakableKind {
     Border,
 }
 
-fn find_breakable<'a, 'db>(
-    ctxs: &'a mut [BreakableContext<'db>],
-    label: Option<LabelId>,
-) -> Option<&'a mut BreakableContext<'db>> {
+fn find_breakable(ctxs: &[BreakableContext<'_>], label: Option<LabelId>) -> Option<usize> {
     let mut ctxs = ctxs
-        .iter_mut()
+        .iter()
+        .enumerate()
         .rev()
-        .take_while(|it| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
-    match label {
-        Some(_) => ctxs.find(|ctx| ctx.label == label),
-        None => ctxs.find(|ctx| matches!(ctx.kind, BreakableKind::Loop)),
-    }
+        .take_while(|(_, it)| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
+    let result = match label {
+        Some(_) => ctxs.find(|(_, ctx)| ctx.label == label),
+        None => ctxs.find(|(_, ctx)| matches!(ctx.kind, BreakableKind::Loop)),
+    };
+    result.map(|(idx, _)| idx)
 }
 
-fn find_continuable<'a, 'db>(
-    ctxs: &'a mut [BreakableContext<'db>],
-    label: Option<LabelId>,
-) -> Option<&'a mut BreakableContext<'db>> {
-    match label {
-        Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
-        None => find_breakable(ctxs, label),
-    }
+fn find_continuable(ctxs: &[BreakableContext<'_>], label: Option<LabelId>) -> Option<usize> {
+    find_breakable(ctxs, label)
+        .filter(|&idx| label.is_none() || matches!(ctxs[idx].kind, BreakableKind::Loop))
 }
 
 impl<'db> InferenceContext<'db> {
