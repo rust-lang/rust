@@ -437,7 +437,7 @@ impl f64 {
     /// [`MANTISSA_DIGITS`]: f64::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     #[rustc_diagnostic_item = "f64_epsilon"]
-    pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
+    pub const EPSILON: f64 = 2.220446049250313e-16_f64;
 
     /// Smallest finite `f64` value.
     ///

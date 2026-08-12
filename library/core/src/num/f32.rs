@@ -438,7 +438,7 @@ impl f32 {
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     #[rustc_diagnostic_item = "f32_epsilon"]
-    pub const EPSILON: f32 = 1.19209290e-07_f32;
+    pub const EPSILON: f32 = 1.1920929e-07_f32;
 
     /// Smallest finite `f32` value.
     ///
@@ -446,14 +446,14 @@ impl f32 {
     ///
     /// [`MAX`]: f32::MAX
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const MIN: f32 = -3.40282347e+38_f32;
+    pub const MIN: f32 = -3.4028235e+38_f32;
     /// Smallest positive normal `f32` value.
     ///
     /// Equal to 2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
     ///
     /// [`MIN_EXP`]: f32::MIN_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
+    pub const MIN_POSITIVE: f32 = 1.1754944e-38_f32;
     /// Largest finite `f32` value.
     ///
     /// Equal to
@@ -462,7 +462,7 @@ impl f32 {
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     /// [`MAX_EXP`]: f32::MAX_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const MAX: f32 = 3.40282347e+38_f32;
+    pub const MAX: f32 = 3.4028235e+38_f32;
 
     /// One greater than the minimum possible *normal* power of 2 exponent
     /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
