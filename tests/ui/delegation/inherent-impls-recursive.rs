@@ -44,7 +44,7 @@ mod test_2 {
     }
 
     impl Trait1 for S3 {
-        reuse S2::foo { S2(S1(())) }
+        reuse S2::foo { &S2(S1(())) }
     }
 
     trait Trait2 {
