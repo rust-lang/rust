@@ -390,7 +390,7 @@ impl Config {
     ";
             self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
         }
-        self.unpack(&tarball, &llvm_root, "rust-dev");
+        self.unpack(&tarball, llvm_root, "rust-dev");
     }
 
     pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
