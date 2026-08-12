@@ -1019,7 +1019,7 @@ impl<'b> Pattern for &'b str {
     fn strip_prefix_of(self, haystack: &str) -> Option<&str> {
         if self.is_prefix_of(haystack) {
             // SAFETY: prefix was just verified to exist.
-            unsafe { Some(haystack.get_unchecked(self.as_bytes().len()..)) }
+            unsafe { Some(haystack.get_unchecked(self.len()..)) }
         } else {
             None
         }
@@ -1041,7 +1041,7 @@ impl<'b> Pattern for &'b str {
         Self::Searcher<'a>: ReverseSearcher<'a>,
     {
         if self.is_suffix_of(haystack) {
-            let i = haystack.len() - self.as_bytes().len();
+            let i = haystack.len() - self.len();
             // SAFETY: suffix was just verified to exist.
             unsafe { Some(haystack.get_unchecked(..i)) }
         } else {
