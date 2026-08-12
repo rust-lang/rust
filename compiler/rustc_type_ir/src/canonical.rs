@@ -10,7 +10,7 @@ use rustc_type_ir_macros::{
 };
 use thin_vec::ThinVec;
 
-use crate::data_structures::HashMap;
+use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
 use crate::{self as ty, Interner, Region, TypingModeEqWrapper, UniverseIndex};
 
@@ -397,7 +397,7 @@ pub struct CanonicalizerState<I: Interner> {
 
     /// We can simply cache based on the ty itself, because we use
     /// `ty::BoundVarIndexKind::Canonical`.
-    pub cache: HashMap<I::Ty, I::Ty>,
+    pub cache: DelayedMap<I::Ty, I::Ty>,
 }
 
 impl<I: Interner> CanonicalizerState<I> {

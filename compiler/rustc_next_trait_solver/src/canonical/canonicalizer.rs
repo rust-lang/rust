@@ -519,8 +519,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             ty
         } else {
             let res = self.inner_fold_ty(t);
-            let old = self.state.cache.insert(t, res);
-            assert_eq!(old, None);
+            let is_unseen = self.state.cache.insert(t, res);
+            assert!(is_unseen);
             res
         }
     }
