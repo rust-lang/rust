@@ -1,12 +1,18 @@
-//@ check-pass
+//@ run-pass
 #![allow(incomplete_features)]
 #![feature(move_expr)]
 
-fn main() {
-    let v = "Hello, Ferris".to_string();
-    let r = || {
-        || (move(move(v.clone()))).len()
-    };
+use std::sync::Arc;
 
-    assert_eq!(r()(), v.len());
+fn main() {
+    let v = Arc::new("Hello, Ferris".to_string());
+    let outer = || || (move(move(v.clone()))).len();
+
+    assert_eq!(Arc::strong_count(&v), 2);
+    let inner = outer();
+    assert_eq!(Arc::strong_count(&v), 2);
+    assert_eq!(inner(), v.len());
+    assert_eq!(Arc::strong_count(&v), 1);
+
+    println!("{v}");
 }

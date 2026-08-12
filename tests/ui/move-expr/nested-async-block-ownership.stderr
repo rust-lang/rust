@@ -1,0 +1,23 @@
+error[E0382]: the type `Arc` does not implement `Copy`
+  --> $DIR/nested-async-block-ownership.rs:16:16
+   |
+LL |     let c = Arc::new(String::new());
+   |         - this move could be avoided by cloning the original `Arc`, which is inexpensive
+LL |     let _future = async {
+   |                   ----- value moved here
+...
+LL |         drop(c);
+   |              - variable moved due to use in coroutine
+LL |     };
+LL |     println!("{c}");
+   |                ^ value borrowed here after move
+   |
+   = note: consider using `Arc::clone`
+help: clone the value to increment its reference count
+   |
+LL |         drop(c.clone());
+   |               ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
