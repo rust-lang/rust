@@ -34,6 +34,10 @@ note: function defined here
    |
 LL | fn test(_x: &mut String) {}
    |    ^^^^ ---------------
+help: consider using `&mut` instead
+   |
+LL |     test(&mut y);
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:14:11
