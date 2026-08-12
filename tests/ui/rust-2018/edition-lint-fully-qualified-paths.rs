@@ -1,5 +1,6 @@
 //@ edition: 2015
 //@ run-rustfix
+//@ reference: paths.qualifiers.global-root.edition2018
 
 #![deny(absolute_paths_not_starting_with_crate)]
 

@@ -1,6 +1,8 @@
 //@ edition: 2015
 //@ run-rustfix
 //@ check-pass
+//@ reference: ident.raw.allowed
+//@ reference: lex.keywords.reserved.edition2018
 
 #![warn(rust_2018_compatibility)]
 
