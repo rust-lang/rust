@@ -2789,6 +2789,7 @@ pub fn expr_use_sites<'tcx>(
                 | Node::TraitRef(_)
                 | Node::Ty(_)
                 | Node::TyPat(_)
+                | Node::NestedUseTree(_)
                 | Node::WherePredicate(_)
                 | Node::TestBinderForall(_)
                 | Node::TestBinderExists(_)

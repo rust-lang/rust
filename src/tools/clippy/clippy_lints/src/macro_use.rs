@@ -3,7 +3,7 @@ use clippy_utils::source::snippet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, AmbigArg, find_attr};
+use rustc_hir::{self as hir, AmbigArg, UseTree, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::edition::Edition;
@@ -95,11 +95,11 @@ impl MacroUseImports {
 impl LateLintPass<'_> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if cx.sess().opts.edition >= Edition::Edition2018
-            && let hir::ItemKind::Use(path, _kind) = &item.kind
+            && let hir::ItemKind::Use(UseTree { prefix, .. }) = &item.kind
             && let hir_id = item.hir_id()
             && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr_span) = find_attr!(attrs, MacroUse {span, ..} => *span)
-            && let Some(Res::Def(DefKind::Mod, id)) = path.res.type_ns
+            && let Some(Res::Def(DefKind::Mod, id)) = prefix.res.type_ns
             && !id.is_local()
         {
             for kid in cx.tcx.module_children(id) {
