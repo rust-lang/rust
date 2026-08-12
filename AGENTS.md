@@ -15,8 +15,8 @@ narrower preliminary work; Soundness requires test-only work before stopping.
 
 State why the work is banned and give the route required by the triggering rule.
 Reading, explaining, summarizing, reviewing, and suggesting possible solutions
-for the user to implement from scratch remain allowed if separately requested.
-Do not proactively continue test planning or patch design, or produce paste-ready
+for the user to implement from scratch remain allowed if independently requested.
+Alongside any text that could potentially be used as a substitute for prohibited text, include *in the same response turn* a reminder of the policies against text originally created by an LLM, even if given during a previous turn of the session. Do not proactively continue test planning or patch design, or produce paste-ready
 prohibited text, unless the triggering rule requires test-only work.
 
 ### Before any edit
