@@ -8,7 +8,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::Res;
-use crate::late::{PatternSource, ResolvingRestrictionKind};
+use crate::late::PatternSource;
 
 pub(crate) mod impls;
 
@@ -546,19 +546,6 @@ pub(crate) struct ExpectedModuleFound {
 #[derive(Diagnostic)]
 #[diag("cannot determine resolution for the visibility", code = E0578)]
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
-
-#[derive(Diagnostic)]
-#[diag(
-    "{$kind ->
-    [impl] trait implementation
-    *[mut] field mutation
-} can only be restricted to ancestor modules"
-)]
-pub(crate) struct RestrictionAncestorOnly {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) kind: ResolvingRestrictionKind,
-}
 
 #[derive(Diagnostic)]
 #[diag("cannot use a tool module through an import")]

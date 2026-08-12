@@ -4398,6 +4398,8 @@ pub enum RestrictionKind<'hir> {
     /// The restriction does not affect the item.
     Unrestricted,
     /// The restriction only applies outside of this path.
+    /// The path is guaranteed to resolve to an ancestor module
+    /// of the restricted item.
     Restricted(&'hir Path<'hir, DefId>),
 }
 
