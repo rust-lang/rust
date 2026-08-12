@@ -1,61 +1,75 @@
-error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
-  --> $DIR/inherent-impl-receiver-mapping.rs:22:5
+error[E0308]: mismatched types
+  --> $DIR/inherent-impl-receiver-mapping.rs:56:18
    |
-LL |     y.by_mut_ref();
-   |     ^ cannot borrow as mutable
+LL |         W(X).add(W(X));
+   |              --- ^^^^ expected `X`, found `W`
+   |              |
+   |              arguments to this method are incorrect
+   |
+note: method defined here
+  --> $DIR/inherent-impl-receiver-mapping.rs:52:18
+   |
+LL |         reuse X::add { self.0 }
+   |                  ^^^
+
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/inherent-impl-receiver-mapping.rs:23:9
+   |
+LL |         y.by_mut_ref();
+   |         ^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |
-LL |     let mut y = Y;
-   |         +++
+LL |         let mut y = Y;
+   |             +++
 
 error[E0507]: cannot move out of `*y` which is behind a shared reference
-  --> $DIR/inherent-impl-receiver-mapping.rs:27:5
+  --> $DIR/inherent-impl-receiver-mapping.rs:28:9
    |
-LL |     y.by_value();
-   |     ^ ---------- `*y` moved due to this method call
-   |     |
-   |     move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
+LL |         y.by_value();
+   |         ^ ---------- `*y` moved due to this method call
+   |         |
+   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
    |
-   = note: `Y::by_value` takes ownership of the receiver `self`, which moves `*y`
+   = note: `receiver_mapping::Y::by_value` takes ownership of the receiver `self`, which moves `*y`
 note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impl-receiver-mapping.rs:12:1
+  --> $DIR/inherent-impl-receiver-mapping.rs:13:5
    |
-LL | struct Y;
-   | ^^^^^^^^ consider implementing `Clone` for this type
+LL |     struct Y;
+   |     ^^^^^^^^ consider implementing `Clone` for this type
 ...
-LL |     y.by_value();
-   |     - you could clone this value
+LL |         y.by_value();
+   |         - you could clone this value
 
 error[E0596]: cannot borrow `*y` as mutable, as it is behind a `&` reference
-  --> $DIR/inherent-impl-receiver-mapping.rs:30:5
+  --> $DIR/inherent-impl-receiver-mapping.rs:31:9
    |
-LL |     y.by_mut_ref();
-   |     ^ `y` is a `&` reference, so it cannot be borrowed as mutable
+LL |         y.by_mut_ref();
+   |         ^ `y` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
-LL |     let y = &mut Y;
-   |              +++
+LL |         let y = &mut Y;
+   |                  +++
 
 error[E0507]: cannot move out of `*y` which is behind a mutable reference
-  --> $DIR/inherent-impl-receiver-mapping.rs:34:5
+  --> $DIR/inherent-impl-receiver-mapping.rs:35:9
    |
-LL |     y.by_value();
-   |     ^ ---------- `*y` moved due to this method call
-   |     |
-   |     move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
+LL |         y.by_value();
+   |         ^ ---------- `*y` moved due to this method call
+   |         |
+   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
    |
 note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impl-receiver-mapping.rs:12:1
+  --> $DIR/inherent-impl-receiver-mapping.rs:13:5
    |
-LL | struct Y;
-   | ^^^^^^^^ consider implementing `Clone` for this type
+LL |     struct Y;
+   |     ^^^^^^^^ consider implementing `Clone` for this type
 ...
-LL |     y.by_value();
-   |     - you could clone this value
+LL |         y.by_value();
+   |         - you could clone this value
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0507, E0596.
-For more information about an error, try `rustc --explain E0507`.
+Some errors have detailed explanations: E0308, E0507, E0596.
+For more information about an error, try `rustc --explain E0308`.

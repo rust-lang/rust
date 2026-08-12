@@ -654,7 +654,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
                     .skip_norm_wip(),
             };
 
-            self_input.replace_inside(tcx, sig_self_type, replacement)
+            self_input.replace(tcx, sig_self_type, replacement)
         }
         _ => sig[0],
     };
