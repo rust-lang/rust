@@ -2526,6 +2526,10 @@ options! {
         "generate build artifacts that are compatible with linker-based LTO"),
     llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of arguments to pass to LLVM (space separated)"),
+    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enable/disable LLVM-level target features. \
+        This feature is unsafe and can cause ABI issues and compiler crashes, \
+        because LLVM does not support all target feature combinations."),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     lto: LtoCli = (LtoCli::Unspecified, parse_lto, [TRACKED],
         "perform LLVM link-time optimizations"),

@@ -751,7 +751,7 @@ pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String>
 
     // `-Tllvm-target-features`, all the way at the end to overwrite everything.
     // Should be picked up by `cfg` (e.g. if someone enables AVX this way).
-    for feature in sess.opts.target_opts.llvm_target_feature.split(',') {
+    for feature in sess.opts.cg.llvm_target_feature.split(',') {
         if feature.is_empty() {
             continue;
         }
