@@ -29,6 +29,7 @@ mod os_functions;
 
 use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
 use self::repr::Repr;
+use crate::ptr::NonNull;
 use crate::{error, fmt, result};
 
 /// A specialized [`Result`] type for I/O operations.
@@ -583,9 +584,9 @@ impl OsFunctions {
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub struct Custom {
     kind: ErrorKind,
-    error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
-    error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
-    outer_drop: unsafe fn(*mut Self),
+    error: NonNull<dyn error::Error + Send + Sync>,
+    error_drop: unsafe fn(NonNull<dyn error::Error + Send + Sync>),
+    outer_drop: unsafe fn(NonNull<Self>),
 }
 
 // SAFETY: All members of `Custom` are `Send`
@@ -608,7 +609,7 @@ impl Drop for Custom {
     fn drop(&mut self) {
         // SAFETY: `Custom::from_raw` ensures this call is safe.
         unsafe {
-            (self.error_drop)(self.error.as_ptr());
+            (self.error_drop)(self.error);
         }
     }
 }
@@ -623,15 +624,15 @@ impl Custom {
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub unsafe fn from_raw(
         kind: ErrorKind,
-        error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
-        error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
-        outer_drop: unsafe fn(*mut Self),
+        error: NonNull<dyn error::Error + Send + Sync>,
+        error_drop: unsafe fn(NonNull<dyn error::Error + Send + Sync>),
+        outer_drop: unsafe fn(NonNull<Self>),
     ) -> Custom {
         Custom { kind, error, error_drop, outer_drop }
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn into_raw(self) -> crate::ptr::NonNull<dyn error::Error + Send + Sync> {
+    pub fn into_raw(self) -> NonNull<dyn error::Error + Send + Sync> {
         let ptr = self.error;
         core::mem::forget(self);
         ptr
@@ -656,7 +657,7 @@ impl Custom {
 #[repr(transparent)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 #[doc(hidden)]
-pub struct CustomOwner(crate::ptr::NonNull<Custom>);
+pub struct CustomOwner(NonNull<Custom>);
 
 // SAFETY: Custom is `Send`
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -671,7 +672,7 @@ impl Drop for CustomOwner {
     fn drop(&mut self) {
         // SAFETY: `CustomOwner::from_raw` ensures this call is safe.
         unsafe {
-            (self.0.as_ref().outer_drop)(self.0.as_ptr());
+            (self.0.as_ref().outer_drop)(self.0);
         }
     }
 }
@@ -682,12 +683,12 @@ impl CustomOwner {
     /// * The `outer_drop` of the provided `custom` must be safe to call exactly once.
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub unsafe fn from_raw(custom: crate::ptr::NonNull<Custom>) -> CustomOwner {
+    pub unsafe fn from_raw(custom: NonNull<Custom>) -> CustomOwner {
         CustomOwner(custom)
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn into_raw(self) -> crate::ptr::NonNull<Custom> {
+    pub fn into_raw(self) -> NonNull<Custom> {
         let ptr = self.0;
         core::mem::forget(self);
         ptr
