@@ -414,7 +414,7 @@ fn check_specialization_on<'tcx>(
         _ if clause.is_global() => Ok(()),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+        ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity: _ }) => {
             if matches!(
                 trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::Marker)
@@ -463,7 +463,7 @@ fn trait_specialization_kind<'tcx>(
     clause: ty::Clause<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match clause.kind().skip_binder() {
-        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+        ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity: _ }) => {
             Some(tcx.trait_def(trait_ref.def_id).specialization_kind)
         }
         ty::ClauseKind::RegionOutlives(_)

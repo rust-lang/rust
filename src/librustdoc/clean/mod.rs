@@ -451,7 +451,7 @@ pub(crate) fn clean_clause<'tcx>(
 }
 
 fn clean_poly_trait_predicate<'tcx>(
-    pred: ty::PolyTraitPredicate<'tcx>,
+    pred: ty::PolyTraitClause<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.

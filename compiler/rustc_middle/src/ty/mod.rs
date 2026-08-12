@@ -89,9 +89,9 @@ pub use self::predicate::{
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
     ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionClause, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
+    PolyProjectionClause, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitClause,
     PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionClause,
-    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitPredicate,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitClause,
     TraitRef, TypeOutlivesClause,
 };
 pub use self::region::{

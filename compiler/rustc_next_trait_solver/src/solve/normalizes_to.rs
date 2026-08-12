@@ -41,7 +41,7 @@ where
 
         let trait_ref = goal.predicate.alias.trait_ref(cx);
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
+            let trait_goal: Goal<I, ty::TraitClause<I>> = goal.with(cx, trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
         self.assemble_and_merge_candidates(

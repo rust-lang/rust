@@ -461,7 +461,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::NormalizesTo<I>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
-    + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::TraitClause<I>>
     + UpcastFrom<I, ty::ProjectionClause<I>>
     + UpcastFrom<I, ty::OutlivesClause<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesClause<I, Region<I>>>
@@ -502,8 +502,8 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
-    + UpcastFrom<I, ty::TraitPredicate<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::TraitPredicate<I>>>
+    + UpcastFrom<I, ty::TraitClause<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::TraitClause<I>>>
     + UpcastFrom<I, ty::ProjectionClause<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionClause<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
@@ -523,7 +523,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
             .transpose()
     }
 
-    fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
+    fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitClause<I>>> {
         self.kind()
             .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
             .transpose()

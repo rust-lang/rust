@@ -194,7 +194,7 @@ fn variance_of_opaque(
         // which thus mentions `'a` and should thus accept hidden types that borrow 'a
         // instead of requiring an additional `+ 'a`.
         match clause.kind().skip_binder() {
-            ty::ClauseKind::Trait(ty::TraitPredicate {
+            ty::ClauseKind::Trait(ty::TraitClause {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
             })
