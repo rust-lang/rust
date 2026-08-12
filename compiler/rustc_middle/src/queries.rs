@@ -2155,7 +2155,7 @@ rustc_queries! {
     ///     (and so is `T`, since `T: 'static` implies `T: 'a`)
     ///   - `bar` outlives `'static`, so we know that no args are potentially live and we can return an empty set
     ///   - `baz` has no outlives bound, so return `None` and let the caller decide what to do
-    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx Option<rustc_index::bit_set::DenseBitSet<usize>> {
+    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx Option<rustc_index::bit_set::DenseBitSet<u32>> {
         arena_cache
         desc { "identifying live args for alias `{:?}`", kind }
     }
@@ -2164,7 +2164,7 @@ rustc_queries! {
     /// outlive it given only the alias's declared where-clauses. Used for liveness:
     /// these are the only args whose regions the underlying type of the alias
     /// could capture while satisfying an outlives bound on that param.
-    query args_known_to_outlive_alias_params(def_id: DefId) -> &'tcx Vec<(usize, rustc_index::bit_set::DenseBitSet<usize>)> {
+    query args_known_to_outlive_alias_params(def_id: DefId) -> &'tcx Vec<(usize, rustc_index::bit_set::DenseBitSet<u32>)> {
         arena_cache
         desc { "computing the args known to outlive each region param of alias `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern

@@ -28,7 +28,7 @@ use crate::regions::{region_known_to_outlive, ty_known_to_outlive};
 pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ty::AliasTyKind<'tcx>,
-) -> Option<DenseBitSet<usize>> {
+) -> Option<DenseBitSet<u32>> {
     let def_id = match kind {
         ty::AliasTyKind::Projection { def_id }
         | ty::AliasTyKind::Inherent { def_id }
@@ -99,7 +99,7 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
 
     let args_known_to_outlive = tcx.args_known_to_outlive_alias_params(def_id);
     tracing::debug!(?args_known_to_outlive);
-    let mut live_args: Option<DenseBitSet<usize>> = None;
+    let mut live_args: Option<DenseBitSet<u32>> = None;
     for outlives_region in outlives_regions {
         let Some(outlives_params) = args_known_to_outlive
             .iter()
@@ -128,7 +128,7 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
 pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Vec<(usize, DenseBitSet<usize>)> {
+) -> Vec<(usize, DenseBitSet<u32>)> {
     match tcx.def_kind(def_id) {
         DefKind::OpaqueTy => args_known_to_outlive_opaque_params(tcx, def_id),
         DefKind::AssocTy
@@ -173,7 +173,7 @@ pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
 pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Vec<(usize, DenseBitSet<usize>)> {
+) -> Vec<(usize, DenseBitSet<u32>)> {
     let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
 
     let mut result = Vec::new();
@@ -255,7 +255,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
             }
 
             // Types aren't captured, so don't need to map to the opaque
-            opaque_outlives_args.insert(parent_outlived_arg_idx);
+            opaque_outlives_args.insert(parent_outlived_arg_idx as u32);
         }
 
         for &(parent_outlives_region, opaque_arg_idx) in parent_outlives_regions.iter() {
@@ -272,7 +272,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
                 continue;
             }
 
-            opaque_outlives_args.insert(opaque_arg_idx);
+            opaque_outlives_args.insert(opaque_arg_idx as u32);
         }
 
         result.push((*opaque_outlived_arg_idx, opaque_outlives_args));
@@ -285,7 +285,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
 pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Vec<(usize, DenseBitSet<usize>)> {
+) -> Vec<(usize, DenseBitSet<u32>)> {
     let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let param_env = tcx.param_env(def_id);
     tracing::debug!(?param_env);
@@ -307,7 +307,7 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                 ty::GenericArgKind::Const(_) => false,
             };
             if outlives {
-                outliving_args.insert(arg_idx);
+                outliving_args.insert(arg_idx as u32);
             }
         }
         result.push((outlived_arg_idx, outliving_args));
@@ -354,7 +354,7 @@ fn live_args_for_outlives_clause<'tcx>(
     alias_def_id: DefId,
     ty: Ty<'tcx>,
     outlives: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
-) -> Option<DenseBitSet<usize>> {
+) -> Option<DenseBitSet<u32>> {
     // N.B. it's okay to skip the binder here (and in the rest of the function),
     // because all variables under binders do not escape
     let ty::Alias(_, ty::AliasTy { kind: clause_alias_kind, args: clause_args, .. }) =
@@ -531,8 +531,8 @@ where
                     | ty::AliasTyKind::Opaque { def_id }
                     | ty::AliasTyKind::Free { def_id } => def_id,
                 };
-                let mut capturable: Option<DenseBitSet<usize>> = None;
-                let mut restrict = |capturable_args: DenseBitSet<usize>| {
+                let mut capturable: Option<DenseBitSet<u32>> = None;
+                let mut restrict = |capturable_args: DenseBitSet<u32>| {
                     match &mut capturable {
                         None => capturable = Some(capturable_args),
                         Some(prev) => {
@@ -560,7 +560,7 @@ where
                 match capturable {
                     Some(capturable_args) => {
                         for idx in capturable_args.iter() {
-                            args[idx].visit_with(self);
+                            args[idx as usize].visit_with(self);
                         }
                     }
                     None => {
