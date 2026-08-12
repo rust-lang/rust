@@ -1145,7 +1145,7 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	border: 1px solid var(--border-color);
 }
 
-.docblock table tbody tr:nth-child(2n) {
+.docblock table tbody tr:nth-child(odd) {
 	background: var(--table-alt-row-background-color);
 }
 
