@@ -27,4 +27,5 @@ impl Test<u64> for u64 {
 fn main() {
     let xs: Vec<u64> = vec![1, 2, 3];
     println!("{}", 23u64.test(xs.iter().sum())); //~ ERROR: type annotations needed
+    //~^ ERROR type annotations needed
 }

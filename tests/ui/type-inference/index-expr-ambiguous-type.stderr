@@ -22,8 +22,6 @@ LL |     let _foo = [1, 2, 3][bad_idx.into()];
    |                                  ^^^^
    |
    = note: the type must implement `From<u8>`
-   = note: the type must also implement `SliceIndex<[i32]>`
-   = note: cannot satisfy `<_ as SliceIndex<[i32]>>::Output == _`
    = note: required for `u8` to implement `Into<_>`
 help: try using a fully qualified path to specify the expected types
    |
@@ -66,8 +64,6 @@ LL |     let _foo = String::new() + [""][bad_idx.into()];
    |                                             ^^^^
    |
    = note: the type must implement `From<u8>`
-   = note: the type must also implement `SliceIndex<[&str]>`
-   = note: cannot satisfy `<_ as SliceIndex<[&str]>>::Output == &str`
    = note: required for `u8` to implement `Into<_>`
 help: try using a fully qualified path to specify the expected types
    |

@@ -775,6 +775,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         self.note_obligation_cause(&mut err, obligation);
+        // The merged errors are not reported on their own anymore, so the bounds they came from
+        // have to be explained here too. Causes shared with the blamed obligation are already
+        // described by the call above.
+        for &error in related {
+            if error.obligation.cause.code() != obligation.cause.code() {
+                self.note_obligation_cause(&mut err, &error.obligation);
+            }
+        }
         err.emit()
     }
 

@@ -11,7 +11,6 @@ LL |     d = d % n.into();
            - impl Rem for u64;
            - impl Rem<&u64> for u64;
            - impl Rem<NonZero<u64>> for u64;
-   = note: the type must also implement `From<u32>`
 help: try using a fully qualified path to specify the expected types
    |
 LL -     d = d % n.into();

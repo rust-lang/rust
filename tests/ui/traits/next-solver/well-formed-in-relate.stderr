@@ -20,6 +20,11 @@ note: required by a bound in `unconstrained_map`
    |
 LL | fn unconstrained_map<T: Fn() -> U, U>() -> <Map<T, U> as Mirror>::Assoc { todo!() }
    |                         ^^^^^^^^^ required by this bound in `unconstrained_map`
+note: required by a bound in `unconstrained_map`
+  --> $DIR/well-formed-in-relate.rs:21:33
+   |
+LL | fn unconstrained_map<T: Fn() -> U, U>() -> <Map<T, U> as Mirror>::Assoc { todo!() }
+   |                                 ^ required by this bound in `unconstrained_map`
 help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
    |
 LL |     let x: Map<T, U>;

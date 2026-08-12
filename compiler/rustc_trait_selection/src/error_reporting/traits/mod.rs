@@ -298,13 +298,39 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     .collect(),
                                 None => vec![],
                             };
+                            // Only merge errors that a note on this diagnostic can fully
+                            // represent. An error blaming a different expression labels that
+                            // expression and suggests how to annotate it, and one whose
+                            // predicate we can't phrase as a note (e.g. const evaluatability)
+                            // says nothing here, so both keep their own error.
+                            let merges = |other: usize| {
+                                errors[other].obligation.cause.span == error.obligation.cause.span
+                                    && match errors[other].obligation.predicate.kind().skip_binder()
+                                    {
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                                            !matches!(
+                                                self.tcx.as_lang_item(data.def_id()),
+                                                Some(
+                                                    LangItem::Sized
+                                                        | LangItem::MetaSized
+                                                        | LangItem::PointeeSized
+                                                )
+                                            )
+                                        }
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                            _,
+                                        )) => true,
+                                        _ => false,
+                                    }
+                            };
                             let related: Vec<_> = group
                                 .iter()
                                 .filter(|&&other| {
                                     // Exclude already-reported primaries: they were their own
                                     // canonical error and adding them as notes here would
                                     // produce duplicate information.
-                                    !is_suppressed[other]
+                                    merges(other)
+                                        && !is_suppressed[other]
                                         && !errors[other].references_error()
                                         && !reported_as_primary[other]
                                 })
@@ -312,28 +338,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 .collect();
                             let guar = self.report_fulfillment_error(error, &related);
                             for &other in &group {
-                                // Only suppress related errors whose predicates produce
-                                // informative notes in maybe_report_ambiguity (Trait,
-                                // Projection). Predicates we can't represent as notes
-                                // (e.g. const evaluatability) still report separately.
-                                let pred = errors[other].obligation.predicate;
-                                let suppresses = match pred.kind().skip_binder() {
-                                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                                        !matches!(
-                                            self.tcx.as_lang_item(data.def_id()),
-                                            Some(
-                                                LangItem::Sized
-                                                    | LangItem::MetaSized
-                                                    | LangItem::PointeeSized
-                                            )
-                                        )
-                                    }
-                                    ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
-                                        true
-                                    }
-                                    _ => false,
-                                };
-                                if suppresses {
+                                if merges(other) {
                                     merged[other] = Some(guar);
                                 }
                             }
