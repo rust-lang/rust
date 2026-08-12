@@ -154,7 +154,9 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
             skip_unreachable_unwind: false,
         }
     }
+}
 
+impl<'tcx> MaybeInitializedPlaces<'_, 'tcx> {
     /// Ensures definitely inactive variants are excluded from the set of initialized places for
     /// blocks reached through an `otherwise` edge.
     pub fn exclude_inactive_in_otherwise(mut self) -> Self {
@@ -182,9 +184,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
             false
         }
     }
-}
 
-impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(
         state: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
@@ -396,7 +396,9 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
+}
 
+impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
     /// Causes inactive enum variants to be marked as "maybe uninitialized" after a switch on an
     /// enum discriminant.
     ///
@@ -414,9 +416,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
         self.skip_unreachable_unwind = unreachable_unwind;
         self
     }
-}
 
-impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
     fn update_bits(
         state: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
