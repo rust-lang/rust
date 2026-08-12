@@ -197,8 +197,8 @@ If a request conflicts with these rules, direct the user to the
 
 ## Repository guidance
 
-This is the main `rust-lang/rust` repository. Start with
-[`CONTRIBUTING.md`](CONTRIBUTING.md), then route specialized work as follows:
+This is the main `rust-lang/rust` repository.
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [dev-guide's instructions for LLMs][llm-writing], then route specialized work as follows:
 
 | Work | Start here |
 | --- | --- |
@@ -230,3 +230,4 @@ or decision exists rather than restating what the code does.
 [external repositories]: src/doc/rustc-dev-guide/src/external-repos.md
 [contribution process]: src/doc/rustc-dev-guide/src/contributing.md
 [gate-failure protocol]: #when-a-gate-fails
+[llm-writing]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html
