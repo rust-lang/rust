@@ -35,10 +35,16 @@ pub struct NotReferences;
 ///
 /// [^a b]
 //~^ ERROR: no footnote definition matching this footnote
+pub struct EdgeCases1;
+
+/// Another:
 ///
 /// [^1\.2]
 //~^ ERROR: no footnote definition matching this footnote
+pub struct EdgeCases2;
+
+/// Last:
 ///
 /// [^*]
 //~^ ERROR: no footnote definition matching this footnote
-pub struct EdgeCases;
+pub struct EdgeCases3; 
