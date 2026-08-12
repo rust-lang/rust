@@ -55,6 +55,7 @@ impl SocketAddr {
     where
         F: FnOnce(*mut SOCKADDR, *mut i32) -> i32,
     {
+        // SAFETY: Untriaged.
         unsafe {
             let mut addr: SOCKADDR_UN = mem::zeroed();
             let mut len = mem::size_of::<SOCKADDR_UN>() as i32;
@@ -135,6 +136,7 @@ impl SocketAddr {
     }
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
+        // SAFETY: Untriaged.
         let path = unsafe { mem::transmute::<&[i8], &[u8]>(&self.addr.sun_path) };
 
         if len == 0 {
@@ -142,6 +144,7 @@ impl SocketAddr {
         } else if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
+            // SAFETY: Untriaged.
             AddressKind::Pathname(unsafe {
                 OsStr::from_encoded_bytes_unchecked(&path[..len - 1]).as_ref()
             })

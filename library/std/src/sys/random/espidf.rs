@@ -5,5 +5,6 @@ unsafe extern "C" {
 }
 
 pub fn fill_bytes(bytes: &mut [u8]) {
+    // SAFETY: Untriaged.
     unsafe { esp_fill_random(bytes.as_mut_ptr().cast(), bytes.len()) }
 }

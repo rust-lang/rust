@@ -30,6 +30,7 @@ cfg_select! {
         fn get_clock_resolution() -> Duration {
             static MIN_DELAY: LazyLock<Duration, fn() -> Duration> = LazyLock::new(|| {
                 let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+// SAFETY: Untriaged.
                 if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
                 {
                     Duration::from_nanos(mindelay.tv_nsec as u64)
@@ -91,6 +92,7 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::env::env_read_lock();
+        // SAFETY: Untriaged.
         let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
@@ -101,6 +103,7 @@ impl Command {
             if self.get_create_pidfd() {
                 self.send_pidfd(&output);
             }
+            // SAFETY: Untriaged.
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
@@ -118,6 +121,7 @@ impl Command {
             // we want to be sure we *don't* run at_exit destructors as
             // we're being torn down regardless
             rtassert!(output.write(&bytes).is_ok());
+            // SAFETY: Untriaged.
             unsafe { libc::_exit(1) }
         }
 
@@ -131,6 +135,7 @@ impl Command {
         let pidfd = -1;
 
         // Safety: We obtained the pidfd (on Linux) using SOCK_SEQPACKET, so it's valid.
+        // SAFETY: Untriaged.
         let mut p = unsafe { Process::new(pid, pidfd) };
         let mut bytes = [0; 8];
 
@@ -235,6 +240,7 @@ impl Command {
 
         match self.setup_io(default, true) {
             Ok((_, theirs)) => {
+                // SAFETY: Untriaged.
                 unsafe {
                     // Similar to when forking, we want to ensure that access to
                     // the environment is synchronized, so make sure to grab the
@@ -400,6 +406,7 @@ impl Command {
 
             impl Drop for Reset {
                 fn drop(&mut self) {
+                    // SAFETY: Untriaged.
                     unsafe {
                         *sys::env::environ() = self.0;
                     }
@@ -674,6 +681,7 @@ impl Command {
 
         impl Drop for PosixSpawnFileActions<'_> {
             fn drop(&mut self) {
+                // SAFETY: Untriaged.
                 unsafe {
                     libc::posix_spawn_file_actions_destroy(self.0.as_mut_ptr());
                 }
@@ -684,12 +692,14 @@ impl Command {
 
         impl Drop for PosixSpawnattr<'_> {
             fn drop(&mut self) {
+                // SAFETY: Untriaged.
                 unsafe {
                     libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
                 }
             }
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             let mut attrs = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
@@ -845,6 +855,7 @@ impl Command {
         use crate::os::fd::RawFd;
         use crate::sys::cvt_r;
 
+        // SAFETY: Untriaged.
         unsafe {
             let child_pid = libc::getpid();
             // pidfd_open sets CLOEXEC by default
@@ -856,6 +867,7 @@ impl Command {
 
             #[repr(C)]
             union Cmsg {
+                // SAFETY: Untriaged.
                 buf: [u8; unsafe { CMSG_SPACE(SCM_MSG_LEN as u32) as usize }],
                 _align: libc::cmsghdr,
             }
@@ -902,11 +914,13 @@ impl Command {
         use crate::io::IoSliceMut;
         use crate::sys::cvt_r;
 
+        // SAFETY: Untriaged.
         unsafe {
             const SCM_MSG_LEN: usize = size_of::<[c_int; 1]>();
 
             #[repr(C)]
             union Cmsg {
+                // SAFETY: Untriaged.
                 _buf: [u8; unsafe { CMSG_SPACE(SCM_MSG_LEN as u32) as usize }],
                 _align: libc::cmsghdr,
             }
@@ -1006,6 +1020,7 @@ impl Process {
             // pidfd_send_signal predates pidfd_open. so if we were able to get an fd then sending signals will work too
             return pid_fd.send_signal(signal);
         }
+        // SAFETY: Untriaged.
         cvt(unsafe { libc::kill(self.pid, signal) }).map(drop)
     }
 
@@ -1019,6 +1034,7 @@ impl Process {
             // The `PIDFD_SIGNAL_PROCESS_GROUP` flag requires kernel >= 6.9
             return pid_fd.send_process_group_signal(signal);
         }
+        // SAFETY: Untriaged.
         cvt(unsafe { libc::killpg(self.pid, signal) }).map(drop)
     }
 
@@ -1034,6 +1050,7 @@ impl Process {
             return Ok(status);
         }
         let mut status = 0 as c_int;
+        // SAFETY: Untriaged.
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
         self.status = Some(ExitStatus::new(status));
         Ok(ExitStatus::new(status))
@@ -1052,6 +1069,7 @@ impl Process {
             return Ok(status);
         }
         let mut status = 0 as c_int;
+        // SAFETY: Untriaged.
         let pid = cvt(unsafe { libc::waitpid(self.pid, &mut status, libc::WNOHANG) })?;
         if pid == 0 {
             Ok(None)
@@ -1082,6 +1100,7 @@ impl ExitStatus {
 
     #[cfg(target_os = "linux")]
     pub fn from_waitid_siginfo(siginfo: libc::siginfo_t) -> ExitStatus {
+        // SAFETY: Untriaged.
         let status = unsafe { siginfo.si_status() };
 
         match siginfo.si_code {

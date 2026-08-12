@@ -27,6 +27,7 @@ impl WCStr {
     ///
     /// The slice must end in a null.
     pub unsafe fn from_wchars_with_null_unchecked(s: &[u16]) -> &Self {
+        // SAFETY: Untriaged.
         unsafe { &*(s as *const [u16] as *const Self) }
     }
 
@@ -235,6 +236,7 @@ pub(crate) fn is_absolute_exact(path: &[u16]) -> bool {
     // given path, otherwise they're not equal.
     let buffer_len = path.len();
     let mut new_path = Vec::with_capacity(buffer_len);
+    // SAFETY: Untriaged.
     let result = unsafe {
         c::GetFullPathNameW(
             path.as_ptr(),

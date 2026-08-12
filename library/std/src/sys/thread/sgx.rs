@@ -98,6 +98,7 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(_stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
+        // SAFETY: Untriaged.
         unsafe { usercalls::launch_thread()? };
         let (task, handle) = task_queue::Task::new(init);
         queue_lock.push(task);

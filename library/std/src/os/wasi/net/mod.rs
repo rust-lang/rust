@@ -18,6 +18,7 @@ pub trait TcpListenerExt {
 
 impl TcpListenerExt for net::TcpListener {
     fn sock_accept(&self, flags: u16) -> io::Result<u32> {
+        // SAFETY: Untriaged.
         unsafe { wasip1::sock_accept(self.as_raw_fd() as wasip1::Fd, flags).map_err(err2io) }
     }
 }

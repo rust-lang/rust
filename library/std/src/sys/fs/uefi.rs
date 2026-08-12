@@ -86,6 +86,7 @@ impl FileAttr {
     }
 
     fn from_uefi(info: helpers::UefiBox<file::Info>) -> Self {
+        // SAFETY: Untriaged.
         unsafe {
             Self {
                 attr: (*info.as_ptr()).attribute,
@@ -315,6 +316,7 @@ impl File {
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         let mut file_info = self.0.file_info()?;
 
+        // SAFETY: Untriaged.
         unsafe { (*file_info.as_mut_ptr()).file_size = size };
 
         self.0.set_file_info(file_info)
@@ -549,6 +551,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 fn set_perm_inner(f: &uefi_fs::File, perm: FilePermissions) -> io::Result<()> {
     let mut file_info = f.file_info()?;
 
+    // SAFETY: Untriaged.
     unsafe {
         (*file_info.as_mut_ptr()).attribute =
             ((*file_info.as_ptr()).attribute & !FILE_PERMISSIONS_MASK) | perm.to_attr()
@@ -561,12 +564,14 @@ fn set_times_inner(f: &uefi_fs::File, times: FileTimes) -> io::Result<()> {
     let mut file_info = f.file_info()?;
 
     if let Some(x) = times.accessed {
+        // SAFETY: Untriaged.
         unsafe {
             (*file_info.as_mut_ptr()).last_access_time = uefi_fs::systemtime_to_uefi(x);
         }
     }
 
     if let Some(x) = times.modified {
+        // SAFETY: Untriaged.
         unsafe {
             (*file_info.as_mut_ptr()).modification_time = uefi_fs::systemtime_to_uefi(x);
         }
@@ -653,6 +658,7 @@ mod uefi_fs {
             )?;
 
             let mut file_protocol = crate::ptr::null_mut();
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*simple_file_system_protocol.as_ptr()).open_volume)(
                     simple_file_system_protocol.as_ptr(),
@@ -677,6 +683,7 @@ mod uefi_fs {
             let file_ptr = protocol.as_ptr();
             let mut file_opened = crate::ptr::null_mut();
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*file_ptr).open)(file_ptr, &mut file_opened, path.as_mut_ptr(), open_mode, attr)
             };
@@ -694,6 +701,7 @@ mod uefi_fs {
             let file_ptr = self.protocol.as_ptr();
             let mut buf_size = buf.len();
 
+            // SAFETY: Untriaged.
             let r = unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, buf.as_mut_ptr().cast()) };
 
             if buf_size == 0 && r.is_error() {
@@ -707,6 +715,7 @@ mod uefi_fs {
             let file_ptr = self.protocol.as_ptr();
             let mut buf_size = 0;
 
+            // SAFETY: Untriaged.
             let r = unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, crate::ptr::null_mut()) };
 
             if buf_size == 0 {
@@ -720,6 +729,7 @@ mod uefi_fs {
 
             let mut info: UefiBox<file::Info> = UefiBox::new(buf_size)?;
             let r =
+// SAFETY: Untriaged.
                 unsafe { ((*file_ptr).read)(file_ptr, &mut buf_size, info.as_mut_ptr().cast()) };
 
             if r.is_error() {
@@ -733,6 +743,7 @@ mod uefi_fs {
             let file_ptr = self.protocol.as_ptr();
             let mut buf_size = buf.len();
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*file_ptr).write)(
                     file_ptr,
@@ -753,6 +764,7 @@ mod uefi_fs {
             let mut info_id = file::INFO_ID;
             let mut buf_size = 0;
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*file_ptr).get_info)(
                     file_ptr,
@@ -767,6 +779,7 @@ mod uefi_fs {
             }
 
             let mut info: UefiBox<file::Info> = UefiBox::new(buf_size)?;
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*file_ptr).get_info)(
                     file_ptr,
@@ -783,6 +796,7 @@ mod uefi_fs {
             let file_ptr = self.protocol.as_ptr();
             let mut info_id = file::INFO_ID;
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*file_ptr).set_info)(file_ptr, &mut info_id, info.len(), info.as_mut_ptr().cast())
             };
@@ -794,18 +808,21 @@ mod uefi_fs {
             let file_ptr = self.protocol.as_ptr();
             let mut pos = 0;
 
+            // SAFETY: Untriaged.
             let r = unsafe { ((*file_ptr).get_position)(file_ptr, &mut pos) };
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(pos) }
         }
 
         pub(crate) fn set_position(&self, pos: u64) -> io::Result<()> {
             let file_ptr = self.protocol.as_ptr();
+            // SAFETY: Untriaged.
             let r = unsafe { ((*file_ptr).set_position)(file_ptr, pos) };
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
         }
 
         pub(crate) fn delete(self) -> io::Result<()> {
             let file_ptr = self.protocol.as_ptr();
+            // SAFETY: Untriaged.
             let r = unsafe { ((*file_ptr).delete)(file_ptr) };
 
             // Spec states that even in case of failure, the file handle will be closed.
@@ -816,6 +833,7 @@ mod uefi_fs {
 
         pub(crate) fn flush(&self) -> io::Result<()> {
             let file_ptr = self.protocol.as_ptr();
+            // SAFETY: Untriaged.
             let r = unsafe { ((*file_ptr).flush)(file_ptr) };
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
         }
@@ -828,6 +846,7 @@ mod uefi_fs {
     impl Drop for File {
         fn drop(&mut self) {
             let file_ptr = self.protocol.as_ptr();
+            // SAFETY: Untriaged.
             let _ = unsafe { ((*file_ptr).close)(file_ptr) };
         }
     }

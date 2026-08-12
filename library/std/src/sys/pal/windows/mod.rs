@@ -42,6 +42,7 @@ impl<T> IoResult<T> for Result<T, api::WinError> {
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
+    // SAFETY: Untriaged.
     unsafe {
         stack_overflow::init();
 
@@ -141,6 +142,7 @@ where
     // https://github.com/dylni/normpath/issues/5
     let mut stack_buf: [MaybeUninit<u16>; 512] = [MaybeUninit::uninit(); 512];
     let mut heap_buf: Vec<MaybeUninit<u16>> = Vec::new();
+    // SAFETY: Untriaged.
     unsafe {
         let mut n = stack_buf.len();
         loop {
@@ -261,6 +263,7 @@ pub fn dur2timeout(dur: Duration) -> u32 {
 /// <https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail>
 #[cfg(not(miri))] // inline assembly does not work in Miri
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe {
         cfg_select! {
             any(target_arch = "x86", target_arch = "x86_64") => {

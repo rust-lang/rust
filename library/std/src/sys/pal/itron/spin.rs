@@ -25,12 +25,15 @@ impl<T> SpinMutex<T> {
             #[inline]
             fn drop(&mut self) {
                 self.0.store(false, Ordering::Release);
+                // SAFETY: Untriaged.
                 unsafe { abi::ena_dsp() };
             }
         }
 
         let _guard;
+        // SAFETY: Untriaged.
         if unsafe { abi::sns_dsp() } == 0 {
+            // SAFETY: Untriaged.
             let er = unsafe { abi::dis_dsp() };
             debug_assert!(er >= 0);
 
@@ -40,6 +43,7 @@ impl<T> SpinMutex<T> {
             _guard = SpinMutexGuard(&self.locked);
         }
 
+        // SAFETY: Untriaged.
         f(unsafe { &mut *self.data.get() })
     }
 }
@@ -71,6 +75,7 @@ impl<T> SpinIdOnceCell<T> {
     pub fn get(&self) -> Option<(abi::ID, &T)> {
         match self.id.load(Ordering::Acquire) {
             ID_UNINIT => None,
+            // SAFETY: Untriaged.
             id => Some((id as abi::ID, unsafe { (&*self.extra.get()).assume_init_ref() })),
         }
     }
@@ -79,12 +84,14 @@ impl<T> SpinIdOnceCell<T> {
     pub fn get_mut(&mut self) -> Option<(abi::ID, &mut T)> {
         match *self.id.get_mut() {
             ID_UNINIT => None,
+            // SAFETY: Untriaged.
             id => Some((id as abi::ID, unsafe { (&mut *self.extra.get()).assume_init_mut() })),
         }
     }
 
     #[inline]
     pub unsafe fn get_unchecked(&self) -> (abi::ID, &T) {
+        // SAFETY: Untriaged.
         (self.id.load(Ordering::Acquire) as abi::ID, unsafe {
             (&*self.extra.get()).assume_init_ref()
         })
@@ -100,6 +107,7 @@ impl<T> SpinIdOnceCell<T> {
         debug_assert!(usize::try_from(id).is_ok());
         let id = id as usize;
 
+        // SAFETY: Untriaged.
         unsafe { *self.extra.get() = MaybeUninit::new(extra) };
         self.id.store(id, Ordering::Release);
     }
@@ -125,6 +133,7 @@ impl<T> SpinIdOnceCell<T> {
         debug_assert!(self.get().is_some());
 
         // Safety: The inner value has been initialized
+        // SAFETY: Untriaged.
         Ok(unsafe { self.get_unchecked() })
     }
 
@@ -143,6 +152,7 @@ impl<T> SpinIdOnceCell<T> {
 
                 // Store the initialized contents. Use the release ordering to
                 // make sure the write is visible to the callers of `get`.
+                // SAFETY: Untriaged.
                 unsafe { *self.extra.get() = MaybeUninit::new(initialized_extra) };
                 self.id.store(initialized_id, Ordering::Release);
             }
@@ -155,6 +165,7 @@ impl<T> Drop for SpinIdOnceCell<T> {
     #[inline]
     fn drop(&mut self) {
         if self.get_mut().is_some() {
+            // SAFETY: Untriaged.
             unsafe { (&mut *self.extra.get()).assume_init_drop() };
         }
     }

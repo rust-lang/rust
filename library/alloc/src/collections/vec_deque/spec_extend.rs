@@ -57,6 +57,7 @@ where
             );
             self.reserve(additional);
 
+            // SAFETY: Untriaged.
             let written = unsafe {
                 self.write_iter_wrapping(self.to_wrapped_index(self.len), iter, additional)
             };
@@ -82,6 +83,7 @@ impl<T, A1: Allocator, A2: Allocator> SpecExtend<T, vec::IntoIter<T, A2>> for Ve
         let slice = iterator.as_slice();
         self.reserve(slice.len());
 
+        // SAFETY: Untriaged.
         unsafe {
             self.copy_slice(self.to_wrapped_index(self.len), slice);
             self.len += slice.len();
@@ -108,6 +110,7 @@ where
         let slice = iterator.as_slice();
         self.reserve(slice.len());
 
+        // SAFETY: Untriaged.
         unsafe {
             self.copy_slice(self.to_wrapped_index(self.len), slice);
             self.len += slice.len();
@@ -213,6 +216,7 @@ impl<'a, T, A1: Allocator, A2: Allocator> SpecExtendFront<T, Drain<'a, T, A2>> f
         }
 
         self.reserve(iter.remaining);
+        // SAFETY: Untriaged.
         unsafe {
             // SAFETY: iter.remaining != 0.
             let (left, right) = iter.as_slices();
@@ -240,6 +244,7 @@ impl<'a, T, A1: Allocator, A2: Allocator> SpecExtendFront<T, Rev<Drain<'a, T, A2
         }
 
         self.reserve(iter.remaining);
+        // SAFETY: Untriaged.
         unsafe {
             // SAFETY: iter.remaining != 0.
             let (left, right) = iter.as_slices();
@@ -262,6 +267,7 @@ impl<'a, T, A1: Allocator, A2: Allocator> SpecExtendFront<T, Rev<Drain<'a, T, A2
 /// - `deque` must have space for `slice.len()` new elements.
 /// - Elements of `slice` will be copied into the deque, make sure to forget the elements if `T` is not `Copy`.
 unsafe fn prepend<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
+    // SAFETY: Untriaged.
     unsafe {
         deque.head = deque.wrap_sub(deque.head, slice.len());
         deque.copy_slice(deque.head, slice);
@@ -276,6 +282,7 @@ unsafe fn prepend<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
 /// - `deque` must have space for `slice.len()` new elements.
 /// - Elements of `slice` will be copied into the deque, make sure to forget the elements if `T` is not `Copy`.
 unsafe fn prepend_reversed<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
+    // SAFETY: Untriaged.
     unsafe {
         deque.head = deque.wrap_sub(deque.head, slice.len());
         deque.copy_slice_reversed(deque.head, slice);

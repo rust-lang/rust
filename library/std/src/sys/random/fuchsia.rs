@@ -9,5 +9,6 @@ unsafe extern "C" {
 }
 
 pub fn fill_bytes(bytes: &mut [u8]) {
+    // SAFETY: Untriaged.
     unsafe { zx_cprng_draw(bytes.as_mut_ptr(), bytes.len()) }
 }

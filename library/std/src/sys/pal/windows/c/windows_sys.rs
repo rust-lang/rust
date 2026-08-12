@@ -175,6 +175,7 @@ pub struct ADDRINFOA {
 }
 impl Default for ADDRINFOA {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -194,6 +195,7 @@ pub union ARM64_NT_NEON128 {
 }
 impl Default for ARM64_NT_NEON128 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -229,6 +231,7 @@ pub struct CONDITION_VARIABLE {
 }
 impl Default for CONDITION_VARIABLE {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -274,6 +277,7 @@ pub struct CONTEXT {
 #[cfg(target_arch = "x86")]
 impl Default for CONTEXT {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -331,6 +335,7 @@ pub struct CONTEXT {
 #[cfg(any(target_arch = "arm64ec", target_arch = "x86_64"))]
 impl Default for CONTEXT {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -344,6 +349,7 @@ pub union CONTEXT_0 {
 #[cfg(any(target_arch = "arm64ec", target_arch = "x86_64"))]
 impl Default for CONTEXT_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -373,6 +379,7 @@ pub struct CONTEXT_0_0 {
 #[cfg(any(target_arch = "arm64ec", target_arch = "x86_64"))]
 impl Default for CONTEXT_0_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -396,6 +403,7 @@ pub struct CONTEXT {
 #[cfg(target_arch = "aarch64")]
 impl Default for CONTEXT {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -409,6 +417,7 @@ pub union CONTEXT_0 {
 #[cfg(target_arch = "aarch64")]
 impl Default for CONTEXT_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2369,6 +2378,7 @@ pub struct EXCEPTION_POINTERS {
 }
 impl Default for EXCEPTION_POINTERS {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2384,6 +2394,7 @@ pub struct EXCEPTION_RECORD {
 }
 impl Default for EXCEPTION_RECORD {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2407,6 +2418,7 @@ pub struct FD_SET {
 }
 impl Default for FD_SET {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2536,6 +2548,7 @@ pub struct FILE_ID_BOTH_DIR_INFO {
 }
 impl Default for FILE_ID_BOTH_DIR_INFO {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2587,6 +2600,7 @@ pub struct FILE_RENAME_INFO {
 }
 impl Default for FILE_RENAME_INFO {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2598,6 +2612,7 @@ pub union FILE_RENAME_INFO_0 {
 }
 impl Default for FILE_RENAME_INFO_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2611,6 +2626,7 @@ pub struct FILE_RENAME_INFORMATION {
 }
 impl Default for FILE_RENAME_INFORMATION {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2622,6 +2638,7 @@ pub union FILE_RENAME_INFORMATION_0 {
 }
 impl Default for FILE_RENAME_INFORMATION_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2677,6 +2694,7 @@ pub struct FLOATING_SAVE_AREA {
 #[cfg(target_arch = "x86")]
 impl Default for FLOATING_SAVE_AREA {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2697,6 +2715,7 @@ pub struct FLOATING_SAVE_AREA {
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "x86_64"))]
 impl Default for FLOATING_SAVE_AREA {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2783,6 +2802,7 @@ pub struct IN6_ADDR {
 }
 impl Default for IN6_ADDR {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2794,6 +2814,7 @@ pub union IN6_ADDR_0 {
 }
 impl Default for IN6_ADDR_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2807,6 +2828,7 @@ pub union INIT_ONCE {
 }
 impl Default for INIT_ONCE {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2820,6 +2842,7 @@ pub struct IN_ADDR {
 }
 impl Default for IN_ADDR {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2832,6 +2855,7 @@ pub union IN_ADDR_0 {
 }
 impl Default for IN_ADDR_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2859,6 +2883,7 @@ pub struct IO_STATUS_BLOCK {
 }
 impl Default for IO_STATUS_BLOCK {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2870,6 +2895,7 @@ pub union IO_STATUS_BLOCK_0 {
 }
 impl Default for IO_STATUS_BLOCK_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2921,6 +2947,7 @@ pub struct IPV6_MREQ {
 }
 impl Default for IPV6_MREQ {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -2936,6 +2963,7 @@ pub struct IP_MREQ {
 }
 impl Default for IP_MREQ {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3027,6 +3055,7 @@ pub struct OBJECT_ATTRIBUTES {
 }
 impl Default for OBJECT_ATTRIBUTES {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3053,6 +3082,7 @@ pub struct OVERLAPPED {
 }
 impl Default for OVERLAPPED {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3064,6 +3094,7 @@ pub union OVERLAPPED_0 {
 }
 impl Default for OVERLAPPED_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3110,6 +3141,7 @@ pub struct PROCESS_INFORMATION {
 }
 impl Default for PROCESS_INFORMATION {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3146,6 +3178,7 @@ pub struct SECURITY_ATTRIBUTES {
 }
 impl Default for SECURITY_ATTRIBUTES {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3164,6 +3197,7 @@ pub struct SECURITY_DESCRIPTOR {
 }
 impl Default for SECURITY_DESCRIPTOR {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3192,6 +3226,7 @@ pub struct SOCKADDR {
 }
 impl Default for SOCKADDR {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3205,6 +3240,7 @@ pub struct SOCKADDR_STORAGE {
 }
 impl Default for SOCKADDR_STORAGE {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3216,6 +3252,7 @@ pub struct SOCKADDR_UN {
 }
 impl Default for SOCKADDR_UN {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3241,6 +3278,7 @@ pub struct SRWLOCK {
 }
 impl Default for SRWLOCK {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3272,6 +3310,7 @@ pub struct STARTUPINFOEXW {
 }
 impl Default for STARTUPINFOEXW {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3299,6 +3338,7 @@ pub struct STARTUPINFOW {
 }
 impl Default for STARTUPINFOW {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3339,6 +3379,7 @@ pub struct SYSTEM_INFO {
 }
 impl Default for SYSTEM_INFO {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3350,6 +3391,7 @@ pub union SYSTEM_INFO_0 {
 }
 impl Default for SYSTEM_INFO_0 {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3405,6 +3447,7 @@ pub struct UNICODE_STRING {
 }
 impl Default for UNICODE_STRING {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3436,6 +3479,7 @@ pub struct WIN32_FIND_DATAW {
 }
 impl Default for WIN32_FIND_DATAW {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3452,6 +3496,7 @@ pub struct WSABUF {
 }
 impl Default for WSABUF {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3470,6 +3515,7 @@ pub struct WSADATA {
 #[cfg(target_arch = "x86")]
 impl Default for WSADATA {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3488,6 +3534,7 @@ pub struct WSADATA {
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "x86_64"))]
 impl Default for WSADATA {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3553,6 +3600,7 @@ pub struct WSAPROTOCOLCHAIN {
 }
 impl Default for WSAPROTOCOLCHAIN {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3582,6 +3630,7 @@ pub struct WSAPROTOCOL_INFOW {
 }
 impl Default for WSAPROTOCOL_INFOW {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3657,6 +3706,7 @@ pub struct XSAVE_FORMAT {
 #[cfg(target_arch = "x86")]
 impl Default for XSAVE_FORMAT {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }
@@ -3684,6 +3734,7 @@ pub struct XSAVE_FORMAT {
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "x86_64"))]
 impl Default for XSAVE_FORMAT {
     fn default() -> Self {
+        // SAFETY: Untriaged.
         unsafe { core::mem::zeroed() }
     }
 }

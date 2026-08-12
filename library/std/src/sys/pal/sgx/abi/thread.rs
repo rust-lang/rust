@@ -9,6 +9,7 @@ pub fn current() -> Tcs {
     unsafe extern "C" {
         fn get_tcs_addr() -> *mut u8;
     }
+    // SAFETY: Untriaged.
     let addr = unsafe { get_tcs_addr() };
     match Tcs::new(addr) {
         Some(tcs) => tcs,

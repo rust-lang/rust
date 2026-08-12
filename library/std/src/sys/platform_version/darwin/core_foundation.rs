@@ -44,6 +44,7 @@ macro_rules! dlsym_fn {
         unsafe fn $name:ident($($param:ident: $param_ty:ty),* $(,)?) $(-> $ret:ty)?;
     ) => {
         pub(super) unsafe fn $name(&self, $($param: $param_ty),*) $(-> $ret)? {
+// SAFETY: Untriaged.
             let ptr = unsafe {
                 libc::dlsym(
                     self.0,
@@ -51,6 +52,7 @@ macro_rules! dlsym_fn {
                 )
             };
             if ptr.is_null() {
+// SAFETY: Untriaged.
                 let err = unsafe { CStr::from_ptr(libc::dlerror()) };
                 panic!("could not find function {}: {err:?}", stringify!($name));
             }
@@ -77,12 +79,14 @@ impl CFHandle {
         let cf_path =
             root_relative("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
 
+        // SAFETY: Untriaged.
         let handle = run_path_with_cstr(&cf_path, &|path| unsafe {
             Ok(libc::dlopen(path.as_ptr(), libc::RTLD_LAZY | libc::RTLD_LOCAL))
         })
         .expect("failed allocating string");
 
         if handle.is_null() {
+            // SAFETY: Untriaged.
             let err = unsafe { CStr::from_ptr(libc::dlerror()) };
             panic!("could not open CoreFoundation.framework: {err:?}");
         }
@@ -92,11 +96,14 @@ impl CFHandle {
 
     pub(super) fn kCFAllocatorNull(&self) -> CFAllocatorRef {
         // Available: in all CF versions.
+        // SAFETY: Untriaged.
         let static_ptr = unsafe { libc::dlsym(self.0, c"kCFAllocatorNull".as_ptr()) };
         if static_ptr.is_null() {
+            // SAFETY: Untriaged.
             let err = unsafe { CStr::from_ptr(libc::dlerror()) };
             panic!("could not find kCFAllocatorNull: {err:?}");
         }
+        // SAFETY: Untriaged.
         unsafe { *static_ptr.cast() }
     }
 
@@ -175,6 +182,7 @@ impl Drop for CFHandle {
     fn drop(&mut self) {
         // Ignore errors when closing. This is also what `libloading` does:
         // https://docs.rs/libloading/0.8.6/src/libloading/os/unix/mod.rs.html#374
+        // SAFETY: Untriaged.
         let _ = unsafe { libc::dlclose(self.0) };
     }
 }

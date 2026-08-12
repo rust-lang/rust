@@ -369,6 +369,7 @@ pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>>
 
     match &path[..] {
         // `\\?\C:\...` => `C:\...`
+        // SAFETY: Untriaged.
         [SEP, SEP, QUERY, SEP, _, COLON, SEP, ..] => unsafe {
             let lpfilename = path[4..].as_ptr();
             fill_utf16_buf(
@@ -385,6 +386,7 @@ pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>>
             )
         },
         // `\\?\UNC\...` => `\\...`
+        // SAFETY: Untriaged.
         [SEP, SEP, QUERY, SEP, U, N, C, SEP, ..] => unsafe {
             // Change the `C` in `UNC\` to `\` so we can get a slice that starts with `\\`.
             path[6] = b'\\' as u16;

@@ -83,6 +83,7 @@ impl Buf {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self { inner: String::from_utf8_unchecked(s) } }
     }
 
@@ -168,11 +169,13 @@ impl Buf {
 
     #[inline]
     pub fn into_box(self) -> Box<Slice> {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(self.inner.into_boxed_str()) }
     }
 
     #[inline]
     pub fn from_box(boxed: Box<Slice>) -> Buf {
+        // SAFETY: Untriaged.
         let inner: Box<str> = unsafe { mem::transmute(boxed) };
         Buf { inner: inner.into_string() }
     }
@@ -209,6 +212,7 @@ impl Buf {
     /// `other` must be valid UTF-8.
     #[inline]
     pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
+        // SAFETY: Untriaged.
         self.inner.push_str(unsafe { str::from_utf8_unchecked(other) });
     }
 }
@@ -221,6 +225,7 @@ impl Slice {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
+        // SAFETY: Untriaged.
         Slice::from_str(unsafe { str::from_utf8_unchecked(s) })
     }
 
@@ -273,24 +278,28 @@ impl Slice {
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
         let boxed: Box<str> = self.inner.into();
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(boxed) }
     }
 
     #[inline]
     pub fn empty_box() -> Box<Slice> {
         let boxed: Box<str> = Default::default();
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(boxed) }
     }
 
     #[inline]
     pub fn into_arc(&self) -> Arc<Slice> {
         let arc: Arc<str> = Arc::from(&self.inner);
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
     }
 
     #[inline]
     pub fn into_rc(&self) -> Rc<Slice> {
         let rc: Rc<str> = Rc::from(&self.inner);
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 

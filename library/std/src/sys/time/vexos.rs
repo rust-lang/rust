@@ -5,6 +5,7 @@ pub struct Instant(Duration);
 
 impl Instant {
     pub fn now() -> Instant {
+        // SAFETY: Untriaged.
         let micros = unsafe { vex_sdk::vexSystemHighResTimeGet() };
         Self(Duration::from_micros(micros))
     }

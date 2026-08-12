@@ -55,6 +55,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     // Only returns pointers to the slices, as that's all we need
     // to drop them. May only be called if `self.remaining != 0`.
     pub(super) unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
+        // SAFETY: Untriaged.
         unsafe {
             let deque = self.deque.as_ref();
 
@@ -98,6 +99,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         let guard = DropGuard(self);
 
         if mem::needs_drop::<T>() && guard.0.remaining != 0 {
+            // SAFETY: Untriaged.
             unsafe {
                 // SAFETY: We just checked that `self.remaining != 0`.
                 let (front, back) = guard.0.as_slices();
@@ -115,6 +117,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             #[inline]
             fn drop(&mut self) {
                 if mem::needs_drop::<T>() && self.0.remaining != 0 {
+                    // SAFETY: Untriaged.
                     unsafe {
                         // SAFETY: We just checked that `self.remaining != 0`.
                         let (front, back) = self.0.as_slices();
@@ -123,6 +126,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                     }
                 }
 
+                // SAFETY: Untriaged.
                 let source_deque = unsafe { self.0.deque.as_mut() };
 
                 let drain_len = self.0.drain_len;
@@ -212,6 +216,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                             len = tail_len;
                         };
 
+                        // SAFETY: Untriaged.
                         unsafe {
                             source_deque.wrap_copy(src, dst, len);
                         }
@@ -241,9 +246,11 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
         if self.remaining == 0 {
             return None;
         }
+        // SAFETY: Untriaged.
         let wrapped_idx = unsafe { self.deque.as_ref().to_wrapped_index(self.idx) };
         self.idx += 1;
         self.remaining -= 1;
+        // SAFETY: Untriaged.
         Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 
@@ -263,7 +270,9 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
         }
         self.remaining -= 1;
         let wrapped_idx =
+// SAFETY: Untriaged.
             unsafe { self.deque.as_ref().to_wrapped_index(self.idx + self.remaining) };
+        // SAFETY: Untriaged.
         Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 }

@@ -188,6 +188,7 @@ impl Builder {
         F: Send + 'static,
         T: Send + 'static,
     {
+        // SAFETY: Untriaged.
         unsafe { self.spawn_unchecked(f) }
     }
 
@@ -258,6 +259,7 @@ impl Builder {
         T: Send,
     {
         let Builder { name, stack_size, no_hooks } = self;
+        // SAFETY: Untriaged.
         Ok(JoinHandle(unsafe { spawn_unchecked(name, stack_size, no_hooks, None, f) }?))
     }
 }

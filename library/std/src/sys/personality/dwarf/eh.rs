@@ -70,6 +70,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
 
     let func_start = context.func_start;
     let mut reader = DwarfReader::new(lsda);
+    // SAFETY: Untriaged.
     let lpad_base = unsafe {
         let start_encoding = reader.read::<u8>();
         // base address for landing pad offsets
@@ -79,6 +80,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
             func_start
         }
     };
+    // SAFETY: Untriaged.
     let call_site_encoding = unsafe {
         let ttype_encoding = reader.read::<u8>();
         if ttype_encoding != DW_EH_PE_omit {
@@ -88,6 +90,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
 
         reader.read::<u8>()
     };
+    // SAFETY: Untriaged.
     let action_table = unsafe {
         let call_site_table_length = reader.read_uleb128();
         reader.ptr.add(call_site_table_length as usize)
@@ -97,6 +100,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
     if !USING_SJLJ_EXCEPTIONS {
         // read the callsite table
         while reader.ptr < action_table {
+            // SAFETY: Untriaged.
             unsafe {
                 // these are offsets rather than pointers;
                 let cs_start = read_encoded_offset(&mut reader, call_site_encoding)?;
@@ -131,7 +135,9 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
         }
         let mut idx = ip.addr();
         loop {
+            // SAFETY: Untriaged.
             let cs_lpad = unsafe { reader.read_uleb128() };
+            // SAFETY: Untriaged.
             let cs_action_entry = unsafe { reader.read_uleb128() };
             idx -= 1;
             if idx == 0 {
@@ -139,6 +145,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
                 // been indicated by a -1 call site index.
                 // FIXME(strict provenance)
                 let lpad = ptr::with_exposed_provenance((cs_lpad + 1) as usize);
+                // SAFETY: Untriaged.
                 return Ok(unsafe { interpret_cs_action(action_table, cs_action_entry, lpad) });
             }
         }
@@ -157,8 +164,10 @@ unsafe fn interpret_cs_action(
     } else {
         // If lpad != 0 and cs_action_entry != 0, we have to check ttype_index.
         // If ttype_index == 0 under the condition, we take cleanup action.
+        // SAFETY: Untriaged.
         let action_record = unsafe { action_table.offset(cs_action_entry as isize - 1) };
         let mut action_reader = DwarfReader::new(action_record);
+        // SAFETY: Untriaged.
         let ttype_index = unsafe { action_reader.read_sleb128() };
         if ttype_index == 0 {
             EHAction::Cleanup(lpad)
@@ -192,6 +201,7 @@ unsafe fn read_encoded_offset(reader: &mut DwarfReader, encoding: u8) -> Result<
     if encoding == DW_EH_PE_omit || encoding & 0xF0 != 0 {
         return Err(());
     }
+    // SAFETY: Untriaged.
     let result = unsafe {
         match encoding & 0x0F {
             // despite the name, LLVM also uses absptr for offsets instead of pointers
@@ -257,13 +267,16 @@ unsafe fn read_encoded_pointer(
         if encoding & 0x0F != DW_EH_PE_absptr {
             return Err(());
         }
+        // SAFETY: Untriaged.
         unsafe { reader.read::<*const u8>() }
     } else {
+        // SAFETY: Untriaged.
         let offset = unsafe { read_encoded_offset(reader, encoding & 0x0F)? };
         base_ptr.wrapping_add(offset)
     };
 
     if encoding & DW_EH_PE_indirect != 0 {
+        // SAFETY: Untriaged.
         ptr = unsafe { *(ptr.cast::<*const u8>()) };
     }
 

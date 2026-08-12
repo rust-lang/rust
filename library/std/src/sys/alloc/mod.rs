@@ -126,8 +126,10 @@ cfg_select! {
     ) => {
         #[inline]
         pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+// SAFETY: Untriaged.
             let ptr = unsafe { alloc(layout) };
             if !ptr.is_null() {
+// SAFETY: Untriaged.
                 unsafe { ptr.write_bytes(0, layout.size()) };
             }
             ptr

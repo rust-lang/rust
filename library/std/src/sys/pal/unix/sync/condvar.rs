@@ -25,6 +25,7 @@ impl Condvar {
     /// `init` must have been called on this instance.
     #[inline]
     pub unsafe fn notify_one(self: Pin<&Self>) {
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_cond_signal(self.raw()) };
         debug_assert_eq!(r, 0);
     }
@@ -33,6 +34,7 @@ impl Condvar {
     /// `init` must have been called on this instance.
     #[inline]
     pub unsafe fn notify_all(self: Pin<&Self>) {
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_cond_broadcast(self.raw()) };
         debug_assert_eq!(r, 0);
     }
@@ -43,6 +45,7 @@ impl Condvar {
     /// * This condition variable may only be used with the same mutex.
     #[inline]
     pub unsafe fn wait(self: Pin<&Self>, mutex: Pin<&Mutex>) {
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_cond_wait(self.raw(), mutex.raw()) };
         debug_assert_eq!(r, 0);
     }
@@ -75,6 +78,7 @@ impl Condvar {
         #[cfg(any(target_os = "nto", target_os = "qnx"))]
         let timeout = timeout.and_then(|t| t.to_timespec_capped()).unwrap_or(TIMESPEC_MAX_CAPPED);
 
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_cond_timedwait(self.raw(), mutex, &timeout) };
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
@@ -126,6 +130,7 @@ impl Condvar {
             TIMESPEC_MAX
         };
 
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_cond_timedwait_relative_np(self.raw(), mutex, &timeout) };
         assert!(r == libc::ETIMEDOUT || r == 0);
         // Report clamping as a spurious wakeup. Who knows, maybe some
@@ -155,6 +160,7 @@ impl Condvar {
         struct AttrGuard<'a>(pub &'a mut MaybeUninit<libc::pthread_condattr_t>);
         impl Drop for AttrGuard<'_> {
             fn drop(&mut self) {
+                // SAFETY: Untriaged.
                 unsafe {
                     let result = libc::pthread_condattr_destroy(self.0.as_mut_ptr());
                     assert_eq!(result, 0);
@@ -162,6 +168,7 @@ impl Condvar {
             }
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             let mut attr = MaybeUninit::<libc::pthread_condattr_t>::uninit();
             let r = libc::pthread_condattr_init(attr.as_mut_ptr());
@@ -210,6 +217,7 @@ impl Condvar {
             // So on that platform, init() should always be called.
             //
             // Similar story for the 3DS (horizon) and for TEEOS.
+            // SAFETY: Untriaged.
             let r = unsafe { libc::pthread_cond_init(self.raw(), crate::ptr::null()) };
             assert_eq!(r, 0);
         }
@@ -224,6 +232,7 @@ unsafe impl Send for Condvar {}
 impl Drop for Condvar {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         let r = unsafe { libc::pthread_cond_destroy(self.raw()) };
         if cfg!(target_os = "dragonfly") {
             // On DragonFly pthread_cond_destroy() returns EINVAL if called on

@@ -17,6 +17,7 @@ pub extern "C" fn motor_start() -> ! {
     unsafe extern "C" {
         fn main(_: isize, _: *const *const u8, _: u8) -> i32;
     }
+    // SAFETY: Untriaged.
     let result = unsafe { main(0, core::ptr::null(), 0) };
 
     // Terminate the process.

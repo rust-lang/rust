@@ -87,6 +87,7 @@ impl Tcp {
             Self::V4(client) => {
                 let temp = client.get_mode_data()?;
                 match NonNull::new(temp.control_option) {
+                    // SAFETY: Untriaged.
                     Some(x) => unsafe { Ok(x.as_ref().enable_nagle.into()) },
                     None => unsupported(),
                 }

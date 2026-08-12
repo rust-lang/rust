@@ -309,6 +309,7 @@ impl Drop for WaiterQueue<'_> {
 
         // Walk the entire linked list of waiters and wake them up (in lifo
         // order, last to register is first to wake up).
+        // SAFETY: Untriaged.
         unsafe {
             // Right after setting `node.signaled = true` the other thread may
             // free `node` if there happens to be has a spurious wakeup.

@@ -30,11 +30,13 @@ impl Condvar {
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let guard = self.get().lock();
+        // SAFETY: Untriaged.
         WaitQueue::wait(guard, || unsafe { mutex.unlock() });
         mutex.lock()
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+        // SAFETY: Untriaged.
         let success = WaitQueue::wait_timeout(self.get(), dur, || unsafe { mutex.unlock() });
         mutex.lock();
         success

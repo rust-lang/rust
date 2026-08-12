@@ -327,6 +327,7 @@ impl Backtrace {
         let mut frames = Vec::new();
         let mut actual_start = None;
         set_image_base();
+        // SAFETY: Untriaged.
         unsafe {
             backtrace_rs::trace_unsynchronized(|frame| {
                 frames.push(BacktraceFrame {
@@ -446,6 +447,7 @@ mod helper {
                     #[cfg(test)]
                     RawFrame::Fake => unimplemented!(),
                 };
+                // SAFETY: Untriaged.
                 unsafe {
                     backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
                         symbols.push(BacktraceSymbol {

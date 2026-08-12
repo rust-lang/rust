@@ -10,6 +10,7 @@ pub fn args() -> Args {
 }
 
 fn maybe_args() -> Option<Vec<OsString>> {
+    // SAFETY: Untriaged.
     unsafe {
         let (argc, buf_size) = wasip1::args_sizes_get().ok()?;
         let mut argv = Vec::with_capacity(argc);

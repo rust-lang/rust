@@ -25,6 +25,7 @@ pub fn run_with_cstr<T>(bytes: &[u8], f: &dyn Fn(&CStr) -> io::Result<T>) -> io:
     if bytes.len() >= MAX_STACK_ALLOCATION {
         run_with_cstr_allocating(bytes, f)
     } else {
+        // SAFETY: Untriaged.
         unsafe { run_with_cstr_stack(bytes, f) }
     }
 }
@@ -39,11 +40,13 @@ unsafe fn run_with_cstr_stack<T>(
     let mut buf = MaybeUninit::<[u8; MAX_STACK_ALLOCATION]>::uninit();
     let buf_ptr = buf.as_mut_ptr() as *mut u8;
 
+    // SAFETY: Untriaged.
     unsafe {
         ptr::copy_nonoverlapping(bytes.as_ptr(), buf_ptr, bytes.len());
         buf_ptr.add(bytes.len()).write(0);
     }
 
+    // SAFETY: Untriaged.
     match CStr::from_bytes_with_nul(unsafe { slice::from_raw_parts(buf_ptr, bytes.len() + 1) }) {
         Ok(s) => f(s),
         Err(_) => Err(NUL_ERR),

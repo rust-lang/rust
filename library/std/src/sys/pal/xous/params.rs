@@ -93,6 +93,7 @@ pub(super) unsafe fn set(data: *mut u8) {
 pub(crate) fn get() -> Option<ApplicationParameters> {
     // SAFETY: See above.
     let data = unsafe { PARAMS };
+    // SAFETY: Untriaged.
     unsafe { ApplicationParameters::new_from_ptr(data) }
 }
 
@@ -117,13 +118,17 @@ impl ApplicationParameters {
             return None;
         }
 
+        // SAFETY: Untriaged.
         let magic = unsafe { core::slice::from_raw_parts(data, 4) };
+        // SAFETY: Untriaged.
         let block_length = unsafe {
             u32::from_le_bytes(slice::from_raw_parts(data.add(4), 4).try_into().ok()?) as usize
         };
+        // SAFETY: Untriaged.
         let data_length = unsafe {
             u32::from_le_bytes(slice::from_raw_parts(data.add(8), 4).try_into().ok()?) as usize
         };
+        // SAFETY: Untriaged.
         let entries = unsafe {
             u32::from_le_bytes(slice::from_raw_parts(data.add(12), 4).try_into().ok()?) as usize
         };
@@ -133,6 +138,7 @@ impl ApplicationParameters {
             return None;
         }
 
+        // SAFETY: Untriaged.
         let data = unsafe { slice::from_raw_parts(data, data_length) };
 
         Some(ApplicationParameters { data, offset: 0, _entries: entries })

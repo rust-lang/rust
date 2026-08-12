@@ -31,6 +31,7 @@ impl Thread {
         // Allocate the whole thing, then divide it up after the fact. This ensures that
         // even if there's a context switch during this function, the whole stack plus
         // guard pages will remain contiguous.
+        // SAFETY: Untriaged.
         let stack_plus_guard_pages: &mut [u8] = unsafe {
             map_memory(
                 None,
@@ -43,6 +44,7 @@ impl Thread {
 
         // No access to this page. Note: Write-only pages are illegal, and will
         // cause an access violation.
+        // SAFETY: Untriaged.
         unsafe {
             update_memory_flags(&mut stack_plus_guard_pages[0..GUARD_PAGE_SIZE], MemoryFlags::W)
                 .map_err(|code| io::Error::from_raw_os_error(code as i32))?
@@ -50,6 +52,7 @@ impl Thread {
 
         // No access to this page. Note: Write-only pages are illegal, and will
         // cause an access violation.
+        // SAFETY: Untriaged.
         unsafe {
             update_memory_flags(
                 &mut stack_plus_guard_pages[(GUARD_PAGE_SIZE + stack_size)..],
@@ -91,6 +94,7 @@ impl Thread {
 
             // Destroy TLS, which will free the TLS page and call the destructor for
             // any thread local storage (if any).
+            // SAFETY: Untriaged.
             unsafe {
                 crate::sys::thread_local::key::destroy_tls();
             }
@@ -100,6 +104,7 @@ impl Thread {
             // which tells the kernel to deallocate this thread.
             let mapped_memory_base = guard_page_pre;
             let mapped_memory_length = GUARD_PAGE_SIZE + stack_size + GUARD_PAGE_SIZE;
+            // SAFETY: Untriaged.
             unsafe {
                 asm!(
                     "ecall",
@@ -123,6 +128,7 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // We're unicore right now.
+    // SAFETY: Untriaged.
     Ok(unsafe { NonZero::new_unchecked(1) })
 }
 

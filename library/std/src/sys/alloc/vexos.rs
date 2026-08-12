@@ -23,6 +23,7 @@ unsafe impl dlmalloc::Allocator for Vexos {
         if !INIT.swap(true, Ordering::Relaxed) {
             // This target has no growable heap, as user memory has a fixed
             // size/location and VEXos does not manage allocation for us.
+            // SAFETY: Untriaged.
             unsafe {
                 (
                     (&raw mut __heap_start).cast::<u8>(),

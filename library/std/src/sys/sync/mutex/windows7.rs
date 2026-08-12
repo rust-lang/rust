@@ -37,6 +37,7 @@ impl Mutex {
 
     #[inline]
     pub fn lock(&self) {
+        // SAFETY: Untriaged.
         unsafe {
             c::AcquireSRWLockExclusive(raw(self));
         }
@@ -44,6 +45,7 @@ impl Mutex {
 
     #[inline]
     pub fn try_lock(&self) -> bool {
+        // SAFETY: Untriaged.
         unsafe { c::TryAcquireSRWLockExclusive(raw(self)) }
     }
 

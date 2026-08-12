@@ -450,6 +450,7 @@ impl<T> [T] {
                 // allocated above with the capacity of `s`, and initialize to `s.len()` in
                 // ptr::copy_to_non_overlapping below.
                 if len > 0 {
+                    // SAFETY: Untriaged.
                     unsafe {
                         s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), len);
                         v.set_len(len);
@@ -479,6 +480,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+        // SAFETY: Untriaged.
         unsafe {
             let len = self.len();
             let (b, alloc) = Box::into_raw_with_allocator(self);
@@ -531,6 +533,7 @@ impl<T> [T] {
             // If `m > 0`, there are remaining bits up to the leftmost '1'.
             while m > 0 {
                 // `buf.extend(buf)`:
+                // SAFETY: Untriaged.
                 unsafe {
                     ptr::copy_nonoverlapping::<T>(
                         buf.as_ptr(),
@@ -551,6 +554,7 @@ impl<T> [T] {
         let rem_len = capacity - buf.len(); // `self.len() * rem`
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
+            // SAFETY: Untriaged.
             unsafe {
                 // This is non-overlapping since `2^expn > rem`.
                 ptr::copy_nonoverlapping::<T>(

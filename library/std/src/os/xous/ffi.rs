@@ -29,6 +29,7 @@ fn lend_mut_impl(
     let a6 = arg1;
     let a7 = arg2;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -93,6 +94,7 @@ fn lend_impl(
     let mut ret1;
     let mut ret2;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -148,6 +150,7 @@ fn scalar_impl(connection: Connection, args: [usize; 5], blocking: bool) -> Resu
     let a6 = args[3];
     let a7 = args[4];
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -195,6 +198,7 @@ fn blocking_scalar_impl(
     let a6 = args[3];
     let a7 = args[4];
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -252,6 +256,7 @@ fn connect_impl(address: ServerAddress, blocking: bool) -> Result<Connection, Er
     let mut result: usize;
     let mut value: usize;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -304,6 +309,7 @@ pub(crate) fn exit(return_code: u32) -> ! {
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -333,6 +339,7 @@ pub(crate) fn do_yield() {
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -378,6 +385,7 @@ pub(crate) unsafe fn map_memory<T>(
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -397,7 +405,9 @@ pub(crate) unsafe fn map_memory<T>(
     if result == SyscallResult::MemoryRange as usize {
         let start = a1_out;
         let len = a2_out / size_of::<T>();
+        // SAFETY: Untriaged.
         let end = unsafe { start.add(len) };
+        // SAFETY: Untriaged.
         Ok(unsafe { core::slice::from_raw_parts_mut(start, len) })
     } else if result == SyscallResult::Error as usize {
         Err(a1_out.addr().into())
@@ -420,6 +430,7 @@ pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -467,6 +478,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -511,6 +523,7 @@ pub(crate) unsafe fn create_thread<T>(
     let a6 = arg2;
     let a7 = arg3;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -547,6 +560,7 @@ pub(crate) fn join_thread(thread_id: ThreadId) -> Result<usize, Error> {
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -587,6 +601,7 @@ pub(crate) fn thread_id() -> Result<ThreadId, Error> {
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",
@@ -630,6 +645,7 @@ pub(crate) fn adjust_limit(knob: Limits, current: usize, new: usize) -> Result<u
     let a6 = 0;
     let a7 = 0;
 
+    // SAFETY: Untriaged.
     unsafe {
         core::arch::asm!(
             "ecall",

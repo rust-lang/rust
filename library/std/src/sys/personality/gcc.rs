@@ -112,6 +112,7 @@ cfg_select! {
             exception_object: *mut uw::_Unwind_Exception,
             context: *mut uw::_Unwind_Context,
         ) -> uw::_Unwind_Reason_Code {
+// SAFETY: Untriaged.
             unsafe {
                 let state = state as c_int;
                 let action = state & uw::_US_ACTION_MASK as c_int;
@@ -185,6 +186,7 @@ cfg_select! {
                     exception_object: *mut uw::_Unwind_Exception,
                     context: *mut uw::_Unwind_Context,
                 ) -> uw::_Unwind_Reason_Code {
+// SAFETY: Untriaged.
                     unsafe {
                         if __gnu_unwind_frame(exception_object, context) == uw::_URC_NO_REASON {
                             uw::_URC_CONTINUE_UNWIND
@@ -211,6 +213,7 @@ cfg_select! {
                     // DWARF register number for SP on AArch64.
                     const SP_REG: i32 = 31;
 
+// SAFETY: Untriaged.
                     unsafe {
                         let sp = uw::_Unwind_GetGR(context, SP_REG).addr() as u64;
                         let mut addr = lpad.addr();
@@ -242,6 +245,7 @@ cfg_select! {
             exception_object: *mut uw::_Unwind_Exception,
             context: *mut uw::_Unwind_Context,
         ) -> uw::_Unwind_Reason_Code {
+// SAFETY: Untriaged.
             unsafe {
                 if version != 1 {
                     return uw::_URC_FATAL_PHASE1_ERROR;
@@ -351,6 +355,7 @@ cfg_select! {
 }
 
 unsafe fn find_eh_action(context: *mut uw::_Unwind_Context) -> Result<EHAction, ()> {
+    // SAFETY: Untriaged.
     unsafe {
         let lsda = uw::_Unwind_GetLanguageSpecificData(context) as *const u8;
         let mut ip_before_instr: c_int = 0;

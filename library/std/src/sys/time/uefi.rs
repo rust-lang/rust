@@ -154,12 +154,15 @@ mod instant_internal {
                 helpers::open_protocol(handle, timestamp::PROTOCOL_GUID).ok()?;
             let mut properties: MaybeUninit<timestamp::Properties> = MaybeUninit::uninit();
 
+            // SAFETY: Untriaged.
             let r = unsafe { ((*protocol.as_ptr()).get_properties)(properties.as_mut_ptr()) };
             if r.is_error() {
                 return None;
             }
 
+            // SAFETY: Untriaged.
             let freq = unsafe { properties.assume_init().frequency };
+            // SAFETY: Untriaged.
             let ts = unsafe { ((*protocol.as_ptr()).get_timestamp)() };
             Some(mul_div_u64(ts, NS_PER_SEC, freq))
         }
@@ -208,6 +211,7 @@ mod instant_internal {
             })
             .ok()?;
 
+        // SAFETY: Untriaged.
         let ts = unsafe { crate::arch::x86_64::_rdtsc() };
         let ns = mul_div_u64(ts, 1000, *freq);
         Some(Duration::from_nanos(ns))
@@ -227,6 +231,7 @@ mod instant_internal {
             })
             .ok()?;
 
+        // SAFETY: Untriaged.
         let ts = unsafe { crate::arch::x86::_rdtsc() };
         let ns = mul_div_u64(ts, 1000, *freq);
         Some(Duration::from_nanos(ns))

@@ -153,6 +153,7 @@ macro_rules! impl_is_zero_option_of_int {
             #[inline]
             fn is_zero(&self) -> bool {
                 const {
+// SAFETY: Untriaged.
                     let none: Self = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
                     assert!(none.is_none());
                 }

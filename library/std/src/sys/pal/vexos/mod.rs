@@ -63,6 +63,7 @@ pub unsafe fn cleanup() {
 }
 
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe {
         vex_sdk::vexSystemExitRequest();
 

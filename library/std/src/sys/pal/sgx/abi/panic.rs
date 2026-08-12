@@ -10,15 +10,18 @@ unsafe extern "C" {
 pub(crate) struct SgxPanicOutput(Option<&'static mut UserRef<[u8]>>);
 
 fn empty_user_slice() -> &'static mut UserRef<[u8]> {
+    // SAFETY: Untriaged.
     unsafe { UserRef::from_raw_parts_mut(1 as *mut u8, 0) }
 }
 
 impl SgxPanicOutput {
     pub(crate) fn new() -> Option<Self> {
+        // SAFETY: Untriaged.
         if unsafe { DEBUG == 0 } { None } else { Some(SgxPanicOutput(None)) }
     }
 
     fn init(&mut self) -> &mut &'static mut UserRef<[u8]> {
+        // SAFETY: Untriaged.
         self.0.get_or_insert_with(|| unsafe {
             let ptr = take_debug_panic_buf_ptr();
             if ptr.is_null() { empty_user_slice() } else { UserRef::from_raw_parts_mut(ptr, 1024) }

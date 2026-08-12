@@ -149,6 +149,7 @@ macro io_ext_impl($stdio_ty:ty, $stdio_lock_ty:ty, $handle:path, $writer:literal
             #[cfg($writer)]
             self.flush()?;
             let raw = handle.map(|h| h.into().into_raw_handle()).unwrap_or(ptr::null_mut());
+            // SAFETY: Untriaged.
             unsafe { c::SetStdHandle($handle, raw) };
             Ok(())
         }
@@ -157,6 +158,7 @@ macro io_ext_impl($stdio_ty:ty, $stdio_lock_ty:ty, $handle:path, $writer:literal
             &mut self,
             replace_with: T,
         ) -> io::Result<Option<BorrowedHandle<'static>>> {
+            // SAFETY: Untriaged.
             let old = unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) };
             self.set_handle(Some(replace_with))?;
             let handle = if old.as_raw_handle().is_null() { None } else { Some(old) };
@@ -164,9 +166,11 @@ macro io_ext_impl($stdio_ty:ty, $stdio_lock_ty:ty, $handle:path, $writer:literal
         }
 
         fn take_handle(&mut self) -> io::Result<Option<BorrowedHandle<'static>>> {
+            // SAFETY: Untriaged.
             let old = unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) };
             #[cfg($writer)]
             self.flush()?;
+            // SAFETY: Untriaged.
             unsafe { c::SetStdHandle($handle, ptr::null_mut()) };
             let handle = if old.as_raw_handle().is_null() { None } else { Some(old) };
             Ok(handle)

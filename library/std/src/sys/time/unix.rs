@@ -113,6 +113,7 @@ impl Instant {
         let secs = u64::try_from(self.t.tv_sec).ok()?;
 
         let mut timebase = mach_timebase_info { numer: 0, denom: 0 };
+        // SAFETY: Untriaged.
         assert_eq!(unsafe { mach_timebase_info(&mut timebase) }, libc::KERN_SUCCESS);
 
         // Since `tv_sec` is 64-bit and `tv_nsec` is smaller than 1 billion,

@@ -356,6 +356,7 @@ pub use core::panic::abort_on_unwind;
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
+    // SAFETY: Untriaged.
     unsafe { panicking::catch_unwind(f) }
 }
 

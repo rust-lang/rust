@@ -1,6 +1,7 @@
 use crate::time::{Duration, Instant};
 
 pub fn yield_now() {
+    // SAFETY: Untriaged.
     unsafe {
         vex_sdk::vexTasksRun();
     }

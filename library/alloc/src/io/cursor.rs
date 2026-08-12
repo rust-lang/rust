@@ -157,6 +157,7 @@ fn reserve_and_pad<A: Allocator>(
         debug_assert!(spare.len() >= diff);
         // Safety: we have allocated enough capacity for this.
         // And we are only writing, not reading
+        // SAFETY: Untriaged.
         unsafe {
             spare.get_unchecked_mut(..diff).fill(core::mem::MaybeUninit::new(0));
             vec.set_len(pos);
@@ -176,6 +177,7 @@ where
     A: Allocator,
 {
     debug_assert!(vec.capacity() >= pos + buf.len());
+    // SAFETY: Untriaged.
     unsafe { vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len()) };
     pos + buf.len()
 }
@@ -201,6 +203,7 @@ where
     // Write the buf then progress the vec forward if necessary
     // Safety: we have ensured that the capacity is available
     // and that all bytes get written up to pos
+    // SAFETY: Untriaged.
     unsafe {
         pos = vec_write_all_unchecked(pos, vec, buf);
         if pos > vec.len() {
@@ -240,6 +243,7 @@ where
     // Write the buf then progress the vec forward if necessary
     // Safety: we have ensured that the capacity is available
     // and that all bytes get written up to the last pos
+    // SAFETY: Untriaged.
     unsafe {
         for buf in bufs {
             pos = vec_write_all_unchecked(pos, vec, buf);

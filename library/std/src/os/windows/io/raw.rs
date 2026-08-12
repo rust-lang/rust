@@ -101,6 +101,7 @@ impl AsRawHandle for fs::File {
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stdin {
     fn as_raw_handle(&self) -> RawHandle {
+        // SAFETY: Untriaged.
         stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_INPUT_HANDLE) as RawHandle })
     }
 }
@@ -108,6 +109,7 @@ impl AsRawHandle for io::Stdin {
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stdout {
     fn as_raw_handle(&self) -> RawHandle {
+        // SAFETY: Untriaged.
         stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_OUTPUT_HANDLE) as RawHandle })
     }
 }
@@ -115,6 +117,7 @@ impl AsRawHandle for io::Stdout {
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stderr {
     fn as_raw_handle(&self) -> RawHandle {
+        // SAFETY: Untriaged.
         stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_ERROR_HANDLE) as RawHandle })
     }
 }
@@ -122,6 +125,7 @@ impl AsRawHandle for io::Stderr {
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StdinLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
+        // SAFETY: Untriaged.
         stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_INPUT_HANDLE) as RawHandle })
     }
 }
@@ -129,6 +133,7 @@ impl<'a> AsRawHandle for io::StdinLock<'a> {
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StdoutLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
+        // SAFETY: Untriaged.
         stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_OUTPUT_HANDLE) as RawHandle })
     }
 }
@@ -136,6 +141,7 @@ impl<'a> AsRawHandle for io::StdoutLock<'a> {
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StderrLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
+        // SAFETY: Untriaged.
         stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_ERROR_HANDLE) as RawHandle })
     }
 }
@@ -156,6 +162,7 @@ pub(super) fn stdio_handle(raw: RawHandle) -> RawHandle {
 impl FromRawHandle for fs::File {
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
+        // SAFETY: Untriaged.
         unsafe {
             let handle = handle as sys::c::HANDLE;
             fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
@@ -260,6 +267,7 @@ impl AsRawSocket for net::UdpSocket {
 impl FromRawSocket for net::TcpStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
+        // SAFETY: Untriaged.
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
             net::TcpStream::from_inner(sys::net::TcpStream::from_inner(sock))
@@ -270,6 +278,7 @@ impl FromRawSocket for net::TcpStream {
 impl FromRawSocket for net::TcpListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
+        // SAFETY: Untriaged.
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
             net::TcpListener::from_inner(sys::net::TcpListener::from_inner(sock))
@@ -280,6 +289,7 @@ impl FromRawSocket for net::TcpListener {
 impl FromRawSocket for net::UdpSocket {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
+        // SAFETY: Untriaged.
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
             net::UdpSocket::from_inner(sys::net::UdpSocket::from_inner(sock))
@@ -321,6 +331,7 @@ impl AsRawHandle for io::PipeReader {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeReader {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }
@@ -342,6 +353,7 @@ impl AsRawHandle for io::PipeWriter {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeWriter {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }

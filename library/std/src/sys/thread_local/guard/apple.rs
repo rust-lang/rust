@@ -24,6 +24,7 @@ pub fn enable() {
     }
 
     unsafe extern "C" fn run_dtors(_: *mut u8) {
+        // SAFETY: Untriaged.
         unsafe {
             destructors::run();
             crate::rt::thread_cleanup();

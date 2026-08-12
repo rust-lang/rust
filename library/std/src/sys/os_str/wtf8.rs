@@ -85,6 +85,7 @@ impl Buf {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self { inner: Wtf8Buf::from_bytes_unchecked(s) } }
     }
 
@@ -173,16 +174,19 @@ impl Buf {
 
     #[inline]
     pub fn leak<'a>(self) -> &'a mut Slice {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(self.inner.leak()) }
     }
 
     #[inline]
     pub fn into_box(self) -> Box<Slice> {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(self.inner.into_box()) }
     }
 
     #[inline]
     pub fn from_box(boxed: Box<Slice>) -> Buf {
+        // SAFETY: Untriaged.
         let inner: Box<Wtf8> = unsafe { mem::transmute(boxed) };
         Buf { inner: Wtf8Buf::from_box(inner) }
     }
@@ -223,6 +227,7 @@ impl Buf {
     /// must not start with a trailing surrogate half.
     #[inline]
     pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
+        // SAFETY: Untriaged.
         unsafe {
             self.inner.extend_from_slice_unchecked(other);
         }
@@ -237,6 +242,7 @@ impl Slice {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
     }
 
@@ -253,6 +259,7 @@ impl Slice {
 
     #[inline]
     pub fn from_str(s: &str) -> &Slice {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 
@@ -278,18 +285,21 @@ impl Slice {
 
     #[inline]
     pub fn empty_box() -> Box<Slice> {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(Wtf8::empty_box()) }
     }
 
     #[inline]
     pub fn into_arc(&self) -> Arc<Slice> {
         let arc = self.inner.into_arc();
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
     }
 
     #[inline]
     pub fn into_rc(&self) -> Rc<Slice> {
         let rc = self.inner.into_rc();
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 

@@ -21,6 +21,7 @@ mod common;
 pub use common::{cleanup, init, unsupported};
 
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe { libc::abort() }
 }
 

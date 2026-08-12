@@ -129,6 +129,7 @@ impl WaitQueue {
     /// this function will abort.
     pub fn wait<T, F: FnOnce()>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>, before_wait: F) {
         // very unsafe: check requirements of UnsafeList::push
+        // SAFETY: Untriaged.
         unsafe {
             let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
                 tcs: thread::current(),
@@ -160,6 +161,7 @@ impl WaitQueue {
         before_wait: F,
     ) -> bool {
         // very unsafe: check requirements of UnsafeList::push
+        // SAFETY: Untriaged.
         unsafe {
             let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
                 tcs: thread::current(),

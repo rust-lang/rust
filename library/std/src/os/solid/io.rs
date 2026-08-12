@@ -119,7 +119,9 @@ impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
+        // SAFETY: Untriaged.
         let fd = sys::net::cvt(unsafe { crate::sys::abi::sockets::dup(self.as_raw_fd()) })?;
+        // SAFETY: Untriaged.
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 }
@@ -162,6 +164,7 @@ impl FromRawFd for OwnedFd {
 impl Drop for OwnedFd {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { crate::sys::abi::sockets::close(self.fd.as_inner()) };
     }
 }
@@ -226,6 +229,7 @@ impl AsFd for OwnedFd {
         // Safety: `OwnedFd` and `BorrowedFd` have the same validity
         // invariants, and the `BorrowedFd` is bounded by the lifetime
         // of `&self`.
+        // SAFETY: Untriaged.
         unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
@@ -378,6 +382,7 @@ macro_rules! impl_from_raw_fd {
         impl FromRawFd for net::$t {
             #[inline]
             unsafe fn from_raw_fd(fd: RawFd) -> net::$t {
+// SAFETY: Untriaged.
                 let socket = unsafe { sys::net::Socket::from_raw_fd(fd) };
                 net::$t::from_inner(sys::net::$t::from_inner(socket))
             }

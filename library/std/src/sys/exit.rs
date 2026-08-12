@@ -50,6 +50,7 @@ cfg_select! {
                     // Pause until the process exits.
                     loop {
                         // Safety: libc::pause is safe to call.
+// SAFETY: Untriaged.
                         unsafe { libc::pause(); }
                     }
                 }
@@ -89,74 +90,80 @@ cfg_select! {
 
 pub fn exit(code: i32) -> ! {
     cfg_select! {
-        target_os = "hermit" => {
-            unsafe { hermit_abi::exit(code) }
-        }
-        target_os = "linux" => {
-            unsafe {
-                unique_thread_exit();
-                libc::exit(code)
+            target_os = "hermit" => {
+    // SAFETY: Untriaged.
+                unsafe { hermit_abi::exit(code) }
             }
-        }
-        target_os = "motor" => {
-            moto_rt::process::exit(code)
-        }
-        all(target_vendor = "fortanix", target_env = "sgx") => {
-            crate::sys::pal::abi::exit_with_code(code as _)
-        }
-        target_os = "solid_asp3" => {
-            rtabort!("exit({}) called", code)
-        }
-        target_os = "teeos" => {
-            let _ = code;
-            panic!("TA should not call `exit`")
-        }
-        target_os = "uefi" => {
-            use r_efi::base::Status;
-
-            use crate::os::uefi::env;
-
-            if let (Some(boot_services), Some(handle)) =
-                (env::boot_services(), env::try_image_handle())
-            {
-                let boot_services = boot_services.cast::<r_efi::efi::BootServices>();
-                let _ = unsafe {
-                    ((*boot_services.as_ptr()).exit)(
-                        handle.as_ptr(),
-                        Status::from_usize(code as usize),
-                        0,
-                        crate::ptr::null_mut(),
-                    )
-                };
-            }
-            crate::intrinsics::abort()
-        }
-        any(
-            target_family = "unix",
-            target_os = "wasi",
-        ) => {
-            unsafe { libc::exit(code as crate::ffi::c_int) }
-        }
-        target_os = "vexos" => {
-            let _ = code;
-
-            unsafe {
-                vex_sdk::vexSystemExitRequest();
-
-                loop {
-                    vex_sdk::vexTasksRun();
+            target_os = "linux" => {
+    // SAFETY: Untriaged.
+                unsafe {
+                    unique_thread_exit();
+                    libc::exit(code)
                 }
             }
+            target_os = "motor" => {
+                moto_rt::process::exit(code)
+            }
+            all(target_vendor = "fortanix", target_env = "sgx") => {
+                crate::sys::pal::abi::exit_with_code(code as _)
+            }
+            target_os = "solid_asp3" => {
+                rtabort!("exit({}) called", code)
+            }
+            target_os = "teeos" => {
+                let _ = code;
+                panic!("TA should not call `exit`")
+            }
+            target_os = "uefi" => {
+                use r_efi::base::Status;
+
+                use crate::os::uefi::env;
+
+                if let (Some(boot_services), Some(handle)) =
+                    (env::boot_services(), env::try_image_handle())
+                {
+                    let boot_services = boot_services.cast::<r_efi::efi::BootServices>();
+    // SAFETY: Untriaged.
+                    let _ = unsafe {
+                        ((*boot_services.as_ptr()).exit)(
+                            handle.as_ptr(),
+                            Status::from_usize(code as usize),
+                            0,
+                            crate::ptr::null_mut(),
+                        )
+                    };
+                }
+                crate::intrinsics::abort()
+            }
+            any(
+                target_family = "unix",
+                target_os = "wasi",
+            ) => {
+    // SAFETY: Untriaged.
+                unsafe { libc::exit(code as crate::ffi::c_int) }
+            }
+            target_os = "vexos" => {
+                let _ = code;
+
+    // SAFETY: Untriaged.
+                unsafe {
+                    vex_sdk::vexSystemExitRequest();
+
+                    loop {
+                        vex_sdk::vexTasksRun();
+                    }
+                }
+            }
+            target_os = "windows" => {
+    // SAFETY: Untriaged.
+                unsafe { crate::sys::pal::c::ExitProcess(code as u32) }
+            }
+            target_os = "xous" => {
+                crate::os::xous::ffi::exit(code as u32)
+            }
+            _ => {
+                let _ = code;
+                crate::intrinsics::abort()
+            }
         }
-        target_os = "windows" => {
-            unsafe { crate::sys::pal::c::ExitProcess(code as u32) }
-        }
-        target_os = "xous" => {
-            crate::os::xous::ffi::exit(code as u32)
-        }
-        _ => {
-            let _ = code;
-            crate::intrinsics::abort()
-        }
-    }
 }

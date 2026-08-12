@@ -327,6 +327,7 @@ impl<T: Ord, A: Allocator> Deref for PeekMut<'_, T, A> {
     fn deref(&self) -> &T {
         debug_assert!(!self.heap.is_empty());
         // SAFE: PeekMut is only instantiated for non-empty heaps
+        // SAFETY: Untriaged.
         unsafe { self.heap.data.get_unchecked(0) }
     }
 }
@@ -346,6 +347,7 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
             //
             // This is technique is described throughout several other places in
             // the standard library as "leak amplification".
+            // SAFETY: Untriaged.
             unsafe {
                 // SAFETY: len > 1 so len != 0.
                 self.original_len = Some(NonZero::new_unchecked(len));
@@ -356,6 +358,7 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
         }
 
         // SAFE: PeekMut is only instantiated for non-empty heaps
+        // SAFETY: Untriaged.
         unsafe { self.heap.data.get_unchecked_mut(0) }
     }
 }
@@ -1537,6 +1540,7 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
+        // SAFETY: Untriaged.
         let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
         Hole { data, elt: ManuallyDrop::new(elt), pos }
     }
@@ -1559,6 +1563,7 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        // SAFETY: Untriaged.
         unsafe { self.data.get_unchecked(index) }
     }
 
@@ -1569,6 +1574,7 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        // SAFETY: Untriaged.
         unsafe {
             let ptr = self.data.as_mut_ptr();
             let index_ptr: *const _ = ptr.add(index);
@@ -1583,6 +1589,7 @@ impl<T> Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
+        // SAFETY: Untriaged.
         unsafe {
             let pos = self.pos;
             ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);

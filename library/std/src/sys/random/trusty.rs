@@ -3,5 +3,6 @@ unsafe extern "C" {
 }
 
 pub fn fill_bytes(bytes: &mut [u8]) {
+    // SAFETY: Untriaged.
     unsafe { trusty_rng_secure_rand(bytes.as_mut_ptr().cast(), bytes.len()) }
 }

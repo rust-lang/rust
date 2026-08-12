@@ -121,6 +121,7 @@ impl Condvar {
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
     pub fn wait<T>(&self, guard: &mut MutexGuard<'_, T>) {
+        // SAFETY: Untriaged.
         unsafe {
             let lock = mutex::guard_lock(guard);
             self.inner.wait(lock);
@@ -249,6 +250,7 @@ impl Condvar {
         guard: &mut MutexGuard<'_, T>,
         dur: Duration,
     ) -> WaitTimeoutResult {
+        // SAFETY: Untriaged.
         let success = unsafe {
             let lock = mutex::guard_lock(guard);
             self.inner.wait_timeout(lock, dur)

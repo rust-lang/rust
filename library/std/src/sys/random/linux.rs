@@ -102,6 +102,7 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
                 0
             };
 
+            // SAFETY: Untriaged.
             let ret = unsafe { getrandom(bytes.as_mut_ptr().cast(), bytes.len(), flags) };
             if ret != -1 {
                 bytes = &mut bytes[ret as usize..];
@@ -139,6 +140,7 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
             let mut fd = libc::pollfd { fd: random.as_raw_fd(), events: libc::POLLIN, revents: 0 };
 
             while !URANDOM_READY.load(Acquire) {
+                // SAFETY: Untriaged.
                 let ret = unsafe { libc::poll(&mut fd, 1, -1) };
                 match ret {
                     1 => {

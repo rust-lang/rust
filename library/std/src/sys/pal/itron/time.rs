@@ -9,6 +9,7 @@ mod tests;
 #[inline]
 pub fn get_tim() -> abi::SYSTIM {
     // Safety: The provided pointer is valid
+    // SAFETY: Untriaged.
     unsafe {
         let mut out = MaybeUninit::uninit();
         expect_success(abi::get_tim(out.as_mut_ptr()), &"get_tim");

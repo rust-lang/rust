@@ -39,6 +39,7 @@ impl Mutex {
         // result in the ticktimer server never getting invoked. The `locked` value
         // will be either 0 or 1.
         for _attempts in 0..3 {
+            // SAFETY: Untriaged.
             if unsafe { self.try_lock() } {
                 return;
             }
@@ -49,6 +50,7 @@ impl Mutex {
         // here, then the inner `locked` value will be 1 at the end of this. If it was not
         // locked, then the value will be more than 1, for example if there are multiple other
         // threads waiting on this lock.
+        // SAFETY: Untriaged.
         if unsafe { self.try_lock_or_poison() } {
             return;
         }

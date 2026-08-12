@@ -663,6 +663,7 @@ impl<T> Sender<T> {
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             match &self.flavor {
                 SenderFlavor::Array(chan) => chan.release(|c| c.disconnect_senders()),
@@ -1421,6 +1422,7 @@ impl<T> Receiver<T> {
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             match &self.flavor {
                 ReceiverFlavor::Array(chan) => chan.release(|c| c.disconnect_receivers()),

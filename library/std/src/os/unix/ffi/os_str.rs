@@ -54,6 +54,7 @@ pub impl(self) trait OsStrExt {
 impl OsStrExt for OsStr {
     #[inline]
     fn from_bytes(slice: &[u8]) -> &OsStr {
+        // SAFETY: Untriaged.
         unsafe { mem::transmute(slice) }
     }
     #[inline]

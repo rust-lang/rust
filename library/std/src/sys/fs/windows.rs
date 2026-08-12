@@ -131,6 +131,7 @@ impl Iterator for ReadDir {
                 return Some(Ok(e));
             }
         }
+        // SAFETY: Untriaged.
         unsafe {
             let mut wfd = mem::zeroed();
             loop {
@@ -153,6 +154,7 @@ impl Iterator for ReadDir {
 
 impl Drop for FindNextFileHandle {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         let r = unsafe { c::FindClose(self.0) };
         debug_assert!(r != 0);
     }
@@ -349,6 +351,7 @@ impl File {
             lpSecurityDescriptor: ptr::null_mut(),
             bInheritHandle: opts.inherit_handle as c::BOOL,
         };
+        // SAFETY: Untriaged.
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
@@ -360,11 +363,13 @@ impl File {
                 ptr::null_mut(),
             )
         };
+        // SAFETY: Untriaged.
         let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
         if let Ok(handle) = OwnedHandle::try_from(handle) {
             if opts.freeze_last_access_time || opts.freeze_last_write_time {
                 let file_time =
                     c::FILETIME { dwLowDateTime: 0xFFFFFFFF, dwHighDateTime: 0xFFFFFFFF };
+                // SAFETY: Untriaged.
                 cvt(unsafe {
                     c::SetFileTime(
                         handle.as_raw_handle(),
@@ -398,6 +403,7 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         cvt(unsafe { c::FlushFileBuffers(self.handle.as_raw_handle()) })?;
         Ok(())
     }
@@ -407,6 +413,7 @@ impl File {
     }
 
     fn acquire_lock(&self, flags: c::LOCK_FILE_FLAGS) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut overlapped: c::OVERLAPPED = mem::zeroed();
             let event = c::CreateEventW(ptr::null_mut(), c::FALSE, c::FALSE, ptr::null());
@@ -456,6 +463,7 @@ impl File {
     }
 
     pub fn try_lock(&self) -> Result<(), TryLockError> {
+        // SAFETY: Untriaged.
         let result = cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
@@ -478,6 +486,7 @@ impl File {
     }
 
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+        // SAFETY: Untriaged.
         let result = cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
@@ -504,8 +513,10 @@ impl File {
         // both an exclusive and shared lock, in which case the documentation states that:
         // "...two unlock operations are necessary to unlock the region; the first unlock operation
         // unlocks the exclusive lock, the second unlock operation unlocks the shared lock"
+        // SAFETY: Untriaged.
         cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) })?;
         let result =
+// SAFETY: Untriaged.
             cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) });
         match result {
             Ok(_) => Ok(()),
@@ -521,6 +532,7 @@ impl File {
 
     #[cfg(not(target_vendor = "uwp"))]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
@@ -556,6 +568,7 @@ impl File {
 
     #[cfg(target_vendor = "uwp")]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();
             let size = size_of_val(&info);
@@ -671,6 +684,7 @@ impl File {
         };
         let pos = pos as i64;
         let mut newpos = 0;
+        // SAFETY: Untriaged.
         cvt(unsafe { c::SetFilePointerEx(self.handle.as_raw_handle(), pos, &mut newpos, whence) })?;
         Ok(newpos as u64)
     }
@@ -678,6 +692,7 @@ impl File {
     pub fn size(&self) -> Option<io::Result<u64>> {
         let mut result = 0;
         Some(
+            // SAFETY: Untriaged.
             cvt(unsafe { c::GetFileSizeEx(self.handle.as_raw_handle(), &mut result) })
                 .map(|_| result as u64),
         )
@@ -698,6 +713,7 @@ impl File {
         &self,
         space: &mut Align8<[MaybeUninit<u8>]>,
     ) -> io::Result<(u32, *mut c::REPARSE_DATA_BUFFER)> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut bytes = 0;
             cvt({
@@ -724,6 +740,7 @@ impl File {
         let mut space =
             Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
         let (_bytes, buf) = self.reparse_point(&mut space)?;
+        // SAFETY: Untriaged.
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
@@ -803,6 +820,7 @@ impl File {
                 "cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
         }
+        // SAFETY: Untriaged.
         cvt(unsafe {
             let created =
                 times.created.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
@@ -817,6 +835,7 @@ impl File {
 
     /// Gets only basic file information such as attributes and file times.
     fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();
             let size = size_of_val(&info);
@@ -890,6 +909,7 @@ impl File {
         let class =
             if restart { c::FileIdBothDirectoryRestartInfo } else { c::FileIdBothDirectoryInfo };
 
+        // SAFETY: Untriaged.
         unsafe {
             let result = c::GetFileInformationByHandleEx(
                 self.as_raw_handle(),
@@ -917,6 +937,7 @@ impl DirBuff {
         Self {
             // Safety: `Align8<[MaybeUninit<u8>; N]>` does not need
             // initialization.
+            // SAFETY: Untriaged.
             buffer: unsafe { Box::new_uninit().assume_init() },
         }
     }
@@ -997,6 +1018,7 @@ impl<'a> Iterator for DirBuffIter<'a> {
 }
 
 unsafe fn from_maybe_unaligned<'a>(p: *const u16, len: usize) -> Cow<'a, [u16]> {
+    // SAFETY: Untriaged.
     unsafe {
         if p.is_aligned() {
             Cow::Borrowed(crate::slice::from_raw_parts(p, len))
@@ -1045,6 +1067,7 @@ impl IntoRawHandle for File {
 
 impl FromRawHandle for File {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        // SAFETY: Untriaged.
         unsafe {
             Self { handle: FromInner::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
         }
@@ -1227,6 +1250,7 @@ impl DirBuilder {
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
         let p = maybe_verbatim(p)?;
+        // SAFETY: Untriaged.
         cvt(unsafe { c::CreateDirectoryW(p.as_ptr(), ptr::null_mut()) })?;
         Ok(())
     }
@@ -1245,6 +1269,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let star = p.join("*");
     let path = maybe_verbatim(&star)?;
 
+    // SAFETY: Untriaged.
     unsafe {
         let mut wfd: c::WIN32_FIND_DATAW = mem::zeroed();
         // this is like FindFirstFileW (see https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw),
@@ -1296,6 +1321,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(path: &WCStr) -> io::Result<()> {
+    // SAFETY: Untriaged.
     if unsafe { c::DeleteFileW(path.as_ptr()) } == 0 {
         let err = api::get_last_error();
         // if `DeleteFileW` fails with ERROR_ACCESS_DENIED then try to remove
@@ -1319,6 +1345,7 @@ pub fn unlink(path: &WCStr) -> io::Result<()> {
 }
 
 pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
+    // SAFETY: Untriaged.
     if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) } == 0 {
         let err = api::get_last_error();
         // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
@@ -1366,6 +1393,7 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
                 );
             }
 
+            // SAFETY: Untriaged.
             let result = unsafe {
                 c::SetFileInformationByHandle(
                     f.as_raw_handle(),
@@ -1374,6 +1402,7 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
                     struct_size,
                 )
             };
+            // SAFETY: Untriaged.
             unsafe { dealloc(file_rename_info.cast::<u8>(), layout) };
             if result == 0 {
                 if api::get_last_error() == WinError::DIR_NOT_EMPTY {
@@ -1390,6 +1419,7 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &WCStr) -> io::Result<()> {
+    // SAFETY: Untriaged.
     cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) })?;
     Ok(())
 }
@@ -1435,6 +1465,7 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
     // Creators Update, Microsoft loosened this to allow unprivileged symlink creation if the
     // computer is in Developer Mode, but SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE must be
     // added to dwFlags to opt into this behavior.
+    // SAFETY: Untriaged.
     let result = cvt(unsafe {
         c::CreateSymbolicLinkW(
             link.as_ptr(),
@@ -1446,6 +1477,7 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
         if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as i32) {
             // Older Windows objects to SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE,
             // so if we encounter ERROR_INVALID_PARAMETER, retry without that flag.
+            // SAFETY: Untriaged.
             cvt(unsafe {
                 c::CreateSymbolicLinkW(link.as_ptr(), original.as_ptr(), flags) as c::BOOL
             })?;
@@ -1458,6 +1490,7 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
 
 #[cfg(not(target_vendor = "uwp"))]
 pub fn link(original: &WCStr, link: &WCStr) -> io::Result<()> {
+    // SAFETY: Untriaged.
     cvt(unsafe { c::CreateHardLinkW(link.as_ptr(), original.as_ptr(), ptr::null_mut()) })?;
     Ok(())
 }
@@ -1518,6 +1551,7 @@ fn metadata(path: &WCStr, reparse: ReparsePoint) -> io::Result<FileAttr> {
             // Usually if a file is locked you can still read some metadata.
             // However, there are special system files, such as
             // `C:\hiberfil.sys`, that are locked in a way that denies even that.
+            // SAFETY: Untriaged.
             unsafe {
                 // `FindFirstFileExW` accepts wildcard file names.
                 // Fortunately wildcards are not valid file names and
@@ -1558,6 +1592,7 @@ fn metadata(path: &WCStr, reparse: ReparsePoint) -> io::Result<FileAttr> {
 }
 
 pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe {
         cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs))?;
         Ok(())
@@ -1592,6 +1627,7 @@ pub fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
 
 fn get_path(f: impl AsRawHandle) -> io::Result<PathBuf> {
     fill_utf16_buf(
+        // SAFETY: Untriaged.
         |buf, sz| unsafe {
             c::GetFinalPathNameByHandleW(f.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
@@ -1621,6 +1657,7 @@ pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
         _hDestinationFile: c::HANDLE,
         lpData: *const c_void,
     ) -> u32 {
+        // SAFETY: Untriaged.
         unsafe {
             if dwStreamNumber == 1 {
                 *(lpData as *mut i64) = StreamBytesTransferred;
@@ -1629,6 +1666,7 @@ pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
         }
     }
     let mut size = 0i64;
+    // SAFETY: Untriaged.
     cvt(unsafe {
         c::CopyFileExW(
             from.as_ptr(),
@@ -1657,18 +1695,22 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     let abs_path: Vec<u16> = if path_bytes.starts_with(br"\\?\") || path_bytes.starts_with(br"\??\")
     {
         // It's already an absolute path, we just need to convert the prefix to `\??\`
+        // SAFETY: Untriaged.
         let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&path_bytes[4..]) };
         r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
     } else {
         // Get an absolute path and then convert the prefix to `\??\`
         let abs_path = crate::path::absolute(original)?.into_os_string().into_encoded_bytes();
         if abs_path.len() > 0 && abs_path[1..].starts_with(br":\") {
+            // SAFETY: Untriaged.
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path) };
             r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else if abs_path.starts_with(br"\\.\") {
+            // SAFETY: Untriaged.
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path[4..]) };
             r"\??\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else if abs_path.starts_with(br"\\") {
+            // SAFETY: Untriaged.
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path[2..]) };
             r"\??\UNC\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else {
@@ -1718,6 +1760,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     // `SubstituteNameLength + PrintNameLength + 12`.
     header.ReparseDataLength =
         (total_len - offset_of!(MountPointBuffer, SubstituteNameOffset)) as u16;
+    // SAFETY: Untriaged.
     unsafe {
         let mut ret = 0;
         cvt(c::DeviceIoControl(

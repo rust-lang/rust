@@ -15,6 +15,7 @@ pub fn args() -> Args {
         helpers::image_handle_protocol::<loaded_image::Protocol>(loaded_image::PROTOCOL_GUID)
             .unwrap();
 
+    // SAFETY: Untriaged.
     let lp_size = unsafe { (*protocol.as_ptr()).load_options_size } as usize;
     // Break if we are sure that it cannot be UTF-16
     if lp_size < size_of::<u16>() || lp_size % size_of::<u16>() != 0 {
@@ -22,10 +23,12 @@ pub fn args() -> Args {
     }
     let lp_size = lp_size / size_of::<u16>();
 
+    // SAFETY: Untriaged.
     let lp_cmd_line = unsafe { (*protocol.as_ptr()).load_options as *const u16 };
     if !lp_cmd_line.is_aligned() {
         return Args::new(lazy_current_exe());
     }
+    // SAFETY: Untriaged.
     let lp_cmd_line = unsafe { crate::slice::from_raw_parts(lp_cmd_line, lp_size) };
 
     Args::new(parse_lp_cmd_line(lp_cmd_line).unwrap_or_else(lazy_current_exe))

@@ -13,6 +13,7 @@ pub struct Mutex {
 
 /// Creates a mutex object. This function never panics.
 fn new_mtx() -> Result<abi::ID, ItronError> {
+    // SAFETY: Untriaged.
     ItronError::err_if_negative(unsafe {
         abi::acre_mtx(&abi::T_CMTX {
             // Priority inheritance mutex
@@ -39,16 +40,20 @@ impl Mutex {
 
     pub fn lock(&self) {
         let mtx = self.raw();
+        // SAFETY: Untriaged.
         expect_success(unsafe { abi::loc_mtx(mtx) }, &"loc_mtx");
     }
 
     pub unsafe fn unlock(&self) {
+        // SAFETY: Untriaged.
         let mtx = unsafe { self.mtx.get_unchecked().0 };
+        // SAFETY: Untriaged.
         expect_success_aborting(unsafe { abi::unl_mtx(mtx) }, &"unl_mtx");
     }
 
     pub fn try_lock(&self) -> bool {
         let mtx = self.raw();
+        // SAFETY: Untriaged.
         match unsafe { abi::ploc_mtx(mtx) } {
             abi::E_TMOUT => false,
             er => {
@@ -62,6 +67,7 @@ impl Mutex {
 impl Drop for Mutex {
     fn drop(&mut self) {
         if let Some(mtx) = self.mtx.get().map(|x| x.0) {
+            // SAFETY: Untriaged.
             expect_success_aborting(unsafe { abi::del_mtx(mtx) }, &"del_mtx");
         }
     }

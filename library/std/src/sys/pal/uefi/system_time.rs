@@ -15,11 +15,13 @@ pub(crate) fn now() -> Time {
         helpers::runtime_services().expect("Runtime services are not available");
     let mut t: MaybeUninit<Time> = MaybeUninit::uninit();
     let r =
+// SAFETY: Untriaged.
         unsafe { ((*runtime_services.as_ptr()).get_time)(t.as_mut_ptr(), crate::ptr::null_mut()) };
     if r.is_error() {
         panic!("time not implemented on this platform");
     }
 
+    // SAFETY: Untriaged.
     unsafe { t.assume_init() }
 }
 

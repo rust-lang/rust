@@ -57,6 +57,7 @@ pub macro thread_local_inner {
     (@key $t:ty, $(#[$align_attr:meta])*, const $init:expr) => {{
         const __RUST_STD_INTERNAL_INIT: $t = $init;
 
+// SAFETY: Untriaged.
         unsafe {
             $crate::thread::LocalKey::new(const {
                 if $crate::mem::needs_drop::<$t>() {
@@ -86,6 +87,7 @@ pub macro thread_local_inner {
             $init
         }
 
+// SAFETY: Untriaged.
         unsafe {
             $crate::thread::LocalKey::new(const {
                 if $crate::mem::needs_drop::<$t>() {

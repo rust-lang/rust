@@ -35,6 +35,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
             return true;
         }
 
+        // SAFETY: Untriaged.
         let r = unsafe {
             cfg_select! {
                 target_os = "freebsd" => {
@@ -94,6 +95,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     let ptr = futex as *const Atomic<u32>;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
+    // SAFETY: Untriaged.
     unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
 }
 
@@ -102,6 +104,7 @@ pub fn futex_wake(futex: &Atomic<u32>) -> bool {
 pub fn futex_wake_all(futex: &Atomic<u32>) {
     let ptr = futex as *const Atomic<u32>;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
+    // SAFETY: Untriaged.
     unsafe {
         libc::syscall(libc::SYS_futex, ptr, op, i32::MAX);
     }
@@ -111,6 +114,7 @@ pub fn futex_wake_all(futex: &Atomic<u32>) {
 #[cfg(target_os = "freebsd")]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     use crate::ptr::null_mut;
+    // SAFETY: Untriaged.
     unsafe {
         libc::_umtx_op(
             futex as *const Atomic<u32> as *mut _,
@@ -126,6 +130,7 @@ pub fn futex_wake(futex: &Atomic<u32>) -> bool {
 #[cfg(target_os = "freebsd")]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
     use crate::ptr::null_mut;
+    // SAFETY: Untriaged.
     unsafe {
         libc::_umtx_op(
             futex as *const Atomic<u32> as *mut _,
@@ -147,6 +152,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
         .and_then(|d| Timespec::zero().checked_add_duration(&d))
         .and_then(|t| t.to_timespec());
 
+    // SAFETY: Untriaged.
     let r = unsafe {
         libc::futex(
             futex as *const Atomic<u32> as *mut u32,
@@ -163,6 +169,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 #[cfg(target_os = "openbsd")]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     use crate::ptr::{null, null_mut};
+    // SAFETY: Untriaged.
     unsafe {
         libc::futex(
             futex as *const Atomic<u32> as *mut u32,
@@ -177,6 +184,7 @@ pub fn futex_wake(futex: &Atomic<u32>) -> bool {
 #[cfg(target_os = "openbsd")]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
     use crate::ptr::{null, null_mut};
+    // SAFETY: Untriaged.
     unsafe {
         libc::futex(
             futex as *const Atomic<u32> as *mut u32,
@@ -196,6 +204,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
     let timeout_ms =
         timeout.and_then(|d| Some(i32::try_from(d.as_millis()).ok()?.max(1))).unwrap_or(0);
 
+    // SAFETY: Untriaged.
     let r = unsafe {
         libc::umtx_sleep(futex as *const Atomic<u32> as *const i32, expected as i32, timeout_ms)
     };
@@ -206,12 +215,14 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 // DragonflyBSD doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "dragonfly")]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    // SAFETY: Untriaged.
     unsafe { libc::umtx_wakeup(futex as *const Atomic<u32> as *const i32, 1) };
     false
 }
 
 #[cfg(target_os = "dragonfly")]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
+    // SAFETY: Untriaged.
     unsafe { libc::umtx_wakeup(futex as *const Atomic<u32> as *const i32, i32::MAX) };
 }
 
@@ -227,6 +238,7 @@ unsafe extern "C" {
 
 #[cfg(target_os = "emscripten")]
 pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
+    // SAFETY: Untriaged.
     unsafe {
         emscripten_futex_wait(
             futex,
@@ -238,11 +250,13 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 
 #[cfg(target_os = "emscripten")]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    // SAFETY: Untriaged.
     unsafe { emscripten_futex_wake(futex, 1) > 0 }
 }
 
 #[cfg(target_os = "emscripten")]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
+    // SAFETY: Untriaged.
     unsafe { emscripten_futex_wake(futex, i32::MAX) };
 }
 
@@ -255,6 +269,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
         .and_then(|d| i64::try_from(d.as_nanos()).ok()?.checked_add(zx_clock_get_monotonic()))
         .unwrap_or(ZX_TIME_INFINITE);
 
+    // SAFETY: Untriaged.
     unsafe {
         zx_futex_wait(futex, zx_futex_t::new(expected), ZX_HANDLE_INVALID, deadline)
             != ZX_ERR_TIMED_OUT
@@ -264,11 +279,13 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 // Fuchsia doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "fuchsia")]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+    // SAFETY: Untriaged.
     unsafe { crate::sys::pal::fuchsia::zx_futex_wake(futex, 1) };
     false
 }
 
 #[cfg(target_os = "fuchsia")]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
+    // SAFETY: Untriaged.
     unsafe { crate::sys::pal::fuchsia::zx_futex_wake(futex, u32::MAX) };
 }

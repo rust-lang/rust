@@ -83,6 +83,7 @@ pub fn image_handle() -> NonNull<c_void> {
 pub fn boot_services() -> Option<NonNull<c_void>> {
     if BOOT_SERVICES_FLAG.load(Ordering::Acquire) {
         let system_table: NonNull<r_efi::efi::SystemTable> = try_system_table()?.cast();
+        // SAFETY: Untriaged.
         let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
         NonNull::new(boot_services).map(|x| x.cast())
     } else {

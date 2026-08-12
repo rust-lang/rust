@@ -205,6 +205,7 @@ pub struct BTreeMap<
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: Allocator + Clone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         drop(unsafe { ptr::read(self) }.into_iter())
     }
 }
@@ -279,6 +280,7 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
 
                             // We can't destructure subtree directly
                             // because BTreeMap implements Drop
+                            // SAFETY: Untriaged.
                             let (subroot, sublength) = unsafe {
                                 let subtree = ManuallyDrop::new(subtree);
                                 let root = ptr::read(&subtree.root);
@@ -1324,6 +1326,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
                         // apply 'f' to get a new (K, V), and insert it back
                         // into the next entry that the cursor is pointing at
                         let v = conflict(&k, v, first_other_val);
+                        // SAFETY: Untriaged.
                         unsafe { self_cursor.insert_after_unchecked(k, v) };
                     }
                 }
@@ -1360,6 +1363,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
                                 // apply 'f' to get a new (K, V), and insert it back
                                 // into the next entry that the cursor is pointing at
                                 let v = conflict(&k, v, other_val);
+                                // SAFETY: Untriaged.
                                 unsafe { self_cursor.insert_after_unchecked(k, v) };
                             }
                             break;
@@ -1737,6 +1741,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
+            // SAFETY: Untriaged.
             Some(unsafe { self.range.next_unchecked() })
         }
     }
@@ -1774,6 +1779,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
+            // SAFETY: Untriaged.
             Some(unsafe { self.range.next_back_unchecked() })
         }
     }
@@ -1815,6 +1821,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
+            // SAFETY: Untriaged.
             Some(unsafe { self.range.next_unchecked() })
         }
     }
@@ -1849,6 +1856,7 @@ impl<'a, K, V> DoubleEndedIterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
+            // SAFETY: Untriaged.
             Some(unsafe { self.range.next_back_unchecked() })
         }
     }
@@ -1889,12 +1897,14 @@ impl<K, V, A: Allocator + Clone> IntoIterator for BTreeMap<K, V, A> {
             IntoIter {
                 range: full_range,
                 length: me.length,
+                // SAFETY: Untriaged.
                 alloc: unsafe { ManuallyDrop::take(&mut me.alloc) },
             }
         } else {
             IntoIter {
                 range: LazyLeafRange::none(),
                 length: 0,
+                // SAFETY: Untriaged.
                 alloc: unsafe { ManuallyDrop::take(&mut me.alloc) },
             }
         }
@@ -1937,6 +1947,7 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
             None
         } else {
             self.length -= 1;
+            // SAFETY: Untriaged.
             Some(unsafe { self.range.deallocating_next_unchecked(self.alloc.clone()) })
         }
     }
@@ -1951,6 +1962,7 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
             None
         } else {
             self.length -= 1;
+            // SAFETY: Untriaged.
             Some(unsafe { self.range.deallocating_next_back_unchecked(self.alloc.clone()) })
         }
     }
@@ -3347,6 +3359,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
                 let (k, v) = unsafe { kv.reborrow_mut().into_kv_mut() };
                 let (k, v) = (k as *mut _, v as *mut _);
                 self.current = Some(kv.next_leaf_edge());
+                // SAFETY: Untriaged.
                 Some(unsafe { (&mut *k, &mut *v) })
             }
             Err(root) => {
@@ -3372,6 +3385,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
                 let (k, v) = unsafe { kv.reborrow_mut().into_kv_mut() };
                 let (k, v) = (k as *mut _, v as *mut _);
                 self.current = Some(kv.next_back_leaf_edge());
+                // SAFETY: Untriaged.
                 Some(unsafe { (&mut *k, &mut *v) })
             }
             Err(root) => {
@@ -3534,6 +3548,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
                 return Err(UnorderedKeyError {});
             }
         }
+        // SAFETY: Untriaged.
         unsafe {
             self.insert_after_unchecked(key, value);
         }
@@ -3562,6 +3577,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
                 return Err(UnorderedKeyError {});
             }
         }
+        // SAFETY: Untriaged.
         unsafe {
             self.insert_before_unchecked(key, value);
         }
@@ -3643,6 +3659,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
     /// * All keys in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_after_unchecked(&mut self, key: K, value: V) {
+        // SAFETY: Untriaged.
         unsafe { self.inner.insert_after_unchecked(key, value) }
     }
 
@@ -3661,6 +3678,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
     /// * All keys in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_before_unchecked(&mut self, key: K, value: V) {
+        // SAFETY: Untriaged.
         unsafe { self.inner.insert_before_unchecked(key, value) }
     }
 

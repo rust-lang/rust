@@ -37,7 +37,9 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
         >;
     }
 
+    // SAFETY: Untriaged.
     if let Some(f) = unsafe { __cxa_thread_atexit_impl } {
+        // SAFETY: Untriaged.
         unsafe {
             f(
                 transmute::<unsafe extern "C" fn(*mut u8), unsafe extern "C" fn(*mut libc::c_void)>(
@@ -48,6 +50,7 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
             );
         }
     } else {
+        // SAFETY: Untriaged.
         unsafe {
             super::list::register(t, dtor);
         }

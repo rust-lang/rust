@@ -3,6 +3,7 @@ mod tests;
 
 #[cfg(not(target_os = "espidf"))]
 pub fn page_size() -> usize {
+    // SAFETY: Untriaged.
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
@@ -28,6 +29,7 @@ pub fn confstr(
             // we could move this into the loop below, but it's hard to do given
             // that it isn't 100% clear if it's legal to pass 0 for `len` when
             // the buffer isn't null.
+            // SAFETY: Untriaged.
             unsafe { libc::confstr(key, core::ptr::null_mut(), 0) }
         })
         .max(1);
@@ -49,6 +51,7 @@ pub fn confstr(
         // - Otherwise, the number of bytes needed (including nul): we go
         //   through the loop again.
         bytes_needed_including_nul =
+// SAFETY: Untriaged.
             unsafe { libc::confstr(key, buf.as_mut_ptr().cast(), buf.capacity()) };
     }
     // `confstr` returns 0 in the case of an error.
@@ -58,6 +61,7 @@ pub fn confstr(
     // Safety: `confstr(..., buf.as_mut_ptr(), buf.capacity())` returned a
     // non-zero value, meaning `bytes_needed_including_nul` bytes were
     // initialized.
+    // SAFETY: Untriaged.
     unsafe {
         buf.set_len(bytes_needed_including_nul);
         // Remove the NUL-terminator.
@@ -75,6 +79,7 @@ pub fn glibc_version() -> Option<(usize, usize)> {
     unsafe extern "C" {
         fn gnu_get_libc_version() -> *const libc::c_char;
     }
+    // SAFETY: Untriaged.
     let version_cstr = unsafe { CStr::from_ptr(gnu_get_libc_version()) };
     if let Ok(version_str) = version_cstr.to_str() {
         parse_glibc_version(version_str)

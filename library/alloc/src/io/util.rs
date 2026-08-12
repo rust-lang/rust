@@ -287,6 +287,7 @@ impl<T: Read> Read for Take<T> {
                 unsafe { buf.set_init() };
             }
 
+            // SAFETY: Untriaged.
             unsafe {
                 // SAFETY: filled bytes have been filled
                 buf.advance(filled);

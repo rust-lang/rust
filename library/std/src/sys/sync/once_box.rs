@@ -40,13 +40,16 @@ impl<T> OnceBox<T> {
     /// This causes undefined behavior if the assumption above is violated.
     #[inline]
     pub unsafe fn get_unchecked(&self) -> Pin<&T> {
+        // SAFETY: Untriaged.
         unsafe { Pin::new_unchecked(&*self.ptr.load(Relaxed)) }
     }
 
     #[inline]
     pub fn get_or_init(&self, f: impl FnOnce() -> Pin<Box<T>>) -> Pin<&T> {
         let ptr = self.ptr.load(Acquire);
+        // SAFETY: Untriaged.
         match unsafe { ptr.as_ref() } {
+            // SAFETY: Untriaged.
             Some(val) => unsafe { Pin::new_unchecked(val) },
             None => self.initialize(f),
         }
@@ -55,18 +58,23 @@ impl<T> OnceBox<T> {
     #[inline]
     pub fn take(&mut self) -> Option<Pin<Box<T>>> {
         let ptr = replace(self.ptr.get_mut(), null_mut());
+        // SAFETY: Untriaged.
         if !ptr.is_null() { Some(unsafe { Pin::new_unchecked(Box::from_raw(ptr)) }) } else { None }
     }
 
     #[cold]
     fn initialize(&self, f: impl FnOnce() -> Pin<Box<T>>) -> Pin<&T> {
+        // SAFETY: Untriaged.
         let new_ptr = Box::into_raw(unsafe { Pin::into_inner_unchecked(f()) });
         match self.ptr.compare_exchange(null_mut(), new_ptr, Release, Acquire) {
+            // SAFETY: Untriaged.
             Ok(_) => unsafe { Pin::new_unchecked(&*new_ptr) },
             Err(ptr) => {
                 // Lost the race to another thread.
                 // Drop the value we created, and use the one from the other thread instead.
+                // SAFETY: Untriaged.
                 drop(unsafe { Box::from_raw(new_ptr) });
+                // SAFETY: Untriaged.
                 unsafe { Pin::new_unchecked(&*ptr) }
             }
         }

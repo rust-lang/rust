@@ -8,6 +8,7 @@ pub type ThreadId = abi::ID;
 pub use super::task::current_task_id_aborting as current;
 
 pub fn park(_hint: usize) {
+    // SAFETY: Untriaged.
     match unsafe { abi::slp_tsk() } {
         abi::E_OK | abi::E_RLWAI => {}
         err => {
@@ -17,6 +18,7 @@ pub fn park(_hint: usize) {
 }
 
 pub fn park_timeout(dur: Duration, _hint: usize) {
+    // SAFETY: Untriaged.
     match with_tmos(dur, |tmo| unsafe { abi::tslp_tsk(tmo) }) {
         abi::E_OK | abi::E_RLWAI | abi::E_TMOUT => {}
         err => {
@@ -26,6 +28,7 @@ pub fn park_timeout(dur: Duration, _hint: usize) {
 }
 
 pub fn unpark(id: ThreadId, _hint: usize) {
+    // SAFETY: Untriaged.
     match unsafe { abi::wup_tsk(id) } {
         // It is allowed to try to wake up a destroyed or unrelated task, so we ignore all
         // errors that could result from that situation.

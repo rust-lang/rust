@@ -173,6 +173,7 @@ impl Drop for HandleOrNull {
     #[inline]
     fn drop(&mut self) {
         if self.is_valid() {
+            // SAFETY: Untriaged.
             unsafe {
                 let _ = sys::c::CloseHandle(self.0);
             }
@@ -210,10 +211,12 @@ impl BorrowedHandle<'_> {
         // if we passed it a null handle, but we can treat null as a valid
         // handle which doesn't do any I/O, and allow it to be duplicated.
         if handle.is_null() {
+            // SAFETY: Untriaged.
             return unsafe { Ok(OwnedHandle::from_raw_handle(handle)) };
         }
 
         let mut ret = ptr::null_mut();
+        // SAFETY: Untriaged.
         cvt(unsafe {
             let cur_proc = sys::c::GetCurrentProcess();
             sys::c::DuplicateHandle(
@@ -226,6 +229,7 @@ impl BorrowedHandle<'_> {
                 options,
             )
         })?;
+        // SAFETY: Untriaged.
         unsafe { Ok(OwnedHandle::from_raw_handle(ret)) }
     }
 }
@@ -251,6 +255,7 @@ impl Drop for HandleOrInvalid {
     #[inline]
     fn drop(&mut self) {
         if self.is_valid() {
+            // SAFETY: Untriaged.
             unsafe {
                 let _ = sys::c::CloseHandle(self.0);
             }
@@ -383,6 +388,7 @@ impl HandleOrInvalid {
 impl Drop for OwnedHandle {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             let _ = sys::c::CloseHandle(self.handle);
         }
@@ -513,6 +519,7 @@ impl AsHandle for OwnedHandle {
         // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
         // invariants, and the `BorrowedHandle` is bounded by the lifetime
         // of `&self`.
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -547,6 +554,7 @@ impl From<OwnedHandle> for fs::File {
 impl AsHandle for io::Stdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -555,6 +563,7 @@ impl AsHandle for io::Stdin {
 impl<'a> AsHandle for io::StdinLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -563,6 +572,7 @@ impl<'a> AsHandle for io::StdinLock<'a> {
 impl AsHandle for io::Stdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -571,6 +581,7 @@ impl AsHandle for io::Stdout {
 impl<'a> AsHandle for io::StdoutLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -579,6 +590,7 @@ impl<'a> AsHandle for io::StdoutLock<'a> {
 impl AsHandle for io::Stderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -587,6 +599,7 @@ impl AsHandle for io::Stderr {
 impl<'a> AsHandle for io::StderrLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -595,6 +608,7 @@ impl<'a> AsHandle for io::StderrLock<'a> {
 impl AsHandle for crate::process::ChildStdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -604,6 +618,7 @@ impl From<crate::process::ChildStdin> for OwnedHandle {
     /// Takes ownership of a [`ChildStdin`](crate::process::ChildStdin)'s file handle.
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedHandle {
+        // SAFETY: Untriaged.
         unsafe { OwnedHandle::from_raw_handle(child_stdin.into_raw_handle()) }
     }
 }
@@ -612,6 +627,7 @@ impl From<crate::process::ChildStdin> for OwnedHandle {
 impl AsHandle for crate::process::ChildStdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -621,6 +637,7 @@ impl From<crate::process::ChildStdout> for OwnedHandle {
     /// Takes ownership of a [`ChildStdout`](crate::process::ChildStdout)'s file handle.
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedHandle {
+        // SAFETY: Untriaged.
         unsafe { OwnedHandle::from_raw_handle(child_stdout.into_raw_handle()) }
     }
 }
@@ -629,6 +646,7 @@ impl From<crate::process::ChildStdout> for OwnedHandle {
 impl AsHandle for crate::process::ChildStderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
@@ -638,6 +656,7 @@ impl From<crate::process::ChildStderr> for OwnedHandle {
     /// Takes ownership of a [`ChildStderr`](crate::process::ChildStderr)'s file handle.
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedHandle {
+        // SAFETY: Untriaged.
         unsafe { OwnedHandle::from_raw_handle(child_stderr.into_raw_handle()) }
     }
 }
@@ -646,6 +665,7 @@ impl From<crate::process::ChildStderr> for OwnedHandle {
 impl<T> AsHandle for crate::thread::JoinHandle<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }

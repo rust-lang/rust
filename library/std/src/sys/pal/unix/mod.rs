@@ -297,6 +297,7 @@ pub fn cvt_nz(error: libc::c_int) -> io::Result<()> {
 // does not use C stdio, even a buggy libc::abort() is, in fact, safe.
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
+    // SAFETY: Untriaged.
     unsafe { libc::abort() }
 }
 

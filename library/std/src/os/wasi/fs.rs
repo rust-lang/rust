@@ -246,6 +246,7 @@ impl FileExt for File {
 
     #[cfg(target_env = "p1")]
     fn fdstat_set_flags(&self, flags: u16) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::fd_fdstat_set_flags(self.as_raw_fd() as wasip1::Fd, flags).map_err(err2io)
         }
@@ -253,6 +254,7 @@ impl FileExt for File {
 
     #[cfg(target_env = "p1")]
     fn fdstat_set_rights(&self, rights: u64, inheriting: u64) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::fd_fdstat_set_rights(self.as_raw_fd() as wasip1::Fd, rights, inheriting)
                 .map_err(err2io)
@@ -276,6 +278,7 @@ impl FileExt for File {
             }
         };
 
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::fd_advise(self.as_raw_fd() as wasip1::Fd, offset, len, advice).map_err(err2io)
         }
@@ -283,12 +286,14 @@ impl FileExt for File {
 
     #[cfg(target_env = "p1")]
     fn allocate(&self, offset: u64, len: u64) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { wasip1::fd_allocate(self.as_raw_fd() as wasip1::Fd, offset, len).map_err(err2io) }
     }
 
     #[cfg(target_env = "p1")]
     fn create_directory<P: AsRef<Path>>(&self, dir: P) -> io::Result<()> {
         let path = osstr2str(dir.as_ref().as_ref())?;
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::path_create_directory(self.as_raw_fd() as wasip1::Fd, path).map_err(err2io)
         }
@@ -297,12 +302,14 @@ impl FileExt for File {
     #[cfg(target_env = "p1")]
     fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let path = osstr2str(path.as_ref().as_ref())?;
+        // SAFETY: Untriaged.
         unsafe { wasip1::path_unlink_file(self.as_raw_fd() as wasip1::Fd, path).map_err(err2io) }
     }
 
     #[cfg(target_env = "p1")]
     fn remove_directory<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let path = osstr2str(path.as_ref().as_ref())?;
+        // SAFETY: Untriaged.
         unsafe {
             wasip1::path_remove_directory(self.as_raw_fd() as wasip1::Fd, path).map_err(err2io)
         }
@@ -393,6 +400,7 @@ pub fn link<P: AsRef<Path>, U: AsRef<Path>>(
     new_fd: &File,
     new_path: U,
 ) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe {
         wasip1::path_link(
             old_fd.as_raw_fd() as wasip1::Fd,
@@ -416,6 +424,7 @@ pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
     new_fd: &File,
     new_path: U,
 ) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe {
         wasip1::path_rename(
             old_fd.as_raw_fd() as wasip1::Fd,
@@ -437,6 +446,7 @@ pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
     fd: &File,
     new_path: U,
 ) -> io::Result<()> {
+    // SAFETY: Untriaged.
     unsafe {
         wasip1::path_symlink(
             osstr2str(old_path.as_ref().as_ref())?,

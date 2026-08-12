@@ -17,6 +17,7 @@ pub struct Handle(OwnedHandle);
 
 impl Handle {
     pub fn new_event(manual: bool, init: bool) -> io::Result<Handle> {
+        // SAFETY: Untriaged.
         unsafe {
             let event =
                 c::CreateEventW(ptr::null_mut(), manual as c::BOOL, init as c::BOOL, ptr::null());
@@ -68,12 +69,14 @@ impl IntoRawHandle for Handle {
 
 impl FromRawHandle for Handle {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }
 
 impl Handle {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         let res = unsafe { self.synchronous_read(buf.as_mut_ptr().cast(), buf.len(), None) };
 
         match res {
@@ -100,6 +103,7 @@ impl Handle {
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         let res =
+// SAFETY: Untriaged.
             unsafe { self.synchronous_read(buf.as_mut_ptr().cast(), buf.len(), Some(offset)) };
 
         match res {
@@ -111,11 +115,13 @@ impl Handle {
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let res =
+// SAFETY: Untriaged.
             unsafe { self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), None) };
 
         match res {
             Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
+                // SAFETY: Untriaged.
                 unsafe {
                     cursor.advance(read);
                 }
@@ -189,6 +195,7 @@ impl Handle {
         overlapped: *mut c::OVERLAPPED,
         wait: bool,
     ) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut bytes = 0;
             let wait = if wait { c::TRUE } else { c::FALSE };
@@ -210,6 +217,7 @@ impl Handle {
     }
 
     pub fn cancel_io(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe { cvt(c::CancelIo(self.as_raw_handle())).map(drop) }
     }
 
@@ -271,6 +279,7 @@ impl Handle {
         };
 
         let status = if status == c::STATUS_PENDING {
+            // SAFETY: Untriaged.
             unsafe { c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE) };
             io_status.status()
         } else {
@@ -289,6 +298,7 @@ impl Handle {
             status if c::nt_success(status) => Ok(io_status.Information),
 
             status => {
+                // SAFETY: Untriaged.
                 let error = unsafe { c::RtlNtStatusToDosError(status) };
                 Err(io::Error::from_raw_os_error(error as _))
             }
@@ -306,6 +316,7 @@ impl Handle {
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(buf.len(), u32::MAX as usize) as u32;
+        // SAFETY: Untriaged.
         let status = unsafe {
             c::NtWriteFile(
                 self.as_raw_handle(),
@@ -320,6 +331,7 @@ impl Handle {
             )
         };
         let status = if status == c::STATUS_PENDING {
+            // SAFETY: Untriaged.
             unsafe { c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE) };
             io_status.status()
         } else {
@@ -335,6 +347,7 @@ impl Handle {
             status if c::nt_success(status) => Ok(io_status.Information),
 
             status => {
+                // SAFETY: Untriaged.
                 let error = unsafe { c::RtlNtStatusToDosError(status) };
                 Err(io::Error::from_raw_os_error(error as _))
             }

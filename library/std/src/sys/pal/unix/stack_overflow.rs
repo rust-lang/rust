@@ -19,6 +19,7 @@ impl Handler {
 
 impl Drop for Handler {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             drop_handler(self.data);
         }
@@ -152,6 +153,7 @@ mod imp {
     pub unsafe fn init() {
         PAGE_SIZE.store(conf::page_size(), Ordering::Relaxed);
 
+        // SAFETY: Untriaged.
         let mut guard_page_range = unsafe { install_main_guard() };
 
         // Even for panic=immediate-abort, installing the guard pages is important for soundness.
@@ -171,6 +173,7 @@ mod imp {
                 if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                     // haven't set up our sigaltstack yet
                     NEED_ALTSTACK.store(true, Ordering::Release);
+                    // SAFETY: Untriaged.
                     let handler = unsafe { make_handler(true) };
                     MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                     mem::forget(handler);
@@ -199,6 +202,7 @@ mod imp {
         }
         // FIXME: I probably cause more bugs than I'm worth!
         // see https://github.com/rust-lang/rust/issues/111272
+        // SAFETY: Untriaged.
         unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
     }
 
@@ -253,6 +257,7 @@ mod imp {
         }
 
         if !main_thread {
+            // SAFETY: Untriaged.
             if let Some(guard_page_range) = unsafe { current_guard() } {
                 set_current_info(guard_page_range);
             }
@@ -307,6 +312,7 @@ mod imp {
     /// Modern kernels on modern hardware can have dynamic signal stack sizes.
     #[cfg(all(any(target_os = "linux", target_os = "android"), not(target_env = "uclibc")))]
     fn sigstack_size() -> usize {
+        // SAFETY: Untriaged.
         let dynamic_sigstksz = unsafe { libc::getauxval(libc::AT_MINSIGSTKSZ) };
         // If getauxval couldn't find the entry, it returns 0,
         // so take the higher of the "constant" and auxval.
@@ -386,6 +392,7 @@ mod imp {
     }
 
     fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
+        // SAFETY: Untriaged.
         let stackptr = unsafe { get_stack_start()? };
         let stackaddr = stackptr.addr();
 
@@ -407,6 +414,7 @@ mod imp {
     unsafe fn install_main_guard() -> Option<Range<usize>> {
         let page_size = PAGE_SIZE.load(Ordering::Relaxed);
 
+        // SAFETY: Untriaged.
         unsafe {
             // this way someone on any unix-y OS can check that all these compile
             if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
@@ -482,6 +490,7 @@ mod imp {
             let mut size = size_of_val(&guard);
             let oid = c"security.bsd.stack_guard_page";
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 libc::sysctlbyname(
                     oid.as_ptr(),
@@ -525,6 +534,7 @@ mod imp {
         // read/write permissions and only then mprotect() it to
         // no permissions at all. See issue #50313.
         let stackptr = stack_start_aligned(page_size)?;
+        // SAFETY: Untriaged.
         let result = unsafe {
             mmap64(
                 stackptr,
@@ -539,6 +549,7 @@ mod imp {
             panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
         }
 
+        // SAFETY: Untriaged.
         let result = unsafe { mprotect(stackptr, page_size, PROT_NONE) };
         if result != 0 {
             panic!("failed to protect the guard page: {}", io::Error::last_os_error());
@@ -700,6 +711,7 @@ mod imp {
 
     /// Reserve stack space for use in stack overflow exceptions.
     fn reserve_stack() {
+        // SAFETY: Untriaged.
         let result = unsafe { c::SetThreadStackGuarantee(&mut 0x5000) };
         // Reserving stack space is not critical so we allow it to fail in the released build of libstd.
         // We still use debug assert here so that CI will test that we haven't made a mistake calling the function.

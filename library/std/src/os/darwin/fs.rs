@@ -82,6 +82,7 @@ impl MetadataExt for Metadata {
     #[allow(deprecated)]
     #[cfg(any(doc, target_os = "macos", target_os = "ios"))]
     fn as_raw_stat(&self) -> &super::raw::stat {
+        // SAFETY: Untriaged.
         unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const super::raw::stat) }
     }
     fn st_dev(&self) -> u64 {

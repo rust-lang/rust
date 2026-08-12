@@ -5,6 +5,7 @@ static RNG_INIT: Atomic<bool> = AtomicBool::new(false);
 
 pub fn fill_bytes(mut bytes: &mut [u8]) {
     while !RNG_INIT.load(Relaxed) {
+        // SAFETY: Untriaged.
         let ret = unsafe { libc::randSecure() };
         if ret < 0 {
             panic!("failed to generate random data");
@@ -13,11 +14,13 @@ pub fn fill_bytes(mut bytes: &mut [u8]) {
             break;
         }
 
+        // SAFETY: Untriaged.
         unsafe { libc::usleep(10) };
     }
 
     while !bytes.is_empty() {
         let len = bytes.len().try_into().unwrap_or(libc::c_int::MAX);
+        // SAFETY: Untriaged.
         let ret = unsafe { libc::randABytes(bytes.as_mut_ptr(), len) };
         assert!(ret >= 0, "failed to generate random data");
         bytes = &mut bytes[len as usize..];

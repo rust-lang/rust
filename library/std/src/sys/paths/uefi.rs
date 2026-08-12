@@ -33,6 +33,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let mut p = helpers::os_string_to_raw(p.as_os_str())
         .ok_or(io::const_error!(io::ErrorKind::InvalidData, "invalid path"))?;
 
+    // SAFETY: Untriaged.
     let r = unsafe { ((*shell.as_ptr()).set_cur_dir)(crate::ptr::null_mut(), p.as_mut_ptr()) };
     if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
 }

@@ -31,6 +31,7 @@ pub struct UnsafeList<T> {
 
 impl<T> UnsafeList<T> {
     pub const fn new() -> Self {
+        // SAFETY: Untriaged.
         unsafe { UnsafeList { head_tail: NonNull::new_unchecked(1 as _), head_tail_entry: None } }
     }
 
@@ -40,15 +41,18 @@ impl<T> UnsafeList<T> {
             self.head_tail_entry = Some(UnsafeListEntry::dummy());
             // SAFETY: `head_tail_entry` must be non-null, which it is because we assign it above.
             self.head_tail =
+// SAFETY: Untriaged.
                 unsafe { NonNull::new_unchecked(self.head_tail_entry.as_mut().unwrap()) };
             // SAFETY: `self.head_tail` must meet all requirements for a mutable reference.
             unsafe { self.head_tail.as_mut() }.next = self.head_tail;
+            // SAFETY: Untriaged.
             unsafe { self.head_tail.as_mut() }.prev = self.head_tail;
         }
     }
 
     pub fn is_empty(&self) -> bool {
         if self.head_tail_entry.is_some() {
+            // SAFETY: Untriaged.
             let first = unsafe { self.head_tail.as_ref() }.next;
             if first == self.head_tail {
                 // ,-------> /---------\ next ---,
@@ -74,6 +78,7 @@ impl<T> UnsafeList<T> {
     /// care must be taken in the caller of `push` to ensure unwinding does
     /// not destroy the stack frame containing the entry.
     pub unsafe fn push<'a>(&mut self, entry: &'a mut UnsafeListEntry<T>) -> &'a T {
+        // SAFETY: Untriaged.
         unsafe { self.init() };
 
         // BEFORE:
@@ -85,14 +90,18 @@ impl<T> UnsafeList<T> {
         //     /---------\ next ---> /-----\ next ---> /---------\
         // ... |prev_tail|           |entry|           |head_tail| ...
         //     \---------/ <--- prev \-----/ <--- prev \---------/
+        // SAFETY: Untriaged.
         let mut entry = unsafe { NonNull::new_unchecked(entry) };
+        // SAFETY: Untriaged.
         let mut prev_tail = mem::replace(&mut unsafe { self.head_tail.as_mut() }.prev, entry);
         // SAFETY: `entry` must meet all requirements for a mutable reference.
         unsafe { entry.as_mut() }.prev = prev_tail;
+        // SAFETY: Untriaged.
         unsafe { entry.as_mut() }.next = self.head_tail;
         // SAFETY: `prev_tail` must meet all requirements for a mutable reference.
         unsafe { prev_tail.as_mut() }.next = entry;
         // unwrap ok: always `Some` on non-dummy entries
+        // SAFETY: Untriaged.
         unsafe { (*entry.as_ptr()).value.as_ref() }.unwrap()
     }
 
@@ -103,6 +112,7 @@ impl<T> UnsafeList<T> {
     /// The caller must make sure to synchronize ending the borrow of the
     /// return value and deallocation of the containing entry.
     pub unsafe fn pop<'a>(&mut self) -> Option<&'a T> {
+        // SAFETY: Untriaged.
         unsafe { self.init() };
 
         if self.is_empty() {
@@ -117,13 +127,20 @@ impl<T> UnsafeList<T> {
             //     /---------\ next ---> /------\
             // ... |head_tail|           |second| ...
             //     \---------/ <--- prev \------/
+            // SAFETY: Untriaged.
             let mut first = unsafe { self.head_tail.as_mut() }.next;
+            // SAFETY: Untriaged.
             let mut second = unsafe { first.as_mut() }.next;
+            // SAFETY: Untriaged.
             unsafe { self.head_tail.as_mut() }.next = second;
+            // SAFETY: Untriaged.
             unsafe { second.as_mut() }.prev = self.head_tail;
+            // SAFETY: Untriaged.
             unsafe { first.as_mut() }.next = NonNull::dangling();
+            // SAFETY: Untriaged.
             unsafe { first.as_mut() }.prev = NonNull::dangling();
             // unwrap ok: always `Some` on non-dummy entries
+            // SAFETY: Untriaged.
             Some(unsafe { (*first.as_ptr()).value.as_ref() }.unwrap())
         }
     }
@@ -149,6 +166,7 @@ impl<T> UnsafeList<T> {
         let mut next = entry.next;
         // SAFETY: `prev` and `next` must meet all requirements for a mutable reference.entry
         unsafe { prev.as_mut() }.next = next;
+        // SAFETY: Untriaged.
         unsafe { next.as_mut() }.prev = prev;
         entry.next = NonNull::dangling();
         entry.prev = NonNull::dangling();

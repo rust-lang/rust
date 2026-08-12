@@ -108,6 +108,7 @@ impl Command {
         s: Stdio,
     ) -> io::Result<Option<helpers::OwnedProtocol<uefi_command_internal::PipeProtocol>>> {
         match s {
+            // SAFETY: Untriaged.
             Stdio::MakePipe => unsafe {
                 helpers::OwnedProtocol::create(
                     uefi_command_internal::PipeProtocol::new(),
@@ -115,6 +116,7 @@ impl Command {
                 )
             }
             .map(Some),
+            // SAFETY: Untriaged.
             Stdio::Null => unsafe {
                 helpers::OwnedProtocol::create(
                     uefi_command_internal::PipeProtocol::null(),
@@ -131,6 +133,7 @@ impl Command {
         s: Stdio,
     ) -> io::Result<Option<helpers::OwnedProtocol<uefi_command_internal::InputProtocol>>> {
         match s {
+            // SAFETY: Untriaged.
             Stdio::Null => unsafe {
                 helpers::OwnedProtocol::create(
                     uefi_command_internal::InputProtocol::null(),
@@ -189,7 +192,9 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     if let Some(e) = &env {
         for (k, (_, v)) in e {
             match v {
+                // SAFETY: Untriaged.
                 Some(v) => unsafe { crate::env::set_var(k, v) },
+                // SAFETY: Untriaged.
                 None => unsafe { crate::env::remove_var(k) },
             }
         }
@@ -201,7 +206,9 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     if let Some(e) = env {
         for (k, (v, _)) in e {
             match v {
+                // SAFETY: Untriaged.
                 Some(v) => unsafe { crate::env::set_var(k, v) },
+                // SAFETY: Untriaged.
                 None => unsafe { crate::env::remove_var(k) },
             }
         }
@@ -432,6 +439,7 @@ mod uefi_command_internal {
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let image_handle = image_handle();
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*boot_services.as_ptr()).load_image)(
                     r_efi::efi::Boolean::FALSE,
@@ -446,11 +454,13 @@ mod uefi_command_internal {
             if r.is_error() {
                 Err(io::Error::from_raw_os_error(r.as_usize()))
             } else {
+                // SAFETY: Untriaged.
                 let child_handle = unsafe { child_handle.assume_init() };
                 let child_handle = NonNull::new(child_handle).unwrap();
 
                 let loaded_image: NonNull<loaded_image::Protocol> =
                     helpers::open_protocol(child_handle, loaded_image::PROTOCOL_GUID).unwrap();
+                // SAFETY: Untriaged.
                 let st = OwnedTable::from_table(unsafe { (*loaded_image.as_ptr()).system_table });
 
                 Ok(Self {
@@ -470,6 +480,7 @@ mod uefi_command_internal {
             // Use our system table instead of the default one
             let loaded_image: NonNull<loaded_image::Protocol> =
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
+            // SAFETY: Untriaged.
             unsafe {
                 (*loaded_image.as_ptr()).system_table = self.st.as_mut_ptr();
             }
@@ -480,6 +491,7 @@ mod uefi_command_internal {
             let mut exit_data_size: usize = 0;
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*boot_services.as_ptr()).start_image)(
                     self.handle.as_ptr(),
@@ -490,6 +502,7 @@ mod uefi_command_internal {
 
             // Drop exitdata
             if exit_data_size != 0 {
+                // SAFETY: Untriaged.
                 unsafe {
                     let exit_data = exit_data.assume_init();
                     ((*boot_services.as_ptr()).free_pool)(exit_data as *mut crate::ffi::c_void);
@@ -504,6 +517,7 @@ mod uefi_command_internal {
             handle: r_efi::efi::Handle,
             protocol: *mut simple_text_output::Protocol,
         ) {
+            // SAFETY: Untriaged.
             unsafe {
                 (*self.st.as_mut_ptr()).console_out_handle = handle;
                 (*self.st.as_mut_ptr()).con_out = protocol;
@@ -515,6 +529,7 @@ mod uefi_command_internal {
             handle: r_efi::efi::Handle,
             protocol: *mut simple_text_output::Protocol,
         ) {
+            // SAFETY: Untriaged.
             unsafe {
                 (*self.st.as_mut_ptr()).standard_error_handle = handle;
                 (*self.st.as_mut_ptr()).std_err = protocol;
@@ -526,6 +541,7 @@ mod uefi_command_internal {
             handle: r_efi::efi::Handle,
             protocol: *mut simple_text_input::Protocol,
         ) {
+            // SAFETY: Untriaged.
             unsafe {
                 (*self.st.as_mut_ptr()).console_in_handle = handle;
                 (*self.st.as_mut_ptr()).con_in = protocol;
@@ -542,6 +558,7 @@ mod uefi_command_internal {
 
         pub fn stdout_inherit(&mut self) {
             let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
+            // SAFETY: Untriaged.
             unsafe { self.set_stdout((*st.as_ptr()).console_out_handle, (*st.as_ptr()).con_out) }
         }
 
@@ -555,6 +572,7 @@ mod uefi_command_internal {
 
         pub fn stderr_inherit(&mut self) {
             let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
+            // SAFETY: Untriaged.
             unsafe { self.set_stderr((*st.as_ptr()).standard_error_handle, (*st.as_ptr()).std_err) }
         }
 
@@ -568,6 +586,7 @@ mod uefi_command_internal {
 
         pub(crate) fn stdin_inherit(&mut self) {
             let st: NonNull<r_efi::efi::SystemTable> = system_table().cast();
+            // SAFETY: Untriaged.
             unsafe { self.set_stdin((*st.as_ptr()).console_in_handle, (*st.as_ptr()).con_in) }
         }
 
@@ -593,6 +612,7 @@ mod uefi_command_internal {
             let args_size: u32 = (len * size_of::<u16>()).try_into().unwrap();
             let ptr = Box::into_raw(args).as_mut_ptr();
 
+            // SAFETY: Untriaged.
             unsafe {
                 (*loaded_image.as_ptr()).load_options = ptr as *mut crate::ffi::c_void;
                 (*loaded_image.as_ptr()).load_options_size = args_size;
@@ -603,14 +623,17 @@ mod uefi_command_internal {
 
         fn update_st_crc32(&mut self) -> io::Result<()> {
             let bt: NonNull<r_efi::efi::BootServices> = boot_services().unwrap().cast();
+            // SAFETY: Untriaged.
             let st_size = unsafe { (*self.st.as_ptr()).hdr.header_size as usize };
             let mut crc32: u32 = 0;
 
             // Set crc to 0 before calculation
+            // SAFETY: Untriaged.
             unsafe {
                 (*self.st.as_mut_ptr()).hdr.crc32 = 0;
             }
 
+            // SAFETY: Untriaged.
             let r = unsafe {
                 ((*bt.as_ptr()).calculate_crc32)(
                     self.st.as_mut_ptr() as *mut crate::ffi::c_void,
@@ -622,6 +645,7 @@ mod uefi_command_internal {
             if r.is_error() {
                 Err(io::Error::from_raw_os_error(r.as_usize()))
             } else {
+                // SAFETY: Untriaged.
                 unsafe {
                     (*self.st.as_mut_ptr()).hdr.crc32 = crc32;
                 }
@@ -634,12 +658,14 @@ mod uefi_command_internal {
         fn drop(&mut self) {
             if let Some(bt) = boot_services() {
                 let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
+                // SAFETY: Untriaged.
                 unsafe {
                     ((*bt.as_ptr()).unload_image)(self.handle.as_ptr());
                 }
             }
 
             if let Some((ptr, len)) = self.args {
+                // SAFETY: Untriaged.
                 let _ = unsafe { Box::from_raw(ptr.cast_slice(len)) };
             }
         }
@@ -721,6 +747,7 @@ mod uefi_command_internal {
             _: r_efi::efi::Boolean,
         ) -> r_efi::efi::Status {
             let proto: *mut PipeProtocol = proto.cast();
+            // SAFETY: Untriaged.
             unsafe {
                 (*proto)._buffer.clear();
             }
@@ -739,6 +766,7 @@ mod uefi_command_internal {
             buf: *mut r_efi::efi::Char16,
         ) -> r_efi::efi::Status {
             let proto: *mut PipeProtocol = proto.cast();
+            // SAFETY: Untriaged.
             let buf_len = unsafe {
                 if let Some(x) = WStrUnits::new(buf) {
                     x.count()
@@ -746,8 +774,10 @@ mod uefi_command_internal {
                     return r_efi::efi::Status::INVALID_PARAMETER;
                 }
             };
+            // SAFETY: Untriaged.
             let buf_slice = unsafe { slice::from_raw_parts(buf, buf_len) };
 
+            // SAFETY: Untriaged.
             unsafe {
                 (*proto)._buffer.extend_from_slice(buf_slice);
             };
@@ -816,6 +846,7 @@ mod uefi_command_internal {
 
     impl Drop for PipeProtocol {
         fn drop(&mut self) {
+            // SAFETY: Untriaged.
             unsafe {
                 let _ = Box::from_raw(self.mode);
             }
@@ -866,6 +897,7 @@ mod uefi_command_internal {
     impl Drop for InputProtocol {
         fn drop(&mut self) {
             // Close wait_for_key
+            // SAFETY: Untriaged.
             unsafe {
                 let _ = helpers::OwnedEvent::from_raw(self.wait_for_key);
             }

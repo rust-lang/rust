@@ -5,6 +5,7 @@ use super::BorrowedFd;
 /// See [`io::stdin()`][`crate::io::stdin`] for the higher level handle, which should be preferred
 /// whenever possible. See [`STDERR`] for why the file descriptor might be required and caveats.
 #[unstable(feature = "stdio_fd_consts", issue = "150836")]
+// SAFETY: Untriaged.
 pub const STDIN: BorrowedFd<'static> = unsafe { BorrowedFd::borrow_raw(0) };
 
 /// The file descriptor for the standard output stream of the current process.
@@ -14,6 +15,7 @@ pub const STDIN: BorrowedFd<'static> = unsafe { BorrowedFd::borrow_raw(0) };
 /// addition to the issues discussed there, note that [`Stdout`][`crate::io::Stdout`] is buffered by
 /// default, and writing to the file descriptor will bypass this buffer.
 #[unstable(feature = "stdio_fd_consts", issue = "150836")]
+// SAFETY: Untriaged.
 pub const STDOUT: BorrowedFd<'static> = unsafe { BorrowedFd::borrow_raw(1) };
 
 /// The file descriptor for the standard error stream of the current process.
@@ -50,4 +52,5 @@ pub const STDOUT: BorrowedFd<'static> = unsafe { BorrowedFd::borrow_raw(1) };
 /// [io-safety]: ../../../std/io/index.html#io-safety
 /// [global-alloc-reentrancy]: ../../../std/alloc/trait.GlobalAlloc.html#re-entrance
 #[unstable(feature = "stdio_fd_consts", issue = "150836")]
+// SAFETY: Untriaged.
 pub const STDERR: BorrowedFd<'static> = unsafe { BorrowedFd::borrow_raw(2) };

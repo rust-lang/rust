@@ -147,6 +147,7 @@ impl FileType {
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut dir = MaybeUninit::uninit();
         error::SolidError::err_if_negative(abi::SOLID_FS_OpenDir(
@@ -171,6 +172,7 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        // SAFETY: Untriaged.
         let entry = unsafe {
             let mut out_entry = MaybeUninit::uninit();
             match error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
@@ -189,6 +191,7 @@ impl Iterator for ReadDir {
 
 impl Drop for InnerReadDir {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { abi::SOLID_FS_CloseDir(self.dirp) };
     }
 }
@@ -196,11 +199,13 @@ impl Drop for InnerReadDir {
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
         self.inner.root.join(OsStr::from_bytes(
+            // SAFETY: Untriaged.
             unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }.to_bytes(),
         ))
     }
 
     pub fn file_name(&self) -> OsString {
+        // SAFETY: Untriaged.
         OsStr::from_bytes(unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }.to_bytes())
             .to_os_string()
     }
@@ -321,6 +326,7 @@ impl File {
         let flags = opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !abi::O_ACCMODE);
+        // SAFETY: Untriaged.
         unsafe {
             let mut fd = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Open(
@@ -370,6 +376,7 @@ impl File {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut out_num_bytes = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Read(
@@ -384,6 +391,7 @@ impl File {
     }
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             let len = cursor.capacity();
             let mut out_num_bytes = MaybeUninit::uninit();
@@ -416,6 +424,7 @@ impl File {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut out_num_bytes = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Write(
@@ -438,6 +447,7 @@ impl File {
     }
 
     pub fn flush(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Sync(self.fd.raw()) })
             .map_err(|e| e.as_io_error())?;
         Ok(())
@@ -451,6 +461,7 @@ impl File {
             SeekFrom::End(off) => (abi::SEEK_END, off),
             SeekFrom::Current(off) => (abi::SEEK_CUR, off),
         };
+        // SAFETY: Untriaged.
         error::SolidError::err_if_negative(unsafe {
             abi::SOLID_FS_Lseek(self.fd.raw(), pos, whence)
         })
@@ -464,6 +475,7 @@ impl File {
     }
 
     pub fn tell(&self) -> io::Result<u64> {
+        // SAFETY: Untriaged.
         unsafe {
             let mut out_offset = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Ftell(
@@ -490,6 +502,7 @@ impl File {
 
 impl Drop for File {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { abi::SOLID_FS_Close(self.fd.raw()) };
     }
 }
@@ -500,6 +513,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        // SAFETY: Untriaged.
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Mkdir(cstr(p)?.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
         Ok(())
@@ -516,6 +530,7 @@ pub fn unlink(p: &Path) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
         Err(io::const_error!(io::ErrorKind::IsADirectory, "is a directory"))
     } else {
+        // SAFETY: Untriaged.
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
         Ok(())
@@ -523,6 +538,7 @@ pub fn unlink(p: &Path) -> io::Result<()> {
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
+    // SAFETY: Untriaged.
     error::SolidError::err_if_negative(unsafe {
         abi::SOLID_FS_Rename(cstr(old)?.as_ptr(), cstr(new)?.as_ptr())
     })
@@ -536,6 +552,7 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn set_perm_nofollow(p: &Path, perm: FilePermissions) -> io::Result<()> {
+    // SAFETY: Untriaged.
     error::SolidError::err_if_negative(unsafe {
         abi::SOLID_FS_Chmod(cstr(p)?.as_ptr(), perm.0.into())
     })
@@ -553,6 +570,7 @@ pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
+        // SAFETY: Untriaged.
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
         Ok(())
@@ -604,6 +622,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut out_stat = MaybeUninit::uninit();
         error::SolidError::err_if_negative(abi::SOLID_FS_Stat(

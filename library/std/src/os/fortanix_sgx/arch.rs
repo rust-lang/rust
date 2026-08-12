@@ -29,6 +29,7 @@ const ENCLU_EGETKEY: u32 = 1;
 /// Call the `EGETKEY` instruction to obtain a 128-bit secret key.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut out = MaybeUninit::uninit();
         let error;
@@ -61,6 +62,7 @@ pub fn ereport(
     targetinfo: &Align512<[u8; 512]>,
     reportdata: &Align128<[u8; 64]>,
 ) -> Align512<[u8; 432]> {
+    // SAFETY: Untriaged.
     unsafe {
         let mut report = MaybeUninit::uninit();
 

@@ -108,6 +108,7 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
+        // SAFETY: Untriaged.
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
@@ -143,6 +144,7 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn connect_addr(socket_addr: &SocketAddr) -> io::Result<UnixStream> {
+        // SAFETY: Untriaged.
         unsafe {
             let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::connect(
@@ -218,6 +220,7 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
 
@@ -237,6 +240,7 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(self.as_raw_fd(), addr, len) })
     }
 
@@ -744,6 +748,7 @@ impl From<UnixStream> for OwnedFd {
     /// Takes ownership of a [`UnixStream`]'s socket file descriptor.
     #[inline]
     fn from(unix_stream: UnixStream) -> OwnedFd {
+        // SAFETY: Untriaged.
         unsafe { OwnedFd::from_raw_fd(unix_stream.into_raw_fd()) }
     }
 }
@@ -752,6 +757,7 @@ impl From<UnixStream> for OwnedFd {
 impl From<OwnedFd> for UnixStream {
     #[inline]
     fn from(owned: OwnedFd) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_raw_fd(owned.into_raw_fd()) }
     }
 }

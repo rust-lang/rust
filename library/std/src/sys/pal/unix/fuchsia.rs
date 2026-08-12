@@ -46,6 +46,7 @@ impl Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             zx_cvt(zx_handle_close(self.raw)).expect("Failed to close zx_handle_t");
         }

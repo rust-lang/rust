@@ -8,6 +8,7 @@ const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 #[allow(dead_code)] // Used for pthread condvar timeouts
 pub const TIMESPEC_MAX: libc::timespec = {
+    // SAFETY: Untriaged.
     let mut ts = unsafe { mem::zeroed::<libc::timespec>() };
     ts.tv_sec = <libc::time_t>::MAX;
     ts.tv_nsec = 1_000_000_000 - 1;
@@ -29,18 +30,22 @@ pub(crate) struct Timespec {
 }
 
 impl Timespec {
+    // SAFETY: Untriaged.
     pub const MAX: Timespec = unsafe { Self::new_unchecked(i64::MAX, 1_000_000_000 - 1) };
 
     // As described below, on Apple OS, dates before epoch are represented differently.
     // This is not an issue here however, because we are using tv_sec = i64::MIN,
     // which will cause the compatibility wrapper to not be executed at all.
+    // SAFETY: Untriaged.
     pub const MIN: Timespec = unsafe { Self::new_unchecked(i64::MIN, 0) };
 
     const unsafe fn new_unchecked(tv_sec: i64, tv_nsec: i64) -> Timespec {
+        // SAFETY: Untriaged.
         Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds::new_unchecked(tv_nsec as u32) } }
     }
 
     pub const fn zero() -> Timespec {
+        // SAFETY: Untriaged.
         unsafe { Self::new_unchecked(0, 0) }
     }
 
@@ -65,6 +70,7 @@ impl Timespec {
                 (tv_sec, tv_nsec)
             };
         if tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64 {
+            // SAFETY: Untriaged.
             Ok(unsafe { Self::new_unchecked(tv_sec, tv_nsec) })
         } else {
             Err(io::const_error!(io::ErrorKind::InvalidData, "invalid timestamp"))
@@ -97,14 +103,18 @@ impl Timespec {
 
             if let Some(clock_gettime64) = __clock_gettime64.get() {
                 let mut t = MaybeUninit::uninit();
+                // SAFETY: Untriaged.
                 cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
+                // SAFETY: Untriaged.
                 let t = unsafe { t.assume_init() };
                 return Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap();
             }
         }
 
         let mut t = MaybeUninit::uninit();
+        // SAFETY: Untriaged.
         cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
+        // SAFETY: Untriaged.
         let t = unsafe { t.assume_init() };
         Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap()
     }
@@ -152,6 +162,7 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
+        // SAFETY: Untriaged.
         Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 
@@ -164,6 +175,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
+        // SAFETY: Untriaged.
         Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 

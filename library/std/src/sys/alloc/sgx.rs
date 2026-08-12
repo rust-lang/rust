@@ -86,11 +86,13 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 #[cfg(not(test))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
+    // SAFETY: Untriaged.
     unsafe { crate::alloc::alloc(Layout::from_size_align_unchecked(size, align)) }
 }
 
 #[cfg(not(test))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
+    // SAFETY: Untriaged.
     unsafe { crate::alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
 }

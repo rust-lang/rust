@@ -39,11 +39,13 @@ impl Condvar {
 
     #[inline]
     pub fn notify_one(&self) {
+        // SAFETY: Untriaged.
         unsafe { c::WakeConditionVariable(self.inner.get()) }
     }
 
     #[inline]
     pub fn notify_all(&self) {
+        // SAFETY: Untriaged.
         unsafe { c::WakeAllConditionVariable(self.inner.get()) }
     }
 }

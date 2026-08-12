@@ -17,6 +17,7 @@ pub fn init(env: *const *const c_char) {
         return;
     }
 
+    // SAFETY: Untriaged.
     unsafe {
         let mut environ = env;
         while !(*environ).is_null() {

@@ -29,6 +29,7 @@ impl Condvar {
         self.waiters.with_locked(|waiters| {
             if let Some(task) = waiters.pop_front() {
                 // Unpark the task
+                // SAFETY: Untriaged.
                 match unsafe { abi::wup_tsk(task) } {
                     // The task already has a token.
                     abi::E_QOVR => {}
@@ -45,6 +46,7 @@ impl Condvar {
         self.waiters.with_locked(|waiters| {
             while let Some(task) = waiters.pop_front() {
                 // Unpark the task
+                // SAFETY: Untriaged.
                 match unsafe { abi::wup_tsk(task) } {
                     // The task already has a token.
                     abi::E_QOVR => {}
@@ -62,17 +64,21 @@ impl Condvar {
         let mut waiter = waiter_queue::Waiter::new();
         let waiter = NonNull::from(&mut waiter);
 
+        // SAFETY: Untriaged.
         self.waiters.with_locked(|waiters| unsafe {
             waiters.insert(waiter);
         });
 
+        // SAFETY: Untriaged.
         unsafe { mutex.unlock() };
 
         // Wait until `waiter` is removed from the queue
         loop {
             // Park the current task
+            // SAFETY: Untriaged.
             expect_success_aborting(unsafe { abi::slp_tsk() }, &"slp_tsk");
 
+            // SAFETY: Untriaged.
             if !self.waiters.with_locked(|waiters| unsafe { waiters.is_queued(waiter) }) {
                 break;
             }
@@ -86,18 +92,22 @@ impl Condvar {
         let mut waiter = waiter_queue::Waiter::new();
         let waiter = NonNull::from(&mut waiter);
 
+        // SAFETY: Untriaged.
         self.waiters.with_locked(|waiters| unsafe {
             waiters.insert(waiter);
         });
 
+        // SAFETY: Untriaged.
         unsafe { mutex.unlock() };
 
         // Park the current task and do not wake up until the timeout elapses
         // or the task gets woken up by `notify_*`
         match with_tmos_strong(dur, |tmo| {
+            // SAFETY: Untriaged.
             let er = unsafe { abi::tslp_tsk(tmo) };
             if er == 0 {
                 // We were unparked. Are we really dequeued?
+                // SAFETY: Untriaged.
                 if self.waiters.with_locked(|waiters| unsafe { waiters.is_queued(waiter) }) {
                     // No we are not. Continue waiting.
                     return abi::E_TMOUT;
@@ -114,6 +124,7 @@ impl Condvar {
         // Remove `waiter` from `self.waiters`. If `waiter` is still in
         // `waiters`, it means we woke up because of a timeout. Otherwise,
         // we woke up because of `notify_*`.
+        // SAFETY: Untriaged.
         let success = self.waiters.with_locked(|waiters| unsafe { !waiters.remove(waiter) });
 
         mutex.lock();
@@ -181,6 +192,7 @@ mod waiter_queue {
         ///  - `*waiter_ptr` must not have been previously inserted to a `WaiterQueue`.
         ///
         pub unsafe fn insert(&mut self, mut waiter_ptr: NonNull<Waiter>) {
+            // SAFETY: Untriaged.
             unsafe {
                 let waiter = waiter_ptr.as_mut();
 
@@ -236,6 +248,7 @@ mod waiter_queue {
         /// it from `self` if it's still there.
         #[inline]
         pub unsafe fn remove(&mut self, mut waiter_ptr: NonNull<Waiter>) -> bool {
+            // SAFETY: Untriaged.
             unsafe {
                 let waiter = waiter_ptr.as_mut();
                 if waiter.task != 0 {
@@ -272,11 +285,13 @@ mod waiter_queue {
         /// flag indicating whether it's still in `self`.
         #[inline]
         pub unsafe fn is_queued(&self, waiter: NonNull<Waiter>) -> bool {
+            // SAFETY: Untriaged.
             unsafe { waiter.as_ref().task != 0 }
         }
 
         #[inline]
         pub fn pop_front(&mut self) -> Option<abi::ID> {
+            // SAFETY: Untriaged.
             unsafe {
                 let head = self.head.as_mut()?;
                 let waiter = head.first.as_mut();

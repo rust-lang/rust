@@ -73,6 +73,7 @@ impl EnvKey {
 // [4] https://docs.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-comparestringordinal
 impl Ord for EnvKey {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
+        // SAFETY: Untriaged.
         unsafe {
             let result = c::CompareStringOrdinal(
                 self.utf16.as_ptr(),
@@ -302,6 +303,7 @@ impl Command {
             has_bat_extension(&program[..program.len() - 1])
         } else {
             fill_utf16_buf(
+                // SAFETY: Untriaged.
                 |buffer, size| unsafe {
                     // resolve the path so we can test the final file name.
                     c::GetFullPathNameW(program.as_ptr(), size, buffer, ptr::null_mut())
@@ -412,6 +414,7 @@ impl Command {
             si_ptr = (&raw mut si) as _;
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             cvt(c::CreateProcessW(
                 program.as_ptr(),
@@ -427,6 +430,7 @@ impl Command {
             ))
         }?;
 
+        // SAFETY: Untriaged.
         unsafe {
             Ok((
                 Process {
@@ -587,6 +591,7 @@ where
 
 /// Checks if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
+    // SAFETY: Untriaged.
     unsafe {
         let path = args::to_user_path(path).ok()?;
         // Getting attributes using `GetFileAttributesW` does not follow symlinks
@@ -604,6 +609,7 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 impl Stdio {
     fn to_handle(&self, stdio_id: u32, pipe: &mut Option<ChildPipe>) -> io::Result<Handle> {
         let use_stdio_id = |stdio_id| match stdio::get_handle(stdio_id) {
+            // SAFETY: Untriaged.
             Ok(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
                 let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
@@ -611,6 +617,7 @@ impl Stdio {
                 ret
             },
             // If no stdio handle is available, then propagate the null value.
+            // SAFETY: Untriaged.
             Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
         };
         match *self {
@@ -709,6 +716,7 @@ pub struct Process {
 
 impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         let result = unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) };
         if result == c::FALSE {
             let error = api::get_last_error();
@@ -723,6 +731,7 @@ impl Process {
     }
 
     pub fn id(&self) -> u32 {
+        // SAFETY: Untriaged.
         unsafe { c::GetProcessId(self.handle.as_raw_handle()) }
     }
 
@@ -731,6 +740,7 @@ impl Process {
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        // SAFETY: Untriaged.
         unsafe {
             let res = c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
@@ -743,6 +753,7 @@ impl Process {
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        // SAFETY: Untriaged.
         unsafe {
             match c::WaitForSingleObject(self.handle.as_raw_handle(), 0) {
                 c::WAIT_OBJECT_0 => {}
@@ -900,6 +911,7 @@ fn make_command_line(argv0: &OsStr, args: &[Arg], force_quotes: bool) -> io::Res
 // Get `cmd.exe` for use with bat scripts, encoded as a UTF-16 string.
 fn command_prompt() -> io::Result<Vec<u16>> {
     let mut system: Vec<u16> =
+// SAFETY: Untriaged.
         fill_utf16_buf(|buf, size| unsafe { c::GetSystemDirectoryW(buf, size) }, |buf| buf.into())?;
     system.extend("\\cmd.exe".encode_utf16().chain([0]));
     Ok(system)
@@ -999,5 +1011,6 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 }
 
 pub fn getpid() -> u32 {
+    // SAFETY: Untriaged.
     unsafe { c::GetCurrentProcessId() }
 }

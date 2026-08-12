@@ -639,6 +639,7 @@ impl CopyWrite for CachedFileMetadata {
 
 fn fd_to_meta<T: AsRawFd>(fd: &T) -> FdMeta {
     let fd = fd.as_raw_fd();
+    // SAFETY: Untriaged.
     let file: ManuallyDrop<File> = ManuallyDrop::new(unsafe { File::from_raw_fd(fd) });
     match file.metadata() {
         Ok(meta) => FdMeta::Metadata(meta),
@@ -707,6 +708,7 @@ fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult 
         // In some cases, we cannot determine availability from the first
         // `copy_file_range` call. In this case, we probe with an invalid file
         // descriptor so that the results are easily interpretable.
+        // SAFETY: Untriaged.
         match unsafe {
             cvt(copy_file_range(INVALID_FD, ptr::null_mut(), INVALID_FD, ptr::null_mut(), 1, 0))
                 .map_err(|e| e.raw_os_error())
@@ -727,6 +729,7 @@ fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult 
         // this allows us to copy large chunks without hitting EOVERFLOW,
         // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
         let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
+        // SAFETY: Untriaged.
         let copy_result = unsafe {
             // We actually don't have to adjust the offsets,
             // because copy_file_range adjusts the file offset automatically
@@ -846,8 +849,10 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
 
         let result = match mode {
             SpliceMode::Sendfile => {
+                // SAFETY: Untriaged.
                 cvt(unsafe { sendfile64(writer, reader, ptr::null_mut(), chunk_size) })
             }
+            // SAFETY: Untriaged.
             SpliceMode::Splice => cvt(unsafe {
                 splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)
             }),

@@ -60,7 +60,9 @@ impl Drop for Mutex {
         let Some(pal) = self.pal.take() else { return };
         // We're not allowed to pthread_mutex_destroy a locked mutex,
         // so check first if it's unlocked.
+        // SAFETY: Untriaged.
         if unsafe { pal.as_ref().try_lock() } {
+            // SAFETY: Untriaged.
             unsafe { pal.as_ref().unlock() };
             drop(pal)
         } else {

@@ -78,6 +78,7 @@ impl OwnedSocket {
     #[allow(implicit_provenance_casts)]
     #[cfg(not(target_vendor = "uwp"))]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         cvt(unsafe {
             sys::c::SetHandleInformation(
                 self.as_raw_socket() as sys::c::HANDLE,
@@ -99,7 +100,9 @@ impl BorrowedSocket<'_> {
     /// object as the existing `BorrowedSocket` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedSocket> {
+        // SAFETY: Untriaged.
         let mut info = unsafe { mem::zeroed::<sys::c::WSAPROTOCOL_INFOW>() };
+        // SAFETY: Untriaged.
         let result = unsafe {
             sys::c::WSADuplicateSocketW(
                 self.as_raw_socket() as sys::c::SOCKET,
@@ -108,6 +111,7 @@ impl BorrowedSocket<'_> {
             )
         };
         sys::net::cvt(result)?;
+        // SAFETY: Untriaged.
         let socket = unsafe {
             sys::c::WSASocketW(
                 info.iAddressFamily,
@@ -120,14 +124,17 @@ impl BorrowedSocket<'_> {
         };
 
         if socket != sys::c::INVALID_SOCKET {
+            // SAFETY: Untriaged.
             unsafe { Ok(OwnedSocket::from_raw_socket(socket as RawSocket)) }
         } else {
+            // SAFETY: Untriaged.
             let error = unsafe { sys::c::WSAGetLastError() };
 
             if error != sys::c::WSAEPROTOTYPE && error != sys::c::WSAEINVAL {
                 return Err(io::Error::from_raw_os_error(error));
             }
 
+            // SAFETY: Untriaged.
             let socket = unsafe {
                 sys::c::WSASocketW(
                     info.iAddressFamily,
@@ -143,6 +150,7 @@ impl BorrowedSocket<'_> {
                 return Err(last_error());
             }
 
+            // SAFETY: Untriaged.
             unsafe {
                 let socket = OwnedSocket::from_raw_socket(socket as RawSocket);
                 socket.set_no_inherit()?;
@@ -154,6 +162,7 @@ impl BorrowedSocket<'_> {
 
 /// Returns the last error from the Windows socket interface.
 fn last_error() -> io::Error {
+    // SAFETY: Untriaged.
     io::Error::from_raw_os_error(unsafe { sys::c::WSAGetLastError() })
 }
 
@@ -194,6 +203,7 @@ impl FromRawSocket for OwnedSocket {
 impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             let _ = sys::c::closesocket(self.socket.as_inner() as sys::c::SOCKET);
         }
@@ -297,6 +307,7 @@ impl AsSocket for OwnedSocket {
         // Safety: `OwnedSocket` and `BorrowedSocket` have the same validity
         // invariants, and the `BorrowedSocket` is bounded by the lifetime
         // of `&self`.
+        // SAFETY: Untriaged.
         unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
@@ -305,6 +316,7 @@ impl AsSocket for OwnedSocket {
 impl AsSocket for crate::net::TcpStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
@@ -314,6 +326,7 @@ impl From<crate::net::TcpStream> for OwnedSocket {
     /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket.
     #[inline]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedSocket {
+        // SAFETY: Untriaged.
         unsafe { OwnedSocket::from_raw_socket(tcp_stream.into_raw_socket()) }
     }
 }
@@ -322,6 +335,7 @@ impl From<crate::net::TcpStream> for OwnedSocket {
 impl From<OwnedSocket> for crate::net::TcpStream {
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }
     }
 }
@@ -330,6 +344,7 @@ impl From<OwnedSocket> for crate::net::TcpStream {
 impl AsSocket for crate::net::TcpListener {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
@@ -339,6 +354,7 @@ impl From<crate::net::TcpListener> for OwnedSocket {
     /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket.
     #[inline]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedSocket {
+        // SAFETY: Untriaged.
         unsafe { OwnedSocket::from_raw_socket(tcp_listener.into_raw_socket()) }
     }
 }
@@ -347,6 +363,7 @@ impl From<crate::net::TcpListener> for OwnedSocket {
 impl From<OwnedSocket> for crate::net::TcpListener {
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }
     }
 }
@@ -355,6 +372,7 @@ impl From<OwnedSocket> for crate::net::TcpListener {
 impl AsSocket for crate::net::UdpSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
+        // SAFETY: Untriaged.
         unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
@@ -364,6 +382,7 @@ impl From<crate::net::UdpSocket> for OwnedSocket {
     /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s underlying socket.
     #[inline]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedSocket {
+        // SAFETY: Untriaged.
         unsafe { OwnedSocket::from_raw_socket(udp_socket.into_raw_socket()) }
     }
 }
@@ -372,6 +391,7 @@ impl From<crate::net::UdpSocket> for OwnedSocket {
 impl From<OwnedSocket> for crate::net::UdpSocket {
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
+        // SAFETY: Untriaged.
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }
     }
 }

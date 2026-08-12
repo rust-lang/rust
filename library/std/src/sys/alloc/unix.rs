@@ -28,6 +28,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     // Also see <https://github.com/rust-lang/rust/issues/45955> and
     // <https://github.com/rust-lang/rust/issues/62251#issuecomment-507580914>.
     if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        // SAFETY: Untriaged.
         unsafe { libc::malloc(layout.size()) as *mut u8 }
     } else {
         // `posix_memalign` returns a non-aligned value if supplied a very
@@ -42,6 +43,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
                 return ptr::null_mut();
             }
         }
+        // SAFETY: Untriaged.
         unsafe { aligned_malloc(&layout) }
     }
 }
@@ -50,10 +52,13 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     // See the comment above in `alloc` for why this check looks the way it does.
     if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        // SAFETY: Untriaged.
         unsafe { libc::calloc(layout.size(), 1) as *mut u8 }
     } else {
+        // SAFETY: Untriaged.
         let ptr = unsafe { alloc(layout) };
         if !ptr.is_null() {
+            // SAFETY: Untriaged.
             unsafe { ptr::write_bytes(ptr, 0, layout.size()) };
         }
         ptr
@@ -62,14 +67,17 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 #[inline]
 pub unsafe fn dealloc(ptr: *mut u8, _layout: Layout) {
+    // SAFETY: Untriaged.
     unsafe { libc::free(ptr as *mut libc::c_void) }
 }
 
 #[inline]
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
+        // SAFETY: Untriaged.
         unsafe { libc::realloc(ptr as *mut libc::c_void, new_size) as *mut u8 }
     } else {
+        // SAFETY: Untriaged.
         unsafe { realloc_fallback(ptr, layout, new_size) }
     }
 }
@@ -80,6 +88,7 @@ cfg_select! {
     any(target_os = "horizon", target_os = "vita") => {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
+// SAFETY: Untriaged.
             unsafe { libc::memalign(layout.align(), layout.size()) as *mut u8 }
         }
     }
@@ -96,6 +105,7 @@ cfg_select! {
             // posix_memalign only has one, clear requirement: that the alignment be a multiple of
             // `sizeof(void*)`. Since these are all powers of 2, we can just use max.
             let align = layout.align().max(size_of::<usize>());
+// SAFETY: Untriaged.
             let ret = unsafe { libc::posix_memalign(&mut out, align, layout.size()) };
             if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
         }

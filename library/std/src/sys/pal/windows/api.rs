@@ -227,6 +227,7 @@ pub fn set_file_information_by_handle<T: SetFileInformation>(
         info: *const c_void,
         size: u32,
     ) -> Result<(), WinError> {
+        // SAFETY: Untriaged.
         unsafe {
             let result = c::SetFileInformationByHandle(handle, class, info, size);
             (result != 0).then_some(()).ok_or_else(get_last_error)

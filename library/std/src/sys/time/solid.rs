@@ -44,11 +44,13 @@ impl SystemTime {
     pub const MIN: SystemTime = SystemTime(abi::time_t::MIN);
 
     pub fn now() -> SystemTime {
+        // SAFETY: Untriaged.
         let rtc = unsafe {
             let mut out = MaybeUninit::zeroed();
             expect_success(abi::SOLID_RTC_ReadTime(out.as_mut_ptr()), &"SOLID_RTC_ReadTime");
             out.assume_init()
         };
+        // SAFETY: Untriaged.
         let t = unsafe {
             libc::mktime(&mut libc::tm {
                 tm_sec: rtc.tm_sec,

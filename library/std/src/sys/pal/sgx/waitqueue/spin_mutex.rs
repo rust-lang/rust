@@ -63,12 +63,14 @@ impl<'a, T> Deref for SpinMutexGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
+        // SAFETY: Untriaged.
         unsafe { &*self.mutex.value.get() }
     }
 }
 
 impl<'a, T> DerefMut for SpinMutexGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: Untriaged.
         unsafe { &mut *self.mutex.value.get() }
     }
 }

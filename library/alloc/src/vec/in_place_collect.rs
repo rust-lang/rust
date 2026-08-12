@@ -251,6 +251,7 @@ where
     I: Iterator<Item = T> + InPlaceCollect,
     <I as SourceIter>::Source: AsVecIntoIter,
 {
+    // SAFETY: Untriaged.
     let (src_buf, src_ptr, src_cap, mut dst_buf, dst_end, dst_cap) = unsafe {
         let inner = iterator.as_inner().as_into_iter();
         (
@@ -269,6 +270,7 @@ where
         SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf.as_ptr() as *mut T, dst_end)
     };
 
+    // SAFETY: Untriaged.
     let src = unsafe { iterator.as_inner().as_into_iter() };
     // check if SourceIter contract was upheld
     // caveat: if they weren't we might not even make it to this point
@@ -278,6 +280,7 @@ where
     // then the source pointer will stay in its initial position and we can't use it as reference
     if src.ptr != src_ptr {
         debug_assert!(
+            // SAFETY: Untriaged.
             unsafe { dst_buf.add(len).cast() } <= src.ptr,
             "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
         );
@@ -306,6 +309,7 @@ where
         let alloc = Global;
         debug_assert_ne!(src_cap, 0);
         debug_assert_ne!(dst_cap, 0);
+        // SAFETY: Untriaged.
         unsafe {
             // The old allocation exists, therefore it must have a valid layout.
             let src_align = align_of::<I::Src>();
@@ -328,6 +332,7 @@ where
 
     mem::forget(dst_guard);
 
+    // SAFETY: Untriaged.
     let vec = unsafe { Vec::from_parts(dst_buf, len, dst_cap) };
 
     vec
@@ -337,6 +342,7 @@ fn write_in_place_with_drop<T>(
     src_end: *const T,
 ) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
     move |mut sink, item| {
+        // SAFETY: Untriaged.
         unsafe {
             // the InPlaceIterable contract cannot be verified precisely here since
             // try_fold has an exclusive reference to the source pointer
@@ -377,6 +383,7 @@ where
         let sink =
             self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).into_ok();
         // iteration succeeded, don't drop head
+        // SAFETY: Untriaged.
         unsafe { ManuallyDrop::new(sink).dst.offset_from_unsigned(dst_buf) }
     }
 }
@@ -393,6 +400,7 @@ where
             // Safety: InplaceIterable contract guarantees that for every element we read
             // one slot in the underlying storage will have been freed up and we can immediately
             // write back the result.
+            // SAFETY: Untriaged.
             unsafe {
                 let dst = dst_buf.add(i);
                 debug_assert!(dst as *const _ <= end, "InPlaceIterable contract violation");

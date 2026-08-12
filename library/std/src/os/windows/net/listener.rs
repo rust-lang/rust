@@ -108,6 +108,7 @@ impl UnixListener {
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         startup();
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
+        // SAFETY: Untriaged.
         unsafe {
             cvt_nz(bind(inner.as_raw(), &raw const socket_addr.addr as _, socket_addr.len as _))?;
             cvt_nz(listen(inner.as_raw(), 128))?;
@@ -164,6 +165,7 @@ impl UnixListener {
     /// }
     /// ```
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        // SAFETY: Untriaged.
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
 
@@ -333,6 +335,7 @@ impl AsRawSocket for UnixListener {
 impl FromRawSocket for UnixListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
+        // SAFETY: Untriaged.
         UnixListener(unsafe { Socket::from_raw_socket(sock) })
     }
 }

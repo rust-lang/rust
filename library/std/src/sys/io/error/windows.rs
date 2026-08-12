@@ -97,6 +97,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 pub fn error_string(mut errnum: i32) -> String {
     let mut buf = [0 as c::WCHAR; 2048];
 
+    // SAFETY: Untriaged.
     unsafe {
         let mut module = ptr::null_mut();
         let mut flags = 0;

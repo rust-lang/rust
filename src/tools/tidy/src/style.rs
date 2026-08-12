@@ -522,11 +522,14 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
                 err("Don't use magic numbers that spell things (consider 0x12345678)");
             }
         }
-        // for now we just check libcore
+        // Only check library crates.
         if trimmed.contains("unsafe {")
             && !trimmed.starts_with("//")
             && !last_safety_comment
-            && file.components().any(|c| c.as_os_str() == "core")
+            && file.components().any(|c| {
+                let c = c.as_os_str();
+                c == "core" || c == "alloc" || c == "std"
+            })
             && !is_test
         {
             suppressible_tidy_err!(err, ignore.undocumented_unsafe, "undocumented unsafe");

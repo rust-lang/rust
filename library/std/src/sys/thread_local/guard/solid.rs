@@ -15,10 +15,12 @@ pub fn enable() {
         let tid = task::current_task_id_aborting();
         // Register `tls_dtor` to make sure the TLS destructors are called
         // for tasks created by other means than `std::thread`
+        // SAFETY: Untriaged.
         unsafe { abi::SOLID_TLS_AddDestructor(tid as i32, tls_dtor) };
     }
 
     unsafe extern "C" fn tls_dtor(_unused: *mut u8) {
+        // SAFETY: Untriaged.
         unsafe {
             destructors::run();
             crate::rt::thread_cleanup();

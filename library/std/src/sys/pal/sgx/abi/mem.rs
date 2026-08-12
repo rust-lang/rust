@@ -20,11 +20,13 @@ unsafe extern "C" {
 
 /// Returns the base memory address of the heap
 pub(crate) fn heap_base() -> *const u8 {
+    // SAFETY: Untriaged.
     unsafe { rel_ptr_mut(HEAP_BASE) }
 }
 
 /// Returns the size of the heap
 pub(crate) fn heap_size() -> usize {
+    // SAFETY: Untriaged.
     unsafe { HEAP_SIZE }
 }
 
@@ -36,6 +38,7 @@ pub(crate) fn heap_size() -> usize {
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn image_base() -> u64 {
     let base: u64;
+    // SAFETY: Untriaged.
     unsafe {
         asm!(
             "lea IMAGE_BASE(%rip), {}",
@@ -66,6 +69,7 @@ pub fn is_enclave_range(p: *const u8, len: usize) -> bool {
     };
 
     let base = image_base() as usize;
+    // SAFETY: Untriaged.
     start >= base && end <= base + (unsafe { ENCLAVE_SIZE } - 1) // unsafe ok: link-time constant
 }
 
@@ -89,5 +93,6 @@ pub fn is_user_range(p: *const u8, len: usize) -> bool {
     };
 
     let base = image_base() as usize;
+    // SAFETY: Untriaged.
     end < base || start > base + (unsafe { ENCLAVE_SIZE } - 1) // unsafe ok: link-time constant
 }

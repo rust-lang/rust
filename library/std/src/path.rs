@@ -345,6 +345,7 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     if before == Some(b"") {
         (Some(file), None)
     } else {
+        // SAFETY: Untriaged.
         unsafe {
             (
                 before.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
@@ -370,6 +371,7 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     };
     let before = &slice[..i];
     let after = &slice[i + 1..];
+    // SAFETY: Untriaged.
     unsafe {
         (
             OsStr::from_encoded_bytes_unchecked(before),
@@ -733,6 +735,7 @@ impl<'a> Components<'a> {
         if comps.back == State::Body {
             comps.trim_right();
         }
+        // SAFETY: Untriaged.
         unsafe { Path::from_u8_slice(comps.path) }
     }
 
@@ -772,6 +775,7 @@ impl<'a> Components<'a> {
             // separately via `include_cur_dir`
             b".." => Some(Component::ParentDir),
             b"" => None,
+            // SAFETY: Untriaged.
             _ => Some(Component::Normal(unsafe { OsStr::from_encoded_bytes_unchecked(comp) })),
         }
     }
@@ -960,6 +964,7 @@ impl<'a> Iterator for Components<'a> {
                     let raw = &self.path[..self.prefix_len()];
                     self.path = &self.path[self.prefix_len()..];
                     return Some(Component::Prefix(PrefixComponent {
+                        // SAFETY: Untriaged.
                         raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
                         parsed: self.prefix.unwrap(),
                     }));
@@ -1004,6 +1009,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                 State::Prefix if self.prefix_len() > 0 => {
                     self.back = State::Done;
                     return Some(Component::Prefix(PrefixComponent {
+                        // SAFETY: Untriaged.
                         raw: unsafe { OsStr::from_encoded_bytes_unchecked(self.path) },
                         parsed: self.prefix.unwrap(),
                     }));
@@ -1820,6 +1826,7 @@ impl PathBuf {
     #[inline]
     pub fn into_boxed_path(self) -> Box<Path> {
         let rw = Box::into_raw(self.inner.into_boxed_os_str()) as *mut Path;
+        // SAFETY: Untriaged.
         unsafe { Box::from_raw(rw) }
     }
 
@@ -2175,6 +2182,7 @@ impl From<PathBuf> for Arc<Path> {
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.into_os_string());
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Path) }
     }
 }
@@ -2185,6 +2193,7 @@ impl From<&Path> for Arc<Path> {
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.as_os_str());
+        // SAFETY: Untriaged.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Path) }
     }
 }
@@ -2205,6 +2214,7 @@ impl From<PathBuf> for Rc<Path> {
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.into_os_string());
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
     }
 }
@@ -2215,6 +2225,7 @@ impl From<&Path> for Rc<Path> {
     #[inline]
     fn from(s: &Path) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.as_os_str());
+        // SAFETY: Untriaged.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
     }
 }
@@ -2378,6 +2389,7 @@ impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
     unsafe fn from_u8_slice(s: &[u8]) -> &Path {
+        // SAFETY: Untriaged.
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
@@ -2410,6 +2422,7 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn new<S: [const] AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
+        // SAFETY: Untriaged.
         unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
     }
 
@@ -3680,6 +3693,7 @@ impl Path {
     #[must_use = "`self` will be dropped if the result is not used"]
     pub fn into_path_buf(self: Box<Self>) -> PathBuf {
         let rw = Box::into_raw(self) as *mut OsStr;
+        // SAFETY: Untriaged.
         let inner = unsafe { Box::from_raw(rw) };
         PathBuf { inner: OsString::from(inner) }
     }

@@ -198,6 +198,7 @@ impl File {
             // the requirements that `create_new` can't have an existing file and `!create`
             // doesn't create a file ourselves.
             if !opts.read && (opts.write || opts.append) && (opts.create_new || !opts.create) {
+                // SAFETY: Untriaged.
                 let status = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
 
                 if opts.create_new && status != 0 {
@@ -227,6 +228,7 @@ impl File {
                     truncate: false,
                     create: false,
                     create_new: false,
+                    // SAFETY: Untriaged.
                 } => unsafe { vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr()) },
 
                 // append
@@ -237,6 +239,7 @@ impl File {
                     truncate: false,
                     create: _,
                     create_new: _,
+                    // SAFETY: Untriaged.
                 } => unsafe { vex_sdk::vexFileOpenWrite(path.as_ptr()) },
 
                 // write
@@ -247,6 +250,7 @@ impl File {
                     truncate,
                     create: _,
                     create_new: _,
+                    // SAFETY: Untriaged.
                 } => unsafe {
                     if *truncate {
                         vex_sdk::vexFileOpenCreate(path.as_ptr())
@@ -273,6 +277,7 @@ impl File {
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         // `vexFileSize` returns -1 upon error, so u64::try_from will fail on error.
+        // SAFETY: Untriaged.
         if let Ok(size) = u64::try_from(unsafe {
             // SAFETY: `self.fd` contains a valid pointer to `FIL` for this struct's lifetime.
             vex_sdk::vexFileSize(self.fd.0)
@@ -318,6 +323,7 @@ impl File {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let len = buf.len() as u32;
         let buf_ptr = buf.as_mut_ptr();
+        // SAFETY: Untriaged.
         let read = unsafe {
             // SAFETY: `self.fd` contains a valid pointer to `FIL` for this struct's lifetime.
             vex_sdk::vexFileRead(buf_ptr.cast::<c_char>(), 1, len, self.fd.0)
@@ -346,6 +352,7 @@ impl File {
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = buf.len() as u32;
         let buf_ptr = buf.as_ptr();
+        // SAFETY: Untriaged.
         let written = unsafe {
             // SAFETY: `self.fd` contains a valid pointer to `FIL` for this struct's lifetime.
             vex_sdk::vexFileWrite(buf_ptr.cast_mut().cast::<c_char>(), 1, len, self.fd.0)
@@ -368,6 +375,7 @@ impl File {
     }
 
     pub fn flush(&self) -> io::Result<()> {
+        // SAFETY: Untriaged.
         unsafe {
             // SAFETY: `self.fd` contains a valid pointer to `FIL` for this struct's lifetime.
             vex_sdk::vexFileSync(self.fd.0);
@@ -404,9 +412,11 @@ impl File {
 
         // SAFETY: `self.fd` contains a valid pointer to `FIL` for this struct's lifetime.
         match pos {
+            // SAFETY: Untriaged.
             SeekFrom::Start(offset) => unsafe {
                 map_fresult(vex_sdk::vexFileSeek(self.fd.0, try_convert_offset(offset)?, SEEK_SET))?
             },
+            // SAFETY: Untriaged.
             SeekFrom::End(offset) => unsafe {
                 if offset >= 0 {
                     map_fresult(vex_sdk::vexFileSeek(
@@ -431,6 +441,7 @@ impl File {
                     ))?
                 }
             },
+            // SAFETY: Untriaged.
             SeekFrom::Current(offset) => unsafe {
                 if offset >= 0 {
                     map_fresult(vex_sdk::vexFileSeek(
@@ -473,6 +484,7 @@ impl fmt::Debug for File {
 }
 impl Drop for File {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe { vex_sdk::vexFileClose(self.fd.0) };
     }
 }
@@ -505,6 +517,7 @@ pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
+    // SAFETY: Untriaged.
     run_path_with_cstr(path, &|path| Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0))
 }
 
@@ -514,6 +527,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     const FILE_STATUS_DIR: u32 = 3;
 
     run_path_with_cstr(p, &|c_path| {
+        // SAFETY: Untriaged.
         let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
 
         // We can't get the size if its a directory because we cant open it as a file

@@ -95,6 +95,7 @@ pub unsafe trait UserSafe {
         assert!(ptr.wrapping_add(size) >= ptr);
         // SAFETY: The caller has guaranteed the pointer is valid
         let ret = unsafe { Self::from_raw_sized_unchecked(ptr, size) };
+        // SAFETY: Untriaged.
         unsafe {
             Self::check_ptr(ret);
             NonNull::new_unchecked(ret as _)
@@ -119,6 +120,7 @@ pub unsafe trait UserSafe {
         let is_aligned = |p: *const u8| -> bool { p.is_aligned_to(Self::align_of()) };
 
         assert!(is_aligned(ptr as *const u8));
+        // SAFETY: Untriaged.
         assert!(is_user_range(ptr as _, size_of_val(unsafe { &*ptr })));
         assert!(!ptr.is_null());
     }
@@ -250,6 +252,7 @@ where
     // optimizing compiler. This is achieved by returning a pointer from
     // from outside as obtained by `super::alloc`.
     fn new_uninit_bytes(size: usize) -> Self {
+        // SAFETY: Untriaged.
         unsafe {
             // Mustn't call alloc with size 0.
             let ptr = if size > 0 {
@@ -269,6 +272,7 @@ where
 
     /// Copies `val` into freshly allocated space in user memory.
     pub fn new_from_enclave(val: &T) -> Self {
+        // SAFETY: Untriaged.
         unsafe {
             let mut user = Self::new_uninit_bytes(size_of_val(val));
             user.copy_from_enclave(val);
@@ -291,6 +295,7 @@ where
     pub unsafe fn from_raw(ptr: *mut T) -> Self {
         // SAFETY: the caller must uphold the safety contract for `from_raw`.
         unsafe { T::check_ptr(ptr) };
+        // SAFETY: Untriaged.
         User(unsafe { NonNull::new_userref(ptr) })
     }
 
@@ -337,6 +342,7 @@ where
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts(ptr: *mut T, len: usize) -> Self {
+        // SAFETY: Untriaged.
         User(unsafe { NonNull::new_userref(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>())) })
     }
 }
@@ -373,6 +379,7 @@ fn u64_align_to_guaranteed(ptr: *const u8, mut len: usize) -> (usize, usize, usi
 }
 
 unsafe fn copy_quadwords(src: *const u8, dst: *mut u8, len: usize) {
+    // SAFETY: Untriaged.
     unsafe {
         asm!(
             "rep movsq (%rsi), (%rdi)",
@@ -409,6 +416,7 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
             return;
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             let mut seg_sel: u16 = 0;
             for off in 0..len {
@@ -436,6 +444,7 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
     assert!(!src.addr().overflowing_add(len).1);
     assert!(!dst.addr().overflowing_add(len).1);
 
+    // SAFETY: Untriaged.
     unsafe {
         let (len1, len2, len3) = u64_align_to_guaranteed(dst, len);
         let (src1, dst1) = (src, dst);
@@ -473,6 +482,7 @@ pub(crate) unsafe fn copy_from_userspace(src: *const u8, dst: *mut u8, len: usiz
             return;
         }
 
+        // SAFETY: Untriaged.
         unsafe {
             let offset: usize;
             let data: u64;
@@ -502,6 +512,7 @@ pub(crate) unsafe fn copy_from_userspace(src: *const u8, dst: *mut u8, len: usiz
     assert!(!(src as usize).overflowing_add(len).1);
     assert!(!(dst as usize).overflowing_add(len).1);
 
+    // SAFETY: Untriaged.
     unsafe {
         let (len1, len2, len3) = u64_align_to_guaranteed(src, len);
         let (src1, dst1) = (src, dst);
@@ -533,6 +544,7 @@ where
     pub unsafe fn from_ptr<'a>(ptr: *const T) -> &'a Self {
         // SAFETY: The caller must uphold the safety contract for `from_ptr`.
         unsafe { T::check_ptr(ptr) };
+        // SAFETY: Untriaged.
         unsafe { &*(ptr as *const Self) }
     }
 
@@ -551,6 +563,7 @@ where
     pub unsafe fn from_mut_ptr<'a>(ptr: *mut T) -> &'a mut Self {
         // SAFETY: The caller must uphold the safety contract for `from_mut_ptr`.
         unsafe { T::check_ptr(ptr) };
+        // SAFETY: Untriaged.
         unsafe { &mut *(ptr as *mut Self) }
     }
 
@@ -560,6 +573,7 @@ where
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_from_enclave(&mut self, val: &T) {
+        // SAFETY: Untriaged.
         unsafe {
             assert_eq!(size_of_val(val), size_of_val(&*self.0.get()));
             copy_to_userspace(
@@ -576,6 +590,7 @@ where
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(&self, dest: &mut U) {
+        // SAFETY: Untriaged.
         unsafe {
             assert_eq!(size_of_val(dest), size_of_val(&*self.0.get()));
             copy_from_userspace(
@@ -604,6 +619,7 @@ where
 {
     /// Copies the value from user memory into enclave memory.
     pub fn to_enclave(&self) -> T {
+        // SAFETY: Untriaged.
         unsafe {
             let mut data = mem::MaybeUninit::uninit();
             copy_from_userspace(self.0.get() as _, data.as_mut_ptr() as _, size_of::<T>());
@@ -667,6 +683,7 @@ where
 
     /// Obtain the number of elements in this user slice.
     pub fn len(&self) -> usize {
+        // SAFETY: Untriaged.
         unsafe { self.0.get().len() }
     }
 
@@ -690,6 +707,7 @@ where
     where
         T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
     {
+        // SAFETY: Untriaged.
         unsafe { Iter((&*self.as_raw_ptr()).iter()) }
     }
 
@@ -698,6 +716,7 @@ where
     where
         T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
     {
+        // SAFETY: Untriaged.
         unsafe { IterMut((&mut *self.as_raw_mut_ptr()).iter_mut()) }
     }
 }
@@ -714,6 +733,7 @@ impl<'a, T: UserSafe> Iterator for Iter<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: Untriaged.
         unsafe { self.0.next().map(|e| UserRef::from_ptr(e)) }
     }
 }
@@ -730,6 +750,7 @@ impl<'a, T: UserSafe> Iterator for IterMut<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: Untriaged.
         unsafe { self.0.next().map(|e| UserRef::from_mut_ptr(e)) }
     }
 }
@@ -742,6 +763,7 @@ where
     type Target = UserRef<T>;
 
     fn deref(&self) -> &Self::Target {
+        // SAFETY: Untriaged.
         unsafe { &*self.0.as_ptr() }
     }
 }
@@ -752,6 +774,7 @@ where
     T: UserSafe,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFETY: Untriaged.
         unsafe { &mut *self.0.as_ptr() }
     }
 }
@@ -762,6 +785,7 @@ where
     T: UserSafe,
 {
     fn drop(&mut self) {
+        // SAFETY: Untriaged.
         unsafe {
             let ptr = (*self.0.as_ptr()).0.get();
             super::free(ptr as _, size_of_val(&mut *ptr), T::align_of());
@@ -783,6 +807,7 @@ where
 
     #[inline]
     fn index(&self, index: I) -> &UserRef<I::Output> {
+        // SAFETY: Untriaged.
         unsafe {
             if let Some(slice) = index.get(&*self.as_raw_ptr()) {
                 UserRef::from_ptr(slice)
@@ -802,6 +827,7 @@ where
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut UserRef<I::Output> {
+        // SAFETY: Untriaged.
         unsafe {
             if let Some(slice) = index.get_mut(&mut *self.as_raw_mut_ptr()) {
                 UserRef::from_mut_ptr(slice)
@@ -824,6 +850,7 @@ impl UserRef<super::raw::ByteBuffer> {
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub fn copy_user_buffer(&self) -> Vec<u8> {
+        // SAFETY: Untriaged.
         unsafe {
             let buf = self.to_enclave();
             if buf.len > 0 {

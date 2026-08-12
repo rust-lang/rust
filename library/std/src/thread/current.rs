@@ -241,6 +241,7 @@ where
 pub(crate) fn current_or_unnamed() -> Thread {
     let current = CURRENT.get();
     if current > DESTROYED {
+        // SAFETY: Untriaged.
         unsafe {
             let current = ManuallyDrop::new(Thread::from_raw(current));
             (*current).clone()
@@ -276,6 +277,7 @@ pub(crate) fn current_or_unnamed() -> Thread {
 pub fn current() -> Thread {
     let current = CURRENT.get();
     if current > DESTROYED {
+        // SAFETY: Untriaged.
         unsafe {
             let current = ManuallyDrop::new(Thread::from_raw(current));
             (*current).clone()
@@ -324,6 +326,7 @@ fn init_current(current: *mut ()) -> Thread {
 pub(crate) fn drop_current() {
     let current = CURRENT.get();
     if current > DESTROYED {
+        // SAFETY: Untriaged.
         unsafe {
             CURRENT.set(DESTROYED);
             drop(Thread::from_raw(current));

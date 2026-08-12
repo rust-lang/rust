@@ -153,16 +153,19 @@ impl Command {
             Process { handle },
             StdioPipes {
                 stdin: if stdin >= 0 {
+                    // SAFETY: Untriaged.
                     Some(unsafe { ChildPipe::from_raw_fd(stdin) })
                 } else {
                     None
                 },
                 stdout: if stdout >= 0 {
+                    // SAFETY: Untriaged.
                     Some(unsafe { ChildPipe::from_raw_fd(stdout) })
                 } else {
                     None
                 },
                 stderr: if stderr >= 0 {
+                    // SAFETY: Untriaged.
                     Some(unsafe { ChildPipe::from_raw_fd(stderr) })
                 } else {
                     None

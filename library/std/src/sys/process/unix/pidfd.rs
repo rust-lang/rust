@@ -18,7 +18,9 @@ impl PidFd {
     #[cfg(any(test, target_env = "gnu", target_env = "musl"))]
     pub fn current_process() -> io::Result<PidFd> {
         let pid = crate::process::id();
+        // SAFETY: Untriaged.
         let pidfd = cvt(unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) })?;
+        // SAFETY: Untriaged.
         Ok(unsafe { PidFd::from_raw_fd(pidfd as RawFd) })
     }
 
@@ -28,8 +30,10 @@ impl PidFd {
 
         // since kernel 6.13
         // https://lore.kernel.org/all/20241010155401.2268522-1-luca.boccassi@gmail.com/
+        // SAFETY: Untriaged.
         let mut pidfd_info: libc::pidfd_info = unsafe { crate::mem::zeroed() };
         pidfd_info.mask = libc::PIDFD_INFO_PID as u64;
+        // SAFETY: Untriaged.
         match cvt(unsafe { libc::ioctl(self.0.as_raw_fd(), libc::PIDFD_GET_INFO, &mut pidfd_info) })
         {
             Ok(_) => {}
@@ -39,6 +43,7 @@ impl PidFd {
                     fn pidfd_getpid(pidfd: RawFd) -> libc::pid_t;
                 );
                 if let Some(pidfd_getpid) = pidfd_getpid.get() {
+                    // SAFETY: Untriaged.
                     let pid: libc::c_int = cvt(unsafe { pidfd_getpid(self.0.as_raw_fd()) })?;
                     return Ok(pid as u32);
                 }
@@ -53,14 +58,18 @@ impl PidFd {
     fn exit_for_reaped_child(&self) -> io::Result<ExitStatus> {
         // since kernel 6.15
         // https://lore.kernel.org/linux-fsdevel/20250305-work-pidfs-kill_on_last_close-v3-0-c8c3d8361705@kernel.org/T/
+        // SAFETY: Untriaged.
         let mut pidfd_info: libc::pidfd_info = unsafe { crate::mem::zeroed() };
         pidfd_info.mask = libc::PIDFD_INFO_EXIT as u64;
+        // SAFETY: Untriaged.
         cvt(unsafe { libc::ioctl(self.0.as_raw_fd(), libc::PIDFD_GET_INFO, &mut pidfd_info) })?;
         Ok(ExitStatus::new(pidfd_info.exit_code))
     }
 
     fn waitid(&self, options: libc::c_int) -> io::Result<Option<ExitStatus>> {
+        // SAFETY: Untriaged.
         let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
+        // SAFETY: Untriaged.
         let r = cvt(unsafe {
             libc::waitid(libc::P_PIDFD, self.0.as_raw_fd() as u32, &mut siginfo, options)
         });
@@ -75,6 +84,7 @@ impl PidFd {
             Err(e) => return Err(e),
             Ok(_) => {}
         }
+        // SAFETY: Untriaged.
         if unsafe { siginfo.si_pid() } == 0 {
             Ok(None)
         } else {
@@ -83,6 +93,7 @@ impl PidFd {
     }
 
     pub fn send_signal(&self, signal: i32) -> io::Result<()> {
+        // SAFETY: Untriaged.
         cvt(unsafe {
             libc::syscall(
                 libc::SYS_pidfd_send_signal,
@@ -98,6 +109,7 @@ impl PidFd {
     pub fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
         // since kernel 6.9
         // https://lore.kernel.org/all/20240210-chihuahua-hinzog-3945b6abd44a@brauner/
+        // SAFETY: Untriaged.
         cvt(unsafe {
             libc::syscall(
                 libc::SYS_pidfd_send_signal,

@@ -5,6 +5,7 @@ use crate::thread;
 
 /// Reserve stack space for use in stack overflow exceptions.
 pub fn reserve_stack() {
+    // SAFETY: Untriaged.
     let result = unsafe { c::SetThreadStackGuarantee(&mut 0x5000) };
     // Reserving stack space is not critical so we allow it to fail in the released build of libstd.
     // We still use debug assert here so that CI will test that we haven't made a mistake calling the function.
