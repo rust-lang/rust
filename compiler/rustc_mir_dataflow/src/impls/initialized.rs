@@ -221,7 +221,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         *state =
             MaybeReachable::Reachable(MixedBitSet::new_empty(self.move_data().move_paths.len()));
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
-            assert!(s == DropFlagState::Present);
+            debug_assert!(s == DropFlagState::Present);
             state.gen_(path);
         });
     }
@@ -457,7 +457,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         state.insert_all();
 
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
-            assert!(s == DropFlagState::Present);
+            debug_assert!(s == DropFlagState::Present);
             state.remove(path);
         });
     }
