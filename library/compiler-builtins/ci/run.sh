@@ -17,6 +17,7 @@ fi
 uname -a
 lscpu || true
 rustc -Vv
+cc -v || true
 
 if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
     # Install nonstandard components if we have control of the environment
