@@ -1,5 +1,7 @@
 //! impl char {}
 
+#![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
+
 use super::*;
 use crate::panic::const_panic;
 use crate::slice;
