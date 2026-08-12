@@ -448,36 +448,16 @@ fn codegen_float_intrinsic_call<'tcx>(
     let layout = fx.layout_of(ty);
     // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
     // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
-    let res = match intrinsic {
+    let val = match intrinsic {
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
-            CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
+            fx.bcx.ins().fma(args[0], args[1], args[2])
         }
-        sym::copysignf32 | sym::copysignf64 => {
-            CValue::by_val(fx.bcx.ins().fcopysign(args[0], args[1]), layout)
-        }
-        sym::floorf32
-        | sym::floorf64
-        | sym::ceilf32
-        | sym::ceilf64
-        | sym::truncf32
-        | sym::truncf64
-        | sym::round_ties_even_f32
-        | sym::round_ties_even_f64
-        | sym::sqrtf32
-        | sym::sqrtf64 => {
-            let val = match intrinsic {
-                sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
-                sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
-                sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
-                sym::round_ties_even_f32 | sym::round_ties_even_f64 => {
-                    fx.bcx.ins().nearest(args[0])
-                }
-                sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
-                _ => unreachable!(),
-            };
-
-            CValue::by_val(val, layout)
-        }
+        sym::copysignf32 | sym::copysignf64 => fx.bcx.ins().fcopysign(args[0], args[1]),
+        sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
+        sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
+        sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
+        sym::round_ties_even_f32 | sym::round_ties_even_f64 => fx.bcx.ins().nearest(args[0]),
+        sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
 
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
@@ -492,20 +472,19 @@ fn codegen_float_intrinsic_call<'tcx>(
             let input_tys: Vec<_> =
                 vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
             let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            let ret_val = if intrinsic == sym::powif16 {
+            if intrinsic == sym::powif16 {
                 codegen_f16_f128::f32_to_f16(fx, ret_val)
             } else {
                 ret_val
-            };
-            CValue::by_val(ret_val, fx.layout_of(ty))
+            }
         }
         _ => {
             let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
-            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
-            CValue::by_val(ret_val, fx.layout_of(ty))
+            fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0]
         }
     };
 
+    let res = CValue::by_val(val, layout);
     ret.write_cvalue(fx, res);
 
     true
