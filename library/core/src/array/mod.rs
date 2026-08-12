@@ -107,11 +107,20 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
 #[rustc_const_unstable(feature = "const_array", issue = "147606")]
-pub const fn from_fn<T: [const] Destruct, const N: usize, F>(f: F) -> [T; N]
+pub const fn from_fn<T, const N: usize, F>(mut f: F) -> [T; N]
 where
     F: [const] FnMut(usize) -> T + [const] Destruct,
 {
-    try_from_fn(NeverShortCircuit::wrap_mut_1(f)).0
+    let mut array: [MaybeUninit<T>; N] = [const { MaybeUninit::uninit() }; N];
+
+    let mut i = 0;
+    while i < N {
+        array[i] = MaybeUninit::new(f(i));
+        i += 1;
+    }
+
+    // SAFETY: All N elements were initialized.
+    unsafe { MaybeUninit::array_assume_init(array) }
 }
 
 /// Creates an array `[T; N]` where each fallible array element `T` is returned by the `cb` call.
