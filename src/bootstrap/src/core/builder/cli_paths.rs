@@ -83,14 +83,30 @@ pub(crate) fn match_paths_to_steps_and_run(
     // repository root, to match the paths registered by command-line steps.
     //
     // E.g. `/home/ferris/rust/tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
+    //
+    // It is also possible that someone passed a relative path starting with . or ..
+    // In that case, we have to remove that path prefix.
     let mut paths = paths
         .iter()
         .map(|path| {
+            // Here we "launder" the path through builder.src, to normalize relative path prefixes
+            // so ./tests/foo becomes just tests/foo
+            let path = if path.is_relative() {
+                builder
+                    .src
+                    .join(path)
+                    .strip_prefix(&builder.src)
+                    .expect("Cannot strip src path prefix")
+                    .to_path_buf()
+            } else {
+                path.to_path_buf()
+            };
+
             if path.is_absolute()
                 && path.exists()
                 && let Ok(relative) = path.strip_prefix(&builder.src)
             {
-                relative
+                relative.to_path_buf()
             } else {
                 path
             }
