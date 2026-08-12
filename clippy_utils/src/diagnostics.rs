@@ -28,7 +28,7 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
                 // Always use .0 because we do not generate separate lint doc pages for rust patch releases
                 Some("stable") => concat!("rust-1.", env!("CARGO_PKG_VERSION_PATCH"), ".0"),
                 Some("beta") => "beta",
-                _ => "master",
+                _ => "main",
             }
         ));
     }
