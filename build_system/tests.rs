@@ -87,6 +87,25 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         &[],
     ),
     TestCase::build_bin_and_run("aot.float-minmax-pass", "example/float-minmax-pass.rs", &[]),
+    TestCase::custom("aot.powi_libcall_signature", &|runner| {
+        let mut cmd = runner.rustc_command(["example/powi-libcall-signature.rs"]);
+        let output = cmd.output().unwrap();
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        assert!(!output.status.success(), "expected compilation to fail, got success");
+        assert!(
+            combined.contains("attempt to declare `__powisf2`"),
+            "expected signature mismatch error, got:\n{combined}"
+        );
+        assert!(
+            !combined.contains("internal compiler error") && !combined.contains("panicked at"),
+            "expected graceful error, not ICE:\n{combined}"
+        );
+    }),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
     TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),

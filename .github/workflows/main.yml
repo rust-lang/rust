@@ -150,6 +150,7 @@ jobs:
     - name: Disable JIT tests
       run: |
         sed -i 's/jit./#jit./' config.txt
+        sed -i 's/aot.powi_libcall_signature/#aot.powi_libcall_signature/' config.txt
 
     - name: Test
       env:
