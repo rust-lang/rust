@@ -1354,8 +1354,6 @@ pub enum MutatingUseContext {
     /// f(&mut x.y);
     /// ```
     Projection,
-    /// Retagging, a "Stacked Borrows" shadow state operation
-    Retag,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
