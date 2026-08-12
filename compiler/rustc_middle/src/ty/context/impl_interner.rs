@@ -121,7 +121,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ScalarInt = ty::ScalarInt;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
-    type LateParamRegion = ty::LateParamRegion;
+    type LateParamRegionKind = ty::LateParamRegionKind;
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 

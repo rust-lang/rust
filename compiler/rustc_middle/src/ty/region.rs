@@ -3,12 +3,15 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Symbol, kw, sym};
 pub use rustc_type_ir::RegionVid;
-use rustc_type_ir::{Region as IrRegion, RegionKind as IrRegionKind};
+use rustc_type_ir::{
+    LateParamRegion as IrLateParamRegion, Region as IrRegion, RegionKind as IrRegionKind,
+};
 
 use crate::ty::{self, BoundVar, TyCtxt};
 
 pub type Region<'tcx> = IrRegion<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
+pub type LateParamRegion<'tcx> = IrLateParamRegion<TyCtxt<'tcx>>;
 
 #[extension(pub trait RegionExt<'tcx>)]
 impl<'tcx> Region<'tcx> {
@@ -168,21 +171,6 @@ impl std::fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}/#{}", self.name, self.index)
     }
-}
-
-#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
-#[derive(StableHash)]
-/// The parameter representation of late-bound function parameters, "some region
-/// at least as big as the scope `fr.scope`".
-///
-/// Similar to a placeholder region as we create `LateParam` regions when entering a binder
-/// except they are always in the root universe and instead of using a boundvar to distinguish
-/// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
-/// should basically always be `BoundRegionKind::Named` as otherwise there is no way of telling
-/// different parameters apart.
-pub struct LateParamRegion {
-    pub scope: DefId,
-    pub kind: LateParamRegionKind,
 }
 
 /// When liberating bound regions, we map their [`ty::BoundRegionKind`]

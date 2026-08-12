@@ -62,3 +62,20 @@ TrivialTypeTraversalImpls! {
     rustc_ast_ir::Mutability,
     // tidy-alphabetical-end
 }
+
+macro_rules! TrivialLiftImpls {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl<I: $crate::Interner> $crate::lift::Lift<I> for $ty {
+                type Lifted = Self;
+                fn lift_to_interner(self, _: I) -> Self {
+                    self
+                }
+            }
+        )+
+    };
+}
+
+TrivialLiftImpls! {
+    crate::LateParamRegion<I>
+}

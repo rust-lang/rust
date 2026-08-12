@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::StableHash_NoContext;
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir_macros::{GenericTypeVisitable, Lift_Generic};
 use tracing::debug;
 
@@ -211,5 +211,29 @@ impl<I: Interner> TypeFoldable<I> for Region<I> {
 
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         folder.fold_region(self)
+    }
+}
+
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+/// The parameter representation of late-bound function parameters, "some region
+/// at least as big as the scope `fr.scope`".
+///
+/// Similar to a placeholder region as we create `LateParam` regions when entering a binder
+/// except they are always in the root universe and instead of using a boundvar to distinguish
+/// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
+/// should basically always be `BoundRegionKind::Named` as otherwise there is no way of telling
+/// different parameters apart.
+pub struct LateParamRegion<I: Interner> {
+    pub scope: I::DefId,
+    pub kind: I::LateParamRegionKind,
+}
+
+impl<I: Interner> fmt::Debug for LateParamRegion<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.kind)
     }
 }
