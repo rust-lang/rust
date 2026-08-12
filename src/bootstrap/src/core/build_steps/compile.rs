@@ -509,10 +509,12 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
     // Try to use `compiler-rt` sources from downloaded CI LLVM, if available
     if let Some(downloaded_llvm) = builder.ensure(LlvmFromCi { target: builder.host_target }) {
         let ci_llvm_compiler_rt = downloaded_llvm.output.root_dir().join("compiler-rt");
-        assert!(
-            ci_llvm_compiler_rt.exists(),
-            "compiler-rt sources not found in LLVM downloaded from CI at {ci_llvm_compiler_rt:?}"
-        );
+        if !builder.config.dry_run() {
+            assert!(
+                ci_llvm_compiler_rt.exists(),
+                "compiler-rt sources not found in LLVM downloaded from CI at {ci_llvm_compiler_rt:?}"
+            );
+        }
         return ci_llvm_compiler_rt;
     }
 
