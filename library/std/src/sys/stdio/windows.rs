@@ -21,11 +21,34 @@ pub struct Stdin {
 
 pub struct Stdout {
     incomplete_utf8: IncompleteUtf8,
+    write_mode: Option<WriteMode>,
 }
 
 pub struct Stderr {
     incomplete_utf8: IncompleteUtf8,
+    write_mode: Option<WriteMode>,
 }
+
+/// How to write to a standard stream, cached for the duration of a lock
+/// session (see `Stdout::refresh`). Re-querying this on every lock
+/// acquisition keeps `SetStdHandle` calls made between lock sessions working
+/// (see #40490), while a held lock skips the per-write console queries that
+/// otherwise dominate bulk writes (see #154071).
+#[derive(Clone, Copy)]
+enum WriteMode {
+    /// The stream is a pipe or file, or a console using the UTF-8 code page:
+    /// bytes are written out unchanged.
+    Passthrough(c::HANDLE),
+    /// The stream is a console using a non-UTF-8 code page: data is converted
+    /// to UTF-16 and written with `WriteConsoleW`.
+    Utf16Console(c::HANDLE),
+}
+
+// SAFETY: a `HANDLE` stored here is only an OS handle value for a standard
+// stream (it is never dereferenced), and handle values are valid
+// process-wide, on any thread.
+unsafe impl Send for WriteMode {}
+unsafe impl Sync for WriteMode {}
 
 struct IncompleteUtf8 {
     bytes: [u8; 4],
@@ -98,21 +121,40 @@ fn is_utf8_console() -> bool {
     false
 }
 
-fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
+fn write(
+    handle_id: u32,
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+    write_mode: &mut Option<WriteMode>,
+) -> io::Result<usize> {
     if data.is_empty() {
         return Ok(0);
     }
 
-    let handle = get_handle(handle_id)?;
-    if !is_console(handle) || is_utf8_console() {
-        unsafe {
+    let mode = match *write_mode {
+        Some(mode) => mode,
+        None => {
+            let handle = get_handle(handle_id)?;
+            let mode = if !is_console(handle) || is_utf8_console() {
+                WriteMode::Passthrough(handle)
+            } else {
+                WriteMode::Utf16Console(handle)
+            };
+            // Only cache success; if there is no handle, keep erroring on
+            // every write like before.
+            *write_mode = Some(mode);
+            mode
+        }
+    };
+
+    match mode {
+        WriteMode::Passthrough(handle) => unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
             let _ = handle.into_raw_handle(); // Don't close the handle
-            return ret;
-        }
-    } else {
-        write_console_utf16(data, incomplete_utf8, handle)
+            ret
+        },
+        WriteMode::Utf16Console(handle) => write_console_utf16(data, incomplete_utf8, handle),
     }
 }
 
@@ -432,13 +474,21 @@ impl IncompleteUtf8 {
 
 impl Stdout {
     pub const fn new() -> Stdout {
-        Stdout { incomplete_utf8: IncompleteUtf8::new() }
+        Stdout { incomplete_utf8: IncompleteUtf8::new(), write_mode: None }
+    }
+
+    /// Forgets the cached stream state, so the next write re-queries the OS.
+    /// Called when a new lock session begins, so that changing the process
+    /// stdio handles (e.g. `SetStdHandle`) between lock sessions keeps
+    /// working (see #40490).
+    pub fn refresh(&mut self) {
+        self.write_mode = None;
     }
 }
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_OUTPUT_HANDLE, buf, &mut self.incomplete_utf8)
+        write(c::STD_OUTPUT_HANDLE, buf, &mut self.incomplete_utf8, &mut self.write_mode)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -448,13 +498,18 @@ impl io::Write for Stdout {
 
 impl Stderr {
     pub const fn new() -> Stderr {
-        Stderr { incomplete_utf8: IncompleteUtf8::new() }
+        Stderr { incomplete_utf8: IncompleteUtf8::new(), write_mode: None }
+    }
+
+    /// See `Stdout::refresh`.
+    pub fn refresh(&mut self) {
+        self.write_mode = None;
     }
 }
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8)
+        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8, &mut self.write_mode)
     }
 
     fn flush(&mut self) -> io::Result<()> {
