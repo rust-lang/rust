@@ -122,8 +122,6 @@ fn fn_kinds(tcx: TyCtxt<'_>, def_id: LocalDefId, sig_id: DefId) -> (FnKind, FnKi
 
     // For trait impl's `sig_id` is always equal to the corresponding trait method.
     assert!(!matches!(kinds, (_, FnKind::AssocTraitImpl)));
-    // Delegation to inherent impls is not yet supported.
-    assert!(!matches!(kinds, (_, FnKind::AssocInherentImpl)));
 
     kinds
 }
@@ -177,20 +175,44 @@ fn create_mapping<'tcx>(
     args_index += is_self_at_zero as usize;
     args_index += get_delegation_parent_args_count_without_self(tcx, def_id, sig_id);
 
-    let sig_generics = tcx.generics_of(sig_id);
-    let process_sig_parent_generics = matches!(fn_kind(tcx, sig_id), FnKind::AssocTrait);
+    let parent_kind = fn_kind(tcx, sig_id);
+    let process_parent = matches!(parent_kind, FnKind::AssocTrait | FnKind::AssocInherentImpl);
+    let parent_generics = process_parent.then(|| tcx.generics_of(tcx.parent(sig_id)));
 
-    if process_sig_parent_generics {
-        for i in (sig_generics.has_self as usize)..sig_generics.parent_count {
-            let param = sig_generics.param_at(i, tcx);
-            if !param.kind.is_ty_or_const() {
-                mapping.insert(param.index, args_index as u32);
+    let parent_params = match parent_kind {
+        FnKind::AssocInherentImpl => {
+            let ty::Adt(_, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+                unreachable!("parent of inherent function in delegation can be only struct or enum")
+            };
+
+            args.iter().flat_map(|a| a.opt_param_info()).collect::<Vec<_>>()
+        }
+        FnKind::AssocTrait => parent_generics
+            .expect("trait must have generics")
+            .own_params
+            .iter()
+            .map(|p| (p.index as u32, p.kind.is_ty_or_const()))
+            .collect::<Vec<_>>(),
+        _ => vec![],
+    };
+
+    let has_self = match parent_kind {
+        FnKind::AssocTrait => parent_generics.expect("trait must have generics").has_self,
+        _ => false,
+    };
+
+    if process_parent {
+        for i in (has_self as usize)..parent_params.len() {
+            let (index, is_ty_or_const) = parent_params[i];
+            if !is_ty_or_const {
+                mapping.insert(index, args_index as u32);
                 args_index += 1;
             }
         }
     }
 
-    for param in &sig_generics.own_params {
+    let child_generics = tcx.generics_of(sig_id);
+    for param in &child_generics.own_params {
         if !param.kind.is_ty_or_const() {
             mapping.insert(param.index, args_index as u32);
             args_index += 1;
@@ -205,17 +227,17 @@ fn create_mapping<'tcx>(
         args_index += 1;
     }
 
-    if process_sig_parent_generics {
-        for i in (sig_generics.has_self as usize)..sig_generics.parent_count {
-            let param = sig_generics.param_at(i, tcx);
-            if param.kind.is_ty_or_const() {
-                mapping.insert(param.index, args_index as u32);
+    if process_parent {
+        for i in (has_self as usize)..parent_params.len() {
+            let (index, is_ty_or_const) = parent_params[i];
+            if is_ty_or_const {
+                mapping.insert(index, args_index as u32);
                 args_index += 1;
             }
         }
     }
 
-    for param in &sig_generics.own_params {
+    for param in &child_generics.own_params {
         if param.kind.is_ty_or_const() {
             mapping.insert(param.index, args_index as u32);
             args_index += 1;
@@ -340,7 +362,7 @@ fn create_generic_args<'tcx>(
 
     let delegation_args = &delegation_args[delegation_generics.parent_count..];
 
-    let kinds = fn_kinds(tcx, def_id, sig_id);
+    let kinds @ (_, parent_kind) = fn_kinds(tcx, def_id, sig_id);
     if matches!(kinds, (FnKind::AssocTraitImpl, FnKind::AssocTrait)) {
         // Special case, as user specifies Trait args in trait impl header, we want to treat
         // them as parent args. We always generate a function whose generics match
@@ -358,10 +380,14 @@ fn create_generic_args<'tcx>(
 
     let self_type = get_delegation_self_ty(tcx, def_id).map(ty::GenericArg::from);
 
-    // Remove `Self` from parent args (it is always at the `0th` index) as it is
-    // added manually.
     if self_type.is_some() && !parent_args.is_empty() {
-        parent_args = &parent_args[1..];
+        parent_args = match parent_kind {
+            FnKind::AssocInherentImpl => parent_args,
+            // Remove `Self` from parent args (it is always at the `0th` index) as it is
+            // added manually.
+            FnKind::AssocTrait => &parent_args[1..],
+            _ => unreachable!("if parent args are non-empty then the parent must exist"),
+        }
     }
 
     let (zero_self, after_lifetimes_self) =
@@ -583,8 +609,42 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let caller_sig = EarlyBinder::bind(tcx, caller_sig.skip_binder().fold_with(&mut folder));
 
     let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
-    let sig_iter = sig.inputs().iter().cloned().chain(std::iter::once(sig.output()));
-    tcx.arena.alloc_from_iter(sig_iter)
+    let output = std::iter::once(sig.output());
+    let mut sig = sig.inputs().iter().cloned().chain(output).collect::<Vec<_>>();
+
+    adjust_sig_in_inherent_impl_cases(tcx, sig_id, def_id, parent_args, &mut sig);
+
+    tcx.arena.alloc_from_iter(sig)
+}
+
+fn adjust_sig_in_inherent_impl_cases<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig_id: DefId,
+    def_id: LocalDefId,
+    parent_args: &[ty::GenericArg<'tcx>],
+    sig: &mut [Ty<'tcx>],
+) {
+    if !tcx.is_method(sig_id) {
+        return;
+    }
+
+    let self_input = sig[0];
+
+    sig[0] = match fn_kinds(tcx, def_id, sig_id) {
+        (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
+            tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
+        }
+        (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
+            let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+                unreachable!("delegation is supported only to struct or enums")
+            };
+
+            let sig_self_type = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+            let self_param = Ty::new_param(tcx, 0, kw::SelfUpper);
+            self_input.replace_inside(tcx, sig_self_type, self_param)
+        }
+        _ => self_input,
+    };
 }
 
 // Creates user-specified generic arguments from delegation path,
@@ -607,7 +667,9 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
     let parent_args = info
         .parent_seg_id_for_sig
         .and_then(get_segment)
-        .filter(|(_, def_id)| matches!(tcx.def_kind(*def_id), DefKind::Trait))
+        .filter(|(_, def_id)| {
+            matches!(tcx.def_kind(*def_id), DefKind::Trait | DefKind::Struct | DefKind::Enum)
+        })
         .map(|(segment, def_id)| {
             let self_ty = (tcx.def_kind(def_id) == DefKind::Trait)
                 .then(|| Ty::new_param(tcx, 0, kw::SelfUpper));
@@ -623,14 +685,19 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
         .and_then(get_segment)
         .filter(|(_, def_id)| matches!(tcx.def_kind(*def_id), DefKind::Fn | DefKind::AssocFn))
         .map(|(segment, def_id)| {
-            let parent_args = if let Some(parent_args) = parent_args {
-                parent_args
+            let parent = tcx.parent(def_id);
+
+            let parent_args = if matches!(tcx.def_kind(parent), DefKind::Impl { of_trait: false }) {
+                ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
             } else {
-                let parent = tcx.parent(def_id);
-                if matches!(tcx.def_kind(parent), DefKind::Trait) {
-                    ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+                if let Some(parent_args) = parent_args {
+                    parent_args
                 } else {
-                    &[]
+                    if matches!(tcx.def_kind(parent), DefKind::Trait) {
+                        ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+                    } else {
+                        &[]
+                    }
                 }
             };
 

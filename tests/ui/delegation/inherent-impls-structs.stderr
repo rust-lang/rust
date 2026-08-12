@@ -1,159 +1,224 @@
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:12:19
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:35:14
    |
-LL | reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
-   |                   ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:14:19
+LL | trait Trait<'a, AA, BB> where Self: Sized {
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found type parameter `Self`
+   |              arguments to this function are incorrect
    |
-LL | reuse S::<(), 1>::foo_static as foo_static_3;
-   |                   ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:16:22
+   = note:      expected struct `S<A, C>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
    |
-LL | reuse S::<usize, 1>::foo_static::<'static, _, _> as foo_static_4;
-   |                      ^^^^^^^^^^ not found in `S`
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:19:19
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:38:14
    |
-LL | reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1;
-   |                   ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:21:19
+LL | trait Trait<'a, AA, BB> where Self: Sized {
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found type parameter `Self`
+   |              arguments to this function are incorrect
    |
-LL | reuse S::<(), 1>::foo_self as foo_self_3;
-   |                   ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:23:23
+   = note:      expected struct `S<A, C>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
    |
-LL | reuse S::<String, 1>::foo_self::<'static, _, _> as foo_self_4;
-   |                       ^^^^^^^^ not found in `S`
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:27:23
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:41:22
    |
-LL |     reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:29:23
+LL | trait Trait<'a, AA, BB> where Self: Sized {
+   | ----------------------- found this type parameter
+...
+LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                      ^^^^^^^^
+   |                      |
+   |                      expected `S<A, 1>`, found type parameter `Self`
+   |                      arguments to this function are incorrect
    |
-LL |     reuse S::<(), 1>::foo_static as foo_static_3;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:31:23
+   = note:      expected struct `S<A, 1>`
+           found type parameter `Self`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
    |
-LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
-   |                       ^^^^^^^^^^ not found in `S`
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:38:23
+error[E0107]: associated function takes at most 2 generic arguments but 4 generic arguments were supplied
+  --> $DIR/inherent-impls-structs.rs:48:14
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
-   |                       ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:40:23
+LL |     reuse S::foo_static;
+   |              ^^^^^^^^^^
+   |              |
+   |              expected at most 2 generic arguments
+   |              help: remove the unnecessary generic arguments
    |
-LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
-   |                       ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:42:23
+note: associated function defined here, with at most 2 generic parameters: `T`, `B`
+  --> $DIR/inherent-impls-structs.rs:8:8
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
-   |                       ^^^^^^^^ not found in `S`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ^^^^^^^^^^             -  -------------
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:49:23
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-structs.rs:51:14
    |
-LL |     reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:51:23
+LL |     reuse S::foo_static::<'static, (), true> as foo_static_2;
+   |              ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
    |
-LL |     reuse S::<(), 1>::foo_static as foo_static_3;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:53:23
+note: required by a const generic parameter in `S`
+  --> $DIR/inherent-impls-structs.rs:3:13
    |
-LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:56:23
+LL | struct S<A, const C: usize> {
+   |             ^^^^^^^^^^^^^^ required by this const generic parameter in `S`
+help: consider specifying the generic arguments
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
-   |                       ^^^^^^^^ not found in `S`
+LL |     reuse S::<A, C>::foo_static::<'static, (), true> as foo_static_2;
+   |            ++++++++
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:59:23
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-structs.rs:55:22
    |
-LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
-   |                       ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:62:23
+LL |     reuse S::<_, 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                      ^^^^^^^^^^ cannot infer the value of const parameter `B` declared on the associated function `foo_static`
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
-   |                       ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:67:23
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-structs.rs:8:34
    |
-LL |     reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
-   |                       ^^^^^^^^^^ not found in `S`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:69:23
+error[E0107]: method takes at most 2 generic arguments but 4 generic arguments were supplied
+  --> $DIR/inherent-impls-structs.rs:58:14
    |
-LL |     reuse S::<(), 1>::foo_static as foo_static_3;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-structs.rs:71:23
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected at most 2 generic arguments
+   |              help: remove the unnecessary generic arguments
    |
-LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
-   |                       ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:78:23
+note: method defined here, with at most 2 generic parameters: `T`, `B`
+  --> $DIR/inherent-impls-structs.rs:9:8
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
-   |                       ^^^^^^^^ not found in `S`
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^             -  -------------
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:80:23
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:58:14
    |
-LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
-   |                       ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-structs.rs:82:23
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<_, _>`, found `X`
+   |              arguments to this function are incorrect
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
-   |                       ^^^^^^^^ not found in `S`
-
-error: delegation's target expression is specified for function with no params
-  --> $DIR/inherent-impls-structs.rs:56:67
+   = note: expected struct `S<_, _>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
    |
-LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
-   |                                                                   ^^^^^^^^^^^^^^^^
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
 
-error: delegation's target expression is specified for function with no params
-  --> $DIR/inherent-impls-structs.rs:59:46
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:62:14
    |
-LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
-   |                                              ^^^^^^^^^^^^^^^^
+LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<_, _>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<_, _>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
 
-error: aborting due to 26 previous errors
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:65:22
+   |
+LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                      ^^^^^^^^
+   |                      |
+   |                      expected `S<_, 1>`, found `X`
+   |                      arguments to this function are incorrect
+   |
+   = note: expected struct `S<_, 1>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
 
-For more information about this error, try `rustc --explain E0425`.
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:80:14
+   |
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<A, C>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:83:14
+   |
+LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
+   |              ^^^^^^^^
+   |              |
+   |              expected `S<A, C>`, found `X`
+   |              arguments to this function are incorrect
+   |
+   = note: expected struct `S<A, C>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-structs.rs:86:22
+   |
+LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                      ^^^^^^^^
+   |                      |
+   |                      expected `S<A, 1>`, found `X`
+   |                      arguments to this function are incorrect
+   |
+   = note: expected struct `S<A, 1>`
+              found struct `X`
+note: method defined here
+  --> $DIR/inherent-impls-structs.rs:9:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0107, E0284, E0308.
+For more information about an error, try `rustc --explain E0107`.

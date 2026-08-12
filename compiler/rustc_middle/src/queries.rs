@@ -226,6 +226,11 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    query resolve_type_relative_delegations(_: ()) -> &'tcx FxIndexMap<LocalDefId, rustc_middle::ty::TypeRelativeDelegationRes> {
+        arena_cache
+        desc { "resolving type relative delegations" }
+    }
+
     query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
         desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }

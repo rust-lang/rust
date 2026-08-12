@@ -9,13 +9,29 @@ help: indicate the anonymous lifetime
 LL | impl<'a, 'b, 'c, A, const C: usize> S<'_, A, C> {
    |                                       +++
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:24
+error: failed to generate delegation: mismatch between provided generic args in inherent impl and declared generics
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:14:14
    |
-LL |     reuse S::<(), ()>::foo_self;
-   |                        ^^^^^^^^ not found in `S`
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:14:14
+   |
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^ argument #1 is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:10:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL |     reuse S::foo_self(/* value */);
+   |                      +++++++++++++
 
-Some errors have detailed explanations: E0425, E0726.
-For more information about an error, try `rustc --explain E0425`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0061, E0726.
+For more information about an error, try `rustc --explain E0061`.

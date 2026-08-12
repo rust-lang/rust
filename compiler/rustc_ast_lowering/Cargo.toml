@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
+itertools = "0.15"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr_ir = { path = "../rustc_attr_ir" }
