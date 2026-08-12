@@ -2363,6 +2363,10 @@ target_modifier_options! {
         "make the x18 register reserved on AArch64 (default: no)"),
     indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
+    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED_UNSTABLE],
+        "enable/disable LLVM-level target features. \
+        This feature is unsafe and can cause ABI issues and compiler crashes, \
+        because LLVM does not support all target feature combinations."),
     pointer_authentication: Vec<(PointerAuthOption, bool)> = (
         Vec::new(),
         parse_pointer_authentication_list_with_polarity,
@@ -2668,10 +2672,6 @@ options! {
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list LLVM plugins to enable (space separated)"),
-    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED],
-        "enable/disable LLVM-level target features. \
-        This feature is unsafe and can cause ABI issues and compiler crashes, \
-        because LLVM does not support all target feature combinations."),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     llvm_writable: bool = (false, parse_bool, [TRACKED],
