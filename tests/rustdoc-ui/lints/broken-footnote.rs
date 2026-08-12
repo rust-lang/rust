@@ -47,4 +47,4 @@ pub struct EdgeCases2;
 ///
 /// [^*]
 //~^ ERROR: no footnote definition matching this footnote
-pub struct EdgeCases3; 
+pub struct EdgeCases3;
