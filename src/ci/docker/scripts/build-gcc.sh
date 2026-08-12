@@ -4,6 +4,13 @@ set -eux
 
 source shared.sh
 
+BINUTILS="2.47"
+curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
+cd binutils-$BINUTILS
+hide_output ./configure
+hide_output make
+hide_output make install
+
 # Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
 # This version is specified in the Dockerfile
 GCC=$GCC_VERSION
