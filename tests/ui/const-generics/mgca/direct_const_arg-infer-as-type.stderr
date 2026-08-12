@@ -1,0 +1,15 @@
+error[E0747]: constant provided when a type was expected
+  --> $DIR/direct_const_arg-infer-as-type.rs:9:38
+   |
+LL |     let _: S<core::direct_const_arg!(_)> = S(2u32);
+   |                                      ^
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/direct_const_arg-infer-as-type.rs:11:40
+   |
+LL |     let _: S<{ core::direct_const_arg!(_) }> = S(2u32);
+   |                                        ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0747`.
