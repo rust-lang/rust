@@ -12,7 +12,6 @@ rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
