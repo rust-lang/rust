@@ -8,7 +8,6 @@ use rustc_hir::{
     self as hir, CRATE_OWNER_ID, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target,
     find_attr,
 };
-use rustc_middle::span_bug;
 use rustc_middle::ty::data_structures::IndexMap;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -625,20 +624,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.expect_full_res(id);
                 let res = self.lower_res(res);
                 // Put the result in the appropriate namespace.
-                let res = match res {
-                    Res::Def(DefKind::Mod | DefKind::Trait, _) => {
-                        PerNS { type_ns: Some(res), value_ns: None, macro_ns: None }
-                    }
-                    Res::Def(DefKind::Enum, _) => {
-                        PerNS { type_ns: None, value_ns: Some(res), macro_ns: None }
-                    }
-                    Res::Err => {
-                        // Propagate the error to all namespaces, just to be sure.
-                        let err = Some(Res::Err);
-                        PerNS { type_ns: err, value_ns: err, macro_ns: err }
-                    }
-                    _ => span_bug!(path.span, "bad glob res {:?}", res),
-                };
+                let res = res.in_namespace();
                 let path = Path { segments, span: path.span };
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
