@@ -1552,7 +1552,7 @@ impl<'tcx> Ty<'tcx> {
         cf.is_break()
     }
 
-    pub fn replace_inside(
+    pub fn replace(
         self,
         tcx: TyCtxt<'tcx>,
         to_replace: Ty<'tcx>,
