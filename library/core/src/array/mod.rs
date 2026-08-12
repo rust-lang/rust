@@ -412,6 +412,7 @@ const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
         SlicePartialOrd::partial_compare_array(self, other)
     }
+
     #[inline]
     fn lt(&self, other: &[T; N]) -> bool {
         SliceChain::lt_array(self, other)
@@ -427,6 +428,23 @@ const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn gt(&self, other: &[T; N]) -> bool {
         SliceChain::gt_array(self, other)
+    }
+
+    #[inline]
+    fn __chaining_lt(&self, other: &Self) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_lt(self, other)
+    }
+    #[inline]
+    fn __chaining_le(&self, other: &Self) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_le(self, other)
+    }
+    #[inline]
+    fn __chaining_gt(&self, other: &Self) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_gt(self, other)
+    }
+    #[inline]
+    fn __chaining_ge(&self, other: &Self) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_ge(self, other)
     }
 }
 
