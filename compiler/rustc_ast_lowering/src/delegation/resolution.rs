@@ -10,7 +10,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_middle::ty::{
     self, AssocKind, DelegationInhFuncKind, Ty, TyCtxt, TypeRelativeDelegationRes,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -20,8 +20,7 @@ use crate::delegation::resolution::resolver::DelegationResolver;
 use crate::diagnostics::{
     AmbiguousDelegationToInherentImpl, CycleInDelegationSignatureResolution,
     DelegationAttemptedBlockWithDefsDeletion, DelegationAttemptedBlockWithDefsRelowering,
-    DelegationBlockSpecifiedWhenNoParams, DelegationGenericsMismatchInInherentImpl,
-    UnresolvedDelegationCallee,
+    DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
 };
 
 pub(crate) fn resolve_type_relative_delegations(
@@ -242,6 +241,11 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
     }
 
+    /// See tests\ui\delegation\inherent-impls-wrong-header-args-ice.rs,
+    /// there might be situations when not all generic args are supplied
+    /// to a struct/enum in an impl, in this case there will be ICEs when
+    /// trying to instantiate signature or predicates, so we would emit delayed
+    /// bug here and will not process this delegation further.
     fn check_inherent_impl_generic_args(
         &self,
         sig_id: DefId,
@@ -252,17 +256,13 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             return Ok(());
         }
 
-        let ty::Adt(def, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+        let ty::Adt(_, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
             unreachable!("parent of inherent function can be only struct or enum")
         };
 
-        let adt_params = &tcx.generics_of(def.did()).own_params;
-        let adt_params_types = adt_params.iter().map(|p| p.kind.is_ty_or_const());
-
-        let actual_args = args.iter().flat_map(|a| a.opt_param_info().map(|a| a.1));
-
-        itertools::equal(actual_args, adt_params_types)
-            .ok_or_else(|| tcx.dcx().emit_err(DelegationGenericsMismatchInInherentImpl { span }))
+        (!args.iter().any(|a| a.references_error())).ok_or_else(|| {
+            tcx.dcx().span_delayed_bug(span, "incorrect generic args in inherent impl")
+        })
     }
 
     fn get_call_path_res(
