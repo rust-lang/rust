@@ -22,6 +22,16 @@
     reason = "internal details of the thread_local macro",
     issue = "none"
 )]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unreachable,
+    clippy::unimplemented,
+    reason = "TLS accesses must not call the global allocator, including via panic (#160930)"
+)]
 
 cfg_select! {
     any(
