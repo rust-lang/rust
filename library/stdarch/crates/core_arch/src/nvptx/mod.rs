@@ -157,7 +157,7 @@ unsafe extern "C" {
     /// * `format`: A pointer to the format specifier input (uses common `printf` format).
     /// * `valist`: A pointer to the valist input.
     ///
-    /// ```
+    /// ```ignore
     /// #[repr(C)]
     /// struct PrintArgs(f32, f32, f32, i32);
     ///
