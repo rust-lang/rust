@@ -14,10 +14,10 @@ use build_helper::ci::CiEnv;
 use object::read::archive::ArchiveFile;
 pub(crate) use shim_utils::{dylib_path, dylib_path_var};
 
-use crate::core::builder::Builder;
-use crate::core::config::{Config, TargetSelection};
+pub(crate) use self::macros::t;
+use crate::core::builder::{Builder, StepStack};
+use crate::core::config::{BootstrapOverrideLld, Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::{BootstrapOverrideLld, StepStack};
 
 #[cfg(test)]
 mod tests;
@@ -39,34 +39,36 @@ impl Drop for PanicTracker<'_> {
     }
 }
 
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-///
-/// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change one day...
-#[macro_export]
-macro_rules! t {
-    ($e:expr) => {{
-        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {}", stringify!($e), e),
-        }
-    }};
-    // it can show extra info in the second parameter
-    ($e:expr, $extra:expr) => {{
-        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
-        }
-    }};
+mod macros {
+    /// A helper macro to `unwrap` a result except also print out details like:
+    ///
+    /// * The file/line of the panic
+    /// * The expression that failed
+    /// * The error itself
+    ///
+    /// This is currently used judiciously throughout the build system rather than
+    /// using a `Result` with `try!`, but this may change one day...
+    macro_rules! t {
+        ($e:expr) => {{
+            let _panic_guard = $crate::utils::helpers::PanicTracker(std::panic::Location::caller());
+            match $e {
+                Ok(e) => e,
+                Err(e) => panic!("{} failed with {}", stringify!($e), e),
+            }
+        }};
+        // it can show extra info in the second parameter
+        ($e:expr, $extra:expr) => {{
+            let _panic_guard = $crate::utils::helpers::PanicTracker(std::panic::Location::caller());
+            match $e {
+                Ok(e) => e,
+                Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
+            }
+        }};
+    }
+
+    pub(crate) use t;
 }
 
-pub use t;
 pub fn exe(name: &str, target: TargetSelection) -> String {
     shim_utils::exe(name, &target.triple)
 }

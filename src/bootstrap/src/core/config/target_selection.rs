@@ -1,8 +1,8 @@
-use std::fmt;
+use std::path::Path;
+use std::{env, fmt};
 
 use crate::core::config::SplitDebuginfo;
 use crate::utils::cache::{INTERNER, Interned};
-use crate::{Path, env};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 // N.B.: This type is used everywhere, and the entire codebase relies on it being Copy.

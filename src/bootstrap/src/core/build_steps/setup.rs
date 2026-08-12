@@ -20,10 +20,10 @@ use sha2::Digest;
 
 use crate::core::build_steps::format;
 use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
+use crate::core::config::Config;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, hex_encode};
-use crate::{Config, t};
+use crate::utils::helpers::{self, hex_encode, t};
 
 #[cfg(test)]
 mod tests;

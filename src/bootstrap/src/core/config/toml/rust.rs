@@ -1,12 +1,17 @@
 //! This module defines the `Rust` struct, which represents the `[rust]` table
 //! in the `bootstrap.toml` configuration file.
 
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+
 use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
-use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::core::config::{
+    CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool, TargetSelection,
+};
+use crate::{CodegenBackendKind, define_config, exit};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.

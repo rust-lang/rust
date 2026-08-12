@@ -6,13 +6,14 @@
 //! various feature flags. These options apply across different stages and components
 //! unless specifically overridden by other configuration sections or command-line flags.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::ReplaceOpt;
 use crate::core::config::{Allocator, CompilerBuiltins, DebuggerPath, Merge, StringOrBool};
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::define_config;
 
 define_config! {
     /// TOML representation of various global build decisions.
