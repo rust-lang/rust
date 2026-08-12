@@ -32,33 +32,39 @@ where
     })
 }
 
-fn low_exp_bits<F: Float>(count: u32) -> F::Int {
-    F::EXP_MASK & (F::EXP_MASK >> (F::EXP_BITS.saturating_sub(count)))
-}
-fn high_exp_bits<F: Float>(count: u32) -> F::Int {
-    F::EXP_MASK & (F::EXP_MASK << (F::EXP_BITS.saturating_sub(count)))
-}
-fn low_sig_bits<F: Float>(count: u32) -> F::Int {
-    F::SIG_MASK & (F::SIG_MASK >> (F::SIG_BITS.saturating_sub(count)))
-}
-fn high_sig_bits<F: Float>(count: u32) -> F::Int {
-    F::SIG_MASK & (F::SIG_MASK << (F::SIG_BITS.saturating_sub(count)))
-}
+/// Create a bitmask with `count` ones. The ones are filled in this order:
+///
+/// 1. Sign bit
+/// 2. Significand low bits
+/// 3. Significand high bits, exponent low bits, exponent high bits (increment together)
 fn most_wanted_bitmask<F: Float>(count: u32) -> F::Int {
     if count == 0 {
         return F::Int::ZERO;
     }
     let mut mask = F::SIGN_MASK;
     let n = (count - 1) / 4;
-    mask |= low_exp_bits::<F>(n);
-    mask |= high_exp_bits::<F>(n);
-    mask |= high_sig_bits::<F>(n);
+    mask |= low_mask_bits(n, F::EXP_MASK);
+    mask |= high_mask_bits(n, F::EXP_MASK);
+    mask |= high_mask_bits(n, F::SIG_MASK);
     // spend the remaining budget on the least significant bits
-    mask |= low_sig_bits::<F>(count - mask.count_ones());
+    mask |= low_mask_bits(count - mask.count_ones(), F::SIG_MASK);
     mask
 }
 
+/// Set `count` bits in the LSB of `mask`.
+fn low_mask_bits<I: Int>(count: u32, mask: I) -> I {
+    mask & (mask >> (mask.count_ones().saturating_sub(count)))
+}
+
+/// Set `count` bits in the MSB of `mask`.
+fn high_mask_bits<I: Int>(count: u32, mask: I) -> I {
+    mask & (mask << (mask.count_ones().saturating_sub(count)))
+}
+
 /// Biased generator for floats.
+///
+/// Starts with the first value of `fillers`, then toggles `bits_to_vary` bits exhaustively. Once
+/// that has completed, move on to the next filler.
 ///
 /// The returned iterator will produce `fillers.len() << bits_to_vary` items.
 #[cfg_attr(not(test), expect(dead_code))]
@@ -81,7 +87,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{bitwise_subsets, float_gen};
+    use super::*;
+
     #[test]
     fn equivalence() {
         // with a small integer type, we can easily verify that behaviour matches for all arguments
@@ -137,9 +144,50 @@ mod test {
             0b1_11111111_11111111111111111111111,
         ];
         for k in 0..=32 {
-            assert_eq!(super::most_wanted_bitmask::<f32>(k), expected[k as usize]);
+            let mask = most_wanted_bitmask::<f32>(k);
+            assert_eq!(mask, expected[k as usize], "{k}");
+            assert_eq!(mask.count_ones(), k);
         }
     }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn gen_with_fillers() {
+        let expected = [
+            // Filler: zeros
+            0b0_00000_0000000000,
+            0b0_00000_0000000001,
+            0b0_00000_0000000010,
+            0b0_00000_0000000011,
+            0b1_00000_0000000000,
+            0b1_00000_0000000001,
+            0b1_00000_0000000010,
+            0b1_00000_0000000011,
+            // Filler: ones
+            0b1_11111_1111111111,
+            0b1_11111_1111111110,
+            0b1_11111_1111111101,
+            0b1_11111_1111111100,
+            0b0_11111_1111111111,
+            0b0_11111_1111111110,
+            0b0_11111_1111111101,
+            0b0_11111_1111111100,
+            // Filler: pattern
+            0b1_00110_1000101011,
+            0b1_00110_1000101010,
+            0b1_00110_1000101001,
+            0b1_00110_1000101000,
+            0b0_00110_1000101011,
+            0b0_00110_1000101010,
+            0b0_00110_1000101001,
+            0b0_00110_1000101000,
+        ];
+        let v = float_gen::<f16>(3, [0, u16::MAX, 0b1_00110_1000101011])
+            .map(|x| x.to_bits())
+            .collect::<Vec<_>>();
+        assert_eq!(expected.as_slice(), v);
+    }
+
     #[test]
     fn gen_includes_specials() {
         let v: Vec<_> = float_gen(5, vec![0, 0x7fffff, !0x7fffff, !0])
@@ -157,6 +205,7 @@ mod test {
             assert!(v.contains(&(-x).to_bits()), "-{x} not found");
         }
     }
+
     #[test]
     fn count() {
         for k in 0..10 {
@@ -165,6 +214,7 @@ mod test {
             assert!(float_gen::<f32>(k, vec![0, 1, 2]).count() == 3 << k);
         }
     }
+
     #[test]
     fn specific() {
         let iter = float_gen::<f32>(1, vec![0]).map(f32::to_bits);
