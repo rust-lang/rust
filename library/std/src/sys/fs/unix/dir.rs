@@ -36,7 +36,7 @@ const TRAVERSE_DIRECTORY: i32 =
         _ => libc::O_RDONLY,
     };
 
-pub struct Dir(OwnedFd);
+pub struct Dir(pub OwnedFd);
 
 impl Dir {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
@@ -107,7 +107,7 @@ impl Dir {
         Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
 
-    fn open_file_c(
+    pub fn open_file_c(
         &self,
         path: &CStr,
         opts: &OpenOptions,
@@ -124,7 +124,7 @@ impl Dir {
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
-    fn remove_c(&self, path: &CStr, remove_dir: bool) -> io::Result<()> {
+    pub fn remove_c(&self, path: &CStr, remove_dir: bool) -> io::Result<()> {
         cvt(unsafe {
             unlinkat(
                 self.0.as_raw_fd(),
