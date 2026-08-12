@@ -547,11 +547,18 @@ pub struct ConstArgArrayExpr<'hir> {
     pub elems: &'hir [&'hir ConstArg<'hir>],
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, StableHash)]
+pub enum InferArgKind {
+    TypeOrConst,
+    Const,
+}
+
 #[derive(Clone, Copy, Debug, StableHash)]
 pub struct InferArg {
     #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
+    pub kind: InferArgKind,
 }
 
 impl InferArg {
@@ -601,7 +608,8 @@ impl GenericArg<'_> {
             GenericArg::Lifetime(_) => "lifetime",
             GenericArg::Type(_) => "type",
             GenericArg::Const(_) => "constant",
-            GenericArg::Infer(_) => "placeholder",
+            GenericArg::Infer(InferArg { kind: InferArgKind::TypeOrConst, .. }) => "placeholder",
+            GenericArg::Infer(InferArg { kind: InferArgKind::Const, .. }) => "constant",
         }
     }
 
@@ -5142,7 +5150,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 88);
     static_assert_size!(ForeignItemKind<'_>, 56);
-    static_assert_size!(GenericArg<'_>, 16);
+    static_assert_size!(GenericArg<'_>, 24);
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 48);

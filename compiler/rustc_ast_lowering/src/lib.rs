@@ -1434,6 +1434,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     return GenericArg::Infer(hir::InferArg {
                         hir_id: self.lower_node_id(ty.id),
                         span: self.lower_span(ty.span),
+                        kind: hir::InferArgKind::TypeOrConst,
                     });
                 }
 
@@ -1471,13 +1472,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             Err(e) => e.emit(self),
                         };
                         let ct = self.arena.alloc(ct);
-                        // note: this allows direct_const_arg!(_) to be inferred to a type. a little
-                        // wonky.
                         return match ct.try_as_ambig_ct() {
                             Some(ct) => GenericArg::Const(ct),
                             None => GenericArg::Infer(hir::InferArg {
                                 hir_id: ct.hir_id,
                                 span: ct.span,
+                                kind: hir::InferArgKind::Const,
                             }),
                         };
                     }
@@ -1489,7 +1489,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ct = self.lower_anon_const_to_const_arg_and_alloc(ct);
                 match ct.try_as_ambig_ct() {
                     Some(ct) => GenericArg::Const(ct),
-                    None => GenericArg::Infer(hir::InferArg { hir_id: ct.hir_id, span: ct.span }),
+                    None => GenericArg::Infer(hir::InferArg {
+                        hir_id: ct.hir_id,
+                        span: ct.span,
+                        kind: hir::InferArgKind::Const,
+                    }),
                 }
             }
         }
