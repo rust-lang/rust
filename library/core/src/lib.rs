@@ -187,6 +187,10 @@
 #![feature(x86_amx_intrinsics)]
 // tidy-alphabetical-end
 
+// tidy-alphabetical-start
+#![expect(clippy::partialeq_ne_impl, reason = "we need to implement ne for a lot of core types")]
+// tidy-alphabetical-end
+
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
 extern crate self as core;
