@@ -7,7 +7,7 @@
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{
-    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques,
+    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques, MaybeInfo,
     SucceededInErased,
 };
 use rustc_type_ir::{InferCtxtLike, Interner};
@@ -18,7 +18,7 @@ use crate::solve::{GoalEvaluation, HasChanged};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum RerunStalled {
-    WontMakeProgress(Certainty),
+    WontMakeProgress(MaybeInfo),
     MayMakeProgress,
 }
 
@@ -43,7 +43,7 @@ where
     }
 
     // If the goal isn't stalled, we should definitely run it.
-    let Some(&GoalStalledOn { ref opaques, ref stalled_vars, ref sub_roots, stalled_certainty }) =
+    let Some(&GoalStalledOn { ref opaques, ref stalled_vars, ref sub_roots, stalled_maybe_info }) =
         stalled_on
     else {
         return MayMakeProgress;
@@ -105,7 +105,7 @@ where
 
     // Otherwise, we can be sure that this stalled goal cannot make any progress
     // and we can exit early.
-    WontMakeProgress(stalled_certainty)
+    WontMakeProgress(stalled_maybe_info)
 }
 
 /// `compute_goal_fast_path` is complicated enough that outling helps, so it gets optimized
