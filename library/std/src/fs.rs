@@ -2872,6 +2872,107 @@ impl DirEntry {
     pub fn file_name(&self) -> OsString {
         self.0.file_name()
     }
+
+    /// Opens the file represented by `self` in read-only mode.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `self` does not represent a regular file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry && entry.path().is_file() {
+    ///             println!("{}", fs::read_to_string(entry.open()));
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open(&self) -> io::Result<File> {
+        self.0.open_with(&OpenOptions::new().read(true).0).map(|inner| File { inner })
+    }
+
+    /// Opens the file represented by `self` according to `options`.
+    ///
+    /// # Errors
+    ///
+    /// Errors may be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::io::Write;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry && entry.path().is_file() {
+    ///             let file = entry.open_with(&OpenOptions::new().read(true).write(true));
+    ///             let _ = file.write_all(b"foo");
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_with(&self, options: &OpenOptions) -> io::Result<File> {
+        self.0.open_with(&options.0).map(|inner| File { inner })
+    }
+
+    /// Removes the file represented by `self`.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if `self` isn't a file. Errors may also be returned for other
+    /// reasons such as incorrect permissions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry && entry.path().is_file() {
+    ///             let _ = entry.remove_file();
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_file(&self) -> io::Result<()> {
+        self.0.remove_file()
+    }
+
+    /// Removes the directory represented by `self`.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if `self` isn't a directory. Errors may also be returned for other
+    /// reasons such as incorrect permissions or a non-empty directory.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry && entry.path().is_dir() {
+    ///             let _ = entry.remove_dir();
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_dir(&self) -> io::Result<()> {
+        self.0.remove_dir()
+    }
 }
 
 #[stable(feature = "dir_entry_debug", since = "1.13.0")]

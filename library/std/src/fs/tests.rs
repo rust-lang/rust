@@ -1,7 +1,7 @@
 use rand::RngCore;
 
 use super::Dir;
-use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError, exists};
+use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError, exists, read_dir};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -2722,7 +2722,7 @@ fn test_dir_write_file() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));
     let mut f = check!(dir.open_file_with("foo.txt", &OpenOptions::new().write(true).create(true)));
-    check!(f.write(b"bar"));
+    check!(f.write_all(b"bar"));
     check!(f.flush());
     drop(f);
     let mut f = check!(File::open(tmpdir.join("foo.txt")));
@@ -2735,7 +2735,7 @@ fn test_dir_write_file() {
 fn test_dir_remove_file() {
     let tmpdir = tmpdir();
     let mut f = check!(File::create(tmpdir.join("foo.txt")));
-    check!(f.write(b"bar"));
+    check!(f.write_all(b"bar"));
     check!(f.flush());
     drop(f);
     let dir = check!(Dir::open(tmpdir.path()));
@@ -2782,7 +2782,7 @@ fn test_dir_open_dir() {
     let dir2 = check!(Dir::open(tmpdir.path().join("foo")));
     let mut f =
         check!(dir2.open_file_with("bar.txt", &OpenOptions::new().create(true).write(true)));
-    check!(f.write(b"baz"));
+    check!(f.write_all(b"baz"));
     check!(f.flush());
     drop(f);
     let dir3 = check!(dir1.open_dir("foo"));
@@ -2809,4 +2809,54 @@ fn test_dir_symlink() {
     let mut buf = [0u8; 4];
     check!(f.read_exact(&mut buf));
     assert_eq!(b"quux", &buf);
+}
+
+#[test]
+fn test_dir_direntry_open() {
+    let tmpdir = tmpdir();
+    let mut file1 = check!(File::create(tmpdir.path().join("foo.txt")));
+    let mut file2 = check!(File::create(tmpdir.path().join("bar.txt")));
+    check!(file1.write_all(b"baz"));
+    check!(file2.write_all(b"baz"));
+
+    for dirent in check!(read_dir(tmpdir.path())) {
+        let mut file = check!(check!(dirent).open());
+        let mut buf = [0u8; 3];
+        check!(file.read_exact(&mut buf));
+        assert_eq!(b"baz", &buf);
+    }
+}
+
+#[test]
+fn test_dir_direntry_open_with() {
+    let tmpdir = tmpdir();
+    check!(File::create(tmpdir.path().join("foo.txt")));
+
+    for dirent in check!(read_dir(tmpdir.path())) {
+        let dirent = check!(dirent);
+        let mut file = check!(dirent.open_with(&OpenOptions::new().read(true).write(true)));
+        check!(file.write_all(b"baz"));
+        let contents = check!(fs::read_to_string(dirent.path()));
+        assert_eq!("baz", contents);
+    }
+}
+
+#[test]
+fn test_dir_direntry_remove() {
+    let tmpdir = tmpdir();
+    check!(File::create(tmpdir.path().join("foo.txt")));
+    check!(File::create(tmpdir.path().join("bar.txt")));
+    check!(fs::create_dir(tmpdir.path().join("baz")));
+
+    for dirent in check!(read_dir(tmpdir.path())) {
+        let dirent = check!(dirent);
+        if dirent.path().is_file() {
+            check!(dirent.remove_file());
+        }
+        if dirent.path().is_dir() {
+            check!(dirent.remove_dir());
+        }
+    }
+
+    assert!(fs::read_dir(tmpdir.path()).is_ok_and(|i| i.count() == 0))
 }
