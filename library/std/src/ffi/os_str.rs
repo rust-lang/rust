@@ -719,7 +719,7 @@ impl fmt::Debug for OsString {
 impl PartialEq for OsString {
     #[inline]
     fn eq(&self, other: &OsString) -> bool {
-        &**self == &**other
+        **self == **other
     }
 }
 
@@ -766,19 +766,19 @@ impl PartialOrd for OsString {
     }
     #[inline]
     fn lt(&self, other: &OsString) -> bool {
-        &**self < &**other
+        **self < **other
     }
     #[inline]
     fn le(&self, other: &OsString) -> bool {
-        &**self <= &**other
+        **self <= **other
     }
     #[inline]
     fn gt(&self, other: &OsString) -> bool {
-        &**self > &**other
+        **self > **other
     }
     #[inline]
     fn ge(&self, other: &OsString) -> bool {
-        &**self >= &**other
+        **self >= **other
     }
 }
 
