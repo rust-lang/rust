@@ -55,7 +55,6 @@ impl<'a, A, B> Trait<'a, A, B> for X {
     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
     reuse S::foo_static::<'static, (), true> as foo_static_2;
     //~^ ERROR: type annotations needed [E0284]
-    //~| ERROR: type annotations needed [E0284]
     reuse S::<'static, (), 1>::foo_static as foo_static_3;
     reuse S::<'_, _, 1>::foo_static::<'static, _, _> as foo_static_4;
     //~^ ERROR: type annotations needed [E0284]

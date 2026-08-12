@@ -90,25 +90,7 @@ LL |     reuse S::<A, C>::foo_static::<'static, (), true> as foo_static_2;
    |            ++++++++
 
 error[E0284]: type annotations needed
-  --> $DIR/inherent-impls-structs.rs:51:14
-   |
-LL |     reuse S::foo_static::<'static, (), true> as foo_static_2;
-   |              ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
-   |
-note: required by a const generic parameter in `S::<A, C>::foo_static`
-  --> $DIR/inherent-impls-structs.rs:7:21
-   |
-LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
-   |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
-LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
-help: consider specifying the generic arguments
-   |
-LL |     reuse S::<A, C>::foo_static::<'static, (), true> as foo_static_2;
-   |            ++++++++
-
-error[E0284]: type annotations needed
-  --> $DIR/inherent-impls-structs.rs:55:22
+  --> $DIR/inherent-impls-structs.rs:54:22
    |
 LL |     reuse S::<_, 1>::foo_static::<'static, _, _> as foo_static_4;
    |                      ^^^^^^^^^^ cannot infer the value of const parameter `B` declared on the associated function `foo_static`
@@ -120,7 +102,7 @@ LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 
 error[E0107]: method takes at most 2 generic arguments but 4 generic arguments were supplied
-  --> $DIR/inherent-impls-structs.rs:58:14
+  --> $DIR/inherent-impls-structs.rs:57:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -135,7 +117,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^             -  -------------
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-structs.rs:58:14
+  --> $DIR/inherent-impls-structs.rs:57:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -152,7 +134,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-structs.rs:62:14
+  --> $DIR/inherent-impls-structs.rs:61:14
    |
 LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
    |              ^^^^^^^^
@@ -169,7 +151,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-structs.rs:65:22
+  --> $DIR/inherent-impls-structs.rs:64:22
    |
 LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
    |                      ^^^^^^^^
@@ -186,7 +168,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-structs.rs:80:14
+  --> $DIR/inherent-impls-structs.rs:79:14
    |
 LL |     reuse S::foo_self;
    |              ^^^^^^^^
@@ -203,7 +185,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-structs.rs:83:14
+  --> $DIR/inherent-impls-structs.rs:82:14
    |
 LL |     reuse S::foo_self::<'static, (), true> as foo_self_2;
    |              ^^^^^^^^
@@ -220,7 +202,7 @@ LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-structs.rs:86:22
+  --> $DIR/inherent-impls-structs.rs:85:22
    |
 LL |     reuse S::<_, 1>::foo_self::<'static, _, _> as foo_self_4;
    |                      ^^^^^^^^
@@ -236,7 +218,7 @@ note: method defined here
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0107, E0284, E0308.
 For more information about an error, try `rustc --explain E0107`.
