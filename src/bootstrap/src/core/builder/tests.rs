@@ -2119,11 +2119,11 @@ mod snapshot {
         [test] compiletest-run-make 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 1 <host>
+        [build] rustc 2 <target1> -> std 2 <target1>
+        [build] rustdoc 2 <target1>
         [build] rustc 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <target1>
         [test] compiletest-incremental 2 <target1>
-        [build] rustc 2 <target1> -> std 2 <target1>
-        [build] rustdoc 2 <target1>
         ");
     }
 

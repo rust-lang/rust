@@ -15,7 +15,11 @@
 //!
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
+
+// tidy-alphabetical-start
 #![allow(clippy::assertions_on_constants, reason = "false positive for `assert!(cfg!(..))`")]
+#![allow(clippy::map_clone, reason = "false positive for `|x: &&Foo| Foo::clone(x)`")]
+// tidy-alphabetical-end
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};

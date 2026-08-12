@@ -5,6 +5,3 @@ expression: test tests/coverage/trivial.rs tests/coverage/attr/impl.rs
 [Test] test::Coverage
     targets: [aarch64-unknown-linux-gnu]
     - Suite(tests/coverage)
-[Test] test::Coverage
-    targets: [aarch64-unknown-linux-gnu]
-    - Suite(tests/coverage)
