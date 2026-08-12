@@ -1014,18 +1014,62 @@ impl CommandLineStep for CoreArchTest {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
-            Mode::Std,
+            Mode::ToolStd,
             host,
             Kind::Test,
             "library/stdarch/crates/core_arch",
             SourceType::InTree,
             &[],
         );
-        cargo.profile("release");
-        cargo.rustflag("-Zmerge-functions=disabled");
-        if host.contains("x86_64") {
-            cargo.rustflag("-Ctarget-feature=-sse3");
-        }
+        cargo.env("TARGET", host.to_string().as_str());
+
+        let allowed_features = [
+            // tidy-alphabetical-start
+            "aarch64_unstable_target_feature",
+            "abi_unadjusted",
+            "abi_vectorcall",
+            "allow_internal_unstable",
+            "arm_target_feature",
+            "asm_experimental_arch",
+            "avx10_target_feature",
+            "clflushopt_target_feature",
+            "const_cmp",
+            "const_eval_select",
+            "const_trait_impl",
+            "core_intrinsics",
+            "custom_inner_attributes",
+            "decl_macro",
+            "doc_cfg",
+            "f16",
+            "fmt_helpers_for_derive",
+            "funnel_shifts",
+            "hexagon_target_feature",
+            "link_llvm_intrinsics",
+            "loongarch_target_feature",
+            "maybe_uninit_as_bytes",
+            "min_adt_const_params",
+            "mips_target_feature",
+            "movrs_target_feature",
+            "no_core",
+            "powerpc_target_feature",
+            "proc_macro_hygiene",
+            "repr_simd",
+            "riscv_target_feature",
+            "rtm_target_feature",
+            "rustc_attrs",
+            "simd_ffi",
+            "staged_api",
+            "stdarch_arm_feature_detection",
+            "stdarch_internal",
+            "stdarch_mips_feature_detection",
+            "stdarch_powerpc_feature_detection",
+            "stmt_expr_attributes",
+            "test",
+            "wasm_target_feature",
+            "x86_amx_intrinsics",
+            // tidy-alphabetical-end
+        ];
+        cargo.allow_features(&allowed_features.join(","));
 
         run_cargo_test(
             cargo,
