@@ -1,5 +1,5 @@
 error: values of the type `[u8; 9223372036854775807]` are too big for the target architecture
-  --> $DIR/size-of-val-raw-too-big-64.rs:18:1
+  --> $DIR/size-of-val-raw-too-big-64.rs:20:1
    |
 LL | pub fn check(x: *const Example) -> usize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

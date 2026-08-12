@@ -2,6 +2,8 @@
 //@ revisions: no-debuginfo full-debuginfo
 //@[no-debuginfo] compile-flags: -Cdebuginfo=0
 //@[full-debuginfo] compile-flags: -Cdebuginfo=2
+// the span for this revision comes from the LLVM debuginfo, which the gcc backend does not build
+//@[full-debuginfo] ignore-backends: gcc
 //@ build-fail
 //@ compile-flags: --crate-type lib
 //@ only-64bit Layout computation rejects this layout for different reasons on 32-bit.
