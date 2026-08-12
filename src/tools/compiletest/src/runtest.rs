@@ -1351,7 +1351,27 @@ impl<'test> TestCx<'test> {
         let mut aux_props =
             self.props.from_aux_file(&aux_path, self.variant.revision(), self.config);
         if aux_type == Some(AuxType::ProcMacro) {
-            aux_props.force_host = true;
+            if self.config.wasm_proc_macros {
+                aux_props.compile_flags.push("--target=wasm32-wasip2".to_owned());
+                // Override any earlier linkers for now, otherwise we fail to build since compiletest
+                // thinks we're building for a different target and passes its linker (if one is
+                // configured).
+                //
+                // wasm32-wasip2 should in principle always be able to link with wasm-component-ld +
+                // wasm-ld. This does mean that rust.lld needs to be enabled to build wasm-ld wrapper
+                // around rust-lld.
+                aux_props.compile_flags.push("-Clinker=wasm-component-ld".to_owned());
+                aux_props.compile_flags.push(format!(
+                    "-Clink-arg=--wasm-ld-path={}",
+                    self.config
+                        .sysroot_base
+                        .join("lib/rustlib")
+                        .join(&self.config.host)
+                        .join("bin/gcc-ld/wasm-ld")
+                ));
+            } else {
+                aux_props.force_host = true;
+            }
         }
         let mut aux_dir = aux_dir.to_path_buf();
         if aux_type == Some(AuxType::Bin) {
@@ -1575,6 +1595,11 @@ impl<'test> TestCx<'test> {
             }
         };
         compiler.arg(input_file);
+
+        // Enable wasm proc macros.
+        if self.config.wasm_proc_macros {
+            compiler.arg("-Zwasm-proc-macros");
+        }
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.

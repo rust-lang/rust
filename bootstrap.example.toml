@@ -944,6 +944,18 @@
 # because bootstrap will attempt to download the JSON docs data for this commit from its CI.
 #rust.stdlib-semver-baseline = "<commit-sha>"
 
+# Enables building a wasm proc macro compatible toolchain.
+#
+# This requires building an additional standard library for a different target and adding it
+# to the sysroot before running tests, and so needs special handling in bootstrap. Currently
+# off by default.
+#
+# This currently opts compiletest into running/building proc-macro tests via wasm.
+#
+# The implementation for this has not finished landing, so you probably don't
+# want to enable this right now.
+#rust.wasm-proc-macros = false
+
 # =============================================================================
 # Distribution options
 #
