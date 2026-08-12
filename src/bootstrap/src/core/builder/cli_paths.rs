@@ -117,7 +117,9 @@ pub(crate) fn match_paths_to_steps_and_run(
     // If any absolute paths couldn't be made relative, stop now and report them.
     let bad_abs_paths = paths.iter().filter(|path| path.is_absolute()).collect::<Vec<_>>();
     if !bad_abs_paths.is_empty() {
-        eprintln!("ERROR: failed to resolve absolute paths: {bad_abs_paths:#?}");
+        eprintln!(
+            "ERROR: the following paths do not exist on disk or point outside the source directory: {bad_abs_paths:#?}"
+        );
         crate::exit!(1);
     }
 
