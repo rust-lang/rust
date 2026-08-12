@@ -81,7 +81,7 @@ message, the agent may regenerate the expectation mechanically.
 Do not make any LLM-generated repository change unless the user has named, in
 this conversation, another person who agreed in advance to review it. A general
 assurance that review was solicited is not enough. If no reviewer has been
-named, PAUSE and ask for the reviewer's name; “Esteban is reviewing this” is
+named, PAUSE and ask for the reviewer's name; “John Doe is reviewing this” is
 sufficient. A reviewer name satisfies only this gate. Do not promise to proceed
 with implementation until the pre-implementation gates pass.
 
