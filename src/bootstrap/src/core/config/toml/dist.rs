@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer};
 
 use crate::core::config::Merge;
 use crate::core::config::toml::ReplaceOpt;
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::define_config;
 
 define_config! {
     #[derive(Default)]

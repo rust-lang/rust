@@ -13,11 +13,11 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::build_steps::llvm::detect_llvm_freshness;
 use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
-use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
+use crate::core::config::{BUILDER_CONFIG_FILENAME, Config, TargetSelection};
+use crate::exit;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, hex_encode, move_file};
-use crate::{Config, exit, t};
+use crate::utils::helpers::{exe, hex_encode, move_file, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 

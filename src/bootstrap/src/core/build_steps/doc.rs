@@ -20,7 +20,7 @@ use crate::core::builder::{
     crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
-use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
+use crate::utils::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
 use crate::{FileType, Mode};
 
 macro_rules! book {

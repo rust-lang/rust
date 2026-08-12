@@ -9,8 +9,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
-    GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
-    StalledOnCoroutines,
+    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -208,8 +207,7 @@ where
                 // Common case: still stalled; keep the obligation. This path is extremely hot in
                 // some cases; there can be thousands of pending obligations.
                 if let Some(stalled_on) = opt_stalled_on
-                    && let Some(certainty) = delegate.goal_remains_stalled(stalled_on)
-                    && matches!(certainty, Certainty::Maybe(_))
+                    && delegate.goal_remains_stalled(stalled_on)
                 {
                     return true;
                 }
@@ -378,13 +376,11 @@ where
 
         self.obligations
             .drain_pending(|_, stalled_on| {
-                stalled_on.as_ref().is_some_and(|s| match s.stalled_certainty {
-                    Certainty::Maybe(MaybeInfo {
-                        cause: _,
-                        opaque_types_jank: _,
-                        stalled_on_coroutines: StalledOnCoroutines::Yes,
-                    }) => true,
-                    Certainty::Maybe(_) | Certainty::Yes => false,
+                stalled_on.as_ref().is_some_and(|s| {
+                    match s.stalled_maybe_info.stalled_on_coroutines {
+                        StalledOnCoroutines::Yes => true,
+                        StalledOnCoroutines::No => false,
+                    }
                 })
             })
             .into_iter()

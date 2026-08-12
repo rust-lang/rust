@@ -28,7 +28,9 @@ mod tests;
 pub mod toml;
 
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub use config::*;
 use serde::de::Unexpected;
@@ -40,8 +42,7 @@ pub use toml::change_id::ChangeId;
 pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
-use crate::str::FromStr;
-use crate::{Display, exit};
+use crate::exit;
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
 #[macro_export]
@@ -63,8 +64,8 @@ macro_rules! define_config {
         impl Merge for $name {
             fn merge(
                 &mut self,
-                _parent_config_path: Option<PathBuf>,
-                _included_extensions: &mut HashSet<PathBuf>,
+                _parent_config_path: Option<std::path::PathBuf>,
+                _included_extensions: &mut std::collections::HashSet<std::path::PathBuf>,
                 other: Self,
                 replace: ReplaceOpt
             ) {
@@ -87,7 +88,7 @@ macro_rules! define_config {
                                         panic!("overriding existing option")
                                     } else {
                                         eprintln!("overriding existing option: `{}`", stringify!($field));
-                                        exit!(2);
+                                        $crate::exit!(2);
                                     }
                                 } else {
                                     self.$field = other.$field;
