@@ -3,6 +3,9 @@
 // unifying match arms, for example.
 //
 // See also: coercion-never.rs
+//@ reference: coerce.site.tuple
+//@ reference: coerce.types.unsize
+//@ reference: coerce.unsize.slice
 
 fn main() {
     let _: (&[u8],) = (&[],);

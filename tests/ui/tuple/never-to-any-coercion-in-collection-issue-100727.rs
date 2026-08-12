@@ -3,6 +3,8 @@
 
 //@ check-pass
 //@ edition: 2021
+//@ reference: coerce.site.tuple
+//@ reference: coerce.types.never
 
 #![allow(unreachable_code)]
 
