@@ -630,20 +630,27 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
 
     let self_input = sig[0];
 
-    sig[0] = match fn_kinds(tcx, def_id, sig_id) {
-        (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
-            tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
-        }
-        (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
+    let kinds @ (def_kind, _) = fn_kinds(tcx, def_id, sig_id);
+
+    sig[0] = match kinds {
+        (_, FnKind::AssocInherentImpl) => {
             let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
                 unreachable!("delegation is supported only to struct or enums")
             };
 
             let sig_self_type = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
-            let self_param = Ty::new_param(tcx, 0, kw::SelfUpper);
-            self_input.replace_inside(tcx, sig_self_type, self_param)
+            let replacement = match def_kind {
+                FnKind::AssocTrait => Ty::new_param(tcx, 0, kw::SelfUpper),
+                FnKind::Free => sig_self_type,
+                _ => tcx
+                    .type_of(tcx.parent(def_id.to_def_id()))
+                    .instantiate_identity()
+                    .skip_norm_wip(),
+            };
+
+            self_input.replace_inside(tcx, sig_self_type, replacement)
         }
-        _ => self_input,
+        _ => sig[0],
     };
 }
 
