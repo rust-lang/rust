@@ -2198,6 +2198,16 @@ fn partialeq_vec_full() {
     assert_partial_eq_valid!(vec2,vec3; array2,array3);
     assert_partial_eq_valid!(vec2,vec3; arrayref2,arrayref3);
     assert_partial_eq_valid!(vec2,vec3; arrayref2[..],arrayref3[..]);
+
+    let cow2: Cow<'_, [i32]> = Cow::from(vec![1, 2]);
+    let cow3: Cow<'_, [i32]> = Cow::from(vec![1, 2, 3]);
+
+    assert_partial_eq_valid!(vec2,vec3; cow2,cow3);
+    assert_partial_eq_valid!(slice2,slice3; cow2,cow3);
+    assert_partial_eq_valid!(slicemut2,slicemut3; cow2,cow3);
+    assert_partial_eq_valid!(cow2,cow3; vec2,vec3);
+    assert_partial_eq_valid!(cow2,cow3; slice2,slice3);
+    assert_partial_eq_valid!(cow2,cow3; slicemut2,slicemut3);
 }
 
 #[test]
