@@ -719,13 +719,21 @@ impl CStore {
             // Load the proc macro crate for the host
             proc_macro_locator.for_proc_macro(sess, path_kind);
 
-            let Some(host_result) =
+            if let Some(host_result) =
                 self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
-            else {
-                return Ok(None);
-            };
+            {
+                Ok(Some((host_result, None)))
+            } else if sess.opts.unstable_opts.wasm_proc_macros {
+                // Load the proc macro crate for wasm
+                proc_macro_locator.for_wasm_proc_macro(sess, path_kind);
 
-            Ok(Some((host_result, None)))
+                match self.load(&mut proc_macro_locator, &mut CrateRejections::default())? {
+                    Some(host_result) => Ok(Some((host_result, None))),
+                    None => Ok(None),
+                }
+            } else {
+                Ok(None)
+            }
         }
     }
 

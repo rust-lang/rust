@@ -327,6 +327,8 @@ impl PointerAuthConfig {
 pub struct Session {
     pub target: Target,
     pub host: Target,
+    pub wasm_proc_macro_tuple: TargetTuple,
+    pub wasm_proc_macro_target: Target,
     pub opts: config::Options,
     pub target_tlib_path: SearchPath,
     pub psess: ParseSess,
@@ -395,6 +397,7 @@ pub struct Session {
 
     target_filesearch: Arc<FileSearch>,
     host_filesearch: Arc<FileSearch>,
+    wasm_proc_macro_filesearch: Option<Arc<FileSearch>>,
 
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
@@ -663,6 +666,9 @@ impl Session {
     }
     pub fn host_filesearch(&self) -> &filesearch::FileSearch {
         &self.host_filesearch
+    }
+    pub fn wasm_proc_macro_filesearch(&self) -> &filesearch::FileSearch {
+        self.wasm_proc_macro_filesearch.as_ref().expect("wasm_filesearch not set")
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
@@ -1295,6 +1301,19 @@ pub fn build_session(
         dcx.handle().warn(warning)
     }
 
+    let wasm_proc_macro_tuple = TargetTuple::from_tuple("wasm32-wasip2");
+    let (wasm_proc_macro_target, target_warnings) = Target::search(
+        &wasm_proc_macro_tuple,
+        sopts.sysroot.path(),
+        sopts.unstable_opts.unstable_options,
+    )
+    .unwrap_or_else(|e| {
+        dcx.handle().fatal(format!("Error loading wasm proc-macro target specification: {e}"))
+    });
+    for warning in target_warnings.warning_messages() {
+        dcx.handle().warn(warning)
+    }
+
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
         let directory = if let Some(directory) = d { directory } else { std::path::Path::new(".") };
@@ -1323,6 +1342,8 @@ pub fn build_session(
     // FIXME use host sysroot?
     let host_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple);
     let target_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple);
+    let wasm_proc_macro_tlib_path =
+        SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), wasm_proc_macro_tuple.tuple());
 
     let prof = SelfProfilerRef::new(
         self_profiler,
@@ -1352,6 +1373,16 @@ pub fn build_session(
             sopts.unstable_opts.implicit_sysroot_deps,
         ))
     };
+    let wasm_proc_macro_filesearch = if sopts.unstable_opts.wasm_proc_macros {
+        Some(Arc::new(FileSearch::new(
+            &sopts.search_paths,
+            &wasm_proc_macro_tlib_path,
+            &wasm_proc_macro_target,
+            sopts.unstable_opts.implicit_sysroot_deps,
+        )))
+    } else {
+        None
+    };
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
@@ -1361,6 +1392,8 @@ pub fn build_session(
     let sess = Session {
         target,
         host,
+        wasm_proc_macro_tuple,
+        wasm_proc_macro_target,
         opts: sopts,
         target_tlib_path,
         psess,
@@ -1384,6 +1417,7 @@ pub fn build_session(
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
+        wasm_proc_macro_filesearch,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`

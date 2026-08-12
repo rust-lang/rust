@@ -137,6 +137,13 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
             return true;
         }
     }
+    if crate_type == CrateType::ProcMacro {
+        if sess.opts.target_triple == sess.wasm_proc_macro_tuple
+            && sess.opts.unstable_opts.wasm_proc_macros
+        {
+            return false;
+        }
+    }
     if let CrateType::ProcMacro | CrateType::Dylib = crate_type
         && sess.target.only_cdylib
     {
