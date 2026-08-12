@@ -3634,7 +3634,6 @@ dependencies = [
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
- "itertools",
  "rustc_abi",
  "rustc_ast",
  "rustc_attr_ir",
