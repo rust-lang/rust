@@ -1891,9 +1891,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         let eq_first: Mask = a.simd_eq(first_probe);
         let eq_last: Mask = b.simd_eq(second_probe);
         let both = eq_first.bitand(eq_last);
-        let mask = both.to_bitmask() as u16;
-
-        mask
+        both.to_bitmask() as u16
     };
 
     let mut i = 0;

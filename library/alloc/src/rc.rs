@@ -898,7 +898,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // otherwise.
         let data = data_fn(&weak);
 
-        let strong = unsafe {
+        unsafe {
             let inner = init_ptr.as_ptr();
             ptr::write(&raw mut (*inner).value, data);
 
@@ -913,9 +913,7 @@ impl<T, A: Allocator> Rc<T, A> {
             let alloc = weak.into_raw_with_allocator().1;
 
             Rc::from_inner_in(init_ptr, alloc)
-        };
-
-        strong
+        }
     }
 
     /// Constructs a new `Rc<T>` in the provided allocator, returning an error if the allocation
@@ -1366,14 +1364,12 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
         let mut in_progress: UniqueRcUninit<T, A> = UniqueRcUninit::new(value, alloc);
 
         // Initialize with clone of value.
-        let initialized_clone = unsafe {
+        unsafe {
             // Clone. If the clone panics, `in_progress` will be dropped and clean up.
             value.clone_to_uninit(in_progress.data_ptr().cast());
             // Cast type of pointer, now that it is initialized.
             in_progress.into_rc()
-        };
-
-        initialized_clone
+        }
     }
 
     /// Constructs a new `Rc<T>` with a clone of `value` in the provided allocator, returning an error if allocation fails
