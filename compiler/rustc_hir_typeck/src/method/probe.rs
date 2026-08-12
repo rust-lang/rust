@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
-use std::debug_assert_matches;
 use std::ops::Deref;
+use std::{assert_matches, debug_assert_matches};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
@@ -594,8 +594,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ProbeScope::Single(def_id, self_ty_override) => {
                     let item = self.tcx.associated_item(def_id);
-                    // FIXME(fn_delegation): Delegation to inherent methods is not yet supported.
-                    assert_eq!(item.container, AssocContainer::Trait);
+                    assert_matches!(
+                        item.container,
+                        AssocContainer::Trait | AssocContainer::InherentImpl
+                    );
 
                     let trait_def_id = self.tcx.parent(def_id);
                     let trait_span = self.tcx.def_span(trait_def_id);
@@ -607,10 +609,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe_cx.push_candidate(
                         Candidate {
                             item,
-                            kind: CandidateKind::TraitCandidate(
-                                ty::Binder::dummy(trait_ref),
-                                false,
-                            ),
+                            kind: match item.container {
+                                AssocContainer::Trait => CandidateKind::TraitCandidate(
+                                    ty::Binder::dummy(trait_ref),
+                                    false,
+                                ),
+                                AssocContainer::InherentImpl => {
+                                    CandidateKind::InherentImplCandidate {
+                                        impl_def_id: self.tcx.parent(def_id),
+                                        receiver_steps: 0,
+                                    }
+                                }
+                                _ => unreachable!(),
+                            },
                             import_ids: &[],
                         },
                         false,
