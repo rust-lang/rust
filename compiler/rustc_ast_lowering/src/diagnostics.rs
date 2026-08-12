@@ -155,6 +155,15 @@ pub(crate) struct MoveExprOnlyInSupportedContexts {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block"
+)]
+pub(crate) struct NestedMoveExprWithoutEnclosingContext {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("functional record updates are not allowed in destructuring assignments")]
 pub(crate) struct FunctionalRecordUpdateDestructuringAssignment {
     #[primary_span]
