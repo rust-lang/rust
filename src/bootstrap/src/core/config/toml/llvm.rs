@@ -1,11 +1,13 @@
 //! This module defines the `Llvm` struct, which represents the `[llvm]` table
 //! in the `bootstrap.toml` configuration file.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::StringOrBool;
 use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
-use crate::{HashMap, HashSet, PathBuf, define_config, exit};
+use crate::define_config;
 
 define_config! {
     /// TOML representation of how the LLVM build is configured.

@@ -14,11 +14,12 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::builder::Builder;
+use crate::Build;
 use crate::core::build_steps::tool;
-use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
+use crate::core::builder::Builder;
+use crate::core::config::{CompilerBuiltins, DebuggerPath, Subcommand, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand, t};
+use crate::utils::helpers::t;
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,

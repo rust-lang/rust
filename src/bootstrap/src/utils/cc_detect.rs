@@ -25,7 +25,7 @@ use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use crate::core::config::{CompressDebuginfo, TargetSelection};
+use crate::core::config::{CompressDebuginfo, Subcommand, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
@@ -70,10 +70,10 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 pub fn fill_compilers(build: &mut Build) {
     let mut targets: HashSet<_> = match build.config.cmd {
         // We don't need to check cross targets for these commands.
-        crate::Subcommand::Clean { .. }
-        | crate::Subcommand::Check { .. }
-        | crate::Subcommand::Format { .. }
-        | crate::Subcommand::Setup { .. } => {
+        Subcommand::Clean { .. }
+        | Subcommand::Check { .. }
+        | Subcommand::Format { .. }
+        | Subcommand::Setup { .. } => {
             build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
         }
 

@@ -13,12 +13,13 @@
 //! and the `bootstrap.toml` file—merging them, applying defaults, and performing
 //! cross-component validation. The main `parse_inner` function and its supporting
 //! helpers reside here, transforming raw `Toml` data into the structured `Config` type.
+
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
@@ -51,15 +52,13 @@ use crate::core::config::toml::target::{
 use crate::core::config::{
     Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
     GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool,
-    threads_from_config,
+    TargetSelection, threads_from_config,
 };
 use crate::core::download::{DownloadContext, download_beta_toolchain, is_download_ci_available};
-use crate::utils::channel;
+use crate::utils::channel::{self, GitInfo};
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, fail, get_host_target};
-use crate::{
-    CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, exit, helpers, t,
-};
+use crate::utils::helpers::{self, exe, fail, get_host_target, t};
+use crate::{CodegenBackendKind, check_ci_llvm, exit};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build

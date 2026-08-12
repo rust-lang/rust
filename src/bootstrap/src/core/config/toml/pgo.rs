@@ -4,11 +4,13 @@
 //! The `[pgo]` table contains options related PGO (Profile-Guided Optimization) of various
 //! components built by bootstrap.
 
+use std::path::PathBuf;
+
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::Merge;
 use crate::core::config::toml::ReplaceOpt;
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::define_config;
 
 #[derive(Clone, Default, Debug, serde_derive::Deserialize)]
 #[serde(deny_unknown_fields)]

@@ -7,12 +7,12 @@ use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::config::flags::Color;
 use crate::core::config::toml::pgo::PgoConfig;
-use crate::core::config::{CompressDebuginfo, SplitDebuginfo};
+use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
-use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags};
+use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags, t};
 use crate::{
-    BootstrapCommand, CLang, Compiler, Config, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
-    RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
+    CLang, Compiler, EXTRA_CHECK_CFGS, GitRepo, Mode, RemapScheme, prepare_behaviour_dump_dir,
 };
 
 /// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.

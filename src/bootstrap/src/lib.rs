@@ -33,21 +33,14 @@ use tracing::{instrument, span};
 
 use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::vendor::VENDOR_DIR;
-#[cfg(feature = "tracing")]
-use crate::core::builder::STEP_SPAN_TARGET;
-use crate::core::builder::{self, Kind, StepStack};
-use crate::core::config::flags::{Flags, Subcommand};
-use crate::core::config::{
-    BootstrapOverrideLld, ChangeId, Config, DryRun, LlvmLibunwind, TargetSelection, flags,
-};
+use crate::core::builder::{self, Kind};
+use crate::core::config::flags::{self, Subcommand};
+use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
-use crate::utils::change_tracker::{
-    CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
-};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{
-    self, PanicTracker, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
+    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir, t,
 };
 
 pub mod cli_main;

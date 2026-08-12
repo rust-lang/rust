@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use tempfile::TempDir;
 
-use crate::{Config, Flags};
+use crate::core::config::Config;
+use crate::core::config::flags::Flags;
 
 pub mod git;
 mod shim_utils_tests;

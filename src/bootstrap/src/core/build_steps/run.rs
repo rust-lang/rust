@@ -16,7 +16,8 @@ use crate::core::builder::{Builder, CommandLineStep, Kind, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
 use crate::utils::exec::command;
-use crate::{Mode, exit, t};
+use crate::utils::helpers::t;
+use crate::{Mode, exit};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;

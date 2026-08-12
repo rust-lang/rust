@@ -14,17 +14,17 @@
 //! (as usual) a massive undertaking/refactoring.
 
 use super::tool::{SourceType, prepare_tool_cargo};
-use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
 };
 use crate::core::builder;
 use crate::core::builder::{
-    Alias, CommandLineStep, Kind, RunConfig, StepMetadata, crate_description,
+    Alias, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, StepMetadata, crate_description,
 };
+use crate::core::config::{Subcommand, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Compiler, Mode, Subcommand, TargetSelection, exit};
+use crate::{Compiler, Mode, exit};
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[

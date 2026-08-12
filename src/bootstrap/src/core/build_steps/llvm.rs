@@ -17,14 +17,16 @@ use std::{env, fs};
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
-use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{
+    Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+};
 use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, exit, trace};
+use crate::{CLang, GitRepo, exit, trace};
 
 /// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
