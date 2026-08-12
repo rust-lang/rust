@@ -77,15 +77,19 @@ fn main() {
     assert_eq!(Arc::strong_count(&x), 1);
 
     let y = Arc::new(String::from("nested"));
-    assert_eq!(Arc::strong_count(&y), 1);
+    let weak = Arc::downgrade(&y);
     let mut iter = Box::pin(async gen {
-        let value = move(move(y.clone()));
-        yield Arc::strong_count(&value);
+        let mut inner = Box::pin(async gen {
+            let value = move(move(y.clone()));
+            yield Arc::strong_count(&value);
+        });
+        yield ready_next(inner.as_mut()).unwrap();
     });
-    assert_eq!(Arc::strong_count(&y), 2);
+    assert_eq!(weak.strong_count(), 2);
     assert_eq!(ready_next(iter.as_mut()), Some(2));
     drop(iter);
-    assert_eq!(Arc::strong_count(&y), 1);
+    assert_eq!(weak.strong_count(), 1);
+    assert_eq!(&*y, "nested");
 
     let z = Arc::new(String::from("async gen move"));
     assert_eq!(Arc::strong_count(&z), 1);

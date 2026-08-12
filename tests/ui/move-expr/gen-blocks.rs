@@ -35,15 +35,19 @@ fn main() {
     assert_eq!(Arc::strong_count(&x), 1);
 
     let y = Arc::new(String::from("nested"));
-    assert_eq!(Arc::strong_count(&y), 1);
+    let weak = Arc::downgrade(&y);
     let mut iter = gen {
-        let value = move(move(y.clone()));
-        yield Arc::strong_count(&value);
+        let mut inner = gen {
+            let value = move(move(y.clone()));
+            yield Arc::strong_count(&value);
+        };
+        yield inner.next().unwrap();
     };
-    assert_eq!(Arc::strong_count(&y), 2);
+    assert_eq!(weak.strong_count(), 2);
     assert_eq!(iter.next(), Some(2));
     drop(iter);
-    assert_eq!(Arc::strong_count(&y), 1);
+    assert_eq!(weak.strong_count(), 1);
+    assert_eq!(&*y, "nested");
 
     let z = Arc::new(String::from("gen move"));
     assert_eq!(Arc::strong_count(&z), 1);

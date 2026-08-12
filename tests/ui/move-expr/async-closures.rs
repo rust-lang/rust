@@ -29,5 +29,14 @@ fn main() {
     assert_eq!(Arc::strong_count(&x), 2);
     drop(fut);
     assert_eq!(Arc::strong_count(&x), 1);
-    assert_eq!(Arc::strong_count(&x), 1);
+
+    let y = Arc::new(String::from("nested"));
+    assert_eq!(Arc::strong_count(&y), 1);
+    let c = async || move(move(y.clone()));
+    assert_eq!(Arc::strong_count(&y), 2);
+    let fut = c();
+    assert_eq!(Arc::strong_count(&y), 2);
+    drop(fut);
+    assert_eq!(Arc::strong_count(&y), 1);
+    assert_eq!(&*y, "nested");
 }
