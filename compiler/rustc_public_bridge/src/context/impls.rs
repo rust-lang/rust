@@ -5,6 +5,7 @@
 use std::iter;
 
 use rustc_abi::{Endian, Layout, ReprOptions};
+use rustc_crate_store::ForeignModule;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
@@ -22,7 +23,6 @@ use rustc_middle::ty::{
     ValTree, VariantDef, VtblEntry,
 };
 use rustc_middle::{mir, ty};
-use rustc_session::cstore::ForeignModule;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{Span, Symbol};
 use rustc_target::callconv::FnAbi;

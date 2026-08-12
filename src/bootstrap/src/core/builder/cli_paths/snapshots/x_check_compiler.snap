@@ -21,6 +21,7 @@ expression: check compiler
     - Set({compiler/rustc_codegen_llvm})
     - Set({compiler/rustc_codegen_ssa})
     - Set({compiler/rustc_const_eval})
+    - Set({compiler/rustc_crate_store})
     - Set({compiler/rustc_data_structures})
     - Set({compiler/rustc_driver})
     - Set({compiler/rustc_driver_impl})

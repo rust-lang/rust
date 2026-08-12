@@ -281,6 +281,10 @@ struct Args {
     /// Ignore `//@ ignore-backends` directives.
     #[arg(long)]
     bypass_ignore_backends: bool,
+    /// Build proc-macros for wasm. Assumes environment is configured to support this; e.g., std is
+    /// already built appropriately.
+    #[arg(long)]
+    wasm_proc_macros: bool,
 
     // These values can be entered multiple times, for example:
     // --skip foo --skip bar
@@ -502,6 +506,8 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         bypass_ignore_backends: args.bypass_ignore_backends,
 
         gcc_supported_target_tuples,
+
+        wasm_proc_macros: args.wasm_proc_macros,
 
         jobs: args.jobs,
 

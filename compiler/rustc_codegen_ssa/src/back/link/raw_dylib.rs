@@ -3,13 +3,13 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use rustc_abi::Endian;
+use rustc_crate_store::{DllImport, DllImportSymbolType};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash128;
 use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
-use rustc_session::cstore::{DllImport, DllImportSymbolType};
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;
 

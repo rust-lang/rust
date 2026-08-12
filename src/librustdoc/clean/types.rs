@@ -1345,6 +1345,9 @@ pub(crate) struct Parameter {
     /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
     /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
     pub(crate) is_const: bool,
+    /// Flags whether this parameter is actually a splat (e.g., `#[rustc_splat]`).
+    /// Refer to <github.com/rust-lang/rust/issues/153629>
+    pub(crate) is_splat: bool,
 }
 
 impl Parameter {
