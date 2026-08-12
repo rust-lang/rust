@@ -375,7 +375,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         use rustc_session::config::Offload;
 
-        if tcx.sess.opts.unstable_opts.offload.contains(&Offload::Device)
+        if tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_)))
             || tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host(_)))
         {
             match llvm::RustOffloadWrapper::get_or_init(&tcx.sess.opts.sysroot) {

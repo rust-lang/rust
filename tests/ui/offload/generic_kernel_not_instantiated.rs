@@ -1,5 +1,6 @@
 //@ compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat -Csymbol-mangling-version=v0
 //@ build-fail
+//@ needs-offload
 
 // A generic offload kernel that is never called from host code (and hence
 // never monomorphized) cannot be discovered without a manifest: with
@@ -11,6 +12,7 @@
 #![allow(internal_features)]
 
 #[rustc_offload_kernel]
-fn kernel<T: Copy>(x: T) {} //~ ERROR generic offload kernel `kernel` is not instantiated
+fn kernel<T: Copy>(x: T) {}
+//~^ ERROR generic offload kernel `kernel` is not instantiated
 
 fn main() {}

@@ -1,5 +1,5 @@
 error: generic offload kernel `kernel` is not instantiated
-  --> $DIR/generic_kernel_not_instantiated.rs:14:1
+  --> $DIR/generic_kernel_not_instantiated.rs:15:1
    |
 LL | fn kernel<T: Copy>(x: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^

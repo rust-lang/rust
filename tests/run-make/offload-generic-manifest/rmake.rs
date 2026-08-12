@@ -1,3 +1,5 @@
+//@ needs-offload
+
 // Tests the offload manifest pipeline for generic kernels
 
 use run_make_support::rustc;
