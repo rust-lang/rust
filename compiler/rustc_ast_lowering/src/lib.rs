@@ -320,7 +320,7 @@ struct LoweringContext<'a, 'hir> {
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
 
-    /// Stack of `move(...)` collection states. A plain closure body pushes
+    /// Stack of `move(...)` collection states. A closure-like body pushes
     /// `Some`, so `move(...)` expressions can record the generated locals they
     /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
     move_expr_bindings: Vec<Option<expr::MoveExprState<'hir>>>,
