@@ -27,7 +27,7 @@ jobs:
   # Determine which tests should be run based on changed files.
   calculate_vars:
     name: Calculate workflow variables
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,63 +59,63 @@ jobs:
       matrix:
         include:
         - target: aarch64-apple-darwin
-          os: macos-15
+          os: macos-26
         - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
+          os: ubuntu-26.04-arm
         - target: aarch64-pc-windows-msvc
-          os: windows-11-arm
+          os: windows-11-vs2026-arm
         - target: arm-unknown-linux-gnueabi
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: arm-unknown-linux-gnueabihf
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: armv7-unknown-linux-gnueabihf
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: i586-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: i686-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: loongarch64-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: powerpc-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: powerpc64-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: powerpc64-unknown-linux-musl
           os: ["self-hosted", "linux", "powerpc64", "musl"]
         - target: powerpc64le-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04-ppc64le
         # FIXME(ci): re-enable these once more capacity is avialable
         # - target: riscv64gc-unknown-linux-gnu
         #   os: ["self-hosted", "linux", "riscv64"]
         - target: riscv64gc-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: s390x-unknown-linux-gnu
           os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: thumbv7em-none-eabi
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: thumbv7em-none-eabihf
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: thumbv7m-none-eabi
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: wasm32-unknown-unknown
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: x86_64-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: x86_64-apple-darwin
-          os: macos-15-intel
+          os: macos-26-intel
         - target: i686-pc-windows-msvc
-          os: windows-2025
+          os: windows-2025-vs2026
         - target: x86_64-pc-windows-msvc
-          os: windows-2025
+          os: windows-2025-vs2026
         - target: i686-pc-windows-gnu
-          os: windows-2025
+          os: windows-2025-vs2026
           channel: nightly-i686-gnu
         - target: x86_64-pc-windows-gnu
-          os: windows-2025
+          os: windows-2025-vs2026
           channel: nightly-x86_64-gnu
     runs-on: ${{ matrix.os }}
     needs: [calculate_vars]
@@ -124,7 +124,7 @@ jobs:
       JOB_TARGET: ${{ matrix.target }}
       JOB_CHANNEL: ${{ matrix.channel }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
-      RUN_IN_DOCKER: ${{ matrix.os == 'ubuntu-24.04' }}
+      RUN_IN_DOCKER: ${{ matrix.os == 'ubuntu-26.04' }}
     steps:
     - name: Print runner information
       run: |
@@ -135,7 +135,7 @@ jobs:
 
     # Native ppc and s390x runners don't have rustup by default
     - name: Install rustup
-      if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
+      if: matrix.os == 'ubuntu-26.04-ppc64le' || matrix.os == 'ubuntu-26.04-s390x'
       run: sudo apt-get update && sudo apt-get install -y rustup
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -182,7 +182,7 @@ jobs:
       run: ./ci/update-musl.sh
 
     - name: Verify API list
-      if: matrix.os == 'ubuntu-24.04' || contains(matrix.os, 'self-hosted')
+      if: matrix.os == 'ubuntu-26.04' || contains(matrix.os, 'self-hosted')
       run: |
         # Must be run on the host (not in Docker) because git and fs access is required.
         python3 etc/update-api-list.py --check
@@ -213,7 +213,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -231,7 +231,7 @@ jobs:
 
   zizmor:
     name: Zizmor (Static analysis for GitHub Actions)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       security-events: write
     timeout-minutes: 10
@@ -242,7 +242,7 @@ jobs:
 
   build-custom:
     name: Build custom target
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -264,7 +264,7 @@ jobs:
   # FIXME: move this target to test job once https://github.com/rust-lang/rust/pull/150138 merged.
   build-thumbv6k:
     name: Build thumbv6k
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -289,11 +289,11 @@ jobs:
       matrix:
         include:
         - target: aarch64-unknown-linux-gnu
-          os: ubuntu-24.04-arm
+          os: ubuntu-26.04-arm
         - target: i686-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
         - target: x86_64-unknown-linux-gnu
-          os: ubuntu-24.04
+          os: ubuntu-26.04
     runs-on: ${{ matrix.os }}
     env:
       JOB_TARGET: ${{ matrix.target }}
@@ -330,7 +330,7 @@ jobs:
 
   miri:
     name: Miri
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -344,7 +344,7 @@ jobs:
 
   msrv:
     name: Check libm MSRV
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
@@ -365,7 +365,7 @@ jobs:
 
   rustfmt:
     name: Rustfmt
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -380,7 +380,7 @@ jobs:
       # Wait on `clippy` so we have some confidence that the crate will build
       - clippy
       - calculate_vars
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 240 # 4 hours
     strategy:
       matrix:
@@ -418,7 +418,7 @@ jobs:
       - rustfmt
       - test
       - zizmor
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
