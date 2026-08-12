@@ -612,21 +612,26 @@ fn get_flow_results<'a, 'tcx>(
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
     // We compute these three analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
-    let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
-    let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
-    let ever_inits = EverInitializedPlaces::new(body, move_data).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
+    let borrows = {
+        let _timer = tcx.prof.generic_activity("borrowck_dataflow_borrows");
+        Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
+            tcx,
+            body,
+            Some("borrowck"),
+        )
+    };
+    let uninits = {
+        let _timer = tcx.prof.generic_activity("borrowck_dataflow_maybe_uninits");
+        MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
+            tcx,
+            body,
+            Some("borrowck"),
+        )
+    };
+    let ever_inits = {
+        let _timer = tcx.prof.generic_activity("borrowck_dataflow_ever_inits");
+        EverInitializedPlaces::new(body, move_data).iterate_to_fixpoint(tcx, body, Some("borrowck"))
+    };
 
     let analysis = Borrowck {
         borrows: borrows.analysis,
