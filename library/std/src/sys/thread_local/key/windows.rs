@@ -138,8 +138,15 @@ unsafe impl Sync for LazyKey {}
 
 #[inline]
 pub unsafe fn set(key: Key, val: *mut u8) {
+    #[cold]
+    fn fail() -> ! {
+        rtabort!("Failed to set value of thread local")
+    }
     let r = unsafe { c::TlsSetValue(key, val.cast()) };
-    debug_assert_eq!(r, c::TRUE);
+    // According to MS documentation, `TlsSetValue` returns zero "if it fails"
+    if r != c::TRUE {
+        fail()
+    }
 }
 
 #[inline]
