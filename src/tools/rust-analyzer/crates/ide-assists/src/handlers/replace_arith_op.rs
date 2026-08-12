@@ -1,6 +1,6 @@
 use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
-    AstNode,
+    AstNode, T,
     ast::{self, ArithOp, BinaryOp},
 };
 
@@ -101,7 +101,7 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
     let (lhs, op, is_assign, rhs) = parse_binary_op(ctx)?;
     let op_expr = lhs.syntax().parent()?;
 
-    if !is_primitive_int(ctx, &lhs) || !is_primitive_int(ctx, &rhs) {
+    if !is_primitive_int_or_ref(ctx, &lhs) || !is_primitive_int_or_ref(ctx, &rhs) {
         return None;
     }
 
@@ -116,6 +116,22 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
             let method_name = kind.method_name(op);
 
             let receiver = wrap_paren(lhs.clone(), make, ast::prec::ExprPrecedence::Postfix);
+
+            let mut rhs = rhs;
+
+            if let Some(ty) = ctx.sema.type_of_expr(&rhs) {
+                let adjusted = ty.adjusted();
+                if adjusted.strip_reference() != adjusted {
+                    rhs = if let ast::Expr::RefExpr(ref_expr) = &rhs
+                        && let Some(inner) = ref_expr.expr()
+                    {
+                        inner
+                    } else {
+                        make.expr_prefix(T![*], rhs).into()
+                    };
+                }
+            }
+
             let mut arith_expr = make
                 .expr_method_call(receiver, make.name_ref(&method_name), make.arg_list([rhs]))
                 .into();
@@ -128,7 +144,7 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
     )
 }
 
-fn is_primitive_int(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> bool {
+fn is_primitive_int_or_ref(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> bool {
     match ctx.sema.type_of_expr(expr) {
         Some(ty) => ty.original.strip_reference().is_int_or_uint(),
         _ => false,
@@ -320,6 +336,61 @@ fn main() {
 fn main() {
     let mut x = 1;
     x = x.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_ref() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    let x = &1;
+    x $0+ 2;
+}
+"#,
+            r#"
+fn main() {
+    let x = &1;
+    x.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_remove_ref() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    1 $0+ &2;
+}
+"#,
+            r#"
+fn main() {
+    1.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_deref() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    let x = &2
+    1 $0+ x;
+}
+"#,
+            r#"
+fn main() {
+    let x = &2
+    1.wrapping_add(*x);
 }
 "#,
         )
