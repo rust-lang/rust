@@ -22,23 +22,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
 
         match closure.coroutine_marker {
-            Some(coroutine_marker) => hir::Expr {
-                hir_id: expr_hir_id,
-                kind: self.lower_expr_coroutine_closure(
-                    &closure.binder,
-                    closure.capture_clause,
-                    e.id,
-                    expr_hir_id,
-                    coroutine_marker,
-                    closure.constness,
-                    &closure.fn_decl,
-                    &closure.body,
-                    closure.fn_decl_span,
-                    closure.fn_arg_span,
-                    attrs,
-                ),
-                span: self.lower_span(e.span),
-            },
+            Some(coroutine_marker) => self.lower_expr_coroutine_closure_with_move_exprs(
+                expr_hir_id,
+                attrs,
+                &closure.binder,
+                closure.capture_clause,
+                e.id,
+                coroutine_marker,
+                closure.constness,
+                &closure.fn_decl,
+                &closure.body,
+                closure.fn_decl_span,
+                closure.fn_arg_span,
+                e.span,
+            ),
             None => self.lower_expr_plain_closure_with_move_exprs(
                 expr_hir_id,
                 attrs,
@@ -56,6 +53,46 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn lower_expr_coroutine_closure_with_move_exprs(
+        &mut self,
+        expr_hir_id: HirId,
+        attrs: &[hir::Attribute],
+        binder: &ClosureBinder,
+        capture_clause: CaptureBy,
+        closure_id: NodeId,
+        coroutine_marker: CoroutineMarker,
+        constness: Const,
+        decl: &FnDecl,
+        body: &Expr,
+        fn_decl_span: Span,
+        fn_arg_span: Span,
+        whole_span: Span,
+    ) -> hir::Expr<'hir> {
+        let (kind, move_expr_state) =
+            self.with_move_expr_bindings(Some(MoveExprState::default()), |this| {
+                this.lower_expr_coroutine_closure(
+                    binder,
+                    capture_clause,
+                    closure_id,
+                    expr_hir_id,
+                    coroutine_marker,
+                    constness,
+                    decl,
+                    body,
+                    fn_decl_span,
+                    fn_arg_span,
+                    attrs,
+                )
+            });
+        let Some(move_expr_state) = move_expr_state else {
+            span_bug!(fn_decl_span, "coroutine closure lowering did not return `move(...)` state");
+        };
+        let closure_expr =
+            hir::Expr { hir_id: expr_hir_id, kind, span: self.lower_span(whole_span) };
+
+        self.lower_expr_with_move_exprs(closure_expr, move_expr_state, body, whole_span)
+    }
+
     /// Lowers a plain closure expression and wraps it in an outer block if the
     /// closure body used `move(...)`.
     ///
@@ -64,28 +101,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// lower each `move(...)` occurrence as a use of the synthetic local that
     /// will be introduced by that outer block. For example:
     ///
-    /// ```ignore (illustrative)
-    /// || (move(move(foo.clone()))).len()
-    /// ```
-    ///
-    /// first lowers the closure body roughly as `|| __move_expr_1.len()` while
-    /// recording two occurrences:
-    ///
-    /// ```ignore (illustrative)
-    /// move(foo.clone()) -> __move_expr_0
-    /// move(move(foo.clone())) -> __move_expr_1
-    /// ```
-    ///
-    /// This method then lowers the recorded initializers in order and builds the
-    /// surrounding block:
+    /// For example, `|| move(foo.clone()).len()` becomes roughly:
     ///
     /// ```ignore (illustrative)
     /// {
     ///     let __move_expr_0 = foo.clone();
-    ///     let __move_expr_1 = __move_expr_0;
-    ///     || __move_expr_1.len()
+    ///     || __move_expr_0.len()
     /// }
     /// ```
+    ///
+    /// If the initializer contains another `move(...)`, it is lowered after
+    /// this closure's state is popped and therefore belongs to the immediately
+    /// enclosing closure-like body.
     fn lower_expr_plain_closure_with_move_exprs(
         &mut self,
         expr_hir_id: HirId,
@@ -170,11 +197,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span_bug!(fn_decl_span, "plain closure lowering did not return `move(...)` state");
         };
         let explicit_captures: &'hir [hir::ExplicitCapture] = self.arena.alloc_from_iter(
-            move_expr_state.occurrences.iter().filter_map(|occurrence| {
-                occurrence
-                    .explicit_capture
-                    .then_some(hir::ExplicitCapture { var_hir_id: occurrence.binding })
-            }),
+            move_expr_state
+                .occurrences
+                .iter()
+                .map(|occurrence| hir::ExplicitCapture { var_hir_id: occurrence.binding }),
         );
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
@@ -322,6 +348,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.dcx().span_err(span, "const coroutines are not supported");
         }
 
+        let explicit_captures: &'hir [hir::ExplicitCapture] = self.arena.alloc_from_iter(
+            self.move_expr_bindings
+                .last()
+                .and_then(Option::as_ref)
+                .into_iter()
+                .flat_map(|state| &state.occurrences)
+                .map(|occurrence| hir::ExplicitCapture { var_hir_id: occurrence.binding }),
+        );
+
         let c = self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
             binder: binder_clause,
@@ -336,7 +371,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
             constness: self.lower_constness(attrs, constness),
-            explicit_captures: &[],
+            explicit_captures,
         });
         hir::ExprKind::Closure(c)
     }
