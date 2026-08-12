@@ -3,10 +3,10 @@
 Term                                           | Meaning
 -----------------------------------------------|--------
 <span id="1zst">1-ZST</span>                   |  A *one-aligned [zero-sized type](#zst)*. A type of size zero with an [alignment][size-align] of one.
+<span id="abby">abby</span>                    | Short for [_assumptions on binders_](https://github.com/rust-lang/project-assumptions-on-binders). Alternatively: `a-bi`, though this is very close to ABI.
 <span id="arena">arena, arena allocation</span> |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
 <span id="afidt">AFIDT</span>                  |  Short for _async function in `dyn Trait`_. See also [AFIT](#afit).
 <span id="afit">AFIT</span>                    |  Short for _async function in trait_. They desugar to [RPITITs](#rpitit).
-<span id="assbind"> Assbind </span>            | Short for ["Assumptions on Binders"](https://github.com/rust-lang/project-assumptions-on-binders) (See: [Zulip thread](https://rust-lang.zulipchat.com/#narrow/channel/260443-project-const-generics/topic/talkies.3F.20in.20this.20economy/near/615646513)).
 <span id="ast">AST</span>                      |  The _abstract syntax tree_ (an [IR](#ir)) produced by the parser; reflects the surface / user syntax very closely.
 <span id="apit">APIT</span>                    |  Short for _argument-position `impl Trait`_. Also known as universial `impl Trait` (as opposed to existential) or anonymous type parameter. ([see the reference](https://doc.rust-lang.org/reference/types/impl-trait.html#anonymous-type-parameters)).
 <span id="atpit">ATPIT</span>                  |  Short for _associated-type-position `impl Trait`_. Also known as [ITIAT](#itiat).
