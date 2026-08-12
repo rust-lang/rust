@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionClause, TraitPredicate};
+use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionClause, TraitClause};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span, Symbol, sym};
 
@@ -40,7 +40,7 @@ fn get_trait_predicates_for_trait_ids<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericClauses<'tcx>,
     trait_ids: &[Option<DefId>], // At least 2 ids
-) -> [Vec<TraitPredicate<'tcx>>; 3] {
+) -> [Vec<TraitClause<'tcx>>; 3] {
     debug_assert!(trait_ids.len() >= 2);
     let mut preds = [Vec::new(), Vec::new(), Vec::new()];
     for (clause, _) in generics.clauses {
@@ -63,7 +63,7 @@ fn get_trait_predicates_for_trait_ids<'tcx>(
 fn get_projection_pred<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericClauses<'tcx>,
-    trait_pred: TraitPredicate<'tcx>,
+    trait_pred: TraitClause<'tcx>,
 ) -> Option<ProjectionClause<'tcx>> {
     generics.clauses.iter().find_map(|(clause, _)| {
         if let ClauseKind::Projection(pred) = clause.kind().skip_binder() {

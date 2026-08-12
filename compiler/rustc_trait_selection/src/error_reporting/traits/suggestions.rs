@@ -27,7 +27,7 @@ use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
-    PrintPolyTraitPredicateExt as _, PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
+    PrintPolyTraitClauseExt as _, PrintPolyTraitRefExt, PrintTraitClauseExt as _,
     PrintTraitRefExt as _, with_forced_trimmed_paths, with_no_trimmed_paths,
     with_types_for_suggestion,
 };
@@ -128,7 +128,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     err: &mut Diag<'_, G>,
     fn_sig: Option<&hir::FnSig<'_>>,
     projection: Option<ty::ProjectionAliasTy<'_>>,
-    trait_pred: ty::PolyTraitPredicate<'tcx>,
+    trait_pred: ty::PolyTraitClause<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
     //              -  ^^^^^^^^^ GenericBounds
@@ -464,11 +464,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn suggest_restricting_param_bound(
         &self,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
         mut body_def_id: LocalDefId,
     ) {
-        if trait_pred.skip_binder().polarity != ty::PredicatePolarity::Positive {
+        if trait_pred.skip_binder().polarity != ty::ClausePolarity::Positive {
             return;
         }
 
@@ -703,7 +703,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let mut code = obligation.cause.code();
         if let ObligationCauseCode::FunctionArg { arg_hir_id, call_hir_id, .. } = code
@@ -853,7 +853,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // one at a time to account for cases such as &Box<T> == &&T
                     let trait_pred_and_ty = trait_pred.map_bound(|inner| {
                         (
-                            ty::TraitPredicate {
+                            ty::TraitClause {
                                 trait_ref: ty::TraitRef::new_from_args(
                                     self.tcx,
                                     inner.trait_ref.def_id,
@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         // It doesn't make sense to make this suggestion outside of typeck...
         // (also autoderef will ICE...)
@@ -1213,8 +1213,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        leaf_trait_predicate: ty::PolyTraitPredicate<'tcx>,
-        main_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        leaf_trait_predicate: ty::PolyTraitClause<'tcx>,
+        main_trait_predicate: ty::PolyTraitClause<'tcx>,
         span: Span,
     ) -> bool {
         let &[candidate] = &self.find_similar_impl_candidates(leaf_trait_predicate)[..] else {
@@ -1269,7 +1269,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         let mut span = obligation.cause.span;
         while span.from_expansion() {
@@ -1352,7 +1352,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
         self.enter_forall(self_ty, |ty: Ty<'_>| {
@@ -1630,7 +1630,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        poly_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        poly_trait_pred: ty::PolyTraitClause<'tcx>,
         has_custom_message: bool,
     ) -> bool {
         let span = obligation.cause.span;
@@ -1862,7 +1862,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         // Try to apply the original trait bound by borrowing.
-        let mut try_borrowing = |old_pred: ty::PolyTraitPredicate<'tcx>,
+        let mut try_borrowing = |old_pred: ty::PolyTraitClause<'tcx>,
                                  blacklist: &[DefId]|
          -> bool {
             if blacklist.contains(&old_pred.def_id()) {
@@ -2192,7 +2192,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let mut span = obligation.cause.span;
         let mut trait_pred = trait_pred;
@@ -2457,7 +2457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         let points_at_arg =
             matches!(obligation.cause.code(), ObligationCauseCode::FunctionArg { .. },);
@@ -2534,7 +2534,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
         span: Span,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_def_id);
         if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn {sig, body: body_id, .. }, .. }) = node
@@ -2641,7 +2641,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let ObligationCauseCode::SizedReturnType = obligation.cause.code() else {
             return false;
@@ -3353,7 +3353,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         interior_or_upvar_span: CoroutineInteriorOrUpvar,
         is_async: bool,
         outer_coroutine: Option<DefId>,
-        trait_pred: ty::TraitPredicate<'tcx>,
+        trait_pred: ty::TraitClause<'tcx>,
         target_ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
@@ -4668,7 +4668,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         span: Span,
     ) {
         let future_trait = self.tcx.require_lang_item(LangItem::Future, span);
@@ -4739,7 +4739,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         let rhs_span = match obligation.cause.code() {
             ObligationCauseCode::BinOp { rhs_span, rhs_is_lit, .. } if *rhs_is_lit => rhs_span,
@@ -4761,9 +4761,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn can_suggest_derive(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
-        if trait_pred.polarity() == ty::PredicatePolarity::Negative {
+        if trait_pred.polarity() == ty::ClausePolarity::Negative {
             return false;
         }
         let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
@@ -4793,7 +4793,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     _ => None,
                 };
-                let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
+                let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitClause {
                     trait_ref: ty::TraitRef::new(self.tcx,
                         trait_pred.def_id(),
                         [field_ty].into_iter().chain(trait_args),
@@ -4814,7 +4814,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
             return;
@@ -4842,7 +4842,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         if let ObligationCauseCode::ImplDerived(_) = obligation.cause.code()
             && self
@@ -5121,7 +5121,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Given the predicate `fn(&T): FnOnce<(U,)>`, extract `fn(&T)` and `(U,)`,
         // then suggest `Option::as_deref(_mut)` if `U` can deref to `T`
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, .. }))
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitClause { trait_ref, .. }))
             = failed_pred.kind().skip_binder()
             && tcx.is_fn_trait(trait_ref.def_id)
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
@@ -5293,13 +5293,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let node =
                             tcx.hir_node_by_def_id(tcx.hir_get_parent_item(expr.hir_id).def_id);
 
-                        let pred = ty::Binder::dummy(ty::TraitPredicate {
+                        let pred = ty::Binder::dummy(ty::TraitClause {
                             trait_ref: ty::TraitRef::new(
                                 tcx,
                                 tcx.require_lang_item(LangItem::Clone, span),
                                 [*ty],
                             ),
-                            polarity: ty::PredicatePolarity::Positive,
+                            polarity: ty::ClausePolarity::Positive,
                         });
                         let Some(generics) = node.generics() else {
                             continue;
@@ -5671,7 +5671,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {
@@ -5783,7 +5783,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        trait_predicate: ty::PolyTraitClause<'tcx>,
     ) {
         let ObligationCauseCode::FunctionArg { call_hir_id, .. } = obligation.cause.code() else {
             return;
@@ -5855,7 +5855,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn explain_hrtb_projection(
         &self,
         diag: &mut Diag<'_>,
-        pred: ty::PolyTraitPredicate<'tcx>,
+        pred: ty::PolyTraitClause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
@@ -5925,7 +5925,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn suggest_desugaring_async_fn_in_trait(
         &self,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
         if self.tcx.features().return_type_notation() {
@@ -6081,7 +6081,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) {
         if ObligationCauseCode::QuestionMark != *obligation.cause.code().peel_derives() {
             return;
@@ -6556,7 +6556,7 @@ impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
 pub(super) fn get_explanation_based_on_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
-    trait_predicate: ty::PolyTraitPredicate<'tcx>,
+    trait_predicate: ty::PolyTraitClause<'tcx>,
     pre_message: String,
     long_ty_path: &mut Option<PathBuf>,
 ) -> String {
@@ -6573,7 +6573,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             Some(desc) => format!(" {desc}"),
             None => String::new(),
         };
-        if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
+        if let ty::ClausePolarity::Positive = trait_predicate.polarity() {
             // If the trait in question is unstable, mention that fact in the diagnostic.
             // But if we're building with `-Zforce-unstable-if-unmarked` then _any_ trait
             // not explicitly marked stable is considered unstable, so the extra text is

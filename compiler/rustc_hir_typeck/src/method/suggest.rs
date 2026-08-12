@@ -121,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
                 predicate.kind().as_ref().skip_binder()
             {
-                let ty::TraitPredicate { trait_ref: ty::TraitRef { args, .. }, .. } = trait_pred;
+                let ty::TraitClause { trait_ref: ty::TraitRef { args, .. }, .. } = trait_pred;
                 if args.is_empty() {
                     return false;
                 }
@@ -1949,7 +1949,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         match pred.kind().skip_binder() {
                             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                                 self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
-                                    && pred.polarity == ty::PredicatePolarity::Positive
+                                    && pred.polarity == ty::ClausePolarity::Positive
                             }
                             _ => false,
                         }
@@ -3543,7 +3543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         foreign_preds
-            .sort_by_key(|(_, pred): &(_, ty::TraitPredicate<'_>)| pred.trait_ref.to_string());
+            .sort_by_key(|(_, pred): &(_, ty::TraitClause<'_>)| pred.trait_ref.to_string());
 
         for (_, pred) in &foreign_preds {
             let ty = pred.self_ty();
@@ -3587,7 +3587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns Some(list_of_derives) if possible, or None if not.
     fn consider_suggesting_derives_for_ty(
         &self,
-        trait_pred: ty::TraitPredicate<'tcx>,
+        trait_pred: ty::TraitClause<'tcx>,
         adt: ty::AdtDef<'tcx>,
     ) -> Option<Vec<(String, Span, Symbol)>> {
         let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id())?;
@@ -4848,9 +4848,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }),
         );
-        let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
+        let trait_pred = ty::Binder::dummy(ty::TraitClause {
             trait_ref,
-            polarity: ty::PredicatePolarity::Positive,
+            polarity: ty::ClausePolarity::Positive,
         });
         let obligation = Obligation::new(self.tcx, self.misc(rcvr.span), self.param_env, trait_ref);
         self.err_ctxt().note_different_trait_with_same_name(err, &obligation, trait_pred)
@@ -4947,7 +4947,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_hashmap_on_unsatisfied_hashset_buildhasher(
         &self,
         err: &mut Diag<'_>,
-        pred: &ty::TraitPredicate<'_>,
+        pred: &ty::TraitClause<'_>,
         adt: ty::AdtDef<'_>,
     ) -> bool {
         if self.tcx.is_diagnostic_item(sym::HashSet, adt.did())

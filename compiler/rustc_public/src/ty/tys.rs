@@ -1231,7 +1231,7 @@ pub enum PredicateKind {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ClauseKind {
-    Trait(TraitPredicate),
+    Trait(TraitClause),
     RegionOutlives(RegionOutlivesClause),
     TypeOutlives(TypeOutlivesClause),
     Projection(ProjectionClause),
@@ -1260,10 +1260,13 @@ pub struct CoercePredicate {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct TraitPredicate {
+pub struct TraitClause {
     pub trait_ref: TraitRef,
-    pub polarity: PredicatePolarity,
+    pub polarity: ClausePolarity,
 }
+
+#[deprecated = "renamed to [`TraitClause`]"]
+pub type TraitPredicate = TraitClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct OutlivesClause<A, B>(pub A, pub B);
@@ -1295,10 +1298,13 @@ pub enum ImplPolarity {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub enum PredicatePolarity {
+pub enum ClausePolarity {
     Positive,
     Negative,
 }
+
+#[deprecated = "renamed to [`ClausePolarity`]"]
+pub type PredicatePolarity = ClausePolarity;
 
 macro_rules! index_impl {
     ($name:ident) => {

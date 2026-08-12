@@ -14,7 +14,7 @@ pub type ProjectionClause<'tcx> = ir::ProjectionClause<TyCtxt<'tcx>>;
 pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
 pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
 pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
-pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
+pub type TraitClause<'tcx> = ir::TraitClause<TyCtxt<'tcx>>;
 pub type HostEffectClause<'tcx> = ir::HostEffectClause<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
@@ -27,7 +27,7 @@ pub type TypeOutlivesClause<'tcx> = OutlivesClause<'tcx, Ty<'tcx>>;
 pub type ArgOutlivesClause<'tcx> = OutlivesClause<'tcx, ty::GenericArg<'tcx>>;
 pub type RegionEqPredicate<'tcx> = ir::RegionEqPredicate<TyCtxt<'tcx>>;
 pub type RegionConstraint<'tcx> = ir::RegionConstraint<TyCtxt<'tcx>>;
-pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
+pub type PolyTraitClause<'tcx> = ty::Binder<'tcx, TraitClause<'tcx>>;
 pub type PolyRegionOutlivesClause<'tcx> = ty::Binder<'tcx, RegionOutlivesClause<'tcx>>;
 pub type PolyTypeOutlivesClause<'tcx> = ty::Binder<'tcx, TypeOutlivesClause<'tcx>>;
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
@@ -84,13 +84,12 @@ impl<'tcx> Predicate<'tcx> {
         let kind = self
             .kind()
             .map_bound(|kind| match kind {
-                PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
-                    trait_ref,
-                    polarity,
-                })) => Some(PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
-                    trait_ref,
-                    polarity: polarity.flip(),
-                }))),
+                PredicateKind::Clause(ClauseKind::Trait(TraitClause { trait_ref, polarity })) => {
+                    Some(PredicateKind::Clause(ClauseKind::Trait(TraitClause {
+                        trait_ref,
+                        polarity: polarity.flip(),
+                    })))
+                }
 
                 _ => None,
             })
@@ -177,7 +176,7 @@ impl<'tcx> Clause<'tcx> {
         })
     }
 
-    pub fn as_trait_clause(self) -> Option<ty::Binder<'tcx, TraitPredicate<'tcx>>> {
+    pub fn as_trait_clause(self) -> Option<ty::Binder<'tcx, TraitClause<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::Trait(trait_clause) = clause.skip_binder() {
             Some(clause.rebind(trait_clause))
@@ -500,39 +499,39 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitRef<'tcx>> for Clause<'tcx> {
 
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Predicate<'tcx> {
     fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        let pred: PolyTraitPredicate<'tcx> = from.upcast(tcx);
+        let pred: PolyTraitClause<'tcx> = from.upcast(tcx);
         pred.upcast(tcx)
     }
 }
 
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Clause<'tcx> {
     fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        let pred: PolyTraitPredicate<'tcx> = from.upcast(tcx);
+        let pred: PolyTraitClause<'tcx> = from.upcast(tcx);
         pred.upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitPredicate<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: TraitPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitClause<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: TraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         PredicateKind::Clause(ClauseKind::Trait(from)).upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitPredicate<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: PolyTraitPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitClause<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: PolyTraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         from.map_bound(|p| PredicateKind::Clause(ClauseKind::Trait(p))).upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitPredicate<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: TraitPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitClause<'tcx>> for Clause<'tcx> {
+    fn upcast_from(from: TraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         let p: Predicate<'tcx> = from.upcast(tcx);
         p.expect_clause()
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitPredicate<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: PolyTraitPredicate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitClause<'tcx>> for Clause<'tcx> {
+    fn upcast_from(from: PolyTraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         let p: Predicate<'tcx> = from.upcast(tcx);
         p.expect_clause()
     }
@@ -603,7 +602,7 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, NormalizesTo<'tcx>> for Predicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn as_trait_clause(self) -> Option<PolyTraitPredicate<'tcx>> {
+    pub fn as_trait_clause(self) -> Option<PolyTraitClause<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),

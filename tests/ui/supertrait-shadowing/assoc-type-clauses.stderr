@@ -4,8 +4,8 @@ error: rustc_dump_clauses
 LL | fn a_bound<T: A<Assoc = i8>>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
-   = note: Binder { value: TraitPredicate(<T as A>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as A>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: ProjectionClause(Alias { kind: ProjectionTy { def_id: DefId(0:4 ~ assoc_type_clauses[HASH]::A::Assoc) }, args: [T/#0], .. }, Term::Ty(i8)), bound_vars: [] }
 
 error: rustc_dump_clauses
@@ -14,8 +14,8 @@ error: rustc_dump_clauses
 LL | fn b_bound<T: B<Assoc = i16>>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
-   = note: Binder { value: TraitPredicate(<T as B>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as B>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: ProjectionClause(Alias { kind: ProjectionTy { def_id: DefId(0:9 ~ assoc_type_clauses[HASH]::B::Assoc) }, args: [T/#0], .. }, Term::Ty(i16)), bound_vars: [] }
 
 error: rustc_dump_clauses
@@ -24,8 +24,8 @@ error: rustc_dump_clauses
 LL | fn c_bound<T: C<Assoc = i16>>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
-   = note: Binder { value: TraitPredicate(<T as C>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as C>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: ProjectionClause(Alias { kind: ProjectionTy { def_id: DefId(0:9 ~ assoc_type_clauses[HASH]::B::Assoc) }, args: [T/#0], .. }, Term::Ty(i16)), bound_vars: [] }
 
 error: aborting due to 3 previous errors

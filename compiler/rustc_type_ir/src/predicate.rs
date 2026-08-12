@@ -193,21 +193,21 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct TraitPredicate<I: Interner> {
+pub struct TraitClause<I: Interner> {
     pub trait_ref: TraitRef<I>,
 
     /// If polarity is Positive: we are proving that the trait is implemented.
     ///
     /// If polarity is Negative: we are proving that a negative impl of this trait
     /// exists. (Note that coherence also checks whether negative impls of supertraits
-    /// exist via a series of predicates.)
+    /// exist via a series of clauses.)
     #[lift(identity)]
-    pub polarity: PredicatePolarity,
+    pub polarity: ClausePolarity,
 }
 
-impl<I: Interner> Eq for TraitPredicate<I> {}
+impl<I: Interner> Eq for TraitClause<I> {}
 
-impl<I: Interner> TraitPredicate<I> {
+impl<I: Interner> TraitClause<I> {
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         Self {
             trait_ref: self.trait_ref.with_replaced_self_ty(interner, self_ty),
@@ -224,7 +224,7 @@ impl<I: Interner> TraitPredicate<I> {
     }
 }
 
-impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
+impl<I: Interner> ty::Binder<I, TraitClause<I>> {
     pub fn def_id(self) -> I::TraitId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
@@ -235,29 +235,26 @@ impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
     }
 
     #[inline]
-    pub fn polarity(self) -> PredicatePolarity {
+    pub fn polarity(self) -> ClausePolarity {
         self.skip_binder().polarity
     }
 }
 
-impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
+impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitClause<I> {
     fn upcast_from(from: TraitRef<I>, _tcx: I) -> Self {
-        TraitPredicate { trait_ref: from, polarity: PredicatePolarity::Positive }
+        TraitClause { trait_ref: from, polarity: ClausePolarity::Positive }
     }
 }
 
-impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitPredicate<I>> {
+impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitClause<I>> {
     fn upcast_from(from: ty::Binder<I, TraitRef<I>>, _tcx: I) -> Self {
-        from.map_bound(|trait_ref| TraitPredicate {
-            trait_ref,
-            polarity: PredicatePolarity::Positive,
-        })
+        from.map_bound(|trait_ref| TraitClause { trait_ref, polarity: ClausePolarity::Positive })
     }
 }
 
-impl<I: Interner> fmt::Debug for TraitPredicate<I> {
+impl<I: Interner> fmt::Debug for TraitClause<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
+        write!(f, "TraitClause({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }
 
@@ -296,31 +293,31 @@ impl ImplPolarity {
     }
 }
 
-/// Polarity for a trait predicate.
+/// Polarity for a trait clause.
 ///
 /// May either be negative or positive.
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext, StableHash))]
-pub enum PredicatePolarity {
+pub enum ClausePolarity {
     /// `Type: Trait`
     Positive,
     /// `Type: !Trait`
     Negative,
 }
 
-impl PredicatePolarity {
+impl ClausePolarity {
     /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
-    pub fn flip(&self) -> PredicatePolarity {
+    pub fn flip(&self) -> ClausePolarity {
         match self {
-            PredicatePolarity::Positive => PredicatePolarity::Negative,
-            PredicatePolarity::Negative => PredicatePolarity::Positive,
+            ClausePolarity::Positive => ClausePolarity::Negative,
+            ClausePolarity::Negative => ClausePolarity::Positive,
         }
     }
 }
 
-impl fmt::Display for PredicatePolarity {
+impl fmt::Display for ClausePolarity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Positive => f.write_str("positive"),
