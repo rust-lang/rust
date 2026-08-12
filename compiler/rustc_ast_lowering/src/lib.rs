@@ -218,6 +218,9 @@ struct LoweringContext<'a, 'hir> {
     /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
     move_expr_bindings: Vec<Option<expr::MoveExprState<'hir>>>,
 
+    /// Whether an initializer for a recorded `move(...)` is currently being lowered.
+    lowering_move_expr_initializer: bool,
+
     attribute_parser: AttributeParser<'hir>,
 }
 
@@ -289,6 +292,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
             move_expr_bindings: Vec::new(),
+            lowering_move_expr_initializer: false,
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),

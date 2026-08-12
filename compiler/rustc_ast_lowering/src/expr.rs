@@ -22,8 +22,8 @@ use crate::diagnostics::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
     InvalidLegacyConstGenericArg, MatchArmWithNoBody, MoveExprOnlyInSupportedContexts,
-    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign, UseConstGenericArg,
-    YieldInClosure,
+    NestedMoveExprWithoutEnclosingContext, NeverPatternWithBody, NeverPatternWithGuard,
+    UnderscoreExprLhsAssign, UseConstGenericArg, YieldInClosure,
 };
 use crate::{
     AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
@@ -121,6 +121,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (result, state)
     }
 
+    fn with_move_expr_initializer<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = self.lowering_move_expr_initializer;
+        self.lowering_move_expr_initializer = true;
+        let result = f(self);
+        self.lowering_move_expr_initializer = old;
+        result
+    }
+
     fn record_move_expr(&mut self, id: NodeId, inner: &Expr, move_kw_span: Span) -> (Ident, HirId) {
         let index = self
             .move_expr_bindings
@@ -184,7 +192,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // This state has already been popped, so a nested `move(...)` in
             // the initializer is recorded by the immediately enclosing
             // closure-like body instead of this one.
-            let init = self.lower_expr(expr);
+            let init = self.with_move_expr_initializer(|this| this.lower_expr(expr));
             stmts.push(self.stmt_let_pat(
                 None,
                 expr.span,
@@ -368,6 +376,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ],
                         }),
                     ))
+                } else if self.lowering_move_expr_initializer && self.move_expr_bindings.is_empty()
+                {
+                    let guar = self
+                        .dcx()
+                        .emit_err(NestedMoveExprWithoutEnclosingContext { span: *move_kw_span });
+                    hir::ExprKind::Err(guar)
                 } else {
                     let guar = self
                         .dcx()
