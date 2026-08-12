@@ -218,7 +218,7 @@ impl Command {
     pub fn chroot(&mut self, dir: &Path) {
         self.chroot = Some(os2c(dir.as_os_str(), &mut self.saw_nul));
         if self.cwd.is_none() {
-            self.cwd(&OsStr::new("/"));
+            self.cwd(OsStr::new("/"));
         }
     }
     pub fn setsid(&mut self, setsid: bool) {

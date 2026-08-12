@@ -625,7 +625,7 @@ where
 
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        (&**self).is_read_vectored()
+        (**self).is_read_vectored()
     }
 
     #[inline]
@@ -667,7 +667,7 @@ where
 
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        (&**self).is_write_vectored()
+        (**self).is_write_vectored()
     }
 
     #[inline]

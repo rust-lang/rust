@@ -4082,7 +4082,7 @@ pub const trait Iterator {
             mut compare: impl FnMut(&T, &T) -> bool + 'a,
         ) -> impl FnMut(T) -> bool + 'a {
             move |curr| {
-                if !compare(&last, &curr) {
+                if !compare(last, &curr) {
                     return false;
                 }
                 *last = curr;

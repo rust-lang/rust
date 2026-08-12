@@ -91,7 +91,7 @@ impl [u8] {
         let mut b = other;
 
         while let ([first_a, rest_a @ ..], [first_b, rest_b @ ..]) = (a, b) {
-            if first_a.eq_ignore_ascii_case(&first_b) {
+            if first_a.eq_ignore_ascii_case(first_b) {
                 a = rest_a;
                 b = rest_b;
             } else {
