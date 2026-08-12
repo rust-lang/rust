@@ -1,6 +1,7 @@
 //! Numeric traits and functions for the built-in numeric types.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
 
 use crate::convert::{BoundedCastFromInt, CheckedCastFromInt};
 use crate::panic::const_panic;
