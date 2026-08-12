@@ -1,6 +1,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 // Test from trait-system-refactor-initiative#241:
 // Used to ICE in mir typeck because of ambiguity in the new solver.
 // The wrong (first) trait bound was selected.
@@ -13,7 +14,6 @@ trait Trait<'a>: Super<'a> + for<'hr> Super<'hr> {}
 
 fn foo<'a>(x: Box<dyn Trait<'a>>) -> Box<dyn Super<'a>> {
     x
-    //[next]~^ ERROR type annotations needed: cannot satisfy `dyn Trait<'_>: Unsize<dyn Super<'_>>
 }
 
 fn main() {}

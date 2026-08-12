@@ -1,11 +1,11 @@
 error[E0283]: type annotations needed: cannot satisfy `Self: Super<'a>`
-  --> $DIR/unsize-goal-mismatch.rs:11:18
+  --> $DIR/unsize-goal-mismatch.rs:12:18
    |
 LL | trait Trait<'a>: Super<'a> + for<'hr> Super<'hr> {}
    |                  ^^^^^^^^^
    |
 note: multiple `impl`s or `where` clauses satisfying `Self: Super<'a>` found
-  --> $DIR/unsize-goal-mismatch.rs:10:1
+  --> $DIR/unsize-goal-mismatch.rs:11:1
    |
 LL | trait Super<'a> {}
    | ^^^^^^^^^^^^^^^

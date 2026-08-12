@@ -6,7 +6,8 @@
 //@ [borrowck_current] check-fail
 //@ [borrowck_current] known-bug: #106569
 //@ [borrowck_next] compile-flags: -Znext-solver
-//@ [borrowck_next] check-pass
+//@ [borrowck_next] check-fail
+//@ [borrowck_next] known-bug: #160491
 
 struct Equal<'a, 'b>(&'a &'b (), &'b &'a ()); // implies 'a == 'b
 

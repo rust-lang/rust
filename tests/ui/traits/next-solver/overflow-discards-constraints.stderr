@@ -1,5 +1,5 @@
 warning: overflow evaluating the requirement `(): Trait<_>`
-  --> $DIR/overflow-discards-constraints.rs:69:5
+  --> $DIR/overflow-discards-constraints.rs:73:5
    |
 LL |     foo(); // register a `(): Trait<?t>` obligation
    |     ^^^^^
@@ -12,10 +12,6 @@ LL |     foo(); // register a `(): Trait<?t>` obligation
    = note: `#[warn(recursion_depth_exceeding_limit)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: overflow evaluating the requirement `(): Trait<i32>`
-  --> $DIR/overflow-discards-constraints.rs:69:5
-   |
-LL |     foo(); // register a `(): Trait<?t>` obligation
-   |     ^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "12"]` attribute to your crate (`overflow_discards_constraints`)
    = help: or consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved
