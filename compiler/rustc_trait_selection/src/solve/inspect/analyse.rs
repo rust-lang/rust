@@ -78,7 +78,11 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// the state of the `infcx`.
     pub fn visit_nested_no_probe<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
         let Ok(nested_goals) = self.instantiate_nested_goals(visitor.span()) else {
-            return V::Result::output();
+            // Instantiation can fail when a candidate response is not applicable in the
+            // caller's inference context (e.g. a placeholder universe leak). Do not treat
+            // that as a successful visit: `V::Result::output()` is `Continue` for
+            // `ControlFlow` visitors such as unsizing coercion.
+            return visitor.on_instantiate_nested_goals_failure();
         };
 
         for goal in nested_goals {
@@ -401,6 +405,15 @@ pub trait ProofTreeVisitor<'tcx> {
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
 
     fn on_recursion_limit(&mut self) -> Self::Result {
+        Self::Result::output()
+    }
+
+    /// Called when [`InspectCandidate::instantiate_nested_goals`] fails.
+    ///
+    /// The default continues the visit. Visitors that encode accept/reject as
+    /// `ControlFlow` (for example unsizing coercion) should override this to
+    /// break instead of treating the failed replay as success.
+    fn on_instantiate_nested_goals_failure(&mut self) -> Self::Result {
         Self::Result::output()
     }
 }
