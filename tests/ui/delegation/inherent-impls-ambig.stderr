@@ -1,99 +1,145 @@
-error[E0425]: cannot find function `foo` in `X`
+error: ambiguous delegation to inherent impl function
   --> $DIR/inherent-impls-ambig.rs:16:14
    |
 LL |     reuse X::foo;
-   |              ^^^ not found in `X`
-   |
-note: function `test_2::foo` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:49:5
-   |
-LL |     reuse X::foo;
-   |     ^^^^^^^^^^^^^ not accessible
+   |              ^^^
 
-error[E0425]: cannot find function `foo_self` in `X`
-  --> $DIR/inherent-impls-ambig.rs:19:14
+error: ambiguous delegation to inherent impl function
+  --> $DIR/inherent-impls-ambig.rs:20:14
    |
 LL |     reuse X::foo_self;
-   |              ^^^^^^^^ not found in `X`
-   |
-note: function `test_2::foo_self` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:52:5
-   |
-LL |     reuse X::foo_self;
-   |     ^^^^^^^^^^^^^^^^^^ not accessible
+   |              ^^^^^^^^
 
-error[E0425]: cannot find function `foo` in `X`
-  --> $DIR/inherent-impls-ambig.rs:22:20
+error: ambiguous delegation to inherent impl function
+  --> $DIR/inherent-impls-ambig.rs:24:20
    |
 LL |     reuse X::<()>::foo as foo1;
-   |                    ^^^ not found in `X`
-   |
-note: function `test_2::foo` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:49:5
-   |
-LL |     reuse X::foo;
-   |     ^^^^^^^^^^^^^ not accessible
+   |                    ^^^
 
-error[E0425]: cannot find function `foo_self` in `X`
-  --> $DIR/inherent-impls-ambig.rs:25:23
+error: ambiguous delegation to inherent impl function
+  --> $DIR/inherent-impls-ambig.rs:27:23
    |
 LL |     reuse X::<usize>::foo_self as foo_self1;
-   |                       ^^^^^^^^ not found in `X`
-   |
-note: function `test_2::foo_self` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:52:5
-   |
-LL |     reuse X::foo_self;
-   |     ^^^^^^^^^^^^^^^^^^ not accessible
+   |                       ^^^^^^^^
 
-error[E0425]: cannot find function `foo` in `X`
-  --> $DIR/inherent-impls-ambig.rs:49:14
-   |
-LL |     reuse X::foo;
-   |              ^^^ not found in `X`
-   |
-note: function `test_1::foo` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:16:5
-   |
-LL |     reuse X::foo;
-   |     ^^^^^^^^^^^^^ not accessible
-
-error[E0425]: cannot find function `foo_self` in `X`
+error: ambiguous delegation to inherent impl function
   --> $DIR/inherent-impls-ambig.rs:52:14
    |
-LL |     reuse X::foo_self;
-   |              ^^^^^^^^ not found in `X`
-   |
-note: function `test_1::foo_self` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:19:5
-   |
-LL |     reuse X::foo_self;
-   |     ^^^^^^^^^^^^^^^^^^ not accessible
+LL |     reuse X::foo;
+   |              ^^^
 
-error[E0425]: cannot find function `foo` in `X`
-  --> $DIR/inherent-impls-ambig.rs:55:27
+error: ambiguous delegation to inherent impl function
+  --> $DIR/inherent-impls-ambig.rs:56:14
+   |
+LL |     reuse X::foo_self;
+   |              ^^^^^^^^
+
+error: ambiguous delegation to inherent impl function
+  --> $DIR/inherent-impls-ambig.rs:60:27
    |
 LL |     reuse X::<M1, usize>::foo as foo1;
-   |                           ^^^ not found in `X`
-   |
-note: function `test_1::foo` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:16:5
-   |
-LL |     reuse X::foo;
-   |     ^^^^^^^^^^^^^ not accessible
+   |                           ^^^
 
-error[E0425]: cannot find function `foo_self` in `X`
-  --> $DIR/inherent-impls-ambig.rs:58:28
+error: ambiguous delegation to inherent impl function
+  --> $DIR/inherent-impls-ambig.rs:63:28
    |
 LL |     reuse X::<M2, String>::foo_self as foo_self1;
-   |                            ^^^^^^^^ not found in `X`
+   |                            ^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/inherent-impls-ambig.rs:16:14
    |
-note: function `test_1::foo_self` exists but is inaccessible
-  --> $DIR/inherent-impls-ambig.rs:19:5
+LL |     reuse X::foo;
+   |              ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in an impl for the type `test_1::X<()>`
+  --> $DIR/inherent-impls-ambig.rs:7:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^
+note: candidate #2 is defined in an impl for the type `test_1::X<usize>`
+  --> $DIR/inherent-impls-ambig.rs:12:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/inherent-impls-ambig.rs:20:14
    |
 LL |     reuse X::foo_self;
-   |     ^^^^^^^^^^^^^^^^^^ not accessible
+   |              ^^^^^^^^ multiple `foo_self` found
+   |
+note: candidate #1 is defined in an impl for the type `test_1::X<()>`
+  --> $DIR/inherent-impls-ambig.rs:8:9
+   |
+LL |         fn foo_self(self) {}
+   |         ^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `test_1::X<usize>`
+  --> $DIR/inherent-impls-ambig.rs:13:9
+   |
+LL |         fn foo_self(self) {}
+   |         ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-ambig.rs:27:23
+   |
+LL |     reuse X::<usize>::foo_self as foo_self1;
+   |                       ^^^^^^^^ argument #1 of type `test_1::X<usize>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-ambig.rs:13:12
+   |
+LL |         fn foo_self(self) {}
+   |            ^^^^^^^^ ----
+help: provide the argument
+   |
+LL |     reuse X::<usize>::foo_self(/* X<usize> */) as foo_self1;
+   |                               ++++++++++++++++
 
-For more information about this error, try `rustc --explain E0425`.
+error[E0034]: multiple applicable items in scope
+  --> $DIR/inherent-impls-ambig.rs:52:14
+   |
+LL |     reuse X::foo;
+   |              ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in an impl for the type `test_2::X<T, ()>`
+  --> $DIR/inherent-impls-ambig.rs:43:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^
+note: candidate #2 is defined in an impl for the type `test_2::X<T, usize>`
+  --> $DIR/inherent-impls-ambig.rs:38:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/inherent-impls-ambig.rs:56:14
+   |
+LL |     reuse X::foo_self;
+   |              ^^^^^^^^ multiple `foo_self` found
+   |
+note: candidate #1 is defined in an impl for the type `test_2::X<T, ()>`
+  --> $DIR/inherent-impls-ambig.rs:44:9
+   |
+LL |         fn foo_self(self) {}
+   |         ^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `test_2::X<T, usize>`
+  --> $DIR/inherent-impls-ambig.rs:39:9
+   |
+LL |         fn foo_self(self) {}
+   |         ^^^^^^^^^^^^^^^^^
+
+error[E0599]: no associated function or constant named `foo_self` found for struct `test_2::X<M2, String>` in the current scope
+  --> $DIR/inherent-impls-ambig.rs:63:28
+   |
+LL |     struct X<T, U>(T, U);
+   |     -------------- associated function or constant `foo_self` not found for this struct
+...
+LL |     reuse X::<M2, String>::foo_self as foo_self1;
+   |                            ^^^^^^^^ associated function or constant not found in `test_2::X<M2, String>`
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0034, E0061, E0599.
+For more information about an error, try `rustc --explain E0034`.
