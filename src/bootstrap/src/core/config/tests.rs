@@ -50,6 +50,15 @@ fn download_ci_llvm() {
     }
 }
 
+use crate::core::download::is_download_ci_available;
+
+#[test]
+fn download_ci_llvm_unsupported_assertions() {
+    assert!(!is_download_ci_available("i686-pc-windows-msvc", true));
+    assert!(is_download_ci_available("x86_64-pc-windows-msvc", true));
+    assert!(!is_download_ci_available("aarch64-apple-darwin", true));
+}
+
 #[test]
 fn clap_verify() {
     Flags::command().debug_assert();

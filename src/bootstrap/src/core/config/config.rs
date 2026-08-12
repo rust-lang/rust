@@ -2495,6 +2495,7 @@ pub fn parse_download_ci_llvm<'a>(
     asserts: bool,
 ) -> bool {
     let dwn_ctx = dwn_ctx.as_ref();
+    let is_explicit = download_ci_llvm.is_some();
     let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
 
     let if_unchanged = || {
@@ -2539,8 +2540,18 @@ pub fn parse_download_ci_llvm<'a>(
                 );
             }
 
-            // If download-ci-llvm=true we also want to check that CI llvm is available
-            b && llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts)
+            let available = llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts);
+            if b && !available && is_explicit {
+                println!(
+                    "WARNING: `llvm.download-ci-llvm = true` was specified, but CI LLVM \
+                    (assertions={asserts}) is unavailable for target triple `{}`.",
+                    dwn_ctx.host_target.triple
+                );
+                println!(
+                    "HELP: `download-ci-llvm` will be disabled and LLVM will be built from source."
+                );
+            }
+            b && available
         }
         StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
         StringOrBool::String(other) => {
