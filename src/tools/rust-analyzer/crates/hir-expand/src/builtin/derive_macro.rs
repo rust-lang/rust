@@ -549,7 +549,7 @@ fn copy_expand(
 }
 
 fn reborrow_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -564,7 +564,7 @@ fn reborrow_expand(
 }
 
 fn coerce_shared_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -608,7 +608,7 @@ fn coerce_shared_expand(
 }
 
 fn expand_reborrow_marker_derive(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
     trait_path: tt::TopSubtree,
@@ -638,7 +638,7 @@ fn expand_reborrow_marker_derive(
 }
 
 fn coerce_shared_target(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     strukt: &ast::Struct,
 ) -> Option<tt::TopSubtree> {
@@ -668,7 +668,7 @@ fn coerce_shared_target(
         |_, _| (true, Vec::new()),
     );
 
-    let (parse, _) = crate::db::token_tree_to_syntax_node(db, &target, crate::ExpandTo::Type);
+    let (parse, _) = crate::token_tree_to_syntax_node(db, &target, crate::ExpandTo::Type);
     if !parse.errors().is_empty() {
         return None;
     }
