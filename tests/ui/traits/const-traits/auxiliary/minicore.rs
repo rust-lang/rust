@@ -445,7 +445,6 @@ impl<T: MetaSized> Deref for Ref<'_, T> {
 }
 
 #[lang = "clone"]
-#[rustc_trivial_field_reads]
 pub const trait Clone: Sized {
     fn clone(&self) -> Self;
     fn clone_from(&mut self, source: &Self)
