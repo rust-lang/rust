@@ -330,9 +330,6 @@ pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;
 pub enum AstOwner {
     /// This definition does not correspond to a HIR owner.
     NonOwner,
-    /// This definition corresponds to a nested `use` tree.
-    /// The `LocalDefId` points to its HIR owner.
-    NestedUseTree(LocalDefId),
     Crate(Box<ast::Crate>),
     Item(Box<ast::Item>),
     TraitItem(Box<ast::AssocItem>),
