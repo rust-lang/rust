@@ -575,27 +575,6 @@ fn index_ast<'tcx>(
             let item = mem::replace(item, *dummy);
             self.insert(item.id, node(Box::new(item)));
         }
-
-        #[tracing::instrument(level = "trace", skip(self))]
-        fn visit_item_id_use_tree(
-            &mut self,
-            tree: &UseTree,
-            parent: LocalDefId,
-            items: &mut SmallVec<[Box<Item>; 1]>,
-        ) {
-            match tree.kind {
-                UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
-                UseTreeKind::Nested { items: ref nested_vec, span } => {
-                    for &(ref nested, id) in nested_vec {
-                        self.insert(id, AstOwner::NestedUseTree(parent));
-                        items.push(self.make_dummy(id, span, ItemKind::MacCall));
-
-                        let def_id = self.owners[&id].def_id;
-                        self.visit_item_id_use_tree(nested, def_id, items);
-                    }
-                }
-            }
-        }
     }
 
     impl MutVisitor for Indexer<'_, '_> {
@@ -605,35 +584,11 @@ fn index_ast<'tcx>(
         }
 
         fn flat_map_item(&mut self, mut item: Box<Item>) -> SmallVec<[Box<Item>; 1]> {
-            let def_id = self.owners[&item.id].def_id;
             mut_visit::walk_item(self, &mut *item);
             let dummy = self.make_dummy(item.id, item.span, ItemKind::MacCall);
-            let mut items = smallvec![dummy];
-            if let ItemKind::Use(ref use_tree) = item.kind {
-                self.visit_item_id_use_tree(use_tree, def_id, &mut items);
-            }
+            let items = smallvec![dummy];
             self.insert(item.id, AstOwner::Item(item));
             items
-        }
-
-        fn flat_map_stmt(&mut self, stmt: Stmt) -> SmallVec<[Stmt; 1]> {
-            let Stmt { id, span, kind } = stmt;
-            let mut id = Some(id);
-            mut_visit::walk_flat_map_stmt_kind(self, kind)
-                .into_iter()
-                .map(|kind| {
-                    // Expanding the current statement is a nested `use` item,
-                    // it is expanded into several flat `use` items.
-                    // Create new NodeIds for the corresponding statements
-                    // as two statements cannot have the same.
-                    let id = id.take().unwrap_or_else(|| {
-                        let next = self.next_node_id;
-                        self.next_node_id.increment_by(1);
-                        next
-                    });
-                    Stmt { id, kind, span }
-                })
-                .collect()
         }
 
         fn visit_assoc_item(&mut self, item: &mut AssocItem, ctxt: visit::AssocCtxt) {
@@ -660,12 +615,12 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
-    let fallback_to_ancestor = |parent_id| {
+    let fallback_to_ancestor = || {
         // The item did not exist in the AST, it was created while lowering another item.
-        // `parent_id` may be different from the direct parent of `def_id`,
-        // for instance use-trees are lowered by the first sibling.
+
+        let parent_id = tcx.local_parent(def_id);
         let mut parent_info = tcx.lower_to_hir(parent_id);
-        if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
+        while let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
             // `parent_id` could also not be a owner either.
             // For instance if `def_id` is an enum variant field,
             // the direct parent is the enum variant.
@@ -688,7 +643,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         // `ast_index` does not contain all definitions, only up-to the highest
         // `LocalDefId` which has a non-trivial `AstOwner`. Gracefully handle
         // other definitions, in particular those nested inside this highest definition.
-        return fallback_to_ancestor(tcx.local_parent(def_id));
+        return fallback_to_ancestor();
     };
 
     let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
@@ -700,10 +655,9 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
         AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
         AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
-        AstOwner::NestedUseTree(owner_id) => fallback_to_ancestor(*owner_id),
         // The item existed in the AST, but is not a HIR owner.
         // Fetch the correct information from its parent.
-        AstOwner::NonOwner => fallback_to_ancestor(tcx.local_parent(def_id)),
+        AstOwner::NonOwner => fallback_to_ancestor(),
     };
 
     tcx.sess.time("drop_ast", || mem::drop(node));
