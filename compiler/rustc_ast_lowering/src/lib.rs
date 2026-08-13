@@ -1431,11 +1431,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // We cannot just match on `TyKind::Infer` as `(_)` is represented as
                 // `TyKind::Paren(TyKind::Infer)` and should also be lowered to `GenericArg::Infer`
                 if ty.is_maybe_parenthesised_infer() {
-                    return GenericArg::Infer(hir::InferArg {
+                    return GenericArg::Infer(self.arena.alloc(hir::InferArg {
                         hir_id: self.lower_node_id(ty.id),
                         span: self.lower_span(ty.span),
                         kind: hir::InferArgKind::TypeOrConst,
-                    });
+                    }));
                 }
 
                 match &ty.kind {
@@ -1474,11 +1474,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ct = self.arena.alloc(ct);
                         return match ct.try_as_ambig_ct() {
                             Some(ct) => GenericArg::Const(ct),
-                            None => GenericArg::Infer(hir::InferArg {
+                            None => GenericArg::Infer(self.arena.alloc(hir::InferArg {
                                 hir_id: ct.hir_id,
                                 span: ct.span,
                                 kind: hir::InferArgKind::Const,
-                            }),
+                            })),
                         };
                     }
                     _ => {}
@@ -1489,11 +1489,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ct = self.lower_anon_const_to_const_arg_and_alloc(ct);
                 match ct.try_as_ambig_ct() {
                     Some(ct) => GenericArg::Const(ct),
-                    None => GenericArg::Infer(hir::InferArg {
+                    None => GenericArg::Infer(self.arena.alloc(hir::InferArg {
                         hir_id: ct.hir_id,
                         span: ct.span,
                         kind: hir::InferArgKind::Const,
-                    }),
+                    })),
                 }
             }
         }

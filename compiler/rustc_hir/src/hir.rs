@@ -581,7 +581,7 @@ pub enum GenericArg<'hir> {
     /// without a [`GenericArg`], instead directly storing a [`Ty`] or [`ConstArg`]. In
     /// such cases they *are* represented by the `Infer` variants on [`TyKind`] and
     /// [`ConstArgKind`] as it is not ambiguous whether the argument is a type or const.
-    Infer(InferArg),
+    Infer(&'hir InferArg),
 }
 
 impl GenericArg<'_> {
@@ -5150,7 +5150,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 88);
     static_assert_size!(ForeignItemKind<'_>, 56);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 48);
