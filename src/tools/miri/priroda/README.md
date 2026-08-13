@@ -58,14 +58,12 @@ when you run the debugger configuration. The launch configuration does not spawn
 Priroda directly; it starts a background task and then connects through
 `debugServer`.
 
-This requires a VS Code debug extension that contributes the `priroda` debugger
-type. The `debugServer` setting only tells VS Code to connect to an
-already-running adapter; it does not register a new debugger type. On a clean VS
-Code install, copying these JSON files is not enough for the launch
-configuration to be accepted.
+`debugServer` only tells VS Code to connect to an already-running adapter; it
+does not register a debug type. VS Code still needs a registered `priroda`
+debug type, which must come from a debug extension. A custom Priroda extension
+is deferred to future graphical features.
 
-After that debugger type is registered, copy the example files into the
-workspace you want to debug:
+Copy the example files into the workspace you want to debug:
 
 ```sh
 mkdir -p /path/to/project/.vscode
