@@ -1,5 +1,6 @@
 //! Test that CoerceShared of custom ZST marker type reborrows the type automatically as shared but
-//! moving the original invalidates the results.
+//! moving the original is possible afterwards if the shared results do not remain alive.
+//! This should pass eventually.
 
 #![feature(reborrow)]
 use std::marker::{CoerceShared, PhantomData, Reborrow};
@@ -22,6 +23,4 @@ fn main() {
     let c = method(a);
     move_into(a);
     //~^ ERROR: cannot move out of `a` because it is borrowed
-    let _ = b;
-    let _ = c;
 }
