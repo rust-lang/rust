@@ -8,7 +8,6 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::relate_args_invariantly;
 use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeVisitableExt};
@@ -111,56 +110,6 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         match self.ambient_variance {
             ty::Contravariant | ty::Invariant => true,
             ty::Covariant | ty::Bivariant => false,
-        }
-    }
-
-    /// Normalize a non-rigid alias encountered during NLL type relating.
-    ///
-    /// `ty` must be infer-free: `deeply_normalize` canonicalizes its input, and
-    /// `relate_types` only guarantees that the *right* operand is resolved.
-    /// Infer-bearing aliases on the left are handled via a projection goal.
-    ///
-    /// Unlike other type relations, we cannot introduce a fresh inference
-    /// variable as the normalization target on the right: NLL requires that
-    /// operand to be infer-free. If normalization fails or produces infer vars
-    /// when they are not allowed, return `TypeError` instead of ICEing.
-    fn normalize_non_rigid_alias(
-        &mut self,
-        ty: Ty<'tcx>,
-        allow_infer: bool,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug_assert!(
-            !ty.has_non_region_infer(),
-            "deeply_normalize requires infer-free input, got {ty:?}"
-        );
-        let locations = self.locations;
-        let category = self.category;
-        match self.type_checker.deeply_normalize_with_category(
-            ty::Unnormalized::new_wip(ty),
-            locations,
-            category,
-        ) {
-            Ok(normalized) if normalized != ty => {
-                if !allow_infer && normalized.has_non_region_infer() {
-                    self.cx().dcx().span_delayed_bug(
-                        self.span(),
-                        format!(
-                            "normalizing alias `{ty:?}` in borrowck produced infer vars `{normalized:?}`"
-                        ),
-                    );
-                    return Err(TypeError::Mismatch);
-                }
-                Ok(normalized)
-            }
-            Ok(_) => {
-                self.cx().dcx().span_delayed_bug(
-                    self.span(),
-                    format!("failed to normalize alias in borrowck: {ty:?}"),
-                );
-                Err(TypeError::Mismatch)
-            }
-            // An error was already reported during normalization.
-            Err(_) => Err(TypeError::Mismatch),
         }
     }
 
@@ -430,38 +379,17 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 );
             }
 
-            // Normalize non-rigid aliases before relating. This can occur in MIR
-            // typeck, e.g. when yielding `<impl Iterator as Iterator>::Item`.
-            // Opaques are excluded so they still reach the arms below; super_combine
-            // panics on `IsRigid::No` in the new solver.
-            //
-            // The left operand of `relate_types` may contain infer vars, which
-            // `deeply_normalize` must not see. In that case use a projection goal
-            // with the fresh var on the left (the NLL-legal side).
-            //
-            // Relate the fresh var to `b` *before* fulfilling the projection.
-            // `register_predicates` fulfills immediately, unlike `SolverRelating`
-            // which queues goals until after `tys`. Relating first constrains
-            // the var so an ambiguous alias is not fulfilled against an
-            // unconstrained infer var.
-            (&ty::Alias(ty::IsRigid::No, alias), _)
-                if infcx.next_trait_solver() && !a.is_opaque() =>
+            (&ty::Alias(ty::IsRigid::No, _), _) | (_, &ty::Alias(ty::IsRigid::No, _))
+                if infcx.next_trait_solver() =>
             {
-                if a.has_non_region_infer() {
-                    let new_var = infcx.next_ty_var(self.span());
-                    self.tys(new_var, b)?;
-                    self.register_predicates([ty::ProjectionPredicate {
-                        projection_term: alias.into(),
-                        term: new_var.into(),
-                    }]);
-                } else {
-                    let normalized = self.normalize_non_rigid_alias(a, true)?;
-                    self.tys(normalized, b)?;
-                }
-            }
-            (_, &ty::Alias(ty::IsRigid::No, _)) if infcx.next_trait_solver() && !b.is_opaque() => {
-                let normalized = self.normalize_non_rigid_alias(b, false)?;
-                self.tys(a, normalized)?;
+                // NOTE(khyperia): If this turns out to be possible, either the caller should
+                // normalize the alias, or we should normalize the alias here. See the PR that
+                // introduced this comment for how to do so, which normalizes aliases in other
+                // relations.
+                span_bug!(
+                    self.span(),
+                    "it should not be possible to encounter unnormalized aliases in borrowck"
+                );
             }
 
             (&ty::Infer(ty::TyVar(a_vid)), _) => {
@@ -469,12 +397,9 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             }
 
             (
-                &ty::Alias(a_rigid, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(b_rigid, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
-            ) if (a_def_id == b_def_id || infcx.next_trait_solver())
-                && (!infcx.next_trait_solver()
-                    || (a_rigid == ty::IsRigid::Yes && b_rigid == ty::IsRigid::Yes)) =>
-            {
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+            ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
                 super_combine_tys(&infcx.infcx, self, a, b).map(|_| ()).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
                     // shouldn't ever fail. Instead, it unconditionally emits an
@@ -492,21 +417,6 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 if def_id.is_local() && !self.type_checker.infcx.next_trait_solver() =>
             {
                 self.relate_opaques(a, b)?;
-            }
-
-            (&ty::Alias(ty::IsRigid::No, _), _) | (_, &ty::Alias(ty::IsRigid::No, _))
-                if infcx.next_trait_solver() =>
-            {
-                // Leftover non-rigid opaques: super_combine panics on these.
-                debug_assert!(
-                    a.is_opaque() || b.is_opaque(),
-                    "non-opaque aliases should have been normalized above: {a:?} vs {b:?}"
-                );
-                self.cx().dcx().span_delayed_bug(
-                    self.span(),
-                    format!("unnormalized opaque alias in borrowck: {a:?} vs {b:?}"),
-                );
-                return Err(TypeError::Mismatch);
             }
 
             _ => {
