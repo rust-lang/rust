@@ -18,5 +18,5 @@ fn kernel(_x: f32) {}
 
 fn main() {
     _RNvC19collision_kernels_a6kernel(0.0);
-    core::intrinsics::offload::<_, _, ()>(kernel, [1, 1, 1], [1, 1, 1], 0, (0.0f32,));
+    core::intrinsics::offload::<_, _, ()>(kernel, [1, 1, 1], [1, 1, 1], 0, -1, (0.0f32,));
 }

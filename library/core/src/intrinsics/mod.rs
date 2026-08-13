@@ -3781,13 +3781,15 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 /// - `f`: The kernel function to offload.
 /// - `workgroup_dim`: A 3D size specifying the number of workgroups to launch.
 /// - `thread_dim`: A 3D size specifying the number of threads per workgroup.
+/// - `dyn_cache`: The amount of dynamic shared memory to request for the kernel.
+/// - `device_id`: The device to offload to. Use `-1` to select the default device.
 /// - `args`: A tuple of arguments forwarded to `f`.
 ///
 /// Example usage (pseudocode):
 ///
 /// ```rust,ignore (pseudocode)
 /// fn kernel(x: *mut [f64; 128]) {
-///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], (x,))
+///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], 0, -1, (x,))
 /// }
 ///
 /// #[cfg(target_os = "linux")]
@@ -3811,10 +3813,16 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
     workgroup_dim: [u32; 3],
     thread_dim: [u32; 3],
     dyn_cache: u32,
+    device_id: i32,
     args: T,
 ) -> R;
 
-// TODO(Sa4dUs): add docs
+/// Returns the number of offload devices available on the system.
+///
+/// Use this to discover which `device_id` values are valid to pass to
+/// [`offload`]. Devices are numbered from `0` to the returned value minus one.
+///
+/// Returns `0` if no offloading devices are present.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn offload_get_num_devices() -> i32;

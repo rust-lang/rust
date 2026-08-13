@@ -21,7 +21,7 @@ fn main() {
 }
 
 pub fn kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
-    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], 0, (x, y))
+    core::intrinsics::offload(_kernel_1, [256, 1, 1], [32, 1, 1], 0, -1, (x, y))
 }
 
 #[inline(never)]
@@ -78,8 +78,10 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   [[P32:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 32
 // CHECK-NEXT:   store ptr @.offload_maptypes.[[K]].kernel, ptr [[P32]], align 8
 // CHECK-NEXT:   [[P40:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 40
+// CHECK-NEXT:   [[P64:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 64
+// CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(24) [[P40]], i8 0, i64 24, i1 false)
+// CHECK-NEXT:   store i64 64, ptr [[P64]], align 8
 // CHECK-NEXT:   [[P72:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 72
-// CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) [[P40]], i8 0, i64 32, i1 false)
 // CHECK-NEXT:   store <4 x i32> <i32 256, i32 1, i32 1, i32 32>, ptr [[P72]], align 8
 // CHECK-NEXT:   [[P88:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 88
 // CHECK-NEXT:   store i32 1, ptr [[P88]], align 8
@@ -95,17 +97,17 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK: declare void @__tgt_register_lib(ptr) local_unnamed_addr
 // CHECK: declare void @__tgt_unregister_lib(ptr) local_unnamed_addr
 
-// CHECK-LABEL: define internal void @.omp_offloading.descriptor_reg() section ".text.startup" {
+// CHECK-LABEL: define internal void @.omp_offloading.descriptor_reg() section ".text.startup" !guid !{{[0-9]+}} {
 // CHECK-NEXT: entry:
-// CHECK-NEXT:   call void @__tgt_register_lib(ptr nonnull @.omp_offloading.descriptor)
-// CHECK-NEXT:   call void @__tgt_init_all_rtls()
+// CHECK-NEXT:   {{tail }}call void @__tgt_register_lib(ptr nonnull @.omp_offloading.descriptor)
+// CHECK-NEXT:   {{tail }}call void @__tgt_init_all_rtls()
 // CHECK-NEXT:   %0 = {{tail }}call i32 @atexit(ptr nonnull @.omp_offloading.descriptor_unreg)
 // CHECK-NEXT:   ret void
 // CHECK-NEXT: }
 
-// CHECK-LABEL: define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" {
+// CHECK-LABEL: define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" !guid !{{[0-9]+}} {
 // CHECK-NEXT: entry:
-// CHECK-NEXT:   call void @__tgt_unregister_lib(ptr nonnull @.omp_offloading.descriptor)
+// CHECK-NEXT:   {{tail }}call void @__tgt_unregister_lib(ptr nonnull @.omp_offloading.descriptor)
 // CHECK-NEXT:   ret void
 // CHECK-NEXT: }
 

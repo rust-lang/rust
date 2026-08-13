@@ -28,7 +28,14 @@ fn main() {
     let mut x = 0.0f32;
     let k = core::hint::black_box(42.0f32);
 
-    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, (&mut x as *mut f32, k));
+    core::intrinsics::offload::<_, _, ()>(
+        foo,
+        [1, 1, 1],
+        [1, 1, 1],
+        0,
+        -1,
+        (&mut x as *mut f32, k),
+    );
 }
 
 unsafe extern "C" {

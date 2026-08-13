@@ -601,6 +601,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     offload_globals: &OffloadGlobals<'ll>,
     offload_dims: &OffloadKernelDims<'ll>,
     dyn_cache: &'ll Value,
+    device_id: &'ll Value,
 ) {
     let cx = builder.cx;
     let OffloadKernelGlobals {
@@ -785,15 +786,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         builder.store(value.2, ptr, value.0);
     }
 
-    let args = vec![
-        s_ident_t,
-        // FIXME(offload) give users a way to select which GPU to use.
-        cx.get_const_i64(u64::MAX), // MAX == -1.
-        num_workgroups,
-        threads_per_block,
-        region_id,
-        a5,
-    ];
+    let device_id = builder.sext(device_id, cx.type_i64());
+    let args = vec![s_ident_t, device_id, num_workgroups, threads_per_block, region_id, a5];
     builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 

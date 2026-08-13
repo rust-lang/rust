@@ -17,7 +17,7 @@ fn main() {
 }
 
 fn kernel_1(x: &mut [f32; 256]) {
-    core::intrinsics::offload(_kernel_1, [1, 1, 1], [1, 1, 1], 0, (x,))
+    core::intrinsics::offload(_kernel_1, [1, 1, 1], [1, 1, 1], 0, -1, (x,))
 }
 
 fn _kernel_1(x: &mut [f32; 256]) {}

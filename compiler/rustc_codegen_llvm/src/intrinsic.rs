@@ -37,7 +37,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{
-    OffloadKernelDims, gen_call_handling, gen_define_handling, register_offload, generate_decl,
+    OffloadKernelDims, gen_call_handling, gen_define_handling, generate_decl, register_offload,
 };
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
@@ -1858,7 +1858,11 @@ fn codegen_offload<'ll, 'tcx>(
         OperandValue::Immediate(val) => val,
         _ => panic!("unparsable"),
     };
-    let args = get_args_from_tuple(bx, args[4], fn_target);
+    let device_id = match args[4].val {
+        OperandValue::Immediate(val) => val,
+        _ => panic!("unparsable"),
+    };
+    let args = get_args_from_tuple(bx, args[5], fn_target);
     let target_symbol = mangle_offload_export(tcx, fn_target);
 
     let sig = tcx.fn_sig(fn_target.def_id()).instantiate(tcx, fn_target.args).skip_norm_wip();
@@ -1899,6 +1903,7 @@ fn codegen_offload<'ll, 'tcx>(
         offload_globals,
         &offload_dims,
         &dyn_cache,
+        &device_id,
     );
 }
 
