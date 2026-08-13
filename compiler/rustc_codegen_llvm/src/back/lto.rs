@@ -468,28 +468,29 @@ fn thin_lto(
             .as_ref()
             .map(|dir| dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME));
 
-        let (prev_key_map, curr_key_map) = if let Some(ref old_incr_comp_session_dir) =
-            cgcx.old_incr_comp_session_dir
-        {
-            let old_path = old_incr_comp_session_dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME);
+        let prev_key_map =
+            if let Some(ref old_incr_comp_session_dir) = cgcx.old_incr_comp_session_dir {
+                let old_path = old_incr_comp_session_dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME);
 
-            // If the previous file was deleted, or we get an IO error
-            // reading the file, then we'll just use `None` as the
-            // prev_key_map, which will force the code to be recompiled.
-            let prev = if old_path.exists() {
-                ThinLTOKeysMap::load_from_file(&old_path).ok()
+                // If the previous file was deleted, or we get an IO error
+                // reading the file, then we'll just use `None` as the
+                // prev_key_map, which will force the code to be recompiled.
+                let prev = if old_path.exists() {
+                    ThinLTOKeysMap::load_from_file(&old_path).ok()
+                } else {
+                    None
+                };
+
+                prev
             } else {
+                assert!(green_modules.is_empty());
                 None
             };
-            let curr = ThinLTOKeysMap::from_thin_lto_modules(&data, &thin_modules, &module_names);
-
-            (prev, curr)
+        let curr_key_map = if cgcx.new_incr_comp_session_dir.is_some() {
+            ThinLTOKeysMap::from_thin_lto_modules(&data, &thin_modules, &module_names)
         } else {
-            // If we don't compile incrementally, we don't need to load the
-            // import data from LLVM.
             assert!(green_modules.is_empty());
-            let curr = ThinLTOKeysMap::default();
-            (None, curr)
+            ThinLTOKeysMap::default()
         };
         info!("thin LTO cache key map loaded");
         info!("prev_key_map: {:#?}", prev_key_map);
