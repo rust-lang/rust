@@ -59,8 +59,6 @@ impl Display for NewFeaturesStatus {
             }
             writeln!(f)?;
         }
-
-        // TODO
         std::fmt::Result::Ok(())
     }
 }
