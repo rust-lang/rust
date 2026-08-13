@@ -1,5 +1,5 @@
 error: expected trait, found struct `X`
-  --> $DIR/inherent-impls-glob-list.rs:19:11
+  --> $DIR/inherent-impls-glob-list.rs:17:11
    |
 LL |     reuse X::*;
    |           ^ not a trait
