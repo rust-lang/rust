@@ -317,20 +317,29 @@ impl<'tcx> GenericArg<'tcx> {
         TypeWalker::new(self)
     }
 
-    pub fn opt_param_info(self) -> Option<(u32 /* index */, bool /* is ty or const */)> {
+    pub fn opt_param_info(self) -> (Option<u32> /* index */, bool /* is ty or const */) {
         match self.kind() {
-            GenericArgKind::Lifetime(r) => match r.kind() {
-                RegionKind::ReEarlyParam(p) => Some((p.index, false)),
-                _ => None,
-            },
-            GenericArgKind::Type(t) => match t.kind() {
-                ty::Param(p) => Some((p.index, true)),
-                _ => None,
-            },
-            GenericArgKind::Const(c) => match c.kind() {
-                ConstKind::Param(p) => Some((p.index, true)),
-                _ => None,
-            },
+            GenericArgKind::Lifetime(r) => (
+                match r.kind() {
+                    RegionKind::ReEarlyParam(p) => Some(p.index),
+                    _ => None,
+                },
+                false,
+            ),
+            GenericArgKind::Type(t) => (
+                match t.kind() {
+                    ty::Param(p) => Some(p.index),
+                    _ => None,
+                },
+                true,
+            ),
+            GenericArgKind::Const(c) => (
+                match c.kind() {
+                    ConstKind::Param(p) => Some(p.index),
+                    _ => None,
+                },
+                true,
+            ),
         }
     }
 }

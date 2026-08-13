@@ -10,8 +10,10 @@ impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 }
 
 trait Trait<'a, AA, BB> where Self: Sized {
-    reuse S::foo_self;
-    //~^ ERROR: this function takes 1 argument but 0 arguments were supplied
+    reuse S::<(), ()>::foo_self;
+    //~^ ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: type provided when a constant was expected
+    //~| ERROR: type provided when a constant was expected
 }
 
 fn main() {}

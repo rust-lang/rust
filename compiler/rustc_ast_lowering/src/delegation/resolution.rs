@@ -10,7 +10,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_middle::ty::{
     self, AssocKind, DelegationInhFuncKind, Ty, TyCtxt, TypeRelativeDelegationRes,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -208,7 +208,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // in illegal places such as function bodies in extern blocks (see #151356).
         let sig_id = self.resolve_delegation_sig(def_id, span)?;
 
-        self.check_inherent_impl_generic_args(sig_id, span)?;
         self.check_for_cycles(sig_id, span)?;
 
         let is_method = tcx.is_method(sig_id);
@@ -239,27 +238,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         };
 
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id, span)?))
-    }
-
-    /// See tests\ui\delegation\inherent-impls-wrong-header-args-ice.rs,
-    /// there might be situations when not all generic args are supplied
-    /// to a struct/enum in an impl, in this case there will be ICEs when
-    /// trying to instantiate signature or predicates, so we would emit delayed
-    /// bug here and will not process this delegation further.
-    fn check_inherent_impl_generic_args(
-        &self,
-        sig_id: DefId,
-        span: Span,
-    ) -> Result<(), ErrorGuaranteed> {
-        self.opt_inherent_impl_adt(sig_id)
-            .map(|(_, args)| {
-                (!args.iter().any(|a| a.references_error())).ok_or_else(|| {
-                    self.tcx()
-                        .dcx()
-                        .span_delayed_bug(span, "incorrect generic args in inherent impl")
-                })
-            })
-            .unwrap_or(Ok(()))
     }
 
     pub(super) fn opt_inherent_impl_adt(
