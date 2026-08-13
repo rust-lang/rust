@@ -1,7 +1,6 @@
 // offload module
 #[unstable(feature = "gpu_offload", issue = "131513")]
 pub use crate::macros::builtin::offload_kernel;
-use crate::marker::PhantomData;
 #[unstable(feature = "gpu_offload", issue = "131513")]
 pub use crate::offload;
 
@@ -140,8 +139,9 @@ pub unsafe trait PartitioningStrategy {
 }
 
 /// A memory region bound to a partitioning strategy.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[unstable(feature = "offload", issue = "124509")]
+#[rustc_diagnostic_item = "offload_region"]
 pub struct Region<'a, T, S: PartitioningStrategy> {
     ptr: *mut T,
     len: usize,
@@ -149,9 +149,11 @@ pub struct Region<'a, T, S: PartitioningStrategy> {
 }
 
 /// Raw representation used to build a [`Region`] from common aggregate types.
-struct RawRegion<'a, T> {
-    pub ptr: *mut T,
-    pub len: usize,
+#[derive(Debug)]
+#[unstable(feature = "offload", issue = "124509")]
+pub struct RawRegion<'a, T> {
+    ptr: *mut T,
+    len: usize,
     _marker: core::marker::PhantomData<&'a mut [T]>,
 }
 

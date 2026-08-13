@@ -1469,6 +1469,7 @@ symbols! {
         off,
         offload,
         offload_kernel,
+        offload_region,
         offset,
         offset_of,
         offset_of_enum,
