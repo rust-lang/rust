@@ -1,6 +1,6 @@
 #![cfg_attr(test, allow(dead_code))]
 
-pub use self::imp::{cleanup, init};
+pub use self::imp::init;
 use self::imp::{drop_handler, make_handler};
 
 pub struct Handler {
@@ -143,6 +143,12 @@ mod imp {
     }
 
     static PAGE_SIZE: Atomic<usize> = AtomicUsize::new(0);
+    // Store a pointer to the allocation for the main thread's altstack so that
+    // tools like valgrind don't complain about a leaked unreachable allocation.
+    //
+    // If the main thread exits, the process will terminate so there's no use in
+    // freeing resources. It also means that the altstack is still installed
+    // while TLS destructors are run on the main thread (c.f. #111272).
     static MAIN_ALTSTACK: Atomic<*mut libc::c_void> = AtomicPtr::new(ptr::null_mut());
     static NEED_ALTSTACK: Atomic<bool> = AtomicBool::new(false);
 
@@ -188,18 +194,6 @@ mod imp {
                 unsafe { sigaction(signal, &action, ptr::null_mut()) };
             }
         }
-    }
-
-    /// # Safety
-    /// Must be called only once
-    #[forbid(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn cleanup() {
-        if cfg!(panic = "immediate-abort") {
-            return;
-        }
-        // FIXME: I probably cause more bugs than I'm worth!
-        // see https://github.com/rust-lang/rust/issues/111272
-        unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
     }
 
     unsafe fn get_stack() -> libc::stack_t {
@@ -651,8 +645,6 @@ mod imp {
 mod imp {
     pub unsafe fn init() {}
 
-    pub unsafe fn cleanup() {}
-
     pub unsafe fn make_handler(_main_thread: bool) -> super::Handler {
         super::Handler::null()
     }
@@ -734,8 +726,6 @@ mod imp {
         // Set the thread stack guarantee for the main thread.
         reserve_stack();
     }
-
-    pub unsafe fn cleanup() {}
 
     pub unsafe fn make_handler(main_thread: bool) -> super::Handler {
         if !main_thread {
