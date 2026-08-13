@@ -2,8 +2,8 @@
 //@ edition: 2024
 //@ compile-flags: -Znext-solver=globally
 //! Regression test for #160652. Yielding an item from `impl Iterator` without an
-//! explicit `Item` bound used to ICE in NLL type relating, because the yielded
-//! value had type `<impl Iterator as Iterator>::Item`.
+//! explicit `Item` bound used to ICE in NLL type relating: both the MIR `yield_ty`
+//! and the yielded local `i` were `<impl Iterator as Iterator>::Item`.
 
 #![feature(coroutines, coroutine_trait)]
 

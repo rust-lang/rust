@@ -190,11 +190,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         if let Some(mir_yield_ty) = self.body.yield_ty() {
             let yield_span = self.body.local_decls[RETURN_PLACE].source_info.span;
-            self.equate_normalized_input_or_output(
-                self.universal_regions.yield_ty.unwrap(),
-                mir_yield_ty,
-                yield_span,
-            );
+            // `defining_ty` yield types are unnormalized, like
+            // `unnormalized_output_ty`. MIR `yield_ty` is normalized in
+            // `construct_fn`.
+            let expected = self.universal_regions.yield_ty.unwrap();
+            let expected = if self.infcx.next_trait_solver() {
+                self.normalize(ty::Unnormalized::new_wip(expected), Locations::All(yield_span))
+            } else {
+                expected
+            };
+            self.equate_normalized_input_or_output(expected, mir_yield_ty, yield_span);
         }
 
         if let Some(mir_resume_ty) = self.body.resume_ty() {

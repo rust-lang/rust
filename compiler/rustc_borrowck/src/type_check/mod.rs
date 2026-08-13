@@ -887,7 +887,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 match self.body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
+                        // `yield_ty` is normalized in `construct_fn`. The yielded
+                        // operand is a local and can still be a non-rigid alias.
                         let value_ty = value.ty(self.body, tcx);
+                        let value_ty = if self.infcx.next_trait_solver() {
+                            self.normalize(ty::Unnormalized::new_wip(value_ty), term_location)
+                        } else {
+                            value_ty
+                        };
                         if let Err(terr) = self.sub_types(
                             value_ty,
                             ty,

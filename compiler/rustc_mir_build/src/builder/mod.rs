@@ -33,13 +33,15 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::LintLevel;
@@ -514,6 +516,22 @@ fn construct_fn<'tcx>(
     };
 
     let infcx = tcx.infer_ctxt().build(typing_mode);
+
+    // Writeback may leave `yield_ty` as a non-rigid alias
+    // (`<impl Iterator as Iterator>::Item`). Normalize so the alias is rigid;
+    // NLL relating span-bugs on `IsRigid::No`. Dumps may still print the
+    // projection. The yielded operand and `defining_ty` are normalized in
+    // borrowck.
+    let coroutine = match coroutine {
+        Some(mut info) => {
+            if let Some(yield_ty) = info.yield_ty {
+                info.yield_ty = Some(normalize_coroutine_yield_ty(&infcx, fn_def, span, yield_ty));
+            }
+            Some(info)
+        }
+        None => None,
+    };
+
     let mut builder = Builder::new(
         thir,
         infcx,
@@ -560,6 +578,37 @@ fn construct_fn<'tcx>(
     };
 
     body
+}
+
+/// Normalize `yield_ty` for storage on the MIR body.
+///
+/// HIR typeck writeback can leave this as a non-rigid alias under the new
+/// solver. Normalization makes that alias rigid so NLL relating does not
+/// span-bug; the printed type may still be a projection. Failure must not
+/// keep a non-rigid alias.
+fn normalize_coroutine_yield_ty<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    def_id: LocalDefId,
+    span: Span,
+    ty: Ty<'tcx>,
+) -> Ty<'tcx> {
+    if !infcx.next_trait_solver() {
+        return ty;
+    }
+
+    let ocx = ObligationCtxt::new(infcx);
+    let cause = ObligationCause::misc(span, def_id);
+    let param_env = infcx.tcx.param_env(def_id);
+    match ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(ty)) {
+        Ok(normalized) => normalized,
+        Err(_) => {
+            let guar = infcx.dcx().span_delayed_bug(
+                span,
+                format!("failed to normalize coroutine yield type `{ty:?}`"),
+            );
+            Ty::new_error(infcx.tcx, guar)
+        }
+    }
 }
 
 fn construct_const<'a, 'tcx>(
