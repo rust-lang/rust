@@ -1948,22 +1948,6 @@ pub(crate) struct DynTraitAssocItemBindingMentionsSelf {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "items with the \"custom\" ABI can only be declared externally or defined via naked functions"
-)]
-pub(crate) struct AbiCustomClothedFunction {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(
-        "convert this to an `#[unsafe(naked)]` function",
-        applicability = "maybe-incorrect",
-        code = "#[unsafe(naked)]\n",
-        style = "short"
-    )]
-    pub naked_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`AsyncDrop` impl without `Drop` impl")]
 #[help(
     "type implementing `AsyncDrop` trait must also implement `Drop` trait to be used in sync context and unwinds"
