@@ -27,8 +27,8 @@ We still lower them as
 The two differences are that:
 
 We record `in_trait` for the opaque.
-This will signify that the opaque
-is an RPITIT for HIR ty lowering, diagnostics that deal with HIR, etc.
+This will signify that the opaque is an RPITIT for HIR ty lowering,
+diagnostics that deal with HIR, etc.
 
 We record `lifetime_mapping`s for the opaque type, described below.
 
@@ -40,8 +40,8 @@ The main reason we do this is because RPITs need to be able to "reify"[^1] any
 captured late-bound arguments, or make them into early-bound ones.
 This is so they can be used as generic args for the opaque, and later to
 instantiate hidden types.
-Since we don't know which lifetimes are early-
-or late-bound during AST lowering, we just do this for all lifetimes.
+Since we don't know which lifetimes are early- or late-bound during AST lowering,
+we just do this for all lifetimes.
 
 [^1]: This is compiler-errors terminology, I'm not claiming it's accurate :^)
 
@@ -304,9 +304,8 @@ Since the return type of a method is understood to be one of the assumed WF
 types, and we eagerly fold the return type with inference variables to do
 opaque type inference, after opaque type inference, the return type will
 resolve to contain the hidden types of the RPITITs.
-this would mean that the
-hidden types of the RPITITs would be assumed to be well-formed without having
-independently proven that they are.
+This would mean that the hidden types of the RPITITs would be assumed to be well-formed
+without having independently proven that they are.
 This resulted in a [subtle unsoundness bug](https://github.com/rust-lang/rust/pull/116072).
 In order to prevent this cyclic reasoning, we instead replace the hidden types of
 the RPITITs in the return type of the method with *placeholders*, which lead
@@ -314,7 +313,7 @@ to no implied well-formedness bounds.
 
 #### Default trait body
 
-Type-checking a default trait body, like:
+Type-checking a default trait body like the following requires one interesting hack.
 
 ```rust
 trait Foo {
@@ -324,12 +323,10 @@ trait Foo {
 }
 ```
 
-requires one interesting hack.
 We need to install a projection predicate
 into the param-env of `Foo::bar` allowing us to assume that the RPITIT's
 GAT normalizes to the RPITIT's opaque type.
-This relies on the observation that a trait method and RPITIT's GAT will always be "in
-sync".
+This relies on the observation that a trait method and RPITIT's GAT will always be "in sync".
 That is, one will only ever be overridden if the other one is as well.
 
 Compare this to a similar desugaring of the code above, which would fail
