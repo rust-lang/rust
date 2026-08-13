@@ -784,9 +784,9 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
-        if times.accessed.map_or(false, is_zero)
-            || times.modified.map_or(false, is_zero)
-            || times.created.map_or(false, is_zero)
+        if times.accessed.is_some_and(is_zero)
+            || times.modified.is_some_and(is_zero)
+            || times.created.is_some_and(is_zero)
         {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
@@ -794,9 +794,9 @@ impl File {
             ));
         }
         let is_max = |t: c::FILETIME| t.dwLowDateTime == u32::MAX && t.dwHighDateTime == u32::MAX;
-        if times.accessed.map_or(false, is_max)
-            || times.modified.map_or(false, is_max)
-            || times.created.map_or(false, is_max)
+        if times.accessed.is_some_and(is_max)
+            || times.modified.is_some_and(is_max)
+            || times.created.is_some_and(is_max)
         {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
