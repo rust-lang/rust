@@ -436,18 +436,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
-        let direct_attr = find_attr!(self.tcx, impl_item.owner_id.def_id, RustcTrivialFieldReads);
-
-        let legacy_macro_attr =
-            impl_item.span.ctxt().outer_expn_data().macro_def_id.is_some_and(|macro_def_id| {
-                find_attr!(self.tcx, macro_def_id, RustcTrivialFieldReads)
-            });
-
-        let has_trivial_field_reads_attr = legacy_macro_attr || direct_attr;
-
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
-            && has_trivial_field_reads_attr
+            && find_attr!(self.tcx, impl_item.owner_id.def_id, RustcTrivialFieldReads)
         {
             let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip();
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
