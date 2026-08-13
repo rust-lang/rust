@@ -3954,7 +3954,20 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn checked_next_power_of_two(self) -> Option<Self> {
-            self.one_less_than_next_power_of_two().checked_add(1)
+            let result = self.one_less_than_next_power_of_two().checked_add(1);
+
+            if let Some(result) = result {
+                // SAFETY: `one_less_than_next_power_of_two` returns one less than the
+                // smallest power of two greater than or equal to `self`. Therefore, if
+                // adding one succeeds, the result is a power of two at least as large as
+                // `self`.
+                unsafe {
+                    crate::hint::assert_unchecked(result.is_power_of_two());
+                    crate::hint::assert_unchecked(result >= self);
+                }
+            }
+
+            result
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
