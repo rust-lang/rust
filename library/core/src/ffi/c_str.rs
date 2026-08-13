@@ -582,7 +582,12 @@ impl CStr {
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
-        unsafe { &*((&raw const self.inner) as *const [u8]) }
+        let bytes = unsafe { &*((&raw const self.inner) as *const [u8]) };
+
+        // SAFETY: A valid `CStr` always contains at least its trailing nul byte.
+        unsafe { crate::hint::assert_unchecked(!bytes.is_empty()) };
+
+        bytes
     }
 
     /// Iterates over the bytes in this C string.
