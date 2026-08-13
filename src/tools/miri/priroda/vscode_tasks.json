@@ -4,14 +4,18 @@
         {
             "label": "Priroda: Start DAP Server",
             "type": "process",
-            "command": "${workspaceFolder}/target/debug/priroda",
+            "command": "cargo",
             "args": [
+                "run",
+                "--manifest-path",
+                "${workspaceFolder}/Cargo.toml",
+                "--",
                 "--dap",
                 "--port",
                 "4711",
                 "--sysroot",
                 "${env:MIRI_SYSROOT}",
-                "${workspaceFolder}/src/main.rs"
+                "../tests/pass/empty_main.rs"
             ],
             "isBackground": true,
             "options": {

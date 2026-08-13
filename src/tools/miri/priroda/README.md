@@ -63,60 +63,44 @@ does not register a debug type. VS Code still needs a registered `priroda`
 debug type, which must come from a debug extension. A custom Priroda extension
 is deferred to future graphical features.
 
-Copy the example files into the workspace you want to debug:
+The templates assume `${workspaceFolder}` is the `miri/priroda` directory that
+contains them. Copy them into that directory's `.vscode/`, or edit
+`--manifest-path` and the final `args` entry when using them from elsewhere:
 
 ```sh
-mkdir -p /path/to/project/.vscode
-cp vscode_launch.json /path/to/project/.vscode/launch.json
-cp vscode_tasks.json /path/to/project/.vscode/tasks.json
+mkdir -p /path/to/miri/priroda/.vscode
+cp vscode_launch.json /path/to/miri/priroda/.vscode/launch.json
+cp vscode_tasks.json /path/to/miri/priroda/.vscode/tasks.json
 ```
 
 Before running the debugger configuration, make sure:
 
-- Priroda has been built, so the binary path in `command` exists.
 - `MIRI_SYSROOT` points at a Miri sysroot, for example from
   `cargo +miri miri setup --print-sysroot`.
-- If running the `priroda` binary directly, `LD_LIBRARY_PATH` may need to point
-  at the pinned `miri` toolchain's `lib` directory.
+- The `cargo` in `command` resolves to the `miri` toolchain's cargo, so the
+  task builds Priroda with `rustc_private`.
 - The Rust file path at the end of `args` is the file you want Priroda to run.
 - Port `4711` is free, or both `--port` and `debugServer` use the same different
   port.
 - VS Code has a debugger contribution installed that accepts
   `type: "priroda"` debug configurations.
 
-Then edit `.vscode/tasks.json` for your local paths. Set `command` to the
-Priroda binary you want VS Code to run:
-
-```json
-"command": "${workspaceFolder}/target/debug/priroda"
-```
-
-If the binary cannot find rustc libraries, add an `env` block under
-`options`:
-
-```json
-"options": {
-    "cwd": "${workspaceFolder}",
-    "env": {
-        "LD_LIBRARY_PATH": "/path/to/miri-toolchain/lib",
-        "MIRI_SYSROOT": "/path/to/miri-sysroot"
-    }
-}
-```
-
-Also edit the final argument in `args` to point at the Rust file you want
-Priroda to run. This task argument, not `launch.json`, selects the interpreted
-program:
-
-```json
-"${workspaceFolder}/src/main.rs"
-```
-
-The task runs Priroda like this:
+The task runs Priroda through `cargo run` against the Priroda crate:
 
 ```sh
-cargo run -- --dap --port 4711 /path/to/project/src/main.rs
+cargo run --manifest-path /path/to/miri/priroda/Cargo.toml -- \
+    --dap --port 4711 --sysroot "$MIRI_SYSROOT" /path/to/project/src/main.rs
 ```
+
+Edit the final argument in `args` to point at the Rust file you want Priroda to
+run (the checked-in default is `../tests/pass/empty_main.rs`). This task
+argument, not `launch.json`, selects the interpreted program.
+
+Running through `cargo run` sets the dynamic library path automatically. The
+`priroda` binary links rustc's shared libraries, so running it directly, or via
+`cargo install`, still needs `LD_LIBRARY_PATH` to point at the pinned `miri`
+toolchain's `lib` directory; a future packaging step (an rpath, or shipping
+Priroda next to Miri) will remove that requirement.
 
 Once Priroda prints `priroda dap listening on 127.0.0.1:4711`, VS Code treats
 the background task as ready and connects with:
