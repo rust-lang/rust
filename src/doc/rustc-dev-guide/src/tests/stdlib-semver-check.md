@@ -10,10 +10,10 @@ When it runs, one of five things can happen:
    Once c-s-c releases a version that supports the new JSON format, it should go to 1. again.
    - We currently install the latest released version of c-s-c in this job, so its version does not need to be updated manually in the `rust-lang/rust` repository.
 3. c-s-c detects a breakage, but it is a false positive.
-   In this case, please report the false positive to [this][semver-topic] Zulip channel, and [bump the stamp file](#bumping-the-stdlib-semver-stamp-file).
+   In this case, please report the false positive to [this Zulip topic][semver-topic], and [bump the stamp file](#bumping-the-stdlib-semver-stamp-file).
 4. c-s-c detects a real breakage, and it helped you find unintended beakage.
    Yay!
-   In this case, please consider reporting the success to [this][semver-topic] Zulip channel.
+   In this case, please consider reporting the success to [this Zulip topic][semver-topic].
 5. c-s-c detects a real breakage, but you want to land it anyway (maybe it is an edge case that was FCPed).
    In that case, [bump the stamp file](#bumping-the-stdlib-semver-stamp-file).
 
