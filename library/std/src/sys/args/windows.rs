@@ -115,7 +115,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
             BACKSLASH => {
                 let backslash_count = code_units.advance_while(|w| w == BACKSLASH) + 1;
                 if code_units.peek() == Some(QUOTE) {
-                    cur.extend(iter::repeat(BACKSLASH.get()).take(backslash_count / 2));
+                    cur.extend(iter::repeat_n(BACKSLASH.get(), backslash_count / 2));
                     // The quote is escaped if there are an odd number of backslashes.
                     if backslash_count % 2 == 1 {
                         code_units.next();
@@ -123,7 +123,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
                     }
                 } else {
                     // If there is no quote on the end then there is no escaping.
-                    cur.extend(iter::repeat(BACKSLASH.get()).take(backslash_count));
+                    cur.extend(iter::repeat_n(BACKSLASH.get(), backslash_count));
                 }
             }
             // If `in_quotes` and not backslash escaped (see above) then a quote either
