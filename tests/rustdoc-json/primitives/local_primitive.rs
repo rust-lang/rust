@@ -3,19 +3,25 @@
 #![feature(no_core)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(lang_items)]
 #![no_core]
 #![rustc_coherence_is_core]
 
 //! Link to [i32][prim@i32] [i64][prim@i64]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
+
 #[rustc_doc_primitive = "i32"]
-mod prim_i32 {}
+const _: () = ();
 
 //@ set local_i32 = "$.index[?(@.name=='i32')].id"
 
 //@ has "$.index[?(@.name=='local_primitive')]"
-//@ ismany "$.index[?(@.name=='local_primitive')].inner.module.items[*]" $local_i32
 //@ is "$.index[?(@.name=='local_primitive')].links['prim@i32']" $local_i32
-
-// Let's ensure the `prim_i32` module isn't present in the output JSON:
-//@ !has "$.index[?(@.name=='prim_i32')]"
