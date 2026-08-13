@@ -372,7 +372,7 @@ Finally, `MAGIC_EXTRA_RUSTFLAGS` bypasses the
 
 - `RUSTDOCFLAGS`, `RUSTDOCFLAGS_BOOTSTRAP` and `RUSTDOCFLAGS_NOT_BOOTSTRAP` are
   analogous to `RUSTFLAGS`, but for `rustdoc`.
-- `CARGOFLAGS` will pass arguments to cargo itself (e.g. `--timings`).
+- `CARGOFLAGS` will pass arguments to cargo itself.
   `CARGOFLAGS_BOOTSTRAP` and `CARGOFLAGS_NOT_BOOTSTRAP` work analogously to `RUSTFLAGS_BOOTSTRAP`.
 - `--test-args` will pass arguments through to the test runner.
   For `tests/ui`,
