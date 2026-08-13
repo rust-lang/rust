@@ -836,8 +836,7 @@ fn eq_restriction_kind(l: &RestrictionKind, r: &RestrictionKind) -> bool {
 }
 
 fn eq_fn_decl(l: &FnDecl, r: &FnDecl) -> bool {
-    eq_fn_ret_ty(&l.output, &r.output)
-        && over(&l.inputs, &r.inputs, eq_param)
+    eq_fn_ret_ty(&l.output, &r.output) && over(&l.inputs, &r.inputs, eq_param)
 }
 
 fn eq_param(l: &Param, r: &Param) -> bool {

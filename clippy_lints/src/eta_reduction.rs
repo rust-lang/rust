@@ -7,13 +7,12 @@ use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_c
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::{
     self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt as _,
     TypeckResults,
 };
-use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 

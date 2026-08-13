@@ -3,10 +3,9 @@ use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sym;
 use rustc_hir::attrs::LangItem;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -5,9 +5,8 @@ use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {

@@ -10,8 +10,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::CRATE_HIR_ID;
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, Lint, impl_lint_pass};
 use rustc_span::DUMMY_SP;
 
 declare_clippy_lint! {
