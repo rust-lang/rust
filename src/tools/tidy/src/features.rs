@@ -16,6 +16,8 @@ use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
+use regex::Regex;
+
 use crate::diagnostics::{RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 
@@ -23,8 +25,9 @@ use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 mod tests;
 
 mod version;
-use regex::Regex;
-use version::Version;
+// Re-export Version. This means other crates can construct Versions from [u32;3] and from &str.
+// This is useful for filtering for features older/newer than a user-provided value.
+pub use version::Version;
 
 const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
