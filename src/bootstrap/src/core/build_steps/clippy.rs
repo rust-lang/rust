@@ -24,7 +24,8 @@ use crate::core::builder::{
 };
 use crate::core::config::{Subcommand, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Compiler, Mode, exit};
+use crate::utils::helpers;
+use crate::{Compiler, Mode};
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
@@ -543,7 +544,7 @@ impl CommandLineStep for CI {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         if builder.top_stage != 2 {
             eprintln!("ERROR: `x clippy ci` should always be executed with --stage 2");
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         // We want to check in-tree source using in-tree clippy. However, if we naively did

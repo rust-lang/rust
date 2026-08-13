@@ -11,7 +11,8 @@ use crate::core::config::toml::TomlConfig;
 use crate::core::config::{
     CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool, TargetSelection,
 };
-use crate::{CodegenBackendKind, define_config, exit};
+use crate::utils::helpers;
+use crate::{CodegenBackendKind, define_config};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -463,7 +464,7 @@ pub(crate) fn parse_codegen_backends(
         if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {
             if CiEnv::is_rust_lang_managed_ci_job() {
                 eprintln!("Unknown codegen backend {}", backend.name());
-                exit!(1);
+                helpers::exit_process(1);
             }
 
             println!(
@@ -476,7 +477,7 @@ pub(crate) fn parse_codegen_backends(
     }
     if found_backends.is_empty() {
         eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
-        exit!(1);
+        helpers::exit_process(1);
     }
     found_backends
 }

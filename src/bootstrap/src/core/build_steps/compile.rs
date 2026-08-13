@@ -34,11 +34,11 @@ use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
+    self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
 use crate::{
     CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, exit, trace,
+    debug, trace,
 };
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
@@ -2044,7 +2044,7 @@ impl Step for Sysroot {
                         sysroot_lib_rustlib_src_rust.display(),
                     );
                 }
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
 
@@ -2062,7 +2062,7 @@ impl Step for Sysroot {
                     builder.src.display(),
                     e,
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
 
@@ -2741,7 +2741,7 @@ pub fn run_cargo(
     });
 
     if !ok {
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     if builder.config.dry_run() {

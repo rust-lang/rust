@@ -19,7 +19,7 @@ use crate::core::build_steps::tool;
 use crate::core::builder::Builder;
 use crate::core::config::{CompilerBuiltins, DebuggerPath, Subcommand, Target};
 use crate::utils::exec::command;
-use crate::utils::helpers::t;
+use crate::utils::helpers::{self, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -161,7 +161,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     build.config.python = build

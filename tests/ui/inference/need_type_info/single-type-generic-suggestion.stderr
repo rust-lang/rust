@@ -5,6 +5,9 @@ LL |     "".parse();
    |        ^^^^^ cannot infer type of the type parameter `F` declared on the method `parse`
    |
    = note: cannot satisfy `<_ as FromStr>::Err == _`
+   = note: the type must also implement `FromStr`
+note: required by a bound in `core::str::<impl str>::parse`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 help: consider specifying a concrete type for the type parameter `F`
    |
 LL |     "".parse::</* Type */>();
