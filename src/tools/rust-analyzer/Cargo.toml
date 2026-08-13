@@ -45,8 +45,6 @@ debug = 2
 # ungrammar = { path = "lib/ungrammar" }
 
 # salsa = { path = "../salsa" }
-# salsa-macros = { path = "../salsa/components/salsa-macros" }
-# salsa-macro-rules = { path = "../salsa/components/salsa-macro-rules" }
 
 [workspace.dependencies]
 # local crates
@@ -133,7 +131,6 @@ salsa = { version = "0.28.2", default-features = false, features = [
     "inventory",
     "triomphe"
 ] }
-salsa-macros = "0.28.2"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
