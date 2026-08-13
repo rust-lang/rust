@@ -4,6 +4,7 @@
 #![crate_type = "lib"]
 
 use std::alloc::Layout;
+use std::convert::TryFrom;
 
 type RGB48 = [u16; 3];
 
@@ -27,4 +28,31 @@ pub fn layout_array_i32(n: usize) -> Layout {
     // CHECK: shl nuw nsw i64 %n, 2
     // CHECK-NOT: llvm.umul.with.overflow.i64
     Layout::array::<i32>(n).unwrap()
+}
+
+// CHECK-LABEL: @layout_size_fits_in_isize
+#[no_mangle]
+pub fn layout_size_fits_in_isize(layout: &Layout) -> bool {
+    // CHECK: ret i1 true
+    layout.size() <= isize::MAX as usize
+}
+
+// CHECK-LABEL: @layout_size_to_isize
+#[no_mangle]
+pub fn layout_size_to_isize(layout: &Layout) -> isize {
+    // CHECK-NOT: panic
+    // CHECK: load i64
+    // CHECK-NOT: panic
+    // CHECK: ret i64
+    isize::try_from(layout.size()).unwrap()
+}
+
+// CHECK-LABEL: @layout_size_checked_double
+#[no_mangle]
+pub fn layout_size_checked_double(layout: &Layout) -> usize {
+    // CHECK-NOT: panic
+    // CHECK: shl nuw i64
+    // CHECK-NOT: panic
+    // CHECK: ret i64
+    layout.size().checked_mul(2).unwrap()
 }
