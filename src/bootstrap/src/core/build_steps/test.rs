@@ -45,7 +45,7 @@ use crate::utils::helpers::{
     up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, TestTarget, envify, exit};
+use crate::{CLang, CodegenBackendKind, GitRepo, Mode, TestTarget, envify};
 
 mod compiletest;
 pub mod failed_tests;
@@ -291,7 +291,7 @@ impl CommandLineStep for Cargotest {
             eprintln!(
                 "ERROR: running cargotest with stage 0 is currently unsupported. Use at least stage 1."
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
         // We want to build cargo stage N (where N == top_stage), and rustc stage N,
         // and test both of these together.
@@ -948,7 +948,7 @@ impl CommandLineStep for CompiletestTest {
 ERROR: `--stage 0` causes compiletest to query information from the stage0 (precompiled) compiler, instead of the in-tree compiler, which can cause some tests to fail inappropriately
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         let bootstrap_compiler = builder.compiler(0, host);
@@ -1297,7 +1297,7 @@ impl CommandLineStep for Clippy {
         }
 
         if !builder.config.cmd.bless() {
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
     }
 
@@ -1702,7 +1702,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                         PATH = inferred_rustfmt_dir.display(),
                         CHAN = builder.config.channel,
                     );
-                    crate::exit!(1);
+                    helpers::exit_process(1);
                 };
                 let all = false;
                 crate::core::build_steps::format::format(
@@ -1733,7 +1733,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             eprintln!(
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         builder.info("x.py help check");
@@ -1743,13 +1743,13 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             let help_path = get_help_path(builder);
             let cur_help = std::fs::read_to_string(&help_path).unwrap_or_else(|err| {
                 eprintln!("couldn't read {}: {}", help_path.display(), err);
-                crate::exit!(1);
+                helpers::exit_process(1);
             });
             let new_help = top_level_help();
 
             if new_help != cur_help {
                 eprintln!("x.py help was changed; run `x.py run generate-help` to update it");
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
         }
     }
@@ -2232,7 +2232,7 @@ ERROR: `--stage 0` runs compiletest on the stage0 (precompiled) compiler, not yo
 HELP: to test the compiler or standard library, omit the stage or explicitly use `--stage 1` instead
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         let mut test_compiler = self.test_compiler;
@@ -2443,7 +2443,7 @@ ERROR: No configured backend named `{name}`
 HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}]`",
                     name = codegen_backend.name(),
                 );
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
 
             if let CodegenBackendKind::Gcc = codegen_backend
@@ -4806,14 +4806,14 @@ impl CommandLineStep for StdSemverCheck {
                     );
                     if builder.fail_fast {
                         eprintln!("{error}",);
-                        exit!(1);
+                        helpers::exit_process(1);
                     } else {
                         builder.config.exec_ctx().add_to_delay_failure(error);
                     }
                 }
                 _ => {
                     eprintln!("cargo-semver-checks failed.\n{}\n{}", res.stderr(), res.stdout());
-                    exit!(1);
+                    helpers::exit_process(1);
                 }
             }
         }

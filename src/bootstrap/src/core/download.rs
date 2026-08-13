@@ -14,10 +14,9 @@ use xz2::bufread::XzDecoder;
 use crate::core::build_steps::llvm::detect_llvm_freshness;
 use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
 use crate::core::config::{BUILDER_CONFIG_FILENAME, Config, TargetSelection};
-use crate::exit;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, hex_encode, move_file, t};
+use crate::utils::helpers::{self, exe, hex_encode, move_file, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
@@ -294,7 +293,7 @@ impl Config {
                 eprintln!("HELP: maybe your repository history is too shallow?");
                 eprintln!("HELP: consider disabling `download-ci-llvm`");
                 eprintln!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
         };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
@@ -350,7 +349,7 @@ impl Config {
                 }
                 Err(e) => {
                     eprintln!("ERROR: Failed to parse CI LLVM bootstrap.toml: {e}");
-                    exit!(2);
+                    helpers::exit_process(2);
                 }
             };
         };
@@ -1121,7 +1120,7 @@ fn download_http_with_retries(
         if !help_on_error.is_empty() {
             eprintln!("{help_on_error}");
         }
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 }
 

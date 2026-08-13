@@ -15,6 +15,7 @@ use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::Config;
 use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
+use crate::utils::helpers;
 use crate::{Build, CodegenBackendKind, TestTarget};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
@@ -740,7 +741,7 @@ pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
     } else {
         std::fs::read_to_string(path).unwrap_or_else(|_| {
             eprintln!("couldn't read {}", path.display());
-            crate::exit!(1);
+            helpers::exit_process(1);
         })
     };
     let mut buf = Vec::new();

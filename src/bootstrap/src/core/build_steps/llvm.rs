@@ -26,7 +26,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, exit, trace};
+use crate::{CLang, GitRepo, trace};
 
 /// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
@@ -1034,7 +1034,7 @@ impl CommandLineStep for RustOffload {
                 "`{lib_rust_offload}` not found in `{}`. Either the build has failed or RustOffload was built with a wrong version of LLVM",
                 build_dir.display()
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         BuiltRustOffload { offload: dylib }
@@ -1266,7 +1266,7 @@ impl CommandLineStep for OmpOffload {
                     "`{p:?}` not found in `{}`. Either the build has failed or Offload was built with a wrong version of LLVM",
                     out_dir.display()
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
         BuiltOmpOffload { offload: files }
@@ -1414,7 +1414,7 @@ impl CommandLineStep for Enzyme {
                 "`{libenzyme}` not found in `{}`. Either the build has failed or Enzyme was built with a wrong version of LLVM",
                 build_dir.display()
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         t!(stamp.write());

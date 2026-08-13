@@ -34,9 +34,8 @@ use target::TomlTarget;
 
 use crate::core::config::toml::pgo::Pgo;
 use crate::core::config::{Config, Merge, ReplaceOpt};
-use crate::exit;
 use crate::utils::change_tracker::{find_recent_config_change_ids, human_readable_changes};
-use crate::utils::helpers::t;
+use crate::utils::helpers::{self, t};
 
 /// Structure of the `bootstrap.toml` file that configuration is read from.
 ///
@@ -126,12 +125,12 @@ impl Merge for TomlConfig {
             let include_path = parent_dir.join(include_path);
             let include_path = include_path.canonicalize().unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to canonicalize '{}' path: {e}", include_path.display());
-                exit!(2);
+                helpers::exit_process(2);
             });
 
             let included_toml = Config::get_toml_inner(&include_path).unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
-                exit!(2);
+                helpers::exit_process(2);
             });
 
             assert!(

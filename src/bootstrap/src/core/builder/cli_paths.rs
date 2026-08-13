@@ -7,6 +7,7 @@ use std::hash::Hash;
 use std::path::PathBuf;
 
 use crate::core::builder::{Builder, CommandLineStepDescription, Kind, PathSet, ShouldRun};
+use crate::utils::helpers;
 
 #[cfg(test)]
 mod tests;
@@ -36,7 +37,7 @@ pub(crate) fn match_paths_to_steps_and_run(
             "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
             builder.kind.as_str()
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     // sanity checks on rules
@@ -97,7 +98,7 @@ pub(crate) fn match_paths_to_steps_and_run(
         eprintln!(
             "ERROR: the following paths do not exist on disk or point outside the source directory: {bad_abs_paths:#?}"
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     // When matching selectors to steps, we want to balance two conflicting goals:
@@ -149,7 +150,7 @@ pub(crate) fn match_paths_to_steps_and_run(
         eprintln!(
             "NOTE: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     fn dedup_vec<T: Copy + Eq + Hash>(vec: &mut Vec<T>) {

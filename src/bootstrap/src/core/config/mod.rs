@@ -42,7 +42,7 @@ pub use toml::change_id::ChangeId;
 pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
-use crate::exit;
+use crate::utils::helpers;
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
 #[macro_export]
@@ -88,7 +88,7 @@ macro_rules! define_config {
                                         panic!("overriding existing option")
                                     } else {
                                         eprintln!("overriding existing option: `{}`", stringify!($field));
-                                        $crate::exit!(2);
+                                        $crate::utils::helpers::exit_process(2);
                                     }
                                 } else {
                                     self.$field = other.$field;
@@ -214,7 +214,7 @@ impl<T> Merge for Option<T> {
                             panic!("overriding existing option")
                         } else {
                             eprintln!("overriding existing option");
-                            exit!(2);
+                            helpers::exit_process(2);
                         }
                     } else {
                         *self = other;

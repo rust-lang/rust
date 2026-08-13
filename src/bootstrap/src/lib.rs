@@ -692,7 +692,7 @@ impl Build {
                 "submodule {submodule} does not appear to be checked out, \
                  but it is required for this step{maybe_enable}{err_hint}"
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
     }
 
@@ -755,7 +755,7 @@ impl Build {
                     let builder = builder::Builder::new(self);
                     let rustfmt_path = builder.ensure(InternalRustfmt).unwrap_or_else(|| {
                         eprintln!("fmt error: `x fmt` is not supported on this channel");
-                        crate::exit!(1);
+                        helpers::exit_process(1);
                     });
                     return core::build_steps::format::format(
                         &builder,
@@ -1690,7 +1690,7 @@ impl Build {
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.path().display()
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         let mut paths = Vec::new();
@@ -1965,7 +1965,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
 
@@ -2088,11 +2088,4 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
 
         t!(INITIALIZED.set(true));
     }
-}
-
-#[macro_export]
-macro_rules! exit {
-    ($code:expr) => {
-        $crate::utils::helpers::detail_exit($code, cfg!(test));
-    };
 }
