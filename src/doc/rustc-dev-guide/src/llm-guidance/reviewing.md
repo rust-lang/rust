@@ -9,8 +9,8 @@
   For example, if you have a codebase-specific wrapper around command spawning,
   rather than getting an LLM to look for places where you should use the wrapper,
   [configure clippy to disallow `Command::new`][disallowed-methods].
-- LLMs sometimes prefer LLM-generated output, particularly output from the same
-  model. Treat LLM review as advisory, and do not rely on the model that
+- LLMs sometimes prefer LLM-generated output, particularly output from the same model.
+  Treat LLM review as advisory, and do not rely on the model that
   produced a change as its only reviewer.
 
 [disallowed-methods]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-methods
@@ -26,9 +26,12 @@ That means it is **your responsibility** to check whether an `llm-assisted` PR t
 You may request that the author redo it without LLM-generated code, in which case this section doesn't apply.
 
 The following areas are currently banned:
-- Code that affects soundness. If the author is not an org member who is experienced in the domain, you are required to close the PR.
-- Diagnostics. All user-facing diagnostics must be human-written.
-- Docs. All public doc-comments, and all `// SAFETY` comments, must be human-written.
+- Code that affects soundness.
+  If the author is not an org member who is experienced in the domain, you are required to close the PR.
+- Diagnostics.
+  All user-facing diagnostics must be human-written.
+- Docs.
+  All public doc-comments, and all `// SAFETY` comments, must be human-written.
 
 "Code that affects soundness" is both broader and narrower than it sounds.
 It's broader because almost all of the compiler is relevant to soundness;
