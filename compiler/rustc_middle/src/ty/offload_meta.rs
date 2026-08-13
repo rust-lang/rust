@@ -1,5 +1,6 @@
 use bitflags::bitflags;
 use rustc_abi::{BackendRepr, TyAbiInterface};
+use rustc_span::sym;
 use rustc_target::callconv::ArgAbi;
 
 use crate::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
@@ -75,6 +76,12 @@ impl OffloadMetadata {
     where
         Ty<'tcx>: TyAbiInterface<'tcx, C>,
     {
+        if let Some(elem_ty) = region_element_ty(tcx, ty) {
+            let ptr = OffloadMetadata::from_ty(tcx, Ty::new_slice(tcx, elem_ty));
+            let len = OffloadMetadata::from_ty(tcx, tcx.types.usize);
+            return vec![(ptr, Ty::new_mut_ptr(tcx, elem_ty)), (len, tcx.types.usize)];
+        }
+
         match arg_abi.layout.backend_repr {
             BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } => (0..2)
                 .map(|i| {
@@ -84,6 +91,16 @@ impl OffloadMetadata {
                 .collect(),
             _ => vec![(OffloadMetadata::from_ty(tcx, ty), ty)],
         }
+    }
+}
+
+fn region_element_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    if let ty::Adt(def, args) = ty.kind()
+        && Some(def.did()) == tcx.get_diagnostic_item(sym::offload_region)
+    {
+        Some(args.type_at(1))
+    } else {
+        None
     }
 }
 
