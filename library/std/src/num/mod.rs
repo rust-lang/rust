@@ -6,6 +6,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
+#[unstable(feature = "complex_numbers", issue = "154023")]
+pub use core::num::Complex;
 #[stable(feature = "int_error_matching", since = "1.55.0")]
 pub use core::num::IntErrorKind;
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
