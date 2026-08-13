@@ -1,4 +1,6 @@
-use rustc_abi::{BackendRepr, Float, HasDataLayout, Primitive, RegKind, Size, TyAbiInterface};
+use rustc_abi::{
+    BackendRepr, Float, HasDataLayout, Integer, Numeric, Primitive, RegKind, TyAbiInterface,
+};
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Reg, Uniform};
 
@@ -7,32 +9,24 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if ret.layout.is_complex() {
-        let component = ret.layout.field(cx, 0);
-
-        let (reg, is_long_double) = match component.backend_repr {
-            BackendRepr::Scalar(scalar) => match scalar.primitive() {
-                Primitive::Int(..) => (Reg { kind: RegKind::Integer, size: component.size }, false),
-                Primitive::Float(float) => {
-                    (Reg { kind: RegKind::Float, size: component.size }, float == Float::F128)
-                }
-                Primitive::Pointer(_) => {
-                    unreachable!("complex component cannot be a pointer")
-                }
-            },
-            _ => unreachable!("complex component must be scalar"),
-        };
-
-        let size = ret.layout.size;
+    if let Some(component) = ret.layout.complex_number(cx) {
+        let reg = Reg { kind: component.reg_kind(), size: component.size() };
         let mut cast = CastTarget::pair(reg, reg);
 
-        // long double _Complex is special in that it should be marked as inreg.
-        // See Clang `SparcV8ABIInfo::classifyReturnType`.
-        if is_long_double {
-            cast.attrs.set(ArgAttribute::InReg);
-        } else if !ret.layout.is_complex_float() && size <= Size::from_bytes(8) {
-            cast = CastTarget::from(Reg { kind: RegKind::Integer, size });
+        match component {
+            Numeric::Float(Float::F128) => {
+                // long double _Complex is special in that it should be marked as inreg.
+                // See Clang `SparcV8ABIInfo::classifyReturnType`.
+                cast.attrs.set(ArgAttribute::InReg);
+            }
+            Numeric::Float(Float::F16)
+            | Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) => {
+                let size = ret.layout.size;
+                cast = CastTarget::from(Reg { kind: RegKind::Integer, size });
+            }
+            _ => { /* default behavior */ }
         }
+
         ret.cast_to(cast);
     } else if ret.layout.is_aggregate() {
         ret.make_indirect();
@@ -61,9 +55,9 @@ where
     let size = arg.layout.size;
     let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
 
-    if arg.layout.is_complex() {
-        if !arg.layout.is_complex_float() && size <= Size::from_bytes(8) {
-            arg.cast_to(Reg { kind: RegKind::Integer, size });
+    if let Some(component) = arg.layout.complex_number(cx) {
+        if let Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) = component {
+            arg.cast_to(Reg { kind: RegKind::Integer, size: 2 * component.size() });
         } else {
             arg.pass_by_stack_offset(None);
         }
