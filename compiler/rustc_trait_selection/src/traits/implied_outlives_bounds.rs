@@ -1,16 +1,53 @@
 use std::ops::ControlFlow;
 
 use rustc_infer::infer::TypeOutlivesConstraint;
+use rustc_infer::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use rustc_infer::traits::query::OutlivesBound;
+use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeVisitor, Unnormalized};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitable, TypeVisitor, Unnormalized};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{DUMMY_SP, Span, sym};
 use smallvec::{SmallVec, smallvec};
 
 use crate::traits::query::NoSolution;
+use crate::traits::query::type_op::QueryTypeOp;
 use crate::traits::{ObligationCtxt, wf};
+
+// FIXME(#160491): Remove this once the new implied bounds impl is through FCP.
+impl<'tcx> QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
+    type QueryResponse = Vec<OutlivesBound<'tcx>>;
+
+    fn try_fast_path(
+        _tcx: TyCtxt<'tcx>,
+        key: &ParamEnvAnd<'tcx, Self>,
+    ) -> Option<Self::QueryResponse> {
+        // Don't go into the query for things that can't possibly have lifetimes.
+        match key.value.ty.kind() {
+            ty::Tuple(elems) if elems.is_empty() => Some(vec![]),
+            ty::Never | ty::Str | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
+                Some(vec![])
+            }
+            _ => None,
+        }
+    }
+
+    fn perform_query(
+        tcx: TyCtxt<'tcx>,
+        canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
+        tcx.implied_outlives_bounds((canonicalized, false))
+    }
+
+    fn perform_locally_with_next_solver(
+        ocx: &ObligationCtxt<'_, 'tcx>,
+        key: ParamEnvAnd<'tcx, Self>,
+        _span: Span,
+    ) -> Result<Self::QueryResponse, NoSolution> {
+        query_compute_implied_outlives_bounds(ocx, key.param_env, key.value.ty, false)
+    }
+}
 
 pub fn compute_implied_outlives_bounds_inner<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,

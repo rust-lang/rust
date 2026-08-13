@@ -2,8 +2,11 @@
 //
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ revisions: wfcheck borrowck_current borrowck_next
+//@ [wfcheck] check-pass
+//@ [borrowck_current] check-fail
+//@ [borrowck_current] known-bug: #106569
 //@ [borrowck_next] compile-flags: -Znext-solver
-//@ check-pass
+//@ [borrowck_next] check-pass
 
 
 // We previously computed implied bounds while using region variables for
