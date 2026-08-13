@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/inherent-impl-receiver-mapping.rs:56:18
+  --> $DIR/inherent-impls-receiver-mapping.rs:56:18
    |
 LL |         W(X).add(W(X));
    |              --- ^^^^ expected `X`, found `W`
@@ -7,13 +7,13 @@ LL |         W(X).add(W(X));
    |              arguments to this method are incorrect
    |
 note: method defined here
-  --> $DIR/inherent-impl-receiver-mapping.rs:52:18
+  --> $DIR/inherent-impls-receiver-mapping.rs:52:18
    |
 LL |         reuse X::add { self.0 }
    |                  ^^^
 
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
-  --> $DIR/inherent-impl-receiver-mapping.rs:23:9
+  --> $DIR/inherent-impls-receiver-mapping.rs:23:9
    |
 LL |         y.by_mut_ref();
    |         ^ cannot borrow as mutable
@@ -24,7 +24,7 @@ LL |         let mut y = Y;
    |             +++
 
 error[E0507]: cannot move out of `*y` which is behind a shared reference
-  --> $DIR/inherent-impl-receiver-mapping.rs:28:9
+  --> $DIR/inherent-impls-receiver-mapping.rs:28:9
    |
 LL |         y.by_value();
    |         ^ ---------- `*y` moved due to this method call
@@ -33,7 +33,7 @@ LL |         y.by_value();
    |
    = note: `receiver_mapping::Y::by_value` takes ownership of the receiver `self`, which moves `*y`
 note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impl-receiver-mapping.rs:13:5
+  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
    |
 LL |     struct Y;
    |     ^^^^^^^^ consider implementing `Clone` for this type
@@ -42,7 +42,7 @@ LL |         y.by_value();
    |         - you could clone this value
 
 error[E0596]: cannot borrow `*y` as mutable, as it is behind a `&` reference
-  --> $DIR/inherent-impl-receiver-mapping.rs:31:9
+  --> $DIR/inherent-impls-receiver-mapping.rs:31:9
    |
 LL |         y.by_mut_ref();
    |         ^ `y` is a `&` reference, so it cannot be borrowed as mutable
@@ -53,7 +53,7 @@ LL |         let y = &mut Y;
    |                  +++
 
 error[E0507]: cannot move out of `*y` which is behind a mutable reference
-  --> $DIR/inherent-impl-receiver-mapping.rs:35:9
+  --> $DIR/inherent-impls-receiver-mapping.rs:35:9
    |
 LL |         y.by_value();
    |         ^ ---------- `*y` moved due to this method call
@@ -61,7 +61,7 @@ LL |         y.by_value();
    |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
    |
 note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impl-receiver-mapping.rs:13:5
+  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
    |
 LL |     struct Y;
    |     ^^^^^^^^ consider implementing `Clone` for this type
