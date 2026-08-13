@@ -565,7 +565,7 @@ macro_rules! uint_impl {
         /// This operation can be thought of as concatenating `self` and `right` into an
         /// integer twice the size of
         #[doc = concat!("`", stringify!($SelfT) , "`,")]
-        /// performing a right shift by `n`, and returning the **left half** of the result.
+        /// performing a right shift by `n`, and returning the **right half** of the result.
         ///
         /// The name comes from "funneling" a wider integer to a narrower integer.
         ///
