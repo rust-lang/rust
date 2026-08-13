@@ -36,11 +36,17 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     // FIXME: Uplift the leak check into this crate.
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution>;
 
-    fn evaluate_const(
+    /// Evaluate a const, normalizing the type of the resulting value with `normalize_ty`.
+    /// Returns `Ok(None)` if the const is too generic, and `Err(_)` only if `normalize_ty`
+    /// failed.
+    fn evaluate_const<E>(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
         alias_const: ty::AliasConst<Self::Interner>,
-    ) -> Option<<Self::Interner as Interner>::Const>;
+        normalize_ty: impl FnOnce(
+            ty::Unnormalized<Self::Interner, <Self::Interner as Interner>::Ty>,
+        ) -> Result<<Self::Interner as Interner>::Ty, E>,
+    ) -> Result<Option<<Self::Interner as Interner>::Const>, E>;
 
     // FIXME: This only is here because `wf::obligations` is in `rustc_trait_selection`!
     fn well_formed_goals(

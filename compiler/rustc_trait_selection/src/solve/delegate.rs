@@ -319,21 +319,23 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.leak_check(max_input_universe, None).map_err(|_| NoSolution)
     }
 
-    fn evaluate_const(
+    fn evaluate_const<E>(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         alias_const: ty::AliasConst<'tcx>,
-    ) -> Option<ty::Const<'tcx>> {
+        normalize_ty: impl FnOnce(ty::Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
+    ) -> Result<Option<ty::Const<'tcx>>, E> {
         let ct = ty::Const::new_alias(self.tcx, ty::IsRigid::No, alias_const);
 
-        match crate::traits::try_evaluate_const(&self.0, ct, param_env, |ty| {
-            Ok::<_, !>(ty.skip_norm_wip())
-        }) {
-            Ok(ct) => Some(ct),
-            Err(EvaluateConstErr::EvaluationFailure(e)) => Some(ty::Const::new_error(self.tcx, e)),
+        match crate::traits::try_evaluate_const(&self.0, ct, param_env, normalize_ty) {
+            Ok(ct) => Ok(Some(ct)),
+            Err(EvaluateConstErr::EvaluationFailure(e)) => {
+                Ok(Some(ty::Const::new_error(self.tcx, e)))
+            }
             Err(
                 EvaluateConstErr::InvalidConstParamTy(_) | EvaluateConstErr::HasGenericsOrInfers,
-            ) => None,
+            ) => Ok(None),
+            Err(EvaluateConstErr::FailedNormalization(e)) => Err(e),
         }
     }
 
