@@ -4,7 +4,9 @@
 //! passes by value. This argument is effectively a coroutine type which only contains upvars and
 //! is only used for this argument inside the MIR for the coroutine.
 //! It is passed by value to enable upvars to be moved out of it. Drop elaboration runs on that
-//! MIR before this pass and creates drop flags for MIR locals.
+//! MIR before this pass and creates drop flags for MIR locals. Those flags are stored as a
+//! product `(T, bool)` rather than `Option<T>`, so moving the coroutine must not typed-move
+//! saved locals whose drop flag is false (see #161026).
 //! It will also drop the coroutine argument (which only consists of upvars) if any of the upvars
 //! are moved out of. This pass elaborates the drops of upvars / coroutine argument in the case
 //! that none of the upvars were moved out of. This is because we cannot have any drops of this

@@ -978,6 +978,11 @@ where
 
                 ty::Coroutine(def_id, args) => match this.variants {
                     Variants::Empty => unreachable!(),
+                    // Saved locals are laid out as `MaybeUninit<T>` (see `rustc_ty_utils`
+                    // coroutine layout) because they may be deinitialized according to drop
+                    // flags. Field projection still uses `T` so resume/drop MIR can access
+                    // initialized locals at their real type. Typed copies of the coroutine
+                    // must not require these fields to be valid; see #161026.
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)

@@ -74,6 +74,15 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             ty::Adt(adt, _) if adt.is_box() => Self::visit_box(bx, layout, is_fn_entry),
             // Skip traversing for everything inside of `MaybeDangling`
             ty::Adt(adt, _) if adt.is_maybe_dangling() => None,
+            // Saved locals may be deinitialized according to drop flags, so a typed copy of
+            // the coroutine must not retag them. Upvars and the discriminant are still
+            // retagged via `walk_value` on the un-downcast layout. See #161026.
+            ty::Coroutine(..) => match layout.variants {
+                Variants::Single { .. } => None,
+                Variants::Multiple { .. } | Variants::Empty => {
+                    Self::walk_value(bx, layout, is_fn_entry)
+                }
+            },
             _ => Self::walk_value(bx, layout, is_fn_entry),
         }
     }

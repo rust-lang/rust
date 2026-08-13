@@ -1093,6 +1093,33 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         }
     }
 
+    /// Coroutine saved locals are stored as a product `(T, drop_flag: bool)` rather than
+    /// `Option<T>`. A typed copy of the coroutine would therefore move `T` even when the drop
+    /// flag is false (the local is moved-from or never initialized), which is unsound.
+    ///
+    /// Layout already computes these fields as `MaybeUninit<T>` for size/uninhabitedness; treat
+    /// them the same way for validity and retagging. Resume/drop still access initialized
+    /// locals at type `T`. See <https://github.com/rust-lang/rust/issues/161026>.
+    fn skip_typed_copy_of_coroutine_saved_locals(
+        &mut self,
+        variant: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        match &variant.layout.fields {
+            FieldsShape::Primitive | FieldsShape::Union(_) => {
+                // No saved locals, or already untyped.
+            }
+            FieldsShape::Arbitrary { .. } | FieldsShape::Array { .. } => {
+                for ix in variant.layout.fields.index_by_increasing_offset() {
+                    let field = self.ecx.project_field(variant, FieldIdx::from_usize(ix))?;
+                    // Preserve the bytes (and their provenance) so padding reset does not
+                    // wipe live locals, without requiring `T` to be valid or retagging it.
+                    self.add_data_range_place(&field);
+                }
+            }
+        }
+        interp_ok(())
+    }
+
     /// Convert a place into the offset it starts at, for the purpose of data_range tracking.
     /// Must only be called if `data_bytes` is `Some(_)`.
     fn data_range_offset(ecx: &InterpCx<'tcx, M>, place: &PlaceTy<'tcx, M::Provenance>) -> Size {
@@ -1530,6 +1557,26 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 self.visit_value(&inner)?;
 
                 self.may_dangle = old_may_dangle;
+            }
+            ty::Coroutine(..) => {
+                match val.layout.variants {
+                    // A downcast variant contains only saved locals, which may be deinitialized
+                    // according to drop flags. Do not typed-copy them.
+                    Variants::Single { .. } => {
+                        self.skip_typed_copy_of_coroutine_saved_locals(val)?;
+                    }
+                    // The un-downcast coroutine still has a discriminant and upvars that should
+                    // be copied at their real types. `walk_value` then recurses into the active
+                    // variant, which hits the `Single` case above.
+                    Variants::Multiple { .. } | Variants::Empty => {
+                        try_validation!(
+                            self.walk_value(val),
+                            self.path,
+                            Ub(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type }) =>
+                                InvalidMetaWrongTrait { expected_dyn_type, vtable_dyn_type },
+                        );
+                    }
+                }
             }
             _ => {
                 // default handler

@@ -567,6 +567,10 @@ fn layout_of_uncached<'tcx>(
 
             let info = tcx.coroutine_layout(def_id, args)?;
 
+            // Saved locals may be uninitialized according to drop flags (`(T, bool)` rather
+            // than `Option<T>`). Wrapping them in `MaybeUninit` prevents uninhabited locals
+            // from making the whole coroutine uninhabited. Typed copies still have to skip
+            // validity of these fields separately; see #161026.
             let local_layouts = info
                 .field_tys
                 .iter()
