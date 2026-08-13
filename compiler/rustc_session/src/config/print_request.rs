@@ -48,6 +48,7 @@ pub enum PrintKind {
     TargetSpecJson,
     TargetSpecJsonSchema,
     TlsModels,
+    WasmProcMacroTuple,
     // tidy-alphabetical-end
 }
 
@@ -82,6 +83,7 @@ impl PrintKind {
             TargetSpecJson => "target-spec-json",
             TargetSpecJsonSchema => "target-spec-json-schema",
             TlsModels => "tls-models",
+            WasmProcMacroTuple => "wasm-proc-macro-tuple",
             // tidy-alphabetical-end
         }
     }
@@ -118,6 +120,7 @@ impl PrintKind {
             SupportedCrateTypes => false,
             TargetSpecJson => false,
             TargetSpecJsonSchema => false,
+            WasmProcMacroTuple => false,
         }
     }
 
