@@ -623,3 +623,10 @@ pub(crate) struct DelegationToInherentImplMustContainParentGenerics {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("parent segment of delegation to inherent impl can not contain infers")]
+pub(crate) struct DelegationToInherentImplParentContainsInfer {
+    #[primary_span]
+    pub span: Span,
+}
