@@ -204,9 +204,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
+        self.deeply_normalize_with_category(value, location, ConstraintCategory::Boring)
+    }
+
+    pub(super) fn deeply_normalize_with_category<T>(
+        &mut self,
+        value: Unnormalized<'tcx, T>,
+        location: impl NormalizeLocation,
+        category: ConstraintCategory<'tcx>,
+    ) -> Result<T, ErrorGuaranteed>
+    where
+        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
+    {
         self.fully_perform_op(
             location.to_locations(),
-            ConstraintCategory::Boring,
+            category,
             self.infcx.param_env.and(type_op::normalize::Normalize { value }),
         )
     }
@@ -221,13 +233,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        let param_env = self.infcx.param_env;
-        let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
-            location.to_locations(),
-            category,
-            param_env.and(type_op::normalize::Normalize { value }),
-        );
-        result.unwrap_or(value.skip_norm_wip())
+        self.deeply_normalize_with_category(value, location, category)
+            .unwrap_or(value.skip_norm_wip())
     }
 
     #[instrument(skip(self), level = "debug")]
