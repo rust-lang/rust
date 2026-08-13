@@ -13,9 +13,13 @@ pub(super) const SYNC_BITSET_INIT: SyncBitset =
     SyncBitset([AtomicUsize::new(0), AtomicUsize::new(0)]);
 
 impl SyncBitset {
+    fn inner_get(&self, idx: usize) -> &Atomic<usize> {
+        rtunwrap!(Some, self.0.get(idx))
+    }
+
     pub fn get(&self, index: usize) -> bool {
         let (hi, lo) = Self::split(index);
-        (self.0[hi].load(Ordering::Relaxed) & lo) != 0
+        (self.inner_get(hi).load(Ordering::Relaxed) & lo) != 0
     }
 
     /// Not atomic.
@@ -25,7 +29,7 @@ impl SyncBitset {
 
     pub fn clear(&self, index: usize) {
         let (hi, lo) = Self::split(index);
-        self.0[hi].fetch_and(!lo, Ordering::Relaxed);
+        self.inner_get(hi).fetch_and(!lo, Ordering::Relaxed);
     }
 
     /// Sets any unset bit. Not atomic. Returns `None` if all bits were
@@ -44,7 +48,7 @@ impl SyncBitset {
                     Ordering::AcqRel,
                     Ordering::Relaxed,
                 ) {
-                    Ok(_) => return Some(idx * USIZE_BITS + trailing_ones),
+                    Ok(_) => return Some(idx.wrapping_mul(USIZE_BITS).wrapping_add(trailing_ones)),
                     Err(previous) => current = previous,
                 }
             }
@@ -68,17 +72,17 @@ impl<'a> Iterator for SyncBitsetIter<'a> {
     fn next(&mut self) -> Option<usize> {
         self.iter.peek().cloned().and_then(|(idx, elem)| {
             let elem = elem.load(Ordering::Relaxed);
-            let low_mask = (1 << self.elem_idx) - 1;
+            let low_mask = usize::wrapping_sub(1 << self.elem_idx, 1);
             let next = elem & !low_mask;
             let next_idx = next.trailing_zeros() as usize;
-            self.elem_idx = next_idx + 1;
+            self.elem_idx = next_idx.wrapping_add(1);
             if self.elem_idx >= 64 {
                 self.elem_idx = 0;
                 self.iter.next();
             }
             match next_idx {
                 64 => self.next(),
-                _ => Some(idx * USIZE_BITS + next_idx),
+                _ => Some(idx.wrapping_mul(USIZE_BITS).wrapping_add(next_idx)),
             }
         })
     }
