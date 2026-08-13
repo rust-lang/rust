@@ -375,7 +375,7 @@ Updating the edition of the standard library itself roughly involves the followi
       [Example for 2024](https://github.com/rust-lang/stdarch/pull/1710).
     - Post PRs to update the backtrace and stdarch submodules, and wait for those to land.
     - Apply migration lints to the standard library crates, and update their edition.
-      I recommend working one crate at a time starting with `core`.
+      It is recommended to work one crate at a time, starting with `core`.
       [Example for 2024](https://github.com/rust-lang/rust/pull/138162).
 
 [^std-submodules]: This will hopefully change in the future to pull these submodules into `rust-lang/rust`.
