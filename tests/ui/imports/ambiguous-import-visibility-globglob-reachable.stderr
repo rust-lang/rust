@@ -1,5 +1,5 @@
 error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
-  --> $DIR/ambiguous-import-visibility-globglob-reachable.rs:14:5
+  --> $DIR/ambiguous-import-visibility-globglob-reachable.rs:10:5
    |
 LL |     pub fn f() {}
    |     ^^^^^^^^^^
