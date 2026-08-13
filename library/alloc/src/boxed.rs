@@ -2293,14 +2293,14 @@ impl<T: ?Sized, A: Allocator> Deref for Box<T, A> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> DerefMut for Box<T, A> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
@@ -2396,28 +2396,28 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global
 #[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized, A: Allocator> Borrow<T> for Box<T, A> {
     fn borrow(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized, A: Allocator> BorrowMut<T> for Box<T, A> {
     fn borrow_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsRef<T> for Box<T, A> {
     fn as_ref(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
     fn as_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
