@@ -164,13 +164,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llsize)
             }
             sym::align_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llalign)
             }
             sym::vtable_size | sym::vtable_align => {
