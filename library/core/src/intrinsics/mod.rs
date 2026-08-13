@@ -2915,14 +2915,9 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(
             // Do nothing
             ret
         } else {
-            match cond {
-                crate::option::Option::Some(cond) => {
-                    if !cond(&ret) {
-                        // Emit no unwind panic in case this was a safety requirement.
-                        crate::panicking::panic_nounwind("failed ensures check");
-                    }
-                },
-                crate::option::Option::None => {},
+            if let crate::option::Option::Some(cond) = cond && !cond(&ret) {
+                // Emit no unwind panic in case this was a safety requirement.
+                crate::panicking::panic_nounwind("failed ensures check");
             }
             ret
         }
