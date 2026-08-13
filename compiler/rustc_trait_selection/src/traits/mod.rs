@@ -572,6 +572,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     ty::ParamEnv::new(tcx.mk_clauses(&clauses))
 }
 
+#[derive(Debug)]
 pub enum EvaluateConstErr<E> {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
     /// some alias const with either generic parameters or inference variables in its
@@ -585,17 +586,6 @@ pub enum EvaluateConstErr<E> {
     /// This is also used when the constant was already tainted by error.
     EvaluationFailure(ErrorGuaranteed),
     FailedNormalization(E),
-}
-
-impl<E> std::fmt::Debug for EvaluateConstErr<E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::HasGenericsOrInfers => f.write_str("HasGenericsOrInfers"),
-            Self::InvalidConstParamTy(e) => f.debug_tuple("InvalidConstParamTy").field(e).finish(),
-            Self::EvaluationFailure(e) => f.debug_tuple("EvaluationFailure").field(e).finish(),
-            Self::FailedNormalization(_) => f.write_str("FailedNormalization(..)"),
-        }
-    }
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
@@ -630,7 +620,7 @@ pub fn evaluate_const<'tcx>(
 /// You should not call this function unless you are implementing normalization itself. Prefer to use
 /// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
 #[instrument(level = "debug", skip(infcx, normalize_ty), ret)]
-pub fn try_evaluate_const<'tcx, E>(
+pub fn try_evaluate_const<'tcx, E: Debug>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,

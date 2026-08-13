@@ -1,4 +1,5 @@
 use std::collections::hash_map::Entry;
+use std::fmt::Debug;
 use std::mem;
 use std::ops::Deref;
 
@@ -319,7 +320,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.leak_check(max_input_universe, None).map_err(|_| NoSolution)
     }
 
-    fn evaluate_const<E>(
+    fn evaluate_const<E: Debug>(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         alias_const: ty::AliasConst<'tcx>,

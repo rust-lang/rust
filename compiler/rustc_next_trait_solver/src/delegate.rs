@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::ops::Deref;
 
 use rustc_type_ir::solve::{
@@ -39,7 +40,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     /// Evaluate a const, normalizing the type of the resulting value with `normalize_ty`.
     /// Returns `Ok(None)` if the const is too generic, and `Err(_)` only if `normalize_ty`
     /// failed.
-    fn evaluate_const<E>(
+    fn evaluate_const<E: Debug>(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
         alias_const: ty::AliasConst<Self::Interner>,
