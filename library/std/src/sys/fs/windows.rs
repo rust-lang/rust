@@ -1114,7 +1114,7 @@ impl FileAttr {
     }
 
     pub fn changed_u64(&self) -> Option<u64> {
-        self.change_time.as_ref().map(|c| to_u64(c))
+        self.change_time.as_ref().map(to_u64)
     }
 
     pub fn volume_serial_number(&self) -> Option<u32> {
