@@ -1,6 +1,6 @@
-// Verify that diagnostic file paths are lexically normalized.
-// Without the fix for #51349, the error location would show
-// `auxiliary/sub/../helper.rs` instead of `auxiliary/helper.rs`.
+// Check that diagnostic file paths are lexically normalized:
+// the error below points at `auxiliary/helper.rs`, not `auxiliary/sub/../helper.rs`.
+// See #51349.
 #[path = "auxiliary/sub/mod.rs"]
 mod sub;
 
