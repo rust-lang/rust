@@ -132,13 +132,23 @@ fn test_env_expand() {
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { env!("TEST_ENV_VAR"); }
+fn main() {
+    env!("TEST_ENV_VAR");
+    env!("TEST_ENV_VAR",);
+    env!("TEST_ENV_VAR", "error");
+    env!("TEST_ENV_VAR", "error",);
+}
 "#,
         expect![[r##"
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { "UNRESOLVED_ENV_VAR"; }
+fn main() {
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+}
 "##]],
     );
 }

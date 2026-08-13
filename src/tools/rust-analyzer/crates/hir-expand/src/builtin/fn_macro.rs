@@ -767,7 +767,26 @@ fn relative_file(
 }
 
 fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
-    let mut tt = TtElement::Subtree(tt.top_subtree(), tt.iter());
+    let expect_literal = |span| ExpandError::other(span, "expected string literal");
+    let mut tt = {
+        let mut tt_iter = tt.iter();
+        let extracted =
+            tt_iter.next().ok_or_else(|| expect_literal(tt.top_subtree().delimiter.close))?;
+
+        match tt_iter.next() {
+            None => {}
+            Some(TtElement::Leaf(tt::Leaf::Punct(it))) if it.char == ',' => {
+                // Tail comma
+                // FIXME: Ignored like env!("NAME", "compile_error message")
+            }
+            Some(tt) => {
+                return Err(ExpandError::other(tt.first_span(), "unexpected input"));
+            }
+        }
+
+        extracted
+    };
+
     (|| {
         // FIXME: We wrap expression fragments in parentheses which can break this expectation
         // here
@@ -795,7 +814,7 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
             TtElement::Subtree(tt, _) => Err(tt.delimiter.open.cover(tt.delimiter.close)),
         }
     })()
-    .map_err(|span| ExpandError::other(span, "expected string literal"))
+    .map_err(expect_literal)
 }
 
 fn include_expand(
