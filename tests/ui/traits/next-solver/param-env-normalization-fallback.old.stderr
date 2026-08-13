@@ -1,0 +1,42 @@
+error[E0277]: the trait bound `Indir: Trait1` is not satisfied
+  --> $DIR/param-env-normalization-fallback.rs:21:1
+   |
+LL | / impl<T> Trait2 for T
+LL | |
+LL | | where
+LL | |     T: Trait1,
+LL | |     T::Assoc1: 'static,
+LL | |     T: Trait1<Assoc1 = <Indir as Trait1>::Assoc1>,
+   | |__________________________________________________^ unsatisfied trait bound
+   |
+help: the trait `Trait1` is not implemented for `Indir`
+  --> $DIR/param-env-normalization-fallback.rs:15:1
+   |
+LL | struct Indir;
+   | ^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/param-env-normalization-fallback.rs:11:1
+   |
+LL | trait Trait1 {
+   | ^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Indir: Trait1` is not satisfied
+  --> $DIR/param-env-normalization-fallback.rs:28:5
+   |
+LL |     type Assoc2 = ();
+   |     ^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Trait1` is not implemented for `Indir`
+  --> $DIR/param-env-normalization-fallback.rs:15:1
+   |
+LL | struct Indir;
+   | ^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/param-env-normalization-fallback.rs:11:1
+   |
+LL | trait Trait1 {
+   | ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2,30 +2,14 @@ error[E0277]: expected an `FnOnce(&'a mut i32)` closure, found `i32`
   --> $DIR/issue-76168-hr-outlives-3.rs:6:1
    |
 LL | / async fn wrapper<F>(f: F)
-...  |
+LL | |
+LL | | where
 LL | |     F:,
 LL | |     for<'a> <i32 as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
    | |______________________________________________________________________________^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
    |
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `i32`
 
-error[E0277]: expected an `FnOnce(&'a mut i32)` closure, found `i32`
-  --> $DIR/issue-76168-hr-outlives-3.rs:6:26
-   |
-LL | async fn wrapper<F>(f: F)
-   |                          ^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
-   |
-   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `i32`
-
-error[E0277]: expected an `FnOnce(&'a mut i32)` closure, found `i32`
-  --> $DIR/issue-76168-hr-outlives-3.rs:6:26
-   |
-LL | async fn wrapper<F>(f: F)
-   |                          ^ expected an `FnOnce(&'a mut i32)` closure, found `i32`
-   |
-   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `i32`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.
