@@ -67,6 +67,8 @@ if echo 'int x __attribute__((used, retain));' | gcc -S -x c -o - - | grep -i '"
     echo "retain attribute is supported"
 else
     echo "retain attribute is not supported"
+    # We display the generated asm just in case...
+    echo 'int x __attribute__((used, retain));' | gcc -S -x c -o - -
     exit 1
 fi
 
