@@ -6,7 +6,10 @@ use rustc_span::{Span, Symbol};
 
 use crate::Session;
 use crate::config::{CrateType, OutFileName, OutputFilenames, OutputType};
-use crate::diagnostics::{CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
+use crate::diagnostics::{
+    CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName,
+    InvalidCharacterInCrateNameSuggestion,
+};
 
 pub fn out_filename(
     sess: &Session,
@@ -68,6 +71,10 @@ pub fn validate_crate_name(sess: &Session, crate_name: Symbol, span: Option<Span
             span,
             character: c,
             crate_name,
+            suggestion: span.is_none().then(|| InvalidCharacterInCrateNameSuggestion {
+                suggested_name:
+                    crate_name.as_str().replace(|c: char| c != '_' && !c.is_alphanumeric(), "_"),
+            }),
         }));
     }
 

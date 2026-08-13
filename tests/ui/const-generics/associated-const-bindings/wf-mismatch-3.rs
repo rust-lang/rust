@@ -1,7 +1,7 @@
 //! Check that we correctly handle associated const bindings
 //! where the RHS is a normalizable const projection (#151642).
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
 trait Trait { type const CT: bool; }

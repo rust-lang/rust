@@ -63,10 +63,9 @@ impl From<&mio::event::Event> for Readiness {
 }
 
 struct BlockingIoSource {
-    /// The source file description which is registered into the poll.
-    /// We only store weak references such that source file descriptions
-    /// can be destroyed whilst they are registered. However, they are required
-    /// to deregister themselves when [`FileDescription::destroy`] is called.
+    /// The source file description which is registered into the poll. We only store weak references
+    /// such that source file descriptions can be destroyed whilst they are registered. They will
+    /// later be cleaned up on the next GC run.
     fd: WeakFileDescriptionRef<dyn SourceFileDescription>,
     /// The threads which are blocked on the I/O source, and the interest indicating
     /// when they should be unblocked.
@@ -147,9 +146,9 @@ impl BlockingIoManager {
                     .sources
                     .get(&fd_id)
                     .expect("Source should be registered");
-                let fd = source.fd.upgrade().expect(
-                    "Source file description shouldn't be destroyed whilst being registered",
-                );
+                let Some(fd) = source.fd.upgrade() else {
+                    panic!("Should not receive readiness event for closed source file description")
+                };
 
                 assert_eq!(fd.id(), fd_id);
                 // Update the readiness of the source.
@@ -162,13 +161,13 @@ impl BlockingIoManager {
         // Update the readiness for all source file descriptions which received an event. Also,
         // unblock the threads which are blocked on such a source and whose interests are now fulfilled.
         for fd in event_fds.into_iter() {
-            // Update readiness for the `fd` source.
-            ecx.update_fd_readiness(fd.clone(), false)?;
+            // Update readiness for the `fd` source. This is no a "release" event since it was
+            // not triggered by the current thread, it was triggered by the outside world.
+            ecx.update_fd_readiness(fd.clone(), ReadinessUpdateFlags::NO_RELEASE_CLOCK)?;
 
-            let source =
-                ecx.machine.blocking_io.sources.get(&fd.id()).expect(
-                    "Source file description shouldn't be destroyed whilst being registered",
-                );
+            // The `update_fd_readiness` can't cause the source to be deregistered since we still
+            // hold a strong reference to the file description with `fd`.
+            let source = ecx.machine.blocking_io.sources.get(&fd.id()).unwrap();
 
             // List of all thread id's whose interests are currently fulfilled
             // and which are blocked on the `fd` source. This also includes
@@ -222,31 +221,6 @@ impl BlockingIoManager {
             .unwrap_or_else(|_| panic!("Source should not already be registered"));
     }
 
-    /// Deregister a source file description from the blocking I/O poll.
-    ///
-    /// It's assumed that the file description with id `source_id` is already
-    /// removed from the file description table.
-    pub fn deregister(&mut self, source_id: FdId, source: impl SourceFileDescription) {
-        let poll =
-            self.poll.as_ref().expect("Blocking I/O should not be called with isolation enabled");
-
-        let stored_source = self.sources.remove(&source_id).expect("Source should be registered");
-        // Ensure that the source file description is already removed from the file
-        // description table.
-        assert!(
-            stored_source.fd.upgrade().is_none(),
-            "Sources must only be deregistered when they are destroyed"
-        );
-
-        // Because we only store `WeakFileDescriptionRef`s and the `stored_source` file description
-        // is already destroyed, the weak reference can no longer be upgraded. Thus, we cannot use
-        // it to deregister the source from the poll and instead use the `source` argument to deregister.
-
-        // Treat errors from deregistering as fatal. On UNIX hosts this can only
-        // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
-        source.with_source(&mut |source| poll.registry().deregister(source)).unwrap();
-    }
-
     /// Add a new blocked thread to a registered source. The thread gets unblocked
     /// once its [`BlockingIoInterest`] is fulfilled when calling
     /// [`BlockingIoManager::poll`].
@@ -276,6 +250,17 @@ impl BlockingIoManager {
     pub fn remove_blocked_thread(&mut self, source_id: FdId, thread_id: ThreadId) {
         let source = self.sources.get_mut(&source_id).expect("Source should be registered");
         source.blocked_threads.remove(&thread_id).expect("Thread should be blocked on source");
+    }
+
+    /// Run garbage collector on blocking I/O manager to remove all closed source file
+    /// descriptions from the registered sources map.
+    pub fn run_gc(&mut self) {
+        // For hosts where mio uses `kqueue`, `epoll` or `IOCP` (Windows), we know that
+        // the source doesn't need to be deregistered from the `Poll` before being dropped:
+        // See <https://github.com/tokio-rs/mio/issues/1972>
+        // Thus, just removing the closed source file descriptions from the `sources` map
+        // is enough.
+        self.sources.retain(|_id, source| !source.fd.is_closed());
     }
 }
 
@@ -350,10 +335,13 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Returns whether there exists any thread that is blocked on host I/O.
     fn any_thread_blocked_on_host(&self) -> bool {
         let this = self.eval_context_ref();
-        this.machine.blocking_io.sources.iter().any(|(&fd_id, source)| {
+        this.machine.blocking_io.sources.values().any(|source| {
             // There's two ways something could be blocked on this: directly,
             // or indirectly via a readiness watcher.
-            source.blocked_threads.len() > 0 || this.has_watcher_with_blocked_thread(fd_id)
+            source.blocked_threads.len() > 0
+                || source.fd.upgrade().is_some_and(|fd| {
+                    fd.readiness_watched().is_some_and(|w| w.has_watcher_with_blocked_thread())
+                })
         })
     }
 }

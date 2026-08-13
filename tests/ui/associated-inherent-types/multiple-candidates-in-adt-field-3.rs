@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(inherent_associated_types, lazy_type_alias)]
+#![feature(inherent_associated_types, checked_type_aliases)]
 #![expect(incomplete_features)]
 
 // Test that we *do* normalize free aliases in order to resolve

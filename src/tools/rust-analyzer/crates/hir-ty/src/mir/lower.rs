@@ -23,6 +23,7 @@ use la_arena::{ArenaMap, RawIdx};
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
+use salsa::SalsaValue;
 use span::{Edition, FileId};
 use syntax::TextRange;
 
@@ -52,7 +53,6 @@ use crate::{
     next_solver::{
         Const, DbInterner, ParamConst, ParamEnv, Region, StoredGenericArgs, StoredTy, TyKind,
         TypingMode, UnevaluatedConst,
-        abi::Safety,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -80,15 +80,15 @@ struct DropScope {
 }
 
 struct MirLowerCtx<'a, 'db> {
-    result: MirBody,
-    owner: InferBodyId,
+    result: MirBody<'db>,
+    owner: InferBodyId<'db>,
     store_owner: ExpressionStoreOwnerId,
     current_loop_blocks: Option<LoopBlocks>,
     labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'db dyn HirDatabase,
     store: &'a ExpressionStore,
-    infer: &'a InferenceResult,
+    infer: &'a InferenceResult<'db>,
     types: &'db crate::next_solver::DefaultAny<'db>,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
@@ -97,9 +97,9 @@ struct MirLowerCtx<'a, 'db> {
 }
 
 // FIXME: Make this smaller, its stored in database queries
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MirLowerError {
-    ConstEvalError(Box<str>, Box<ConstEvalError>),
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
+pub enum MirLowerError<'db> {
+    ConstEvalError(Box<str>, Box<ConstEvalError<'db>>),
     LayoutError(LayoutError),
     IncompleteExpr,
     IncompletePattern,
@@ -110,7 +110,7 @@ pub enum MirLowerError {
     UnresolvedMethod(String),
     UnresolvedField,
     UnsizedTemporary(StoredTy),
-    MissingFunctionDefinition(InferBodyId, ExprId),
+    MissingFunctionDefinition(InferBodyId<'db>, ExprId),
     HasErrors,
     /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
@@ -168,7 +168,7 @@ impl Drop for DropScopeToken {
 //     }
 // }
 
-impl MirLowerError {
+impl MirLowerError<'_> {
     pub fn pretty_print(
         &self,
         f: &mut String,
@@ -265,13 +265,13 @@ macro_rules! implementation_error {
     }};
 }
 
-impl From<LayoutError> for MirLowerError {
+impl From<LayoutError> for MirLowerError<'_> {
     fn from(value: LayoutError) -> Self {
         MirLowerError::LayoutError(value)
     }
 }
 
-impl MirLowerError {
+impl MirLowerError<'_> {
     fn unresolved_path(
         db: &dyn HirDatabase,
         p: &Path,
@@ -285,14 +285,14 @@ impl MirLowerError {
     }
 }
 
-type Result<'db, T> = std::result::Result<T, MirLowerError>;
+type Result<'db, T> = std::result::Result<T, MirLowerError<'db>>;
 
 impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        owner: InferBodyId,
+        owner: InferBodyId<'db>,
         store: &'a ExpressionStore,
-        infer: &'a InferenceResult,
+        infer: &'a InferenceResult<'db>,
     ) -> Self {
         let mut basic_blocks = Arena::new();
         let start_block = basic_blocks.alloc(BasicBlock {
@@ -961,18 +961,12 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Await { .. } => not_supported!("await"),
             Expr::Yeet { .. } => not_supported!("yeet"),
-            &Expr::Const(_) => {
-                // let subst = self.placeholder_subst();
-                // self.lower_const(
-                //     id.into(),
-                //     current,
-                //     place,
-                //     subst,
-                //     expr_id.into(),
-                //     self.expr_ty_without_adjust(expr_id),
-                // )?;
-                // Ok(Some(current))
-                not_supported!("const block")
+            &Expr::Const(id) => {
+                // Inline const blocks (`const { .. }`) are stored with their inner expression in
+                // the same body (see inference, which infers the inner expression directly), so we
+                // lower that expression in place. Const-ness is irrelevant here: MIR evaluation
+                // already runs in a const context.
+                self.lower_expr_to_place(id, place, current)
             }
             Expr::Cast { expr, type_ref: _ } => {
                 let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
@@ -1002,22 +996,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 };
                 let bk = BorrowKind::from_hir_mutability(*mutability);
                 self.push_assignment(current, place, Rvalue::Ref(bk, p.store()), expr_id.into());
-                Ok(Some(current))
-            }
-            Expr::Box { expr } => {
-                let ty = self.expr_ty_after_adjustments(*expr);
-                self.push_assignment(
-                    current,
-                    place,
-                    Rvalue::ShallowInitBoxWithAlloc(ty.store()),
-                    expr_id.into(),
-                );
-                let Some((operand, current)) = self.lower_expr_to_some_operand(*expr, current)?
-                else {
-                    return Ok(None);
-                };
-                let p = place.project(ProjectionElem::Deref);
-                self.push_assignment(current, p, operand.into(), expr_id.into());
                 Ok(Some(current))
             }
             Expr::Field { .. }
@@ -1259,7 +1237,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
                 let span = |sources: &[CaptureSourceStack]| match sources
                     .first()
-                    .map(|it| it.final_source())
+                    .map(|it| it.final_source().unpack())
                 {
                     Some(ExprOrPatId::ExprId(it)) => it.into(),
                     Some(ExprOrPatId::PatId(it)) => it.into(),
@@ -1531,7 +1509,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn lower_const(
         &mut self,
-        const_id: GeneralConstId,
+        const_id: GeneralConstId<'db>,
         prev_block: BasicBlockId,
         place: PlaceRef<'db>,
         subst: GenericArgs<'db>,
@@ -1545,7 +1523,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_const_to_operand(
         &mut self,
         subst: GenericArgs<'db>,
-        const_id: GeneralConstId,
+        const_id: GeneralConstId<'db>,
     ) -> Result<'db, Operand> {
         let konst = Const::new_unevaluated(
             self.interner(),
@@ -2129,11 +2107,11 @@ fn cast_kind<'db>(
     })
 }
 
-#[salsa_macros::tracked(returns(ref), cycle_result = mir_body_for_closure_cycle_result)]
+#[salsa::tracked(returns(as_ref), cycle_result = mir_body_for_closure_cycle_result)]
 pub fn mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
-    closure: InternedClosureId,
-) -> Result<'db, MirBody> {
+    closure: InternedClosureId<'db>,
+) -> Result<'db, MirBody<'db>> {
     let InternedClosure { owner: body_owner, expr, .. } = closure.loc(db);
     let store = ExpressionStore::of(db, body_owner.expression_store_owner(db));
     let infer = InferenceResult::of(db, body_owner);
@@ -2168,11 +2146,10 @@ pub fn mir_body_for_closure_query<'db>(
         .store(),
     });
     ctx.result.param_locals.push(closure_local);
-
-    let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
+    let sig = infer.closures_data[&expr].liberated_sig.get();
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, ctx.store_owner, expr);
     let current = ctx.lower_params_and_bindings(
-        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
+        args.iter().zip(sig.inputs().iter()).map(|(it, y)| (*it, *y)),
         None,
         |_| true,
     )?;
@@ -2288,8 +2265,11 @@ pub fn mir_body_for_closure_query<'db>(
     Ok(ctx.result)
 }
 
-#[salsa_macros::tracked(returns(ref), cycle_result = mir_body_cycle_result)]
-pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result<'db, MirBody> {
+#[salsa::tracked(returns(as_ref), cycle_result = mir_body_cycle_result)]
+pub fn mir_body_query<'db>(
+    db: &'db dyn HirDatabase,
+    def: InferBodyId<'db>,
+) -> Result<'db, MirBody<'db>> {
     let krate = def.krate(db);
     let edition = krate.data(db).edition;
     let detail = match def {
@@ -2332,16 +2312,16 @@ pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result
 fn mir_body_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _def: InferBodyId,
-) -> Result<'db, MirBody> {
+    _def: InferBodyId<'db>,
+) -> Result<'db, MirBody<'db>> {
     Err(MirLowerError::Loop)
 }
 
 fn mir_body_for_closure_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _def: InternedClosureId,
-) -> Result<'db, MirBody> {
+    _def: InternedClosureId<'db>,
+) -> Result<'db, MirBody<'db>> {
     Err(MirLowerError::Loop)
 }
 
@@ -2349,17 +2329,23 @@ fn mir_body_for_closure_cycle_result<'db>(
 /// then delegates to [`lower_to_mir_with_store`].
 pub fn lower_body_to_mir<'db>(
     db: &'db dyn HirDatabase,
-    owner: InferBodyId,
+    owner: InferBodyId<'db>,
     store: &ExpressionStore,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'db>,
     root_expr: ExprId,
     self_param: Option<BindingId>,
     params: &[Param<PatId>],
-) -> Result<'db, MirBody> {
+) -> Result<'db, MirBody<'db>> {
     // Extract params and self_param only when lowering the body's root expression for a function.
     if let Some(fid) = owner.as_function() {
-        let callable_sig =
-            db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
+        let callable_sig = {
+            let resolver = owner.resolver(db);
+            let interner = DbInterner::new_with(db, resolver.krate());
+            interner.liberate_late_bound_regions(
+                fid.into(),
+                db.callable_item_signature(fid.into()).instantiate_identity().skip_norm_wip(),
+            )
+        };
         let mut param_tys = callable_sig.inputs().iter().copied();
         let self_param = self_param.and_then(|id| Some((id, param_tys.next()?)));
 
@@ -2383,13 +2369,13 @@ pub fn lower_body_to_mir<'db>(
 ///   const (picks bindings owned by `root_expr`).
 pub fn lower_to_mir_with_store<'db>(
     db: &'db dyn HirDatabase,
-    owner: InferBodyId,
+    owner: InferBodyId<'db>,
     store: &ExpressionStore,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'db>,
     root_expr: ExprId,
     params: impl Iterator<Item = (PatId, Ty<'db>)> + Clone,
     self_param: Option<(BindingId, Ty<'db>)>,
-) -> Result<'db, MirBody> {
+) -> Result<'db, MirBody<'db>> {
     if infer.has_type_mismatches() || infer.is_erroneous() {
         return Err(MirLowerError::HasErrors);
     }

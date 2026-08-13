@@ -58,9 +58,21 @@
         .searchCondition {
           display: flex;
           flex-wrap: wrap;
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          padding: 12px 0;
+          background: #fff;
+          border-bottom: 1px solid #d1d5da;
         }
         .searchCondition > div {
           margin-right: 30px;
+        }
+        .version-note {
+          flex-basis: 100%;
+          margin-top: 8px;
+          color: #57606a;
+          font-size: 0.9em;
         }
         .header-link {
           position: relative;
@@ -99,6 +111,9 @@
                       {{ option }}
                     </option>
                   </select>
+              </div>
+              <div class="version-note">
+                Configuration options can change between rustfmt versions. Select the version that matches the rustfmt you use.
               </div>
             </div>
             <div v-html="aboutHtml"></div>

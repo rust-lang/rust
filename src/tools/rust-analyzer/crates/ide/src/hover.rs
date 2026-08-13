@@ -450,7 +450,7 @@ fn hover_ranged(
 pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
-    def: Definition,
+    def: Definition<'_>,
     subst: Option<GenericSubstitution<'_>>,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
@@ -481,6 +481,10 @@ pub(crate) fn hover_for_definition(
     };
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
     let subst_types = subst.map(|subst| subst.types(db));
+    let render_private_fields = sema.scope(scope_node).is_some_and(|scope| {
+        def.krate(db)
+            .is_some_and(|def_crate| should_render_private_fields(db, def_crate, scope.krate()))
+    });
 
     let (markup, range_map) = render::definition(
         sema.db,
@@ -489,6 +493,7 @@ pub(crate) fn hover_for_definition(
         &notable_traits,
         macro_arm,
         render_extras,
+        render_private_fields,
         subst_types.as_ref(),
         config,
         edition,
@@ -506,6 +511,27 @@ pub(crate) fn hover_for_definition(
         .flatten()
         .collect(),
     }
+}
+
+/// | Hover location | Definition location | Render private fields? |
+/// |---|---:|---:|
+/// | Workspace crate | Workspace crate | Yes |
+/// | Workspace crate | External/library crate | No |
+/// | External/library crate | Same external/library crate | Yes |
+/// | External/library crate | Different external/library crate | No |
+/// | Anywhere | Same crate as definition | Yes |
+fn should_render_private_fields(
+    db: &RootDatabase,
+    def_crate: hir::Crate,
+    hover_crate: hir::Crate,
+) -> bool {
+    let is_workspace_crate = |db: &RootDatabase, krate: hir::Crate| {
+        let origin = krate.origin(db);
+        !origin.is_lib() && !origin.is_lang()
+    };
+
+    def_crate == hover_crate
+        || is_workspace_crate(db, def_crate) && is_workspace_crate(db, hover_crate)
 }
 
 fn notable_traits<'db>(
@@ -542,7 +568,7 @@ fn notable_traits<'db>(
 
 fn show_implementations_action(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
 ) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
         HoverAction::Implementation(FilePosition {
@@ -564,7 +590,7 @@ fn show_implementations_action(
 
 fn show_fn_references_action(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
 ) -> Option<HoverAction> {
     match def {
         Definition::Function(it) => {
@@ -581,7 +607,7 @@ fn show_fn_references_action(
 
 fn runnable_action(
     sema: &hir::Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
     file_id: FileId,
 ) -> Option<HoverAction> {
     match def {
@@ -602,7 +628,7 @@ fn runnable_action(
 
 fn goto_type_action_for_def(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
     notable_traits: &[(hir::Trait, Vec<(Option<hir::Type<'_>>, hir::Name)>)],
     subst_types: Option<Vec<(hir::Symbol, hir::Type<'_>)>>,
     edition: Edition,

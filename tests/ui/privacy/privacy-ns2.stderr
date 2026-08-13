@@ -1,9 +1,10 @@
-error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
+error[E0423]: cannot find function, tuple struct or tuple variant `Bar` in this scope
   --> $DIR/privacy-ns2.rs:21:5
    |
 LL |     Bar();
-   |     ^^^ not a function, tuple struct or tuple variant
+   |     ^^^ not found in this scope
    |
+   = note: a trait named `Bar` exists in another namespace
 note: these functions exist but are inaccessible
   --> $DIR/privacy-ns2.rs:15:5
    |
@@ -17,7 +18,7 @@ help: consider importing this function instead
 LL + use foo2::Bar;
    |
 
-error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
+error[E0423]: cannot find function, tuple struct or tuple variant `Bar` in this scope
   --> $DIR/privacy-ns2.rs:27:5
    |
 LL |     pub struct Baz;
@@ -26,6 +27,7 @@ LL |     pub struct Baz;
 LL |     Bar();
    |     ^^^
    |
+   = note: a trait named `Bar` exists in another namespace
 note: these functions exist but are inaccessible
   --> $DIR/privacy-ns2.rs:15:5
    |
@@ -44,12 +46,13 @@ help: consider importing this function instead
 LL + use foo2::Bar;
    |
 
-error[E0573]: expected type, found function `Bar`
+error[E0573]: cannot find type `Bar` in this scope
   --> $DIR/privacy-ns2.rs:43:14
    |
 LL |     let _x : Bar();
-   |              ^^^^^ not a type
+   |              ^^^ not found in this scope
    |
+   = note: a function named `Bar` exists in another namespace
 note: these traits exist but are inaccessible
   --> $DIR/privacy-ns2.rs:32:5
    |

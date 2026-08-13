@@ -18,13 +18,13 @@ pub mod foo1 {
 fn test_single1() {
     use foo1::Bar;
 
-    Bar(); //~ ERROR expected function, tuple struct or tuple variant, found trait `Bar`
+    Bar(); //~ ERROR cannot find function, tuple struct or tuple variant `Bar` in this scope
 }
 
 fn test_list1() {
     use foo1::{Bar,Baz};
 
-    Bar(); //~ ERROR expected function, tuple struct or tuple variant, found trait `Bar`
+    Bar(); //~ ERROR cannot find function, tuple struct or tuple variant `Bar` in this scope
 }
 
 // private type, public value
@@ -40,7 +40,7 @@ fn test_single2() {
     use foo2::Bar;
 
     let _x : Box<Bar>; //~ ERROR constant provided when a type was expected
-    let _x : Bar(); //~ ERROR expected type, found function `Bar`
+    let _x : Bar(); //~ ERROR cannot find type `Bar` in this scope
 }
 
 fn test_list2() {

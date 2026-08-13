@@ -5,11 +5,13 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use crate::PassPolicy;
+
 pub(super) struct LowerSliceLenCalls;
 
 impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -25,10 +27,6 @@ impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
             // lower `<[_]>::len` calls
             lower_slice_len_call(block, slice_len_fn_item_def_id);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

@@ -6,7 +6,7 @@
 //@ [MIPS] compile-flags: -Copt-level=3 --target mips-unknown-linux-gnu
 //@ [MIPS64] compile-flags: -Copt-level=3 --target mipsisa64r6-unknown-linux-gnuabi64
 //@ [MIPS64EL] compile-flags: -Copt-level=3 --target mips64el-unknown-linux-gnuabi64
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
 #![no_core]
 #![crate_type = "lib"]
 

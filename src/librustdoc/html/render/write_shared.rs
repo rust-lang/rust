@@ -11,7 +11,7 @@
 //!    contents, so they do not include a hash in their filename and are not safe to
 //!    cache with `Cache-Control: immutable`. They include the contents of the
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
-//!    or contains "invocation-specific".
+//!    or contains "html-non-static-files".
 
 use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
@@ -30,6 +30,7 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
+use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::def_id::DefId;
 use serde::de::DeserializeOwned;
@@ -49,10 +50,12 @@ use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
-use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
+use crate::html::render::{
+    AssocItemLink, ImplRenderingParameters, StylePath, scrape_examples_help,
+};
 use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
-use crate::{try_err, try_none};
+use crate::{DOC_RUST_LANG_ORG_VERSION, try_err, try_none};
 
 pub(crate) fn write_shared(
     cx: &mut Context<'_>,
@@ -111,28 +114,9 @@ pub(crate) fn write_shared(
             cx.shared.layout.css_file_extension.as_deref(),
             &cx.shared.resource_suffix,
             cx.info.include_sources,
+            &cx.shared.layout,
+            cx.sess(),
         )?;
-        match &opt.index_page {
-            Some(index_page) if opt.enable_index_page => {
-                let mut md_opts = opt.clone();
-                md_opts.output = cx.dst.clone();
-                md_opts.external_html = cx.shared.layout.external_html.clone();
-                let file = try_err!(cx.sess().source_map().load_file(&index_page), &index_page);
-                try_err!(
-                    crate::markdown::render_and_write(file, md_opts, cx.shared.edition()),
-                    &index_page
-                );
-            }
-            None if opt.enable_index_page => {
-                write_rendered_cci::<CratesIndexPart, _>(
-                    || CratesIndexPart::blank(cx),
-                    &cx.dst,
-                    &crates,
-                    &opt.should_merge,
-                )?;
-            }
-            _ => {} // they don't want an index page
-        }
     }
 
     cx.shared.fs.set_sync_only(false);
@@ -150,9 +134,148 @@ pub(crate) fn write_not_crate_specific(
     css_file_extension: Option<&Path>,
     resource_suffix: &str,
     include_sources: bool,
+    layout: &layout::Layout,
+    sess: &Session,
 ) -> Result<(), Error> {
     write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
     write_resources(dst, opt, style_files, css_file_extension, resource_suffix)?;
+    // index.html
+    match &opt.index_page {
+        Some(index_page) if opt.enable_index_page => {
+            let mut md_opts = opt.clone();
+            md_opts.output = dst.to_path_buf();
+            md_opts.external_html = layout.external_html.clone();
+            let file = try_err!(sess.source_map().load_file(&index_page), &index_page);
+            try_err!(crate::markdown::render_and_write(file, md_opts, sess.edition()), &index_page);
+        }
+        None if opt.enable_index_page => {
+            write_rendered_cci::<CratesIndexPart, _>(
+                || CratesIndexPart::blank(layout, opt, style_files),
+                &dst,
+                &crates,
+                &opt.should_merge,
+            )?;
+        }
+        _ => {} // they don't want an index page
+    }
+
+    if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
+        // Standalone pages for the Settings and Help popovers.
+        //
+        // Normally, these are pure DHTML popovers, but, for user convenience,
+        // the buttons that open them are links to these HTML files, which use the same JavaScript
+        // to populate the page. That way, you can open a new tab, or add a browser bookmark,
+        // that points at the page.
+        let settings_file = dst.join("settings.html");
+        let help_file = dst.join("help.html");
+        let scrape_examples_help_file = dst.join("scrape-examples-help.html");
+
+        let page = layout::Page {
+            title: "Settings",
+            short_title: "Settings",
+            css_class: "mod sys",
+            root_path: "./",
+            static_root_path: opt.static_root_path.as_deref(),
+            description: "Settings of Rustdoc",
+            resource_suffix: &opt.resource_suffix,
+            rust_logo: true,
+        };
+        let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &layout,
+            &page,
+            sidebar,
+            fmt::from_fn(|buf| {
+                write!(
+                    buf,
+                    "<div class=\"main-heading\">\
+                        <h1>Rustdoc settings</h1>\
+                        <span class=\"out-of-band\">\
+                            <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                        </span>\
+                        </div>\
+                        <noscript>\
+                        <section>\
+                            You need to enable JavaScript be able to update your settings.\
+                        </section>\
+                        </noscript>\
+                        <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                    static_root_path = page.get_static_root_path(),
+                    settings_js = static_files::STATIC_FILES.settings_js,
+                )?;
+                // Pre-load all theme CSS files, so that switching feels seamless.
+                //
+                // When loading settings.html as a popover, the equivalent HTML is
+                // generated in main.js.
+                for file in style_files {
+                    if let Ok(theme) = file.basename() {
+                        write!(
+                            buf,
+                            "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
+                                as=\"style\">",
+                            root_path = page.static_root_path.unwrap_or(""),
+                            suffix = page.resource_suffix,
+                        )?;
+                    }
+                }
+                Ok(())
+            }),
+            &style_files,
+        );
+        try_err!(std::fs::write(&settings_file, v), &settings_file);
+
+        let page = layout::Page {
+            title: "Help",
+            short_title: "Help",
+            css_class: "mod sys",
+            root_path: "./",
+            static_root_path: opt.static_root_path.as_deref(),
+            description: "Documentation for Rustdoc",
+            resource_suffix: &opt.resource_suffix,
+            rust_logo: true,
+        };
+        let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &layout,
+            &page,
+            sidebar,
+            format_args!(
+                "<div class=\"main-heading\">\
+                    <h1>Rustdoc help</h1>\
+                    <span class=\"out-of-band\">\
+                        <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                        Back\
+                    </a>\
+                    </span>\
+                    </div>\
+                    <noscript>\
+                    <section>\
+                        <p>You need to enable JavaScript to use keyboard commands or search.</p>\
+                        <p>For more information, browse the <a href=\"{DOC_RUST_LANG_ORG_VERSION}/rustdoc/\">rustdoc handbook</a>.</p>\
+                    </section>\
+                    </noscript>",
+            ),
+            &style_files,
+        );
+        try_err!(std::fs::write(&help_file, v), &help_file);
+
+        if layout.scrape_examples_extension {
+            let page = layout::Page {
+                title: "About scraped examples",
+                short_title: "About scraped examples",
+                css_class: "mod sys",
+                root_path: "./",
+                static_root_path: opt.static_root_path.as_deref(),
+                description: "How the scraped examples feature works in Rustdoc",
+                resource_suffix: &opt.resource_suffix,
+                rust_logo: true,
+            };
+            let v = layout::render(&layout, &page, "", scrape_examples_help(), &style_files);
+            try_err!(std::fs::write(&scrape_examples_help_file, v), &scrape_examples_help_file);
+        }
+    }
     Ok(())
 }
 
@@ -399,19 +522,21 @@ impl CciPart for CratesIndexPart {
 }
 
 impl CratesIndexPart {
-    fn blank(cx: &Context<'_>) -> SortedTemplate<<Self as CciPart>::FileFormat> {
+    fn blank(
+        layout: &layout::Layout,
+        opt: &RenderOptions,
+        style_files: &[StylePath],
+    ) -> SortedTemplate<<Self as CciPart>::FileFormat> {
         let page = layout::Page {
             title: "Index of crates",
             short_title: "Crates",
             css_class: "mod sys",
             root_path: "./",
-            static_root_path: cx.shared.static_root_path.as_deref(),
+            static_root_path: opt.static_root_path.as_deref(),
             description: "List of crates",
-            resource_suffix: &cx.shared.resource_suffix,
+            resource_suffix: &opt.resource_suffix,
             rust_logo: true,
         };
-        let layout = &cx.shared.layout;
-        let style_files = &cx.shared.style_files;
         const DELIMITER: &str = "\u{FFFC}"; // users are being naughty if they have this
         let content = format_args!(
             "<div class=\"main-heading\">\
@@ -887,7 +1012,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
             //
-            // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this
+            // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
             // to use type unification.
             // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
             // regress.

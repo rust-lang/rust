@@ -88,7 +88,7 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for PredicateObligation<'tcx> {
             ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
                 derived,
                 impl_or_alias_def_id: parent_trait_pred.def_id(),
-                impl_def_predicate_index: Some(index),
+                impl_def_clause_index: Some(index),
                 span,
             }))
         });

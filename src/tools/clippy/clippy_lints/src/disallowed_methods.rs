@@ -88,6 +88,9 @@ impl DisallowedMethods {
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if self.disallowed.is_empty() {
+            return;
+        }
         if expr.span.desugaring_kind().is_some() {
             return;
         }

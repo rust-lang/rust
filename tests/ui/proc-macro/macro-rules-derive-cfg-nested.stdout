@@ -1,0 +1,213 @@
+PRINT-DERIVE INPUT (DISPLAY): struct Foo
+{
+    val :
+    [bool;
+    {
+        let a = #[rustc_dummy(first)]
+        #[rustc_dummy(second)]
+        { #![rustc_dummy(third)] #[rustc_dummy(fourth)] 30 }; 0
+    }]
+}
+PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): struct Foo
+{
+    val :
+    [bool;
+    {
+        let a = #[rustc_dummy(first)]
+        #[rustc_dummy(second)]
+        { #! [rustc_dummy(third)] #[rustc_dummy(fourth)] 30 }; 0
+    }]
+}
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/macro-rules-derive-cfg-nested.rs:25:9: 25:15 (#3),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/macro-rules-derive-cfg-nested.rs:25:16: 25:19 (#3),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "val",
+                span: $DIR/macro-rules-derive-cfg-nested.rs:26:13: 26:16 (#3),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/macro-rules-derive-cfg-nested.rs:26:16: 26:17 (#3),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "bool",
+                        span: $DIR/macro-rules-derive-cfg-nested.rs:26:19: 26:23 (#3),
+                    },
+                    Punct {
+                        ch: ';',
+                        spacing: Alone,
+                        span: $DIR/macro-rules-derive-cfg-nested.rs:26:23: 26:24 (#3),
+                    },
+                    Group {
+                        delimiter: Brace,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "let",
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:17: 27:20 (#3),
+                            },
+                            Ident {
+                                ident: "a",
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:21: 27:22 (#3),
+                            },
+                            Punct {
+                                ch: '=',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:23: 27:24 (#3),
+                            },
+                            Punct {
+                                ch: '#',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:25: 27:26 (#3),
+                            },
+                            Group {
+                                delimiter: Bracket,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "rustc_dummy",
+                                        span: $DIR/macro-rules-derive-cfg-nested.rs:27:48: 27:59 (#3),
+                                    },
+                                    Group {
+                                        delimiter: Parenthesis,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "first",
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:60: 27:65 (#3),
+                                            },
+                                        ],
+                                        span: $DIR/macro-rules-derive-cfg-nested.rs:27:59: 27:66 (#3),
+                                    },
+                                ],
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:26: 27:68 (#3),
+                            },
+                            Group {
+                                delimiter: None,
+                                stream: TokenStream [
+                                    Punct {
+                                        ch: '#',
+                                        spacing: Alone,
+                                        span: $DIR/macro-rules-derive-cfg-nested.rs:34:13: 34:14 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Bracket,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "rustc_dummy",
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:34:36: 34:47 (#0),
+                                            },
+                                            Group {
+                                                delimiter: Parenthesis,
+                                                stream: TokenStream [
+                                                    Ident {
+                                                        ident: "second",
+                                                        span: $DIR/macro-rules-derive-cfg-nested.rs:34:48: 34:54 (#0),
+                                                    },
+                                                ],
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:34:47: 34:55 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/macro-rules-derive-cfg-nested.rs:34:14: 34:57 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Brace,
+                                        stream: TokenStream [
+                                            Punct {
+                                                ch: '#',
+                                                spacing: Joint,
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:35:5: 35:6 (#0),
+                                            },
+                                            Punct {
+                                                ch: '!',
+                                                spacing: Alone,
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:35:6: 35:7 (#0),
+                                            },
+                                            Group {
+                                                delimiter: Bracket,
+                                                stream: TokenStream [
+                                                    Ident {
+                                                        ident: "rustc_dummy",
+                                                        span: $DIR/macro-rules-derive-cfg-nested.rs:35:29: 35:40 (#0),
+                                                    },
+                                                    Group {
+                                                        delimiter: Parenthesis,
+                                                        stream: TokenStream [
+                                                            Ident {
+                                                                ident: "third",
+                                                                span: $DIR/macro-rules-derive-cfg-nested.rs:35:41: 35:46 (#0),
+                                                            },
+                                                        ],
+                                                        span: $DIR/macro-rules-derive-cfg-nested.rs:35:40: 35:47 (#0),
+                                                    },
+                                                ],
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:35:7: 35:49 (#0),
+                                            },
+                                            Punct {
+                                                ch: '#',
+                                                spacing: Alone,
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:36:5: 36:6 (#0),
+                                            },
+                                            Group {
+                                                delimiter: Bracket,
+                                                stream: TokenStream [
+                                                    Ident {
+                                                        ident: "rustc_dummy",
+                                                        span: $DIR/macro-rules-derive-cfg-nested.rs:36:28: 36:39 (#0),
+                                                    },
+                                                    Group {
+                                                        delimiter: Parenthesis,
+                                                        stream: TokenStream [
+                                                            Ident {
+                                                                ident: "fourth",
+                                                                span: $DIR/macro-rules-derive-cfg-nested.rs:36:40: 36:46 (#0),
+                                                            },
+                                                        ],
+                                                        span: $DIR/macro-rules-derive-cfg-nested.rs:36:39: 36:47 (#0),
+                                                    },
+                                                ],
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:36:6: 36:49 (#0),
+                                            },
+                                            Literal {
+                                                kind: Integer,
+                                                symbol: "30",
+                                                suffix: None,
+                                                span: $DIR/macro-rules-derive-cfg-nested.rs:37:5: 37:7 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/macro-rules-derive-cfg-nested.rs:34:58: 38:2 (#0),
+                                    },
+                                ],
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:69: 27:74 (#3),
+                            },
+                            Punct {
+                                ch: ';',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:27:74: 27:75 (#3),
+                            },
+                            Literal {
+                                kind: Integer,
+                                symbol: "0",
+                                suffix: None,
+                                span: $DIR/macro-rules-derive-cfg-nested.rs:28:17: 28:18 (#3),
+                            },
+                        ],
+                        span: $DIR/macro-rules-derive-cfg-nested.rs:26:25: 29:14 (#3),
+                    },
+                ],
+                span: $DIR/macro-rules-derive-cfg-nested.rs:26:18: 29:15 (#3),
+            },
+        ],
+        span: $DIR/macro-rules-derive-cfg-nested.rs:25:20: 30:10 (#3),
+    },
+]

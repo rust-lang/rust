@@ -119,10 +119,10 @@ LL | #[cfg_attr(r#_, cfg(r#_))]
    |                     ^^^
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:20:1
+  --> $DIR/path-kw-as-cfg-pred.rs:20:3
    |
 LL | #[cfg(crate)]
-   | ^^^^^^-----^^
+   |   ^^^^-----^
    |       |
    |       expected a valid identifier here
    |
@@ -134,10 +134,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:22:1
+  --> $DIR/path-kw-as-cfg-pred.rs:22:3
    |
 LL | #[cfg(super)]
-   | ^^^^^^-----^^
+   |   ^^^^-----^
    |       |
    |       expected a valid identifier here
    |
@@ -149,10 +149,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:24:1
+  --> $DIR/path-kw-as-cfg-pred.rs:24:3
    |
 LL | #[cfg(self)]
-   | ^^^^^^----^^
+   |   ^^^^----^
    |       |
    |       expected a valid identifier here
    |
@@ -164,10 +164,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:26:1
+  --> $DIR/path-kw-as-cfg-pred.rs:26:3
    |
 LL | #[cfg(Self)]
-   | ^^^^^^----^^
+   |   ^^^^----^
    |       |
    |       expected a valid identifier here
    |
@@ -179,10 +179,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:28:1
+  --> $DIR/path-kw-as-cfg-pred.rs:28:3
    |
 LL | #[cfg_attr(crate, path = "foo")]
-   | ^^^^^^^^^^^-----^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^-----^^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -194,10 +194,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:30:1
+  --> $DIR/path-kw-as-cfg-pred.rs:30:3
    |
 LL | #[cfg_attr(super, path = "foo")]
-   | ^^^^^^^^^^^-----^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^-----^^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -209,10 +209,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:32:1
+  --> $DIR/path-kw-as-cfg-pred.rs:32:3
    |
 LL | #[cfg_attr(self, path = "foo")]
-   | ^^^^^^^^^^^----^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^----^^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -224,10 +224,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:34:1
+  --> $DIR/path-kw-as-cfg-pred.rs:34:3
    |
 LL | #[cfg_attr(Self, path = "foo")]
-   | ^^^^^^^^^^^----^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^----^^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -363,10 +363,10 @@ LL | #[cfg_attr(true, cfg(_))]
    |                      ^ expected identifier, found reserved identifier
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:90:1
+  --> $DIR/path-kw-as-cfg-pred.rs:90:3
    |
 LL | #[cfg(r#crate)]
-   | ^^^^^^-------^^
+   |   ^^^^-------^
    |       |
    |       expected a valid identifier here
    |
@@ -378,10 +378,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:93:1
+  --> $DIR/path-kw-as-cfg-pred.rs:93:3
    |
 LL | #[cfg(r#super)]
-   | ^^^^^^-------^^
+   |   ^^^^-------^
    |       |
    |       expected a valid identifier here
    |
@@ -393,10 +393,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:96:1
+  --> $DIR/path-kw-as-cfg-pred.rs:96:3
    |
 LL | #[cfg(r#self)]
-   | ^^^^^^------^^
+   |   ^^^^------^
    |       |
    |       expected a valid identifier here
    |
@@ -408,10 +408,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:99:1
+  --> $DIR/path-kw-as-cfg-pred.rs:99:3
    |
 LL | #[cfg(r#Self)]
-   | ^^^^^^------^^
+   |   ^^^^------^
    |       |
    |       expected a valid identifier here
    |
@@ -423,10 +423,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:102:1
+  --> $DIR/path-kw-as-cfg-pred.rs:102:3
    |
 LL | #[cfg_attr(r#crate, cfg(r#crate))]
-   | ^^^^^^^^^^^-------^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^-------^^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -438,10 +438,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:106:1
+  --> $DIR/path-kw-as-cfg-pred.rs:106:3
    |
 LL | #[cfg_attr(r#super, cfg(r#super))]
-   | ^^^^^^^^^^^-------^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^-------^^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -453,10 +453,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:110:1
+  --> $DIR/path-kw-as-cfg-pred.rs:110:3
    |
 LL | #[cfg_attr(r#self, cfg(r#self))]
-   | ^^^^^^^^^^^------^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^------^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -468,10 +468,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:114:1
+  --> $DIR/path-kw-as-cfg-pred.rs:114:3
    |
 LL | #[cfg_attr(r#Self, cfg(r#Self))]
-   | ^^^^^^^^^^^------^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^------^^^^^^^^^^^^^^
    |            |
    |            expected a valid identifier here
    |
@@ -483,10 +483,10 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:9:9
+  --> $DIR/path-kw-as-cfg-pred.rs:9:11
    |
 LL |         #[cfg($crate)]
-   |         ^^^^^^------^^
+   |           ^^^^------^
    |               |
    |               expected a valid identifier here
 ...
@@ -502,10 +502,10 @@ LL +         #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg_attr` attribute input
-  --> $DIR/path-kw-as-cfg-pred.rs:11:9
+  --> $DIR/path-kw-as-cfg-pred.rs:11:11
    |
 LL |         #[cfg_attr($crate, path = "foo")]
-   |         ^^^^^^^^^^^------^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^------^^^^^^^^^^^^^^^
    |                    |
    |                    expected a valid identifier here
 ...

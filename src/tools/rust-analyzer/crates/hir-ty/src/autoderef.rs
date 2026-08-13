@@ -1,7 +1,9 @@
 //! In certain situations, rust automatically inserts derefs as necessary: for
 //! example, field accesses `foo.bar` still work when `foo` is actually a
 //! reference to a type with the field `bar`. This is an approximation of the
-//! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
+//! logic in rustc (which lives in [`rustc_hir_typeck/autoderef.rs`]).
+//!
+//! [`rustc_hir_typeck/autoderef.rs`]: https://github.com/rust-lang/rust/blob/5503df87342a73d0c29126a7e08dc9c1255c46ad/compiler/rustc_hir_typeck/src/autoderef.rs
 
 use std::fmt;
 
@@ -128,8 +130,8 @@ impl<'db> AutoderefCtx<'db> for DefaultAutoderefCtx<'_, 'db> {
     }
 }
 
-pub(crate) struct InferenceContextAutoderefCtx<'a, 'b, 'db>(&'a mut InferenceContext<'b, 'db>);
-impl<'db> AutoderefCtx<'db> for InferenceContextAutoderefCtx<'_, '_, 'db> {
+pub(crate) struct InferenceContextAutoderefCtx<'a, 'db>(&'a mut InferenceContext<'db>);
+impl<'db> AutoderefCtx<'db> for InferenceContextAutoderefCtx<'_, 'db> {
     #[inline]
     fn infcx(&self) -> &InferCtxt<'db> {
         &self.0.table.infer_ctxt
@@ -160,8 +162,8 @@ pub(crate) struct GeneralAutoderef<'db, Ctx, Steps = Vec<(Ty<'db>, AutoderefKind
 
 pub(crate) type Autoderef<'a, 'db, Steps = Vec<(Ty<'db>, AutoderefKind)>> =
     GeneralAutoderef<'db, DefaultAutoderefCtx<'a, 'db>, Steps>;
-pub(crate) type InferenceContextAutoderef<'a, 'b, 'db, Steps = Vec<(Ty<'db>, AutoderefKind)>> =
-    GeneralAutoderef<'db, InferenceContextAutoderefCtx<'a, 'b, 'db>, Steps>;
+pub(crate) type InferenceContextAutoderef<'a, 'db, Steps = Vec<(Ty<'db>, AutoderefKind)>> =
+    GeneralAutoderef<'db, InferenceContextAutoderefCtx<'a, 'db>, Steps>;
 
 impl<'db, Ctx, Steps> Iterator for GeneralAutoderef<'db, Ctx, Steps>
 where
@@ -238,10 +240,10 @@ impl<'a, 'db> Autoderef<'a, 'db> {
     }
 }
 
-impl<'a, 'b, 'db> InferenceContextAutoderef<'a, 'b, 'db> {
+impl<'a, 'db> InferenceContextAutoderef<'a, 'db> {
     #[inline]
     pub(crate) fn new_from_inference_context(
-        ctx: &'a mut InferenceContext<'b, 'db>,
+        ctx: &'a mut InferenceContext<'db>,
         base_ty: Ty<'db>,
         span: Span,
     ) -> Self {
@@ -249,7 +251,7 @@ impl<'a, 'b, 'db> InferenceContextAutoderef<'a, 'b, 'db> {
     }
 
     #[inline]
-    pub(crate) fn ctx(&mut self) -> &mut InferenceContext<'b, 'db> {
+    pub(crate) fn ctx(&mut self) -> &mut InferenceContext<'db> {
         self.ctx.0
     }
 }

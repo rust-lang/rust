@@ -9,6 +9,8 @@ Current focus:
 - source-location output after stepping
 - source-location breakpoint prototype
 - source-local listing prototype
+- runtime local state and value rendering
+- range-limited byte output for indirect locals
 
 ## Setup
 
@@ -35,6 +37,18 @@ from `miri/priroda/`:
 ```sh
 cargo run -- ../tests/pass/empty_main.rs
 ```
+
+## DAP Prototype
+
+Priroda's `--dap` mode speaks a bounded Debug Adapter Protocol prototype over
+stdio. It currently supports the startup handshake, stops at the first
+user-relevant source location after `configurationDone`, reports one current
+stack frame, exposes one flat Locals scope, and maps `list_locals()` into DAP
+variables with no child expansion.
+
+The `next` and `stepIn` requests are wired to Priroda's existing source-line
+step so VS Code can drive one visible step. They are not true DAP step-over or
+step-in semantics yet.
 
 ## Test
 
@@ -65,7 +79,34 @@ RUSTC_BLESS=1 cargo test
 | `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
 | `l`, `locals` | List source-level locals in the current frame by name. |
+| `p <local>`, `print <local>` | Print one MIR local by numeric id. |
+| `f <alloc> <offset>`, `follow <alloc> <offset>` | Render allocation bytes from an offset, including the full allocation size. |
 | `q`, `quit` | Exit Priroda. |
+
+## Value Output
+
+Immediate values use Miri's `Immediate` display representation. Indirect
+locals are rendered as the bytes belonging to the current value range, not as
+the entire backing allocation:
+
+```text
+[01 02 03]
+[?? ?? ??]
+```
+
+`??` means the byte is uninitialized. A value whose runtime size cannot be
+determined is reported as `<unsupported-unsized>`.
+
+Pointer/provenance spans are planned as part of the raw byte output, using a
+compact dump-like marker such as:
+
+```text
+[<ptr alloc5+0> 2a 00 00 00]
+```
+
+Automatic pointer following is future work and should be explicit, not part of
+ordinary value printing. Typed field rendering and dereference/projection-aware
+printing are also future work.
 
 EOF also exits Priroda cleanly.
 

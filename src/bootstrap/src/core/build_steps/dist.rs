@@ -29,7 +29,9 @@ use crate::core::build_steps::tool::{
 };
 use crate::core::build_steps::vendor::Vendor;
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{
+    Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+};
 use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
@@ -64,7 +66,7 @@ pub struct Docs {
     pub host: TargetSelection,
 }
 
-impl Step for Docs {
+impl CommandLineStep for Docs {
     type Output = Option<GeneratedTarball>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -116,7 +118,7 @@ pub struct JsonDocs {
     target: TargetSelection,
 }
 
-impl Step for JsonDocs {
+impl CommandLineStep for JsonDocs {
     type Output = Option<GeneratedTarball>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -167,7 +169,7 @@ pub struct RustcDocs {
     target: TargetSelection,
 }
 
-impl Step for RustcDocs {
+impl CommandLineStep for RustcDocs {
     type Output = GeneratedTarball;
     const IS_HOST: bool = true;
 
@@ -423,7 +425,7 @@ pub struct Mingw {
     target: TargetSelection,
 }
 
-impl Step for Mingw {
+impl CommandLineStep for Mingw {
     type Output = Option<GeneratedTarball>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -478,7 +480,7 @@ pub struct Rustc {
     pub target_compiler: Compiler,
 }
 
-impl Step for Rustc {
+impl CommandLineStep for Rustc {
     type Output = GeneratedTarball;
     const IS_HOST: bool = true;
 
@@ -707,10 +709,6 @@ pub struct DebuggerScripts {
 impl Step for DebuggerScripts {
     type Output = ();
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let sysroot = self.sysroot;
@@ -750,6 +748,9 @@ impl Step for DebuggerScripts {
         cp_debugger_script("gdb_load_rust_pretty_printers.py");
         cp_debugger_script("gdb_lookup.py");
         cp_debugger_script("gdb_providers.py");
+        if builder.build.unstable_features() {
+            cp_debugger_script("gdb_trim_paths.py");
+        }
 
         // lldb debugger scripts
         builder.install(
@@ -851,7 +852,7 @@ impl Std {
     }
 }
 
-impl Step for Std {
+impl CommandLineStep for Std {
     type Output = Option<GeneratedTarball>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -916,7 +917,7 @@ impl RustcDev {
     }
 }
 
-impl Step for RustcDev {
+impl CommandLineStep for RustcDev {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -984,7 +985,7 @@ pub struct Analysis {
     target: TargetSelection,
 }
 
-impl Step for Analysis {
+impl CommandLineStep for Analysis {
     type Output = Option<GeneratedTarball>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1070,6 +1071,7 @@ fn copy_src_dirs(
 
         static LLVM_PROJECTS: &[&str] = &[
             "llvm-project/clang",
+            "llvm-project/libc",
             "llvm-project/libunwind",
             "llvm-project/lld",
             "llvm-project/lldb",
@@ -1157,7 +1159,7 @@ fn copy_src_dirs(
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Src;
 
-impl Step for Src {
+impl CommandLineStep for Src {
     /// The output path of the src installer tarball
     type Output = GeneratedTarball;
     const IS_HOST: bool = true;
@@ -1232,7 +1234,7 @@ impl Step for Src {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
-impl Step for PlainSourceTarball {
+impl CommandLineStep for PlainSourceTarball {
     /// Produces the location of the tarball generated
     type Output = GeneratedTarball;
     const IS_HOST: bool = true;
@@ -1282,7 +1284,7 @@ impl Step for PlainSourceTarball {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarballGpl;
 
-impl Step for PlainSourceTarballGpl {
+impl CommandLineStep for PlainSourceTarballGpl {
     /// Produces the location of the tarball generated
     type Output = GeneratedTarball;
     const IS_HOST: bool = true;
@@ -1417,7 +1419,7 @@ pub struct Cargo {
     pub target: TargetSelection,
 }
 
-impl Step for Cargo {
+impl CommandLineStep for Cargo {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1445,7 +1447,7 @@ impl Step for Cargo {
 
         let cargo = builder.ensure(tool::Cargo::from_build_compiler(build_compiler, target));
         let src = builder.src.join("src/tools/cargo");
-        let etc = src.join("src/etc");
+        let etc = src.join("etc");
 
         // Prepare the image directory
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
@@ -1477,7 +1479,7 @@ pub struct RustAnalyzer {
     pub target: TargetSelection,
 }
 
-impl Step for RustAnalyzer {
+impl CommandLineStep for RustAnalyzer {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1522,7 +1524,7 @@ pub struct Clippy {
     pub target: TargetSelection,
 }
 
-impl Step for Clippy {
+impl CommandLineStep for Clippy {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1570,7 +1572,7 @@ pub struct Miri {
     pub target: TargetSelection,
 }
 
-impl Step for Miri {
+impl CommandLineStep for Miri {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1620,7 +1622,7 @@ pub struct CraneliftCodegenBackend {
     pub target: TargetSelection,
 }
 
-impl Step for CraneliftCodegenBackend {
+impl CommandLineStep for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1694,7 +1696,7 @@ pub struct GccCodegenBackend {
     pub target: TargetSelection,
 }
 
-impl Step for GccCodegenBackend {
+impl CommandLineStep for GccCodegenBackend {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1798,7 +1800,7 @@ pub struct Rustfmt {
     pub target: TargetSelection,
 }
 
-impl Step for Rustfmt {
+impl CommandLineStep for Rustfmt {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -1842,7 +1844,7 @@ pub struct Extended {
     target: TargetSelection,
 }
 
-impl Step for Extended {
+impl CommandLineStep for Extended {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -2528,7 +2530,7 @@ fn maybe_install_llvm(
             }
         }
         !builder.config.dry_run()
-    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult {
+    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmOutput {
         host_llvm_config, ..
     }) = llvm::prebuilt_llvm_config(builder, target, true)
     {
@@ -2616,7 +2618,7 @@ pub struct LlvmTools {
     pub target: TargetSelection,
 }
 
-impl Step for LlvmTools {
+impl CommandLineStep for LlvmTools {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -2679,7 +2681,7 @@ impl Step for LlvmTools {
             builder.require_submodule("src/llvm-project", None);
         }
 
-        builder.ensure(crate::core::build_steps::llvm::Llvm { target });
+        let llvm_output = builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
         tarball.set_overlay(OverlayKind::Llvm);
@@ -2687,7 +2689,7 @@ impl Step for LlvmTools {
 
         if builder.config.llvm_tools_enabled {
             // Prepare the image directory
-            let src_bindir = builder.llvm_out(target).join("bin");
+            let src_bindir = llvm_output.root_dir().join("bin");
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
             for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
@@ -2721,7 +2723,7 @@ pub struct LlvmBitcodeLinker {
     pub target: TargetSelection,
 }
 
-impl Step for LlvmBitcodeLinker {
+impl CommandLineStep for LlvmBitcodeLinker {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -2770,7 +2772,7 @@ pub struct Enzyme {
     pub target: TargetSelection,
 }
 
-impl Step for Enzyme {
+impl CommandLineStep for Enzyme {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -2811,6 +2813,62 @@ impl Step for Enzyme {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Offload {
+    pub target: TargetSelection,
+}
+
+impl CommandLineStep for Offload {
+    type Output = Option<GeneratedTarball>;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("offload")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.llvm_offload
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Offload { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if !builder.unstable_features() {
+            return None;
+        }
+
+        let target = self.target;
+
+        let omp_offload = builder.ensure(llvm::OmpOffload { target });
+        let rust_offload = builder.ensure(llvm::RustOffload { target });
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        let target_libdir = PathBuf::from(format!("lib/rustlib/{}/lib", target.triple));
+
+        let mut tarball = Tarball::new(builder, "offload", &target.triple);
+        tarball.set_overlay(OverlayKind::Offload);
+        tarball.is_preview(true);
+
+        let omp_offload_libdir = builder.out.join(target).join("offload").join("lib");
+
+        for path in omp_offload.artifact_paths_with_symlink_targets() {
+            let relative = t!(path.strip_prefix(&omp_offload_libdir));
+            let destdir = target_libdir.join(relative.parent().unwrap());
+
+            tarball.add_file(path, destdir, FileType::NativeLibrary);
+        }
+
+        tarball.add_file(rust_offload.rust_offload_path(), target_libdir, FileType::NativeLibrary);
+
+        Some(tarball.generate())
+    }
+}
+
 /// Tarball intended for internal consumption to ease rustc/std development.
 ///
 /// Should not be considered stable by end users.
@@ -2824,7 +2882,7 @@ pub struct RustDev {
     pub target: TargetSelection,
 }
 
-impl Step for RustDev {
+impl CommandLineStep for RustDev {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -2860,9 +2918,9 @@ impl Step for RustDev {
         // LLVM requires a shared object symlink to exist on some platforms.
         tarball.permit_symlinks(true);
 
-        builder.ensure(crate::core::build_steps::llvm::Llvm { target });
+        let llvm_output = builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
-        let src_bindir = builder.llvm_out(target).join("bin");
+        let src_bindir = llvm_output.root_dir().join("bin");
         // If updating this, you likely want to change
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
         // will not pick up the extra file until LLVM gets bumped.
@@ -2889,12 +2947,13 @@ impl Step for RustDev {
             }
         }
 
-        tarball.add_file(builder.llvm_filecheck(target), "bin", FileType::Executable);
+        let filecheck = builder.ensure(llvm::FileCheck { target });
+        tarball.add_file(filecheck, "bin", FileType::Executable);
 
         // Copy the include directory as well; needed mostly to build
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
-        tarball.add_dir(builder.llvm_out(target).join("include"), "include");
+        tarball.add_dir(llvm_output.root_dir().join("include"), "include");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
@@ -2932,7 +2991,7 @@ pub struct Bootstrap {
     target: TargetSelection,
 }
 
-impl Step for Bootstrap {
+impl CommandLineStep for Bootstrap {
     type Output = Option<GeneratedTarball>;
 
     const IS_HOST: bool = true;
@@ -2976,7 +3035,7 @@ pub struct BuildManifest {
     target: TargetSelection,
 }
 
-impl Step for BuildManifest {
+impl CommandLineStep for BuildManifest {
     type Output = GeneratedTarball;
 
     const IS_HOST: bool = true;
@@ -3016,7 +3075,7 @@ pub struct ReproducibleArtifacts {
     target: TargetSelection,
 }
 
-impl Step for ReproducibleArtifacts {
+impl CommandLineStep for ReproducibleArtifacts {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
 
@@ -3035,13 +3094,18 @@ impl Step for ReproducibleArtifacts {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut added_anything = false;
         let tarball = Tarball::new(builder, "reproducible-artifacts", &self.target.triple);
-        if let Some(path) = builder.config.rust_pgo.use_profile.as_ref() {
-            tarball.add_file(path, ".", FileType::Regular);
-            added_anything = true;
-        }
-        if let Some(path) = builder.config.llvm_pgo.use_profile.as_ref() {
-            tarball.add_file(path, ".", FileType::Regular);
-            added_anything = true;
+
+        let pgo_profiles = [
+            &builder.config.rust_pgo.use_profile,
+            &builder.config.llvm_pgo.use_profile,
+            &builder.config.rustdoc_pgo.use_profile,
+            &builder.config.cargo_pgo.use_profile,
+        ];
+        for profile in pgo_profiles {
+            if let Some(path) = profile.as_ref() {
+                tarball.add_file(path, ".", FileType::Regular);
+                added_anything = true;
+            }
         }
         for profile in &builder.config.reproducible_artifacts {
             tarball.add_file(profile, ".", FileType::Regular);
@@ -3065,7 +3129,7 @@ pub struct GccDev {
     target: TargetSelection,
 }
 
-impl Step for GccDev {
+impl CommandLineStep for GccDev {
     type Output = GeneratedTarball;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3100,7 +3164,7 @@ pub struct Gcc {
     target: TargetSelection,
 }
 
-impl Step for Gcc {
+impl CommandLineStep for Gcc {
     type Output = Option<GeneratedTarball>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

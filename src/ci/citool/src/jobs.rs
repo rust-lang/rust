@@ -271,7 +271,11 @@ pub enum RunType {
     /// Workflows that run after a push to a PR branch
     PullRequest,
     /// Try run started with @bors try
-    TryJob { job_patterns: Option<Vec<String>> },
+    TryJob {
+        job_patterns: Option<Vec<String>>,
+        /// Should the limit on the number of try jobs be ignored?
+        nolimit: bool,
+    },
     /// Merge attempt workflow
     AutoJob,
     /// Fake job only used for sharing Github Actions cache.
@@ -289,7 +293,7 @@ fn calculate_jobs(
 ) -> anyhow::Result<Vec<GithubActionsJob>> {
     let (jobs, prefix, base_env) = match run_type {
         RunType::PullRequest => (db.pr_jobs.clone(), "PR", &db.envs.pr_env),
-        RunType::TryJob { job_patterns } => {
+        RunType::TryJob { job_patterns, nolimit } => {
             let jobs = if let Some(patterns) = job_patterns {
                 let mut jobs: Vec<Job> = vec![];
                 let mut unknown_patterns = vec![];
@@ -311,7 +315,7 @@ fn calculate_jobs(
                         unknown_patterns.join(", ")
                     ));
                 }
-                if jobs.len() > MAX_TRY_JOBS_COUNT {
+                if jobs.len() > MAX_TRY_JOBS_COUNT && !nolimit {
                     return Err(anyhow::anyhow!(
                         "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs expanded from {} pattern(s)",
                         jobs.len(),
@@ -342,7 +346,7 @@ fn calculate_jobs(
             // built toolchain using `rustup-toolchain-install-master`),
             // we inject the `DIST_TRY_BUILD` environment variable to the jobs
             // to tell `opt-dist` to make the build faster by skipping certain steps.
-            if let RunType::TryJob { job_patterns } = run_type {
+            if let RunType::TryJob { job_patterns, nolimit: _ } = run_type {
                 if job_patterns.is_none() {
                     env.insert(
                         "DIST_TRY_BUILD".to_string(),

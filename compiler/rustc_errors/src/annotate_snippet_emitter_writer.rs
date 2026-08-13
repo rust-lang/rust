@@ -42,7 +42,6 @@ pub struct AnnotateSnippetEmitter {
     ui_testing: bool,
     ignored_directories_in_source_blocks: Vec<String>,
     diagnostic_width: Option<usize>,
-
     macro_backtrace: bool,
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
@@ -51,18 +50,30 @@ pub struct AnnotateSnippetEmitter {
 
 impl Debug for AnnotateSnippetEmitter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let AnnotateSnippetEmitter {
+            dst,
+            sm,
+            short_message,
+            ui_testing,
+            ignored_directories_in_source_blocks,
+            diagnostic_width,
+            macro_backtrace,
+            track_diagnostics,
+            terminal_url,
+            theme,
+        } = self;
+
         f.debug_struct("AnnotateSnippetEmitter")
-            .field("short_message", &self.short_message)
-            .field("ui_testing", &self.ui_testing)
-            .field(
-                "ignored_directories_in_source_blocks",
-                &self.ignored_directories_in_source_blocks,
-            )
-            .field("diagnostic_width", &self.diagnostic_width)
-            .field("macro_backtrace", &self.macro_backtrace)
-            .field("track_diagnostics", &self.track_diagnostics)
-            .field("terminal_url", &self.terminal_url)
-            .field("theme", &self.theme)
+            .field("dst", &format_args!("<writer@{dst:p}>"))
+            .field("sm", sm)
+            .field("short_message", short_message)
+            .field("ui_testing", ui_testing)
+            .field("ignored_directories_in_source_blocks", ignored_directories_in_source_blocks)
+            .field("diagnostic_width", diagnostic_width)
+            .field("macro_backtrace", macro_backtrace)
+            .field("track_diagnostics", track_diagnostics)
+            .field("terminal_url", terminal_url)
+            .field("theme", theme)
             .finish()
     }
 }

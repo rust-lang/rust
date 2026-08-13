@@ -26,7 +26,6 @@ pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
@@ -141,14 +140,15 @@ impl Path {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
-    /// Check if this path is potentially a trivial const arg, i.e., one that can _potentially_
-    /// be represented without an anon const in the HIR.
-    ///
-    /// Returns true iff the path has exactly one segment, and it has no generic args
-    /// (i.e., it is _potentially_ a const parameter).
-    #[tracing::instrument(level = "debug", ret)]
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
-        self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
+    /// Checks if this path is just a simple one-word `PATH` - i.e. the inverse of
+    /// [`Path::from_ident`]
+    pub fn is_single_argless_ident(&self) -> bool {
+        self.segments.len() == 1 && self.segments[0].args.is_none()
+    }
+
+    /// The inverse of [`Path::from_ident`] - if this path is just a simple one-word `PATH`
+    pub fn as_single_argless_ident(&self) -> Option<Ident> {
+        self.is_single_argless_ident().then(|| self.segments[0].ident)
     }
 }
 
@@ -220,7 +220,7 @@ pub struct PathSegment {
     /// `None` means that no parameter list is supplied (`Path`),
     /// `Some` means that parameter list is supplied (`Path<X, Y>`)
     /// but it can be empty (`Path<>`).
-    /// `P` is used as a size optimization for the common case with no parameters.
+    /// `Box` is used as a size optimization for the common case with no parameters.
     pub args: Option<Box<GenericArgs>>,
 }
 
@@ -346,7 +346,7 @@ pub struct ParenthesizedArgs {
     pub span: Span,
 
     /// `(A, B)`
-    pub inputs: ThinVec<Box<Ty>>,
+    pub inputs: ThinVec<Param>,
 
     /// ```text
     /// Foo(A, B) -> C
@@ -364,7 +364,7 @@ impl ParenthesizedArgs {
             .inputs
             .iter()
             .cloned()
-            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
+            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input.ty)))
             .collect();
         AngleBracketedArgs { span: self.inputs_span, args }
     }
@@ -557,9 +557,10 @@ pub struct Crate {
     pub is_placeholder: bool,
 }
 
-/// A semantic representation of a meta item. A meta item is a slightly
-/// restricted form of an attribute -- it can only contain expressions in
-/// certain leaf positions, rather than arbitrary token streams -- that is used
+/// A semantic representation of a meta item.
+///
+/// A meta item is a slightly restricted form of an attribute -- it can only contain
+/// expressions in certain leaf positions, rather than arbitrary token streams -- that is used
 /// for most built-in attributes.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
@@ -806,6 +807,7 @@ impl ByRef {
 }
 
 /// The mode of a binding (`mut`, `ref mut`, etc).
+///
 /// Used for both the explicit binding annotations given in the HIR for a binding
 /// and the final binding mode that we infer after type inference/match ergonomics.
 /// `.0` is the by-reference mode (`ref`, `ref mut`, or by value),
@@ -1184,7 +1186,9 @@ impl UnOp {
     }
 }
 
-/// A statement. No `attrs` or `tokens` fields because each `StmtKind` variant
+/// A statement.
+///
+/// No `attrs` or `tokens` fields because each `StmtKind` variant
 /// contains an AST node with those fields. (Except for `StmtKind::Empty`,
 /// which never has attrs or tokens)
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -1375,6 +1379,8 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// An anonymous constant.
+///
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1401,7 +1407,7 @@ impl Expr {
     /// be represented without an anon const in the HIR.
     ///
     /// This will unwrap at most one block level (curly braces). After that, if the expression
-    /// is a path, it mostly dispatches to [`Path::is_potential_trivial_const_arg`].
+    /// is a path, it mostly dispatches to [`Path::is_single_argless_ident`].
     ///
     /// This function will only allow paths with no qself, before dispatching to the `Path`
     /// function of the same name.
@@ -1411,7 +1417,7 @@ impl Expr {
     pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = self.maybe_unwrap_block();
         if let ExprKind::Path(None, path) = &this.kind
-            && path.is_potential_trivial_const_arg()
+            && path.is_single_argless_ident()
         {
             true
         } else {
@@ -1962,8 +1968,9 @@ pub enum UnsafeBinderCastKind {
     Unwrap,
 }
 
-/// The explicit `Self` type in a "qualified path". The actual
-/// path, including the trait and the associated item, is stored
+/// The explicit `Self` type in a "qualified path".
+///
+/// The actual path, including the trait and the associated item, is stored
 /// separately. `position` represents the index of the associated
 /// item qualified with this `Self` type.
 ///
@@ -2339,27 +2346,7 @@ pub struct FnSig {
 impl FnSig {
     /// Return a span encompassing the header, or where to insert it if empty.
     pub fn header_span(&self) -> Span {
-        match self.header.ext {
-            Extern::Implicit(span) | Extern::Explicit(_, span) => {
-                return self.span.with_hi(span.hi());
-            }
-            Extern::None => {}
-        }
-
-        match self.header.safety {
-            Safety::Unsafe(span) | Safety::Safe(span) => return self.span.with_hi(span.hi()),
-            Safety::Default => {}
-        };
-
-        if let Some(coroutine_kind) = self.header.coroutine_kind {
-            return self.span.with_hi(coroutine_kind.span().hi());
-        }
-
-        if let Const::Yes(span) = self.header.constness {
-            return self.span.with_hi(span.hi());
-        }
-
-        self.span.shrink_to_lo()
+        self.header.span().unwrap_or(self.span.shrink_to_lo())
     }
 
     /// The span of the header's safety, or where to insert it if empty.
@@ -2382,6 +2369,19 @@ impl FnSig {
     pub fn extern_span(&self) -> Span {
         self.header.ext.span().unwrap_or(self.safety_span().shrink_to_hi())
     }
+
+    pub fn as_borrowed(&self) -> BorrowedFnSig<'_> {
+        BorrowedFnSig { header: self.header, decl: &self.decl, span: self.span }
+    }
+}
+
+/// A borrowed version of `FnSig`, used to share logic between function declarations and function
+/// pointer types.
+#[derive(Clone, Debug)]
+pub struct BorrowedFnSig<'a> {
+    pub header: FnHeader,
+    pub decl: &'a FnDecl,
+    pub span: Span,
 }
 
 /// A constraint on an associated item.
@@ -2447,7 +2447,7 @@ pub struct Ty {
 
 impl Clone for Ty {
     fn clone(&self) -> Self {
-        ensure_sufficient_stack(|| Self { id: self.id, kind: self.kind.clone(), span: self.span })
+        Self { id: self.id, kind: self.kind.clone(), span: self.span }
     }
 }
 
@@ -2485,6 +2485,16 @@ pub struct FnPtrTy {
     /// Span of the `[unsafe] [extern] fn(...) -> ...` part, i.e. everything
     /// after the generic params (if there are any, e.g. `for<'a>`).
     pub decl_span: Span,
+}
+
+impl FnPtrTy {
+    pub fn header(&self) -> FnHeader {
+        FnHeader { constness: Const::No, coroutine_kind: None, safety: self.safety, ext: self.ext }
+    }
+
+    pub fn as_borrowed_fn_sig<'a>(&'a self) -> BorrowedFnSig<'a> {
+        BorrowedFnSig { header: self.header(), decl: &self.decl, span: self.decl_span }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -2998,7 +3008,7 @@ impl Param {
                 }),
             ),
             SelfKind::Pinned(lt, mutbl) => (
-                mutbl,
+                Mutability::Not,
                 Box::new(Ty {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
@@ -3061,7 +3071,7 @@ impl FnDecl {
             } else {
                 arg.attrs
                     .iter()
-                    .any(|attr| attr.has_name(sym::splat))
+                    .any(|attr| attr.has_name(sym::rustc_splat))
                     .then_some(u8::try_from(index).unwrap())
             }
         })
@@ -3402,6 +3412,15 @@ pub enum AttrStyle {
     Inner,
 }
 
+impl AttrStyle {
+    pub fn line_doc_comment_prefix(self) -> &'static str {
+        match self {
+            AttrStyle::Outer => "///",
+            AttrStyle::Inner => "//!",
+        }
+    }
+}
+
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
@@ -3413,6 +3432,29 @@ pub struct Attribute {
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
+
+    /// The carets in the examples below show the spans for various cases.
+    /// ```text
+    /// #[foo]                  - A vanilla parsed attribute.
+    /// ^^^^^^                  - Its span covers it all.
+    ///
+    /// /** abc */  /// xyz     - A parsed doc comment.
+    /// ^^^^^^^^^^  ^^^^^^^     - Its span covers the text and comment marker(s).
+    ///                         - The same span is also used if the doc comment is desugared (into
+    ///                           a new normal `#[doc = r"..."]` attribute) by
+    ///                           `desugar_doc_comments` before being passed to a macro (which
+    ///                           is done so that `#[$m:meta]` will match).
+    ///
+    /// #[cfg_attr(pred, foo)]  - A parsed `cfg_attr` attribute.
+    /// ^^^^^^^^^^^^^^^^^^^^^^  - Its span covers it all.
+    ///                  ^^^    - Span of the new replacement attribute (equivalent to `#[foo]`)
+    ///                           created by `cfg_attr` expansion (if `pred` is true).
+    /// ^^^^^^^^^^^^^^^^^^^^^^  - Span of the synthetic `CfgAttrTrace` attribute created by
+    ///                           `cfg_attr` expansion. (`CfgTrace` is derived from `#[cfg(..)]` and
+    ///                           handled similarly.)
+    /// ```
+    /// Finally, for compiler-generated attributes the span is whatever the construction site
+    /// chooses. Usually `DUMMY_SP` or some relevant span from the source code.
     pub span: Span,
 }
 
@@ -3420,6 +3462,9 @@ pub struct Attribute {
 pub enum AttrKind {
     /// A normal attribute.
     Normal(Box<NormalAttr>),
+
+    /// A synthetic attribute inserted by the compiler.
+    Synthetic(Box<SyntheticAttr>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
@@ -3430,7 +3475,8 @@ pub enum AttrKind {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct NormalAttr {
     pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`.
+    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
+    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -3440,7 +3486,8 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrItemKind::Unparsed(AttrArgs::Empty),
+                args: AttrArgs::Empty,
+                span: ident.span,
             },
             tokens: None,
         }
@@ -3451,49 +3498,44 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrItemKind,
+    pub args: AttrArgs,
+    /// The span of the entire attr item. For parse attrs this excludes `#[`/`]`. E.g.:
+    /// ```ignore (illustrative)
+    /// #[foo(bar)]
+    ///   ^^^^^^^^
+    /// #[unsafe(no_mangle)]
+    ///   ^^^^^^^^^^^^^^^^^
+    /// ```
+    /// For internally constructed spans (`mk_attr_*`) the exact meaning may differ.
+    pub span: Span,
 }
 
-/// Some attributes are stored in a parsed form, for performance reasons.
-/// Their arguments don't have to be reparsed everytime they're used
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum AttrItemKind {
-    Parsed(EarlyParsedAttribute),
-    Unparsed(AttrArgs),
-}
-
-impl AttrItemKind {
-    pub fn unparsed(self) -> Option<AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            AttrItemKind::Unparsed(args) => args.span(),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-}
-
-/// Some attributes are stored in parsed form in the AST.
-/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
+/// A synthetic attribute.
 ///
-/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
-/// When adding new early parsed attributes, consider whether they should be pretty printed.
+/// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
+/// so cannot be pretty-printed by the AST pretty printer (because its output should be valid Rust
+/// code). They receive special treatment because they must not affect observable language
+/// behaviour: they are invisible to proc macros and are unable to re-enter the parser.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
-pub enum EarlyParsedAttribute {
+pub enum SyntheticAttr {
+    /// This synthetic attribute is added by the compiler when a `cfg` attribute is expanded so that
+    /// subsequent code can tell that conditional compilation occurred. A `#[cfg(pred)]` with a
+    /// true predicate is replaced by a synthetic `CfgTrace` attribute that records the parsed
+    /// predicate. A `#[cfg(pred)]` with a false predicate leaves no trace because there is no node
+    /// left to annotate.
+    ///
+    /// The attribute is used for some diagnostics, by rustdoc (for detecting feature usage), and
+    /// by some clippy lints.
     CfgTrace(CfgEntry),
-    CfgAttrTrace,
+
+    /// This synthetic attribute is added by the compiler when a `cfg_attr` attribute is expanded so
+    /// that subsequent code can tell that conditional compilation occurred. A `#[cfg_attr(pred,
+    /// attrs)]` is replaced by a synthetic `CfgAttrTrace` attribute whether the predicate
+    /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
+    /// because they are not needed.
+    ///
+    /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
+    CfgAttrTrace(CfgEntry),
 }
 
 impl AttrItem {
@@ -3591,6 +3633,11 @@ pub struct ImplRestriction {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct MutRestriction {
     pub kind: RestrictionKind,
+    /// Note: this span is currently thrown away
+    /// for [RestrictionKind::Unrestricted] when constructing [FieldDef],
+    /// to keep its size small. This is not a problem at the moment,
+    /// because this span is unused, but we will need to refactor
+    /// [FieldDef] and [FieldDefExtras] to restore it when we need it.
     pub span: Span,
 }
 
@@ -3609,15 +3656,39 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
-    pub mut_restriction: MutRestriction,
-    pub safety: Safety,
+    pub extras: Option<Box<FieldDefExtras>>,
     pub ident: Option<Ident>,
 
     pub ty: Box<Ty>,
-    pub default: Option<AnonConst>,
     pub is_placeholder: bool,
 }
 
+/// Some properties from [FieldDef] are rarely used,
+/// so we outline them to make FieldDef smaller.
+/// At the time of writing, these are all related to unstable features.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct FieldDefExtras {
+    pub safety: Safety,
+    pub mut_restriction: MutRestriction,
+    pub default: Option<AnonConst>,
+}
+
+impl FieldDef {
+    pub fn mut_restriction(&self) -> &MutRestriction {
+        static DEFAULT: MutRestriction =
+            MutRestriction { kind: RestrictionKind::Unrestricted, span: DUMMY_SP };
+
+        self.extras.as_ref().map_or(&DEFAULT, |extras| &extras.mut_restriction)
+    }
+
+    pub fn default_value(&self) -> Option<&AnonConst> {
+        self.extras.as_ref().and_then(|e| e.default.as_ref())
+    }
+
+    pub fn safety(&self) -> Safety {
+        self.extras.as_ref().map_or(Safety::Default, |extras| extras.safety)
+    }
+}
 /// Was parsing recovery performed?
 #[derive(Copy, Clone, Debug, Encodable, Decodable, StableHash, Walkable)]
 pub enum Recovered {
@@ -3786,6 +3857,30 @@ impl FnHeader {
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
+
+    pub fn span(&self) -> Option<Span> {
+        let mut spans = smallvec::SmallVec::<[Span; 4]>::new();
+
+        match self.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => spans.push(span),
+            Extern::None => {}
+        }
+
+        match self.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => spans.push(span),
+            Safety::Default => {}
+        };
+
+        if let Some(coroutine_kind) = self.coroutine_kind {
+            spans.push(coroutine_kind.span());
+        }
+
+        if let Const::Yes(span) = self.constness {
+            spans.push(span)
+        }
+
+        spans.into_iter().reduce(Span::to)
+    }
 }
 
 impl Default for FnHeader {
@@ -3886,7 +3981,7 @@ pub struct Fn {
     /// This function is an implementation of an externally implementable item (EII).
     /// This means, there was an EII declared somewhere and this function is the
     /// implementation that should be run when the declaration is called.
-    pub eii_impls: ThinVec<EiiImpl>,
+    pub eii_impl: Option<Box<EiiImpl>>,
 }
 
 impl Fn {
@@ -3978,9 +4073,7 @@ pub struct StaticItem {
     /// This static is an implementation of an externally implementable item (EII).
     /// This means, there was an EII declared somewhere and this static is the
     /// implementation that should be used for the declaration.
-    ///
-    /// For statics, there may be at most one `EiiImpl`, but this is a `ThinVec` to make usages of this field nicer.
-    pub eii_impls: ThinVec<EiiImpl>,
+    pub eii_impl: Option<Box<EiiImpl>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3989,44 +4082,16 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub rhs_kind: ConstItemRhsKind,
+    pub body: Option<Box<Expr>>,
+    #[visitable(ignore)]
+    pub kind: ConstItemKind,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum ConstItemRhsKind {
-    Body { rhs: Option<Box<Expr>> },
-    TypeConst { rhs: Option<AnonConst> },
-}
-
-impl ConstItemRhsKind {
-    pub fn new_body(rhs: Box<Expr>) -> Self {
-        Self::Body { rhs: Some(rhs) }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        Some(self.expr()?.span)
-    }
-
-    pub fn expr(&self) -> Option<&Expr> {
-        match self {
-            Self::Body { rhs: Some(body) } => Some(&body),
-            Self::TypeConst { rhs: Some(anon) } => Some(&anon.value),
-            _ => None,
-        }
-    }
-
-    pub fn has_expr(&self) -> bool {
-        match self {
-            Self::Body { rhs: Some(_) } => true,
-            Self::TypeConst { rhs: Some(_) } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_const(&self) -> bool {
-        matches!(self, &Self::TypeConst { .. })
-    }
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum ConstItemKind {
+    Body,
+    TypeConst,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4390,6 +4455,7 @@ mod size_asserts {
     static_assert_size!(Block, 24);
     static_assert_size!(Expr, 64);
     static_assert_size!(ExprKind, 32);
+    static_assert_size!(FieldDef, 80);
     static_assert_size!(Fn, 192);
     static_assert_size!(FnDecl, 24);
     static_assert_size!(FnHeader, 76);
@@ -4410,7 +4476,7 @@ mod size_asserts {
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 72);
+    static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);
     static_assert_size!(PatKind, 48);

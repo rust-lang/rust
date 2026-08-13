@@ -37,7 +37,6 @@ LL | |     );
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/offset-of-unstable.rs:16:5
@@ -47,7 +46,6 @@ LL |     offset_of!(StableWithUnstableField, unstable);
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/offset-of-unstable.rs:18:5
@@ -57,7 +55,6 @@ LL |     offset_of!(StableWithUnstableFieldType, stable.unstable);
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/offset-of-unstable.rs:19:5
@@ -71,7 +68,6 @@ LL | |     );
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/offset-of-unstable.rs:24:5
@@ -85,7 +81,6 @@ LL | |     );
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 

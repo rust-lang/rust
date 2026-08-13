@@ -4,6 +4,7 @@ error[E0423]: cannot initialize a tuple struct which contains private fields
 LL |         S(self);
    |         ^
    |
+   = note: a struct named `S` exists in another namespace
    = note: constructor is not visible here due to private fields
 
 error: aborting due to 1 previous error

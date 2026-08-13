@@ -1,5 +1,5 @@
+use rustc_attr_ir::diagnostic::Directive;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::diagnostic::Directive;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
@@ -38,7 +38,7 @@ impl AttributeParser for OnUnimplementedParser {
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
             unstable!(
                 rustc_attrs,
-                "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
+                "see the `diagnostic::on_unimplemented` attribute for the stable equivalent of this attribute"
             ),
             |this, cx, args| {
                 this.parse(cx, args, Mode::RustcOnUnimplemented);

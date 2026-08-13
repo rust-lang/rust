@@ -397,11 +397,11 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && let Some(fn_sig) = fn_sig
             && const_stab.is_const_stable()
             && !stab.is_some_and(|s| s.is_stable())
-            && let Some(const_span) = find_attr_span!(RustcConstStability)
+            && let Some(path_span) = find_attr_span!(RustcConstStability)
         {
             self.tcx.dcx().emit_err(diagnostics::ConstStableNotStable {
                 fn_sig_span: fn_sig.span,
-                const_span,
+                path_span,
             });
         }
 
@@ -1147,9 +1147,6 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             .1;
         tcx.dcx().emit_err(diagnostics::ImpliedFeatureNotExist { span, feature, implied_by });
     }
-
-    // FIXME(#44232): the `used_features` table no longer exists, so we
-    // don't lint about unused features. We should re-enable this one day!
 }
 
 fn unnecessary_partially_stable_feature_lint(

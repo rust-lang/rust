@@ -1,12 +1,13 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet;
 use clippy_utils::{SpanlessEq, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::ExprKind::Assign;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -52,7 +53,7 @@ pub struct ManualRetain {
 
 impl ManualRetain {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -189,7 +190,7 @@ fn check_to_owned(
         && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::str_chars, chars_expr_def_id)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
-        && ty.is_lang_item(cx, hir::LangItem::String)
+        && ty.is_lang_item(cx, LangItem::String)
         && SpanlessEq::new(cx).eq_expr(parent_expr_span.ctxt(), left_expr, str_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind

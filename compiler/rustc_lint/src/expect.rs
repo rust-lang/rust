@@ -6,7 +6,7 @@ use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_session::lint::{LintExpectationId, StableLintExpectationId};
 use rustc_span::Symbol;
 
-use crate::lints::{Expectation, ExpectationNote};
+use crate::diagnostics::{Expectation, ExpectationNote};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { lint_expectations, check_expectations, ..*providers };

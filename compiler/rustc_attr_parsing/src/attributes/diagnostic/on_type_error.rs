@@ -1,11 +1,9 @@
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::AttributeKind;
 use rustc_span::sym;
 
 use crate::attributes::AttributeStability;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::context::AcceptContext;
-use crate::parser::ArgParser;
 use crate::target_checking::AllowedTargets;
 use crate::template;
 
@@ -15,32 +13,22 @@ pub(crate) struct OnTypeErrorParser {
     directive: Option<(Span, Directive)>,
 }
 
-impl OnTypeErrorParser {
-    fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
-        if !cx.features().diagnostic_on_type_error() {
-            // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
-            args.ignore_args();
-            return;
-        }
-
-        let span = cx.attr_span;
-        self.span = Some(span);
-
-        let Some(items) = parse_list(cx, args, mode) else { return };
-
-        if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
-            merge_directives(cx, &mut self.directive, (span, directive));
-        }
-    }
-}
-
 impl AttributeParser for OnTypeErrorParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_type_error],
         template!(List: &[r#"note = "...""#]),
-        AttributeStability::Stable,
+        AttributeStability::Stable, // Unstable, stability checked manually below
         |this, cx, args| {
-            this.parse(cx, args, Mode::DiagnosticOnTypeError);
+            gate_diagnostic_attr!(diagnostic_on_type_error);
+
+            let span = cx.attr_span;
+            this.span = Some(span);
+            let mode = Mode::DiagnosticOnTypeError;
+            let Some(items) = parse_list(cx, args, mode) else { return };
+
+            if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
+                merge_directives(cx, &mut this.directive, (span, directive));
+            }
         },
     )];
 

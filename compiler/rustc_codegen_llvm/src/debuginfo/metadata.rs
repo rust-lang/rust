@@ -15,8 +15,7 @@ use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };
 use rustc_middle::ty::{
-    self, AdtDef, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt,
-    Unnormalized, Visibility,
+    self, AdtDef, AdtKind, ExistentialTraitRef, Instance, Ty, TyCtxt, Unnormalized, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::{DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, hygiene};
@@ -1241,7 +1240,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_coroutine_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
-        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().prefix_tys()),
+        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().upvar_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         ty::CoroutineClosure(def_id, args) => (def_id, args.as_coroutine_closure().upvar_tys()),
         _ => {
@@ -1636,7 +1635,7 @@ fn build_unsafe_binder_type_di_node<'ll, 'tcx>(
             binder_type
         )
     };
-    let inner_type = inner.skip_binder();
+    let inner_type = cx.tcx.instantiate_bound_regions_with_erased((*inner).into());
     let inner_type_di_node = type_di_node(cx, inner_type);
 
     let type_name = compute_debuginfo_type_name(cx.tcx, binder_type, true);

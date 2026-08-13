@@ -14,31 +14,31 @@ fn main() {
 
     match f {
         FooB(a, b) => println!("{} {}", a, b),
-        //~^ ERROR expected tuple struct or tuple variant, found variant `FooB`
+        //~^ ERROR cannot find tuple struct or tuple variant `FooB` in this scope
         _ => (),
     }
 
     match f {
         FooB(x, y) => println!("{} {}", x, y),
-        //~^ ERROR expected tuple struct or tuple variant, found variant `FooB`
+        //~^ ERROR cannot find tuple struct or tuple variant `FooB` in this scope
         _ => (),
     }
 
     match f {
         FooA(Some(x), y) => println!("{} {}", x, y),
-        //~^ ERROR expected tuple struct or tuple variant, found variant `FooA`
+        //~^ ERROR cannot find tuple struct or tuple variant `FooA` in this scope
         _ => (),
     }
 
     match f {
         FooB(a, _, _) => println!("{}", a),
-        //~^ ERROR expected tuple struct or tuple variant, found variant `FooB`
+        //~^ ERROR cannot find tuple struct or tuple variant `FooB` in this scope
         _ => (),
     }
 
     match f {
         FooB() => (),
-        //~^ ERROR expected tuple struct or tuple variant, found variant `FooB`
+        //~^ ERROR cannot find tuple struct or tuple variant `FooB` in this scope
         _ => (),
     }
 }

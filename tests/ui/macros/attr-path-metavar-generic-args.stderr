@@ -1,0 +1,8 @@
+error: unexpected generic arguments in path
+  --> $DIR/attr-path-metavar-generic-args.rs:13:10
+   |
+LL | m!(inline<u8>);
+   |          ^^^^
+
+error: aborting due to 1 previous error
+

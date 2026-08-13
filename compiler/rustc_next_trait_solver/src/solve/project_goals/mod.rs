@@ -71,7 +71,6 @@ where
         ) = self.evaluate_goal_raw(
             GoalSource::TypeRelating,
             normalizes_to,
-            None,
             // We don't lower thr available depth for this `NormalizesTo` goal, as evaluating
             // it is an extra step only exists in the new solver that behaves like a function
             // call rather than an independent nested goal evaluation. So, decreasing the

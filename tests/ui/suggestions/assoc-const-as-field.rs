@@ -9,5 +9,5 @@ fn foo(_: usize) {}
 
 fn main() {
     foo(Mod::Foo.Bar);
-    //~^ ERROR expected value, found
+    //~^ ERROR cannot find value `Foo` in module `Mod`
 }

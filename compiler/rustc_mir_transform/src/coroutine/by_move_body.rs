@@ -70,10 +70,10 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{self as hir};
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
@@ -241,10 +241,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     body_def.coroutine_kind(tcx.coroutine_kind(coroutine_def_id));
     body_def.def_ident_span(tcx.def_ident_span(coroutine_def_id));
     body_def.def_span(tcx.def_span(coroutine_def_id));
-    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
+    body_def.explicit_clauses_of(tcx.explicit_clauses_of(coroutine_def_id));
     body_def.generics_of(tcx.generics_of(coroutine_def_id).clone());
     body_def.param_env(tcx.param_env(coroutine_def_id));
-    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
+    body_def.explicit_clauses_of(tcx.explicit_clauses_of(coroutine_def_id));
 
     // The type of the coroutine is the `by_move_coroutine_ty`.
     body_def.type_of(ty::EarlyBinder::bind(tcx, by_move_coroutine_ty));

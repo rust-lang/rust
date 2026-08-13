@@ -793,7 +793,7 @@ where
     fn coerce_closure_to_fn(
         &mut self,
         a: Ty<'db>,
-        closure_def_id_a: InternedClosureId,
+        closure_def_id_a: InternedClosureId<'db>,
         args_a: GenericArgs<'db>,
         b: Ty<'db>,
     ) -> CoerceResult<'db> {
@@ -856,9 +856,9 @@ where
     }
 }
 
-struct InferenceCoercionDelegate<'a, 'b, 'db>(&'a mut InferenceContext<'b, 'db>);
+struct InferenceCoercionDelegate<'a, 'db>(&'a mut InferenceContext<'db>);
 
-impl<'db> CoerceDelegate<'db> for InferenceCoercionDelegate<'_, '_, 'db> {
+impl<'db> CoerceDelegate<'db> for InferenceCoercionDelegate<'_, 'db> {
     #[inline]
     fn infcx(&self) -> &InferCtxt<'db> {
         &self.0.table.infer_ctxt
@@ -884,7 +884,7 @@ impl<'db> CoerceDelegate<'db> for InferenceCoercionDelegate<'_, '_, 'db> {
     }
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Attempt to coerce an expression to a type, and return the
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
@@ -1242,7 +1242,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
     /// if necessary.
     pub(crate) fn coerce(
         &mut self,
-        icx: &mut InferenceContext<'_, 'db>,
+        icx: &mut InferenceContext<'db>,
         cause: &ObligationCause,
         expression: ExprId,
         expression_ty: Ty<'db>,
@@ -1265,7 +1265,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
     /// removing a `;`).
     pub(crate) fn coerce_forced_unit(
         &mut self,
-        icx: &mut InferenceContext<'_, 'db>,
+        icx: &mut InferenceContext<'db>,
         expr: ExprId,
         cause: &ObligationCause,
         label_unit_as_expected: bool,
@@ -1287,7 +1287,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
     /// `Nil`.
     pub(crate) fn coerce_inner(
         &mut self,
-        icx: &mut InferenceContext<'_, 'db>,
+        icx: &mut InferenceContext<'db>,
         cause: &ObligationCause,
         expression: ExprId,
         mut expression_ty: Ty<'db>,
@@ -1403,7 +1403,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
         self.pushed += 1;
     }
 
-    pub(crate) fn complete(self, icx: &mut InferenceContext<'_, 'db>) -> Ty<'db> {
+    pub(crate) fn complete(self, icx: &mut InferenceContext<'db>) -> Ty<'db> {
         if let Some(final_ty) = self.final_ty {
             final_ty
         } else {
@@ -1597,7 +1597,7 @@ fn coerce<'db>(
     Ok((adjustments, ty))
 }
 
-fn is_capturing_closure(db: &dyn HirDatabase, closure: InternedClosureId) -> bool {
+fn is_capturing_closure(db: &dyn HirDatabase, closure: InternedClosureId<'_>) -> bool {
     let InternedClosure { owner, expr, .. } = closure.loc(db);
     upvars_mentioned(db, owner.expression_store_owner(db))
         .is_some_and(|upvars| upvars.get(&expr).is_some_and(|upvars| !upvars.is_empty()))

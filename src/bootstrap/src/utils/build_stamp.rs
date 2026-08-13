@@ -9,8 +9,8 @@ use sha2::digest::Digest;
 
 use crate::core::builder::Builder;
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::{hex_encode, mtime};
-use crate::{CodegenBackendKind, Compiler, Mode, helpers, t};
+use crate::utils::helpers::{self, hex_encode, mtime, t};
+use crate::{CodegenBackendKind, Compiler, Mode};
 
 #[cfg(test)]
 mod tests;

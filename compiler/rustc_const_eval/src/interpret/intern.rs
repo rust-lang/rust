@@ -16,8 +16,8 @@
 use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir as hir;
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
-use rustc_hir::{self as hir};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{
     AllocBytes, ConstAllocation, CtfeProvenance, InterpResult, Provenance,
@@ -172,7 +172,7 @@ fn intern_as_new_static<'tcx>(
     feed.eval_static_initializer(Ok(alloc));
     feed.generics_of(tcx.generics_of(static_id).clone());
     feed.def_ident_span(tcx.def_ident_span(static_id));
-    feed.explicit_predicates_of(tcx.explicit_predicates_of(static_id));
+    feed.explicit_clauses_of(tcx.explicit_clauses_of(static_id));
     feed.feed_hir();
 }
 

@@ -352,7 +352,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
 
             // Fields that are common to all states
             let common_fields: SmallVec<_> = coroutine_args
-                .prefix_tys()
+                .upvar_tys()
                 .iter()
                 .zip(common_upvar_names)
                 .enumerate()

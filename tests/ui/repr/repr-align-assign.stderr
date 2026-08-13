@@ -1,18 +1,18 @@
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/repr-align-assign.rs:3:1
+  --> $DIR/repr-align-assign.rs:3:3
    |
 LL | #[repr(align=8)]
-   | ^^^^^^^^^^^^--^^
+   |   ^^^^^^^^^^--^
    |             |
    |             expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/repr-align-assign.rs:6:1
+  --> $DIR/repr-align-assign.rs:6:3
    |
 LL | #[repr(align="8")]
-   | ^^^^^^^^^^^^----^^
+   |   ^^^^^^^^^^----^
    |             |
    |             expected this to be a list
    |

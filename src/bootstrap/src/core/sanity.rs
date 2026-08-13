@@ -14,14 +14,12 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-#[cfg(not(test))]
-use crate::builder::Builder;
-use crate::builder::Kind;
-#[cfg(not(test))]
+use crate::Build;
 use crate::core::build_steps::tool;
-use crate::core::config::{CompilerBuiltins, Target};
+use crate::core::builder::Builder;
+use crate::core::config::{CompilerBuiltins, DebuggerPath, Subcommand, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand, t};
+use crate::utils::helpers::t;
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -37,11 +35,11 @@ pub struct Finder {
 /// when the newly-bumped stage 0 compiler now knows about the formerly-missing targets.
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
+    "aarch64-unknown-l4re-uclibc",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
 /// from CI (with`llvm.download-ci-llvm` option).
-#[cfg(not(test))]
 const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
@@ -84,7 +82,7 @@ pub fn check(build: &mut Build) {
     let mut skip_target_sanity =
         env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
 
-    skip_target_sanity |= build.config.cmd.kind() == Kind::Check;
+    skip_target_sanity |= matches!(build.config.cmd, Subcommand::Check { .. });
 
     // Skip target sanity checks when we are doing anything with mir-opt tests or Miri
     let skipped_paths = [OsStr::new("mir-opt"), OsStr::new("miri")];
@@ -109,8 +107,11 @@ pub fn check(build: &mut Build) {
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
-    #[cfg(not(test))]
-    if !build.config.dry_run() && !build.host_target.is_msvc() && build.config.llvm_from_ci {
+    if cfg!(not(test))
+        && !build.config.dry_run()
+        && !build.host_target.is_msvc()
+        && build.config.llvm_from_ci
+    {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.host_target });
 
@@ -188,12 +189,10 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("yarn"));
 
-    build.config.gdb = build
-        .config
-        .gdb
-        .take()
-        .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("gdb"));
+    build.config.gdb = build.config.gdb.take().map(|p| match p {
+        DebuggerPath::Discover => DebuggerPath::Discover,
+        DebuggerPath::Path(path) => DebuggerPath::Path(cmd_finder.must_have(path)),
+    });
 
     build.config.reuse = build
         .config
@@ -312,17 +311,6 @@ than building it.
     if !skip_tools_checks {
         for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-
-            if build.config.llvm_enabled(*host) {
-                // Externally configured LLVM requires FileCheck to exist
-                let filecheck = build.llvm_filecheck(build.host_target);
-                if !filecheck.starts_with(&build.out)
-                    && !filecheck.exists()
-                    && build.config.codegen_tests
-                {
-                    panic!("FileCheck executable {filecheck:?} does not exist");
-                }
-            }
         }
     }
 

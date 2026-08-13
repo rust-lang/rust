@@ -6,7 +6,7 @@ use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{BytePos, Span};
 
-use crate::lints::{MutRefSugg, RefOfMutStatic, StaticMutRefsInteriorMutabilitySugg};
+use crate::diagnostics::{MutRefSugg, RefOfMutStatic, StaticMutRefsInteriorMutabilitySugg};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

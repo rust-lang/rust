@@ -1,4 +1,4 @@
-SOURCE_FILE@0..25
+SOURCE_FILE@0..28
   USE@0..11
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
@@ -10,20 +10,24 @@ SOURCE_FILE@0..25
             SELF_KW@6..10 "self"
     SEMICOLON@10..11 ";"
   WHITESPACE@11..12 "\n"
-  USE@12..24
+  USE@12..27
     USE_KW@12..15 "use"
     WHITESPACE@15..16 " "
-    USE_TREE@16..23
-      PATH@16..23
-        PATH@16..17
-          PATH_SEGMENT@16..17
-            NAME_REF@16..17
-              IDENT@16..17 "a"
-        COLON2@17..19 "::"
-        PATH_SEGMENT@19..23
-          NAME_REF@19..23
-            SELF_KW@19..23 "self"
-    SEMICOLON@23..24 ";"
-  WHITESPACE@24..25 "\n"
-error 6..10: The `self` keyword is only allowed as the first segment of a path
-error 19..23: The `self` keyword is only allowed as the first segment of a path
+    USE_TREE@16..26
+      PATH@16..26
+        PATH@16..23
+          PATH@16..17
+            PATH_SEGMENT@16..17
+              NAME_REF@16..17
+                IDENT@16..17 "a"
+          COLON2@17..19 "::"
+          PATH_SEGMENT@19..23
+            NAME_REF@19..23
+              SELF_KW@19..23 "self"
+        COLON2@23..25 "::"
+        PATH_SEGMENT@25..26
+          NAME_REF@25..26
+            IDENT@25..26 "b"
+    SEMICOLON@26..27 ";"
+  WHITESPACE@27..28 "\n"
+error 19..23: The `self` keyword is only allowed at the start or at the end of a path

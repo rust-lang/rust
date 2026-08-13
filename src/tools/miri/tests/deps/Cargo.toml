@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 # all dependencies (and their transitive ones) listed here can be used in `tests/*-dep`.
+cross-crate-items = { path = "cross-crate-items" } # Used to test things that need multiple crates to check
 libc = "0.2"
 num_cpus = "1.10.1"
 
@@ -35,3 +36,4 @@ windows-sys = { version = "0.61", features = [
 
 # Make sure we are not part of the rustc workspace.
 [workspace]
+members = ["cross-crate-items"]

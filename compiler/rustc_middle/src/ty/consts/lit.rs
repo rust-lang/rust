@@ -1,5 +1,6 @@
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_macros::StableHash;
 
 use crate::ty::{self, Ty, TyCtxt};
@@ -43,7 +44,7 @@ pub fn const_lit_matches_ty<'tcx>(
         (LitKind::Byte(..), ty::Uint(ty::UintTy::U8)) => true,
         (LitKind::CStr(..), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Adt(def, _)
-                if tcx.is_lang_item(def.did(), rustc_hir::LangItem::CStr)) =>
+                if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
         {
             true
         }

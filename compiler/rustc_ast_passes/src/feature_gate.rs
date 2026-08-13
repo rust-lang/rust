@@ -1,10 +1,9 @@
-use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::Features;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
@@ -220,8 +219,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 self.check_impl_trait(ty, false)
             }
             ast::ItemKind::Const(ast::ConstItem {
-                rhs_kind: ast::ConstItemRhsKind::TypeConst { .. },
-                ..
+                kind: ast::ConstItemKind::TypeConst, ..
             }) => {
                 // Make sure this is only allowed if the feature gate is enabled.
                 // #![feature(min_generic_const_args)]
@@ -366,17 +364,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_poly_trait_ref(self, t);
     }
 
-    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, _: Span, _: NodeId) {
         if let Some(_header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {
             self.check_late_bound_lifetime_defs(generic_params);
-        }
-
-        if fn_kind.ctxt() != Some(FnCtxt::Foreign) && fn_kind.decl().c_variadic() {
-            gate!(self, c_variadic, span, "C-variadic functions are unstable");
         }
 
         visit::walk_fn(self, fn_kind)
@@ -400,7 +394,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 false
             }
             ast::AssocItemKind::Const(ast::ConstItem {
-                rhs_kind: ast::ConstItemRhsKind::TypeConst { rhs },
+                body,
+                kind: ast::ConstItemKind::TypeConst,
                 ..
             }) => {
                 // Make sure this is only allowed if the feature gate is enabled.
@@ -409,7 +404,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 // Make sure associated `type const` defaults in traits are only allowed
                 // if the feature gate is enabled.
                 // #![feature(associated_type_defaults)]
-                if ctxt == AssocCtxt::Trait && rhs.is_some() {
+                if ctxt == AssocCtxt::Trait && body.is_some() {
                     gate!(
                         self,
                         associated_type_defaults,
@@ -487,7 +482,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
-    gate_all!(splat, "`fn(#[splat] (a, ...))` is incomplete", "call as func((a, ...)) instead");
+    gate_all!(
+        splat,
+        "`fn(#[rustc_splat] (a, ...))` is incomplete",
+        "call as func((a, ...)) instead"
+    );
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
     gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
@@ -511,6 +510,10 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
+    );
+    gate_all!(
+        named_fn_trait_parameters,
+        "named parameters in parenthesized generic argument lists are experimental"
     );
 
     // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.
@@ -638,7 +641,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
     let mut errored = false;
 
     if let Some(Attribute::Parsed(AttributeKind::Feature(feature_idents, first_span))) =
-        AttributeParser::parse_limited(sess, &krate.attrs, &[sym::feature])
+        AttributeParser::parse_limited_sym(sess, &krate.attrs, &[sym::feature])
     {
         // `feature(...)` used on non-nightly. This is definitely an error.
         let mut err = diagnostics::FeatureOnNonNightly {
@@ -730,8 +733,10 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
+        // Abort immediately, otherwise GCE can lower to `ConstKind::Expr`,
+        // which the new solver intentionally does not support.
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(diagnostics::IncompatibleFeatures {
+        sess.dcx().emit_fatal(diagnostics::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),
             f2: sym::generic_const_exprs,

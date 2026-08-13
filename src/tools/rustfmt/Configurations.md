@@ -1051,6 +1051,14 @@ Max width for code snippets included in doc comments. Only used if [`format_code
 - **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: No (tracking issue: [#5359](https://github.com/rust-lang/rustfmt/issues/5359))
 
+## `doc_comment_code_block_small_heuristics`
+
+Value for [`use_small_heuristics`](#use_small_heuristics) for use in code blocks in doc comments. Only used if [`format_code_in_doc_comments`](#format_code_in_doc_comments) is true.
+
+- **Default value**: `"Default"`
+- **Possible values**: `"Default"`, `"Off"`, `"Max"`
+- **Stable**: No (tracking issue: [#6942](https://github.com/rust-lang/rustfmt/issues/6942))
+
 ## `format_generated_files`
 
 Format generated files. A file is considered generated if any of the first several lines contain a `@generated` comment marker. The number of lines to check is configured by `generated_marker_line_search_limit`.
@@ -1257,7 +1265,7 @@ Control the case of the letters in hexadecimal literal values
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Upper`, `Lower`
-- **Stable**: No (tracking issue: [#5081](https://github.com/rust-lang/rustfmt/issues/5081))
+- **Stable**: Yes
 
 ## `float_literal_trailing_zero`
 
@@ -2059,6 +2067,7 @@ This option is deprecated. Use `imports_granularity = "Crate"` instead.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No (tracking issue: [#3362](https://github.com/rust-lang/rustfmt/issues/3362))
 
 #### `false` (default):
 
@@ -2840,8 +2849,10 @@ See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuri
 Controls the edition of the [Rust Style Guide] to use for formatting ([RFC 3338])
 
 - **Default value**: `"2015"`
-- **Possible values**: `"2015"`, `"2018"`, `"2021"`, `"2024"` (unstable variant)
-- **Stable**: No
+- **Possible values**:
+  - Stable values: `"2015"`, `"2018"`, `"2021"`, `"2024"`
+  - Unstable values: `"2027"`
+- **Stable**: Yes
 
 This option is inferred from the [`edition`](#edition) if not specified.
 

@@ -341,7 +341,7 @@ impl<'tcx> Const<'tcx> {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
                 tcx.const_eval_resolve(typing_env, uneval, span)
             }
-            Const::Val(val, _) => Ok(val),
+            Const::Val(val, _ty) => Ok(val),
         }
     }
 

@@ -764,6 +764,14 @@ impl<'a> CommentRewrite<'a> {
                             .doc_comment_code_block_width()
                             .min(config.max_width());
                         config.set().max_width(comment_max_width);
+                        if let Some(comment_use_small_heuristics) = config
+                            .doc_comment_code_block_small_heuristics()
+                            .to_heuristics()
+                        {
+                            config
+                                .set()
+                                .use_small_heuristics(comment_use_small_heuristics);
+                        }
                         if let Some(s) =
                             crate::format_code_block(&self.code_block_buffer, &config, false)
                         {

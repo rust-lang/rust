@@ -147,7 +147,7 @@ impl RegionName {
             )) => {
                 diag.span_label(
                     *span,
-                    format!("lifetime `{self}` appears in the type {type_name}"),
+                    format!("lifetime `{self}` appears in the type `{type_name}`"),
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
@@ -1063,12 +1063,12 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             return None;
         };
 
-        let predicates: Vec<_> = self
+        let clauses: Vec<_> = self
             .infcx
             .tcx
-            .predicates_of(self.body.source.def_id())
+            .clauses_of(self.body.source.def_id())
             .instantiate_identity(self.infcx.tcx)
-            .predicates
+            .clauses
             .into_iter()
             .map(Unnormalized::skip_norm_wip)
             .collect();
@@ -1079,7 +1079,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             .defining_ty
             .upvar_tys()
             .iter()
-            .position(|ty| self.any_param_predicate_mentions(&predicates, ty, region))
+            .position(|ty| self.any_param_clause_mentions(&clauses, ty, region))
         {
             let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
                 self.infcx.tcx,
@@ -1097,7 +1097,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             .universal_regions()
             .unnormalized_input_tys
             .iter()
-            .position(|ty| self.any_param_predicate_mentions(&predicates, *ty, region))
+            .position(|ty| self.any_param_clause_mentions(&clauses, *ty, region))
         {
             let (arg_name, arg_span) = self.regioncx.get_argument_name_and_span_for_region(
                 self.body,
@@ -1117,7 +1117,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         }
     }
 
-    fn any_param_predicate_mentions(
+    fn any_param_clause_mentions(
         &self,
         clauses: &[ty::Clause<'tcx>],
         ty: Ty<'tcx>,

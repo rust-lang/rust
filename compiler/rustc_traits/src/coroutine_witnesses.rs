@@ -47,11 +47,18 @@ pub(crate) fn coroutine_hidden_types<'tcx>(
     )
 }
 
+// FIXME: The assumptions are only used in the old solver when `-Zhigher-ranked-assumptions`
+// is true. `-Zhigher-ranked-assumptions` is superseded by `assumptions-on-binders`.
+// We can remove this function soon.
 fn compute_assumptions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     bound_tys: &'tcx ty::List<Ty<'tcx>>,
-) -> &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> {
+) -> &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> {
+    if tcx.next_trait_solver_globally() || !tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
+        return &ty::List::empty();
+    }
+
     let infcx = tcx
         .infer_ctxt()
         .build(ty::TypingMode::Typeck { defining_opaque_types_and_generators: ty::List::empty() });

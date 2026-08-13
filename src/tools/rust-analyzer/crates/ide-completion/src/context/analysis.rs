@@ -794,6 +794,10 @@ fn expected_type_and_name<'db>(
                     }.map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::MatchGuard(it) => {
+                    let ty = it.condition().and_then(|e| sema.type_of_expr(&e)).map(TypeInfo::original);
+                    (ty, None)
+                },
                 ast::IdentPat(it) => {
                     cov_mark::hit!(expected_type_if_let_with_leading_char);
                     cov_mark::hit!(expected_type_match_arm_with_leading_char);
@@ -1659,7 +1663,7 @@ fn classify_name_ref<'db>(
                     let res = sema.resolve_path(&qualifier);
 
                     // For understanding how and why super_chain_len is calculated the way it
-                    // is check the documentation at it's definition
+                    // is check the documentation at its definition
                     let mut segment_count = 0;
                     let super_count = iter::successors(Some(qualifier.clone()), |p| p.qualifier())
                         .take_while(|p| {

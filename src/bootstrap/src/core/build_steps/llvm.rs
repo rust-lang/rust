@@ -17,34 +17,47 @@ use std::{env, fs};
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{
+    Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+};
 use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, exit, trace};
+use crate::{CLang, GitRepo, exit, trace};
 
+/// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
-pub struct LlvmResult {
+pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
-    /// Path to LLVM cmake directory for the target.
-    pub llvm_cmake_dir: PathBuf,
+    llvm_root_dir: PathBuf,
 }
 
-pub struct Meta {
+impl LlvmOutput {
+    /// Directory containing the built LLVM artifacts.
+    /// Contains `bin`/`lib` directories.
+    pub fn root_dir(&self) -> &Path {
+        &self.llvm_root_dir
+    }
+
+    /// Path to LLVM cmake directory.
+    pub fn cmake_dir(&self) -> PathBuf {
+        self.llvm_root_dir.join("lib").join("cmake").join("llvm")
+    }
+}
+
+pub struct LlvmBuildInfo {
     stamp: BuildStamp,
-    res: LlvmResult,
-    out_dir: PathBuf,
-    root: String,
+    output: LlvmOutput,
 }
 
 pub enum LlvmBuildStatus {
-    AlreadyBuilt(LlvmResult),
-    ShouldBuild(Meta),
+    AlreadyBuilt(LlvmOutput),
+    ShouldBuild(LlvmBuildInfo),
 }
 
 impl LlvmBuildStatus {
@@ -56,10 +69,10 @@ impl LlvmBuildStatus {
     }
 
     #[cfg(test)]
-    pub fn llvm_result(&self) -> &LlvmResult {
+    pub fn llvm_result(&self) -> &LlvmOutput {
         match self {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
-            LlvmBuildStatus::ShouldBuild(meta) => &meta.res,
+            LlvmBuildStatus::ShouldBuild(meta) => &meta.output,
         }
     }
 }
@@ -130,13 +143,10 @@ pub fn prebuilt_llvm_config(
     {
         check_llvm_version(builder, s);
         let host_llvm_config = s.to_path_buf();
-        let mut llvm_cmake_dir = host_llvm_config.clone();
-        llvm_cmake_dir.pop();
-        llvm_cmake_dir.pop();
-        llvm_cmake_dir.push("lib");
-        llvm_cmake_dir.push("cmake");
-        llvm_cmake_dir.push("llvm");
-        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { host_llvm_config, llvm_cmake_dir });
+        let mut llvm_root_dir = host_llvm_config.clone();
+        llvm_root_dir.pop();
+        llvm_root_dir.pop();
+        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput { host_llvm_config, llvm_root_dir });
     }
 
     if handle_submodule_when_needed {
@@ -144,7 +154,6 @@ pub fn prebuilt_llvm_config(
         builder.config.update_submodule("src/llvm-project");
     }
 
-    let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
 
     let build_llvm_config = if let Some(build_llvm_config) = builder
@@ -160,8 +169,7 @@ pub fn prebuilt_llvm_config(
         llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
     };
 
-    let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
-    let res = LlvmResult { host_llvm_config: build_llvm_config, llvm_cmake_dir };
+    let res = LlvmOutput { host_llvm_config: build_llvm_config, llvm_root_dir: out_dir.clone() };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -188,7 +196,7 @@ pub fn prebuilt_llvm_config(
         return LlvmBuildStatus::AlreadyBuilt(res);
     }
 
-    LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
+    LlvmBuildStatus::ShouldBuild(LlvmBuildInfo { stamp, output: res })
 }
 
 /// Paths whose changes invalidate LLVM downloads.
@@ -201,6 +209,8 @@ pub const LLVM_INVALIDATION_PATHS: &[&str] = &[
 
 /// Detect whether LLVM sources have been modified locally or not.
 pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshness {
+    assert!(cfg!(not(test)), "unit tests shouldn't care about LLVM freshness");
+
     if is_git {
         config.check_path_modifications(LLVM_INVALIDATION_PATHS)
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
@@ -247,6 +257,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("powerpc64le-unknown-linux-gnu", false),
         ("powerpc64le-unknown-linux-musl", false),
         ("riscv64gc-unknown-linux-gnu", false),
+        ("riscv64gc-unknown-linux-musl", false),
         ("s390x-unknown-linux-gnu", false),
         ("x86_64-pc-windows-gnullvm", false),
         ("x86_64-unknown-freebsd", false),
@@ -269,8 +280,8 @@ pub struct Llvm {
     pub target: TargetSelection,
 }
 
-impl Step for Llvm {
-    type Output = LlvmResult;
+impl CommandLineStep for Llvm {
+    type Output = LlvmOutput;
 
     const IS_HOST: bool = true;
 
@@ -283,7 +294,7 @@ impl Step for Llvm {
     }
 
     /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder<'_>) -> LlvmResult {
+    fn run(self, builder: &Builder<'_>) -> LlvmOutput {
         let target = self.target;
         let target_native = if self.target.starts_with("riscv") {
             // RISC-V target triples in Rust is not named the same as C compiler target triples.
@@ -300,7 +311,7 @@ impl Step for Llvm {
         };
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
-        let Meta { stamp, res, out_dir, root } = match prebuilt_llvm_config(builder, target, true) {
+        let LlvmBuildInfo { stamp, output } = match prebuilt_llvm_config(builder, target, true) {
             LlvmBuildStatus::AlreadyBuilt(p) => return p,
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
@@ -312,17 +323,13 @@ impl Step for Llvm {
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs::create_dir_all(output.root_dir()));
 
         // https://llvm.org/docs/CMake.html
-        let mut cfg = cmake::Config::new(builder.src.join(root));
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/llvm"));
         let mut ldflags = LdFlags::default();
 
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
-            (false, _) => "Debug",
-            (true, false) => "Release",
-            (true, true) => "RelWithDebInfo",
-        };
+        let profile = get_llvm_profile(&builder.config);
 
         // NOTE: remember to also update `bootstrap.example.toml` when changing the
         // defaults!
@@ -344,7 +351,7 @@ impl Step for Llvm {
         let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
         let enable_warnings = if builder.config.llvm_enable_warnings { "ON" } else { "OFF" };
 
-        cfg.out_dir(&out_dir)
+        cfg.out_dir(output.root_dir())
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
             .define("LLVM_UNREACHABLE_OPTIMIZE", "OFF")
@@ -407,6 +414,8 @@ impl Step for Llvm {
         // equally well everywhere.
         if builder.llvm_link_shared() {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+            // Keep the pre-LLVM23 behavior for now.
+            cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
         }
 
         if (target.starts_with("csky")
@@ -439,6 +448,12 @@ impl Step for Llvm {
             // know it's linking as Arm64EC (vs Arm64X).
             ldflags.exe.push(" -machine:arm64ec");
             ldflags.shared.push(" -machine:arm64ec");
+        }
+
+        // cc-rs deprecated `static_flag`, which used to supply `-static` for musl
+        // targets, so pass it here instead.
+        if target.contains("musl") && builder.crt_static(target).unwrap_or(true) {
+            ldflags.exe.push(" -static");
         }
 
         if target.is_msvc() {
@@ -498,7 +513,7 @@ impl Step for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
-            let LlvmResult { host_llvm_config, .. } =
+            let LlvmOutput { host_llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
                 let llvm_bindir = command(&host_llvm_config)
@@ -549,14 +564,14 @@ impl Step for Llvm {
         }
 
         if builder.config.dry_run() {
-            return res;
+            return output;
         }
 
         cfg.build();
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let major = get_llvm_version_major(builder, &res.host_llvm_config);
+            let major = get_llvm_version_major(builder, &output.host_llvm_config);
             match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
@@ -569,7 +584,7 @@ impl Step for Llvm {
         // link to make llvm-config happy.
         if builder.llvm_link_shared() && target.contains("apple-darwin") {
             let lib_name = find_llvm_lib_name("dylib");
-            let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
+            let lib_llvm = output.root_dir().join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
                 t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
             }
@@ -590,18 +605,18 @@ impl Step for Llvm {
             crate::core::build_steps::compile::strip_debug(
                 builder,
                 target,
-                &out_dir.join("lib").join(&lib_name),
+                &output.root_dir().join("lib").join(&lib_name),
             );
             crate::core::build_steps::compile::strip_debug(
                 builder,
                 target,
-                &out_dir.join("build").join("lib").join(&lib_name),
+                &output.root_dir().join("build").join("lib").join(&lib_name),
             );
         }
 
         t!(stamp.write());
 
-        res
+        output
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -623,6 +638,14 @@ pub fn get_llvm_version_major(builder: &Builder<'_>, llvm_config: &Path) -> u8 {
     let version = get_llvm_version(builder, llvm_config);
     let major_str = version.split_once('.').expect("Failed to parse LLVM version").0;
     major_str.parse().unwrap()
+}
+
+fn get_llvm_profile(config: &Config) -> &'static str {
+    match (config.llvm_optimize, config.llvm_release_debuginfo) {
+        (false, _) => "Debug",
+        (true, false) => "Release",
+        (true, true) => "RelWithDebInfo",
+    }
 }
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
@@ -932,14 +955,118 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
 }
 
 #[derive(Clone)]
+pub struct BuiltRustOffload {
+    /// Path to the rust offload dylib
+    offload: PathBuf,
+}
+
+impl BuiltRustOffload {
+    pub fn rust_offload_path(&self) -> PathBuf {
+        self.offload.clone()
+    }
+
+    pub fn rust_offload_filename(&self) -> String {
+        self.offload.file_name().unwrap().to_str().unwrap().to_owned()
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustOffload {
+    pub target: TargetSelection,
+}
+
+impl CommandLineStep for RustOffload {
+    type Output = BuiltRustOffload;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rust-offload")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustOffload { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if builder.config.dry_run() {
+            return BuiltRustOffload {
+                offload: builder.config.tempdir().join("rust-offload-dry-run"),
+            };
+        }
+
+        let target = self.target;
+
+        let llvm_output = builder.ensure(Llvm { target });
+
+        let out_dir = builder.out.join(self.target.triple).join("rust-offload");
+
+        let llvm_version_major =
+            llvm::get_llvm_version_major(builder, &llvm_output.host_llvm_config);
+        let lib_ext = std::env::consts::DLL_EXTENSION;
+        let lib_rust_offload = format!("libRustOffload-{llvm_version_major}");
+        let build_dir = out_dir.join(libdir(target));
+        let dylib = build_dir.join(&lib_rust_offload).with_extension(lib_ext);
+
+        let mut cfg =
+            cmake::Config::new(builder.src.join("compiler/rustc_llvm/llvm-wrapper/offload/"));
+
+        // Logic copied from `configure_llvm`
+        // ThinLTO is only available when building with LLVM, enabling LLD is required.
+        // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+        let mut ldflags = LdFlags::default();
+        if builder.config.llvm_thin_lto && !target.contains("apple") {
+            ldflags.push_all("-fuse-ld=lld");
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
+
+        let profile = get_llvm_profile(&builder.config);
+
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
+            .define("LLVM_DIR", llvm_output.cmake_dir());
+
+        cfg.build();
+
+        if !dylib.exists() {
+            eprintln!(
+                "`{lib_rust_offload}` not found in `{}`. Either the build has failed or RustOffload was built with a wrong version of LLVM",
+                build_dir.display()
+            );
+            exit!(1);
+        }
+
+        BuiltRustOffload { offload: dylib }
+    }
+}
+
+#[derive(Clone)]
 pub struct BuiltOmpOffload {
     /// Path to the omp and offload dylibs.
     offload: Vec<PathBuf>,
 }
 
 impl BuiltOmpOffload {
-    pub fn offload_paths(&self) -> Vec<PathBuf> {
-        self.offload.clone()
+    pub fn artifact_paths_with_symlink_targets(&self) -> Vec<PathBuf> {
+        let mut paths = self.offload.clone();
+
+        for path in &self.offload {
+            let mut current = path.clone();
+
+            while t!(fs::symlink_metadata(&current)).file_type().is_symlink() {
+                let target = t!(fs::read_link(&current));
+                current = current.parent().unwrap().join(target);
+
+                if paths.contains(&current) {
+                    break;
+                }
+
+                paths.push(current.clone());
+            }
+        }
+
+        paths
     }
 }
 
@@ -959,7 +1086,7 @@ pub struct OmpOffload {
     pub target: TargetSelection,
 }
 
-impl Step for OmpOffload {
+impl CommandLineStep for OmpOffload {
     type Output = BuiltOmpOffload;
     const IS_HOST: bool = true;
 
@@ -981,19 +1108,42 @@ impl Step for OmpOffload {
         }
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } =
-            builder.ensure(Llvm { target: self.target });
+        let llvm_output = builder.ensure(Llvm { target: self.target });
 
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own folder, instead of
         // using the llvm build dir.
-        let out_dir = builder.offload_out(target);
+        let out_dir = builder.out.join(self.target.triple).join("offload");
 
         let mut files = vec![];
         let lib_ext = std::env::consts::DLL_EXTENSION;
         files.push(out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext));
         files.push(out_dir.join("lib").join("libomp").with_extension(lib_ext));
         files.push(out_dir.join("lib").join("libomptarget").with_extension(lib_ext));
+        files.push(
+            out_dir.join("lib").join("amdgcn-amd-amdhsa").join("libompdevice").with_extension("a"),
+        );
+        files.push(
+            out_dir
+                .join("lib")
+                .join("amdgcn-amd-amdhsa")
+                .join("libomptarget-amdgpu")
+                .with_extension("bc"),
+        );
+        files.push(
+            out_dir
+                .join("lib")
+                .join("nvptx64-nvidia-cuda")
+                .join("libompdevice")
+                .with_extension("a"),
+        );
+        files.push(
+            out_dir
+                .join("lib")
+                .join("nvptx64-nvidia-cuda")
+                .join("libomptarget-nvptx")
+                .with_extension("bc"),
+        );
 
         // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1060,28 +1210,31 @@ impl Step for OmpOffload {
                 cflags.push_all(format!(" -I {inc_dir}"));
             }
 
-            configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+            // Logic copied from `configure_llvm`
+            // ThinLTO is only available when building with LLVM, enabling LLD is required.
+            // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+            let mut ldflags = LdFlags::default();
+            if builder.config.llvm_thin_lto && !target.contains("apple") {
+                ldflags.push_all("-fuse-ld=lld");
+            }
+
+            configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
 
             // Re-use the same flags as llvm to control the level of debug information
             // generated for offload.
-            let profile =
-                match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
-                    (false, _) => "Debug",
-                    (true, false) => "Release",
-                    (true, true) => "RelWithDebInfo",
-                };
+            let profile = get_llvm_profile(&builder.config);
             trace!(?profile);
 
             // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
             // runtime to simplify our build. So far, these are still under development.
             cfg.out_dir(&out_dir)
                 .profile(profile)
-                .env("LLVM_CONFIG_REAL", &host_llvm_config)
+                .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
                 .define("LLVM_ENABLE_ASSERTIONS", "ON")
                 .define("LLVM_INCLUDE_TESTS", "OFF")
                 .define("OFFLOAD_INCLUDE_TESTS", "OFF")
                 .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
-                .define("LLVM_DIR", llvm_cmake_dir.clone())
+                .define("LLVM_DIR", llvm_output.cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
             if let Some(p) = clang_dir.clone() {
                 cfg.define("Clang_DIR", p);
@@ -1094,6 +1247,7 @@ impl Step for OmpOffload {
                 cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
             } else {
                 // OpenMP provides some device libraries, so we also compile it for all gpu targets.
+                cfg.define("OPENMP_INSTALL_LIBDIR", Path::new("lib").join(omp_target));
                 cfg.define("LLVM_USE_LINKER", "lld");
                 cfg.define("LLVM_ENABLE_RUNTIMES", "openmp");
                 cfg.define("CMAKE_C_COMPILER_TARGET", omp_target);
@@ -1139,7 +1293,7 @@ pub struct Enzyme {
     pub target: TargetSelection,
 }
 
-impl Step for Enzyme {
+impl CommandLineStep for Enzyme {
     type Output = BuiltEnzyme;
     const IS_HOST: bool = true;
 
@@ -1163,7 +1317,7 @@ impl Step for Enzyme {
             return BuiltEnzyme { enzyme: builder.config.tempdir().join("enzyme-dryrun") };
         }
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let llvm_output = builder.ensure(Llvm { target });
 
         // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
         // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
@@ -1180,10 +1334,11 @@ impl Step for Enzyme {
             )
         });
 
-        let out_dir = builder.enzyme_out(target);
+        let out_dir = builder.out.join(self.target.triple).join("enzyme");
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
-        let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
+        let llvm_version_major =
+            llvm::get_llvm_version_major(builder, &llvm_output.host_llvm_config);
         let lib_ext = std::env::consts::DLL_EXTENSION;
         let libenzyme = format!("libEnzyme-{llvm_version_major}");
         let build_dir = out_dir.join(libdir(target));
@@ -1205,10 +1360,11 @@ impl Step for Enzyme {
             return BuiltEnzyme { enzyme: dylib };
         }
 
+        let llvm_cmake_dir = llvm_output.cmake_dir();
         if !builder.config.dry_run() && !llvm_cmake_dir.is_dir() {
             builder.info(&format!(
-                "WARNING: {} does not exist, Enzyme build will likely fail",
-                llvm_cmake_dir.display()
+                "WARNING: {:?} does not exist, Enzyme build will likely fail",
+                llvm_cmake_dir
             ));
         }
 
@@ -1238,16 +1394,12 @@ impl Step for Enzyme {
         // Re-use the same flags as llvm to control the level of debug information
         // generated by Enzyme.
         // FIXME(ZuseZ4): Find a nicer way to use Enzyme Debug builds.
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
-            (false, _) => "Debug",
-            (true, false) => "Release",
-            (true, true) => "RelWithDebInfo",
-        };
+        let profile = get_llvm_profile(&builder.config);
         trace!(?profile);
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &host_llvm_config)
+            .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
@@ -1275,7 +1427,7 @@ pub struct Lld {
     pub target: TargetSelection,
 }
 
-impl Step for Lld {
+impl CommandLineStep for Lld {
     type Output = PathBuf;
     const IS_HOST: bool = true;
 
@@ -1294,13 +1446,13 @@ impl Step for Lld {
         }
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let llvm_output = builder.ensure(Llvm { target });
 
         // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
         // subfolder. We check if that's the case, and if LLD's binary already exists there next to
         // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
-        let ci_llvm_bin = host_llvm_config.parent().unwrap();
+        let ci_llvm_bin = llvm_output.host_llvm_config.parent().unwrap();
         if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
             let lld_path = ci_llvm_bin.join(exe("lld", target));
             if lld_path.exists() {
@@ -1310,7 +1462,7 @@ impl Step for Lld {
             }
         }
 
-        let out_dir = builder.lld_out(target);
+        let out_dir = builder.out.join(target).join("lld");
 
         let lld_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
         if lld_stamp.path().exists() {
@@ -1368,22 +1520,21 @@ impl Step for Lld {
 
         // Re-use the same flags as llvm to control the level of debug information
         // generated for lld.
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
-            (false, _) => "Debug",
-            (true, false) => "Release",
-            (true, true) => "RelWithDebInfo",
-        };
+        let profile = get_llvm_profile(&builder.config);
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .define("LLVM_CMAKE_DIR", llvm_cmake_dir)
+            .define("LLVM_CMAKE_DIR", llvm_output.cmake_dir())
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
         if !builder.config.is_host_target(target) {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
-                host_llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
+                llvm_output
+                    .host_llvm_config
+                    .with_file_name("llvm-tblgen")
+                    .with_extension(EXE_EXTENSION),
             );
         }
 
@@ -1399,7 +1550,7 @@ pub struct Sanitizers {
     pub target: TargetSelection,
 }
 
-impl Step for Sanitizers {
+impl CommandLineStep for Sanitizers {
     type Output = Vec<SanitizerRuntime>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1424,7 +1575,7 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let LlvmResult { host_llvm_config, .. } =
+        let LlvmOutput { host_llvm_config, .. } =
             builder.ensure(Llvm { target: builder.config.host_target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1522,10 +1673,14 @@ fn supported_sanitizers(
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
             .iter()
-            .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{c}_{os}_dynamic"),
-                path: out_dir.join(format!("build/lib/darwin/libclang_rt.{c}_{os}_dynamic.dylib")),
-                name: format!("librustc-{channel}_rt.{c}.dylib"),
+            .map(move |c| {
+                let cmake_c = if *c == "ubsan" { "ubsan_standalone" } else { *c };
+                SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{cmake_c}_{os}_dynamic"),
+                    path: out_dir
+                        .join(format!("build/lib/darwin/libclang_rt.{cmake_c}_{os}_dynamic.dylib")),
+                    name: format!("librustc-{channel}_rt.{c}.dylib"),
+                }
             })
             .collect()
     };
@@ -1533,10 +1688,13 @@ fn supported_sanitizers(
     let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
             .iter()
-            .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{c}-{arch}"),
-                path: out_dir.join(format!("build/lib/{os}/libclang_rt.{c}-{arch}.a")),
-                name: format!("librustc-{channel}_rt.{c}.a"),
+            .map(move |c| {
+                let cmake_c = if *c == "ubsan" { "ubsan_standalone" } else { *c };
+                SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{cmake_c}-{arch}"),
+                    path: out_dir.join(format!("build/lib/{os}/libclang_rt.{cmake_c}-{arch}.a")),
+                    name: format!("librustc-{channel}_rt.{c}.a"),
+                }
             })
             .collect()
     };
@@ -1547,9 +1705,11 @@ fn supported_sanitizers(
         "aarch64-apple-ios-sim" => darwin_libs("iossim", &["asan", "tsan", "rtsan"]),
         "aarch64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
-        "aarch64-unknown-linux-gnu" => {
-            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan", "rtsan"])
-        }
+        "aarch64-unknown-linux-gnu" => common_libs(
+            "linux",
+            "aarch64",
+            &["asan", "lsan", "msan", "tsan", "hwasan", "rtsan", "ubsan"],
+        ),
         "aarch64-unknown-linux-ohos" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
@@ -1569,7 +1729,7 @@ fn supported_sanitizers(
         "x86_64-unknown-linux-gnu" => common_libs(
             "linux",
             "x86_64",
-            &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
+            &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan", "ubsan"],
         ),
         "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnumsan" => common_libs("linux", "x86_64", &["msan"]),
@@ -1595,7 +1755,7 @@ pub struct CrtBeginEnd {
     pub target: TargetSelection,
 }
 
-impl Step for CrtBeginEnd {
+impl CommandLineStep for CrtBeginEnd {
     type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1673,7 +1833,7 @@ pub struct Libunwind {
     pub target: TargetSelection,
 }
 
-impl Step for Libunwind {
+impl CommandLineStep for Libunwind {
     type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1735,7 +1895,6 @@ impl Step for Libunwind {
             cfg.out_dir(&out_dir);
 
             if self.target.contains("x86_64-fortanix-unknown-sgx") {
-                cfg.static_flag(true);
                 cfg.flag("-fno-stack-protector");
                 cfg.flag("-ffreestanding");
                 cfg.flag("-fexceptions");
@@ -1828,5 +1987,54 @@ impl Step for Libunwind {
 
         cc_cfg.compile("unwind");
         out_dir
+    }
+}
+
+/// Returns the path to `FileCheck` LLVM binary for the specified target.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FileCheck {
+    pub target: TargetSelection,
+}
+
+impl Step for FileCheck {
+    type Output = PathBuf;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let target_config = builder.config.target_config.get(&self.target);
+
+        // The target configured filecheck, prefer it
+        if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
+            return s.clone();
+        };
+
+        // There is a LLVM config set, take filecheck from it
+        // Note: because `download-ci-llvm` currently overrides `llvm-config`, when the LLVM is
+        // downloaded, we go through this branch. Ideally, this should be changed so that
+        // `download-ci-llvm` doesn't override the config.
+        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(builder).stdout();
+            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
+            let filecheck = if filecheck.exists() {
+                filecheck
+            } else {
+                // On Fedora the system LLVM installs FileCheck in the
+                // llvm subdirectory of the libdir.
+                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(builder).stdout();
+                let lib_filecheck =
+                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", self.target));
+                if lib_filecheck.exists() {
+                    lib_filecheck
+                } else {
+                    // Return the most normal file name, even though
+                    // it doesn't exist, so that any error message
+                    // refers to that.
+                    filecheck
+                }
+            };
+            return filecheck;
+        }
+        // Here we take the filecheck from LLVM directly
+        let llvm_output = builder.ensure(Llvm { target: self.target });
+        llvm_output.root_dir().join("bin").join(exe("FileCheck", self.target))
     }
 }

@@ -17,7 +17,7 @@ use rustc_codegen_ssa::back::write::{
 use rustc_codegen_ssa::traits::{ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_errors::DiagCtxt;
+use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -205,6 +205,7 @@ fn codegen_cgu(tcx: TyCtxt<'_>, cgu_name: Symbol) -> AotModule {
 
 fn compile_cgu(
     prof: &SelfProfilerRef,
+    dcx: DiagCtxtHandle<'_>,
     output_filenames: &OutputFilenames,
     should_write_ir: bool,
     mut aot_module: AotModule,
@@ -220,6 +221,7 @@ fn compile_cgu(
         for codegened_func in aot_module.codegened_functions {
             crate::base::compile_fn(
                 &prof,
+                dcx,
                 &output_filenames,
                 should_write_ir,
                 &mut cached_context,
@@ -308,11 +310,8 @@ impl ExtraBackendMethods for AotDriver {
 
 impl WriteBackendMethods for AotDriver {
     type Module = AotModule;
-
-    type TargetMachine = ();
-
     type ModuleBuffer = Infallible;
-
+    type TargetMachine = ();
     type ThinData = Infallible;
 
     fn target_machine_factory(
@@ -373,18 +372,17 @@ impl WriteBackendMethods for AotDriver {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule {
+        let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
         compile_cgu(
             prof,
+            dcx.handle(),
             &cgcx.output_filenames,
             config.emit_ir,
             module.module_llvm,
             module.name,
             module.kind,
         )
-        .unwrap_or_else(|err| {
-            let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
-            dcx.handle().fatal(err)
-        })
+        .unwrap_or_else(|err| dcx.handle().fatal(err))
     }
 
     fn serialize_module(_module: Self::Module, _is_thin: bool) -> Self::ModuleBuffer {

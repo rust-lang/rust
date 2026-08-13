@@ -347,7 +347,7 @@ struct MatchState<'t> {
 /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
 /// produce more items in `next_items`, `eof_items`, and `bb_items`.
 ///
-/// For more info about the how this happens, see the module-level doc comments and the inline
+/// For more info about how this happens, see the module-level doc comments and the inline
 /// comments of this function.
 ///
 /// # Parameters
@@ -842,11 +842,14 @@ fn match_meta_var<'t>(
                 _ => unreachable!(),
             }
             .err();
-            let tt_result = input.from_savepoint(savepoint);
-            return ValueResult {
-                value: Fragment::Tokens { tree: tt_result, origin: TokensOrigin::Raw },
-                err,
+            let value = match err {
+                Some(_) => Fragment::Empty,
+                None => Fragment::Tokens {
+                    tree: input.from_savepoint(savepoint),
+                    origin: TokensOrigin::Raw,
+                },
             };
+            return ValueResult { value, err };
         }
         MetaVarKind::Ty => (parser::PrefixEntryPoint::Ty, TokensOrigin::Ast),
         MetaVarKind::Pat => (parser::PrefixEntryPoint::PatTop, TokensOrigin::Ast),

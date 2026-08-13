@@ -1,4 +1,4 @@
-warning: unknown feature specified for `-Ctarget-feature`: `rdrand`
+warning: ignoring feature with missing prefix in `-Ctarget-feature`: `rdrand`
    |
    = note: features must begin with a `+` to enable or `-` to disable it
 

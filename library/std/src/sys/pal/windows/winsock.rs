@@ -1,18 +1,17 @@
 use super::c;
 use crate::ffi::c_int;
-use crate::sync::atomic::Atomic;
-use crate::sync::atomic::Ordering::{AcqRel, Relaxed};
+use crate::sync::Once;
 use crate::{io, mem};
 
-static WSA_STARTED: Atomic<bool> = Atomic::<bool>::new(false);
+static WSA_INIT: Once = Once::new();
 
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 #[inline]
 pub fn startup() {
-    if !WSA_STARTED.load(Relaxed) {
-        wsa_startup();
-    }
+    // Make sure to only call `WSAStartup` once, because it's not thread-safe
+    // on Wine: https://bugs.winehq.org/show_bug.cgi?id=60084.
+    WSA_INIT.call_once_force(|_| wsa_startup());
 }
 
 #[cold]
@@ -24,11 +23,6 @@ fn wsa_startup() {
             &mut data,
         );
         assert_eq!(ret, 0);
-        if WSA_STARTED.swap(true, AcqRel) {
-            // If another thread raced with us and called WSAStartup first then call
-            // WSACleanup so it's as though WSAStartup was only called once.
-            c::WSACleanup();
-        }
     }
 }
 

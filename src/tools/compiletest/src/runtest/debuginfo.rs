@@ -12,7 +12,7 @@ use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
-        match self.config.debugger.unwrap() {
+        match self.variant.debugger.as_ref().unwrap() {
             Debugger::Cdb => self.run_debuginfo_cdb_test(),
             Debugger::Gdb => self.run_debuginfo_gdb_test(),
             Debugger::Lldb => self.run_debuginfo_lldb_test(),
@@ -46,8 +46,9 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
         let mut script_str = String::with_capacity(2048);
@@ -105,8 +106,9 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the directive)
@@ -360,7 +362,7 @@ impl TestCx<'_> {
             Some(ref version) => {
                 writeln!(
                     self.stdout,
-                    "NOTE: compiletest thinks it is using LLDB version {}",
+                    "NOTE: compiletest thinks it is using LLDB version: {:?}",
                     version
                 );
             }
@@ -374,8 +376,9 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running
@@ -469,11 +472,22 @@ impl TestCx<'_> {
         // make sure `PATH` points to all the dlls necessary to run the debugee
         let path = prepend_to_path(&self.config.target_run_lib_path);
 
+        // Output the file path of the input data for `lldb-repr` commands
+        let lldb_input_data_path = self.config.src_root.join(format!(
+            "{}/lldb_input/{}.json",
+            self.testpaths.file.parent().unwrap(),
+            get_target_file_name(&self.config.target)
+        ));
+
         let mut cmd = ArgFileCommand::new(lldb);
-        cmd.arg("--one-line")
+        cmd.arg("--batch") // --batch executes our script from --one-line and kills lldb afterwards
+            .arg("--one-line")
             .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
             .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
+            .env("LLDB_BATCHMODE_INPUT_DATA_PATH", lldb_input_data_path)
+            .env("LLDB_BATCHMODE_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
+            .env("LLDB_BATCHMODE_TARGET_TRIPLE", &self.config.target)
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
@@ -510,5 +524,17 @@ fn prepend_to_path(some_path: &Utf8Path) -> String {
         }
     } else {
         some_path.to_string()
+    }
+}
+
+/// Converts the given target name into the appropriate input file name based on the
+/// targets defined in `lldb_batchmode.common.Target`
+fn get_target_file_name(target_name: &str) -> &'static str {
+    if target_name.ends_with("windows-msvc") {
+        "windows_msvc"
+    } else if target_name.ends_with("windows-gnu") || target_name.ends_with("windows-gnullvm") {
+        "windows_gnu"
+    } else {
+        "non_windows"
     }
 }

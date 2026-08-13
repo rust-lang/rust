@@ -1,6 +1,6 @@
 // regression test, used to ICE
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 
 const N: usize = 4;

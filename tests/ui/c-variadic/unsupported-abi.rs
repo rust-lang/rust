@@ -3,7 +3,7 @@
 //@ compile-flags: --target=i686-pc-windows-gnu --crate-type=rlib
 //@ ignore-backends: gcc
 #![no_core]
-#![feature(no_core, lang_items, c_variadic)]
+#![feature(no_core, lang_items)]
 
 // Test that ABIs for which C-variadics are not supported report an error.
 

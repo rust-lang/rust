@@ -1,0 +1,50 @@
+error: generic parameters with a default must be trailing
+  --> $DIR/const-param-default-body-param-env-ice.rs:3:12
+   |
+LL | impl<const N: usize = { || [0; X] }, X> dyn PartialEq<X> {}
+   |            ^
+
+error[E0128]: generic parameter defaults cannot reference parameters before they are declared
+  --> $DIR/const-param-default-body-param-env-ice.rs:3:32
+   |
+LL | impl<const N: usize = { || [0; X] }, X> dyn PartialEq<X> {}
+   |                                ^ cannot reference `X` before it is declared
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/const-param-default-body-param-env-ice.rs:3:6
+   |
+LL | impl<const N: usize = { || [0; X] }, X> dyn PartialEq<X> {}
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/const-param-default-body-param-env-ice.rs:3:6
+   |
+LL | impl<const N: usize = { || [0; X] }, X> dyn PartialEq<X> {}
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0308]: mismatched types
+  --> $DIR/const-param-default-body-param-env-ice.rs:12:45
+   |
+LL | pub struct S<const N: usize = { const { [1; foo] } }>;
+   |                                             ^^^ expected `usize`, found fn item
+   |
+   = note: expected type `usize`
+           found fn item `fn() {foo}`
+   = note: array length can only be `usize`
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/const-param-default-body-param-env-ice.rs:3:1
+   |
+LL | impl<const N: usize = { || [0; X] }, X> dyn PartialEq<X> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0116, E0128, E0207, E0308.
+For more information about an error, try `rustc --explain E0116`.

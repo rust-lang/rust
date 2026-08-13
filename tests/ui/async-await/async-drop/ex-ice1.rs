@@ -6,7 +6,7 @@ use core::pin::{pin, Pin};
 
 fn main() {
     let fut = pin!(async {
-        let async_drop_fut = pin!(core::future::async_drop(async {})); //~ ERROR: expected function, found module `core::future::async_drop`
+        let async_drop_fut = pin!(core::future::async_drop(async {})); //~ ERROR: cannot find function `async_drop` in module `core::future`
         //~^ ERROR: module `async_drop` is private
         (async_drop_fut).await;
     });

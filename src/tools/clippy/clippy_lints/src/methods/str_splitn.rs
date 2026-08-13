@@ -1,16 +1,15 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use clippy_utils::{paths, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    BindingMode, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
-};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, LetStmt, MatchSource, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{Span, Symbol, SyntaxContext};

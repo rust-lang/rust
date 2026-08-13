@@ -1,4 +1,4 @@
-//@ compile-flags:-Z unstable-options --show-coverage
+//@ compile-flags:-Z unstable-options --show-coverage -o -
 //@ check-pass
 
 #![feature(extern_types)]

@@ -39,7 +39,8 @@ fn is_nightly_only(pkg: &PkgType) -> bool {
         | PkgType::RustcCodegenCranelift
         | PkgType::RustcCodegenGcc
         | PkgType::Gcc { .. }
-        | PkgType::Enzyme => true,
+        | PkgType::Enzyme
+        | PkgType::Offload => true,
         PkgType::Rust
         | PkgType::RustSrc
         | PkgType::Rustc
@@ -331,7 +332,8 @@ impl Builder {
                 | PkgType::RustcCodegenGcc
                 | PkgType::Gcc { .. }
                 | PkgType::LlvmBitcodeLinker
-                | PkgType::Enzyme => {
+                | PkgType::Enzyme
+                | PkgType::Offload => {
                     extensions.push(host_component(pkg));
                 }
                 PkgType::RustcDev => {

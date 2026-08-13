@@ -9,7 +9,7 @@ LL |     {
 LL |         println!("{:?}", some_vec);
    |                          ^^^^^^^^ value borrowed here after move
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves `some_vec`
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `some_vec`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |

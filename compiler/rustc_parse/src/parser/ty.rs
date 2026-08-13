@@ -6,7 +6,6 @@ use rustc_ast::{
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
 };
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -18,8 +17,7 @@ use crate::diagnostics::{
     HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword, LifetimeAfterMut,
     NeedPlusAfterTraitObjectLifetime, NestedCVariadicType, ReturnTypesUseThinArrow,
 };
-use crate::parser::item::FrontMatterParsingMode;
-use crate::parser::{FnContext, FnParseMode};
+use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
@@ -115,16 +113,14 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_ty(span, kind));
         }
         // Make sure deeply nested types don't overflow the stack.
-        ensure_sufficient_stack(|| {
-            self.parse_ty_common(
-                AllowPlus::Yes,
-                AllowCVariadic::No,
-                RecoverQPath::Yes,
-                RecoverReturnSign::Yes,
-                None,
-                RecoverQuestionMark::Yes,
-            )
-        })
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            None,
+            RecoverQuestionMark::Yes,
+        )
     }
 
     pub(super) fn parse_ty_with_generics_recovery(
@@ -881,9 +877,9 @@ impl<'a> Parser<'a> {
         if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
-        let mode = crate::parser::item::FnParseMode {
+        let mode = crate::parser::FnParseMode {
             req_name: |_, _| false,
-            context: FnContext::Free,
+            context: FnContext::FunctionPtrType,
             req_body: false,
         };
         let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
@@ -1455,7 +1451,7 @@ impl<'a> Parser<'a> {
                         args: Some(Box::new(ast::GenericArgs::Parenthesized(
                             ast::ParenthesizedArgs {
                                 span: args_lo.to(self.prev_token.span),
-                                inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
+                                inputs: decl.inputs.iter().map(|a| a.clone()).collect(),
                                 inputs_span: args_lo.until(decl.output.span()),
                                 output: decl.output.clone(),
                             }
@@ -1542,7 +1538,7 @@ impl<'a> Parser<'a> {
         let inputs_lo = self.token.span;
         let mode =
             FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
-        let params = match self.parse_fn_params(&mode) {
+        let inputs = match self.parse_fn_params(&mode) {
             Ok(params) => params,
             Err(err) => {
                 if let Some(snapshot) = snapshot {
@@ -1554,7 +1550,6 @@ impl<'a> Parser<'a> {
                 }
             }
         };
-        let inputs: ThinVec<_> = params.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
         let output = match self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)
         {

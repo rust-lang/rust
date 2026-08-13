@@ -1,12 +1,17 @@
 //! This module defines the `Rust` struct, which represents the `[rust]` table
 //! in the `bootstrap.toml` configuration file.
 
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+
 use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
-use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::core::config::{
+    CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool, TargetSelection,
+};
+use crate::{CodegenBackendKind, define_config, exit};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -49,14 +54,13 @@ define_config! {
         llvm_bitcode_linker: Option<bool> = "llvm-bitcode-linker",
         lld: Option<bool> = "lld",
         bootstrap_override_lld: Option<BootstrapOverrideLld> = "bootstrap-override-lld",
-        // FIXME: Remove this option in Spring 2026
-        bootstrap_override_lld_legacy: Option<BootstrapOverrideLld> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
+        // FIXME: Remove this option in Q1 2027
         jemalloc: Option<bool> = "jemalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
@@ -75,6 +79,8 @@ define_config! {
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
+        stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
+        wasm_proc_macros: Option<bool> = "wasm-proc-macros",
     }
 }
 
@@ -295,6 +301,10 @@ pub fn check_incompatible_options_for_ci_rustc(
         ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
+    let current_allocator = current_config_toml.build.as_ref().and_then(|b| b.allocator);
+    let allocator = ci_config_toml.build.as_ref().and_then(|b| b.allocator);
+    err!(current_allocator, allocator, "build");
+
     // We always build the in-tree compiler on cross targets, so we only care
     // about the host target here.
     let host_str = host.to_string();
@@ -307,10 +317,17 @@ pub fn check_incompatible_options_for_ci_rustc(
         ))?;
 
         let profiler = &ci_cfg.profiler;
-        err!(current_cfg.profiler, profiler, "build");
+        err!(current_cfg.profiler, profiler, format!("target.{host_str}"));
 
         let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
-        err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
+        err!(
+            current_cfg.optimized_compiler_builtins,
+            optimized_compiler_builtins,
+            format!("target.{host_str}")
+        );
+
+        err!(current_cfg.allocator, &ci_cfg.allocator, format!("target.{host_str}"));
+        err!(current_cfg.jemalloc, &ci_cfg.jemalloc, format!("target.{host_str}"));
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =
@@ -380,8 +397,9 @@ pub fn check_incompatible_options_for_ci_rustc(
         break_on_ice: _,
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
-        bootstrap_override_lld_legacy: _,
         rustflags: _,
+        stdlib_semver_baseline: _,
+        wasm_proc_macros: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:

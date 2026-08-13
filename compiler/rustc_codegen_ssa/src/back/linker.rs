@@ -7,9 +7,6 @@ use std::{env, iter, mem, str};
 use find_msvc_tools;
 use rustc_hir::attrs::WindowsSubsystemKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::{
-    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
-};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -23,9 +20,12 @@ use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
+use crate::back::link::{
+    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
+};
 use crate::back::symbol_export::allocator_shim_symbols;
 use crate::base::needs_allocator_shim_for_linking;
-use crate::{SymbolExport, errors};
+use crate::{SymbolExport, diagnostics};
 
 #[cfg(test)]
 mod tests;
@@ -137,9 +137,6 @@ pub(crate) fn get_linker<'a>(
     // to the linker args construction.
     assert!(cmd.get_args().is_empty() || sess.target.cfg_abi == CfgAbi::Uwp);
     match flavor {
-        LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::L4Re => {
-            Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
-        }
         LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::Aix => {
             Box::new(AixLinker::new(cmd, sess)) as Box<dyn Linker>
         }
@@ -279,7 +276,6 @@ generate_arg_methods! {
     MsvcLinker<'_>
     EmLinker<'_>
     WasmLd<'_>
-    L4Bender<'_>
     AixLinker<'_>
     LlbcLinker<'_>
     BpfLinker<'_>
@@ -484,11 +480,11 @@ impl<'a> GccLinker<'a> {
                 // FIXME(81490): ld64 doesn't support these flags but macOS 11
                 // has -needed-l{} / -needed_library {}
                 // but we have no way to detect that here.
-                self.sess.dcx().emit_warn(errors::Ld64UnimplementedModifier);
+                self.sess.dcx().emit_warn(diagnostics::Ld64UnimplementedModifier);
             } else if self.is_gnu && !self.sess.target.is_like_windows {
                 self.link_arg("--no-as-needed");
             } else {
-                self.sess.dcx().emit_warn(errors::LinkerUnsupportedModifier);
+                self.sess.dcx().emit_warn(diagnostics::LinkerUnsupportedModifier);
             }
         }
 
@@ -536,7 +532,8 @@ impl<'a> Linker for GccLinker<'a> {
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
                 self.link_or_cc_arg("-static");
-                if !self.is_ld && self.is_gnu {
+                // noop on windows w/ gcc, warning w/ clang
+                if !self.is_ld && self.is_gnu && !self.sess.target.is_like_windows {
                     self.cc_arg("-no-pie");
                 }
             }
@@ -619,7 +616,7 @@ impl<'a> Linker for GccLinker<'a> {
             // FIXME(81490): ld64 as of macOS 11 supports the -needed_framework
             // flag but we have no way to detect that here.
             // self.link_or_cc_arg("-needed_framework").link_or_cc_arg(name);
-            self.sess.dcx().emit_warn(errors::Ld64UnimplementedModifier);
+            self.sess.dcx().emit_warn(diagnostics::Ld64UnimplementedModifier);
         }
         self.link_or_cc_args(&["-framework", name]);
     }
@@ -822,7 +819,7 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             };
             if let Err(error) = res {
-                self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
+                self.sess.dcx().emit_fatal(diagnostics::LibDefWriteFailure { error });
             }
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_windows {
@@ -842,7 +839,7 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             };
             if let Err(error) = res {
-                self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
+                self.sess.dcx().emit_fatal(diagnostics::LibDefWriteFailure { error });
             }
             self.link_arg(path);
         } else if self.sess.target.is_like_wasm {
@@ -861,7 +858,7 @@ impl<'a> Linker for GccLinker<'a> {
                 writeln!(f, "}};")?;
             };
             if let Err(error) = res {
-                self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
+                self.sess.dcx().emit_fatal(diagnostics::VersionScriptWriteFailure { error });
             }
             self.link_arg("--dynamic-list").link_arg(path);
         } else {
@@ -879,7 +876,7 @@ impl<'a> Linker for GccLinker<'a> {
                 writeln!(f, "\n  local:\n    *;\n}};")?;
             };
             if let Err(error) = res {
-                self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
+                self.sess.dcx().emit_fatal(diagnostics::VersionScriptWriteFailure { error });
             }
             if self.sess.target.is_like_solaris {
                 self.link_arg("-M").link_arg(path);
@@ -1103,7 +1100,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                         }
                     }
                     Err(error) => {
-                        self.sess.dcx().emit_warn(errors::NoNatvisDirectory { error });
+                        self.sess.dcx().emit_warn(diagnostics::NoNatvisDirectory { error });
                     }
                 }
             }
@@ -1136,7 +1133,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             writeln!(f, "EXPORTS")?;
         };
         if let Err(error) = res {
-            self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
+            self.sess.dcx().emit_fatal(diagnostics::LibDefWriteFailure { error });
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);
@@ -1465,128 +1462,6 @@ impl<'a> WasmLd<'a> {
             config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
         };
         self.link_arg(&format!("--lto-{opt_level}"));
-    }
-}
-
-/// Linker shepherd script for L4Re (Fiasco)
-struct L4Bender<'a> {
-    cmd: Command,
-    sess: &'a Session,
-    hinted_static: bool,
-}
-
-impl<'a> Linker for L4Bender<'a> {
-    fn cmd(&mut self) -> &mut Command {
-        &mut self.cmd
-    }
-
-    fn set_output_kind(
-        &mut self,
-        _output_kind: LinkOutputKind,
-        _crate_type: CrateType,
-        _out_filename: &Path,
-    ) {
-    }
-
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, whole_archive: bool) {
-        self.hint_static();
-        if !whole_archive {
-            self.link_arg(format!("-PC{name}"));
-        } else {
-            self.link_arg("--whole-archive")
-                .link_or_cc_arg(format!("-l{name}"))
-                .link_arg("--no-whole-archive");
-        }
-    }
-
-    fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
-        self.hint_static();
-        if !whole_archive {
-            self.link_or_cc_arg(path);
-        } else {
-            self.link_arg("--whole-archive").link_or_cc_arg(path).link_arg("--no-whole-archive");
-        }
-    }
-
-    fn full_relro(&mut self) {
-        self.link_args(&["-z", "relro", "-z", "now"]);
-    }
-
-    fn partial_relro(&mut self) {
-        self.link_args(&["-z", "relro"]);
-    }
-
-    fn no_relro(&mut self) {
-        self.link_args(&["-z", "norelro"]);
-    }
-
-    fn gc_sections(&mut self, keep_metadata: bool) {
-        if !keep_metadata {
-            self.link_arg("--gc-sections");
-        }
-    }
-
-    fn optimize(&mut self) {
-        // GNU-style linkers support optimization with -O. GNU ld doesn't
-        // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::More
-            || self.sess.opts.optimize == config::OptLevel::Aggressive
-        {
-            self.link_arg("-O1");
-        }
-    }
-
-    fn pgo_gen(&mut self) {}
-
-    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
-        match strip {
-            Strip::None => {}
-            Strip::Debuginfo => {
-                self.link_arg("--strip-debug");
-            }
-            Strip::Symbols => {
-                self.link_arg("--strip-all");
-            }
-        }
-    }
-
-    fn no_default_libraries(&mut self) {
-        self.cc_arg("-nostdlib");
-    }
-
-    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[SymbolExport]) {
-        // ToDo, not implemented, copy from GCC
-        self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
-    }
-
-    fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind) {
-        let subsystem = subsystem.as_str();
-        self.link_arg(&format!("--subsystem {subsystem}"));
-    }
-
-    fn reset_per_library_state(&mut self) {
-        self.hint_static(); // Reset to default before returning the composed command line.
-    }
-
-    fn linker_plugin_lto(&mut self) {}
-
-    fn control_flow_guard(&mut self) {}
-
-    fn ehcont_guard(&mut self) {}
-
-    fn no_crt_objects(&mut self) {}
-}
-
-impl<'a> L4Bender<'a> {
-    fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
-        L4Bender { cmd, sess, hinted_static: false }
-    }
-
-    fn hint_static(&mut self) {
-        if !self.hinted_static {
-            self.link_or_cc_arg("-static");
-            self.hinted_static = true;
-        }
     }
 }
 
@@ -1944,8 +1819,13 @@ impl<'a> Linker for LlbcLinker<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
-        self.link_arg("--debug");
+    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
+        match strip {
+            Strip::None => {
+                self.link_arg("--debug");
+            }
+            Strip::Debuginfo | Strip::Symbols => {}
+        }
     }
 
     fn optimize(&mut self) {
@@ -2012,7 +1892,7 @@ impl<'a> Linker for BpfLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool, _whole_archive: bool) {
-        self.sess.dcx().emit_fatal(errors::BpfStaticlibNotSupported)
+        self.sess.dcx().emit_fatal(diagnostics::BpfStaticlibNotSupported)
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, _whole_archive: bool) {
@@ -2061,7 +1941,7 @@ impl<'a> Linker for BpfLinker<'a> {
             }
         };
         if let Err(error) = res {
-            self.sess.dcx().emit_fatal(errors::SymbolFileWriteFailure { error });
+            self.sess.dcx().emit_fatal(diagnostics::SymbolFileWriteFailure { error });
         } else {
             self.link_arg("--export-symbols").link_arg(&path);
         }

@@ -351,7 +351,7 @@ pub unsafe fn sched_barrier<const MASK: u32>() {
 /// Combining multiple `sched_group_barrier` intrinsics enables an ordering of specific instruction types during instruction scheduling.
 /// For example, the following enforces a sequence of 1 VMEM read, followed by 1 VALU instruction, followed by 5 MFMA instructions.
 ///
-/// ```ignore
+/// ```ignore (only available on AMD)
 /// // 1 VMEM read
 /// sched_group_barrier::<32, 1, 0>();
 /// // 1 VALU

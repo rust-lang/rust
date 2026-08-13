@@ -6,8 +6,8 @@ LL |     (const || ().foo())();
    |
 help: make the `impl` of trait `Bar` `const`
    |
-LL | impl const Bar for () {
-   |      +++++
+LL | const impl Bar for () {
+   | +++++
 
 error: aborting due to 1 previous error
 

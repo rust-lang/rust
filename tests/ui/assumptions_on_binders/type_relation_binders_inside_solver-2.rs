@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: -Znext-solver -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders
 
 #![crate_type = "lib"]
 

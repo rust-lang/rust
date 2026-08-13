@@ -1,6 +1,6 @@
 //! Utils for extracting, inspecting or transforming source code
 
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::module_name_repetitions)]
 
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, Pos, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
+    BytePos, DUMMY_SP, DesugaringKind, Pos as _, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
     SyntaxContext, hygiene,
 };
 use std::borrow::Cow;

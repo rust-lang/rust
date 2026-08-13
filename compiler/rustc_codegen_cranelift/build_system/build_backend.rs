@@ -43,7 +43,7 @@ pub(crate) fn build_backend(
 
     cmd.arg("--release");
 
-    cmd.arg("-Zno-embed-metadata");
+    cmd.arg("-Zembed-metadata=no");
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
     crate::utils::spawn_and_wait(cmd);

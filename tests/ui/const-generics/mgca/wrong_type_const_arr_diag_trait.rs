@@ -1,6 +1,6 @@
 // This test causes ERROR: mismatched types [E0308]
 // and makes rustc to print array from const arguments
-#![feature(min_generic_const_args, adt_const_params, trivial_bounds)]
+#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params, trivial_bounds)]
 #![allow(incomplete_features)]
 
 trait Trait {

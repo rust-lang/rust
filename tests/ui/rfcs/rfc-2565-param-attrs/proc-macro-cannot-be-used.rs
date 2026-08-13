@@ -1,7 +1,8 @@
 //@ edition:2015
 //@ proc-macro: ident-mac.rs
 
-#![feature(c_variadic)]
+#![feature(custom_inner_attributes)] // for top-level rustfmt::skip
+#![rustfmt::skip]
 #![allow(anonymous_parameters)]
 
 extern crate ident_mac;

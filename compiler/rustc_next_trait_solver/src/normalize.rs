@@ -1,10 +1,9 @@
 use std::fmt::Debug;
 
-use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
     self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, TypeFoldable,
-    TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    TypeSuperFoldable, TypeVisitableExt, UniverseIndex, eager_resolve_vars,
 };
 use tracing::instrument;
 
@@ -118,9 +117,8 @@ where
         let normalized = if ty.has_escaping_bound_vars() {
             let (alias_ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_ty);
-            let Some(result) = ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::Yes)
-            })?
+            let Some(result) =
+                self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::Yes)?
             else {
                 return Ok(ty);
             };
@@ -134,17 +132,15 @@ where
                 result.expect_ty(),
             )
         } else {
-            ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)
-            })?
-            .map(|term| term.expect_ty())
-            .unwrap_or(ty)
+            self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)?
+                .map(|term| term.expect_ty())
+                .unwrap_or(ty)
         };
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = crate::resolve::eager_resolve_vars(infcx, original);
-            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            let original = eager_resolve_vars(infcx, original);
+            let normalized = eager_resolve_vars(infcx, normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
         Ok(normalized)
@@ -172,9 +168,8 @@ where
         let normalized = if ct.has_escaping_bound_vars() {
             let (alias_const, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_const);
-            let Some(result) = ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::Yes)
-            })?
+            let Some(result) =
+                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::Yes)?
             else {
                 return Ok(ct);
             };
@@ -187,17 +182,15 @@ where
                 result.expect_const(),
             )
         } else {
-            ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::No)
-            })?
-            .map(|term| term.expect_const())
-            .unwrap_or(ct)
+            self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::No)?
+                .map(|term| term.expect_const())
+                .unwrap_or(ct)
         };
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = crate::resolve::eager_resolve_vars(infcx, original);
-            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            let original = eager_resolve_vars(infcx, original);
+            let normalized = eager_resolve_vars(infcx, normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
 

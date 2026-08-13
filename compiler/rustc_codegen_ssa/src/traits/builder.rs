@@ -513,7 +513,9 @@ pub trait BuilderMethods<'a, 'tcx>:
             let ty = self.backend_type(layout);
             let val = self.load_from_place(ty, src);
             self.store_to_place_with_flags(val, dst, flags);
-        } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(layout) {
+        } else if self.sess().opts.optimize == OptLevel::No
+            && layout.backend_repr.is_scalar_or_simd()
+        {
             // If we're not optimizing, the aliasing information from `memcpy`
             // isn't useful, so just load-store the value for smaller code.
             let temp = self.load_operand(src.with_type(layout));

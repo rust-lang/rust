@@ -117,7 +117,7 @@ pub(crate) fn generate_trait_from_impl(
             let params = used_params(&impl_ast, make, ctx);
             let trait_ast = make.trait_(
                 false,
-                &trait_name(&impl_assoc_items, make).text(),
+                trait_name(&impl_assoc_items, make).text(),
                 params.clone(),
                 impl_ast.where_clause(),
                 trait_items,
@@ -204,7 +204,7 @@ fn trait_name(items: &ast::AssocItemList, make: &SyntaxFactory) -> ast::Name {
     fn_names
         .next()
         .and_then(|name| {
-            fn_names.next().is_none().then(|| make.name(&stdx::to_camel_case(&name.text())))
+            fn_names.next().is_none().then(|| make.name(&stdx::to_camel_case(name.text())))
         })
         .unwrap_or_else(|| make.name("NewTrait"))
 }

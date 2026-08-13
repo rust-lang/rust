@@ -1,9 +1,10 @@
-error[E0423]: expected value, found enum `n::Z`
-  --> $DIR/privacy-enum-ctor.rs:24:9
+error[E0423]: cannot find value `Z` in module `n`
+  --> $DIR/privacy-enum-ctor.rs:24:12
    |
 LL |         n::Z;
-   |         ^^^^
+   |            ^
    |
+   = note: an enum named `n::Z` exists in another namespace
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -26,12 +27,13 @@ LL -         n::Z;
 LL +         (m::Z::Fn(/* fields */));
    |
 
-error[E0423]: expected value, found enum `Z`
+error[E0423]: cannot find value `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:26:9
    |
 LL |         Z;
    |         ^
    |
+   = note: an enum named `Z` exists in another namespace
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -54,15 +56,16 @@ LL -         Z;
 LL +         (m::Z::Fn(/* fields */));
    |
 
-error[E0423]: expected value, found enum `m::E`
-  --> $DIR/privacy-enum-ctor.rs:42:16
+error[E0423]: cannot find value `E` in module `m`
+  --> $DIR/privacy-enum-ctor.rs:42:19
    |
 LL |     fn f() {
    |     ------ similarly named function `f` defined here
 ...
 LL |     let _: E = m::E;
-   |                ^^^^
+   |                   ^
    |
+   = note: an enum named `m::E` exists in another namespace
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
    |
@@ -105,12 +108,13 @@ LL -     let _: E = m::E;
 LL +     let _: E = E;
    |
 
-error[E0423]: expected value, found enum `E`
+error[E0423]: cannot find value `E` in this scope
   --> $DIR/privacy-enum-ctor.rs:50:16
    |
 LL |     let _: E = E;
    |                ^
    |
+   = note: an enum named `E` exists in another namespace
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
    |
@@ -162,12 +166,13 @@ LL -     let _: Z = m::n::Z;
 LL +     let _: E = m::n::Z;
    |
 
-error[E0423]: expected value, found enum `m::n::Z`
-  --> $DIR/privacy-enum-ctor.rs:58:16
+error[E0423]: cannot find value `Z` in module `m::n`
+  --> $DIR/privacy-enum-ctor.rs:58:22
    |
 LL |     let _: Z = m::n::Z;
-   |                ^^^^^^^
+   |                      ^
    |
+   = note: an enum named `m::n::Z` exists in another namespace
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:12:9
    |

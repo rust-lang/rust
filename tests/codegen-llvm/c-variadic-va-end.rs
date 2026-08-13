@@ -1,6 +1,5 @@
 //@ add-minicore
 //@ compile-flags: -Copt-level=3
-#![feature(c_variadic)]
 #![crate_type = "lib"]
 
 unsafe extern "C" {

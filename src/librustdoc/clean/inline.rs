@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, sym};
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use super::{Item, extract_cfg_from_attrs};
 use crate::clean::{
@@ -453,6 +453,7 @@ pub(crate) fn merge_attrs(
 }
 
 /// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
+#[instrument(level = "debug", skip(cx, ret))]
 pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     did: DefId,

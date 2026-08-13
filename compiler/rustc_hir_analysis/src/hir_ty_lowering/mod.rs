@@ -25,11 +25,13 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
     struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
@@ -39,7 +41,7 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    RegionExt, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
     const_lit_matches_ty, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
@@ -52,11 +54,11 @@ use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType};
+use crate::check_c_variadic_abi;
+use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType, NoVariantNamed};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
-use crate::{NoVariantNamed, check_c_variadic_abi};
 
 /// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
 /// trait or a default trait)
@@ -179,7 +181,7 @@ pub trait HirTyLowerer<'tcx> {
         span: Span,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>);
+    ) -> (Vec<InherentAssocCandidate>, ThinVec<FulfillmentError<'tcx>>);
 
     /// Lower a path to an associated item (of a trait) to a projection.
     ///
@@ -982,7 +984,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // non-global where-clauses being preferred over item bounds (where `PointeeSized`
                 // bounds would be proven) -- which can result in errors when a `PointeeSized`
                 // supertrait / bound / predicate is added to some items.
-                tcx.is_lang_item(trait_def_id, hir::LangItem::PointeeSized)
+                tcx.is_lang_item(trait_def_id, LangItem::PointeeSized)
             }
             hir::BoundPolarity::Negative(_) => false,
             hir::BoundPolarity::Maybe(_) => {
@@ -1053,7 +1055,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // This may have performance implications, so please check perf when
                 // removing it.
                 // This was added in <https://github.com/rust-lang/rust/pull/123302>.
-                if tcx.is_lang_item(trait_def_id, rustc_hir::LangItem::Sized) {
+                if tcx.is_lang_item(trait_def_id, LangItem::Sized) {
                     bounds.insert(0, bound);
                 } else {
                     bounds.push(bound);
@@ -1215,10 +1217,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let args = self.lower_generic_args_of_path_segment(span, def_id, item_segment);
 
         if let DefKind::TyAlias = tcx.def_kind(def_id)
-            && tcx.type_alias_is_lazy(def_id)
+            && tcx.type_alias_is_checked(def_id)
         {
             // Type aliases defined in crates that have the
-            // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
+            // feature `checked_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id }, args);
             Ty::new_alias(tcx, ty::IsRigid::No, alias_ty)
@@ -1483,13 +1485,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Ok(ct)
             }
             TypeRelativePath::Ctor { ctor_def_id, args } => match tcx.def_kind(ctor_def_id) {
-                DefKind::Ctor(_, CtorKind::Fn) => {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    Ok(ty::Const::zero_sized(
-                        tcx,
-                        Ty::new_fn_def(tcx, ctor_def_id, ty::Binder::dummy(args)),
-                    ))
-                }
+                DefKind::Ctor(_, CtorKind::Fn) => Ok(ty::Const::zero_sized(
+                    tcx,
+                    tcx.type_of(ctor_def_id).instantiate(tcx, args).skip_norm_wip(),
+                )),
                 DefKind::Ctor(ctor_of, CtorKind::Const) => {
                     Ok(self.construct_const_ctor_value(ctor_def_id, ctor_of, args))
                 }
@@ -2481,13 +2480,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let elem_ty = match ty.kind() {
-            ty::Array(elem_ty, _) => elem_ty,
+        let (elem_ty, len) = match ty.kind() {
+            ty::Array(elem_ty, len) => (elem_ty, len),
             ty::Error(e) => return Const::new_error(tcx, *e),
             _ => {
                 let e = tcx
                     .dcx()
-                    .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
+                    .span_err(array_expr.span, format!("expected `{ty}`, found const array"));
                 return Const::new_error(tcx, e);
             }
         };
@@ -2497,6 +2496,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .map(|elem| self.lower_const_arg(elem, *elem_ty))
             .collect::<Vec<_>>();
+
+        let len = tcx
+            .try_normalize_erasing_regions(
+                ty::TypingEnv::new(ty::ParamEnv::empty(), TypingMode::non_body_analysis()),
+                Unnormalized::new_wip(*len),
+            )
+            .unwrap_or(*len);
+        if let Some(expected_len) = len.try_to_target_usize(tcx)
+            && expected_len != elems.len() as u64
+        {
+            let e = tcx.dcx().span_err(
+                array_expr.span,
+                format!(
+                    "expected array with {expected_len} elements, found {} elements",
+                    array_expr.elems.len()
+                ),
+            );
+            return Const::new_error(tcx, e);
+        }
 
         let valtree = ty::ValTree::from_branches(tcx, elems);
 
@@ -2913,8 +2931,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &path.segments[generic_segments[0].1],
                 );
 
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
+                ty::Const::zero_sized(tcx, tcx.type_of(did).instantiate(tcx, args).skip_norm_wip())
             }
             Res::Def(DefKind::AssocConst { .. }, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
@@ -2933,44 +2950,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
             Res::Def(DefKind::Static { .. }, _) => {
-                span_bug!(span, "use of bare `static` ConstArgKind::Path's not yet supported")
+                let guar = self
+                    .dcx()
+                    .span_err(path.span, "static items cannot be used as const arguments");
+                return Const::new_error(tcx, guar);
             }
-            // FIXME(const_generics): create real const to allow fn items as const paths
-            Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {
-                self.dcx().span_delayed_bug(span, "function items cannot be used as const args");
-                let args = self.lower_generic_args_of_path_segment(
-                    span,
-                    did,
-                    path.segments.last().unwrap(),
-                );
-
-                if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
-                } else {
-                    let tcx = self.tcx();
-                    let generics = tcx.generics_of(did);
-
-                    // Use infer tys for synthetic params; otherwise the impl header's trait ref may
-                    // contain callee-owned synthetic params and fail when instantiated with impl args.
-                    // See issue #155834
-                    let args = args.iter().enumerate().map(|(index, arg)| {
-                        let param = generics.param_at(index, tcx);
-                        if param.kind.is_synthetic() {
-                            self.ty_infer(Some(param), span).into()
-                        } else {
-                            arg
-                        }
-                    });
-
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(
-                        tcx,
-                        Ty::new_fn_def(tcx, did, ty::Binder::dummy(args.collect::<Box<_>>())),
-                    )
-                }
+            // FIXME(const_generics): create real consts to allow fn items as const paths.
+            // Lowering these to recovered `FnDef` consts currently interacts poorly with WF
+            // checking: WF of a `FnDef` walks the function signature, so a signature that mentions
+            // the same function item as a const arg can recurse until it overflows/segfaults.
+            Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
+                let guar = self
+                    .dcx()
+                    .struct_span_err(span, "function items cannot be used as const args")
+                    .emit();
+                Const::new_error(tcx, guar)
             }
-
             // Exhaustive match to be clear about what exactly we're considering to be
             // an invalid Res for a const path.
             res @ (Res::Def(

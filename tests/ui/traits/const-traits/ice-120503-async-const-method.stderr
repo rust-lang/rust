@@ -2,12 +2,14 @@ error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const
   --> $DIR/ice-120503-async-const-method.rs:6:11
    |
 LL |     async const fn bar(&self) {
-   |     ------^^^^^
-   |     |     |
-   |     |     expected one of `extern`, `fn`, `safe`, or `unsafe`
-   |     help: `const` must come before `async`: `const async`
+   |           ^^^^^ expected one of `extern`, `fn`, `safe`, or `unsafe`
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+help: `const` must come before `async`
+   |
+LL -     async const fn bar(&self) {
+LL +     const async fn bar(&self) {
+   |
 
 error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/ice-120503-async-const-method.rs:6:11

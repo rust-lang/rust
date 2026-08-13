@@ -4,7 +4,7 @@
 //@[mgca] check-pass
 #![allow(incomplete_features)]
 #![feature(mgca_type_const_syntax)]
-#![cfg_attr(mgca, feature(min_generic_const_args))]
+#![cfg_attr(mgca, feature(min_generic_const_args, macroless_generic_const_args))]
 // FIXME(mgca) syntax is it's own feature flag before
 // expansion and is also an incomplete feature.
 //#![cfg_attr(mgca, expect(incomplete_features))]

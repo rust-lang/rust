@@ -1,6 +1,7 @@
 We allow using AI (i.e., LLMs) as tools for contributing to rust-analyzer.
 However, you remain responsible for any code you publish and we are responsible for any code we merge and release.
 We hold a high bar for all contributions to our projects.
+Also, we kindly ask you to disclose usage of AI tools in your contributions.
 
 **AI should not be used to generate comments when communicating with maintainers**.
 We expect comments on our projects to be written by humans.

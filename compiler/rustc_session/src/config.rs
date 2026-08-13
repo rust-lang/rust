@@ -7,10 +7,11 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::hash::Hash;
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
-use std::{cmp, fs, iter};
+use std::{cmp, fs, iter, thread};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -45,6 +46,9 @@ mod externs;
 mod native_libs;
 mod print_request;
 pub mod sigpipe;
+
+/// Special CPU name requesting the CPU of the current host.
+pub const NATIVE_CPU: &str = "native";
 
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -192,12 +196,20 @@ pub enum CoverageLevel {
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
-    /// Entry point for `std::offload`, enables kernel compilation for a gpu device
-    Device,
-    /// Second step in the offload pipeline, generates the host code to call kernels.
+    /// Second step in the offload pipeline, enables kernel compilation for a gpu device
+    /// Reads a manifest of required generic kernel instantiations
+    /// produced by a previous `HostMetadata` pass. An empty manifest
+    /// means there are no generic kernels at all, or that generic kernels are only
+    /// called from non-generic device entry points and never from the host, so we
+    /// don't need to track their instantiations.
+    Device(String),
+    /// Third step in the offload pipeline, generates the host code to call kernels.
     Host(String),
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,
+    /// First step in the offload pipeline: compile for the host but only emit a manifest of
+    /// kernel instantiations required by the host code.
+    HostMetadata(String),
 }
 
 /// The different settings that the `-Z codegen-emit-retag` flag can have.
@@ -255,15 +267,23 @@ pub enum AnnotateMoves {
     Enabled(Option<u64>),
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct InstrumentMcountOpts {
+    // Insert a nop which could be replaced by an mcount call.
+    pub no_call: bool,
+    // Record the location of the call instrument in a special linker section.
+    pub record: bool,
+}
+
 /// The different settings that the `-Z Instrument-mcount` flag can have.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum InstrumentMcount {
     /// `-Z instrument-mcount=no`
     Disabled,
     /// `-Z instrument-mcount=yes`
-    Mcount,
+    Mcount(InstrumentMcountOpts),
     /// `-Z instrument-mcount=fentry`
-    Fentry,
+    Fentry(InstrumentMcountOpts),
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -1470,6 +1490,7 @@ impl Default for Options {
             verbose: false,
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
+            jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
         }
     }
 }
@@ -1558,7 +1579,7 @@ pub enum EntryFnType {
     },
 }
 
-pub use rustc_hir::attrs::CrateType;
+pub use rustc_attr_ir::CrateType;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq, Encodable, Decodable)]
 pub enum Passes {
@@ -1642,6 +1663,137 @@ impl PointerAuthOption {
             _ => None,
         }
     }
+}
+
+#[derive(Clone, Copy)]
+pub enum LinkerJobs {
+    /// Do not pass anything to the linker, use it's default behavior.
+    Default,
+    /// Pass some specific number of jobs to use to the linker.
+    Explicit(NonZero<usize>),
+}
+
+impl LinkerJobs {
+    pub fn limit(self) -> Option<NonZero<usize>> {
+        match self {
+            LinkerJobs::Default => None,
+            LinkerJobs::Explicit(n) => Some(n),
+        }
+    }
+}
+
+/// `None` for frontend and backend means everything is single-threaded
+/// and synchronization can be disabled.
+#[derive(Clone, Copy)]
+pub struct Jobs {
+    pub frontend: Option<NonZero<usize>>,
+    pub backend: Option<NonZero<usize>>,
+    pub linker: LinkerJobs,
+}
+
+fn parse_jobs_all(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &getopts::Matches,
+    zthreads: Option<&str>,
+    zno_parallel_backend: bool,
+    unstable: bool,
+) -> Jobs {
+    if zno_parallel_backend {
+        early_dcx.early_fatal("`-Zno-parallel-backend` is removed, use `--jobs-backend=1` instead");
+    }
+    let mut available = None;
+    let jobs = matches
+        .opt_str("jobs")
+        .map(|s| parse_jobs_one(early_dcx, "--jobs", &s, unstable, &mut available));
+    let check_upper_limit = |value: Option<_>, opt_name| {
+        if let Some(jobs) = jobs
+            && value.or(NonZero::new(1)) > jobs.or(NonZero::new(1))
+        {
+            early_dcx.early_fatal(format!("`{opt_name}` cannot be larger than `--jobs`"));
+        }
+    };
+    let frontend = match matches.opt_str("jobs-frontend") {
+        Some(jobs_frontend) => {
+            let opt_name = "--jobs-frontend";
+            let frontend =
+                parse_jobs_one(early_dcx, opt_name, &jobs_frontend, unstable, &mut available);
+            check_upper_limit(frontend, opt_name);
+            if zthreads.is_some() {
+                early_dcx.early_fatal("cannot use both `--jobs-frontend` and `-Zthreads`");
+            }
+            frontend
+        }
+        None => match zthreads {
+            Some(zthreads) => {
+                let opt_name = "-Zthreads";
+                let frontend =
+                    parse_jobs_one(early_dcx, opt_name, zthreads, unstable, &mut available);
+                check_upper_limit(frontend, opt_name);
+                frontend
+            }
+            None => jobs.flatten(),
+        },
+    };
+    let backend = match matches.opt_str("jobs-backend") {
+        Some(jobs_backend) => {
+            let opt_name = "--jobs-backend";
+            let backend =
+                parse_jobs_one(early_dcx, opt_name, &jobs_backend, unstable, &mut available);
+            check_upper_limit(backend, opt_name);
+            backend
+        }
+        None => match jobs {
+            Some(n) => n,
+            // Use all available parallelism as the default.
+            None => parse_jobs_one(early_dcx, "", "0", unstable, &mut available),
+        },
+    };
+    let linker = match matches.opt_str("jobs-linker") {
+        Some(jobs_linker) => {
+            let opt_name = "--jobs-linker";
+            let linker =
+                parse_jobs_one(early_dcx, opt_name, &jobs_linker, unstable, &mut available);
+            check_upper_limit(linker, opt_name);
+            LinkerJobs::Explicit(linker.or(NonZero::new(1)).unwrap())
+        }
+        None => match jobs {
+            Some(n) => LinkerJobs::Explicit(n.or(NonZero::new(1)).unwrap()),
+            None => LinkerJobs::Default, // back compat with lld
+        },
+    };
+
+    Jobs { frontend, backend, linker }
+}
+
+// Parse a string passed to one of the `--jobs` options or `-Zthreads`.
+fn parse_jobs_one(
+    early_dcx: &EarlyDiagCtxt,
+    opt_name: &str,
+    s: &str,
+    unstable: bool,
+    available: &mut Option<u8>,
+) -> Option<NonZero<usize>> {
+    if s == "sync" {
+        // Enable synchronization overhead for benchmarking despite only using one thread.
+        if !unstable {
+            early_dcx.early_fatal(format!("`{opt_name}=sync` requires `-Z unstable-options`"));
+        }
+        return NonZero::new(1);
+    }
+    // The number of jobs is capped by 255 (`u8::MAX`) to avoid arbitrary large numbers like 999999
+    // causing compiler panics (#117638). The limit can be potentially increased, because e.g.
+    // rustc thread pool supports up to `u16::MAX` threads in theory.
+    let n = match u8::from_str(s) {
+        Ok(0) => *available.get_or_insert_with(|| match thread::available_parallelism() {
+            Ok(n) => u8::try_from(n.get()).unwrap_or(u8::MAX),
+            Err(_) => 1,
+        }),
+        Ok(n) => n,
+        Err(_) => early_dcx
+            .early_fatal(format!("`{opt_name}`: expected a number from 0 to 255 or `sync`")),
+    };
+    // `Jobs` uses `usize` for more convenient use, even if the actual values are limited to `u8`.
+    (n > 1).then_some(NonZero::new(usize::from(n)).unwrap())
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
@@ -1959,6 +2111,31 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "<macro,diagnostics,debuginfo,coverage,object,all>",
         ),
         opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "<VAR>=<VALUE>"),
+        opt(Unstable, Opt, "j", "jobs", "Limit on the number of used parallel jobs", "<N>"),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "jobs-frontend",
+            "Limit on the number of parallel jobs used by frontend",
+            "<N>",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "jobs-backend",
+            "Limit on the number of parallel jobs used by backend",
+            "<N>",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "jobs-linker",
+            "Limit on the number of parallel jobs used by linker",
+            "<N>",
+        ),
     ];
     options.extend(verbose_only.into_iter().map(|mut opt| {
         opt.is_verbose_help_only = true;
@@ -2527,6 +2704,21 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
+    // `-Zassumptions-on-binders` requires the next trait solver globally. Normalize after
+    // parsing so the effective config is independent of flag order and so consumers that
+    // read `next_solver.globally` directly (e.g. feature-gate checks) see the right value.
+    if unstable_opts.assumptions_on_binders {
+        // `NextSolverConfig::default()` has `coherence: true`; the only way `coherence` is
+        // false here is an explicit `-Znext-solver=no`.
+        if !unstable_opts.next_solver.coherence {
+            early_dcx.early_warn(
+                "-Zassumptions-on-binders unconditionally enables the next trait solver; \
+                 `-Znext-solver=no` is ignored",
+            );
+        }
+        unstable_opts.next_solver = NextSolverConfig { coherence: true, globally: true };
+    }
+
     if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
     {
         early_dcx.early_warn(
@@ -2564,10 +2756,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         matches,
         cg.codegen_units,
     );
-
-    if unstable_opts.threads == Some(parse::MAX_THREADS_CAP) {
-        early_dcx.early_warn(format!("number of threads was capped at {}", parse::MAX_THREADS_CAP));
-    }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
@@ -2825,6 +3013,14 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
+    let jobs = parse_jobs_all(
+        early_dcx,
+        matches,
+        unstable_opts.threads.as_deref(),
+        unstable_opts.no_parallel_backend,
+        unstable_opts.unstable_options,
+    );
+
     Options {
         crate_types,
         optimize: opt_level,
@@ -2869,6 +3065,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         verbose,
         target_modifiers: collected_options.target_modifiers,
         mitigation_coverage_map: collected_options.mitigations,
+        jobs,
     }
 }
 
@@ -3121,12 +3318,12 @@ pub(crate) mod dep_tracking {
 
     use rustc_abi::Align;
     use rustc_ast::attr::version::RustcVersion;
+    use rustc_attr_ir::CollapseMacroDebuginfo;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
-    use rustc_hir::attrs::CollapseMacroDebuginfo;
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
@@ -3138,11 +3335,12 @@ pub(crate) mod dep_tracking {
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
-        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
+        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3205,6 +3403,7 @@ pub(crate) mod dep_tracking {
         InstrumentCoverage,
         CoverageOptions,
         InstrumentMcount,
+        InstrumentMcountOpts,
         InstrumentXRay,
         CrateType,
         MergeFunctions,
@@ -3423,10 +3622,9 @@ impl PatchableFunctionEntry {
 
 /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
 /// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Polonius {
-    /// The default value: disabled.
-    #[default]
+    /// Polonius is disabled, only use NLL.
     Off,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
@@ -3434,6 +3632,12 @@ pub enum Polonius {
 
     /// In-tree prototype, extending the NLL infrastructure.
     Next,
+}
+
+impl Default for Polonius {
+    fn default() -> Self {
+        if option_env!("CFG_DEFAULT_POLONIUS_NEXT").is_some() { Self::Next } else { Self::Off }
+    }
 }
 
 impl Polonius {

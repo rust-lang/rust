@@ -37,7 +37,6 @@ macro_rules! late_lint_methods {
             fn check_trait_item(a: &'tcx rustc_hir::TraitItem<'tcx>);
             fn check_impl_item(a: &'tcx rustc_hir::ImplItem<'tcx>);
             fn check_impl_item_post(a: &'tcx rustc_hir::ImplItem<'tcx>);
-            fn check_struct_def(a: &'tcx rustc_hir::VariantData<'tcx>);
             fn check_field_def(a: &'tcx rustc_hir::FieldDef<'tcx>);
             fn check_variant(a: &'tcx rustc_hir::Variant<'tcx>);
             fn check_path(a: &rustc_hir::Path<'tcx>, b: rustc_hir::HirId);

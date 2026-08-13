@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{self, TraitErrors};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs() {
@@ -50,7 +50,7 @@ pub fn ensure_wf<'tcx>(
     );
     ocx.register_obligation(obligation);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         infcx.err_ctxt().report_fulfillment_errors(errors);
         false
     } else {
@@ -60,7 +60,7 @@ pub fn ensure_wf<'tcx>(
 }
 
 fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLayoutKind]) {
-    let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
+    let typing_env = ty::TypingEnv::codegen(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
     let span = tcx.def_span(item_def_id.to_def_id());
     if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {
@@ -84,6 +84,9 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLa
                         let data =
                             ty_layout.homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env });
                         format!("homogeneous_aggregate: {data:?}")
+                    }
+                    RustcDumpLayoutKind::LargestNiche => {
+                        format!("largest_niche: {:?}", ty_layout.largest_niche)
                     }
                     RustcDumpLayoutKind::Size => format!("size: {:?}", ty_layout.size),
                 };

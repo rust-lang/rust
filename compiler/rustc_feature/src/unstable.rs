@@ -398,6 +398,8 @@ declare_features! (
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Target features on arm.
     (unstable, arm_target_feature, "1.27.0", Some(150246)),
+    /// Allows using `const` operands with pointer in inline assembly.
+    (unstable, asm_const_ptr, "CURRENT_RUSTC_VERSION", Some(128464)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
@@ -424,14 +426,9 @@ declare_features! (
     (unstable, avx10_target_feature, "1.88.0", Some(138843)),
     /// Target features on bpf.
     (unstable, bpf_target_feature, "1.54.0", Some(150247)),
-    /// Allows using C-variadics.
-    (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows defining c-variadic functions on targets where this feature has not yet
     /// undergone sufficient testing for stabilization.
     (unstable, c_variadic_experimental_arch, "1.97.0", Some(155973)),
-    /// Allows defining c-variadic naked functions with any extern ABI that is allowed
-    /// on c-variadic foreign functions.
-    (unstable, c_variadic_naked_functions, "1.93.0", Some(148767)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
     (unstable, cfg_contract_checks, "1.86.0", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
@@ -456,6 +453,8 @@ declare_features! (
     (unstable, cfg_version, "1.45.0", Some(64796)),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
     (unstable, cfi_encoding, "1.71.0", Some(89653)),
+    /// Allow to have type alias types for inter-crate use.
+    (incomplete, checked_type_aliases, "CURRENT_RUSTC_VERSION", Some(112792)),
     /// The `clflushopt` target feature on x86.
     (unstable, clflushopt_target_feature, "1.98.0", Some(157096)),
     /// Allows `for<...>` on closures and coroutines.
@@ -609,8 +608,6 @@ declare_features! (
     (unstable, lahfsahf_target_feature, "1.78.0", Some(150251)),
     /// Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
-    /// Allow to have type alias types for inter-crate use.
-    (incomplete, lazy_type_alias, "1.72.0", Some(112792)),
     /// Allows using `#[link(kind = "link-arg", name = "...")]`
     /// to pass custom arguments to the linker.
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
@@ -632,6 +629,8 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
+    /// Allows directly represented generic_const_args without the `direct_const_arg!` macro.
+    (incomplete, macroless_generic_const_args, "CURRENT_RUSTC_VERSION", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
@@ -661,11 +660,13 @@ declare_features! (
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows `mut(crate) field: Type` restrictions.
-    (incomplete, mut_restriction, "1.98.0", Some(105077)),
+    (unstable, mut_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
+    /// Allows providing names to parameters of `impl Fn` etc
+    (incomplete, named_fn_trait_parameters, "CURRENT_RUSTC_VERSION", Some(158499)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.
@@ -734,7 +735,7 @@ declare_features! (
     /// Allows specialization of implementations (RFC 1210).
     (incomplete, specialization, "1.7.0", Some(31844)),
     /// Experimental "splatting" of function call arguments at the call site.
-    /// e.g. `foo(a, b, c)` calls `#[splat] fn foo((a: A, b: B, c: C))`.
+    /// e.g. `foo(a, b, c)` calls `#[rustc_splat] fn foo((a: A, b: B, c: C))`.
     (incomplete, splat, "1.98.0", Some(153629)),
     /// Allows using `#[rustc_align_static(...)]` on static items.
     (unstable, static_align, "1.91.0", Some(146177)),
@@ -877,5 +878,6 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
 /// Some features require one or more other features to be enabled.
 pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
     (sym::generic_const_args, &[sym::min_generic_const_args]),
+    (sym::macroless_generic_const_args, &[sym::min_generic_const_args]),
     (sym::unsized_const_params, &[sym::adt_const_params]),
 ];

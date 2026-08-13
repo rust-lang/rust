@@ -44,7 +44,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
             || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
             || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_closure_to_fn_ptr_coercion(err, expr, expected, expr_ty)
             || self.suggest_boxing_when_appropriate(
                 err,
                 expr.peel_blocks().span,

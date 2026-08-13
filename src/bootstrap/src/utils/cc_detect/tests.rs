@@ -1,10 +1,10 @@
-use std::path::{Path, PathBuf};
-use std::{env, iter};
+use std::iter;
+use std::path::PathBuf;
 
 use super::*;
+use crate::Build;
 use crate::core::config::{Target, TargetSelection};
 use crate::utils::tests::TestCtx;
-use crate::{Build, Config, Flags, t};
 
 #[test]
 fn test_ndk_compiler_c() {
@@ -85,7 +85,7 @@ fn test_default_compiler_wasi() {
     let wasi_sdk = PathBuf::from("/wasi-sdk");
     build.wasi_sdk_path = Some(wasi_sdk.clone());
 
-    let mut cfg = cc::Build::new();
+    let cfg = cc::Build::new();
     if let Some(result) = default_compiler(&cfg, Language::C, target.clone(), &build) {
         let expected = {
             let compiler = format!("{}-clang", target.triple);
@@ -104,7 +104,7 @@ fn test_default_compiler_fallback() {
     let config = TestCtx::new().config("build").create_config();
     let build = Build::new(config);
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
-    let mut cfg = cc::Build::new();
+    let cfg = cc::Build::new();
     let result = default_compiler(&cfg, Language::C, target, &build);
     assert!(result.is_none(), "default_compiler should return None for generic targets");
 }

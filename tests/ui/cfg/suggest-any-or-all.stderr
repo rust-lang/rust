@@ -1,8 +1,8 @@
 error[E0805]: malformed `cfg` attribute input
-  --> $DIR/suggest-any-or-all.rs:1:1
+  --> $DIR/suggest-any-or-all.rs:1:3
    |
 LL | #[cfg(foo, bar)]
-   | ^^^^^----------^
+   |   ^^^----------
    |      |
    |      expected a single argument here
    |
@@ -19,10 +19,10 @@ LL + #[cfg(any(foo, bar))]
    |
 
 error[E0805]: malformed `cfg` attribute input
-  --> $DIR/suggest-any-or-all.rs:5:1
+  --> $DIR/suggest-any-or-all.rs:5:3
    |
 LL | #[cfg()]
-   | ^^^^^--^
+   |   ^^^--
    |      |
    |      expected an argument here
    |

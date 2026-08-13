@@ -1,5 +1,5 @@
 //@ check-pass
-#![feature(adt_const_params, lazy_type_alias)]
+#![feature(adt_const_params, checked_type_aliases)]
 
 pub type Matrix = [usize; 1];
 const EMPTY_MATRIX: Matrix = [0; 1];

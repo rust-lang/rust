@@ -164,7 +164,7 @@ pub mod epoll {
         epoll_ctl(epfd, EPOLL_CTL_ADD, fd, Ev { events, data: fd })
     }
 
-    /// Call `epoll_wait` on `epfd` with the provided `timeout`.
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` (in milliseconds).
     /// It fetches at most `max_events` events from `epfd` and
     /// ensures that the returned events match the `expected` events.
     #[track_caller]
@@ -182,7 +182,7 @@ pub mod epoll {
         assert_eq!(got, expected, "got wrong ready events");
     }
 
-    /// Call `epoll_wait` on `epfd` with the provided `timeout` and ensure
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` (in milliseconds) and ensure
     /// that the set of *all* ready events matches `expected`.
     #[track_caller]
     pub fn check_epoll_wait(epfd: i32, expected: &[Ev], timeout: i32) {
@@ -214,6 +214,29 @@ pub mod epoll {
         .expect("epoll_wait returned an error");
 
         if num == 0 { 0 } else { out.events.cast_signed() }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "illumos"))]
+pub mod eventfd {
+    use super::*;
+
+    // We want to do individual read/write calls here so we avoid read_exact/write_all.
+
+    #[track_caller]
+    pub fn read_val(fd: i32) -> io::Result<u64> {
+        let mut buf = [0u8; 8];
+        let len = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
+        assert_eq!(len, 8);
+        Ok(u64::from_ne_bytes(buf))
+    }
+
+    #[track_caller]
+    pub fn write_val(fd: i32, val: u64) -> io::Result<()> {
+        let buf = val.to_ne_bytes();
+        let len = errno_result(unsafe { libc::write(fd, buf.as_ptr().cast(), buf.len()) })?;
+        assert_eq!(len, 8);
+        Ok(())
     }
 }
 

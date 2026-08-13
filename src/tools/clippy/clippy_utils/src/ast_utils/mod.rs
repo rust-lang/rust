@@ -2,7 +2,7 @@
 //!
 //! - The `eq_foobar` functions test for semantic equality but ignores `NodeId`s and `Span`s.
 
-#![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
+#![allow(clippy::enum_glob_use, clippy::wildcard_imports)]
 
 use crate::{both, over};
 use rustc_ast::attr::data_structures::CfgEntry;
@@ -107,7 +107,7 @@ fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
     match (l, r) {
         (AngleBracketed(l), AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
         (Parenthesized(l), Parenthesized(r)) => {
-            over(&l.inputs, &r.inputs, |l, r| eq_ty(l, r)) && eq_fn_ret_ty(&l.output, &r.output)
+            over(&l.inputs, &r.inputs, eq_param) && eq_fn_ret_ty(&l.output, &r.output)
         },
         _ => false,
     }
@@ -189,7 +189,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 && eq_expr(&lf.iter, &rf.iter)
                 && eq_block(&lf.body, &rf.body)
                 && lf.kind == rf.kind
-        }
+        },
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
         (TryBlock(lb, lt), TryBlock(rb, rt)) => eq_block(lb, rb) && both(lt.as_deref(), rt.as_deref(), eq_ty),
@@ -332,7 +332,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -341,7 +341,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => eq_id(*li, *ri) && lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_deref(), re.as_deref()),
         (
@@ -350,7 +350,8 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                rhs_kind: lb,
+                body: lb,
+                kind: lk,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -358,7 +359,9 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                rhs_kind: rb,
+
+                body: rb,
+                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -366,7 +369,8 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(Some(lb), Some(rb), eq_const_item_rhs)
+                && lk == rk
+                && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
             Fn(box ast::Fn {
@@ -377,7 +381,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -387,7 +391,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -535,7 +539,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -544,7 +548,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => eq_id(*li, *ri) && eq_ty(lt, rt) && lm == rm && eq_expr_opt(le.as_deref(), re.as_deref()) && ls == rs,
         (
@@ -556,7 +560,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -566,7 +570,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -615,7 +619,8 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                rhs_kind: lb,
+                body: lb,
+                kind: lk,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -623,7 +628,8 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                rhs_kind: rb,
+                body: rb,
+                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -631,7 +637,8 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(Some(lb), Some(rb), eq_const_item_rhs)
+                && lk == rk
+                && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
             Fn(box ast::Fn {
@@ -642,7 +649,7 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -652,7 +659,7 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -718,7 +725,7 @@ fn eq_struct_field(l: &FieldDef, r: &FieldDef) -> bool {
     l.is_placeholder == r.is_placeholder
         && over(&l.attrs, &r.attrs, eq_attr)
         && eq_vis(&l.vis, &r.vis)
-        && eq_mut_restriction(&l.mut_restriction, &r.mut_restriction)
+        && eq_mut_restriction(l.mut_restriction(), r.mut_restriction())
         && both(l.ident.as_ref(), r.ident.as_ref(), |l, r| eq_id(*l, *r))
         && eq_ty(&l.ty, &r.ty)
 }
@@ -791,21 +798,6 @@ fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
     eq_expr(&l.value, &r.value)
 }
 
-fn eq_const_item_rhs(l: &ConstItemRhsKind, r: &ConstItemRhsKind) -> bool {
-    use ConstItemRhsKind::*;
-    match (l, r) {
-        (TypeConst { rhs: Some(l) }, TypeConst { rhs: Some(r) }) => eq_anon_const(l, r),
-        (TypeConst { rhs: None }, TypeConst { rhs: None }) | (Body { rhs: None }, Body { rhs: None }) => true,
-        (Body { rhs: Some(l) }, Body { rhs: Some(r) }) => eq_expr(l, r),
-        (TypeConst { rhs: Some(..) }, TypeConst { rhs: None })
-        | (TypeConst { rhs: None }, TypeConst { rhs: Some(..) })
-        | (Body { rhs: None }, Body { rhs: Some(..) })
-        | (Body { rhs: Some(..) }, Body { rhs: None })
-        | (TypeConst { .. }, Body { .. })
-        | (Body { .. }, TypeConst { .. }) => false,
-    }
-}
-
 fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     use UseTreeKind::*;
     match (l, r) {
@@ -863,12 +855,14 @@ fn eq_restriction_kind(l: &RestrictionKind, r: &RestrictionKind) -> bool {
 
 fn eq_fn_decl(l: &FnDecl, r: &FnDecl) -> bool {
     eq_fn_ret_ty(&l.output, &r.output)
-        && over(&l.inputs, &r.inputs, |l, r| {
-            l.is_placeholder == r.is_placeholder
-                && eq_pat(&l.pat, &r.pat)
-                && eq_ty(&l.ty, &r.ty)
-                && over(&l.attrs, &r.attrs, eq_attr)
-        })
+        && over(&l.inputs, &r.inputs, eq_param)
+}
+
+fn eq_param(l: &Param, r: &Param) -> bool {
+    l.is_placeholder == r.is_placeholder
+        && eq_pat(&l.pat, &r.pat)
+        && eq_ty(&l.ty, &r.ty)
+        && over(&l.attrs, &r.attrs, eq_attr)
 }
 
 fn eq_closure_binder(l: &ClosureBinder, r: &ClosureBinder) -> bool {
@@ -1003,19 +997,10 @@ fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => {
-                eq_path(&l.item.path, &r.item.path) && eq_attr_item_kind(&l.item.args, &r.item.args)
-            },
+            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args),
+            (Synthetic(..), _) | (_, Synthetic(..)) => unreachable!(),
             _ => false,
         }
-}
-
-fn eq_attr_item_kind(l: &AttrItemKind, r: &AttrItemKind) -> bool {
-    match (l, r) {
-        (AttrItemKind::Unparsed(l), AttrItemKind::Unparsed(r)) => eq_attr_args(l, r),
-        (AttrItemKind::Parsed(_l), AttrItemKind::Parsed(_r)) => todo!(),
-        _ => false,
-    }
 }
 
 fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
@@ -1042,8 +1027,8 @@ pub fn is_cfg_test(item: &impl HasAttrs) -> bool {
             && item_list.iter().any(|item| item.has_name(sym::test))
         {
             true
-        } else if attr.has_name(sym::cfg_trace)
-            && let AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)) = &attr.get_normal_item().args
+        } else if let AttrKind::Synthetic(synthetic) = &attr.kind
+            && let SyntheticAttr::CfgTrace(cfg) = &**synthetic
         {
             requires_test_cfg(cfg)
         } else {

@@ -95,7 +95,7 @@ impl<T> LazyStorage<T> {
         let value = i.and_then(Option::take).unwrap_or_else(f);
 
         // Destroy the old value if it is initialized
-        // FIXME(#110897): maybe panic on recursive initialization.
+        // FIXME(#110897): maybe abort on recursive initialization.
         if self.state.get() == State::Alive {
             self.state.set(State::Destroying);
             // Safety: we check for no initialization during drop below
@@ -107,7 +107,7 @@ impl<T> LazyStorage<T> {
 
         // Guard against initialization during drop
         if self.state.get() == State::Destroying {
-            panic!("Attempted to initialize thread-local while it is being dropped");
+            rtabort!("Attempted to initialize thread-local while it is being dropped");
         }
 
         unsafe {

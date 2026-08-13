@@ -8,7 +8,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionExt, RegionVid, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
 
@@ -188,6 +188,8 @@ pub struct Verify<'tcx> {
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Placeholder(ty::PlaceholderType<'tcx>),
+    // FIXME: we expect this alias to be rigid in the next solver.
+    // But we can't assert that in construction since this enum is public.
     Alias(ty::AliasTy<'tcx>),
 }
 
@@ -805,11 +807,7 @@ impl<'tcx> GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Placeholder(ref p) => Ty::new_placeholder(tcx, *p),
-            // FIXME(#155345): Region handling should generally only
-            // deal with rigid aliases, making sure we do so correctly
-            // everywhere is effort, so we're just using `No` everywhere
-            // for now. This should change soon.
-            GenericKind::Alias(ref p) => p.to_ty(tcx, ty::IsRigid::No),
+            GenericKind::Alias(ref p) => p.to_ty(tcx, ty::IsRigid::yes_if_next_solver(tcx)),
         }
     }
 }

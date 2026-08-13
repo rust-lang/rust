@@ -47,7 +47,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "espidf")]
 pub fn chdir(_p: &path::Path) -> io::Result<()> {
-    crate::sys::pal::unsupported::unsupported()
+    crate::sys::pal::unsupported()
 }
 
 #[cfg(not(target_os = "espidf"))]
@@ -385,7 +385,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    crate::sys::pal::unsupported::unsupported()
+    crate::sys::pal::unsupported()
 }
 
 #[cfg(target_os = "fuchsia")]

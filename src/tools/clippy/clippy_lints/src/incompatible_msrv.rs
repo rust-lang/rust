@@ -3,7 +3,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::{is_in_const_context, is_in_test, sym};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince, find_attr};
+use rustc_hir::attrs::RustcVersion;
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, StabilityLevel, StableSince, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -118,7 +119,7 @@ pub struct IncompatibleMsrv {
 impl IncompatibleMsrv {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             availability_cache: FxHashMap::default(),
             check_in_tests: conf.check_incompatible_msrv_in_tests,
             std_crates: StdCrates::new(tcx),
@@ -270,5 +271,5 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
 fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     cx.tcx
         .hir_parent_id_iter(hir_id)
-        .any(|id| find_attr!(cx.tcx, id, CfgTrace(..) | CfgAttrTrace))
+        .any(|id| find_attr!(cx.tcx, id, CfgTrace(..) | CfgAttrTrace(..)))
 }

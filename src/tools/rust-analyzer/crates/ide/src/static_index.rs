@@ -31,7 +31,7 @@ pub struct StaticIndex<'a> {
     pub tokens: TokenStore,
     analysis: &'a Analysis,
     db: &'a RootDatabase,
-    def_map: FxHashMap<Definition, TokenId>,
+    def_map: FxHashMap<Definition<'a>, TokenId>,
 }
 
 #[derive(Debug)]
@@ -131,7 +131,7 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 
 fn documentation_for_definition(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
     scope_node: &SyntaxNode,
 ) -> Option<Documentation<'static>> {
     let famous_defs = match &def {
@@ -147,7 +147,7 @@ fn documentation_for_definition(
 fn get_definitions<'db>(
     sema: &Semantics<'db, RootDatabase>,
     token: SyntaxToken,
-) -> Option<ArrayVec<(Definition, Option<hir::GenericSubstitution<'db>>), 2>> {
+) -> Option<ArrayVec<(Definition<'db>, Option<hir::GenericSubstitution<'db>>), 2>> {
     for token in sema.descend_into_macros_exact(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions);
         if let Some(defs) = def
@@ -164,7 +164,7 @@ pub enum VendoredLibrariesConfig<'a> {
     Excluded,
 }
 
-impl StaticIndex<'_> {
+impl<'a> StaticIndex<'a> {
     fn add_file(&mut self, file_id: FileId) {
         let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
         let folds = self.analysis.folding_ranges(file_id, true).unwrap();
@@ -195,7 +195,7 @@ impl StaticIndex<'_> {
         };
         let mut result = StaticIndexedFile { file_id, folds, tokens: vec![] };
 
-        let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
+        let mut add_token = |def: Definition<'a>, range: TextRange, scope_node: &SyntaxNode| {
             let id = if let Some(it) = self.def_map.get(&def) {
                 *it
             } else {
@@ -265,7 +265,7 @@ impl StaticIndex<'_> {
         self.files.push(result);
     }
 
-    pub fn compute<'a>(
+    pub fn compute(
         analysis: &'a Analysis,
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) -> StaticIndex<'a> {
