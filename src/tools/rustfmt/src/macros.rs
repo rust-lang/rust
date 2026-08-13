@@ -27,6 +27,7 @@ use crate::config::StyleEdition;
 use crate::config::lists::*;
 use crate::expr::{RhsAssignKind, rewrite_array, rewrite_assign_rhs};
 use crate::header::{HeaderPart, format_header};
+use crate::is_nightly_channel;
 use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::overflow;
 use crate::parse::macros::cfg_select::{CfgSelectFormatPredicate, parse_cfg_select_arms};
@@ -247,7 +248,7 @@ fn rewrite_macro_inner(
         }
     }
 
-    if macro_name.ends_with("cfg_select!") {
+    if is_nightly_channel!() && macro_name.ends_with("cfg_select!") {
         match format_cfg_select(context, shape, mac.span(), &macro_name, style, ts.clone()) {
             Ok(rw) => return Ok(rw),
             Err(err) => match err {
