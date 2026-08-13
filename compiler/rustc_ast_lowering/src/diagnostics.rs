@@ -616,3 +616,10 @@ pub(crate) struct AmbiguousDelegationToInherentImpl {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("delegation to inherent impl must contain parent generics")]
+pub(crate) struct DelegationToInherentImplMustContainParentGenerics {
+    #[primary_span]
+    pub span: Span,
+}
