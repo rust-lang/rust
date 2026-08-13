@@ -34,3 +34,12 @@ pub unsafe fn offset_from_unsigned_odd_size(a: *const RGB, b: *const RGB) -> usi
     // CHECK-NEXT: ret i64
     ptr_offset_from_unsigned(a, b)
 }
+
+// CHECK-LABEL: @offset_from_unsigned_u8_fits_isize
+#[no_mangle]
+pub unsafe fn offset_from_unsigned_u8_fits_isize(a: *const u8, b: *const u8) -> isize {
+    // CHECK-NOT: unwrap_failed
+    // CHECK-NOT: br i1
+    // CHECK: ret i64
+    isize::try_from(a.offset_from_unsigned(b)).unwrap()
+}
