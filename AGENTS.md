@@ -5,6 +5,8 @@
 Follow the Rust project's [LLM usage policy]. It applies to all LLM-generated
 text even if a human later edits it.
 
+[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
+
 ### When a gate fails
 
 When a rule identifies banned work, **STOP** that work. A named reviewer, tests,
@@ -47,6 +49,9 @@ Editing externally maintained source in this checkout is banned; follow the
 requested.
 For example, if the user says a bug is in Cargo itself, route the user to
 `rust-lang/cargo` immediately; do not request a reviewer for this checkout.
+
+[external repositories]: src/doc/rustc-dev-guide/src/external-repos.md
+[gate-failure protocol]: #when-a-gate-fails
 
 ### Prohibited text
 
@@ -158,6 +163,8 @@ type checking, trait solving, MIR construction or optimization, borrow checking,
 const evaluation, normalization and semantic caches, layout and validity, and
 codegen. Explain the concern and direct the user to [#llm-mentoring Zulip].
 
+[#llm-mentoring Zulip]: https://rust-lang.zulipchat.com/#narrow/channel/606558-llm-mentoring/
+
 ### Before pushing
 
 After committing and before pushing, once ask the user to confirm understanding
@@ -173,6 +180,8 @@ of LLM involvement, including whether the LLM originated an idea or helped
 implement or review it. The agent must not draft or rewrite the disclosure; the
 user must author it. Do NOT add `Co-Authored-By` trailers to commits.
 
+[policy's disclosure requirements]: https://forge.rust-lang.org/policies/llm-usage.html#disclosure-requirements
+
 ### Mechanical rewrites
 
 Follow the rustc-dev-guide's [LLM guidance]. For a permitted mass rename or
@@ -180,6 +189,9 @@ mechanical rewrite, find an existing formatter, linter, or syntax-aware rewrite
 tool. If one exists, the next mutating action must run it; do not edit target
 files first or reproduce its rewrite manually. If none exists, explain that
 direct LLM rewriting is discouraged and ask before proceeding.
+
+[LLM guidance]: https://rustc-dev-guide.rust-lang.org/llm-guidance.html
+
 For Rust formatting, use `x fmt`; do not invoke `rustfmt` directly.
 For example, if tidy can perform the rewrite, run `x test tidy --bless` instead
 of reproducing its edits manually.
@@ -195,15 +207,12 @@ Before regenerating snapshots containing human-facing text:
 If a request conflicts with these rules, direct the user to the
 [#llm-mentoring Zulip] for help.
 
-[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
-[policy's disclosure requirements]: https://forge.rust-lang.org/policies/llm-usage.html#disclosure-requirements
-[LLM guidance]: https://rustc-dev-guide.rust-lang.org/llm-guidance.html
-[#llm-mentoring Zulip]: https://rust-lang.zulipchat.com/#narrow/channel/606558-llm-mentoring/
-
 ## Repository guidance
 
 This is the main `rust-lang/rust` repository.
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [dev-guide's instructions for LLMs][llm-writing], then route specialized work as follows:
+
+[llm-writing]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html
 
 | Work | Start here |
 | --- | --- |
@@ -216,13 +225,6 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [dev-guide's instruction
 | Subtrees, submodules, or tools | [external repositories] |
 | Pull requests and review | [contribution process] |
 
-Use `x` as the default entry point for repository builds, tests, and formatting.
-Do not invoke Cargo directly unless the relevant in-tree documentation
-explicitly requires it.
-
-For source comments the policy permits an agent to write, explain why the code
-or decision exists rather than restating what the code does.
-
 [rustc-dev-guide]: src/doc/rustc-dev-guide/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
 [building and running rustc]: src/doc/rustc-dev-guide/src/building/how-to-build-and-run.md
@@ -232,7 +234,11 @@ or decision exists rather than restating what the code does.
 [formatting and tidy]: src/doc/rustc-dev-guide/src/conventions.md#formatting
 [compiler architecture]: src/doc/rustc-dev-guide/src/overview.md
 [repository layout]: src/doc/rustc-dev-guide/src/compiler-src.md
-[external repositories]: src/doc/rustc-dev-guide/src/external-repos.md
 [contribution process]: src/doc/rustc-dev-guide/src/contributing.md
-[gate-failure protocol]: #when-a-gate-fails
-[llm-writing]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html
+
+Use `x` as the default entry point for repository builds, tests, and formatting.
+Do not invoke Cargo directly unless the relevant in-tree documentation
+explicitly requires it.
+
+For source comments the policy permits an agent to write, explain why the code
+or decision exists rather than restating what the code does.
