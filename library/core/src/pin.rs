@@ -1540,7 +1540,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
         U: ?Sized,
         F: FnOnce(&T) -> &U,
     {
-        let pointer = &*self.pointer;
+        let pointer = self.pointer;
         let new_pointer = func(pointer);
 
         // SAFETY: the safety contract for `new_unchecked` must be

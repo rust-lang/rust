@@ -796,7 +796,7 @@ impl Write for Stdout {
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        io::Write::is_write_vectored(&&*self)
+        io::Write::is_write_vectored(&self)
     }
     fn flush(&mut self) -> io::Result<()> {
         (&*self).flush()
@@ -1028,7 +1028,7 @@ impl Write for Stderr {
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        io::Write::is_write_vectored(&&*self)
+        io::Write::is_write_vectored(&self)
     }
     fn flush(&mut self) -> io::Result<()> {
         (&*self).flush()

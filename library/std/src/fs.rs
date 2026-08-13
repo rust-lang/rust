@@ -1497,7 +1497,7 @@ impl Read for File {
     }
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        (&&*self).is_read_vectored()
+        (&self).is_read_vectored()
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         (&*self).read_to_end(buf)
@@ -1516,7 +1516,7 @@ impl Write for File {
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        (&&*self).is_write_vectored()
+        (&self).is_write_vectored()
     }
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
