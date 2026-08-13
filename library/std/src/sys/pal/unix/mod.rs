@@ -211,10 +211,10 @@ pub(crate) fn on_broken_pipe_used() -> bool {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
-// NOTE: this is not guaranteed to run, for example when the program aborts.
-pub unsafe fn cleanup() {
-    stack_overflow::cleanup();
-}
+// NOTE: this is not guaranteed to run, for example when the program aborts, and
+//       is not guaranteed to run on the main thread (#161018 was caused by that
+//       mistaken assumption).
+pub unsafe fn cleanup() {}
 
 #[allow(unused_imports)]
 pub use libc::signal;
