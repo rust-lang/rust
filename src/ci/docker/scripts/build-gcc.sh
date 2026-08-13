@@ -11,12 +11,15 @@ hide_output ./configure --prefix=/rustroot
 hide_output make -j$(nproc)
 hide_output make install
 
-if echo '.section .test,"awR",@progbits' | as - -o /dev/null 2>/dev/null; then
+if echo '.section .test,"awR",@progbits' | /rustroot/bin/as - -o /dev/null 2>/dev/null; then
     echo "binutils assembler supports SHF_GNU_RETAIN"
 else
     echo "binutils assembler DOES NOT support SHF_GNU_RETAIN"
     exit 1
 fi
+
+AS_PATH="/rustroot/bin/as"
+LD_PATH="/rustroot/bin/ld"
 
 cd ..
 
@@ -57,6 +60,8 @@ cd ../gcc-build
 # which is included in librustc_driver.so
 hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
+    --with-as=$AS_PATH \
+    --with-ld=$LD_PATH \
     --enable-languages=c,c++ \
     --disable-gnu-unique-object \
     --enable-cxx-flags='-fno-reorder-blocks-and-partition'
