@@ -921,8 +921,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let evaluate = |c: ty::Const<'tcx>| {
                     if let ty::ConstKind::Alias(_, _) = c.kind() {
-                        match crate::traits::try_evaluate_const(self.infcx, c, obligation.param_env)
-                        {
+                        match crate::traits::try_evaluate_const(
+                            self.infcx,
+                            c,
+                            obligation.param_env,
+                            |v| Ok::<_, !>(v.skip_norm_wip()),
+                        ) {
                             Ok(val) => Ok(val),
                             Err(e) => Err(e),
                         }

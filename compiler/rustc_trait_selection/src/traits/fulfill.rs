@@ -764,6 +764,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 self.selcx.infcx,
                                 c,
                                 obligation.param_env,
+                                |ty| Ok::<_, !>(ty.skip_norm_wip()),
                             ) {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {

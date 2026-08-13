@@ -326,7 +326,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> Option<ty::Const<'tcx>> {
         let ct = ty::Const::new_alias(self.tcx, ty::IsRigid::No, alias_const);
 
-        match crate::traits::try_evaluate_const(&self.0, ct, param_env) {
+        match crate::traits::try_evaluate_const(&self.0, ct, param_env, |ty| {
+            Ok::<_, !>(ty.skip_norm_wip())
+        }) {
             Ok(ct) => Some(ct),
             Err(EvaluateConstErr::EvaluationFailure(e)) => Some(ty::Const::new_error(self.tcx, e)),
             Err(
