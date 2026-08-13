@@ -23,8 +23,14 @@ error[E0425]: cannot find function `g` in this scope
 LL |       pub fn f() {}
    |       ---------- similarly named function `f` defined here
 ...
-LL |       g();
-   |       ^
+LL | / macro m($($t:tt)*) {
+LL | |     $($t)*
+LL | |     use foo::*;
+LL | |     f();
+LL | |     g();
+   | |     ^
+LL | | }
+   | |_- the error originates in the macro `m`
 ...
 LL | /     m! {
 LL | |         use bar::*;
@@ -33,7 +39,6 @@ LL | |         f();
 LL | |     }
    | |_____- in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a function with a similar name exists
    |
 LL -     g();
@@ -47,36 +52,46 @@ LL + use bar::g;
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:62:12
    |
-LL | n!(f);
-   | -----
-   | |  |
-   | |  you might have meant to refer to this function
-   | in this macro invocation
-...
-LL |                     $j();
-   |                     -- due to this macro variable
-...
-LL |         n!(f);
-   |            ^ not found in this scope
-   |
-   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |   n!(f);
+   |   -----
+   |   |  |
+   |   |  you might have meant to refer to this function
+   |   in this macro invocation
+LL | / macro n($i:ident) {
+LL | |     mod foo {
+LL | |         pub fn $i() -> u32 { 0 }
+LL | |         pub fn f() {}
+...  |
+LL | |                     $j();
+   | |                     -- due to this macro variable
+...  |
+LL | |         n!(f);
+   | |            ^ not found in this scope
+...  |
+LL | | }
+   | |_- the error originates in the macro `n`
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:66:17
    |
-LL | n!(f);
-   | -----
-   | |  |
-   | |  you might have meant to refer to this function
-   | in this macro invocation
-...
-LL |                     $j();
-   |                     -- due to this macro variable
-...
-LL |                 f
-   |                 ^ not found in this scope
-   |
-   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |   n!(f);
+   |   -----
+   |   |  |
+   |   |  you might have meant to refer to this function
+   |   in this macro invocation
+LL | / macro n($i:ident) {
+LL | |     mod foo {
+LL | |         pub fn $i() -> u32 { 0 }
+LL | |         pub fn f() {}
+...  |
+LL | |                     $j();
+   | |                     -- due to this macro variable
+...  |
+LL | |                 f
+   | |                 ^ not found in this scope
+...  |
+LL | | }
+   | |_- the error originates in the macro `n`
 
 error: aborting due to 4 previous errors
 

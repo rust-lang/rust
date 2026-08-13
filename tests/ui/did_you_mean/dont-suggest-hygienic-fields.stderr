@@ -36,13 +36,18 @@ LL |     let _ = ty.0;
 error[E0560]: struct `Crate` has no field named `fiel`
   --> $DIR/dont-suggest-hygienic-fields.rs:44:34
    |
-LL | environment!();
-   | -------------- in this macro invocation
-...
-LL |     const CRATE: Crate = Crate { fiel: () };
-   |                                  ^^^^ unknown field
+LL |   environment!();
+   |   -------------- in this macro invocation
+LL |
+LL | / macro environment() {
+LL | |     struct Crate { field: () }
+...  |
+LL | |     const CRATE: Crate = Crate { fiel: () };
+   | |                                  ^^^^ unknown field
+...  |
+LL | | }
+   | |_- the error originates in the macro `environment`
    |
-   = note: this error originates in the macro `environment` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a field with a similar name exists
    |
 LL |     const CRATE: Crate = Crate { field: () };

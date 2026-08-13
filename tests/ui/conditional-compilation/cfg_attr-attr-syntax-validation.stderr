@@ -123,14 +123,18 @@ LL + #[cfg_attr(predicate, attr1, attr2, ...)]
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
   --> $DIR/cfg_attr-attr-syntax-validation.rs:30:30
    |
-LL |         #[cfg_attr(feature = $expr)]
-   |                              ^^^^^
-...
-LL | generate_s10!(concat!("nonexistent"));
-   | ------------------------------------- in this macro invocation
+LL | / macro_rules! generate_s10 {
+LL | |     ($expr: expr) => {
+LL | |         #[cfg_attr(feature = $expr)]
+   | |                              ^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `generate_s10`
+LL |
+LL |   generate_s10!(concat!("nonexistent"));
+   |   ------------------------------------- in this macro invocation
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
-   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: must be of the form
    |
 LL -         #[cfg_attr(feature = $expr)]

@@ -318,7 +318,7 @@ help: the following other types implement trait `BitAnd<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&i32` implements `BitAnd`
-   = note: this error originates in the macro `bitand_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `bitand_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/binary-op-suggest-deref.rs:78:17

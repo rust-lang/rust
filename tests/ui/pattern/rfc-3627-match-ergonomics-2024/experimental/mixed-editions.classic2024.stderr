@@ -95,7 +95,7 @@ LL |     let &[bind!(z)] = &&mut [0];
    |           |
    |           cannot borrow as mutable
    |
-   = note: this error originates in the macro `bind` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `bind` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

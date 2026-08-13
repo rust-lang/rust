@@ -13,7 +13,7 @@ LL | non_local_macro::non_local_impl!(LocalStruct);
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: items in an anonymous const item (`const _: () = { ... }`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint
    = note: `#[warn(non_local_definitions)]` on by default
-   = note: this warning originates in the macro `non_local_macro::non_local_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the warning originates in the macro `non_local_macro::non_local_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted
 

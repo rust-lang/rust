@@ -120,16 +120,21 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:155:19
    |
-LL |             match send_message::<_ /* ?0 */>() {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     macro_rules! msg_send {
+LL | |         () => {
+LL | |             match send_message::<_ /* ?0 */>() {
+   | |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |         };
+LL | |     }
+   | |_____- the error originates in the macro `msg_send`
 ...
-LL |         msg_send!();
-   |         ----------- in this macro invocation
+LL |           msg_send!();
+   |           ----------- in this macro invocation
    |
    = help: specify the type explicitly
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors
 
@@ -273,15 +278,20 @@ Future breakage diagnostic:
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:155:19
    |
-LL |             match send_message::<_ /* ?0 */>() {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     macro_rules! msg_send {
+LL | |         () => {
+LL | |             match send_message::<_ /* ?0 */>() {
+   | |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |         };
+LL | |     }
+   | |_____- the error originates in the macro `msg_send`
 ...
-LL |         msg_send!();
-   |         ----------- in this macro invocation
+LL |           msg_send!();
+   |           ----------- in this macro invocation
    |
    = help: specify the type explicitly
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-   = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 

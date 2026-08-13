@@ -1,15 +1,23 @@
 error[E0308]: mismatched types
   --> $DIR/macro-shorthand-issue-140659.rs:42:44
    |
-LL |                     Instruction::Suspend { tag_index }
-   |                                            ^^^^^^^^^ expected `u32`, found `Result<u32, <T as Reencode>::Error>`
-...
-LL |     for_each_operator!(translate)
-   |     ----------------------------- in this macro invocation
+LL | /     macro_rules! translate {
+LL | |         (Suspend { tag_index: $ty:ty } => $visit:ident) => {
+LL | |             match op {
+LL | |                 Operator::Suspend { tag_index } => {
+...  |
+LL | |                     Instruction::Suspend { tag_index }
+   | |                                            ^^^^^^^^^ expected `u32`, found `Result<u32, <T as Reencode>::Error>`
+...  |
+LL | |         };
+LL | |     }
+   | |_____- the error originates in the macro `translate` which comes from the expansion of the macro `for_each_operator`
+LL |
+LL |       for_each_operator!(translate)
+   |       ----------------------------- in this macro invocation
    |
    = note: expected type `u32`
               found enum `Result<u32, <T as Reencode>::Error>`
-   = note: this error originates in the macro `translate` which comes from the expansion of the macro `for_each_operator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

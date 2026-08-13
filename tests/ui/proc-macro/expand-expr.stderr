@@ -53,7 +53,7 @@ LL | const _: u32 = recursive_expand!();
    |                ^^^^^^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`expand_expr`)
-   = note: this error originates in the macro `recursive_expand` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `recursive_expand` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 

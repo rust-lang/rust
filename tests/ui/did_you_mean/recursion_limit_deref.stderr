@@ -9,14 +9,18 @@ error: reached the recursion limit finding the struct tail for `Bottom`
 error: reached the recursion limit finding the struct tail for `Bottom`
   --> $DIR/recursion_limit_deref.rs:14:9
    |
-LL |         struct $outer($inner);
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! link {
+LL | |     ($outer:ident, $inner:ident) => {
+LL | |         struct $outer($inner);
+   | |         ^^^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `link`
 ...
-LL | link!(A, B);
-   | ----------- in this macro invocation
+LL |   link!(A, B);
+   |   ----------- in this macro invocation
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]`
-   = note: this error originates in the macro `link` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0055]: reached the recursion limit while auto-dereferencing `J`
   --> $DIR/recursion_limit_deref.rs:55:22

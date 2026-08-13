@@ -1,15 +1,20 @@
 error[E0658]: the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
   --> $DIR/feature-gate-allow-internal-unsafe-nested-macro.rs:8:11
    |
-LL |         #[allow_internal_unsafe]
-   |           ^^^^^^^^^^^^^^^^^^^^^
-...
-LL | bar!();
-   | ------ in this macro invocation
+LL | / macro_rules! bar {
+LL | |     () => {
+LL | |         // more layers don't help:
+LL | |         #[allow_internal_unsafe]
+   | |           ^^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `bar`
+LL |
+LL |   bar!();
+   |   ------ in this macro invocation
    |
    = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

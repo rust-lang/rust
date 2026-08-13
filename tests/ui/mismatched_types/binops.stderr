@@ -39,7 +39,7 @@ help: the following other types implement trait `Sub<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&usize` implements `Sub`
-   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `{integer}` by `()`
   --> $DIR/binops.rs:4:7

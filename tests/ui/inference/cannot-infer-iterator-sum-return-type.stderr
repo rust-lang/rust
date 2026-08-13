@@ -15,7 +15,7 @@ help: the trait `Sum` is implemented for `i32`
    = note: in this macro invocation
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   = note: this error originates in the macro `integer_sum_product` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `integer_sum_product` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider giving `sum` an explicit type, where the type for type parameter `S` is specified
    |
 LL |     let sum: i32 = v

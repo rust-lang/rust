@@ -12,7 +12,6 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |     for n in 0..1 {
    |         ^
-   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
   --> $DIR/macro-hygiene-scope-15167.rs:6:25
@@ -28,7 +27,6 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |     if let Some(n) = None {
    |                 ^
-   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
   --> $DIR/macro-hygiene-scope-15167.rs:6:25
@@ -44,7 +42,6 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |     } else if let Some(n) = None {
    |                        ^
-   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
   --> $DIR/macro-hygiene-scope-15167.rs:6:25
@@ -60,7 +57,6 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |     while let Some(n) = None {
    |                    ^
-   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

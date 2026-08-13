@@ -1,8 +1,15 @@
 error[E0432]: unresolved import `things::what2`
   --> $DIR/point_macro_input.rs:15:17
    |
-LL |               use things::$thing;
-   |                   ^^^^^^^^^^^^^^
+LL | / macro_rules! mac2 {
+LL | |     ($thing: ident) => {{
+LL | |         const _x: u32 = {
+LL | |             use things::$thing;
+   | |                 ^^^^^^^^^^^^^^
+...  |
+LL | |     }}
+LL | | }
+   | |_- the error originates in the macro `mac2`
 ...
 LL | /     mac2!(
 LL | |
@@ -11,8 +18,6 @@ LL | |         what2
 LL | |
 LL | |     );
    | |_____- in this macro invocation
-   |
-   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `what1` in module `things`
   --> $DIR/point_macro_input.rs:26:9

@@ -13,13 +13,16 @@ LL + #[cfg(feature = 1)]
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `meta` metavariable
   --> $DIR/attr-bad-meta-4.rs:3:15
    |
-LL |         #[cfg($attr_item)]
-   |               ^^^^^^^^^^
-...
-LL | mac!(an(arbitrary token stream));
-   | -------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! mac {
+LL | |     ($attr_item: meta) => {
+LL | |         #[cfg($attr_item)]
+   | |               ^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `mac`
+LL |
+LL |   mac!(an(arbitrary token stream));
+   |   -------------------------------- in this macro invocation
 
 error: aborting due to 2 previous errors
 

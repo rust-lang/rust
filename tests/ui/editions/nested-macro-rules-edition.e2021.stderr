@@ -4,7 +4,7 @@ error: expected identifier, found reserved keyword `gen`
 LL |     macro_inner_input!{}
    |     ^^^^^^^^^^^^^^^^^^^^ expected identifier, found reserved keyword
    |
-   = note: this error originates in the macro `macro_inner_input` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `macro_inner_input` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: escape `gen` to use it as an identifier
    |
 LL |     nested_macro_rules_dep::make_macro_with_input!{r#gen}
@@ -16,7 +16,7 @@ error: expected identifier, found reserved keyword `gen`
 LL |     macro_inner!{}
    |     ^^^^^^^^^^^^^^ expected identifier, found reserved keyword
    |
-   = note: this error originates in the macro `macro_inner` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `macro_inner` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: escape `gen` to use it as an identifier
   --> $DIR/auxiliary/nested_macro_rules_dep_2024.rs:19:24
    |

@@ -1,13 +1,15 @@
 error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
   --> $DIR/ice-on-shadowing-std-with-macro.rs:16:9
    |
-LL |         extern crate core as std;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | define_other_core! {}
-   | --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! define_other_core {
+LL | |     () => {
+LL | |         extern crate core as std;
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `define_other_core`
+LL |   define_other_core! {}
+   |   --------------------- in this macro invocation
 
 error[E0433]: cannot find `collections` in `std`
   --> $DIR/ice-on-shadowing-std-with-macro.rs:8:14

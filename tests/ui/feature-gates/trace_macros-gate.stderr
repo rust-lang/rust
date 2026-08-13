@@ -37,16 +37,18 @@ LL |     trace_macros!(false);
 error[E0658]: use of unstable library feature `trace_macros`: `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:10:26
    |
-LL |         ($x: ident) => { trace_macros!($x) }
-   |                          ^^^^^^^^^^^^
-...
-LL |     expando!(true);
-   |     -------------- in this macro invocation
+LL | /     macro_rules! expando {
+LL | |         ($x: ident) => { trace_macros!($x) }
+   | |                          ^^^^^^^^^^^^
+LL | |     }
+   | |_____- the error originates in the macro `expando`
+LL |
+LL |       expando!(true);
+   |       -------------- in this macro invocation
    |
    = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `expando` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

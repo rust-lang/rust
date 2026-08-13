@@ -37,7 +37,7 @@ LL | |     }
    |
    = note: expected unit type `()`
                    found enum `Result<(), std::fmt::Error>`
-   = note: this error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might have meant to return this value
    |
 LL |         return baz!(w);

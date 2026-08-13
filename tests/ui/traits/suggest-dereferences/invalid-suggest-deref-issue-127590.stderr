@@ -31,7 +31,7 @@ help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    = note: in this macro invocation
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
-   = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
   --> $DIR/invalid-suggest-deref-issue-127590.rs:14:54
@@ -66,7 +66,7 @@ help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    = note: in this macro invocation
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
-   = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
   --> $DIR/invalid-suggest-deref-issue-127590.rs:6:24
@@ -82,7 +82,7 @@ help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    |
    = note: in this macro invocation
    = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
-   = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
   --> $DIR/invalid-suggest-deref-issue-127590.rs:14:24
@@ -98,7 +98,7 @@ help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    |
    = note: in this macro invocation
    = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
-   = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

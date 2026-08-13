@@ -19,46 +19,68 @@ LL |     genmod!(FromOutside, Outer);
 error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:19:18
    |
-LL |         type A = FromOutside;
-   |                  ^^^^^^^^^^^ not found in this scope
+LL | / macro genmod_transparent() {
+LL | |     type A = FromOutside;
+LL | |     struct Outer;
+LL | |     mod inner {
+LL | |         type A = FromOutside;
+   | |                  ^^^^^^^^^^^ not found in this scope
+...  |
+LL | | }
+   | |_- the error originates in the macro `genmod_transparent`
 ...
-LL |     genmod_transparent!();
-   |     --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       genmod_transparent!();
+   |       --------------------- in this macro invocation
 
 error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:20:22
    |
-LL |         type Inner = Outer;
-   |                      ^^^^^ not found in this scope
+LL | / macro genmod_transparent() {
+LL | |     type A = FromOutside;
+LL | |     struct Outer;
+LL | |     mod inner {
+LL | |         type A = FromOutside;
+LL | |         type Inner = Outer;
+   | |                      ^^^^^ not found in this scope
+LL | |     }
+LL | | }
+   | |_- the error originates in the macro `genmod_transparent`
 ...
-LL |     genmod_transparent!();
-   |     --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       genmod_transparent!();
+   |       --------------------- in this macro invocation
 
 error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:28:18
    |
-LL |         type A = FromOutside;
-   |                  ^^^^^^^^^^^ not found in this scope
+LL | / macro_rules! genmod_legacy { () => {
+LL | |     type A = FromOutside;
+LL | |     struct Outer;
+LL | |     mod inner {
+LL | |         type A = FromOutside;
+   | |                  ^^^^^^^^^^^ not found in this scope
+...  |
+LL | | }}
+   | |__- the error originates in the macro `genmod_legacy`
 ...
-LL |     genmod_legacy!();
-   |     ---------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       genmod_legacy!();
+   |       ---------------- in this macro invocation
 
 error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:29:22
    |
-LL |         type Inner = Outer;
-   |                      ^^^^^ not found in this scope
+LL | / macro_rules! genmod_legacy { () => {
+LL | |     type A = FromOutside;
+LL | |     struct Outer;
+LL | |     mod inner {
+LL | |         type A = FromOutside;
+LL | |         type Inner = Outer;
+   | |                      ^^^^^ not found in this scope
+LL | |     }
+LL | | }}
+   | |__- the error originates in the macro `genmod_legacy`
 ...
-LL |     genmod_legacy!();
-   |     ---------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       genmod_legacy!();
+   |       ---------------- in this macro invocation
 
 error: aborting due to 6 previous errors
 

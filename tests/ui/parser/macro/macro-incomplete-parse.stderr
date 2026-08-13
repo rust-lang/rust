@@ -12,13 +12,16 @@ LL | ignored_item!();
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
   --> $DIR/macro-incomplete-parse.rs:10:14
    |
-LL |     () => ( 1,
-   |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
+LL | / macro_rules! ignored_expr {
+LL | |     () => ( 1,
+   | |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
+LL | |
+LL | |             2 )
+LL | | }
+   | |_- the error originates in the macro `ignored_expr`
 ...
-LL |     ignored_expr!();
-   |     --------------- in this macro invocation
-   |
-   = note: this error originates in the macro `ignored_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       ignored_expr!();
+   |       --------------- in this macro invocation
 
 error: macro expansion ignores `,` and any tokens following
   --> $DIR/macro-incomplete-parse.rs:16:14

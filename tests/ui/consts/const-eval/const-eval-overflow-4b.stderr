@@ -27,7 +27,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&i8` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0604]: only `u8` can be cast as `char`, not `i8`
   --> $DIR/const-eval-overflow-4b.rs:24:13

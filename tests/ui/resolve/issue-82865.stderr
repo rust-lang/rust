@@ -12,13 +12,14 @@ LL + extern crate x;
 error[E0599]: no associated function or constant named `z` found for struct `Box<_, _>` in the current scope
   --> $DIR/issue-82865.rs:9:10
    |
-LL |     Box::z
-   |          ^ associated function or constant not found in `Box<_, _>`
+LL | / macro mac () {
+LL | |     Box::z
+   | |          ^ associated function or constant not found in `Box<_, _>`
+LL | | }
+   | |_- the error originates in the macro `mac`
 ...
-LL |     mac!();
-   |     ------ in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       mac!();
+   |       ------ in this macro invocation
 
 error: aborting due to 2 previous errors
 

@@ -16,7 +16,7 @@ error: let chains are only allowed in Rust 2024 or later
 LL |     macro_in_2021::make_if!(let (Some(0)) let (Some(0)) { never!() } { never!() });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `macro_in_2021::make_if` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `macro_in_2021::make_if` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: let chains are only allowed in Rust 2024 or later
   --> $DIR/edition-gate-macro-error.rs:22:5
@@ -24,7 +24,7 @@ error: let chains are only allowed in Rust 2024 or later
 LL |     macro_in_2021::make_if!(let (Some(0)) let (Some(0)) { never!() } { never!() });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `macro_in_2021::make_if` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `macro_in_2021::make_if` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: let chains are only allowed in Rust 2024 or later
   --> $DIR/edition-gate-macro-error.rs:26:30

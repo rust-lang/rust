@@ -13,13 +13,17 @@ LL | #![deny(unused_macros)]
 error: unused macro definition: `m`
   --> $DIR/unused-macros.rs:13:22
    |
-LL |         macro_rules! m {
-   |                      ^
-...
-LL | create_macro!();
-   | --------------- in this macro invocation
-   |
-   = note: this error originates in the macro `create_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! create_macro {
+LL | |     () => {
+LL | |         macro_rules! m {
+   | |                      ^
+LL | |             () => {};
+LL | |         }
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `create_macro`
+LL |   create_macro!();
+   |   --------------- in this macro invocation
 
 error: unused macro definition: `unused`
   --> $DIR/unused-macros.rs:26:18

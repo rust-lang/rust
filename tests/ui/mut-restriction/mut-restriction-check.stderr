@@ -495,7 +495,7 @@ LL |             pub mut(self) alpha: u8,
 LL |     std::ptr::addr_of_mut!(foos.alpha);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field `beta` cannot be mutated outside `crate::foo`
   --> $DIR/mut-restriction-check.rs:358:17

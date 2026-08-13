@@ -1,14 +1,16 @@
 error: `..` patterns are not allowed here
   --> $DIR/rest-pat-semantic-disallowed.rs:10:13
    |
-LL |     () => { .. }
-   |             ^^
+LL | / macro_rules! mk_pat {
+LL | |     () => { .. }
+   | |             ^^
+LL | | }
+   | |_- the error originates in the macro `mk_pat`
 ...
-LL |     let mk_pat!();
-   |         --------- in this macro invocation
+LL |       let mk_pat!();
+   |           --------- in this macro invocation
    |
    = note: only allowed in tuple, tuple struct, and slice patterns
-   = note: this error originates in the macro `mk_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `..` patterns are not allowed here
   --> $DIR/rest-pat-semantic-disallowed.rs:18:9

@@ -14,7 +14,7 @@ LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^ this argument influences the type of `Some`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

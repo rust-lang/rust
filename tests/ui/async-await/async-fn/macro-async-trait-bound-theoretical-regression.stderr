@@ -1,24 +1,30 @@
 error: ty
   --> $DIR/macro-async-trait-bound-theoretical-regression.rs:8:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
-   |                   ^^^^^^^^^^^^^^^^^^^^
-...
-LL | demo! { impl async Trait }
-   | -------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! demo {
+LL | |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   | |                   ^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |     (dyn $c:ident Trait) => { /* KEEP THIS EMPTY! */ };
+LL | | }
+   | |_- the error originates in the macro `demo`
+LL |
+LL |   demo! { impl async Trait }
+   |   -------------------------- in this macro invocation
 
 error: ty
   --> $DIR/macro-async-trait-bound-theoretical-regression.rs:8:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
-   |                   ^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! demo {
+LL | |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   | |                   ^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |     (dyn $c:ident Trait) => { /* KEEP THIS EMPTY! */ };
+LL | | }
+   | |_- the error originates in the macro `demo`
 ...
-LL | demo! { dyn async Trait }
-   | ------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |   demo! { dyn async Trait }
+   |   ------------------------- in this macro invocation
 
 error[E0658]: `async` trait bounds are unstable
   --> $DIR/macro-async-trait-bound-theoretical-regression.rs:18:14

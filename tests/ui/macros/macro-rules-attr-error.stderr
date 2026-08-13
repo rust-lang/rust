@@ -1,13 +1,17 @@
 error: local_attr: struct S;
   --> $DIR/macro-rules-attr-error.rs:5:9
    |
-LL |         compile_error!(concat!("local_attr: ", stringify!($($body)*)));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! local_attr {
+LL | |     attr() { $($body:tt)* } => {
+LL | |         compile_error!(concat!("local_attr: ", stringify!($($body)*)));
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |     };
+LL | |
+LL | | }
+   | |_- the error originates in the attribute macro `local_attr`
 ...
-LL |     #[local_attr]
-   |     ------------- in this attribute macro expansion
-   |
-   = note: this error originates in the attribute macro `local_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       #[local_attr]
+   |       ------------- in this attribute macro expansion
 
 error: unnecessary `unsafe` on safe attribute invocation
   --> $DIR/macro-rules-attr-error.rs:63:3

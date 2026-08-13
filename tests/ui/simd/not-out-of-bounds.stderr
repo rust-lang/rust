@@ -1,68 +1,104 @@
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 4)
   --> $DIR/not-out-of-bounds.rs:53:21
    |
-LL |                     $y(vec1, vec2, IDX)
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! test_shuffle_lanes {
+LL | |     ($n:literal, $x:ident, $y:ident) => {
+LL | |         unsafe {
+LL | |                 let shuffle: $x = {
+...  |
+LL | |                     $y(vec1, vec2, IDX)
+   | |                     ^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `test_shuffle_lanes`
 ...
-LL |     test_shuffle_lanes!(2, u8x2, simd_shuffle);
-   |     ------------------------------------------ in this macro invocation
-   |
-   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       test_shuffle_lanes!(2, u8x2, simd_shuffle);
+   |       ------------------------------------------ in this macro invocation
 
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 8)
   --> $DIR/not-out-of-bounds.rs:53:21
    |
-LL |                     $y(vec1, vec2, IDX)
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! test_shuffle_lanes {
+LL | |     ($n:literal, $x:ident, $y:ident) => {
+LL | |         unsafe {
+LL | |                 let shuffle: $x = {
+...  |
+LL | |                     $y(vec1, vec2, IDX)
+   | |                     ^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `test_shuffle_lanes`
 ...
-LL |     test_shuffle_lanes!(4, u8x4, simd_shuffle);
-   |     ------------------------------------------ in this macro invocation
-   |
-   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       test_shuffle_lanes!(4, u8x4, simd_shuffle);
+   |       ------------------------------------------ in this macro invocation
 
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 16)
   --> $DIR/not-out-of-bounds.rs:53:21
    |
-LL |                     $y(vec1, vec2, IDX)
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! test_shuffle_lanes {
+LL | |     ($n:literal, $x:ident, $y:ident) => {
+LL | |         unsafe {
+LL | |                 let shuffle: $x = {
+...  |
+LL | |                     $y(vec1, vec2, IDX)
+   | |                     ^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `test_shuffle_lanes`
 ...
-LL |     test_shuffle_lanes!(8, u8x8, simd_shuffle);
-   |     ------------------------------------------ in this macro invocation
-   |
-   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       test_shuffle_lanes!(8, u8x8, simd_shuffle);
+   |       ------------------------------------------ in this macro invocation
 
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 32)
   --> $DIR/not-out-of-bounds.rs:53:21
    |
-LL |                     $y(vec1, vec2, IDX)
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! test_shuffle_lanes {
+LL | |     ($n:literal, $x:ident, $y:ident) => {
+LL | |         unsafe {
+LL | |                 let shuffle: $x = {
+...  |
+LL | |                     $y(vec1, vec2, IDX)
+   | |                     ^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `test_shuffle_lanes`
 ...
-LL |     test_shuffle_lanes!(16, u8x16, simd_shuffle);
-   |     -------------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       test_shuffle_lanes!(16, u8x16, simd_shuffle);
+   |       -------------------------------------------- in this macro invocation
 
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 64)
   --> $DIR/not-out-of-bounds.rs:53:21
    |
-LL |                     $y(vec1, vec2, IDX)
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! test_shuffle_lanes {
+LL | |     ($n:literal, $x:ident, $y:ident) => {
+LL | |         unsafe {
+LL | |                 let shuffle: $x = {
+...  |
+LL | |                     $y(vec1, vec2, IDX)
+   | |                     ^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `test_shuffle_lanes`
 ...
-LL |     test_shuffle_lanes!(32, u8x32, simd_shuffle);
-   |     -------------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       test_shuffle_lanes!(32, u8x32, simd_shuffle);
+   |       -------------------------------------------- in this macro invocation
 
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 128)
   --> $DIR/not-out-of-bounds.rs:53:21
    |
-LL |                     $y(vec1, vec2, IDX)
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! test_shuffle_lanes {
+LL | |     ($n:literal, $x:ident, $y:ident) => {
+LL | |         unsafe {
+LL | |                 let shuffle: $x = {
+...  |
+LL | |                     $y(vec1, vec2, IDX)
+   | |                     ^^^^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `test_shuffle_lanes`
 ...
-LL |     test_shuffle_lanes!(64, u8x64, simd_shuffle);
-   |     -------------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `test_shuffle_lanes` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       test_shuffle_lanes!(64, u8x64, simd_shuffle);
+   |       -------------------------------------------- in this macro invocation
 
 error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: SIMD index #0 is out of bounds (limit 4)
   --> $DIR/not-out-of-bounds.rs:78:23

@@ -1,46 +1,58 @@
 error: ty
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
-   |                   ^^^^^^^^^^^^^^^^^^^^
-...
-LL | demo! { impl const Trait }
-   | -------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! demo {
+LL | |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   | |                   ^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |     (dyn [const] Trait) => { /* KEEP THIS EMPTY! */ };
+LL | | }
+   | |_- the error originates in the macro `demo`
+LL |
+LL |   demo! { impl const Trait }
+   |   -------------------------- in this macro invocation
 
 error: ty
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
-   |                   ^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! demo {
+LL | |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   | |                   ^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |     (dyn [const] Trait) => { /* KEEP THIS EMPTY! */ };
+LL | | }
+   | |_- the error originates in the macro `demo`
 ...
-LL | demo! { dyn const Trait }
-   | ------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |   demo! { dyn const Trait }
+   |   ------------------------- in this macro invocation
 
 error: ty
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
-   |                   ^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! demo {
+LL | |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   | |                   ^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |     (dyn [const] Trait) => { /* KEEP THIS EMPTY! */ };
+LL | | }
+   | |_- the error originates in the macro `demo`
 ...
-LL | demo! { impl [const] Trait }
-   | ---------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |   demo! { impl [const] Trait }
+   |   ---------------------------- in this macro invocation
 
 error: ty
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
-   |                   ^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! demo {
+LL | |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   | |                   ^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |     (dyn [const] Trait) => { /* KEEP THIS EMPTY! */ };
+LL | | }
+   | |_- the error originates in the macro `demo`
 ...
-LL | demo! { dyn [const] Trait }
-   | --------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |   demo! { dyn [const] Trait }
+   |   --------------------------- in this macro invocation
 
 error[E0658]: const trait impls are experimental
   --> $DIR/macro-const-trait-bound-theoretical-regression.rs:26:14

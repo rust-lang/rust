@@ -6,7 +6,7 @@ LL | |         #(#decl_macro)*
 LL | |     }
    | |_____^ `impl IntoIterator<Item = i32>` is not an iterator
    |
-   = note: this error originates in the macro `quote::quote` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `quote::quote` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

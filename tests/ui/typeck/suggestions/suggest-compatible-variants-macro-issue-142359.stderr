@@ -13,7 +13,7 @@ LL | |     };
    |
    = note:   expected enum `ControlFlow<i32, _>`
            found unit type `()`
-   = note: this error originates in the macro `ext::unit` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `ext::unit` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try wrapping the expression in `std::ops::ControlFlow::Continue`
    |
 LL |         Ok(r) => std::ops::ControlFlow::Continue({ ext::unit!() })

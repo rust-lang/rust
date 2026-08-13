@@ -90,14 +90,18 @@ LL +         { &raw const y }
 warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
   --> $DIR/lint-raw-borrows-via-references.rs:68:10
    |
-LL |         &$e as *const i32
-   |          ^^^^^^^^^^^^^^^^
+LL | / macro_rules! ref_cast {
+LL | |     ($e:expr) => {
+LL | |         &$e as *const i32
+   | |          ^^^^^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the warning originates in the macro `ref_cast`
 ...
-LL |     unsafe { ref_cast!(*x) }
-   |              ------------- in this macro invocation
+LL |       unsafe { ref_cast!(*x) }
+   |                ------------- in this macro invocation
    |
    = help: consider using `&raw const` for a safer and more explicit raw pointer
-   = note: this warning originates in the macro `ref_cast` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
   --> $DIR/lint-raw-borrows-via-references.rs:79:13
