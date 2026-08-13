@@ -208,21 +208,11 @@ pub fn setup_dep_graph(
     let (prev_graph, prev_work_products) = match load_result {
         LoadResult::IoError { path, err } => {
             sess.dcx().emit_warn(diagnostics::LoadDepGraph { path, err });
-            if let Err(err) = invalidate_old_session_dir(&mut incr_comp_session) {
-                sess.dcx().emit_err(diagnostics::DeleteIncompatible {
-                    path: dep_graph_path(&incr_comp_session),
-                    err,
-                });
-            }
+            invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
         }
         LoadResult::DataOutOfDate => {
-            if let Err(err) = invalidate_old_session_dir(&mut incr_comp_session) {
-                sess.dcx().emit_err(diagnostics::DeleteIncompatible {
-                    path: dep_graph_path(&incr_comp_session),
-                    err,
-                });
-            }
+            invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
         }
         LoadResult::Ok { prev_graph, prev_work_products } => (prev_graph, prev_work_products),

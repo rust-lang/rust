@@ -348,17 +348,21 @@ pub fn finalize_session_directory(
     let _ = garbage_collect_session_directories(sess, &new_path);
 }
 
-pub(crate) fn invalidate_old_session_dir(
-    incr_comp_session: &mut IncrCompSession,
-) -> io::Result<()> {
+pub(crate) fn invalidate_old_session_dir(sess: &Session, incr_comp_session: &mut IncrCompSession) {
     if let Some(old_incr_comp_session_dir) = incr_comp_session.old_session_directory.take() {
-        let sess_dir_iterator = old_incr_comp_session_dir.read_dir()?;
-        for entry in sess_dir_iterator {
-            let entry = entry?;
-            safe_remove_file(&entry.path())?
+        let res = try {
+            let sess_dir_iterator = old_incr_comp_session_dir.read_dir()?;
+            for entry in sess_dir_iterator {
+                let entry = entry?;
+                safe_remove_file(&entry.path())?
+            }
+        };
+        if let Err(err) = res {
+            sess.dcx()
+                .emit_err(diagnostics::DeleteIncompatible { path: old_incr_comp_session_dir, err });
         }
     }
-    Ok(())
+    incr_comp_session._old_lock_file = None;
 }
 
 /// Generates unique directory path of the form:
