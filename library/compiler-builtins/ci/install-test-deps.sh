@@ -21,12 +21,14 @@ fi
 to_install=()
 
 if [ "$RUN_IN_DOCKER" != "0" ]; then
-    ! command -v rustup && to_install+=(rustup)
-    ! command -v m4 && to_install+=(m4)
+    command -v libtool || to_install+=(libtool)
+    command -v m4 || to_install+=(m4)
+    command -v make || to_install+=(make)
+    command -v rustup || to_install+=(rustup)
 fi
 
 if [ "$target" = "i686-pc-windows-gnu" ]; then
-    ! command -v i686-w64-mingw32-gcc && to_install+=(mingw-w64-i686-gcc)
+    command -v i686-w64-mingw32-gcc || to_install+=(mingw-w64-i686-gcc)
 fi
 
 # specific check for armv7-unknown-linux-gnueabihf on canonical runners

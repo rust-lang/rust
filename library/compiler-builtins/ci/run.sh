@@ -6,11 +6,11 @@ export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
 export NEXTEST_STATUS_LEVEL=all
 
 target="${1:-}"
+host_tuple="$(rustc --print host-tuple)"
 
 if [ -z "$target" ]; then
-    host_target=$(rustc -vV | awk '/^host/ { print $2 }')
-    echo "Defaulted to host target $host_target"
-    target="$host_target"
+    echo "Defaulted to host target $host_tuple"
+    target="$host_tuple"
 fi
 
 # Print machine information
@@ -174,19 +174,21 @@ case "$target" in
     *) mflags+=(--features libm-test/build-musl) ;;
 esac
 
-
 # Configure which targets test against MPFR
 case "$target" in
-    # MSVC cannot link MPFR
+    # Excluded in gmp-mpfr-sys with "Windows MSVC target is not supported (linking
+    # would fail)". MPFR isn't really built for non-gcc-like compilers anyway.
     *windows-msvc*) ;;
     # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
     *windows-gnu*) ;;
-    # Targets that aren't cross compiled in CI work fine
+    # Ensure enabled on targets that we expect to be native in CI
     aarch64*apple*) mflags+=(--features libm-test/build-mpfr) ;;
     aarch64*linux*) mflags+=(--features libm-test/build-mpfr) ;;
     i586*) mflags+=(--features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross) ;;
     i686*) mflags+=(--features libm-test/build-mpfr) ;;
     x86_64*) mflags+=(--features libm-test/build-mpfr) ;;
+    # Fallback to enabled on native targets, disabled otherwise
+    *) [ "$target" = "$host_tuple" ] && mflags+=(--features libm-test/build-mpfr) ;;
 esac
 
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
