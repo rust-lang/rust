@@ -45,13 +45,6 @@ fn foo() {
     let b: <W<W<W<W<W<W<W<W<W<W<()>>>>>>>>>> as HasAssoc>::Assoc = loop {};
     //[next]~^ WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [recursion_depth_exceeding_limit]
-    //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `W<W<W<W<W<W<W<W<W<W<()>>>>>>>>>>: HasAssoc` [recursion_depth_exceeding_limit]
-    //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [recursion_depth_exceeding_limit]
-    //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
     // Force normalization when looking up methods and the self_ty is normalized to infer.
     b.anyone_can_call();
 }
