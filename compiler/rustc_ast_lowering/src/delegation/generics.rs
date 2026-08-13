@@ -13,6 +13,7 @@ use crate::LoweringContext;
 use crate::delegation::resolution::resolver::DelegationResolver;
 use crate::diagnostics::{
     DelegationInfersMismatch, DelegationToInherentImplMustContainParentGenerics,
+    DelegationToInherentImplParentContainsInfer,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -465,8 +466,17 @@ impl<'hir> DelegationResolver<'_, 'hir> {
 
         let tcx = self.tcx();
         match parent_args {
-            ParentSegmentArgs::Specified(..) => Ok(()),
             ParentSegmentArgs::Invalid => unreachable!(),
+            ParentSegmentArgs::Specified(args) => args
+                .args
+                .iter()
+                .all(|arg| {
+                    let AngleBracketedArg::Arg(arg) = arg else { return false };
+                    !arg.is_infer()
+                })
+                .ok_or_else(|| {
+                    self.tcx().dcx().emit_err(DelegationToInherentImplParentContainsInfer { span })
+                }),
             ParentSegmentArgs::NotSpecified => {
                 let Some((did, _)) = self.opt_inherent_impl_adt(sig_id) else { unreachable!() };
 
@@ -503,12 +513,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         let params = &params[usize::from(add_first_self)..];
         for (idx, (arg, param)) in args.args.iter().zip(params).enumerate() {
             let AngleBracketedArg::Arg(arg) = arg else { continue };
-
-            let is_infer = match arg {
-                GenericArg::Lifetime(lt) => lt.ident.name == kw::UnderscoreLifetime,
-                GenericArg::Type(ty) => ty.is_maybe_parenthesised_infer(),
-                GenericArg::Const(_) => false,
-            };
+            let is_infer = arg.is_infer();
 
             // If `'_` is used instead of `_` (or vice versa) we emit a meaningful
             // error instead of processing this infer or leaving it as is for signature

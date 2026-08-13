@@ -12,11 +12,11 @@ impl<'a, 'b, 'c, A: 'a, const C: usize> S<'a, A, C> {
 
 reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
 reuse S::<'static, (), 1>::foo_static as foo_static_3;
-reuse S::<'_, _, 1>::foo_static::<'static, _, _> as foo_static_4;
+reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
 
 reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1;
 reuse S::<'static, (), 1>::foo_self as foo_self_3;
-reuse S::<'_, _, 1>::foo_self::<'static, _, _> as foo_self_4;
+reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
 
 trait Trait<'a, AA, BB>
 where
@@ -24,7 +24,7 @@ where
 {
     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
     reuse S::<'static, (), 1>::foo_static as foo_static_3;
-    reuse S::<'_, _, 1>::foo_static::<'static, _, _> as foo_static_4;
+    reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
 
     fn get_s(self) -> S<'static, (), 1> {
         panic!();
@@ -32,7 +32,7 @@ where
 
     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
-    reuse S::<'_, _, 1>::foo_self::<'static, _, _> as foo_self_4;
+    reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
     //~^ ERROR: mismatched types [E0308]
 }
 
@@ -41,19 +41,19 @@ struct X;
 impl<'a, A, B> Trait<'a, A, B> for X {
     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
     reuse S::<'static, (), 1>::foo_static as foo_static_3;
-    reuse S::<'_, _, 1>::foo_static::<'static, _, _> as foo_static_4;
+    reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
     //~^ ERROR: type annotations needed [E0284]
 
     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
-    reuse S::<'_, _, 1>::foo_self::<'static, _, _> as foo_self_4;
+    reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
     //~^ ERROR: mismatched types [E0308]
 }
 
 impl X {
     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
     reuse S::<'static, (), 1>::foo_static as foo_static_3;
-    reuse S::<'_, _, 1>::foo_static::<'static, _, _> as foo_static_4;
+    reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
 
     fn get_s(self) -> S<'static, (), 1> {
         panic!();
@@ -61,7 +61,7 @@ impl X {
 
     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
-    reuse S::<'_, _, 1>::foo_self::<'static, _, _> as foo_self_4;
+    reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
     //~^ ERROR: mismatched types [E0308]
 }
 

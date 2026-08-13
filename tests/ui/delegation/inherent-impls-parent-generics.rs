@@ -34,6 +34,15 @@ reuse E::<'static, (), 123>::foo_self as e5;
 reuse E::<'static, (), 123>::foo_static::<'static, (), true> as e6;
 reuse E::<'static, (), 123>::foo_self::<'static, (), true> as e7;
 
+reuse E::<'_, (), _>::foo_static as e8;
+//~^ ERROR: parent segment of delegation to inherent impl can not contain infers
+//~| ERROR: type annotations needed
+//~| ERROR: type annotations needed
+//~| ERROR: type annotations needed
+reuse E::<'_, _, _>::foo_self as e9;
+//~^ ERROR: parent segment of delegation to inherent impl can not contain infers
+//~| ERROR: this function takes 1 argument but 0 arguments were supplied
+
 struct S<A, const C: usize> {
     xd: [A; C],
 }
@@ -65,5 +74,14 @@ reuse S::<(), 123>::foo_self as s5;
 
 reuse S::<(), 123>::foo_static::<'static, (), true> as s6;
 reuse S::<(), 123>::foo_self::<'static, (), true> as s7;
+
+reuse S::<(), _>::foo_static as s8;
+//~^ ERROR: parent segment of delegation to inherent impl can not contain infers
+//~| ERROR: type annotations needed
+//~| ERROR: type annotations needed
+//~| ERROR: type annotations needed
+reuse S::<_, 123>::foo_self as s9;
+//~^ ERROR: parent segment of delegation to inherent impl can not contain infers
+//~| ERROR: this function takes 1 argument but 0 arguments were supplied
 
 fn main() {}
