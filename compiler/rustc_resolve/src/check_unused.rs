@@ -89,7 +89,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 // Check later.
                 return;
             }
-            self.unused_import(self.base_id).add(id);
+            self.unused_import().add(id);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
@@ -111,19 +111,19 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
 
         if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
             if items.is_empty() {
-                self.unused_import(self.base_id).add(id);
+                self.unused_import().add(id);
             }
         } else {
             self.check_import(id, def_id);
         }
     }
 
-    fn unused_import(&mut self, id: ast::NodeId) -> &mut UnusedImport {
+    fn unused_import(&mut self) -> &mut UnusedImport {
         let use_tree_id = self.base_id;
         let use_tree = self.base_use_tree.unwrap().clone();
         let item_span = self.item_span;
 
-        self.unused_imports.entry(id).or_insert_with(|| UnusedImport {
+        self.unused_imports.entry(self.base_id).or_insert_with(|| UnusedImport {
             use_tree,
             use_tree_id,
             item_span,
@@ -140,7 +140,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                         Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
                     )
                 {
-                    self.unused_import(self.base_id).add(id);
+                    self.unused_import().add(id);
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => self.check_imports_as_underscore(items),
