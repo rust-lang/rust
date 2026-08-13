@@ -2928,9 +2928,13 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
+#[diagnostic::on_unknown(
+    label = "`{Unresolved}` is not a pre-interned symbol",
+    note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+)]
 pub mod sym {
-    // Used from a macro in `librustc_feature/accepted.rs`
     use super::Symbol;
+    // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
     #[doc(inline)]
     pub use super::sym_generated::*;
