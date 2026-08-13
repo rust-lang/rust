@@ -5,15 +5,15 @@ Inert attributes are parsed during AST lowering to the HIR, while active attribu
 For more information about the difference, see [the page about attributes][attributes_page].
 
 During [AST lowering][lowering], inert attributes are converted from an unparsed `TokenStream` to a parsed representation.
-The parsed form [is defined][hir_attrs] in the `rustc_hir` crate, and the parsers [are defined][attr_parsing] in the `rustc_attr_parsing` crate.
+The parsed form is defined in the [`rustc_attr_ir`][attrs] crate, and the parsers are defined in the [`rustc_attr_parsing`][attr_parsing] crate.
 
 ## A step by step guide of adding a new inert attribute parser
 
 1. Add the attribute name to the [BUILTIN_ATTRIBUTES].
    This list defines the set of inert attributes.
-2. Add a variant to `AttributeKind` in the [hir definition of attributes][hir_attrs].
+2. Add a variant to [`AttributeKind`] in the [definition of attributes][attrs].
    This will define the parsed form of the attribute that the attribute parser will produce.
-3. Add your variant to the match in `rustc_hir/attrs/encode_cross_crate.rs`, which should return whether your attribute should be visible in dependent crates.
+3. Add your variant to the match in `rustc_attr_ir/encode_cross_crate.rs`, which should return whether your attribute should be visible in dependent crates.
    This is usually `No` for codegen related attributes, and `Yes` for analysis related attributes.
 4. Create a new struct in `rustc_attr_parsing/attributes/*.rs` that will hold the state for your attribute parser.
    For most parsers, this will be an empty struct.
@@ -57,9 +57,9 @@ This macro can be used in the following ways:
 * `find_attr!(tcx, <def_id>, Variant(...))` to find an attribute on a def id.
 * `find_attr!(tcx, <hir_id>, Variant(...))` to find an attribute on a HIR id.
 * `find_attr!(tcx, crate, Variant(...))` to find an attribute on the current crate.
-* `find_attr!(attrs, Variant(...))` to find an attribute in attrs, a `&[hir::Attribute]`.
+* `find_attr!(attrs, Variant(...))` to find an attribute in attrs, a `&[rustc_attr_ir::Attribute]`.
 
-`Variant` is a pattern matching one of the `AttributeKind` variants, and can take one of the following shapes:
+`Variant` is a pattern matching one of the [`AttributeKind`] variants, and can take one of the following shapes:
 * `find_attr!(..., Variant)` will return a boolean representing whether the attribute is present.
 * `find_attr!(..., Variant(a, b, _) => (a, b))` will return the value after the `=>`, constructed from fields bound by the pattern.
 
@@ -74,10 +74,11 @@ In other words, we expect attributes parsed with `parse_limited` to be reparsed 
 
 [attributes_page]: ../attributes.md
 [lowering]: ./lowering.md
-[hir_attrs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/attrs/index.html
+[attrs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_ir/index.html
 [attr_parsing]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/
 [attribute_parsers]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/context/static.ATTRIBUTE_PARSERS.html
 [builtin_attributes]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/builtin_attrs/static.BUILTIN_ATTRIBUTES.html
 [template!]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/macro.template.html
-[find_attr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/macro.find_attr.html
+[find_attr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_ir/macro.find_attr.html
 [parse_limited]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/interface/struct.AttributeParser.html#method.parse_limited
+[`AttributeKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_ir/enum.AttributeKind.html
