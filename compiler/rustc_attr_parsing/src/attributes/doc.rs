@@ -18,10 +18,10 @@ use crate::diagnostics::{
     DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
-    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocConflictingSyntax,
+    DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
+    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, MalformedDocSyntax, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -675,31 +675,89 @@ impl DocParser {
                     )
                     .emit();
                 }
-                let span = args.span().unwrap_or(path.span());
-                let tex_math_dollars = if let Some(v) = args.as_name_value()
-                    && let Some(syntax) = v.value_as_str()
-                {
-                    match syntax.as_str() {
-                        "+tex_math_dollars" => true,
-                        "-tex_math_dollars" => false,
-                        _ => {
-                            cx.emit_lint(
-                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                MalformedDoc,
-                                span,
-                            );
-                            false
-                        }
-                    }
-                } else {
+                if let Some(other_syntax) = &self.attribute.syntax {
                     cx.emit_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        MalformedDoc,
-                        span,
+                        DocConflictingSyntax { other_span: other_syntax.span },
+                        path.span(),
                     );
-                    false
+                    return;
+                }
+
+                let mut tex_math_dollars: Option<(bool, Span)> = None;
+
+                let Some(syntax_args) = args.as_list() else {
+                    cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                        MalformedDocSyntax,
+                        args.span().unwrap_or(path.span()),
+                    );
+                    return;
                 };
-                self.attribute.syntax = Some(DocAttributeSyntax { tex_math_dollars, span });
+                for arg in syntax_args.mixed() {
+                    let Some(syntax_arg) = arg.meta_item() else {
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            MalformedDocSyntax,
+                            arg.span(),
+                        );
+                        return;
+                    };
+                    let is_enabled = if syntax_arg.path().word_is(sym::enable) {
+                        true
+                    } else if syntax_arg.path().word_is(sym::disable) {
+                        false
+                    } else {
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            MalformedDocSyntax,
+                            syntax_arg.span(),
+                        );
+                        return;
+                    };
+                    let Some(syntax_extension_list) = syntax_arg.args().as_list() else {
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            MalformedDocSyntax,
+                            syntax_arg.span(),
+                        );
+                        return;
+                    };
+
+                    for syntax_extension in syntax_extension_list.mixed() {
+                        let Some(syntax_extension) = syntax_extension.meta_item_no_args() else {
+                            cx.emit_lint(
+                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                MalformedDocSyntax,
+                                syntax_extension.span(),
+                            );
+                            return;
+                        };
+                        if syntax_extension.path().word_is(sym::tex_math_dollars) {
+                            if let Some((_, other_span)) = tex_math_dollars {
+                                cx.emit_lint(
+                                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                    DocConflictingSyntax { other_span },
+                                    syntax_extension.path().span(),
+                                );
+                                return;
+                            }
+                            tex_math_dollars = Some((is_enabled, syntax_extension.span()));
+                        } else {
+                            cx.emit_lint(
+                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                MalformedDocSyntax,
+                                syntax_extension.span(),
+                            );
+                            return;
+                        }
+                    }
+                }
+                self.attribute.syntax = Some(DocAttributeSyntax {
+                    tex_math_dollars: tex_math_dollars
+                        .map_or_default(|(is_enabled, _span)| is_enabled),
+                    span: path.span(),
+                });
             }
             Some(sym::spotlight) => {
                 let span = path.span();

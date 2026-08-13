@@ -1,0 +1,93 @@
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:8:47
+   |
+LL | #[doc(syntax(enable(tex_math_dollars), enable(tex_math_dollars)))]
+   |                     ----------------          ^^^^^^^^^^^^^^^^
+   |                     |
+   |                     also specified here
+   |
+   = note: the doc syntax was specified more than once on the same item
+note: the lint level is defined here
+  --> $DIR/doc-syntax-invalid.rs:2:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:14:12
+   |
+LL | #[doc(syntax(enable(tex_math_dollars)))]
+   |       ------ also specified here
+LL | pub mod c {
+LL |     #![doc(syntax(enable(tex_math_dollars)))]
+   |            ^^^^^^
+   |
+   = note: the doc syntax was specified more than once on the same item
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:19:7
+   |
+LL | #[doc(syntax(enable(tex_math_dollars)))]
+   |       ------ also specified here
+LL | #[doc(syntax(enable(tex_math_dollars)))]
+   |       ^^^^^^
+   |
+   = note: the doc syntax was specified more than once on the same item
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:27:48
+   |
+LL | #[doc(syntax(enable(tex_math_dollars), disable(tex_math_dollars)))]
+   |                     ----------------           ^^^^^^^^^^^^^^^^
+   |                     |
+   |                     also specified here
+   |
+   = note: the doc syntax was specified more than once on the same item
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:33:12
+   |
+LL | #[doc(syntax(enable(tex_math_dollars)))]
+   |       ------ also specified here
+LL | pub mod dc {
+LL |     #![doc(syntax(disable(tex_math_dollars)))]
+   |            ^^^^^^
+   |
+   = note: the doc syntax was specified more than once on the same item
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:38:7
+   |
+LL | #[doc(syntax(enable(tex_math_dollars)))]
+   |       ------ also specified here
+LL | #[doc(syntax(disable(tex_math_dollars)))]
+   |       ^^^^^^
+   |
+   = note: the doc syntax was specified more than once on the same item
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:42:7
+   |
+LL | #[doc(syntax)]
+   |       ^^^^^^
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:46:13
+   |
+LL | #[doc(syntax="+tex_math_dollars")]
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:50:14
+   |
+LL | #[doc(syntax(enable))]
+   |              ^^^^^^
+
+error: malformed `doc(syntax)` attribute input
+  --> $DIR/doc-syntax-invalid.rs:54:21
+   |
+LL | #[doc(syntax(enable(tex_math_dollars())))]
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+

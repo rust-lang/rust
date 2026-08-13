@@ -3,7 +3,7 @@
 
 #![feature(rustdoc_texmath)]
 #![crate_name = "foo"]
-#![doc(syntax="+tex_math_dollars")]
+#![doc(syntax(enable(tex_math_dollars)))]
 
 //! No math syntax at the crate level,
 //! but one of the modules has math syntax in it.

@@ -1,4 +1,4 @@
-#![doc(syntax="+tex_math_dollars")]
+#![doc(syntax(enable(tex_math_dollars)))]
 //~^ ERROR unstable
 
 //! $\sqrt{2}$

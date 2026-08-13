@@ -3,7 +3,7 @@
 
 #![feature(rustdoc_texmath)]
 #![crate_name = "foo"]
-#![doc(syntax="-tex_math_dollars")]
+#![doc(syntax(disable(tex_math_dollars)))]
 
 //! $\sqrt{2}$
 //@ has 'foo/index.html'
