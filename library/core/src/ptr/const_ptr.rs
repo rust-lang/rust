@@ -149,6 +149,7 @@ impl<T: PointeeSized> *const T {
     #[doc = include_str!("./docs/addr.md")]
     #[must_use]
     #[inline(always)]
+    #[expect(clippy::transmutes_expressible_as_ptr_casts, reason = "implements pointer cast")]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn addr(self) -> usize {
         // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
