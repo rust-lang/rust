@@ -3312,7 +3312,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         F: FnMut(&'a T) -> Ordering,
     {
         let (front, back) = self.as_slices();
-        let cmp_back = back.first().map(|elem| f(elem));
+        let cmp_back = back.first().map(&mut f);
 
         if let Some(Ordering::Equal) = cmp_back {
             Ok(front.len())
@@ -3423,7 +3423,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     {
         let (front, back) = self.as_slices();
 
-        if let Some(true) = back.first().map(|v| pred(v)) {
+        if let Some(true) = back.first().map(&mut pred) {
             back.partition_point(pred) + front.len()
         } else {
             front.partition_point(pred)
