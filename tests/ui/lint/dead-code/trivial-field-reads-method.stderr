@@ -1,0 +1,17 @@
+error: field `a` is never read
+  --> $DIR/trivial-field-reads-method.rs:13:5
+   |
+LL |   struct S {
+   |          - field in this struct
+LL |     a: u32,
+   |     ^
+   |
+   = note: `S` has a derived impl for the trait `Access`, but this is intentionally ignored during dead code analysis
+note: the lint level is defined here
+  --> $DIR/trivial-field-reads-method.rs:5:11
+   |
+LL |   #![deny(dead_code)]
+   |           ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
