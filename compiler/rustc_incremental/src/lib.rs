@@ -3,6 +3,7 @@
 // tidy-alphabetical-start
 #![deny(missing_docs)]
 #![feature(file_buffered)]
+#![feature(try_blocks)]
 // tidy-alphabetical-end
 
 mod assert_dep_graph;
