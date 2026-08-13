@@ -453,10 +453,14 @@ impl TypeId {
     /// enum Enum {
     ///     Unit,
     ///     Tuple(u32, u64),
+    ///     #[non_exhaustive]
     ///     Struct { x: u32, y: u32, z: String },
     /// }
     /// assert_eq!(const { TypeId::of::<Enum>().variant(1).name() }, "Tuple");
     /// assert_eq!(const { TypeId::of::<Enum>().variant(2).name() }, "Struct");
+    ///
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(1).non_exhaustive() }, false);
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(2).non_exhaustive() }, true);
     /// ```
     ///
     /// The variant index refer to the source order index of a variant in a type.
@@ -696,6 +700,14 @@ impl VariantId {
     #[rustc_comptime]
     pub fn name(self) -> &'static str {
         intrinsics::variant_name(self.base, self.variant)
+    }
+
+    /// Returns whether this variant is marked with `#[non_exhaustive]`.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn non_exhaustive(self) -> bool {
+        intrinsics::variant_non_exhaustive(self.base, self.variant)
     }
 }
 
