@@ -426,12 +426,41 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
 
 
 def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
-    # logger = Logger.Logger()
-    # logger >> "[StdOsStringSummaryProvider] for " + str(valobj.GetName())
-    buf = valobj.GetChildAtIndex(0).GetChildAtIndex(0)
-    is_windows = "Wtf8Buf" in buf.type.name
-    vec = buf.GetChildAtIndex(0) if is_windows else buf
-    return '"%s"' % vec_to_string(vec)
+    inner_vec = valobj.GetNonSyntheticValue().GetChildAtIndex(0).GetChildAtIndex(0)
+
+    is_windows = inner_vec.GetTypeName().endswith("Wtf8Buf")
+
+    if is_windows:
+        inner_vec = inner_vec.GetChildAtIndex(0)
+
+    pointer = (
+        inner_vec.GetChildMemberWithName("buf")
+        .GetChildMemberWithName("inner")
+        .GetChildMemberWithName("ptr")
+        .GetChildMemberWithName("pointer")
+        .GetChildMemberWithName("pointer")
+    )
+
+    length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+    capacity = (
+        inner_vec.GetChildMemberWithName("buf")
+        .GetChildMemberWithName("cap")
+        .GetValueAsUnsigned()
+    )
+
+    if length <= 0:
+        return '""'
+
+    no_hi_bit_max: int = 1 << ((pointer.GetByteSize() * 8) - 1)
+    # technically length isn't a NoHighBit<usize>, but length should always be <= capacity
+    if length >= no_hi_bit_max or capacity >= no_hi_bit_max:
+        return "<error: invalid len/capacity>"
+    if pointer.GetValueAsUnsigned() == 0:
+        return "<error: OsString pointer is null>"
+
+    process = pointer.GetProcess()
+
+    return read_string(process, pointer.GetValueAsAddress(), length)
 
 
 def StdStrSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:

@@ -285,7 +285,7 @@ def main():
                 p = target.GetProcess()
                 frame = p.GetSelectedThread().GetSelectedFrame()
 
-                print(command)
+                print(f"(lldb) {command}")
                 all_ok &= dispatch_repr(var_name, breakpoint_index, frame)
             elif command != "":
                 execute_command(command_interpreter, command)
@@ -299,7 +299,7 @@ def main():
         # or the SBDebugger object.
         debugger.HandleCommand("quit 1")
     except Exception as e:
-        traceback.print_exception(e, file=sys.stdout)
+        traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
         debugger.HandleCommand("quit 1")
     else:  # Executes if the `try` block throws no exceptions.
         if repr_cmd_run:

@@ -24,6 +24,8 @@ from .common import (
     TargetData,
     Type,
     Variable,
+    is_arraylike,
+    make_arraylike,
 )
 
 HAS_FLOAT128: bool = getattr(lldb, "eBasicTypeFloat128", None) is not None
@@ -185,7 +187,11 @@ def field_from_lldb(field: lldb.SBTypeMember) -> Field:
     if BLESS and not field.IsValid():
         raise FromLLDB("Cannot bless invalid SBTypeMember object")
 
-    return Field(field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes())
+    return Field(
+        name=field.GetName(),
+        type=field.GetType().GetName(),
+        offset=field.GetOffsetInBytes(),
+    )
 
 
 def get_generics(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> list[lldb.SBType]:
@@ -232,12 +238,20 @@ def type_from_lldb(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> Type:
     generic_types = get_generics(ty, sbtarget)
     generics = [g.GetName() for g in generic_types]
 
+    basic_type: int = ty.GetBasicType()
+
+    if basic_type == lldb.eBasicTypeInvalid:
+        basic_type = None
+
     return Type(
-        ty.GetByteSize(),
-        ty.GetBasicType(),
-        ty.GetTypeClass(),
-        [field_from_lldb(ty.GetFieldAtIndex(i)) for i in range(ty.GetNumberOfFields())],
-        generics,
+        size=ty.GetByteSize(),
+        type_class=ty.GetTypeClass(),
+        basic_type=basic_type,
+        fields=[
+            field_from_lldb(ty.GetFieldAtIndex(i))
+            for i in range(ty.GetNumberOfFields())
+        ],
+        generic_params=generics,
     )
 
 
@@ -256,7 +270,15 @@ def child_from_lldb(child: lldb.SBValue) -> Child:
         child_from_lldb(child.GetChildAtIndex(i)) for i in range(child.GetNumChildren())
     ]
 
-    return Child(child.GetName(), child.GetType().GetName(), value, children)
+    if is_arraylike(children):
+        children = make_arraylike(children)
+
+    return Child(
+        name=child.GetName(),
+        type=child.GetType().GetName(),
+        value=value,
+        children=children,
+    )
 
 
 def variable_from_lldb(var: lldb.SBValue) -> Variable:
@@ -299,21 +321,28 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
     else:
         format = None
 
-    pretty_print = get_summary_or_value(var)
+    # Pointer values change from run to run, so don't store their pretty print either
+    if not sbtype.IsPointerType():
+        pretty_print = get_summary_or_value(var)
+    else:
+        pretty_print = None
 
     children = [
         child_from_lldb(var.GetChildAtIndex(i)) for i in range(var.GetNumChildren())
     ]
 
+    if is_arraylike(children):
+        children = make_arraylike(children)
+
     return Variable(
-        type_name,
-        pretty_type_name,
-        pretty_print,
-        value,
-        synthetic,
-        summary,
-        format,
-        children,
+        type=type_name,
+        pretty_type_name=pretty_type_name,
+        pretty_print=pretty_print,
+        value=value,
+        synthetic=synthetic,
+        summary=summary,
+        format=format,
+        children=children,
     )
 
 
@@ -342,6 +371,10 @@ def bless_variable(
 
     var_data = variable_from_lldb(valobj)
     target_data.breakpoints[breakpoint_idx][var_name] = var_data
+
+    # Don't bless types if we don't have anything that could possibly break from the type changing
+    if not var_data.has_visualizer():
+        return
 
     # We also need to bless the types of the valobj's children, as they may not appear in the type
     # or fields.
