@@ -49,7 +49,7 @@ The compiler is also capable of dumping the dependency graph for your debugging 
 To do so, pass the `-Z dump-dep-graph` flag.
 The graph will be dumped to `dep_graph.{txt,dot}` in the current
 directory.
- You can override the filename with the `RUST_DEP_GRAPH` environment variable.
+You can override the filename with the `RUST_DEP_GRAPH` environment variable.
 
 Frequently, though, the full dep graph is quite overwhelming and not particularly helpful.
 Therefore, the compiler also allows you to filter the graph.
