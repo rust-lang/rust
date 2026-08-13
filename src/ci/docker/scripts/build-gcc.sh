@@ -11,6 +11,15 @@ hide_output ./configure
 hide_output make
 hide_output make install
 
+if echo '.section .test,"awR",@progbits' | as - -o /dev/null 2>/dev/null; then
+    echo "binutils assembler supports SHF_GNU_RETAIN"
+else
+    echo "binutils assembler DOES NOT support SHF_GNU_RETAIN"
+    exit 1
+fi
+
+cd ..
+
 # Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
 # This version is specified in the Dockerfile
 GCC=$GCC_VERSION
@@ -54,6 +63,12 @@ hide_output ../gcc-$GCC/configure \
 hide_output make -j$(nproc)
 hide_output make install
 ln -s gcc /rustroot/bin/cc
+if echo 'int x __attribute__((used, retain));' | gcc -S -x c -o - - | grep -i '"a.*R"'; then
+    echo "retain attribute is supported"
+else
+    echo "retain attribute is not supported"
+    exit 1
+fi
 
 cd ..
 rm -rf gcc-build
