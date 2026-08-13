@@ -31,8 +31,7 @@ use clippy_config::Conf;
 use clippy_utils::is_hir_ty_cfg_dependant;
 use clippy_utils::msrvs::{self, Msrv};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

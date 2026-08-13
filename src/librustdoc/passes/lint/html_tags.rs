@@ -28,7 +28,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             hir_id,
             sp,
             rustc_errors::DiagDecorator(|lint| {
-                use rustc_lint_defs::Applicability;
+                use rustc_lint::Applicability;
 
                 lint.primary_message(msg);
 

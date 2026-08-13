@@ -8,9 +8,8 @@ use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_e
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty, UintTy};
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
 pub struct ArithmeticSideEffects {

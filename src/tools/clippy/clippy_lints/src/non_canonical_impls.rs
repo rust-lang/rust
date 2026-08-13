@@ -7,9 +7,8 @@ use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Stmt, StmtKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
-use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
 
