@@ -2049,6 +2049,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[expect(clippy::manual_clear, reason = "implements clear")]
     #[inline]
     pub fn clear(&mut self) {
         self.truncate(0);
