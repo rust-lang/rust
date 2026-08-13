@@ -64,23 +64,30 @@ fn main() {
 
         let stdout = completed.stdout_utf8();
         let source_root = source_root();
-        let root = source_root.to_string_lossy();
 
-        if let Some((i, _)) =
-            stdout.lines().enumerate().find(|(_, line)| line.contains(root.as_ref()))
-        {
-            let lines: Vec<_> = stdout.lines().collect();
+        let cargo_home = std::env::var("CARGO_HOME").map(PathBuf::from);
+        let mut local_roots = vec![("source-root", source_root.to_string_lossy())];
+        if let Ok(cargo_home) = &cargo_home {
+            local_roots.push(("cargo-home", cargo_home.to_string_lossy()));
+        }
 
-            let start = i.saturating_sub(2);
-            let end = (i + 3).min(lines.len());
+        for (kind, root) in &local_roots {
+            if let Some((i, _)) =
+                stdout.lines().enumerate().find(|(_, line)| line.contains(root.as_ref()))
+            {
+                let lines: Vec<_> = stdout.lines().collect();
 
-            eprintln!("leaked source-root path found in {link_name}:");
+                let start = i.saturating_sub(2);
+                let end = (i + 3).min(lines.len());
 
-            for line in &lines[start..end] {
-                eprintln!("{line}");
+                eprintln!("leaked {kind} path found in {link_name}:");
+
+                for line in &lines[start..end] {
+                    eprintln!("{line}");
+                }
+
+                panic!("found leaked {kind} path in {link_name}");
             }
-
-            panic!("found leaked source-root path in {link_name}");
         }
 
         // Check that remapped paths are present if the rlib has debug info.
