@@ -4147,6 +4147,20 @@ pub(crate) struct GenericArgsInPatRequireTurbofishSyntax {
 }
 
 #[derive(Diagnostic)]
+#[diag("generic args in this position require the turbofish syntax")]
+pub(crate) struct GenericArgsInExprRequireTurbofishSyntax {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments",
+        style = "verbose",
+        code = "::",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggest_turbofish: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`for<...>` expected after `{$kw}`, not before")]
 pub(crate) struct TransposeDynOrImpl<'a> {
     #[primary_span]

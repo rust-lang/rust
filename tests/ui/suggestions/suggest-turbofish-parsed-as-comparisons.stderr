@@ -1,0 +1,24 @@
+error: generic args in this position require the turbofish syntax
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:23:17
+   |
+LL |     let _ = bar(Many<i32, Many<(), i32, S, S>, i32, i32>::new());
+   |                 ^^^^^^^^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     let _ = bar(Many::<i32, Many<(), i32, S, S>, i32, i32>::new());
+   |                     ++
+
+error: generic args in this position require the turbofish syntax
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:32:32
+   |
+LL |     take_three(a < b, c > (d), Many<i32, Many<(), i32, S, S>, i32, i32>::new());
+   |                                ^^^^^^^^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     take_three(a < b, c > (d), Many::<i32, Many<(), i32, S, S>, i32, i32>::new());
+   |                                    ++
+
+error: aborting due to 2 previous errors
+
