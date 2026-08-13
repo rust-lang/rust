@@ -17,12 +17,12 @@
 
 ## Reviewing LLM-created code
 
-First, add the new `ai-assisted` label to the PR.
+First, add the new `llm-assisted` label to the PR.
 
 ### Rules
 
 We expect everyone to follow the new policy, not just authors.
-That means it is **your responsibility** to check whether an `ai-assisted` PR touches an area that's disallowed by the policy.
+That means it is **your responsibility** to check whether an `llm-assisted` PR touches an area that's disallowed by the policy.
 You may request that the author redo it without LLM-generated code, in which case this section doesn't apply.
 
 The following areas are currently banned:
