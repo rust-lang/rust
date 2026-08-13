@@ -1,6 +1,6 @@
 //@ revisions: pass fail
 //@ no-prefer-dynamic
-//@ needs-enzyme
+//@ needs-offload
 //@[pass] build-pass
 //@[fail] build-fail
 //@[pass] compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat --emit=metadata
