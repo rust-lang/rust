@@ -7,6 +7,7 @@
 //! Basic optimizations are enabled because otherwise `x86_64-gnu-nopt` had an alloca.
 //! Uses a type with non-power-of-two size to avoid normalizations to shifts.
 
+use std::convert::TryFrom;
 use std::intrinsics::*;
 
 type RGB = [u8; 3];
