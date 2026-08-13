@@ -156,8 +156,6 @@ impl<'db> InferenceContext<'db> {
                 self.infer_mut_expr(*expr, mutability);
             }
             Expr::UnaryOp { expr, op: _ }
-            | Expr::Range { lhs: Some(expr), rhs: None, range_type: _ }
-            | Expr::Range { rhs: Some(expr), lhs: None, range_type: _ }
             | Expr::Await { expr }
             | Expr::Loop { body: expr, label: _, source: _ }
             | Expr::Cast { expr, type_ref: _ } => {
@@ -180,8 +178,7 @@ impl<'db> InferenceContext<'db> {
                 self.infer_mut_expr(value, Mutability::Not);
             }
             Expr::Array(Array::Repeat { initializer: lhs, repeat: rhs })
-            | Expr::BinaryOp { lhs, rhs, op: _ }
-            | Expr::Range { lhs: Some(lhs), rhs: Some(rhs), range_type: _ } => {
+            | Expr::BinaryOp { lhs, rhs, op: _ } => {
                 self.infer_mut_expr(*lhs, Mutability::Not);
                 self.infer_mut_expr(*rhs, Mutability::Not);
             }
@@ -192,8 +189,7 @@ impl<'db> InferenceContext<'db> {
                 self.infer_mut_not_expr_iter(exprs.iter().copied());
             }
             // These don't need any action, as they don't have sub expressions
-            Expr::Range { lhs: None, rhs: None, range_type: _ }
-            | Expr::Literal(_)
+            Expr::Literal(_)
             | Expr::Path(_)
             | Expr::Continue { .. }
             | Expr::Underscore

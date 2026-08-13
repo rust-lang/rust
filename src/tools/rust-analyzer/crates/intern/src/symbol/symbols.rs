@@ -552,6 +552,8 @@ define_symbols! {
     slice_len_fn,
     Some,
     start,
+    last,
+    end,
     std_panic,
     std,
     stdcall,
