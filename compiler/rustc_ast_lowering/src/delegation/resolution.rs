@@ -238,7 +238,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             )?,
         };
 
-        Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
+        Ok((res, self.resolve_and_generate_generics(delegation, sig_id, span)?))
     }
 
     /// See tests\ui\delegation\inherent-impls-wrong-header-args-ice.rs,
@@ -251,18 +251,36 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         sig_id: DefId,
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
+        self.opt_inherent_impl_adt(sig_id)
+            .map(|(_, args)| {
+                (!args.iter().any(|a| a.references_error())).ok_or_else(|| {
+                    self.tcx()
+                        .dcx()
+                        .span_delayed_bug(span, "incorrect generic args in inherent impl")
+                })
+            })
+            .unwrap_or(Ok(()))
+    }
+
+    pub(super) fn opt_inherent_impl_adt(
+        &self,
+        sig_id: DefId,
+    ) -> Option<(DefId, ty::GenericArgsRef<'tcx>)> {
         let tcx = self.tcx();
-        if !matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false }) {
-            return Ok(());
+        if !self.is_delegation_to_inherent_impl(sig_id) {
+            return None;
         }
 
-        let ty::Adt(_, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+        let ty::Adt(def, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
             unreachable!("parent of inherent function can be only struct or enum")
         };
 
-        (!args.iter().any(|a| a.references_error())).ok_or_else(|| {
-            tcx.dcx().span_delayed_bug(span, "incorrect generic args in inherent impl")
-        })
+        Some((def.did(), args))
+    }
+
+    pub(super) fn is_delegation_to_inherent_impl(&self, sig_id: DefId) -> bool {
+        let tcx = self.tcx();
+        matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false })
     }
 
     fn get_call_path_res(
