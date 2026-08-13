@@ -274,13 +274,13 @@ fn create_mapping<'tcx>(
                 unreachable!("parent of inherent function in delegation can be only struct or enum")
             };
 
-            args.iter().flat_map(|a| a.opt_param_info()).collect::<Vec<_>>()
+            args.iter().map(|a| a.opt_param_info()).collect::<Vec<_>>()
         }
         FnKind::AssocTrait => parent_generics
             .expect("trait must have generics")
             .own_params
             .iter()
-            .map(|p| (p.index as u32, p.kind.is_ty_or_const()))
+            .map(|p| (Some(p.index as u32), p.kind.is_ty_or_const()))
             .collect::<Vec<_>>(),
         _ => vec![],
     };
@@ -294,7 +294,10 @@ fn create_mapping<'tcx>(
         for i in (has_self as usize)..parent_params.len() {
             let (index, is_ty_or_const) = parent_params[i];
             if !is_ty_or_const {
-                mapping.insert(index, args_index as u32);
+                if let Some(index) = index {
+                    mapping.insert(index, args_index as u32);
+                }
+
                 args_index += 1;
             }
         }
@@ -320,7 +323,10 @@ fn create_mapping<'tcx>(
         for i in (has_self as usize)..parent_params.len() {
             let (index, is_ty_or_const) = parent_params[i];
             if is_ty_or_const {
-                mapping.insert(index, args_index as u32);
+                if let Some(index) = index {
+                    mapping.insert(index, args_index as u32);
+                }
+
                 args_index += 1;
             }
         }
