@@ -3,6 +3,7 @@
 Term                                           | Meaning
 -----------------------------------------------|--------
 <span id="1zst">1-ZST</span>                   |  A *one-aligned [zero-sized type](#zst)*. A type of size zero with an [alignment][size-align] of one.
+<span id="abby">abby</span>                    | Short for [_assumptions on binders_](https://github.com/rust-lang/project-assumptions-on-binders). Alternatively: `a-bi`, though this is very close to ABI.
 <span id="arena">arena, arena allocation</span> |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
 <span id="afidt">AFIDT</span>                  |  Short for _async function in `dyn Trait`_. See also [AFIT](#afit).
 <span id="afit">AFIT</span>                    |  Short for _async function in trait_. They desugar to [RPITITs](#rpitit).
