@@ -1,0 +1,47 @@
+//@ edition:2024
+//@ run-rustfix
+
+#![allow(dead_code)]
+
+fn block() {
+    if let Some(_) = Some(2) {}
+    //~^ ERROR expected `{`, found `;`
+    //~| NOTE expected `{`
+    //~| HELP remove this semicolon
+    //~| NOTE the `if` expression is missing a block after this condition
+}
+
+fn and() {
+    if let Some(x) = Some(2) && x != 1 {}
+    //~^ ERROR expected `{`, found `;`
+    //~| NOTE expected `{`
+    //~| HELP remove this semicolon
+    //~| NOTE the `if` expression is missing a block after this condition
+}
+
+fn and_paren_cond() {
+    if let Some(x) = Some(2) && (x > 0 && x != 1) {}
+    //~^ ERROR expected `{`, found `;`
+    //~| NOTE expected `{`
+    //~| HELP remove this semicolon
+    //~| NOTE the `if` expression is missing a block after this condition
+}
+
+fn and_some() {
+    if let Some(x) = Some(2) && Some(1) == Some(x) {}
+    //~^ ERROR expected `{`, found `;`
+    //~| NOTE expected `{`
+    //~| HELP remove this semicolon
+    //~| NOTE the `if` expression is missing a block after this condition
+}
+
+fn or() {
+    if true || false {
+        //~^ ERROR expected `{`, found `;`
+        //~| NOTE expected `{`
+        //~| HELP remove this semicolon
+        //~| NOTE the `if` expression is missing a block after this condition
+    }
+}
+
+fn main() {}
