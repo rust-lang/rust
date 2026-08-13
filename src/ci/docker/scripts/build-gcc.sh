@@ -7,8 +7,8 @@ source shared.sh
 BINUTILS="2.47"
 curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
 cd binutils-$BINUTILS
-hide_output ./configure
-hide_output make
+hide_output ./configure --prefix=/rustroot
+hide_output make -j$(nproc)
 hide_output make install
 
 if echo '.section .test,"awR",@progbits' | as - -o /dev/null 2>/dev/null; then
