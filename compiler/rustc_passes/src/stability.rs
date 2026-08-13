@@ -16,6 +16,10 @@ use rustc_hir::{
     ItemKind, Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
     UsePath, VERSION_PLACEHOLDER, Variant, find_attr,
 };
+use rustc_lint_defs as lint;
+use rustc_lint_defs::builtin::{
+    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
+};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -23,8 +27,6 @@ use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntr
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{AssocContainer, TyCtxt};
-use rustc_session::lint;
-use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
 
@@ -1157,7 +1159,7 @@ fn unnecessary_partially_stable_feature_lint(
     since: Symbol,
 ) {
     tcx.emit_node_span_lint(
-        lint::builtin::STABLE_FEATURES,
+        STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
         diagnostics::UnnecessaryPartialStableFeature {
@@ -1180,7 +1182,7 @@ fn unnecessary_stable_feature_lint(
         since = sym::env_CFG_RELEASE;
     }
     tcx.emit_node_span_lint(
-        lint::builtin::STABLE_FEATURES,
+        STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
         diagnostics::UnnecessaryStableFeature { feature, since },
@@ -1189,7 +1191,7 @@ fn unnecessary_stable_feature_lint(
 
 fn duplicate_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol) {
     tcx.emit_node_span_lint(
-        lint::builtin::DUPLICATE_FEATURES,
+        DUPLICATE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
         diagnostics::DuplicateFeature { feature },

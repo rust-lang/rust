@@ -1,6 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_session::lint;
+use rustc_lint_defs::builtin::CONST_EVALUATABLE_UNCHECKED;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -147,7 +147,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mir_body = self.mir_for_ctfe(def_id);
                 if mir_body.is_polymorphic {
                     self.emit_node_span_lint(
-                        lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                        CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
                         self.def_span(def_id),
                         rustc_errors::DiagDecorator(|lint| {

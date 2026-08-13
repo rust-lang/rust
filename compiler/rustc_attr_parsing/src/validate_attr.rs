@@ -12,9 +12,9 @@ use rustc_ast::{
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diagnostic, PResult};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_parse::parse_in;
 use rustc_session::diagnostics::report_lit_error;
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 

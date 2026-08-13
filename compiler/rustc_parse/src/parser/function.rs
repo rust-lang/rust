@@ -6,7 +6,7 @@ use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
-use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
+use rustc_lint_defs::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edition::Edition;
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, respan, sym};
 use thin_vec::ThinVec;

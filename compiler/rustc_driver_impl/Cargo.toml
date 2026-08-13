@@ -23,6 +23,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_interface = { path = "../rustc_interface" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint = { path = "../rustc_lint" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_log = { path = "../rustc_log" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }

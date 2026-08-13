@@ -36,9 +36,10 @@ use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorSta
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
+use rustc_lint_defs::Lint;
+use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
 use rustc_session::config::CrateType;
-use rustc_session::lint::Lint;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -1636,7 +1637,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         for (feature, span) in unused_features {
             self.emit_node_span_lint(
-                rustc_session::lint::builtin::UNUSED_FEATURES,
+                UNUSED_FEATURES,
                 CRATE_HIR_ID,
                 span,
                 UnusedFeature { feature },

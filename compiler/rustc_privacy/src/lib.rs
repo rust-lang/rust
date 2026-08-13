@@ -24,6 +24,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind, find_attr};
+use rustc_lint_defs::builtin::{
+    EXPORTED_PRIVATE_DEPENDENCIES, PRIVATE_BOUNDS, PRIVATE_INTERFACES, UNNAMEABLE_TYPES,
+};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -32,7 +35,6 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
 
@@ -1424,7 +1426,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
             self.tcx.emit_node_span_lint(
-                lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
+                EXPORTED_PRIVATE_DEPENDENCIES,
                 self.tcx.local_def_id_to_hir_id(self.item_def_id),
                 self.tcx.def_span(self.item_def_id.to_def_id()),
                 FromPrivateDependencyInPublicInterface {
@@ -1473,11 +1475,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         let reachable_at_vis = *effective_vis.at_level(Level::Reachable);
 
         if reachable_at_vis.greater_than(vis, self.tcx) {
-            let lint = if self.in_primary_interface {
-                lint::builtin::PRIVATE_INTERFACES
-            } else {
-                lint::builtin::PRIVATE_BOUNDS
-            };
+            let lint = if self.in_primary_interface { PRIVATE_INTERFACES } else { PRIVATE_BOUNDS };
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
             let vis_span = self.tcx.def_span(def_id);
             self.tcx.emit_node_span_lint(
@@ -1571,7 +1569,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
             let span = self.tcx.def_span(def_id.to_def_id());
             self.tcx.emit_node_span_lint(
-                lint::builtin::UNNAMEABLE_TYPES,
+                UNNAMEABLE_TYPES,
                 hir_id,
                 span,
                 UnnameableTypesLint {

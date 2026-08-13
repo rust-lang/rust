@@ -23,7 +23,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_infer::traits::TraitErrors;
-use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
+use rustc_lint_defs::builtin::{SELF_CONSTRUCTOR_FROM_OUTER_ITEM, UNREACHABLE_CODE};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
 };
@@ -33,7 +33,6 @@ use rustc_middle::ty::{
     Unnormalized, UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -133,7 +132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
         self.tcx().emit_node_span_lint(
-            lint::builtin::UNREACHABLE_CODE,
+            UNREACHABLE_CODE,
             id,
             span,
             UnreachableItem { kind, span, orig_span, custom_note },

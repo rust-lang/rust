@@ -5,6 +5,9 @@ use rustc_attr_ir::target::{MethodKind, Target};
 use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
+use rustc_lint_defs::builtin::{
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::context::AcceptContext;
@@ -166,11 +169,11 @@ impl<'sess> AttributeParser<'sess> {
                     ]
                     .contains(&cx.target)
                 {
-                    rustc_session::lint::builtin::USELESS_DEPRECATED
+                    USELESS_DEPRECATED
                 } else if is_diagnostic_attr {
-                    rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES
+                    MISPLACED_DIAGNOSTIC_ATTRIBUTES
                 } else {
-                    rustc_session::lint::builtin::UNUSED_ATTRIBUTES
+                    UNUSED_ATTRIBUTES
                 };
 
                 let attr_span = cx.attr_span;
@@ -243,7 +246,7 @@ impl<'sess> AttributeParser<'sess> {
             span: attr_span,
         };
         if warn {
-            cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, diag, attr_span);
+            cx.emit_lint(UNUSED_ATTRIBUTES, diag, attr_span);
         } else {
             cx.emit_err(diag);
         }

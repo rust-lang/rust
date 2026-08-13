@@ -1,9 +1,9 @@
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitClauseExt as _, TraitClausePrintModifiersAndPath};
 use rustc_middle::ty::{self, BottomUpFolder, Ty, TypeFoldable, Unnormalized};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, kw};
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 

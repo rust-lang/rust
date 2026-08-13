@@ -7,8 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
+use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
 
