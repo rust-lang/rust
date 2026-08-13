@@ -107,8 +107,9 @@ Commit messages must be authored by you, not your LLM.
 
 ### Before opening a PR
 
-Review your own PR before opening it:
-Does it make sense? Can you tell what the goal of the PR is? Does it achieve that goal?
+Review your own PR before opening it: Does it make sense?
+Can you tell what the goal of the PR is?
+Does it achieve that goal?
 
 Remove outdated or prototyping code and debugging.
 
@@ -135,12 +136,19 @@ Asking the LLM can be a starting point but it's not the same as explaining it yo
 Try explaining your change to yourself before opening the PR.
 For example, ask yourself:
 
-- What is the original bug? When does it happen? How severe is it? What causes it?
-- Why is this the right fix? Are there other fixes possible? What are their advantages or disadvantages?
-- Are there any edge cases? Does your code handle them?
+- What is the original bug?
+  When does it happen?
+  How severe is it?
+  What causes it?
+- Why is this the right fix?
+  Are there other fixes possible?
+  What are their advantages or disadvantages?
+- Are there any edge cases?
+  Does your code handle them?
 - Does the code have existing [invariants](https://brooker.co.za/blog/2023/07/28/ds-testing.html)?
   Did you preserve those invariants?
-- What behavior is *unchanged*? What test establishes that?
+- What behavior is *unchanged*?
+  What test establishes that?
 - Why does your test trigger the bug?
 - What are you still not certain about?
 
