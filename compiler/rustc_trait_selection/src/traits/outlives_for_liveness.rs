@@ -22,7 +22,12 @@ use crate::regions::{region_known_to_outlive, ty_known_to_outlive};
 ///    irrelevant, so we return an empty list.
 /// 3. If there are *any* outlives bounds, then we find any args that are known
 ///    to outlive those bounds, since those are the args whose regions the
-///    underlying type could capture.
+///    underlying type could capture. We also include args that appear in the
+///    alias's non-outlives item bounds (e.g. `Produce<'a>` on
+///    `impl Produce<'a> + 'b`): those regions can be observed through the
+///    alias's API even when the parent item does not declare that they outlive
+///    the outlives bound. Nested opaques / impl where-clauses can put them in
+///    the hidden type (see #161038).
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -112,7 +117,88 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
             Some(prev) => *prev = prev.intersection(&new_live_args).copied().collect(),
         };
     }
-    live_args.map(|c| ty::EarlyBinder::bind(tcx, c.into_iter().collect()))
+
+    // Regions named in trait bounds / associated type bindings can still be
+    // extracted from the alias (e.g. `Produce::produce() -> &'a T`), so they
+    // must stay live even if we cannot prove they outlive the alias bound.
+    let interface_args = interface_args_from_item_bounds(self_identity_args, bounds);
+    tracing::debug!(?interface_args);
+    match live_args {
+        Some(mut args) => {
+            args.extend(interface_args);
+            Some(ty::EarlyBinder::bind(tcx, args.into_iter().collect()))
+        }
+        None => None,
+    }
+}
+
+/// Identity args of `alias` that appear in non-outlives item bounds.
+///
+/// `Self` is skipped: it is the alias itself and would otherwise mark every
+/// generic arg live. Lifetime/type args of the trait, GAT args, and associated
+/// type bindings are visited so that e.g. `impl Produce<'a> + 'b` treats `'a`
+/// as live.
+fn interface_args_from_item_bounds<'tcx>(
+    identity_args: ty::GenericArgsRef<'tcx>,
+    bounds: ty::Clauses<'tcx>,
+) -> FxIndexSet<ty::GenericArg<'tcx>> {
+    let mut collected = FxIndexSet::default();
+    let mut collector = IdentityArgCollector { identity_args, collected: &mut collected };
+    for clause in bounds.iter() {
+        if let Some(trait_pred) = clause.as_trait_clause() {
+            // Skip `Self`; it is the alias and mentions every identity arg.
+            for arg in trait_pred.skip_binder().trait_ref.args.iter().skip(1) {
+                arg.visit_with(&mut collector);
+            }
+        } else if let Some(proj) = clause.as_projection_clause() {
+            let pred = proj.skip_binder();
+            for arg in pred.projection_term.args.iter().skip(1) {
+                arg.visit_with(&mut collector);
+            }
+            pred.term.visit_with(&mut collector);
+        }
+    }
+    tracing::debug!(?collected);
+    collected
+}
+
+/// Collects identity generic args of an alias that appear in a visitable value.
+struct IdentityArgCollector<'tcx, 'a> {
+    identity_args: ty::GenericArgsRef<'tcx>,
+    collected: &'a mut FxIndexSet<ty::GenericArg<'tcx>>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IdentityArgCollector<'tcx, '_> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
+        if let ty::ReBound(..) = r.kind() {
+            return;
+        }
+        for arg in self.identity_args.iter() {
+            if arg.as_region() == Some(r) {
+                self.collected.insert(arg);
+            }
+        }
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        for arg in self.identity_args.iter() {
+            if arg.as_type() == Some(ty) {
+                self.collected.insert(arg);
+                return;
+            }
+        }
+        ty.super_visit_with(self);
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+        for arg in self.identity_args.iter() {
+            if arg.as_const() == Some(ct) {
+                self.collected.insert(arg);
+                return;
+            }
+        }
+        ct.super_visit_with(self);
+    }
 }
 
 /// For each region param of this alias compute the identity args that are known
@@ -569,6 +655,23 @@ where
                         for arg in capturable_args {
                             let arg = arg.instantiate(tcx, args).skip_norm_wip();
                             arg.visit_with(self);
+                        }
+                        // Param-env outlives clauses intersect `capturable` and can
+                        // drop regions that are still observable through the alias
+                        // API (`Produce<'a>`). Re-visit those unless the alias itself
+                        // is `'static` (in which case the query returns an empty set).
+                        if let Some(live_args) = tcx.live_args_for_alias_from_outlives_bounds(kind)
+                            && !live_args.as_ref().skip_binder().is_empty()
+                        {
+                            let identity = ty::GenericArgs::identity_for_item(tcx, def_id);
+                            let bounds =
+                                tcx.item_bounds(def_id).instantiate_identity().skip_norm_wip();
+                            for arg in interface_args_from_item_bounds(identity, bounds) {
+                                ty::EarlyBinder::bind(tcx, arg)
+                                    .instantiate(tcx, args)
+                                    .skip_norm_wip()
+                                    .visit_with(self);
+                            }
                         }
                     }
                     None => {
