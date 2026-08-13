@@ -1,4 +1,4 @@
-error: failed to generate delegation: mismatch between provided generic args in inherent impl and declared generics
+error: delegation to inherent impl must contain parent generics
   --> $DIR/inherent-impls-mixed-generics.rs:12:14
    |
 LL |     reuse S::foo_self;

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-receiver-mapping.rs:66:18
+  --> $DIR/inherent-impls-receiver-mapping.rs:56:18
    |
 LL |         W(X).add(W(X));
    |              --- ^^^^ expected `X`, found `W`
@@ -7,38 +7,53 @@ LL |         W(X).add(W(X));
    |              arguments to this method are incorrect
    |
 note: method defined here
-  --> $DIR/inherent-impls-receiver-mapping.rs:61:18
+  --> $DIR/inherent-impls-receiver-mapping.rs:52:18
    |
 LL |         reuse X::add { self.0 }
    |                  ^^^
 
-error[E0382]: use of moved value: `y`
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/inherent-impls-receiver-mapping.rs:23:9
+   |
+LL |         y.by_mut_ref();
+   |         ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |         let mut y = Y;
+   |             +++
+
+error[E0507]: cannot move out of `*y` which is behind a shared reference
   --> $DIR/inherent-impls-receiver-mapping.rs:28:9
    |
-LL |         let y = Y;
-   |             - move occurs because `y` has type `Y`, which does not implement the `Copy` trait
-LL |         y.by_ref();
-   |           -------- `y` moved due to this method call
-LL |
-LL |         y.by_mut_ref();
-   |         ^ value used here after move
-   |
-   = note: `receiver_mapping::Y::by_ref` takes ownership of the receiver `self`, which moves `y`
-
-error[E0382]: use of moved value: `y`
-  --> $DIR/inherent-impls-receiver-mapping.rs:30:9
-   |
-LL |         let y = Y;
-   |             - move occurs because `y` has type `Y`, which does not implement the `Copy` trait
-...
-LL |         y.by_mut_ref();
-   |           ------------ `y` moved due to this method call
-LL |
 LL |         y.by_value();
-   |         ^ value used here after move
+   |         ^ ---------- `*y` moved due to this method call
+   |         |
+   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
+   |
+   = note: `receiver_mapping::Y::by_value` takes ownership of the receiver `self`, which moves `*y`
+note: if `Y` implemented `Clone`, you could clone the value
+  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
+   |
+LL |     struct Y;
+   |     ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         y.by_value();
+   |         - you could clone this value
 
-error[E0507]: cannot move out of `*y` which is behind a shared reference
-  --> $DIR/inherent-impls-receiver-mapping.rs:34:9
+error[E0596]: cannot borrow `*y` as mutable, as it is behind a `&` reference
+  --> $DIR/inherent-impls-receiver-mapping.rs:31:9
+   |
+LL |         y.by_mut_ref();
+   |         ^ `y` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |         let y = &mut Y;
+   |                  +++
+
+error[E0507]: cannot move out of `*y` which is behind a mutable reference
+  --> $DIR/inherent-impls-receiver-mapping.rs:35:9
    |
 LL |         y.by_value();
    |         ^ ---------- `*y` moved due to this method call
@@ -54,92 +69,7 @@ LL |     struct Y;
 LL |         y.by_value();
    |         - you could clone this value
 
-error[E0507]: cannot move out of `*y` which is behind a shared reference
-  --> $DIR/inherent-impls-receiver-mapping.rs:36:9
-   |
-LL |         y.by_ref();
-   |         ^ -------- `*y` moved due to this method call
-   |         |
-   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
-   |
-note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
-   |
-LL |     struct Y;
-   |     ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |         y.by_ref();
-   |         - you could clone this value
+error: aborting due to 5 previous errors
 
-error[E0507]: cannot move out of `*y` which is behind a shared reference
-  --> $DIR/inherent-impls-receiver-mapping.rs:38:9
-   |
-LL |         y.by_mut_ref();
-   |         ^ ------------ `*y` moved due to this method call
-   |         |
-   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
-   |
-note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
-   |
-LL |     struct Y;
-   |     ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |         y.by_mut_ref();
-   |         - you could clone this value
-
-error[E0507]: cannot move out of `*y` which is behind a mutable reference
-  --> $DIR/inherent-impls-receiver-mapping.rs:42:9
-   |
-LL |         y.by_value();
-   |         ^ ---------- `*y` moved due to this method call
-   |         |
-   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
-   |
-note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
-   |
-LL |     struct Y;
-   |     ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |         y.by_value();
-   |         - you could clone this value
-
-error[E0507]: cannot move out of `*y` which is behind a mutable reference
-  --> $DIR/inherent-impls-receiver-mapping.rs:44:9
-   |
-LL |         y.by_ref();
-   |         ^ -------- `*y` moved due to this method call
-   |         |
-   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
-   |
-note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
-   |
-LL |     struct Y;
-   |     ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |         y.by_ref();
-   |         - you could clone this value
-
-error[E0507]: cannot move out of `*y` which is behind a mutable reference
-  --> $DIR/inherent-impls-receiver-mapping.rs:46:9
-   |
-LL |         y.by_mut_ref();
-   |         ^ ------------ `*y` moved due to this method call
-   |         |
-   |         move occurs because `*y` has type `Y`, which does not implement the `Copy` trait
-   |
-note: if `Y` implemented `Clone`, you could clone the value
-  --> $DIR/inherent-impls-receiver-mapping.rs:13:5
-   |
-LL |     struct Y;
-   |     ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |         y.by_mut_ref();
-   |         - you could clone this value
-
-error: aborting due to 9 previous errors
-
-Some errors have detailed explanations: E0308, E0382, E0507.
+Some errors have detailed explanations: E0308, E0507, E0596.
 For more information about an error, try `rustc --explain E0308`.
