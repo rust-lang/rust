@@ -11,7 +11,9 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 
 use crate::LoweringContext;
 use crate::delegation::resolution::resolver::DelegationResolver;
-use crate::diagnostics::DelegationInfersMismatch;
+use crate::diagnostics::{
+    DelegationInfersMismatch, DelegationToInherentImplMustContainParentGenerics,
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(super) enum GenericsPosition {
@@ -359,6 +361,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         &self,
         delegation: &Delegation,
         sig_id: DefId,
+        span: Span,
     ) -> Result<GenericsGenerationResults<'hir>, ErrorGuaranteed> {
         let res @ GenericsResolution {
             trait_impl,
@@ -385,6 +388,8 @@ impl<'hir> DelegationResolver<'_, 'hir> {
 
             return Ok(GenericsGenerationResults { parent, child, self_ty_propagation_kind: None });
         }
+
+        self.check_delegation_to_inherent_impl(&res.parent_args, sig_id, span)?;
 
         let tcx = self.tcx();
         let skip_self = !generate_self && tcx.def_kind(tcx.parent(sig_id)) == DefKind::Trait;
@@ -446,6 +451,34 @@ impl<'hir> DelegationResolver<'_, 'hir> {
                 false => None,
             },
         })
+    }
+
+    fn check_delegation_to_inherent_impl(
+        &self,
+        parent_args: &ParentSegmentArgs<'_>,
+        sig_id: DefId,
+        span: Span,
+    ) -> Result<(), ErrorGuaranteed> {
+        if !self.is_delegation_to_inherent_impl(sig_id) {
+            return Ok(());
+        }
+
+        let tcx = self.tcx();
+        match parent_args {
+            ParentSegmentArgs::Specified(..) => Ok(()),
+            ParentSegmentArgs::Invalid => unreachable!(),
+            ParentSegmentArgs::NotSpecified => {
+                let Some((did, _)) = self.opt_inherent_impl_adt(sig_id) else { unreachable!() };
+
+                match tcx.generics_of(did).own_params.len() {
+                    0 => Ok(()),
+                    _ => Err(self
+                        .tcx()
+                        .dcx()
+                        .emit_err(DelegationToInherentImplMustContainParentGenerics { span })),
+                }
+            }
+        }
     }
 
     /// Generates generic argument slots for user-specified `args` and
