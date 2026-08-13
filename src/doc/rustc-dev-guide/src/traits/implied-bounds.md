@@ -4,16 +4,14 @@ We currently add implied region bounds to avoid explicit annotations. e.g.
 `fn foo<'a, T>(x: &'a T)` can freely assume that `T: 'a` holds without specifying it.
 
 There are two kinds of implied bounds: explicit and implicit.
-Explicit implied bounds
-get added to the `fn clauses_of` of the relevant item while implicit ones are
-handled... well... implicitly.
+Explicit implied bounds get added to the `fn clauses_of` of the relevant item,
+while implicit ones are handled, well... implicitly.
 
 ## explicit implied bounds
 
 The explicit implied bounds are computed in [`fn inferred_outlives_of`].
-Only ADTs and
-lazy type aliases have explicit implied bounds which are computed via a fixpoint algorithm
-in the [`fn inferred_outlives_crate`] query.
+Only ADTs and lazy type aliases have explicit implied bounds
+which are computed via a fixpoint algorithm in the [`fn inferred_outlives_crate`] query.
 
 We use [`fn insert_required_clauses_to_be_wf`] on all fields of all ADTs in the crate.
 This function computes the outlives bounds for each component of the field using a
@@ -24,8 +22,8 @@ computed in [`fn check_explicit_clauses`].
 This simply uses `fn explicit_clauses_of` without elaborating them.
 
 Region clauses are added via [`fn insert_outlives_clause`].
-This function takes
-an outlives clause, decomposes it and adds the components as explicit clauses only
+This function takes an outlives clause,
+decomposes it, and adds the components as explicit clauses only
 if the outlived region is a region parameter.
 [It does not add `'static` requirements][nostatic].
 
@@ -45,8 +43,8 @@ requirements of impls and functions as explicit predicates.
 ### using implicit implied bounds as assumptions
 
 These bounds are not added to the `ParamEnv` of the affected item itself.
-For lexical
-region resolution they are added using [`fn OutlivesEnvironment::from_normalized_bounds`].
+For lexical region resolution,
+they are added using [`fn OutlivesEnvironment::from_normalized_bounds`].
 Similarly, during MIR borrowck we add them using
 [`fn UniversalRegionRelationsBuilder::add_implied_bounds`].
 
@@ -74,12 +72,12 @@ lexical region resolution [only uses the unnormalized types][notnorm].
 As the implicit implied bounds are not included in `fn clauses_of` we have to
 separately make sure they actually hold.
 We generally handle this by checking that
-all used types are well formed by emitting `WellFormed` predicates.
+all used types are well-formed by emitting `WellFormed` predicates.
 
 We cannot emit `WellFormed` predicates when instantiating impls, as this would result
 in - currently often inductive - trait solver cycles.
-We also do not emit constraints
-involving higher ranked regions as we're lacking the implied bounds from their binder.
+We also do not emit constraints involving higher ranked regions
+as we're lacking the implied bounds from their binder.
 
 This results in multiple unsoundnesses:
 - by using subtyping: [#25860]
