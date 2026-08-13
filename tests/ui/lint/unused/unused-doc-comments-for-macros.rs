@@ -14,4 +14,13 @@ fn main() {
     /// line2
     /// line3
     foo!();
+
+    // Even invalid doc attributes should emit the warning.
+    #[doc = { //~ ERROR: unused doc comment
+        let a = 1;
+        let b = 1;
+        let sum = a + b;
+        assert_eq!(sum, 2);
+    }]
+    foo!();
 }

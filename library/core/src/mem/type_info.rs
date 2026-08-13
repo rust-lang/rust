@@ -20,7 +20,6 @@ pub struct Type {
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
 #[derive(Debug, PartialEq, Eq)]
 #[unstable(feature = "type_info", issue = "146922")]
-#[non_exhaustive]
 pub struct TraitImpl<T: PointeeSized> {
     pub(crate) vtable: DynMetadata<T>,
 }

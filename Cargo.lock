@@ -4528,12 +4528,14 @@ name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
  "rustc_abi",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
@@ -4599,7 +4601,6 @@ dependencies = [
  "rustc_crate_store",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_expand",
  "rustc_feature",
  "rustc_hir",
  "rustc_index",

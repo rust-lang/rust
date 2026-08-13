@@ -819,8 +819,7 @@ mod desc {
         "a comma-separated list of strings, with elements beginning with + or -";
     pub(crate) const parse_pointer_authentication_list_with_polarity: &str = "a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `intrinsics`, `return-addresses`, `typeinfo-vt-ptr-discrimination`, `vt-ptr-addr-discrimination` or `vt-ptr-type-discrimination`";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
-    pub(crate) const parse_offload: &str =
-        "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
+    pub(crate) const parse_offload: &str = "a comma separated list of settings: `Host=<Absolute-Path>`, `HostMetadata=<Absolute-Path>`, `Device` (empty manifest) or `Device=<Absolute-Path>`, `Test`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -1514,12 +1513,17 @@ pub mod parse {
                         return false;
                     }
                 }
-                "Device" => {
-                    if let Some(_) = arg {
-                        // Device does not accept a value
+                "HostMetadata" => {
+                    if let Some(p) = arg {
+                        Offload::HostMetadata(p.to_string())
+                    } else {
                         return false;
                     }
-                    Offload::Device
+                }
+                "Device" => {
+                    // Without an argument, `Device` uses an empty manifest and all kernel
+                    // instantiations are discovered via monomorphization.
+                    Offload::Device(arg.unwrap_or_default().to_string())
                 }
                 "Test" => {
                     if let Some(_) = arg {
