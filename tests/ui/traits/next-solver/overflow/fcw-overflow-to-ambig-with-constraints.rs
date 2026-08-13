@@ -29,8 +29,4 @@ fn main() {
     fun_times();
     //[next]~^ WARN overflow evaluating the requirement `u32: Constrain<_, _, W<W<W<(), W<(), _>>, _>, _>>`
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN  overflow evaluating the requirement `u32: Constrain<u32, u32, W<W<W<(), W<(), _>>, _>, _>>`
-    //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN overflow evaluating the requirement `u32: Constrain<u32, u32, W<W<W<(), W<(), _>>, _>, _>>`
-    //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }

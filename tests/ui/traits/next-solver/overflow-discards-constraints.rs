@@ -69,7 +69,5 @@ fn main() {
     foo(); // register a `(): Trait<?t>` obligation
     //~^ WARN: overflow evaluating the requirement `(): Trait<_>` [recursion_depth_exceeding_limit]
     //~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //~| WARN: overflow evaluating the requirement `(): Trait<i32>` [recursion_depth_exceeding_limit]
-    //~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 }

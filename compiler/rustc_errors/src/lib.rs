@@ -25,7 +25,7 @@ use std::num::NonZero;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::thread::ThreadId;
-use std::{assert_matches, fmt, panic};
+use std::{assert_matches, fmt, mem, panic};
 
 use Level::*;
 // Used by external projects such as `rust-gpu`.
@@ -339,6 +339,15 @@ struct DiagCtxtInner {
     /// twice.
     emitted_diagnostics: FxHashSet<Hash128>,
 
+    /// We only want to emit `recursion_depth_exceeding_limit` once per
+    /// crate. Otherwise crates like `calimero-store` emit more than
+    /// a thousand warnings.
+    ///
+    /// We only check this in `TRACK_DIAGNOSTIC` meaning that the diagnostics
+    /// still get tracked by the query system, even if they don't get emitted
+    /// to users.
+    emitted_recursion_depth_exceeding_limit: bool,
+
     /// Stashed diagnostics emitted in one stage of the compiler that may be
     /// stolen and emitted/cancelled by other stages (e.g. to improve them and
     /// add more information). All stashed diagnostics must be emitted with
@@ -530,6 +539,7 @@ impl DiagCtxt {
             taught_diagnostics,
             emitted_diagnostic_codes,
             emitted_diagnostics,
+            emitted_recursion_depth_exceeding_limit,
             stashed_diagnostics,
             future_breakage_diagnostics,
             fulfilled_expectations,
@@ -550,6 +560,7 @@ impl DiagCtxt {
         *taught_diagnostics = Default::default();
         *emitted_diagnostic_codes = Default::default();
         *emitted_diagnostics = Default::default();
+        *emitted_recursion_depth_exceeding_limit = false;
         *stashed_diagnostics = Default::default();
         *future_breakage_diagnostics = Default::default();
         *fulfilled_expectations = Default::default();
@@ -882,7 +893,7 @@ impl<'a> DiagCtxtHandle<'a> {
 
     pub fn emit_future_breakage_report(&self) {
         let inner = &mut *self.inner.borrow_mut();
-        let diags = std::mem::take(&mut inner.future_breakage_diagnostics);
+        let diags = mem::take(&mut inner.future_breakage_diagnostics);
         if !diags.is_empty() {
             inner.emitter.emit_future_breakage_report(diags);
         }
@@ -922,7 +933,7 @@ impl<'a> DiagCtxtHandle<'a> {
     /// [`DiagCtxtInner`] and indicate that the linked expectation has been fulfilled.
     #[must_use]
     pub fn steal_fulfilled_expectation_ids(&self) -> FxIndexSet<LintExpectationId> {
-        std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
+        mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
     /// Trigger an ICE if there are any delayed bugs and no hard errors.
@@ -1198,6 +1209,7 @@ impl DiagCtxtInner {
             taught_diagnostics: Default::default(),
             emitted_diagnostic_codes: Default::default(),
             emitted_diagnostics: Default::default(),
+            emitted_recursion_depth_exceeding_limit: false,
             stashed_diagnostics: Default::default(),
             future_breakage_diagnostics: Vec::new(),
             fulfilled_expectations: Default::default(),
@@ -1210,7 +1222,7 @@ impl DiagCtxtInner {
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         let has_errors = !self.err_guars.is_empty();
-        for (_, stashed_diagnostics) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
+        for (_, stashed_diagnostics) in mem::take(&mut self.stashed_diagnostics).into_iter() {
             for (_, (diag, _guar, _thread)) in stashed_diagnostics {
                 if !diag.is_error() {
                     // Unless they're forced, don't flush stashed warnings when
@@ -1337,10 +1349,19 @@ impl DiagCtxtInner {
 
             let is_error = diagnostic.is_error();
             let is_lint = diagnostic.is_lint.is_some();
+            // We only emit the first occurance of `recursion_depth_exceeding_limit`.
+            let silence_recursion_depth_exceeded_limit =
+                diagnostic.is_lint.as_ref().is_some_and(|lint| {
+                    lint.name.eq_ignore_ascii_case(
+                        rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT.name,
+                    ) && mem::replace(&mut self.emitted_recursion_depth_exceeding_limit, true)
+                });
 
             // Only emit the diagnostic if we've been asked to deduplicate or
             // haven't already emitted an equivalent diagnostic.
-            if !(self.flags.deduplicate_diagnostics && already_emitted) {
+            if !silence_recursion_depth_exceeded_limit
+                && !(self.flags.deduplicate_diagnostics && already_emitted)
+            {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
 
@@ -1463,8 +1484,7 @@ impl DiagCtxtInner {
             return;
         }
 
-        let bugs: Vec<_> =
-            std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
+        let bugs: Vec<_> = mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
         let backtrace = std::env::var_os("RUST_BACKTRACE").as_deref() != Some(OsStr::new("0"));
         let decorate = backtrace || self.ice_file.is_none();
