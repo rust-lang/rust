@@ -125,14 +125,6 @@ pub(crate) struct UnknownMacroVariable {
 }
 
 #[derive(Diagnostic)]
-#[diag("cannot resolve relative path in non-file source `{$path}`")]
-pub(crate) struct ResolveRelativePath {
-    #[primary_span]
-    pub span: Span,
-    pub path: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("macros cannot have body stability attributes")]
 pub(crate) struct MacroBodyStability {
     #[primary_span]

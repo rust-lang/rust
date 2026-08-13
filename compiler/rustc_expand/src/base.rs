@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::default::Default;
 use std::iter;
-use std::path::Component::Prefix;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -15,7 +14,7 @@ use rustc_attr_ir::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::{Limit, sync};
-use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
+use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
 use rustc_lint_defs::RegisteredTools;
@@ -1339,37 +1338,5 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
-    }
-}
-
-/// Resolves a `path` mentioned inside Rust code, returning an absolute path.
-///
-/// This unifies the logic used for resolving `include_X!`.
-pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
-    let path = path.into();
-
-    // Relative paths are resolved relative to the file in which they are found
-    // after macro expansion (that is, they are unhygienic).
-    if !path.is_absolute() {
-        let callsite = span.source_callsite();
-        let source_map = sess.source_map();
-        let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path() else {
-            return Err(sess.dcx().create_err(diagnostics::ResolveRelativePath {
-                span,
-                path: source_map
-                    .filename_for_diagnostics(&source_map.span_to_filename(callsite))
-                    .to_string(),
-            }));
-        };
-        base_path.pop();
-        base_path.push(path);
-        Ok(base_path)
-    } else {
-        // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
-        // which can happen when `concat!` is used to join paths.
-        match path.components().next() {
-            Some(Prefix(prefix)) if prefix.kind().is_verbatim() => Ok(path.components().collect()),
-            _ => Ok(path),
-        }
     }
 }
