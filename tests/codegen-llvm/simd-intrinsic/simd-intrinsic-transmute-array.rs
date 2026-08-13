@@ -2,7 +2,6 @@
 //@ compile-flags: -C no-prepopulate-passes
 // 32bit MSVC does not align things properly so we suppress high alignment annotations (#112480)
 //@ ignore-i686-pc-windows-msvc
-//@ ignore-i686-pc-windows-gnu
 
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]

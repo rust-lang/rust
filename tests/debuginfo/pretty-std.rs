@@ -1,5 +1,4 @@
 // ignore-tidy-linelength
-//@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
 // LLDB 1800+ tests were not tested in CI, broke, and now are disabled

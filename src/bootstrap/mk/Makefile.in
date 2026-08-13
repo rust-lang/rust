@@ -123,9 +123,9 @@ ci-msvc: ci-msvc-py ci-msvc-ps1
 # Used to split tests across multiple CI runners.
 # Test both x and bootstrap entrypoints.
 ci-mingw-x:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TEST_SET1)
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 --no-fail-fast $(TEST_SET1)
 ci-mingw-bootstrap:
-	$(Q)$(BOOTSTRAP) test --stage 2 $(TEST_SET2)
+	$(Q)$(BOOTSTRAP) test --stage 2 --no-fail-fast $(TEST_SET2)
 ci-mingw: ci-mingw-x ci-mingw-bootstrap
 
 .PHONY: dist

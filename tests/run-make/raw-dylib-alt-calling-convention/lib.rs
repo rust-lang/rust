@@ -50,7 +50,7 @@ extern "fastcall" {
     fn fastcall_fn_10_renamed(i: i32);
 }
 
-#[cfg(target_env = "msvc")]
+#[cfg(any(target_env = "msvc", all(target_env = "gnu", target_abi = "llvm")))]
 #[link(name = "extern", kind = "raw-dylib")]
 extern "vectorcall" {
     fn vectorcall_fn_1(i: i32);
@@ -66,49 +66,43 @@ extern "vectorcall" {
     fn vectorcall_fn_10_renamed(i: i32);
 }
 
-pub fn library_function(run_msvc_only: bool) {
+pub fn library_function(_run_msvc_only: bool) {
     unsafe {
-        if !run_msvc_only {
-            stdcall_fn_1(14);
-            stdcall_fn_2(16, 3.5);
-            stdcall_fn_3(3.5);
-            stdcall_fn_4(1, 2, 3.0);
-            stdcall_fn_5(S { x: 1, y: 2 }, 16);
-            stdcall_fn_6(Some(&S { x: 10, y: 12 }));
-            stdcall_fn_7(S2 { x: 15, y: 16 }, 3);
-            stdcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
-            stdcall_fn_9(1, 3.0);
-            stdcall_fn_10_renamed(19);
+        stdcall_fn_1(14);
+        stdcall_fn_2(16, 3.5);
+        stdcall_fn_3(3.5);
+        stdcall_fn_4(1, 2, 3.0);
+        stdcall_fn_5(S { x: 1, y: 2 }, 16);
+        stdcall_fn_6(Some(&S { x: 10, y: 12 }));
+        stdcall_fn_7(S2 { x: 15, y: 16 }, 3);
+        stdcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
+        stdcall_fn_9(1, 3.0);
+        stdcall_fn_10_renamed(19);
 
-            fastcall_fn_1(14);
-            fastcall_fn_2(16, 3.5);
-            fastcall_fn_3(3.5);
-            fastcall_fn_4(1, 2, 3.0);
-            fastcall_fn_6(Some(&S { x: 10, y: 12 }));
-            fastcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
-            fastcall_fn_9(1, 3.0);
-            fastcall_fn_10_renamed(19);
-        } else {
-            // FIXME: 91167
-            // rustc generates incorrect code for the calls to fastcall_fn_5 and fastcall_fn_7
-            // on i686-pc-windows-gnu; disabling these until the indicated issue is fixed.
-            fastcall_fn_5(S { x: 1, y: 2 }, 16);
-            fastcall_fn_7(S2 { x: 15, y: 16 }, 3);
+        fastcall_fn_1(14);
+        fastcall_fn_2(16, 3.5);
+        fastcall_fn_3(3.5);
+        fastcall_fn_4(1, 2, 3.0);
+        fastcall_fn_6(Some(&S { x: 10, y: 12 }));
+        fastcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
+        fastcall_fn_9(1, 3.0);
+        fastcall_fn_10_renamed(19);
+        fastcall_fn_5(S { x: 1, y: 2 }, 16);
+        fastcall_fn_7(S2 { x: 15, y: 16 }, 3);
 
-            // GCC doesn't support vectorcall: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89485
-            #[cfg(target_env = "msvc")]
-            {
-                vectorcall_fn_1(14);
-                vectorcall_fn_2(16, 3.5);
-                vectorcall_fn_3(3.5);
-                vectorcall_fn_4(1, 2, 3.0);
-                vectorcall_fn_5(S { x: 1, y: 2 }, 16);
-                vectorcall_fn_6(Some(&S { x: 10, y: 12 }));
-                vectorcall_fn_7(S2 { x: 15, y: 16 }, 3);
-                vectorcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
-                vectorcall_fn_9(1, 3.0);
-                vectorcall_fn_10_renamed(19);
-            }
+        // GCC doesn't support vectorcall: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89485
+        #[cfg(any(target_env = "msvc", all(target_env = "gnu", target_abi = "llvm")))]
+        {
+            vectorcall_fn_1(14);
+            vectorcall_fn_2(16, 3.5);
+            vectorcall_fn_3(3.5);
+            vectorcall_fn_4(1, 2, 3.0);
+            vectorcall_fn_5(S { x: 1, y: 2 }, 16);
+            vectorcall_fn_6(Some(&S { x: 10, y: 12 }));
+            vectorcall_fn_7(S2 { x: 15, y: 16 }, 3);
+            vectorcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
+            vectorcall_fn_9(1, 3.0);
+            vectorcall_fn_10_renamed(19);
         }
     }
 }

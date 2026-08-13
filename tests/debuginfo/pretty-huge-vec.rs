@@ -1,4 +1,3 @@
-//@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ ignore-ohos: similiar to android
 //@ ignore-aix: FIXME(#137965)
