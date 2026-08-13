@@ -46,19 +46,7 @@ help: add missing generic argument
 LL |     c: Vec<T, foo:A>,
    |            ++
 
-error[E0229]: associated item constraints are not allowed here
-  --> $DIR/struct-field-type-including-single-colon.rs:20:12
-   |
-LL |     c: Vec<foo:A>,
-   |            ^^^^^ associated item constraint not allowed here
-   |
-help: consider removing this associated item constraint
-   |
-LL -     c: Vec<foo:A>,
-LL +     c: Vec,
-   |
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0107, E0229, E0405.
+Some errors have detailed explanations: E0107, E0405.
 For more information about an error, try `rustc --explain E0107`.

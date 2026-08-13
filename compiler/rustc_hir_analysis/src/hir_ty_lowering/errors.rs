@@ -1563,6 +1563,16 @@ pub fn prohibit_assoc_item_constraint(
         },
     });
 
+    if let hir::AssocItemConstraintKind::Bound {
+        bounds: [hir::GenericBound::Trait(poly_trait_ref)],
+    } = constraint.kind
+        && let Res::Err = poly_trait_ref.trait_ref.path.res
+    {
+        // This was likely a `Vec<foo::Bar>` to `Vec<foo:Bar>` typo. A prior error will have been
+        // emitted during resolve, with better context.
+        err.downgrade_to_delayed_bug();
+    }
+
     // Emit a suggestion to turn the assoc item binding into a generic arg
     // if the relevant item has a generic param whose name matches the binding name;
     // otherwise suggest the removal of the binding.
