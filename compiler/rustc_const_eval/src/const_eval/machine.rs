@@ -697,6 +697,32 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
             }
 
+            sym::variant_name => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+                    def.variant(variant_idx).name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
             sym::field_offset => {
                 let frt_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(frt_ty)?;

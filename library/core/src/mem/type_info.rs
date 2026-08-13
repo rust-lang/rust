@@ -443,6 +443,62 @@ impl TypeId {
         intrinsics::type_id_variants(self)
     }
 
+    /// Returns the variant representing type at the given index of the type represented by this `TypeId`. Use it to
+    /// get the name of an enum variant or check whether it is non_exhaustive.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// enum Enum {
+    ///     Unit,
+    ///     Tuple(u32, u64),
+    ///     Struct { x: u32, y: u32, z: String },
+    /// }
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(1).name() }, "Tuple");
+    /// assert_eq!(const { TypeId::of::<Enum>().variant(2).name() }, "Struct");
+    /// ```
+    ///
+    /// The variant index refer to the source order index of a variant in a type.
+    ///
+    /// Variant indexes are always `0..variant_count`, regardless of any custom discriminants that may have been defined.
+    ///
+    /// ```
+    /// enum Enum {
+    ///     Foo,  // variant index == 0
+    ///     Bar,  // variant index == 1
+    /// }
+    /// ```
+    ///
+    /// Calling variant on the TypeId for a struct will be treated as a compile-time error. The same
+    /// is true for out-of-bounds indexing on an enum.
+    ///
+    /// // ```compile_fail,E0080
+    /// ```
+    /// # #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// #
+    /// # struct Point {
+    /// #     x: u32,
+    /// #     y: u32,
+    /// # }
+    /// # enum Enum {
+    /// #     Unit,
+    /// #     Tuple(u32, u64),
+    /// #     Struct { x: u32, y: u32, z: String },
+    /// # }
+    /// const {
+    ///     _ = TypeId::of::<Point>().variant(0); // error:
+    ///     _ = TypeId::of::<Enum>().variant(10); // error: indexing out of bounds: the len is 3 but the index is 10
+    /// }
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn variant(self, variant_index: usize) -> VariantId {
+        VariantId { base: self, variant: variant_index }
+    }
+
     /// Returns the number of fields at the given `variant_index` of the type represented by this `TypeId`.
     ///
     /// ```
@@ -599,6 +655,47 @@ impl TypeId {
     #[rustc_comptime]
     pub fn generics(self) -> &'static [Generic] {
         intrinsics::type_id_generics(self)
+    }
+}
+
+/// Variant representing type ID. Representing a variant of an enum.
+#[derive(Copy, PartialOrd, Ord, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct VariantId {
+    base: TypeId,
+    variant: usize,
+}
+
+#[unstable(feature = "type_info", issue = "146922")]
+impl fmt::Debug for VariantId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Variant({:#034x}-{})", self.base.as_u128(), self.variant)
+    }
+}
+
+impl VariantId {
+    /// Returns the name of the variant.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// enum Enum {
+    ///     Unit,
+    ///     Tuple(bool),
+    ///     Struct { a: bool },
+    /// }
+    /// assert_eq!(
+    ///     const { TypeId::of::<Enum>().variant(1).name() },
+    ///     "Tuple",
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn name(self) -> &'static str {
+        intrinsics::variant_name(self.base, self.variant)
     }
 }
 

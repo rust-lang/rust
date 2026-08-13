@@ -2320,6 +2320,7 @@ symbols! {
         var,
         variadic,
         variant_count,
+        variant_name,
         variants,
         vec,
         vector,
