@@ -1,5 +1,5 @@
-#![feature(box_patterns)]
 #![feature(control_flow_into_value)]
+#![feature(deref_patterns)]
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
