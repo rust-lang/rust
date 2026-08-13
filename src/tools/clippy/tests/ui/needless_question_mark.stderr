@@ -135,13 +135,14 @@ LL +         return t.magic;
 error: enclosing `Some` and `?` operator are unneeded
   --> tests/ui/needless_question_mark.rs:122:27
    |
+LL | macro_rules! some_and_qmark_in_macro {
+LL |     ($expr:expr) => {
 LL |         || -> Option<_> { Some(Some($expr)?) }()
    |                           ^^^^^^^^^^^^^^^^^^
 ...
 LL |     let _x = some_and_qmark_in_macro!(x?);
    |              ---------------------------- in this macro invocation
    |
-   = note: this error originates in the macro `some_and_qmark_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the enclosing `Some` and `?` operator
    |
 LL -         || -> Option<_> { Some(Some($expr)?) }()

@@ -11,7 +11,6 @@ LL |     my_faulty_macro!();
    |     ------------------ in this macro invocation
    |
    = note: while trying to match end of macro
-   = note: this error originates in the macro `my_faulty_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:31:5
@@ -26,6 +25,8 @@ LL |     my_faulty_macro!();
 error: recursion limit reached while expanding `my_recursive_macro!`
   --> $DIR/trace_faulty_macros.rs:22:9
    |
+LL | macro_rules! my_recursive_macro {
+LL |     () => {
 LL |         my_recursive_macro!();
    |         ^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -33,7 +34,6 @@ LL |     my_recursive_macro!();
    |     --------------------- in this macro invocation
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "8"]` attribute to your crate (`trace_faulty_macros`)
-   = note: this error originates in the macro `my_recursive_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:32:5
@@ -53,13 +53,13 @@ LL |     my_recursive_macro!();
 error: expected expression, found `pat` metavariable
   --> $DIR/trace_faulty_macros.rs:16:9
    |
+LL | macro_rules! pat_macro {
+...
 LL |         $a
    |         ^^ expected expression
 ...
 LL |     let a = pat_macro!();
    |             ------------ in this macro invocation
-   |
-   = note: this error originates in the macro `pat_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
   --> $DIR/trace_faulty_macros.rs:42:1
@@ -72,13 +72,13 @@ LL | fn use_derive_macro_as_attr() {}
 error: expected expression, found `pat` metavariable
   --> $DIR/trace_faulty_macros.rs:49:37
    |
+LL | macro_rules! test {
+...
 LL |     (($p:pat, $e:pat)) => {let $p = $e;};
    |                                     ^^ expected expression
 ...
 LL |     test!(let x = 1+1);
    |     ------------------ in this macro invocation
-   |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:36:13

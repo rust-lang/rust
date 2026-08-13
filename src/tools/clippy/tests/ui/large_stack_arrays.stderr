@@ -67,13 +67,13 @@ LL |     let y = [x, x, dummy!(x), x, x];
 error: allocating a local array larger than 16384 bytes
   --> tests/ui/large_stack_arrays.rs:76:13
    |
+LL |     macro_rules! dummy {
+...
 LL |             [$a, $b, $a, $b]
    |             ^^^^^^^^^^^^^^^^
 ...
 LL |     let y = dummy![x => x];
    |             -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `dummy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: allocating a local array larger than 16384 bytes
   --> tests/ui/large_stack_arrays.rs:104:20
@@ -92,13 +92,13 @@ LL |     let y = proc_macros::make_it_big!([x; 1]);
 error: allocating a local array larger than 16384 bytes
   --> tests/ui/large_stack_arrays.rs:88:23
    |
+LL |     macro_rules! create_then_move {
+LL |         ($id:ident; $n:literal) => {{
 LL |             let _x_ = [$id; $n];
    |                       ^^^^^^^^^
 ...
 LL |     let y = vec![create_then_move![x; 5]; 5];
    |                  ----------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `create_then_move` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 
