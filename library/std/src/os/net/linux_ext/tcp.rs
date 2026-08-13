@@ -23,7 +23,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -43,7 +50,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -92,7 +106,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// #![feature(tcp_deferaccept)]
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;

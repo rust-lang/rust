@@ -15,7 +15,7 @@ use crate::{
     db::GeneralConstId,
     next_solver::{
         AliasTerm, AnyImplId, Binder, ClauseKind, Const, ConstKind, DbInterner,
-        HostEffectPredicate, PolyTraitPredicate, PredicateKind, SolverContext, Term,
+        HostEffectPredicate, PolyTraitPredicate, Predicate, PredicateKind, SolverContext, Term,
         TraitPredicate, Ty, TyKind, TypeError,
         fulfill::NextSolverError,
         infer::{
@@ -32,21 +32,10 @@ use crate::{
 pub struct FulfillmentError<'db> {
     pub obligation: PredicateObligation<'db>,
     pub code: FulfillmentErrorCode<'db>,
-    /// Diagnostics only: the 'root' obligation which resulted in
-    /// the failure to process `obligation`. This is the obligation
-    /// that was initially passed to `register_predicate_obligation`
-    pub root_obligation: PredicateObligation<'db>,
+    pub parent_trait_obligations: Vec<Predicate<'db>>,
 }
 
-impl<'db> FulfillmentError<'db> {
-    pub fn new(
-        obligation: PredicateObligation<'db>,
-        code: FulfillmentErrorCode<'db>,
-        root_obligation: PredicateObligation<'db>,
-    ) -> FulfillmentError<'db> {
-        FulfillmentError { obligation, code, root_obligation }
-    }
-
+impl FulfillmentError<'_> {
     pub fn is_true_error(&self) -> bool {
         match self.code {
             FulfillmentErrorCode::Select(_)
@@ -130,7 +119,8 @@ fn fulfillment_error_for_no_solution<'db>(
 ) -> FulfillmentError<'db> {
     let interner = infcx.interner;
     let db = interner.db;
-    let obligation = find_best_leaf_obligation(infcx, &root_obligation, false);
+    let (obligation, parent_trait_obligations) =
+        find_best_leaf_obligation(infcx, &root_obligation, false);
 
     let code = match obligation.predicate.kind().skip_binder() {
         PredicateKind::Clause(ClauseKind::Projection(_)) => {
@@ -189,7 +179,7 @@ fn fulfillment_error_for_no_solution<'db>(
         }
     };
 
-    FulfillmentError { obligation, code, root_obligation }
+    FulfillmentError { obligation, code, parent_trait_obligations }
 }
 
 fn fulfillment_error_for_stalled<'db>(
@@ -239,25 +229,25 @@ fn fulfillment_error_for_stalled<'db>(
         }
     });
 
-    FulfillmentError {
-        obligation: if refine_obligation {
-            find_best_leaf_obligation(infcx, &root_obligation, true)
-        } else {
-            root_obligation.clone()
-        },
-        code,
-        root_obligation,
-    }
+    let (obligation, parent_trait_obligations) = if refine_obligation {
+        find_best_leaf_obligation(infcx, &root_obligation, true)
+    } else {
+        (root_obligation, Vec::new())
+    };
+
+    FulfillmentError { obligation, code, parent_trait_obligations }
 }
 
 fn fulfillment_error_for_overflow<'db>(
     infcx: &InferCtxt<'db>,
     root_obligation: PredicateObligation<'db>,
 ) -> FulfillmentError<'db> {
+    let (obligation, parent_trait_obligations) =
+        find_best_leaf_obligation(infcx, &root_obligation, true);
     FulfillmentError {
-        obligation: find_best_leaf_obligation(infcx, &root_obligation, true),
+        obligation,
         code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-        root_obligation,
+        parent_trait_obligations,
     }
 }
 
@@ -266,34 +256,44 @@ fn find_best_leaf_obligation<'db>(
     infcx: &InferCtxt<'db>,
     obligation: &PredicateObligation<'db>,
     consider_ambiguities: bool,
-) -> PredicateObligation<'db> {
+) -> (PredicateObligation<'db>, Vec<Predicate<'db>>) {
     let obligation = infcx.resolve_vars_if_possible(obligation.clone());
     // FIXME: we use a probe here as the `BestObligation` visitor does not
     // check whether it uses candidates which get shadowed by where-bounds.
     //
     // We should probably fix the visitor to not do so instead, as this also
     // means the leaf obligation may be incorrect.
-    let obligation = infcx
+    let (obligation, parent_trait_obligations) = infcx
         .fudge_inference_if_ok(|| {
+            let mut visitor = BestObligation {
+                obligation: obligation.clone(),
+                consider_ambiguities,
+                parent_trait_obligations: Vec::new(),
+            };
             infcx
-                .visit_proof_tree(
-                    obligation.as_goal(),
-                    &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
-                )
+                .visit_proof_tree(obligation.as_goal(), &mut visitor)
                 .break_value()
                 .ok_or(())
                 // walk around the fact that the cause in `Obligation` is ignored by folders so that
                 // we can properly fudge the infer vars in cause code.
-                .map(|o| (o.cause, o))
+                .map(|(obligation, parent_trait_obligations)| {
+                    (obligation.cause, obligation, parent_trait_obligations)
+                })
         })
-        .map(|(cause, o)| PredicateObligation { cause, ..o })
-        .unwrap_or(obligation);
-    deeply_normalize_for_diagnostics(infcx, obligation.param_env, obligation)
+        .map(|(cause, obligation, parent_trait_obligations)| {
+            (PredicateObligation { cause, ..obligation }, parent_trait_obligations)
+        })
+        .unwrap_or((obligation, Vec::new()));
+    let parent_trait_obligations =
+        deeply_normalize_for_diagnostics(infcx, obligation.param_env, parent_trait_obligations);
+    let obligation = deeply_normalize_for_diagnostics(infcx, obligation.param_env, obligation);
+    (obligation, parent_trait_obligations)
 }
 
 struct BestObligation<'db> {
     obligation: PredicateObligation<'db>,
     consider_ambiguities: bool,
+    parent_trait_obligations: Vec<Predicate<'db>>,
 }
 
 impl<'db> BestObligation<'db> {
@@ -302,10 +302,26 @@ impl<'db> BestObligation<'db> {
         derived_obligation: PredicateObligation<'db>,
         and_then: impl FnOnce(&mut Self) -> <Self as ProofTreeVisitor<'db>>::Result,
     ) -> <Self as ProofTreeVisitor<'db>>::Result {
+        let parent_predicate = self.obligation.predicate;
+        let should_push = parent_predicate.as_trait_clause().is_some()
+            && self.parent_trait_obligations.last() != Some(&parent_predicate);
+        if should_push {
+            self.parent_trait_obligations.push(parent_predicate);
+        }
         let old_obligation = std::mem::replace(&mut self.obligation, derived_obligation);
-        let res = and_then(self);
+        let result = and_then(self);
         self.obligation = old_obligation;
-        res
+        if should_push {
+            self.parent_trait_obligations.pop();
+        }
+        result
+    }
+
+    fn break_with_current_obligation(&mut self) -> <Self as ProofTreeVisitor<'db>>::Result {
+        ControlFlow::Break((
+            self.obligation.clone(),
+            std::mem::take(&mut self.parent_trait_obligations),
+        ))
     }
 
     /// Filter out the candidates that aren't interesting to visit for the
@@ -360,7 +376,7 @@ impl<'db> BestObligation<'db> {
         &mut self,
         candidate: &inspect::InspectCandidate<'_, 'db>,
         term: Term<'db>,
-    ) -> ControlFlow<PredicateObligation<'db>> {
+    ) -> <Self as ProofTreeVisitor<'db>>::Result {
         let _ = (candidate, term);
         // FIXME: rustc does this, but we don't process WF obligations yet:
         // let infcx = candidate.goal().infcx();
@@ -386,7 +402,7 @@ impl<'db> BestObligation<'db> {
         //     self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
         // }
 
-        ControlFlow::Break(self.obligation.clone())
+        self.break_with_current_obligation()
     }
 
     /// If a normalization of an associated item or a trait goal fails without trying any
@@ -396,7 +412,7 @@ impl<'db> BestObligation<'db> {
         &mut self,
         goal: &inspect::InspectGoal<'_, 'db>,
         self_ty: Ty<'db>,
-    ) -> ControlFlow<PredicateObligation<'db>> {
+    ) -> <Self as ProofTreeVisitor<'db>>::Result {
         assert!(!self.consider_ambiguities);
         let interner = goal.infcx().interner;
         if let TyKind::Alias(..) = self_ty.kind() {
@@ -430,7 +446,7 @@ impl<'db> BestObligation<'db> {
     fn detect_trait_error_in_higher_ranked_projection(
         &mut self,
         goal: &inspect::InspectGoal<'_, 'db>,
-    ) -> ControlFlow<PredicateObligation<'db>> {
+    ) -> <Self as ProofTreeVisitor<'db>>::Result {
         let interner = goal.infcx().interner;
         if let Some(projection_clause) = goal.goal().predicate.as_projection_clause()
             && !projection_clause.bound_vars().is_empty()
@@ -464,7 +480,7 @@ impl<'db> BestObligation<'db> {
         &mut self,
         goal: &inspect::InspectGoal<'_, 'db>,
         alias: AliasTerm<'db>,
-    ) -> ControlFlow<PredicateObligation<'db>> {
+    ) -> <Self as ProofTreeVisitor<'db>>::Result {
         let interner = goal.infcx().interner;
         let obligation = Obligation::new(
             interner,
@@ -486,7 +502,7 @@ impl<'db> BestObligation<'db> {
     fn detect_error_from_empty_candidates(
         &mut self,
         goal: &inspect::InspectGoal<'_, 'db>,
-    ) -> ControlFlow<PredicateObligation<'db>> {
+    ) -> <Self as ProofTreeVisitor<'db>>::Result {
         let interner = goal.infcx().interner;
         let pred_kind = goal.goal().predicate.kind();
 
@@ -504,12 +520,12 @@ impl<'db> BestObligation<'db> {
             Some(_) | None => {}
         }
 
-        ControlFlow::Break(self.obligation.clone())
+        self.break_with_current_obligation()
     }
 }
 
 impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
-    type Result = ControlFlow<PredicateObligation<'db>>;
+    type Result = ControlFlow<(PredicateObligation<'db>, Vec<Predicate<'db>>)>;
 
     fn span(&self) -> Span {
         self.obligation.cause.span()
@@ -531,7 +547,7 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
         let candidate = match candidates.as_slice() {
             [candidate] => candidate,
             [] => return self.detect_error_from_empty_candidates(goal),
-            _ => return ControlFlow::Break(self.obligation.clone()),
+            _ => return self.break_with_current_obligation(),
         };
 
         // Don't walk into impls that have `do_not_recommend`.
@@ -544,7 +560,7 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
                 .contains(AttrFlags::DIAGNOSTIC_DO_NOT_RECOMMEND)
         {
             trace!("#[diagnostic::do_not_recommend] -> exit");
-            return ControlFlow::Break(self.obligation.clone());
+            return self.break_with_current_obligation();
         }
 
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
@@ -587,7 +603,7 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
                 && Some(poly_trait_pred.def_id().0) == interner.lang_items().FnPtrTrait
                 && let Err(NoSolution) = nested_goal.result()
             {
-                return ControlFlow::Break(self.obligation.clone());
+                return self.break_with_current_obligation();
             }
         }
 
@@ -661,7 +677,7 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
 
         self.detect_trait_error_in_higher_ranked_projection(goal)?;
 
-        ControlFlow::Break(self.obligation.clone())
+        self.break_with_current_obligation()
     }
 }
 

@@ -4,7 +4,7 @@
 #![rustfmt::skip]
 //@ edition: 2018
 //@ compile-flags: -Copt-level=1
-
+//@ min-llvm-version: 23
 //@ aux-build: executor.rs
 extern crate executor;
 

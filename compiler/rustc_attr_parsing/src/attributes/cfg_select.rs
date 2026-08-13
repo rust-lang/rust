@@ -1,11 +1,11 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diagnostic, MultiSpan};
 use rustc_feature::Features;
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
@@ -87,7 +87,7 @@ pub fn parse_cfg_select(
             let underscore = p.prev_token;
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = underscore.span.to(p.token.span);
 
             match branches.wildcard {
@@ -126,7 +126,7 @@ pub fn parse_cfg_select(
 
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = cfg_span.to(p.token.span);
 
             match branches.wildcard {
@@ -228,7 +228,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                Some(_) => { /* for now we don't bother solving these */ }
+                Some(_) => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::Not(inner, _) => match &**inner {
                 CfgEntry::NameValue { name, value: None, .. } => {
@@ -247,7 +249,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                _ => { /* for now we don't bother solving these */ }
+                _ => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
                 /* for now we don't bother solving these */

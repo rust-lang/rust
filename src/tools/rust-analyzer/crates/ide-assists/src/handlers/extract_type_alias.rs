@@ -145,7 +145,7 @@ fn collect_used_generics<'gp>(
                             .filter_map(|it| match it {
                                 ast::GenericArg::LifetimeArg(lt) => {
                                     let lt = lt.lifetime()?;
-                                    known_generics.iter().find(find_lifetime(&lt.text()))
+                                    known_generics.iter().find(find_lifetime(lt.text()))
                                 }
                                 _ => None,
                             }),
@@ -157,7 +157,7 @@ fn collect_used_generics<'gp>(
                     generics.extend(
                         it.bounds()
                             .filter_map(|it| it.lifetime())
-                            .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                            .filter_map(|lt| known_generics.iter().find(find_lifetime(lt.text()))),
                     );
                 }
             }
@@ -166,13 +166,12 @@ fn collect_used_generics<'gp>(
                     generics.extend(
                         it.bounds()
                             .filter_map(|it| it.lifetime())
-                            .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                            .filter_map(|lt| known_generics.iter().find(find_lifetime(lt.text()))),
                     );
                 }
             }
             ast::Type::RefType(ref_) => generics.extend(
-                ref_.lifetime()
-                    .and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                ref_.lifetime().and_then(|lt| known_generics.iter().find(find_lifetime(lt.text()))),
             ),
             ast::Type::ArrayType(ar) => {
                 if let Some(ast::Expr::PathExpr(p)) = ar.const_arg().and_then(|x| x.expr())
@@ -370,7 +369,7 @@ impl<'outer, Outer, const OUTER: usize> () {
 "#,
             r#"
 struct Struct<const C: usize>;
-type $0Type<'inner, 'outer, Outer, Inner, const INNER: usize, const OUTER: usize> = &(Struct<INNER>, Struct<OUTER>, Outer, &'inner (), Inner, &'outer ());
+type $0Type<'inner, 'outer, Outer, Inner, const INNER: usize, const OUTER: usize> = &(Struct<INNER>, Struct<OUTER>, Outer, &(), Inner, &'outer ());
 
 impl<'outer, Outer, const OUTER: usize> () {
     fn func<'inner, Inner, const INNER: usize>(_: Type<'inner, 'outer, Outer, Inner, INNER, OUTER>) {}

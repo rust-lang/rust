@@ -6,7 +6,7 @@
 use std::iter;
 
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
@@ -174,11 +174,11 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_trait_pred(t, Elaborate::None);
         }
         ty::ClauseKind::HostEffect(..) => {
-            // Technically the well-formedness of this predicate is implied by
-            // the corresponding trait predicate it should've been generated beside.
+            // Technically the well-formedness of this clause is implied by
+            // the corresponding trait clause it should've been generated beside.
         }
         ty::ClauseKind::RegionOutlives(..) => {}
-        ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+        ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, _reg)) => {
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
@@ -362,7 +362,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 param_env,
                 cause.clone(),
                 self.recursion_depth,
-                obligation.predicate,
+                ty::Unnormalized::new_wip(obligation.predicate),
                 &mut obligations,
             );
             obligation.predicate = normalized_predicate;
@@ -579,20 +579,20 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             return Default::default();
         }
 
-        let predicates = self.tcx().predicates_of(def_id);
-        let mut origins = vec![def_id; predicates.predicates.len()];
-        let mut head = predicates;
+        let gen_clauses = self.tcx().clauses_of(def_id);
+        let mut origins = vec![def_id; gen_clauses.clauses.len()];
+        let mut head = gen_clauses;
         while let Some(parent) = head.parent {
-            head = self.tcx().predicates_of(parent);
-            origins.extend(iter::repeat(parent).take(head.predicates.len()));
+            head = self.tcx().clauses_of(parent);
+            origins.extend(iter::repeat(parent).take(head.clauses.len()));
         }
 
-        let predicates = predicates.instantiate(self.tcx(), args);
-        trace!("{:#?}", predicates);
-        debug_assert_eq!(predicates.predicates.len(), origins.len());
+        let gen_clauses = gen_clauses.instantiate(self.tcx(), args);
+        trace!("{:#?}", gen_clauses);
+        debug_assert_eq!(gen_clauses.clauses.len(), origins.len());
 
-        iter::zip(predicates, origins.into_iter().rev())
-            .map(|((pred, span), origin_def_id)| {
+        iter::zip(gen_clauses, origins.into_iter().rev())
+            .map(|((clause, span), origin_def_id)| {
                 let code = ObligationCauseCode::WhereClause(origin_def_id, span);
                 let cause = self.cause(code);
                 traits::Obligation::with_depth(
@@ -600,10 +600,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     cause,
                     self.recursion_depth,
                     self.param_env,
-                    pred.skip_norm_wip(),
+                    clause.skip_norm_wip(),
                 )
             })
-            .filter(|pred| !pred.has_escaping_bound_vars())
+            .filter(|clause| !clause.has_escaping_bound_vars())
             .collect()
     }
 
@@ -653,7 +653,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(ObligationCauseCode::ObjectTypeBound(ty, explicit_bound));
                 let outlives =
-                    ty::Binder::dummy(ty::OutlivesPredicate(explicit_bound, implicit_bound));
+                    ty::Binder::dummy(ty::OutlivesClause(explicit_bound, implicit_bound));
                 self.out.push(traits::Obligation::with_depth(
                     self.tcx(),
                     cause,
@@ -847,7 +847,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         self.recursion_depth,
                         self.param_env,
                         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                            ty::OutlivesPredicate(rty, r),
+                            ty::OutlivesClause(rty, r),
                         ))),
                     ));
                 }
@@ -1235,14 +1235,14 @@ pub fn object_region_bounds<'tcx>(
 ) -> Vec<ty::Region<'tcx>> {
     let erased_self_ty = tcx.types.trait_object_dummy_self;
 
-    let predicates =
+    let clauses =
         existential_predicates.iter().map(|predicate| predicate.with_self_ty(tcx, erased_self_ty));
 
-    traits::elaborate(tcx, predicates)
-        .filter_map(|pred| {
-            debug!(?pred);
-            match pred.kind().skip_binder() {
-                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+    traits::elaborate(tcx, clauses)
+        .filter_map(|clause| {
+            debug!(?clause);
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a

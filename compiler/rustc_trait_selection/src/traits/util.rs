@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PolyTraitObligation;
@@ -49,7 +49,7 @@ pub fn expand_trait_aliases<'tcx>(
             ty::ClauseKind::Trait(trait_pred) => {
                 if tcx.is_trait_alias(trait_pred.def_id()) {
                     queue.extend(
-                        tcx.explicit_super_predicates_of(trait_pred.def_id())
+                        tcx.explicit_super_clauses_of(trait_pred.def_id())
                             .iter_identity_copied()
                             .map(Unnormalized::skip_norm_wip)
                             .map(|(super_clause, span)| {

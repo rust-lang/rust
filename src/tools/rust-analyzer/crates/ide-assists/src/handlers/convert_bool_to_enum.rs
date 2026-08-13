@@ -95,16 +95,16 @@ pub(crate) fn convert_bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_, '_
     )
 }
 
-struct BoolNodeData {
+struct BoolNodeData<'db> {
     target_node: SyntaxNode,
     name: ast::Name,
     ty_annotation: Option<ast::Type>,
     initializer: Option<ast::Expr>,
-    definition: Definition,
+    definition: Definition<'db>,
 }
 
 /// Attempts to find an appropriate node to apply the action to.
-fn find_bool_node(ctx: &AssistContext<'_, '_>) -> Option<BoolNodeData> {
+fn find_bool_node<'db>(ctx: &AssistContext<'_, 'db>) -> Option<BoolNodeData<'db>> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
 
     if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
@@ -213,7 +213,7 @@ fn replace_usages(
     edit: &mut SourceChangeBuilder,
     ctx: &AssistContext<'_, '_>,
     usages: UsageSearchResult,
-    target_definition: Definition,
+    target_definition: Definition<'_>,
     target_module: &hir::Module,
     delayed_mutations: &mut Vec<(FileId, ImportScope, ast::Path)>,
     make: &SyntaxFactory,
@@ -427,7 +427,7 @@ fn find_negated_usage(name: &ast::NameLike) -> Option<(ast::PrefixExpr, ast::Exp
 fn find_record_expr_usage(
     name: &ast::NameLike,
     got_field: hir::Field,
-    target_definition: Definition,
+    target_definition: Definition<'_>,
 ) -> Option<(ast::RecordExprField, ast::Expr)> {
     let name_ref = name.as_name_ref()?;
     let record_field = ast::RecordExprField::for_field_name(name_ref)?;

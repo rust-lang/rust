@@ -8,10 +8,11 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContex
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
+use thin_vec::ThinVec;
 
 use crate::data_structures::HashMap;
 use crate::inherent::*;
-use crate::{self as ty, Interner, TypingModeEqWrapper, UniverseIndex};
+use crate::{self as ty, Interner, Region, TypingModeEqWrapper, UniverseIndex};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
@@ -363,10 +364,17 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
     }
 }
 
+#[derive_where(Default; I: Interner)]
+pub struct CanonicalParamEnvCache<I: Interner>(
+    pub HashMap<I::ParamEnv, CanonicalParamEnvCacheEntry<I>>,
+);
+
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct CanonicalParamEnvCacheEntry<I: Interner> {
+    // Note: this `param_env` is the canonicalized form of the key for this entry in the enclosing
+    // `CanonicalParamEnvCache`.
     pub param_env: I::ParamEnv,
-    pub variables: Vec<I::GenericArg>,
+    pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
 }

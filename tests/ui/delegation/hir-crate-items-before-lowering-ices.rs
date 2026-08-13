@@ -1,5 +1,5 @@
 //@ revisions: ice_155125 ice_155127 ice_155128 ice_155164 ice_155202
-//@[ice_155202] edition: 2024
+//@[ice_155202] edition: 2018..
 
 #![feature(min_generic_const_args, fn_delegation)]
 
@@ -24,7 +24,7 @@ mod ice_155127 {
 
     fn foo() {}
     impl S {
-        #[deprecated] //[ice_155127]~ ERROR: `#[deprecated]` attribute cannot be used on delegations
+        #[deprecated] //[ice_155127]~ ERROR: the `deprecated` attribute cannot be used on delegations
         //[ice_155127]~^ WARN: this was previously accepted by the compiler but is being phased out;
         reuse foo;
     }

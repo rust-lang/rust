@@ -10,13 +10,13 @@ mod runtime_symbols {
     use core::ffi::{c_size_t, c_void};
 
     unsafe extern "C" {
-        #[lang = "malloc_fn"]
+        #[rustc_canonical_symbol]
         fn malloc(size: c_size_t) -> *mut c_void;
 
-        #[lang = "realloc_fn"]
+        #[rustc_canonical_symbol]
         fn realloc(ptr: *mut c_void, size: c_size_t) -> *mut c_void;
 
-        #[lang = "free_fn"]
+        #[rustc_canonical_symbol]
         fn free(ptr: *mut c_void);
     }
 }

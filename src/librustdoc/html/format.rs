@@ -1251,7 +1251,9 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
             .iter()
             .map(|param| {
                 fmt::from_fn(|f| {
-                    if let Some(name) = param.name {
+                    if param.is_splat {
+                        write!(f, "…: ")?;
+                    } else if let Some(name) = param.name {
                         write!(f, "{name}: ")?;
                     }
                     print_type(&param.type_, cx).fmt(f)
@@ -1305,7 +1307,9 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
             if parameter.is_const {
                 write!(f, "const ")?;
             }
-            if let Some(name) = parameter.name {
+            if parameter.is_splat {
+                write!(f, "…: ")?;
+            } else if let Some(name) = parameter.name {
                 write!(f, "{name}: ")?;
             }
             print_type(&parameter.type_, cx).fmt(f)

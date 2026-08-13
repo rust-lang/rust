@@ -1,6 +1,5 @@
 //@ run-pass
 //@ only-x86_64
-#![feature(c_variadic, c_variadic_naked_functions)]
 
 // Check that multiple c-variadic calling conventions can be used in the same program.
 //
@@ -20,8 +19,6 @@ fn main() {
 // targets, respectively:
 //
 // ```rust
-// #![feature(c_variadic)]
-//
 // #[unsafe(no_mangle)]
 // unsafe extern "C" fn variadic(a: u32, mut args: ...) -> u32 {
 //     let b = args.next_arg::<u32>();

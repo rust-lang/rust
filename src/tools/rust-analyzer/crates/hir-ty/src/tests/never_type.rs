@@ -888,6 +888,17 @@ fn foo() {
 }
 
 #[test]
+fn diverging_destructuring_assignment_coerces_rhs() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    if (() = return) {}
+}
+"#,
+    );
+}
+
+#[test]
 fn never_coercion_in_struct_update_syntax() {
     check_no_mismatches(
         r#"
@@ -897,6 +908,22 @@ struct Struct {
 
 fn example() -> Struct {
     Struct { ..loop {} }
+}
+    "#,
+    );
+}
+
+#[test]
+fn never_await() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+async fn test() -> ! {
+    loop {}
+}
+
+pub async fn test1() -> ! {
+    test().await;
 }
     "#,
     );

@@ -12,7 +12,7 @@ use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
-#[cfg(not(target_os = "fuchsia"))]
+#[cfg(not(any(target_os = "fuchsia", target_os = "l4re")))]
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::pipe;
 use crate::sys::process::env::{CommandEnv, CommandEnvs, CommandResolvedEnvs};
@@ -24,6 +24,9 @@ mod cstring_array;
 cfg_select! {
     target_os = "fuchsia" => {
         // fuchsia doesn't have /dev/null
+    },
+    target_os = "l4re" => {
+        // l4re doesn't have /dev/null
     }
     target_os = "vxworks" => {
         const DEV_NULL: &CStr = c"/null";
@@ -119,9 +122,9 @@ pub enum ChildStdio {
     Explicit(c_int),
     Owned(FileDesc),
 
-    // On Fuchsia, null stdio is the default, so we simply don't specify
-    // any actions at the time of spawning.
-    #[cfg(target_os = "fuchsia")]
+    // On Fuchsia and L4Re, null stdio is the default, so we simply don't
+    // specify any actions at the time of spawning.
+    #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
     Null,
 }
 
@@ -427,7 +430,7 @@ impl Stdio {
                 Ok((ChildStdio::Owned(theirs), Some(ours)))
             }
 
-            #[cfg(not(target_os = "fuchsia"))]
+            #[cfg(not(any(target_os = "fuchsia", target_os = "l4re")))]
             Stdio::Null => {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
@@ -436,7 +439,7 @@ impl Stdio {
                 Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 
-            #[cfg(target_os = "fuchsia")]
+            #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
             Stdio::Null => Ok((ChildStdio::Null, None)),
         }
     }
@@ -483,7 +486,7 @@ impl ChildStdio {
             ChildStdio::Explicit(fd) => Some(fd),
             ChildStdio::Owned(ref fd) => Some(fd.as_raw_fd()),
 
-            #[cfg(target_os = "fuchsia")]
+            #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
             ChildStdio::Null => None,
         }
     }

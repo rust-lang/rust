@@ -14,10 +14,9 @@ pub struct CfgSelectBranchAttrSpans {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a `TokenTree` consisting either of `{ /* ... */ }` optionally followed by a comma
-    /// (and strip the braces and the optional comma) or an expression followed by a comma
-    /// (and strip the comma).
-    pub fn parse_delimited_token_tree(&mut self) -> PResult<'a, TokenStream> {
+    /// Parses the right-hand side of a `cfg_select!` branch,
+    /// which can be either a braced block or an expression.
+    pub fn parse_cfg_select_branch_rhs(&mut self) -> PResult<'a, TokenStream> {
         if self.token == token::OpenBrace {
             // Strip the outer '{' and '}'.
             match self.parse_token_tree() {
@@ -29,10 +28,16 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let expr = self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |p, _| {
-            p.parse_expr_res(Restrictions::STMT_EXPR, AttrWrapper::empty())
-                .map(|(expr, _)| (expr, Trailing::No, UsePreAttrPos::No))
-        })?;
+        let attrs = AttrWrapper::empty(); // FIXME expressions with attributes can be supported here
+        let expr = self.collect_tokens(
+            None,
+            AttrWrapper::empty(),
+            ForceCollect::Yes,
+            |p, _empty_attrs| {
+                p.parse_expr_res_after_attrs(Restrictions::STMT_EXPR, attrs)
+                    .map(|(expr, _)| (expr, Trailing::No, UsePreAttrPos::No))
+            },
+        )?;
         if !classify::expr_is_complete(&expr)
             && self.token != token::CloseBrace
             && self.token != token::Eof
@@ -57,6 +62,7 @@ impl<'a> Parser<'a> {
         for attr in attrs.take_for_recovery(self.psess) {
             match attr.kind {
                 AttrKind::Normal(..) => spans.attrs.push(attr.span),
+                AttrKind::Synthetic(..) => unreachable!(),
                 // `parse_outer_attributes` already emitted E0753 for inner doc comments before
                 // recovering them as outer doc-comment attributes.
                 AttrKind::DocComment(comment_kind, _)

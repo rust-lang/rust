@@ -602,6 +602,14 @@ impl<'db> MirLowerCtx<'_, 'db> {
         shape: AdtPatternShape<'_>,
         mode: MatchingMode,
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
+        let place_ty = cond_place.ty(&self.result, &self.infcx, self.env).ty;
+        let Some((place_adt, _)) = place_ty.as_adt() else {
+            return Err(MirLowerError::TypeError("non ADT type matched with ADT pattern"));
+        };
+        if place_adt != variant.adt_id(self.db) {
+            return Err(MirLowerError::TypeError("ADT pattern does not match place type"));
+        }
+
         Ok(match variant {
             VariantId::EnumVariantId(v) => {
                 if mode == MatchingMode::Check {

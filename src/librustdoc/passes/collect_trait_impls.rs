@@ -3,10 +3,12 @@
 //! struct implements that trait.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::FatalError;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Attribute, find_attr};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::kw;
 use tracing::debug;
 
 use super::Pass;
@@ -35,9 +37,6 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         synth.impls
     });
 
-    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).map(|(_, p)| p).collect();
-
     let crate_items = {
         let mut coll = ItemAndAliasCollector::new(&cx.cache);
         cx.sess().time("collect_items_for_trait_impls", || coll.visit_crate(&krate));
@@ -52,9 +51,33 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
         for &cnum in tcx.crates(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
-                cx.with_param_env(impl_def_id, |cx| {
-                    inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
-                });
+                let trait_ref = tcx.impl_trait_ref(impl_def_id);
+                debug!("considering extern trait impl {trait_ref:?}");
+                if crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
+                    || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
+                    || tcx.is_doc_notable_trait(trait_ref.def_id())
+                {
+                    debug!("-> inlining due to trait");
+                    cx.with_param_env(impl_def_id, |cx| {
+                        inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                    });
+                } else {
+                    let self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+                    debug!(?self_ty);
+                    let self_ty_head = SelfTyHead::of(ty::Binder::dummy(self_ty), tcx, impl_def_id);
+                    debug!(?self_ty_head);
+                    let keep_impl = match self_ty_head {
+                        SelfTyHead::Generic => true,
+                        SelfTyHead::Item(def_id) => crate_items.contains(&ItemId::DefId(def_id)),
+                        SelfTyHead::Primitive | SelfTyHead::Other => false,
+                    };
+                    if keep_impl {
+                        debug!("-> inlining due to self ty");
+                        cx.with_param_env(impl_def_id, |cx| {
+                            inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                        });
+                    }
+                }
             }
         }
     }
@@ -81,19 +104,21 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     }
 
     tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
-        for def_id in PrimitiveType::all_impls(tcx) {
-            // Try to inline primitive impls from other crates.
-            if !def_id.is_local() {
-                cx.with_param_env(def_id, |cx| {
-                    inline::build_impl(cx, def_id, None, &mut new_items_external);
-                });
-            }
-        }
         for (prim, did) in PrimitiveType::primitive_locations(tcx) {
             // Do not calculate blanket impl list for docs that are not going to be rendered.
             // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
             // attached is directly included in `libstd` as well.
             if did.is_local() {
+                for impl_def_id in prim.impls(tcx) {
+                    // Try to inline primitive impls from other crates.
+                    if !impl_def_id.is_local() {
+                        cx.with_param_env(impl_def_id, |cx| {
+                            inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                        });
+                    }
+                }
+
+                // HACK: this is all one massive hack that is very hard to get rid of (see comment below)
                 for def_id in prim.impls(tcx).filter(|&def_id| {
                     // Avoid including impl blocks with filled-in generics.
                     // https://github.com/rust-lang/rust/issues/94937
@@ -126,86 +151,6 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         }
     });
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
-    let mut type_did_to_deref_target: DefIdMap<&Type> = DefIdMap::default();
-
-    // Follow all `Deref` targets of included items and recursively add them as valid
-    fn add_deref_target(
-        cx: &DocContext<'_>,
-        map: &DefIdMap<&Type>,
-        cleaner: &mut BadImplStripper<'_>,
-        targets: &mut DefIdSet,
-        type_did: DefId,
-    ) {
-        if let Some(target) = map.get(&type_did) {
-            debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
-            if let Some(target_prim) = target.primitive_type() {
-                cleaner.prims.insert(target_prim);
-            } else if let Some(target_did) = target.def_id(&cx.cache) {
-                // `impl Deref<Target = S> for S`
-                if !targets.insert(target_did) {
-                    // Avoid infinite cycles
-                    return;
-                }
-                cleaner.items.insert(target_did.into());
-                add_deref_target(cx, map, cleaner, targets, target_did);
-            }
-        }
-    }
-
-    // scan through included items ahead of time to splice in Deref targets to the "valid" sets
-    for it in new_items_external.iter().chain(new_items_local.iter()) {
-        if let ImplItem(Impl { ref for_, ref trait_, ref items, polarity, .. }) = it.kind
-            && trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait()
-            && polarity != ty::ImplPolarity::Negative
-            && cleaner.keep_impl(for_, true)
-        {
-            let target = items
-                .iter()
-                .find_map(|item| match item.kind {
-                    AssocTypeItem(ref t, _) => Some(&t.type_),
-                    _ => None,
-                })
-                .expect("Deref impl without Target type");
-
-            if let Some(prim) = target.primitive_type() {
-                cleaner.prims.insert(prim);
-            } else if let Some(did) = target.def_id(&cx.cache) {
-                cleaner.items.insert(did.into());
-            }
-            if let Some(for_did) = for_.def_id(&cx.cache)
-                && type_did_to_deref_target.insert(for_did, target).is_none()
-                // Since only the `DefId` portion of the `Type` instances is known to be same for both the
-                // `Deref` target type and the impl for type positions, this map of types is keyed by
-                // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-                && cleaner.keep_impl_with_def_id(for_did.into())
-            {
-                let mut targets = DefIdSet::default();
-                targets.insert(for_did);
-                add_deref_target(
-                    cx,
-                    &type_did_to_deref_target,
-                    &mut cleaner,
-                    &mut targets,
-                    for_did,
-                );
-            }
-        }
-    }
-
-    // Filter out external items that are not needed
-    new_items_external.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = it.kind {
-            cleaner.keep_impl(
-                for_,
-                trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait(),
-            ) || trait_.as_ref().is_some_and(|t| cleaner.keep_impl_with_def_id(t.def_id().into()))
-                || kind.is_blanket()
-        } else {
-            true
-        }
-    });
-
     if let ModuleItem(Module { items, .. }) = &mut krate.module.inner.kind {
         items.extend(synth_impls);
         items.extend(new_items_external);
@@ -219,6 +164,113 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     krate
 }
 
+#[derive(Debug)]
+enum SelfTyHead {
+    Generic,
+    Primitive,
+    Item(DefId),
+    Other,
+}
+
+impl SelfTyHead {
+    /// Compute the "head" (top-level structure) of a type.
+    ///
+    /// When deciding whether to inline an impl, one of the things we look at is
+    /// whether the Self type (the `Foo` in `impl Foo` or `impl Tr for Foo`) is
+    /// present in the current crate (usually itself through inlining). However,
+    /// constructing a full [`clean::Type`](Type) is expensive and more than we need,
+    /// so this function computes just enough information to determine if the type
+    /// is in the current crate.
+    // FIXME: once -Znormalize-docs works properly / becomes the default,
+    // this should invoke normalization where needed (e.g. if the head is an Alias).
+    // we'll need to fetch the param_env too.
+    fn of<'tcx>(bound_ty: ty::Binder<'tcx, Ty<'tcx>>, tcx: TyCtxt<'tcx>, parent: DefId) -> Self {
+        match *bound_ty.skip_binder().kind() {
+            ty::Never
+            | ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Str
+            | ty::Slice(..)
+            | ty::Array(..)
+            | ty::RawPtr(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Tuple(_) => Self::Primitive,
+            ty::Pat(ty, _) => Self::of(bound_ty.rebind(ty), tcx, parent),
+            ty::Ref(_, ty, _) => match Self::of(bound_ty.rebind(ty), tcx, parent) {
+                Self::Generic => Self::Primitive,
+                head => head,
+            },
+            // FIXME(unsafe_binders): this should probably recurse through the unsafe binder,
+            // but clean_middle_ty doesn't handle this correctly yet either
+            ty::UnsafeBinder(_) => Self::Other,
+            ty::Adt(def, _) => Self::Item(def.did()),
+            ty::Foreign(did) => Self::Item(did),
+            ty::Dynamic(obj, _) => {
+                // HACK: pick the first `did` as the `did` of the trait object. Someone
+                // might want to implement "native" support for marker-trait-only
+                // trait objects.
+                let mut dids = obj.auto_traits();
+                let did = obj
+                    .principal_def_id()
+                    .or_else(|| dids.next())
+                    .unwrap_or_else(|| panic!("found trait object `{obj:?}` with no traits?"));
+                Self::Item(did)
+            }
+
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) => {
+                debug_assert!(!tcx.is_impl_trait_in_trait(def_id));
+                Self::of(bound_ty.rebind(alias_ty.self_ty()), tcx, parent)
+            }
+
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
+                let alias_ty = bound_ty.rebind(alias_ty);
+                Self::of(alias_ty.map_bound(|ty| ty.self_ty()), tcx, parent)
+            }
+
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
+                if tcx.features().checked_type_aliases() {
+                    // Free type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
+                    // we need to use `type_of`.
+                    Self::Item(def_id)
+                } else {
+                    let ty = tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip();
+                    Self::of(bound_ty.rebind(ty), tcx, parent)
+                }
+            }
+
+            ty::Param(ref p) => {
+                // FIXME: there's a slight behavior difference from clean_middle_ty here
+                // since here we represent impl traits as Generic not ImplTrait.
+                // probably doesn't matter for collect trait impls since impl trait
+                // can't be a self ty
+                if p.name == kw::SelfUpper { Self::Other } else { Self::Generic }
+            }
+
+            ty::Bound(_, ref ty) => match ty.kind {
+                ty::BoundTyKind::Param(_) => Self::Generic,
+                ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
+            },
+
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+                panic!("{bound_ty} should not appear as impl self ty")
+            }
+
+            ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::Placeholder(..)
+            | ty::CoroutineWitness(..)
+            | ty::Infer(..) => panic!("unexpected impl self ty {bound_ty}"),
+
+            ty::Error(_) => FatalError.raise(),
+        }
+    }
+}
+
 struct SyntheticImplCollector<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
     impls: Vec<Item>,
@@ -227,12 +279,14 @@ struct SyntheticImplCollector<'a, 'tcx> {
 impl DocVisitor<'_> for SyntheticImplCollector<'_, '_> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
+            let item_def_id = i.item_id.expect_def_id();
             // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !self.cx.tcx.is_doc_hidden(i.item_id.expect_def_id()) {
-                self.impls.extend(synthesize_auto_trait_and_blanket_impls(
-                    self.cx,
-                    i.item_id.expect_def_id(),
-                ));
+            // FIXME(camelid) should we skip the `doc(hidden)` check if --document-hidden-items is passed?
+            if (self.cx.document_private()
+                || self.cx.cache.effective_visibilities.is_reachable(self.cx.tcx, item_def_id))
+                && !self.cx.tcx.is_doc_hidden(item_def_id)
+            {
+                self.impls.extend(synthesize_auto_trait_and_blanket_impls(self.cx, item_def_id));
             }
         }
 
@@ -262,30 +316,5 @@ impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
         }
 
         self.visit_item_recur(i)
-    }
-}
-
-struct BadImplStripper<'a> {
-    prims: FxHashSet<PrimitiveType>,
-    items: FxHashSet<ItemId>,
-    cache: &'a Cache,
-}
-
-impl BadImplStripper<'_> {
-    fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
-        if let Generic(_) = ty {
-            // keep impls made on generics
-            true
-        } else if let Some(prim) = ty.primitive_type() {
-            self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id(self.cache) {
-            is_deref || self.keep_impl_with_def_id(did.into())
-        } else {
-            false
-        }
-    }
-
-    fn keep_impl_with_def_id(&self, item_id: ItemId) -> bool {
-        self.items.contains(&item_id)
     }
 }

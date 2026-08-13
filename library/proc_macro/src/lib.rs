@@ -245,7 +245,6 @@ impl !Sync for TokenStream {}
 /// The contained error message is explicitly not guaranteed to be stable in any way,
 /// and may change between Rust versions or across compilations.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct LexError(String);
 

@@ -14,6 +14,7 @@ use smallvec::SmallVec;
 use crate::un_derefer::UnDerefer;
 
 rustc_index::newtype_index! {
+    /// Index identifying a `MovePath`.
     #[orderable]
     #[debug_format = "mp{}"]
     pub struct MovePathIndex {}
@@ -26,26 +27,31 @@ impl polonius_engine::Atom for MovePathIndex {
 }
 
 rustc_index::newtype_index! {
+    /// Index identifying a `MoveOut`.
     #[orderable]
     #[debug_format = "mo{}"]
     pub struct MoveOutIndex {}
 }
 
 rustc_index::newtype_index! {
+    /// Index identifying an `Init`.
     #[debug_format = "in{}"]
     pub struct InitIndex {}
 }
 
 impl MoveOutIndex {
     pub fn move_path_index(self, move_data: &MoveData<'_>) -> MovePathIndex {
-        move_data.moves[self].path
+        move_data.move_outs[self].path
     }
 }
 
-/// `MovePath` is a canonicalized representation of a path that is
-/// moved or assigned to.
+/// `MovePath` is a canonicalized representation of a place that is of
+/// interest to dataflow analysis, as identified by `gather_moves`. This
+/// is primarily places that are moved or inited (assigned). Each
+/// `MovePath` is assigned a `MovePathIndex` by which it can be referred
+/// to.
 ///
-/// It follows a tree structure.
+/// `MovePath` follows a tree structure.
 ///
 /// Given `struct X { m: M, n: N }` and `x: X`, moves like `drop x.m;`
 /// move *out* of the place `x.m`.
@@ -54,6 +60,8 @@ impl MoveOutIndex {
 /// one of them will link to the other via the `next_sibling` field,
 /// and the other will have no entry in its `next_sibling` field), and
 /// they both have the MovePath representing `x` as their parent.
+/// (All tree roots are locals). This structure allows easy traversal
+/// between related paths `x` and `x.m` and `x.n`.
 #[derive(Clone)]
 pub struct MovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
@@ -166,20 +174,28 @@ where
 
 #[derive(Debug)]
 pub struct MoveData<'tcx> {
+    /// All the gathered `MovePath`s.
     pub move_paths: IndexVec<MovePathIndex, MovePath<'tcx>>,
-    pub moves: IndexVec<MoveOutIndex, MoveOut>,
-    /// Each Location `l` is mapped to the MoveOut's that are effects
-    /// of executing the code at `l`. (There can be multiple MoveOut's
-    /// for a given `l` because each MoveOut is associated with one
-    /// particular path being moved.)
-    pub loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
-    pub path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+
+    /// All the `MoveOut`s.
+    pub move_outs: IndexVec<MoveOutIndex, MoveOut>,
+    /// Map from locations to `MoveOut`s. `SmallVec` because each location might cause more than
+    /// one `MoveOut`. Used during analysis and diagnostics.
+    pub move_out_loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
+    /// Map from `MovePath`s (places) to `MoveOuts`. `SmallVec` because each `MovePath` may be
+    /// moved-out of more than once. Used mostly for diagnostics.
+    pub move_out_path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+
+    /// Map from places/locals to `MovePath`s.
     pub rev_lookup: MovePathLookup<'tcx>,
+
+    /// All the `Init`s.
     pub inits: IndexVec<InitIndex, Init>,
-    /// Each Location `l` is mapped to the Inits that are effects
-    /// of executing the code at `l`. Only very rarely (e.g. inline asm)
-    /// is there more than one Init at any `l`.
+    /// Map from locations to `Init`s. `SmallVec` because each location might cause more than one
+    /// `Init`, though more than one is very rare (e.g. inline asm).
     pub init_loc_map: LocationMap<SmallVec<[InitIndex; 1]>>,
+    /// Map from `MovePath`s (places) to `Init`s. `SmallVec` because each `MovePath` (place) might
+    /// be inited more than once.
     pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
 }
 
@@ -189,21 +205,39 @@ pub trait HasMoveData<'tcx> {
 
 #[derive(Debug)]
 pub struct LocationMap<T> {
-    /// Location-indexed (BasicBlock for outer index, index within BB
-    /// for inner index) map.
-    pub(crate) map: IndexVec<BasicBlock, Vec<T>>,
+    /// All per-location entries live in the single flat `data` vector.
+    /// `block_starts[bb]` gives the index in `data` where block `bb`'s entries
+    /// start; each block has one entry per statement plus one for its terminator.
+    data: Vec<T>,
+    block_starts: IndexVec<BasicBlock, usize>,
+}
+
+impl<T> LocationMap<T> {
+    #[inline]
+    fn offset(&self, loc: Location) -> usize {
+        let offset = self.block_starts[loc.block] + loc.statement_index;
+        if cfg!(debug_assertions) {
+            // A block's entries run until the next block's start, or the end of
+            // `data` for the last block.
+            let next = loc.block.as_usize() + 1;
+            let block_end = self.block_starts.raw.get(next).copied().unwrap_or(self.data.len());
+            assert!(offset < block_end, "{loc:?} is out of range for its block");
+        }
+        offset
+    }
 }
 
 impl<T> Index<Location> for LocationMap<T> {
     type Output = T;
     fn index(&self, index: Location) -> &Self::Output {
-        &self.map[index.block][index.statement_index]
+        &self.data[self.offset(index)]
     }
 }
 
 impl<T> IndexMut<Location> for LocationMap<T> {
     fn index_mut(&mut self, index: Location) -> &mut Self::Output {
-        &mut self.map[index.block][index.statement_index]
+        let offset = self.offset(index);
+        &mut self.data[offset]
     }
 }
 
@@ -212,18 +246,18 @@ where
     T: Default + Clone,
 {
     fn new(body: &Body<'_>) -> Self {
-        LocationMap {
-            map: body
-                .basic_blocks
-                .iter()
-                .map(|block| vec![T::default(); block.statements.len() + 1])
-                .collect(),
+        let mut block_starts = IndexVec::with_capacity(body.basic_blocks.len());
+        let mut total = 0;
+        for block in body.basic_blocks.iter() {
+            block_starts.push(total);
+            total += block.statements.len() + 1;
         }
+        LocationMap { data: vec![T::default(); total], block_starts }
     }
 }
 
 /// `MoveOut` represents a point in a program that moves out of some
-/// L-value; i.e., "creates" uninitialized memory.
+/// L-value; i.e., "creates" uninitialized memory. The dual of `Init`.
 ///
 /// With respect to dataflow analysis:
 /// - Generated by moves and declaration of uninitialized variables.
@@ -242,7 +276,7 @@ impl fmt::Debug for MoveOut {
     }
 }
 
-/// `Init` represents a point in a program that initializes some L-value;
+/// `Init` represents a point in a program that initializes some L-value. The dual of `MoveOut`.
 #[derive(Copy, Clone)]
 pub struct Init {
     /// path being initialized
@@ -254,7 +288,7 @@ pub struct Init {
 }
 
 /// Initializations can be from an argument or from a statement. Arguments
-/// do not have locations, in those cases the `Local` is kept..
+/// do not have locations, in those cases the `Local` is kept.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InitLocation {
     Argument(Local),
@@ -287,7 +321,7 @@ impl Init {
     }
 }
 
-/// Tables mapping from a place to its MovePathIndex.
+/// Tables mapping from a place to its `MovePathIndex`.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
     locals: IndexVec<Local, Option<MovePathIndex>>,
@@ -307,7 +341,13 @@ mod builder;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupResult {
+    /// This exact thing has a move path. E.g. we looked up `x` or `x.m` and it has been moved.
     Exact(MovePathIndex),
+
+    /// - If the field is `None`, neither the exact thing nor any ancestor of it has a move path.
+    ///   E.g. we looked up `x.m` and neither it nor `x` have a move path.
+    /// - If the field is `Some`, the exact thing has no move path, but an ancestor does. E.g. we
+    ///   looked up `x.m` which has no move path but `x` has one. Not possible for locals.
     Parent(Option<MovePathIndex>),
 }
 
@@ -317,10 +357,12 @@ impl<'tcx> MovePathLookup<'tcx> {
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
+        // Look first in the locals (roots).
         let Some(mut result) = self.find_local(place.local) else {
             return LookupResult::Parent(None);
         };
 
+        // Look for a projection through the found local.
         for (_, elem) in self.un_derefer.iter_projections(place) {
             let subpath = match MoveSubPath::of(elem.kind()) {
                 MoveSubPathResult::One(kind) => self.projections.get(&(result, kind)),
@@ -338,6 +380,7 @@ impl<'tcx> MovePathLookup<'tcx> {
         LookupResult::Exact(result)
     }
 
+    /// For locals, which are roots.
     #[inline]
     pub fn find_local(&self, local: Local) -> Option<MovePathIndex> {
         self.locals[local]

@@ -48,7 +48,7 @@ nav.sub {
 	--sidebar-background-color: #f5f5f5;
 	--sidebar-background-color-hover: #e0e0e0;
 	--sidebar-border-color: #ddd;
-	--code-block-background-color: #f5f5f5;
+	--code-block-background-color: #eaeaea;
 	--scrollbar-track-background-color: #dcdcdc;
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
 	--scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
@@ -141,6 +141,12 @@ nav.sub {
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
+	--notable-badge-pink: oklch(0.88 0.21 0);
+	--notable-badge-red: oklch(0.88 0.21 40);
+	--notable-badge-orange: oklch(0.88 0.21 70);
+	--notable-badge-green: oklch(0.88 0.21 150);
+	--notable-badge-blue: oklch(0.88 0.21 240);
+	--notable-badge-violet: oklch(0.88 0.21 300);
 }
 /* End theme: light */
 
@@ -238,7 +244,7 @@ nav.sub {
 		--crate-search-hover-border: #2196f3;
 		--src-sidebar-background-selected: #333;
 		--src-sidebar-background-hover: #444;
-		--table-alt-row-background-color: #2a2a2a;
+		--table-alt-row-background-color: #1d1d1d;
 		--codeblock-link-background: #333;
 		--scrape-example-toggle-line-background: #999;
 		--scrape-example-toggle-line-hover-background: #c5c5c5;
@@ -252,6 +258,12 @@ nav.sub {
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 		--sidebar-resizer-hover: hsl(207, 30%, 54%);
 		--sidebar-resizer-active: hsl(207, 90%, 54%);
+		--notable-badge-pink: oklch(0.55 0.21 0);
+		--notable-badge-red: oklch(0.55 0.21 40);
+		--notable-badge-orange: oklch(0.55 0.21 70);
+		--notable-badge-green: oklch(0.55 0.21 150);
+		--notable-badge-blue: oklch(0.55 0.21 240);
+		--notable-badge-violet: oklch(0.55 0.21 300);
 	}
 /* End theme: dark */
 }

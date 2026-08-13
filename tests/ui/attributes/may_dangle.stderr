@@ -1,42 +1,42 @@
-error: `#[may_dangle]` attribute cannot be used on const parameters
-  --> $DIR/may_dangle.rs:14:20
+error: the `may_dangle` attribute cannot be used on const parameters
+  --> $DIR/may_dangle.rs:14:22
    |
 LL | unsafe impl<'a, T, #[may_dangle] const N: usize> Drop for Implee1<'a, T, N> {
-   |                    ^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^
    |
-   = help: `#[may_dangle]` can be applied to lifetime parameters and type parameters
+   = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
-error: `#[may_dangle]` attribute cannot be used on structs
-  --> $DIR/may_dangle.rs:42:1
+error: the `may_dangle` attribute cannot be used on structs
+  --> $DIR/may_dangle.rs:42:3
    |
 LL | #[may_dangle]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[may_dangle]` can be applied to lifetime parameters and type parameters
+   = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
-error: `#[may_dangle]` attribute cannot be used on trait impl blocks
-  --> $DIR/may_dangle.rs:45:1
+error: the `may_dangle` attribute cannot be used on trait impl blocks
+  --> $DIR/may_dangle.rs:45:3
    |
 LL | #[may_dangle]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[may_dangle]` can be applied to lifetime parameters and type parameters
+   = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
-error: `#[may_dangle]` attribute cannot be used on functions
-  --> $DIR/may_dangle.rs:49:1
+error: the `may_dangle` attribute cannot be used on functions
+  --> $DIR/may_dangle.rs:49:3
    |
 LL | #[may_dangle]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[may_dangle]` can be applied to lifetime parameters and type parameters
+   = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
-error: `#[may_dangle]` attribute cannot be used on statements
-  --> $DIR/may_dangle.rs:51:5
+error: the `may_dangle` attribute cannot be used on statements
+  --> $DIR/may_dangle.rs:51:7
    |
 LL |     #[may_dangle]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
    |
-   = help: `#[may_dangle]` can be applied to lifetime parameters and type parameters
+   = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
 error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
   --> $DIR/may_dangle.rs:8:13

@@ -1,11 +1,20 @@
 error[E0499]: cannot borrow `*elements` as mutable more than once at a time
-  --> $DIR/iterating-updating-cursor-issue-108704.rs:41:26
+  --> $DIR/iterating-updating-cursor-issue-108704.rs:42:26
    |
-LL |         for (idx, el) in elements.iter_mut().enumerate() {
-   |                          ^^^^^^^^
-   |                          |
-   |                          `*elements` was mutably borrowed here in the previous iteration of the loop
-   |                          first borrow used here, in later iteration of loop
+LL |           for (idx, el) in elements.iter_mut().enumerate() {
+   |           -                ^^^^^^^^
+   |           |                |
+   |           |                `*elements` was mutably borrowed here in the previous iteration of the loop
+   |  _________|                first borrow used here, in later iteration of loop
+   | |
+LL | |             if el.name == *p {
+LL | |                 elements = &mut el.children;
+LL | |                 break;
+LL | |             }
+LL | |         }
+   | |_________- this for loop borrows `*elements` mutably, preventing mutation within its body
+   |
+   = help: consider using an index-based loop instead, or collecting modifications into a separate collection
 
 error: aborting due to 1 previous error
 

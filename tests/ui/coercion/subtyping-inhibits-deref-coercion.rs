@@ -1,7 +1,7 @@
 // For some reason, subtyping due to higher ranked function pointers,
 // even in an invariant position, causes deref coercion to not happen.
-// This might be a compiler bug. However, as of this writing,
-// the `pin!()` macro's soundness relies on code like this not compiling.
+// This might be a compiler bug. Notably, the `pin!()` macro's soundness
+// previously relied on code like this not compiling.
 // See https://github.com/rust-lang/rust/issues/153438#issuecomment-4517609119
 
 use std::marker::PhantomData;

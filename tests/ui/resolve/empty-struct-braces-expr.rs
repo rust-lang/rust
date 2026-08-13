@@ -12,16 +12,16 @@ enum E {
 }
 
 fn main() {
-    let e1 = Empty1; //~ ERROR expected value, found struct `Empty1`
+    let e1 = Empty1; //~ ERROR cannot find value `Empty1` in this scope
     let e1 = Empty1();
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `Empty1`
+    //~^ ERROR cannot find function, tuple struct or tuple variant `Empty1` in this scope
     let e3 = E::Empty3; //~ ERROR expected value, found struct variant `E::Empty3`
     let e3 = E::Empty3();
     //~^ ERROR expected value, found struct variant `E::Empty3`
 
-    let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
+    let xe1 = XEmpty1; //~ ERROR cannot find value `XEmpty1` in this scope
     let xe1 = XEmpty1();
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `XEmpty1`
+    //~^ ERROR cannot find function, tuple struct or tuple variant `XEmpty1` in this scope
     let xe3 = XE::Empty3; //~ ERROR no variant, associated function, or constant named `Empty3` found for enum
     let xe3 = XE::Empty3(); //~ ERROR no variant, associated function, or constant named `Empty3` found for enum
 

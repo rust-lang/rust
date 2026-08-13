@@ -16,11 +16,11 @@
 //! where noted otherwise, the type in column one is defined as a
 //! newtype around the type from column two or three.
 //!
-//! | Type                    | Serial version      | Parallel version                |
-//! | ----------------------- | ------------------- | ------------------------------- |
-//! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
-//! |                         |                     | `parking_lot::Mutex<T>`         |
-//! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
+//! | Type                    | Serial version           | Parallel version                |
+//! | ----------------------- | ------------------------ | ------------------------------- |
+//! | `Lock<T>`               | `RefCell<T>`             | `RefCell<T>` or                 |
+//! |                         |                          | `parking_lot::Mutex<T>`         |
+//! | `RwLock<T>`             | `parking_lot::RwLock<T>` | `parking_lot::RwLock<T>`        |
 
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
@@ -38,8 +38,8 @@ pub use self::mode::{
     FromDyn, check_dyn_thread_safe, is_dyn_thread_safe, set_dyn_thread_safe_mode,
 };
 pub use self::parallel::{
-    broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
-    try_par_for_each_in,
+    broadcast, par_fns, par_for_each_in, par_for_each_slice, par_join, par_map, parallel_guard,
+    spawn, try_par_for_each_in,
 };
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};

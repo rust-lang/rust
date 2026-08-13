@@ -2,7 +2,7 @@
 // issue: rust-lang/rust#125789
 
 //@ revisions: eager lazy
-#![cfg_attr(lazy, feature(lazy_type_alias), allow(incomplete_features))]
+#![cfg_attr(lazy, feature(checked_type_aliases), allow(incomplete_features))]
 
 trait Trait { type Assoc; }
 

@@ -1,4 +1,4 @@
-//@ compile-flags: -Znext-solver -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders
 //@ check-pass
 
 #![feature(generic_const_items)]

@@ -1,0 +1,13 @@
+break tests/ui/locals_mplace_metadata.rs:8
+break tests/ui/locals_mplace_metadata.rs:12
+break tests/ui/locals_mplace_metadata.rs:16
+continue
+locals
+print 1
+continue
+locals
+print 1
+continue
+locals
+print 1
+quit

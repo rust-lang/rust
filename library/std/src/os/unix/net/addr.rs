@@ -76,7 +76,8 @@ enum AddressKind<'a> {
 ///
 /// # Examples
 ///
-/// ```
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::net::UnixListener;
 ///
 /// let socket = match UnixListener::bind("/tmp/sock") {
@@ -145,7 +146,8 @@ impl SocketAddr {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::SocketAddr;
     /// use std::path::Path;
     ///
@@ -158,7 +160,8 @@ impl SocketAddr {
     ///
     /// Creating a `SocketAddr` with a NULL byte results in an error.
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::SocketAddr;
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
@@ -177,7 +180,8 @@ impl SocketAddr {
     ///
     /// A named address:
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -190,7 +194,8 @@ impl SocketAddr {
     ///
     /// An unnamed address:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -212,7 +217,8 @@ impl SocketAddr {
     ///
     /// With a pathname:
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixListener;
     /// use std::path::Path;
     ///
@@ -226,7 +232,8 @@ impl SocketAddr {
     ///
     /// Without a pathname:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {

@@ -1,6 +1,6 @@
 use cargo_metadata::{DependencyKind, Metadata, Node, Package, PackageId};
 use clippy_utils::diagnostics::span_lint;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint::LateContext;

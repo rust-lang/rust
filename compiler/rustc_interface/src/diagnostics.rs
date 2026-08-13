@@ -54,6 +54,10 @@ pub(crate) struct MixedBinCrate;
 pub(crate) struct MixedProcMacroCrate;
 
 #[derive(Diagnostic)]
+#[diag("cannot compile `proc-macro` crate to wasm targets without -Zwasm-proc-macros")]
+pub(crate) struct UnstableWasmProcMacro;
+
+#[derive(Diagnostic)]
 #[diag("error writing dependencies to `{$path}`: {$error}")]
 pub(crate) struct ErrorWritingDependencies<'a> {
     pub path: &'a Path,
@@ -84,7 +88,7 @@ pub(crate) struct TempsDirError;
 pub(crate) struct OutDirError;
 
 #[derive(Diagnostic)]
-#[diag("failed to write file {$path}: {$error}\"")]
+#[diag("failed to write file {$path}: {$error}")]
 pub(crate) struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,

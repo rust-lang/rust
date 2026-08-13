@@ -275,6 +275,21 @@ impl<T: Idx> DenseBitSet<T> {
         BitIter::new(&self.words)
     }
 
+    /// Finds the first set bit at or after `elem`, if there is one.
+    pub fn first_set_at_or_after(&self, elem: T) -> Option<T> {
+        assert!(elem.index() < self.domain_size);
+        let (mut word_index, mask) = word_index_and_mask(elem);
+        // Mask out all bits below `elem`.
+        let mut word = self.words[word_index] & !(mask - 1);
+        loop {
+            if word != 0 {
+                return Some(T::new(WORD_BITS * word_index + word.trailing_zeros() as usize));
+            }
+            word_index += 1;
+            word = *self.words.get(word_index)?;
+        }
+    }
+
     pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
         let (start, end) = inclusive_start_end(range, self.domain_size)?;
         let (start_word_index, _) = word_index_and_mask(start);
@@ -1287,9 +1302,20 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 ///
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
     bit_set: DenseBitSet<T>,
+}
+
+// Manually implemented to forward `clone_from`, and to avoid the `T: Clone` bound.
+impl<T: Idx> Clone for GrowableBitSet<T> {
+    fn clone(&self) -> Self {
+        Self { bit_set: self.bit_set.clone() }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.bit_set.clone_from(&source.bit_set);
+    }
 }
 
 impl<T: Idx> Default for GrowableBitSet<T> {

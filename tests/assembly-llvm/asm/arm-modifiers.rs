@@ -6,18 +6,14 @@
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: arm
 
-#![feature(no_core, repr_simd)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
-
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
-
-impl Copy for f32x4 {}
 
 macro_rules! check {
     ($func:ident $modifier:literal $reg:ident $ty:ident $mov:literal) => {

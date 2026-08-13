@@ -15,10 +15,11 @@ proc_macro_derive::foo_bar!();
 
 #[rustfmt::skip]
 macro_rules! test {
-    () => {
+    () => {{
+        //~v nonstandard_macro_braces
         vec!{0, 0, 0}
         //~^ nonstandard_macro_braces
-    };
+    }};
 }
 
 #[rustfmt::skip]

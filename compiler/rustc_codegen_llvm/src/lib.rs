@@ -38,8 +38,8 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::{IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 
@@ -59,7 +59,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
-mod errors;
+mod diagnostics;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
@@ -233,10 +233,11 @@ impl CodegenBackend for LlvmCodegenBackend {
                 match llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
                     Ok(_) => {}
                     Err(llvm::EnzymeLibraryError::NotFound { err }) => {
-                        sess.dcx().emit_fatal(crate::errors::AutoDiffComponentMissing { err });
+                        sess.dcx().emit_fatal(crate::diagnostics::AutoDiffComponentMissing { err });
                     }
                     Err(llvm::EnzymeLibraryError::LoadFailed { err }) => {
-                        sess.dcx().emit_fatal(crate::errors::AutoDiffComponentUnavailable { err });
+                        sess.dcx()
+                            .emit_fatal(crate::diagnostics::AutoDiffComponentUnavailable { err });
                     }
                 }
                 enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
@@ -324,9 +325,33 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_config(sess)
     }
 
+    /// Intrinsics whose fallback body will not be used by the LLVM backend.
     fn replaced_intrinsics(&self) -> Vec<Symbol> {
-        let mut will_not_use_fallback =
-            vec![sym::unchecked_funnel_shl, sym::unchecked_funnel_shr, sym::carrying_mul_add];
+        #[rustfmt::skip]
+        let mut will_not_use_fallback = vec![
+            // These are mapped to LLVM intrinsics instead.
+            sym::unchecked_funnel_shl,
+            sym::unchecked_funnel_shr,
+            sym::carrying_mul_add,
+
+            // Fallback via libm, but the LLVM intrinsic is used instead.
+            sym::sinf16, sym::sinf32, sym::sinf64,
+            sym::cosf16, sym::cosf32, sym::cosf64,
+            sym::powf16, sym::powf32, sym::powf64,
+            sym::expf16, sym::expf32, sym::expf64,
+            sym::exp2f16, sym::exp2f32, sym::exp2f64,
+            sym::logf16, sym::logf32, sym::logf64,
+            sym::log10f16, sym::log10f32, sym::log10f64,
+            sym::log2f16, sym::log2f32, sym::log2f64,
+
+            // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
+            sym::floorf16, sym::ceilf16, sym::truncf16,
+            sym::round_ties_even_f16, sym::roundf16,
+            sym::sqrtf16, sym::powif16,
+            sym::fmaf16,
+
+            sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+        ];
 
         if llvm_util::get_version() >= (22, 0, 0) {
             will_not_use_fallback.push(sym::carryless_mul);
@@ -348,6 +373,26 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
+        use rustc_session::config::Offload;
+
+        if tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_)))
+            || tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host(_)))
+        {
+            match llvm::RustOffloadWrapper::get_or_init(&tcx.sess.opts.sysroot) {
+                Ok(_) => {}
+                Err(llvm::RustOffloadLibraryError::NotFound { err }) => {
+                    tcx.sess
+                        .dcx()
+                        .emit_fatal(crate::diagnostics::RustOffloadComponentMissing { err });
+                }
+                Err(llvm::RustOffloadLibraryError::LoadFailed { err }) => {
+                    tcx.sess
+                        .dcx()
+                        .emit_fatal(crate::diagnostics::RustOffloadComponentUnavailable { err });
+                }
+            }
+        }
+
         Box::new(rustc_codegen_ssa::base::codegen_crate(LlvmCodegenBackend(()), tcx))
     }
 
@@ -355,13 +400,14 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {
         let (compiled_modules, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess, crate_info);
+            .join(sess, incr_comp_session, crate_info);
 
         if sess.opts.unstable_opts.llvm_time_trace {
             sess.time("llvm_dump_timing_file", || {

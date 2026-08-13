@@ -70,27 +70,92 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// Find the wrapped inner type of a transparent wrapper.
-    /// Must not be called on 1-ZST (as they don't have a uniquely defined "wrapped field").
+    /// Returns whether the given type has trivial ABI.
+    fn has_trivial_abi(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, bool> {
+        if !layout.is_1zst() {
+            return interp_ok(false);
+        }
+        match *layout.ty.kind() {
+            // Trivially trivial-ABI types (because Rust makes no promises about their ABI).
+            ty::Tuple(..)
+            | ty::Never
+            | ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..) => interp_ok(true),
+
+            ty::Array(elem, _len) => {
+                // 0-length arrays are in general *not* okay, but arrays of trivial-ABI types are.
+                self.has_trivial_abi(self.layout_of(elem)?)
+            }
+            ty::Adt(adt_def, _args) => {
+                if adt_def.repr().transparent() {
+                    // All fields must have trivial ABI.
+                    (0..layout.fields.count()).try_fold(true, |acc, idx| {
+                        interp_ok(acc && self.has_trivial_abi(layout.field(self, idx))?)
+                    })
+                } else if adt_def.repr().c() {
+                    interp_ok(false)
+                } else {
+                    // Must be repr(Rust).
+                    interp_ok(true)
+                }
+            }
+            // Types that are considered transparent in `unfold_transparent` should also act
+            // like transparent types here.
+            ty::Pat(base, _) => self.has_trivial_abi(self.layout_of(base)?),
+            ty::UnsafeBinder(bound_ty) => {
+                let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                self.has_trivial_abi(self.layout_of(ty)?)
+            }
+
+            ty::Alias(..) => panic!("non-normalized type"),
+            _ => interp_ok(false),
+        }
+    }
+
+    /// Find the wrapped inner type of a transparent wrapper by going for the unique
+    /// non-trivial-ABI field.
     ///
     /// We work with `TyAndLayout` here since that makes it much easier to iterate over all fields.
     fn unfold_transparent(
         &self,
         layout: TyAndLayout<'tcx>,
         may_unfold: impl Fn(AdtDef<'tcx>) -> bool,
-    ) -> TyAndLayout<'tcx> {
-        match layout.ty.kind() {
-            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
+    ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+        match *layout.ty.kind() {
+            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(adt_def) => {
                 assert_matches!(layout.variants, rustc_abi::Variants::Single { .. });
-                // Find the non-1-ZST field, and recurse.
-                let (_, field) = layout.non_1zst_field(self).unwrap();
+                // Look for non-trivial-ABI field(s).
+                let mut found = None;
+                for idx in 0..layout.fields.count() {
+                    let field = layout.field(self, idx);
+                    if self.has_trivial_abi(field)? {
+                        continue;
+                    }
+                    // Found a non-trivial ABI field!
+                    if found.is_some() {
+                        // There is more than one such field.
+                        // FIXME: we should just panic here. But currently such repr(transparent)
+                        // types are still accepted. We just don't treat them as transparent.
+                        return interp_ok(layout);
+                    }
+                    found = Some(field);
+                }
+                let Some(field) = found else {
+                    // All fields have trivial ABI. That means this type is effectively `()`.
+                    return interp_ok(self.layout_of(self.tcx.types.unit)?);
+                };
+                // Recurse.
                 self.unfold_transparent(field, may_unfold)
             }
-            ty::Pat(base, _) => self.layout_of(*base).expect(
-                "if the layout of a pattern type could be computed, so can the layout of its base",
-            ),
+            ty::Pat(base, _) => self.unfold_transparent(self.layout_of(base)?, may_unfold),
+            ty::UnsafeBinder(bound_ty) => {
+                let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                self.unfold_transparent(self.layout_of(ty)?, may_unfold)
+            }
             // Not a transparent type, no further unfolding.
-            _ => layout,
+            _ => interp_ok(layout),
         }
     }
 
@@ -145,7 +210,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
             // Stop at NPO types so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)
-        });
+        })?;
         interp_ok(match inner.ty.kind() {
             ty::Ref(..) | ty::FnPtr(..) => {
                 // Option<&T> behaves like &T, and same for fn()
@@ -154,7 +219,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::Adt(def, _) if is_npo(*def) => {
                 // Once we found a `nonnull_optimization_guaranteed` type, further strip off
                 // newtype structs from it to find the underlying ABI type.
-                self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct())
+                self.unfold_transparent(inner, /* may_unfold */ |def| def.is_struct())?
             }
             _ => {
                 // Everything else we do not unfold.
@@ -175,16 +240,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if caller.ty == callee.ty {
             return interp_ok(true);
         }
-        // 1-ZST are compatible with all 1-ZST (and with nothing else).
-        if caller.is_1zst() || callee.is_1zst() {
-            return interp_ok(caller.is_1zst() && callee.is_1zst());
+        // Handle trivial-ABI types.
+        if self.has_trivial_abi(caller)? && self.has_trivial_abi(callee)? {
+            return interp_ok(true);
         }
         // Unfold newtypes and NPO optimizations.
         let unfold = |layout: TyAndLayout<'tcx>| {
-            self.unfold_npo(self.unfold_transparent(layout, /* may_unfold */ |_def| true))
+            self.unfold_transparent(layout, /* may_unfold */ |_def| true)
+                .and_then(|f| self.unfold_npo(f))
         };
         let caller = unfold(caller)?;
         let callee = unfold(callee)?;
+        // Not-quite-so-fast path: if the types are equal now, they are compatible.
+        if caller.ty == callee.ty {
+            return interp_ok(true);
+        }
         // Now see if these inner types are compatible.
 
         // Compatible pointer types. For thin pointers, we have to accept even non-`repr(transparent)`
@@ -240,8 +310,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(caller == callee);
         }
 
-        // Fall back to exact equality.
-        interp_ok(caller == callee)
+        // The rest is incompatible.
+        interp_ok(false)
     }
 
     /// Returns a `bool` saying whether the two arguments are ABI-compatible.
@@ -315,7 +385,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
-        let callee_arg = self.eval_place(*callee_arg)?;
+        let callee_arg =
+            self.eval_place(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
@@ -498,7 +569,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // This argument is a VaList holding the remaining caller-side arguments.
                     ecx.storage_live(local)?;
 
-                    let place = ecx.eval_place(dest)?;
+                    let place =
+                        ecx.eval_place(dest, /* skip_validity_for_simple_deref */ false)?;
                     let mplace = ecx.force_allocation(&place)?;
 
                     // Consume the remaining arguments by putting them into the variable argument

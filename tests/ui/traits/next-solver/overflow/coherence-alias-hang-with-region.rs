@@ -4,7 +4,7 @@
 
 // Regression test for nalgebra hang <https://github.com/rust-lang/rust/issues/130056>.
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
 type Id<T: ?Sized> = T;

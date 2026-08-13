@@ -2,13 +2,13 @@ use rustc_ast::util::{classify, parser};
 use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
-use rustc_hir::{self as hir};
+use rustc_hir as hir;
 use rustc_middle::ty::{self, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition::Edition2015;
 use rustc_span::{BytePos, Span, kw, sym};
 
-use crate::lints::{
+use crate::diagnostics::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
     UnusedAllocationMutDiag, UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag,
 };
@@ -510,8 +510,8 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        let expr = if let Const(ast::ConstItem { rhs_kind, .. }) = &item.kind {
-            if let Some(e) = rhs_kind.expr() { e } else { return }
+        let expr = if let Const(ast::ConstItem { body: Some(expr), .. }) = &item.kind {
+            expr
         } else if let Static(ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
             expr
         } else {

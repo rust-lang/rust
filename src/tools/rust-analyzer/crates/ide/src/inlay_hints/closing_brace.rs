@@ -75,18 +75,17 @@ pub(super) fn hints(
         node = node.parent()?;
 
         let parent = label.syntax().parent()?;
-        let block;
-        match_ast! {
+        let block = match_ast! {
             match parent {
                 ast::BlockExpr(block_expr) => {
-                    block = block_expr.stmt_list()?;
+                    block_expr.stmt_list()?
                 },
                 ast::AnyHasLoopBody(loop_expr) => {
-                    block = loop_expr.loop_body()?.stmt_list()?;
+                    loop_expr.loop_body()?.stmt_list()?
                 },
                 _ => return None,
             }
-        }
+        };
         closing_token = block.r_curly_token()?;
 
         let lifetime = label.lifetime()?.to_string();

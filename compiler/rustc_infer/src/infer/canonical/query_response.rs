@@ -28,7 +28,9 @@ use crate::infer::{
     TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
-use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
+use crate::traits::{
+    ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine, TraitErrors,
+};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -129,10 +131,17 @@ impl<'tcx> InferCtxt<'tcx> {
         // Select everything, returning errors.
         let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self);
 
-        // True error!
-        if errors.iter().any(|e| e.is_true_error()) {
-            return Err(NoSolution);
-        }
+        let certainty = match errors {
+            TraitErrors::HasErrors(errors) => {
+                if errors.iter().any(|e| e.is_true_error()) {
+                    // True error!
+                    return Err(NoSolution);
+                } else {
+                    Certainty::Ambiguous
+                }
+            }
+            TraitErrors::NoErrors => Certainty::Proven,
+        };
 
         let region_obligations = self.take_registered_region_obligations();
         let region_assumptions = self.take_registered_region_assumptions();
@@ -145,8 +154,6 @@ impl<'tcx> InferCtxt<'tcx> {
             )
         });
         debug!(?region_constraints);
-
-        let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
         let opaque_types = self
             .inner
@@ -193,11 +200,11 @@ impl<'tcx> InferCtxt<'tcx> {
         {
             let constraint = instantiate_value(self.tcx, &result_args, *constraint);
             match constraint {
-                ty::RegionConstraint::Outlives(predicate) => {
-                    self.register_outlives_constraint(predicate, *vis, cause);
+                ty::RegionConstraint::Outlives(clause) => {
+                    self.register_outlives_constraint(clause, *vis, cause);
                 }
-                ty::RegionConstraint::Eq(predicate) => {
-                    self.register_region_eq_constraint(predicate, *vis, cause);
+                ty::RegionConstraint::Eq(clause) => {
+                    self.register_region_eq_constraint(clause, *vis, cause);
                 }
             }
         }
@@ -611,7 +618,7 @@ impl<'tcx> InferCtxt<'tcx> {
 pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
-    assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -627,7 +634,7 @@ pub fn make_query_region_constraints<'tcx>(
             | ConstraintKind::VarSubReg
             | ConstraintKind::RegSubReg => {
                 // Swap regions because we are going from sub (<=) to outlives (>=).
-                let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub).into();
+                let constraint = ty::OutlivesClause(c.sup.into(), c.sub).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),
@@ -647,7 +654,7 @@ pub fn make_query_region_constraints<'tcx>(
         .chain(outlives_obligations.into_iter().map(
             |TypeOutlivesConstraint { sub_region, sup_type, origin }| {
                 QueryRegionConstraint {
-                    constraint: ty::OutlivesPredicate(sup_type.into(), sub_region).into(),
+                    constraint: ty::OutlivesClause(sup_type.into(), sub_region).into(),
                     category: origin.to_constraint_category(),
                     // We don't do leak checks for type outlives
                     visible_for_leak_check: ty::VisibleForLeakCheck::Unreachable,

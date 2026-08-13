@@ -1,4 +1,5 @@
 // rustfmt-float_literal_trailing_zero: Never
+// spaces_around_ranges: false is implied since it's the default
 
 fn float_literals() {
     let a = 0.;
@@ -46,4 +47,7 @@ fn line_wrapping() {
         "This is floaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat {}",
         10.0e3
     );
+}
+
+fn pattern_in_function_parameters_exactly_max_width_before_zero___(2.0..10.: std::ops::Range<f32>) {
 }

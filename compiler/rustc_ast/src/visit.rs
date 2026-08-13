@@ -365,7 +365,6 @@ macro_rules! common_visitor_and_walkers {
             crate::token::LitKind,
             crate::tokenstream::LazyAttrTokenStream,
             crate::tokenstream::TokenStream,
-            EarlyParsedAttribute,
             Movability,
             Mutability,
             Pinnedness,
@@ -374,6 +373,7 @@ macro_rules! common_visitor_and_walkers {
             rustc_span::ErrorGuaranteed,
             std::borrow::Cow<'_, str>,
             Symbol,
+            SyntheticAttr,
             u8,
             usize,
         );
@@ -427,7 +427,6 @@ macro_rules! common_visitor_and_walkers {
             Const,
             ConstBlockItem,
             ConstItem,
-            ConstItemRhsKind,
             Defaultness,
             Delegation,
             DelegationMac,
@@ -461,7 +460,6 @@ macro_rules! common_visitor_and_walkers {
             ModSpans,
             MutTy,
             NormalAttr,
-            AttrItemKind,
             Parens,
             ParenthesizedArgs,
             PatFieldsRest,
@@ -571,6 +569,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_expr(Expr);
                 fn visit_expr_field(ExprField);
                 fn visit_field_def(FieldDef);
+                fn visit_field_def_extras(FieldDefExtras);
                 fn visit_fn_decl(FnDecl);
                 fn visit_fn_header(FnHeader);
                 fn visit_fn_ret_ty(FnRetTy);
@@ -934,12 +933,12 @@ macro_rules! common_visitor_and_walkers {
                     _ctxt,
                     // Visibility is visited as a part of the item.
                     _vis,
-                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impls },
+                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impl },
                 ) => {
                     let FnSig { header, decl, span } = sig;
                     visit_visitable!($($mut)? vis,
                         defaultness, ident, header, generics, decl,
-                        contract, body, span, define_opaque, eii_impls
+                        contract, body, span, define_opaque, eii_impl
                     );
                 }
                 FnKind::Closure(binder, coroutine_kind, decl, body) =>
@@ -1098,6 +1097,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_expr(Expr);
             pub fn walk_expr_field(ExprField);
             pub fn walk_field_def(FieldDef);
+            pub fn walk_field_def_extras(FieldDefExtras);
             pub fn walk_fn_decl(FnDecl);
             pub fn walk_fn_header(FnHeader);
             pub fn walk_fn_ret_ty(FnRetTy);

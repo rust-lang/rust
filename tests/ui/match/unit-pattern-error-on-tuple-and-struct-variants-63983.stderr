@@ -13,7 +13,7 @@ error[E0533]: expected unit struct, unit variant or constant, found struct varia
 LL |         MyEnum::Struct => "",
    |         ^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
    |
-help: the struct variant's field is being ignored
+help: add the names to match a struct variant's fields
    |
 LL |         MyEnum::Struct { s: _ } => "",
    |                        ++++++++

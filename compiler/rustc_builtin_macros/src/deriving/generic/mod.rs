@@ -186,10 +186,9 @@ use rustc_ast::{
     self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
     GenericParamKind, Generics, Mutability, PatKind, Safety, VariantData,
 };
+use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, ReprPacked};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
@@ -493,7 +492,7 @@ impl<'a> TraitDef<'a> {
         match item {
             Annotatable::Item(item) => {
                 let is_packed = matches!(
-                    AttributeParser::parse_limited(cx.sess, &item.attrs, &[sym::repr]),
+                    AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
                     Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 
@@ -807,29 +806,25 @@ impl<'a> TraitDef<'a> {
                     rustc_ast::AttrItem {
                         unsafety: Safety::Default,
                         path: rustc_const_unstable,
-                        args: rustc_ast::ast::AttrItemKind::Unparsed(AttrArgs::Delimited(
-                            DelimArgs {
-                                dspan: DelimSpan::from_single(self.span),
-                                delim: rustc_ast::token::Delimiter::Parenthesis,
-                                tokens: [
-                                    TokenKind::Ident(sym::feature, IdentIsRaw::No),
-                                    TokenKind::Eq,
-                                    TokenKind::lit(LitKind::Str, sym::derive_const, None),
-                                    TokenKind::Comma,
-                                    TokenKind::Ident(sym::issue, IdentIsRaw::No),
-                                    TokenKind::Eq,
-                                    TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
-                                ]
-                                .into_iter()
-                                .map(|kind| {
-                                    TokenTree::Token(
-                                        Token { kind, span: self.span },
-                                        Spacing::Alone,
-                                    )
-                                })
-                                .collect(),
-                            },
-                        )),
+                        args: AttrArgs::Delimited(DelimArgs {
+                            dspan: DelimSpan::from_single(self.span),
+                            delim: rustc_ast::token::Delimiter::Parenthesis,
+                            tokens: [
+                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                TokenKind::Eq,
+                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
+                                TokenKind::Comma,
+                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                TokenKind::Eq,
+                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
+                            ]
+                            .into_iter()
+                            .map(|kind| {
+                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
+                            })
+                            .collect(),
+                        }),
+                        span: self.span,
                     },
                     self.span,
                 ),
@@ -1087,7 +1082,7 @@ impl<'a> MethodDef<'a> {
                 contract: None,
                 body: Some(body_block),
                 define_opaque: None,
-                eii_impls: ThinVec::new(),
+                eii_impl: None,
             })),
             tokens: None,
         })
@@ -1480,7 +1475,7 @@ impl<'a> TraitDef<'a> {
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
-                Some(ident) => named_idents.push((ident, sp, field.default.as_ref())),
+                Some(ident) => named_idents.push((ident, sp, field.default_value())),
                 _ => just_spans.push(sp),
             }
         }

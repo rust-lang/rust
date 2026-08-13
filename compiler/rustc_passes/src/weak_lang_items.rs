@@ -1,8 +1,8 @@
 //! Validity checking for weak lang items
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::lang_items::{self, LangItem};
-use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
+use rustc_hir::attrs::lang_items::{self, LangItem};
+use rustc_hir::attrs::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;

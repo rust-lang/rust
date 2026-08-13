@@ -1,0 +1,1409 @@
+use std::fmt::{self, Debug, Display, Formatter};
+use std::ops::Range;
+
+use serde::Serialize;
+
+use crate::abi::{FnAbi, Layout};
+use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
+use crate::mir::mono::{Instance, StaticDef};
+use crate::mir::{Mutability, Safety};
+use crate::target::MachineInfo;
+use crate::ty::def::*;
+use crate::{Error, Filename, Opaque, Symbol, ThreadLocalIndex, with};
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct Ty(usize, ThreadLocalIndex);
+
+impl Debug for Ty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ty").field("id", &self.0).field("kind", &self.kind()).finish()
+    }
+}
+
+/// Constructors for `Ty`.
+impl Ty {
+    /// Create a new type from a given kind.
+    pub fn from_rigid_kind(kind: RigidTy) -> Ty {
+        with(|cx| cx.new_rigid_ty(kind))
+    }
+
+    /// Create a new array type.
+    pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
+        Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, TyConst::try_from_target_usize(size)?)))
+    }
+
+    /// Create a new array type from Const length.
+    pub fn new_array_with_const_len(elem_ty: Ty, len: TyConst) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Array(elem_ty, len))
+    }
+
+    /// Create a new pointer type.
+    pub fn new_ptr(pointee_ty: Ty, mutability: Mutability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::RawPtr(pointee_ty, mutability))
+    }
+
+    /// Create a new reference type.
+    pub fn new_ref(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Ref(reg, pointee_ty, mutability))
+    }
+
+    /// Create a new pointer type.
+    pub fn new_tuple(tys: &[Ty]) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Tuple(Vec::from(tys)))
+    }
+
+    /// Create a new closure type.
+    pub fn new_closure(def: ClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Closure(def, args))
+    }
+
+    /// Create a new coroutine type.
+    pub fn new_coroutine(def: CoroutineDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Coroutine(def, args))
+    }
+
+    /// Create a new closure type.
+    pub fn new_coroutine_closure(def: CoroutineClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::CoroutineClosure(def, args))
+    }
+
+    /// Create a new box type that represents `Box<T>`, for the given inner type `T`.
+    pub fn new_box(inner_ty: Ty) -> Ty {
+        with(|cx| cx.new_box_ty(inner_ty))
+    }
+
+    /// Create a type representing `usize`.
+    pub fn usize_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(UintTy::Usize))
+    }
+
+    /// Create a type representing `bool`.
+    pub fn bool_ty() -> Ty {
+        Ty::from_rigid_kind(RigidTy::Bool)
+    }
+
+    /// Create a type representing a signed integer.
+    pub fn signed_ty(inner: IntTy) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Int(inner))
+    }
+
+    /// Create a type representing an unsigned integer.
+    pub fn unsigned_ty(inner: UintTy) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(inner))
+    }
+
+    /// Get a type layout.
+    pub fn layout(self) -> Result<Layout, Error> {
+        with(|cx| cx.ty_layout(self))
+    }
+}
+
+impl Ty {
+    pub fn kind(&self) -> TyKind {
+        with(|context| context.ty_kind(*self))
+    }
+}
+
+/// Represents a pattern in the type system
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum Pattern {
+    Range { start: TyConst, end: TyConst, include_end: bool },
+    NotNull,
+    Or(Vec<Pattern>),
+}
+
+/// Represents a constant in the type system
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct TyConst {
+    pub(crate) kind: TyConstKind,
+    pub id: TyConstId,
+}
+
+impl TyConst {
+    pub fn new(kind: TyConstKind, id: TyConstId) -> TyConst {
+        Self { kind, id }
+    }
+
+    /// Retrieve the constant kind.
+    pub fn kind(&self) -> &TyConstKind {
+        &self.kind
+    }
+
+    /// Creates an interned usize constant.
+    pub fn try_from_target_usize(val: u64) -> Result<Self, Error> {
+        with(|cx| cx.try_new_ty_const_uint(val.into(), UintTy::Usize))
+    }
+
+    /// Try to evaluate to a target `usize`.
+    pub fn eval_target_usize(&self) -> Result<u64, Error> {
+        with(|cx| cx.eval_target_usize_ty(self))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum TyConstKind {
+    Param(ParamConst),
+    Bound(DebruijnIndex, BoundVar),
+    Unevaluated(ConstDef, GenericArgs),
+
+    // FIXME: These should be a valtree
+    Value(Ty, Allocation),
+    ZSTValue(Ty),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct TyConstId(usize, ThreadLocalIndex);
+
+/// Represents a constant in MIR
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct MirConst {
+    /// The constant kind.
+    pub(crate) kind: ConstantKind,
+    /// The constant type.
+    pub(crate) ty: Ty,
+    /// Used for internal tracking of the internal constant.
+    pub id: MirConstId,
+}
+
+impl MirConst {
+    /// Build a constant. Note that this should only be used by the compiler.
+    pub fn new(kind: ConstantKind, ty: Ty, id: MirConstId) -> MirConst {
+        MirConst { kind, ty, id }
+    }
+
+    /// Retrieve the constant kind.
+    pub fn kind(&self) -> &ConstantKind {
+        &self.kind
+    }
+
+    /// Get the constant type.
+    pub fn ty(&self) -> Ty {
+        self.ty
+    }
+
+    /// Try to evaluate to a target `usize`.
+    pub fn eval_target_usize(&self) -> Result<u64, Error> {
+        with(|cx| cx.eval_target_usize(self))
+    }
+
+    /// Create a constant that represents a new zero-sized constant of type T.
+    /// Fails if the type is not a ZST or if it doesn't have a known size.
+    pub fn try_new_zero_sized(ty: Ty) -> Result<MirConst, Error> {
+        with(|cx| cx.try_new_const_zst(ty))
+    }
+
+    /// Build a new constant that represents the given string.
+    ///
+    /// Note that there is no guarantee today about duplication of the same constant.
+    /// I.e.: Calling this function multiple times with the same argument may or may not return
+    /// the same allocation.
+    pub fn from_str(value: &str) -> MirConst {
+        with(|cx| cx.new_const_str(value))
+    }
+
+    /// Build a new constant that represents the given boolean value.
+    pub fn from_bool(value: bool) -> MirConst {
+        with(|cx| cx.new_const_bool(value))
+    }
+
+    /// Build a new constant that represents the given unsigned integer.
+    pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
+        with(|cx| cx.try_new_const_uint(value, uint_ty))
+    }
+
+    /// Build a new constant that represents the given floating point number.
+    /// The value is the binary representation of the float constant.
+    /// Example: `try_from_float(2.5_f32.to_bits() as u128, FloatTy::F32)`.
+    pub fn try_from_float(value: u128, float_ty: FloatTy) -> Result<MirConst, Error> {
+        with(|cx| cx.try_new_const_float(value, float_ty))
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct MirConstId(usize, ThreadLocalIndex);
+
+type Ident = Opaque;
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct Region {
+    pub kind: RegionKind,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum RegionKind {
+    ReEarlyParam(EarlyParamRegion),
+    ReBound(DebruijnIndex, BoundRegion),
+    ReStatic,
+    RePlaceholder(Placeholder<BoundRegion>),
+    ReErased,
+}
+
+pub(crate) type DebruijnIndex = u32;
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct EarlyParamRegion {
+    pub index: u32,
+    pub name: Symbol,
+}
+
+pub(crate) type BoundVar = u32;
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct BoundRegion {
+    pub var: BoundVar,
+    pub kind: BoundRegionKind,
+}
+
+pub(crate) type UniverseIndex = u32;
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct Placeholder<T> {
+    pub universe: UniverseIndex,
+    pub bound: T,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Span(usize, ThreadLocalIndex);
+
+impl Debug for Span {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Span")
+            .field("id", &self.0)
+            .field("repr", &with(|cx| cx.span_to_string(*self)))
+            .finish()
+    }
+}
+
+impl Span {
+    /// Return filename for diagnostic purposes
+    pub fn get_filename(&self) -> Filename {
+        with(|c| c.get_filename(self))
+    }
+
+    /// Return lines that correspond to this `Span`
+    pub fn get_lines(&self) -> LineInfo {
+        with(|c| c.get_lines(self))
+    }
+
+    /// Return the span location to be printed in diagnostic messages.
+    ///
+    /// This may leak local file paths and should not be used to build artifacts that may be
+    /// distributed.
+    pub fn diagnostic(&self) -> String {
+        with(|c| c.span_to_string(*self))
+    }
+
+    /// Create a `&'static core::panic::Location<'static>` constant from this span.
+    pub(crate) fn as_caller_location(&self) -> MirConst {
+        with(|c| c.span_as_caller_location(*self))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+/// Information you get from `Span` in a struct form.
+/// Line and col start from 1.
+pub struct LineInfo {
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,
+}
+
+impl LineInfo {
+    pub fn from(lines: (usize, usize, usize, usize)) -> Self {
+        LineInfo { start_line: lines.0, start_col: lines.1, end_line: lines.2, end_col: lines.3 }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum TyKind {
+    RigidTy(RigidTy),
+    Alias(AliasKind, AliasTy),
+    Param(ParamTy),
+    Bound(usize, BoundTy),
+}
+
+impl TyKind {
+    pub fn rigid(&self) -> Option<&RigidTy> {
+        if let TyKind::RigidTy(inner) = self { Some(inner) } else { None }
+    }
+
+    #[inline]
+    pub fn is_unit(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Tuple(data)) if data.is_empty())
+    }
+
+    #[inline]
+    pub fn is_bool(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Bool))
+    }
+
+    #[inline]
+    pub fn is_char(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Char))
+    }
+
+    #[inline]
+    pub fn is_trait(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Dynamic(_, _)))
+    }
+
+    #[inline]
+    pub fn is_enum(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Enum)
+    }
+
+    #[inline]
+    pub fn is_struct(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Struct)
+    }
+
+    #[inline]
+    pub fn is_union(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Union)
+    }
+
+    #[inline]
+    pub fn is_adt(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(..)))
+    }
+
+    #[inline]
+    pub fn is_ref(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Ref(..)))
+    }
+
+    #[inline]
+    pub fn is_fn(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::FnDef(..)))
+    }
+
+    #[inline]
+    pub fn is_fn_ptr(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::FnPtr(..)))
+    }
+
+    #[inline]
+    pub fn is_primitive(&self) -> bool {
+        matches!(
+            self,
+            TyKind::RigidTy(
+                RigidTy::Bool
+                    | RigidTy::Char
+                    | RigidTy::Int(_)
+                    | RigidTy::Uint(_)
+                    | RigidTy::Float(_)
+            )
+        )
+    }
+
+    #[inline]
+    pub fn is_float(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Float(_)))
+    }
+
+    #[inline]
+    pub fn is_integral(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Int(_) | RigidTy::Uint(_)))
+    }
+
+    #[inline]
+    pub fn is_numeric(&self) -> bool {
+        self.is_integral() || self.is_float()
+    }
+
+    #[inline]
+    pub fn is_signed(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Int(_)))
+    }
+
+    #[inline]
+    pub fn is_str(&self) -> bool {
+        *self == TyKind::RigidTy(RigidTy::Str)
+    }
+
+    #[inline]
+    pub fn is_cstr(&self) -> bool {
+        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else {
+            return false;
+        };
+        with(|cx| cx.adt_is_cstr(*def))
+    }
+
+    #[inline]
+    pub fn is_slice(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Slice(_)))
+    }
+
+    #[inline]
+    pub fn is_array(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Array(..)))
+    }
+
+    #[inline]
+    pub fn is_mutable_ptr(&self) -> bool {
+        matches!(
+            self,
+            TyKind::RigidTy(RigidTy::RawPtr(_, Mutability::Mut))
+                | TyKind::RigidTy(RigidTy::Ref(_, _, Mutability::Mut))
+        )
+    }
+
+    #[inline]
+    pub fn is_raw_ptr(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::RawPtr(..)))
+    }
+
+    /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    #[inline]
+    pub fn is_any_ptr(&self) -> bool {
+        self.is_ref() || self.is_raw_ptr() || self.is_fn_ptr()
+    }
+
+    #[inline]
+    pub fn is_coroutine(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Coroutine(..)))
+    }
+
+    #[inline]
+    pub fn is_closure(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Closure(..)))
+    }
+
+    #[inline]
+    pub fn is_box(&self) -> bool {
+        match self {
+            TyKind::RigidTy(RigidTy::Adt(def, _)) => def.is_box(),
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_simd(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.is_simd())
+    }
+
+    pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
+        if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _)) = self {
+            if let Some(Binder { value: ExistentialPredicate::Trait(trait_ref), bound_vars }) =
+                predicates.first()
+            {
+                Some(Binder { value: trait_ref.clone(), bound_vars: bound_vars.clone() })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns the type of `ty[i]` for builtin types.
+    pub fn builtin_index(&self) -> Option<Ty> {
+        match self.rigid()? {
+            RigidTy::Array(ty, _) | RigidTy::Slice(ty) => Some(*ty),
+            _ => None,
+        }
+    }
+
+    /// Returns the type and mutability of `*ty` for builtin types.
+    ///
+    /// The parameter `explicit` indicates if this is an *explicit* dereference.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
+    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut> {
+        match self.rigid()? {
+            RigidTy::Adt(def, args) if def.is_box() => {
+                Some(TypeAndMut { ty: *args.0.first()?.ty()?, mutability: Mutability::Not })
+            }
+            RigidTy::Ref(_, ty, mutability) => {
+                Some(TypeAndMut { ty: *ty, mutability: *mutability })
+            }
+            RigidTy::RawPtr(ty, mutability) if explicit => {
+                Some(TypeAndMut { ty: *ty, mutability: *mutability })
+            }
+            _ => None,
+        }
+    }
+
+    /// Get the function signature for function like types (Fn, FnPtr, and Closure)
+    pub fn fn_sig(&self) -> Option<PolyFnSig> {
+        match self {
+            TyKind::RigidTy(RigidTy::FnDef(def, args)) => Some(with(|cx| cx.fn_sig(*def, args))),
+            TyKind::RigidTy(RigidTy::FnPtr(sig)) => Some(sig.clone()),
+            TyKind::RigidTy(RigidTy::Closure(_def, args)) => Some(with(|cx| cx.closure_sig(args))),
+            _ => None,
+        }
+    }
+
+    /// Get the discriminant type for this type.
+    pub fn discriminant_ty(&self) -> Option<Ty> {
+        self.rigid().map(|ty| with(|cx| cx.rigid_ty_discriminant_ty(ty)))
+    }
+
+    /// Deconstruct a function type if this is one.
+    pub fn fn_def(&self) -> Option<(FnDef, &GenericArgs)> {
+        if let TyKind::RigidTy(RigidTy::FnDef(def, args)) = self {
+            Some((*def, args))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct TypeAndMut {
+    pub ty: Ty,
+    pub mutability: Mutability,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum RigidTy {
+    Bool,
+    Char,
+    Int(IntTy),
+    Uint(UintTy),
+    Float(FloatTy),
+    Adt(AdtDef, GenericArgs),
+    Foreign(ForeignDef),
+    Str,
+    Array(Ty, TyConst),
+    Pat(Ty, Pattern),
+    Slice(Ty),
+    RawPtr(Ty, Mutability),
+    Ref(Region, Ty, Mutability),
+    FnDef(FnDef, GenericArgs),
+    FnPtr(PolyFnSig),
+    Closure(ClosureDef, GenericArgs),
+    Coroutine(CoroutineDef, GenericArgs),
+    CoroutineClosure(CoroutineClosureDef, GenericArgs),
+    Dynamic(Vec<Binder<ExistentialPredicate>>, Region),
+    Never,
+    Tuple(Vec<Ty>),
+    CoroutineWitness(CoroutineWitnessDef, GenericArgs),
+}
+
+impl RigidTy {
+    /// Get the discriminant type for this type.
+    pub fn discriminant_ty(&self) -> Ty {
+        with(|cx| cx.rigid_ty_discriminant_ty(self))
+    }
+}
+
+impl From<RigidTy> for TyKind {
+    fn from(value: RigidTy) -> Self {
+        TyKind::RigidTy(value)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum IntTy {
+    Isize,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+}
+
+impl IntTy {
+    pub fn num_bytes(self) -> usize {
+        match self {
+            IntTy::Isize => MachineInfo::target_pointer_width().bytes(),
+            IntTy::I8 => 1,
+            IntTy::I16 => 2,
+            IntTy::I32 => 4,
+            IntTy::I64 => 8,
+            IntTy::I128 => 16,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum UintTy {
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+}
+
+impl UintTy {
+    pub fn num_bytes(self) -> usize {
+        match self {
+            UintTy::Usize => MachineInfo::target_pointer_width().bytes(),
+            UintTy::U8 => 1,
+            UintTy::U16 => 2,
+            UintTy::U32 => 4,
+            UintTy::U64 => 8,
+            UintTy::U128 => 16,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum FloatTy {
+    F16,
+    F32,
+    F64,
+    F128,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum Movability {
+    Static,
+    Movable,
+}
+
+pub struct ForeignModule {
+    pub def_id: ForeignModuleDef,
+    pub abi: Abi,
+}
+
+impl ForeignModule {
+    pub fn items(&self) -> Vec<ForeignDef> {
+        with(|cx| cx.foreign_items(self.def_id))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
+pub enum ForeignItemKind {
+    Fn(FnDef),
+    Static(StaticDef),
+    Type(Ty),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
+pub enum AdtKind {
+    Enum,
+    Union,
+    Struct,
+}
+
+pub struct Discr {
+    pub val: u128,
+    pub ty: Ty,
+}
+
+impl Display for AdtKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            AdtKind::Enum => "enum",
+            AdtKind::Union => "union",
+            AdtKind::Struct => "struct",
+        })
+    }
+}
+
+impl AdtKind {
+    pub fn is_enum(&self) -> bool {
+        matches!(self, AdtKind::Enum)
+    }
+
+    pub fn is_struct(&self) -> bool {
+        matches!(self, AdtKind::Struct)
+    }
+
+    pub fn is_union(&self) -> bool {
+        matches!(self, AdtKind::Union)
+    }
+}
+
+/// A list of generic arguments.
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct GenericArgs(pub Vec<GenericArgKind>);
+
+impl std::ops::Index<ParamTy> for GenericArgs {
+    type Output = Ty;
+
+    fn index(&self, index: ParamTy) -> &Self::Output {
+        self.0[index.index as usize].expect_ty()
+    }
+}
+
+impl std::ops::Index<ParamConst> for GenericArgs {
+    type Output = TyConst;
+
+    fn index(&self, index: ParamConst) -> &Self::Output {
+        self.0[index.index as usize].expect_const()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum GenericArgKind {
+    Lifetime(Region),
+    Type(Ty),
+    Const(TyConst),
+}
+
+impl GenericArgKind {
+    /// Panic if this generic argument is not a type, otherwise
+    /// return the type.
+    #[track_caller]
+    pub fn expect_ty(&self) -> &Ty {
+        match self {
+            GenericArgKind::Type(ty) => ty,
+            _ => panic!("{self:?}"),
+        }
+    }
+
+    /// Panic if this generic argument is not a const, otherwise
+    /// return the const.
+    #[track_caller]
+    pub fn expect_const(&self) -> &TyConst {
+        match self {
+            GenericArgKind::Const(c) => c,
+            _ => panic!("{self:?}"),
+        }
+    }
+
+    /// Return the generic argument type if applicable, otherwise return `None`.
+    pub fn ty(&self) -> Option<&Ty> {
+        match self {
+            GenericArgKind::Type(ty) => Some(ty),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum TermKind {
+    Type(Ty),
+    Const(TyConst),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum AliasKind {
+    Projection,
+    Inherent,
+    Opaque,
+    Free,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct AliasTy {
+    pub def_id: AliasDef,
+    pub args: GenericArgs,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct AliasTerm {
+    pub def_id: AliasDef,
+    pub args: GenericArgs,
+}
+
+pub type PolyFnSig = Binder<FnSig>;
+
+impl PolyFnSig {
+    /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
+    ///
+    /// NB: this doesn't handle virtual calls - those should use `Instance::fn_abi`
+    /// instead, where the instance is an `InstanceKind::Virtual`.
+    pub fn fn_ptr_abi(self) -> Result<FnAbi, Error> {
+        with(|cx| cx.fn_ptr_abi(self))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FnSig {
+    pub inputs_and_output: Vec<Ty>,
+    pub c_variadic: bool,
+    pub safety: Safety,
+    pub abi: Abi,
+}
+
+impl FnSig {
+    pub fn output(&self) -> Ty {
+        self.inputs_and_output[self.inputs_and_output.len() - 1]
+    }
+
+    pub fn inputs(&self) -> &[Ty] {
+        &self.inputs_and_output[..self.inputs_and_output.len() - 1]
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum Constness {
+    Const { always: bool },
+    NotConst,
+}
+
+impl Constness {
+    pub fn is_const(self) -> bool {
+        matches!(self, Constness::Const { always: false })
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum Asyncness {
+    Async,
+    NotAsync,
+}
+
+impl Asyncness {
+    pub fn is_async(self) -> bool {
+        matches!(self, Asyncness::Async)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+pub enum Abi {
+    Rust,
+    C { unwind: bool },
+    Cdecl { unwind: bool },
+    Stdcall { unwind: bool },
+    Fastcall { unwind: bool },
+    Vectorcall { unwind: bool },
+    Thiscall { unwind: bool },
+    Aapcs { unwind: bool },
+    Win64 { unwind: bool },
+    SysV64 { unwind: bool },
+    PtxKernel,
+    Msp430Interrupt,
+    X86Interrupt,
+    GpuKernel,
+    EfiApi,
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
+    CCmseNonSecureCall,
+    CCmseNonSecureEntry,
+    System { unwind: bool },
+    RustCall,
+    Unadjusted,
+    RustCold,
+    RiscvInterruptM,
+    RiscvInterruptS,
+    RustPreserveNone,
+    RustTail,
+    RustInvalid,
+    Custom,
+    Swift,
+}
+
+/// A binder represents a possibly generic type and its bound vars.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct Binder<T> {
+    pub value: T,
+    pub bound_vars: Vec<BoundVariableKind>,
+}
+
+impl<T> Binder<T> {
+    /// Create a new binder with the given bound vars.
+    pub fn bind_with_vars(value: T, bound_vars: Vec<BoundVariableKind>) -> Self {
+        Binder { value, bound_vars }
+    }
+
+    /// Create a new binder with no bounded variable.
+    pub fn dummy(value: T) -> Self {
+        Binder { value, bound_vars: vec![] }
+    }
+
+    pub fn skip_binder(self) -> T {
+        self.value
+    }
+
+    pub fn map_bound_ref<F, U>(&self, f: F) -> Binder<U>
+    where
+        F: FnOnce(&T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let new_value = f(value);
+        Binder { value: new_value, bound_vars: bound_vars.clone() }
+    }
+
+    pub fn map_bound<F, U>(self, f: F) -> Binder<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let new_value = f(value);
+        Binder { value: new_value, bound_vars }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct EarlyBinder<T> {
+    pub value: T,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum BoundVariableKind {
+    Ty(BoundTyKind),
+    Region(BoundRegionKind),
+    Const,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+pub enum BoundTyKind {
+    Anon,
+    Param(ParamDef, String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum BoundRegionKind {
+    BrAnon,
+    BrNamed(BrNamedDef, String),
+    BrEnv,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum ExistentialPredicate {
+    Trait(ExistentialTraitRef),
+    Projection(ExistentialProjection),
+    AutoTrait(TraitDef),
+}
+
+/// An existential reference to a trait where `Self` is not included.
+///
+/// The `generic_args` will include any other known argument.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ExistentialTraitRef {
+    pub def_id: TraitDef,
+    pub generic_args: GenericArgs,
+}
+
+impl Binder<ExistentialTraitRef> {
+    pub fn with_self_ty(&self, self_ty: Ty) -> Binder<TraitRef> {
+        self.map_bound_ref(|trait_ref| trait_ref.with_self_ty(self_ty))
+    }
+}
+
+impl ExistentialTraitRef {
+    pub fn with_self_ty(&self, self_ty: Ty) -> TraitRef {
+        TraitRef::new(self.def_id, self_ty, &self.generic_args)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ExistentialProjection {
+    pub def_id: TraitDef,
+    pub generic_args: GenericArgs,
+    pub term: TermKind,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ParamTy {
+    pub index: u32,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct BoundTy {
+    pub var: usize,
+    pub kind: BoundTyKind,
+}
+
+pub type Bytes = Vec<Option<u8>>;
+
+/// Size in bytes.
+pub type Size = usize;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
+pub struct Prov(pub AllocId);
+
+pub type Align = u64;
+pub type Promoted = u32;
+pub type InitMaskMaterialized = Vec<u64>;
+
+/// Stores the provenance information of pointers stored in memory.
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct ProvenanceMap {
+    /// Provenance in this map applies from the given offset for an entire pointer-size worth of
+    /// bytes. Two entries in this map are always at least a pointer size apart.
+    pub ptrs: Vec<(Size, Prov)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct Allocation {
+    pub bytes: Bytes,
+    pub provenance: ProvenanceMap,
+    pub align: Align,
+    pub mutability: Mutability,
+}
+
+impl Allocation {
+    /// Get a vector of bytes for an Allocation that has been fully initialized
+    pub fn raw_bytes(&self) -> Result<Vec<u8>, Error> {
+        self.bytes
+            .iter()
+            .copied()
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| error!("Found uninitialized bytes: `{:?}`", self.bytes))
+    }
+
+    /// Read a uint value from the specified range.
+    pub fn read_partial_uint(&self, range: Range<usize>) -> Result<u128, Error> {
+        if range.end - range.start > 16 {
+            return Err(error!("Allocation is bigger than largest integer"));
+        }
+        if range.end > self.bytes.len() {
+            return Err(error!(
+                "Range is out of bounds. Allocation length is `{}`, but requested range `{:?}`",
+                self.bytes.len(),
+                range
+            ));
+        }
+        let raw = self.bytes[range]
+            .iter()
+            .copied()
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| error!("Found uninitialized bytes: `{:?}`", self.bytes))?;
+        read_target_uint(&raw)
+    }
+
+    /// Read this allocation and try to convert it to an unassigned integer.
+    pub fn read_uint(&self) -> Result<u128, Error> {
+        if self.bytes.len() > 16 {
+            return Err(error!("Allocation is bigger than largest integer"));
+        }
+        let raw = self.raw_bytes()?;
+        read_target_uint(&raw)
+    }
+
+    /// Read this allocation and try to convert it to a signed integer.
+    pub fn read_int(&self) -> Result<i128, Error> {
+        if self.bytes.len() > 16 {
+            return Err(error!("Allocation is bigger than largest integer"));
+        }
+        let raw = self.raw_bytes()?;
+        read_target_int(&raw)
+    }
+
+    /// Read this allocation and try to convert it to a boolean.
+    pub fn read_bool(&self) -> Result<bool, Error> {
+        match self.read_int()? {
+            0 => Ok(false),
+            1 => Ok(true),
+            val => Err(error!("Unexpected value for bool: `{val}`")),
+        }
+    }
+
+    /// Read this allocation as a pointer and return whether it represents a `null` pointer.
+    pub fn is_null(&self) -> Result<bool, Error> {
+        let len = self.bytes.len();
+        let ptr_len = MachineInfo::target_pointer_width().bytes();
+        if len != ptr_len {
+            return Err(error!("Expected width of pointer (`{ptr_len}`), but found: `{len}`"));
+        }
+        Ok(self.read_uint()? == 0 && self.provenance.ptrs.is_empty())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum ConstantKind {
+    Ty(TyConst),
+    Allocated(Allocation),
+    Unevaluated(UnevaluatedConst),
+    Param(ParamConst),
+    /// Store ZST constants.
+    /// We have to special handle these constants since its type might be generic.
+    ZeroSized,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct ParamConst {
+    pub index: u32,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct UnevaluatedConst {
+    pub def: ConstDef,
+    pub args: GenericArgs,
+    pub promoted: Option<Promoted>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum TraitSpecializationKind {
+    None,
+    Marker,
+    AlwaysApplicable,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct TraitDecl {
+    pub def_id: TraitDef,
+    pub safety: Safety,
+    pub paren_sugar: bool,
+    pub has_auto_impl: bool,
+    pub is_marker: bool,
+    pub is_coinductive: bool,
+    pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
+    pub specialization_kind: TraitSpecializationKind,
+    pub must_implement_one_of: Option<Vec<Ident>>,
+    pub force_dyn_incompatible: Option<Span>,
+    pub deny_explicit_impl: bool,
+}
+
+impl TraitDecl {
+    pub fn generics_of(&self) -> Generics {
+        with(|cx| cx.generics_of(self.def_id.0))
+    }
+
+    pub fn clauses_of(&self) -> GenericClauses {
+        with(|cx| cx.clauses_of(self.def_id.0))
+    }
+
+    pub fn explicit_clauses_of(&self) -> GenericClauses {
+        with(|cx| cx.explicit_clauses_of(self.def_id.0))
+    }
+}
+
+pub type ImplTrait = EarlyBinder<TraitRef>;
+
+/// A complete reference to a trait, i.e., one where `Self` is known.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct TraitRef {
+    pub def_id: TraitDef,
+    /// The generic arguments for this definition.
+    /// The first element must always be type, and it represents `Self`.
+    args: GenericArgs,
+}
+
+impl TraitRef {
+    pub fn new(def_id: TraitDef, self_ty: Ty, gen_args: &GenericArgs) -> TraitRef {
+        let mut args = vec![GenericArgKind::Type(self_ty)];
+        args.extend_from_slice(&gen_args.0);
+        TraitRef { def_id, args: GenericArgs(args) }
+    }
+
+    pub fn try_new(def_id: TraitDef, args: GenericArgs) -> Result<TraitRef, ()> {
+        match &args.0[..] {
+            [GenericArgKind::Type(_), ..] => Ok(TraitRef { def_id, args }),
+            _ => Err(()),
+        }
+    }
+
+    pub fn args(&self) -> &GenericArgs {
+        &self.args
+    }
+
+    pub fn self_ty(&self) -> Ty {
+        let GenericArgKind::Type(self_ty) = self.args.0[0] else {
+            panic!("Self must be a type, but found: {:?}", self.args.0[0])
+        };
+        self_ty
+    }
+
+    /// Retrieve all vtable entries.
+    pub fn vtable_entries(&self) -> Vec<VtblEntry> {
+        with(|cx| cx.vtable_entries(self))
+    }
+
+    /// Returns the vtable entry at the given index.
+    ///
+    /// Returns `None` if the index is out of bounds.
+    pub fn vtable_entry(&self, idx: usize) -> Option<VtblEntry> {
+        with(|cx| cx.vtable_entry(self, idx))
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct Generics {
+    pub parent: Option<GenericDef>,
+    pub parent_count: usize,
+    pub params: Vec<GenericParamDef>,
+    pub param_def_id_to_index: Vec<(GenericDef, u32)>,
+    pub has_self: bool,
+    pub has_late_bound_regions: Option<Span>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum GenericParamDefKind {
+    Lifetime,
+    Type { has_default: bool, synthetic: bool },
+    Const { has_default: bool },
+}
+
+pub struct GenericClauses {
+    pub parent: Option<TraitDef>,
+    pub clauses: Vec<(ClauseKind, Span)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum PredicateKind {
+    Clause(ClauseKind),
+    DynCompatible(TraitDef),
+    SubType(SubtypePredicate),
+    Coerce(CoercePredicate),
+    ConstEquate(TyConst, TyConst),
+    Ambiguous,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum ClauseKind {
+    Trait(TraitPredicate),
+    RegionOutlives(RegionOutlivesClause),
+    TypeOutlives(TypeOutlivesClause),
+    Projection(ProjectionPredicate),
+    ConstArgHasType(TyConst, Ty),
+    WellFormed(TermKind),
+    ConstEvaluatable(TyConst),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum ClosureKind {
+    Fn,
+    FnMut,
+    FnOnce,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct SubtypePredicate {
+    pub a: Ty,
+    pub b: Ty,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct CoercePredicate {
+    pub a: Ty,
+    pub b: Ty,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct TraitPredicate {
+    pub trait_ref: TraitRef,
+    pub polarity: PredicatePolarity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct OutlivesClause<A, B>(pub A, pub B);
+
+pub type RegionOutlivesClause = OutlivesClause<Region, Region>;
+pub type TypeOutlivesClause = OutlivesClause<Ty, Region>;
+
+#[deprecated = "renamed to [`OutlivesClause`]"]
+pub type OutlivesPredicate<A, B> = OutlivesClause<A, B>;
+#[deprecated = "renamed to [`RegionOutlivesClause`]"]
+pub type RegionOutlivesPredicate = RegionOutlivesClause;
+#[deprecated = "renamed to [`TypeOutlivesClause`]"]
+pub type TypeOutlivesPredicate = TypeOutlivesClause;
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ProjectionPredicate {
+    pub projection_term: AliasTerm,
+    pub term: TermKind,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum ImplPolarity {
+    Positive,
+    Negative,
+    Reservation,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum PredicatePolarity {
+    Positive,
+    Negative,
+}
+
+macro_rules! index_impl {
+    ($name:ident) => {
+        impl crate::IndexedVal for $name {
+            fn to_val(index: usize) -> Self {
+                $name(index, $crate::ThreadLocalIndex)
+            }
+            fn to_index(&self) -> usize {
+                self.0
+            }
+        }
+        $crate::ty::serialize_index_impl!($name);
+    };
+}
+macro_rules! serialize_index_impl {
+    ($name:ident) => {
+        impl ::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                let n: usize = self.0; // Make sure we're serializing an int.
+                ::serde::Serialize::serialize(&n, serializer)
+            }
+        }
+    };
+}
+pub(crate) use index_impl;
+pub(crate) use serialize_index_impl;
+
+index_impl!(TyConstId);
+index_impl!(MirConstId);
+index_impl!(Ty);
+index_impl!(Span);
+
+/// The source-order index of a variant in a type.
+///
+/// For example, in the following types,
+/// ```ignore(illustrative)
+/// enum Demo1 {
+///    Variant0 { a: bool, b: i32 },
+///    Variant1 { c: u8, d: u64 },
+/// }
+/// struct Demo2 { e: u8, f: u16, g: u8 }
+/// ```
+/// `a` is in the variant with the `VariantIdx` of `0`,
+/// `c` is in the variant with the `VariantIdx` of `1`, and
+/// `g` is in the variant with the `VariantIdx` of `0`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VariantIdx(usize, ThreadLocalIndex);
+
+index_impl!(VariantIdx);
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct AssocItem {
+    pub def_id: AssocDef,
+    pub kind: AssocKind,
+    pub container: AssocContainer,
+}
+
+#[derive(Clone, PartialEq, Debug, Eq, Serialize)]
+pub enum AssocTypeData {
+    Normal(Symbol),
+    /// The associated type comes from an RPITIT. It has no name, and the
+    /// `ImplTraitInTraitData` provides additional information about its
+    /// source.
+    Rpitit(ImplTraitInTraitData),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum AssocKind {
+    Const { name: Symbol },
+    Fn { name: Symbol, has_self: bool },
+    Type { data: AssocTypeData },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum AssocContainer {
+    InherentImpl,
+    /// The `AssocDef` points to the trait item being implemented.
+    TraitImpl(AssocDef),
+    Trait,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
+pub enum ImplTraitInTraitData {
+    Trait { fn_def_id: FnDef, opaque_def_id: OpaqueDef },
+    Impl { fn_def_id: FnDef },
+}
+
+impl AssocItem {
+    pub fn is_impl_trait_in_trait(&self) -> bool {
+        matches!(self.kind, AssocKind::Type { data: AssocTypeData::Rpitit(_) })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum VtblEntry {
+    /// destructor of this type (used in vtable header)
+    MetadataDropInPlace,
+    /// layout size of this type (used in vtable header)
+    MetadataSize,
+    /// layout align of this type (used in vtable header)
+    MetadataAlign,
+    /// non-dispatchable associated function that is excluded from trait object
+    Vacant,
+    /// dispatchable associated function
+    Method(Instance),
+    /// pointer to a separate supertrait vtable, can be used by trait upcasting coercion
+    TraitVPtr(TraitRef),
+}

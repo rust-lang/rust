@@ -11,7 +11,7 @@ use rustc_type_ir_macros::{
 use crate::inherent::*;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Alias, Interner};
+use crate::{self as ty, Alias, Interner, Region};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -21,9 +21,9 @@ use crate::{self as ty, Alias, Interner};
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct OutlivesPredicate<I: Interner, A>(pub A, pub I::Region);
+pub struct OutlivesClause<I: Interner, A>(pub A, pub Region<I>);
 
-impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
+impl<I: Interner, A: Eq> Eq for OutlivesClause<I, A> {}
 
 /// `'a == 'b`.
 /// For the rationale behind having this instead of a pair of bidirectional
@@ -35,12 +35,12 @@ impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct RegionEqPredicate<I: Interner>(pub I::Region, pub I::Region);
+pub struct RegionEqPredicate<I: Interner>(pub Region<I>, pub Region<I>);
 
 impl<I: Interner> RegionEqPredicate<I> {
     /// Decompose `'a == 'b` into `['a: 'b, 'b: 'a]`
-    pub fn into_bidirectional_outlives(self) -> [OutlivesPredicate<I, I::GenericArg>; 2] {
-        [OutlivesPredicate(self.0.into(), self.1), OutlivesPredicate(self.1.into(), self.0)]
+    pub fn into_bidirectional_outlives(self) -> [OutlivesClause<I, I::GenericArg>; 2] {
+        [OutlivesClause(self.0.into(), self.1), OutlivesClause(self.1.into(), self.0)]
     }
 }
 
@@ -51,12 +51,12 @@ impl<I: Interner> RegionEqPredicate<I> {
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub enum RegionConstraint<I: Interner> {
-    Outlives(OutlivesPredicate<I, I::GenericArg>),
+    Outlives(OutlivesClause<I, I::GenericArg>),
     Eq(RegionEqPredicate<I>),
 }
 
-impl<I: Interner> From<OutlivesPredicate<I, I::GenericArg>> for RegionConstraint<I> {
-    fn from(value: OutlivesPredicate<I, I::GenericArg>) -> Self {
+impl<I: Interner> From<OutlivesClause<I, I::GenericArg>> for RegionConstraint<I> {
+    fn from(value: OutlivesClause<I, I::GenericArg>) -> Self {
         RegionConstraint::Outlives(value)
     }
 }
@@ -80,7 +80,7 @@ impl<I: Interner> RegionConstraint<I> {
 
     /// If `self` is an eq constraint, iterate through its decomposed bidirectional outlives
     /// bounds and if not, just iterate once for the outlives bound itself.
-    pub fn iter_outlives(self) -> impl Iterator<Item = OutlivesPredicate<I, I::GenericArg>> {
+    pub fn iter_outlives(self) -> impl Iterator<Item = OutlivesClause<I, I::GenericArg>> {
         match self {
             RegionConstraint::Outlives(outlives) => iter::once(outlives).chain(None),
             RegionConstraint::Eq(eq) => {
@@ -137,7 +137,13 @@ impl<I: Interner> TraitRef<I> {
 
     pub fn from_assoc(interner: I, trait_id: I::TraitId, args: I::GenericArgs) -> TraitRef<I> {
         let generics = interner.generics_of(trait_id.into());
-        TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
+        if generics.count() == args.len() {
+            // Can reuse `args` in its entirety.
+            TraitRef::new_from_args(interner, trait_id, args)
+        } else {
+            // Need only some of `args`.
+            TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
+        }
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -175,7 +181,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
 
     pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
         self.map_bound(|trait_ref| {
-            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
+            ty::ClauseKind::HostEffect(HostEffectClause { trait_ref, constness })
         })
         .upcast(cx)
     }
@@ -654,15 +660,15 @@ where
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-pub struct HostEffectPredicate<I: Interner> {
+pub struct HostEffectClause<I: Interner> {
     pub trait_ref: ty::TraitRef<I>,
     #[lift(identity)]
     pub constness: BoundConstness,
 }
 
-impl<I: Interner> Eq for HostEffectPredicate<I> {}
+impl<I: Interner> Eq for HostEffectClause<I> {}
 
-impl<I: Interner> HostEffectPredicate<I> {
+impl<I: Interner> HostEffectClause<I> {
     pub fn self_ty(self) -> I::Ty {
         self.trait_ref.self_ty()
     }
@@ -676,7 +682,7 @@ impl<I: Interner> HostEffectPredicate<I> {
     }
 }
 
-impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
+impl<I: Interner> ty::Binder<I, HostEffectClause<I>> {
     pub fn def_id(self) -> I::TraitId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()

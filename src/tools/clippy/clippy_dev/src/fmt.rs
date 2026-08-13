@@ -5,11 +5,11 @@ use crate::utils::{
     ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, split_args_for_threads,
     walk_dir_no_dot_or_target,
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, Read as _};
 use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};

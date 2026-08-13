@@ -987,7 +987,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             let lo = start + BytePos(possible_offset);
             let hi = lo + BytePos(found_terminators);
             let span = self.mk_sp(lo, hi);
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 span,
                 "consider terminating the string here",
                 "#".repeat(n_hashes as usize),

@@ -529,6 +529,26 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Cast { cast: Box::new(target.into().with_attrs(attrs)), pad_i32: false };
     }
 
+    /// Cast to `target`, forwarding `NoUndef` only when the layout provably has no uninit
+    /// bytes *and* the cast exactly covers the layout (`target.size(cx) == self.layout.size`).
+    /// A wider cast (e.g. `Uniform::new` rounding a 3-byte aggregate up to an `i32`) covers
+    /// undef padding bytes that must not be marked `noundef`; a narrower cast does not occur,
+    /// since a `PassMode::Cast` target always covers the whole value.
+    pub fn cast_to_maybe_noundef<T, C>(&mut self, target: T, cx: &C)
+    where
+        T: Into<CastTarget>,
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout,
+    {
+        let target = target.into();
+        let attr = if layout_is_noundef(self.layout, cx) && target.size(cx) == self.layout.size {
+            ArgAttribute::NoUndef
+        } else {
+            ArgAttribute::default()
+        };
+        self.cast_to_with_attrs(target, attr.into());
+    }
+
     pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
         self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
     }
@@ -751,6 +771,24 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 continue;
             }
 
+            // Always extend `bool` in the Rust ABI
+            let extend_bool = |attrs: &mut ArgAttributes, scalar: Scalar| {
+                if scalar.is_bool() {
+                    attrs.ext(ArgExtension::Zext);
+                }
+            };
+
+            if let PassMode::Direct(attrs) = &mut arg.mode
+                && let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+            {
+                extend_bool(attrs, scalar);
+            } else if let PassMode::Pair(a_attrs, b_attrs) = &mut arg.mode
+                && let BackendRepr::ScalarPair { a, b, b_offset: _ } = arg.layout.backend_repr
+            {
+                extend_bool(a_attrs, a);
+                extend_bool(b_attrs, b);
+            }
+
             if arg_idx.is_none()
                 && arg.layout.size > Primitive::Pointer(AddressSpace::ZERO).size(cx) * 2
                 && !matches!(
@@ -819,12 +857,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                         // We want to pass small aggregates as immediates, but using
                         // an LLVM aggregate type for this leads to bad optimizations,
                         // so we pick an appropriately sized integer type instead.
-                        let attr = if layout_is_noundef(arg.layout, cx) {
-                            ArgAttribute::NoUndef
-                        } else {
-                            ArgAttribute::default()
-                        };
-                        arg.cast_to_with_attrs(Reg { kind: RegKind::Integer, size }, attr.into());
+                        arg.cast_to_maybe_noundef(Reg { kind: RegKind::Integer, size }, cx);
                     } else if self.conv == CanonAbi::RustTail {
                         assert!(arg.layout.is_sized(), "extern \"tail\" arguments must be sized");
                         arg.pass_by_stack_offset(None);

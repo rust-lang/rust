@@ -5,7 +5,7 @@
 // is given permission to expand into this unstable attribute even
 // when the surrounding context does not have permission to use it.)
 
-#[thread_local] //~ ERROR `#[thread_local]` is an experimental feature
+#[thread_local] //~ ERROR the `thread_local` attribute is an experimental feature
 static FOO: i32 = 3;
 
 pub fn main() {}

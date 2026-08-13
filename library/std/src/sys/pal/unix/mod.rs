@@ -5,7 +5,6 @@ use crate::io;
 pub mod conf;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
-pub mod futex;
 pub mod stack_overflow;
 pub mod sync;
 pub mod thread_parking;
@@ -76,7 +75,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
 
         // fast path with a single syscall for systems with poll()
         #[cfg(not(any(
-            miri, // no `poll`
             target_os = "emscripten",
             target_os = "fuchsia",
             target_os = "vxworks",
@@ -85,7 +83,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "horizon",
             target_os = "vita",
             target_os = "rtems",
-            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            // The poll on Darwin doesn't set POLLNVAL for closed fds when `events == 0`.
             target_vendor = "apple",
         )))]
         'poll: {
@@ -147,6 +145,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "vita",
+            target_os = "l4re",
             // Unikraft's `signal` implementation is currently broken:
             // https://github.com/unikraft/lib-musl/issues/57
             target_vendor = "unikraft",
@@ -365,15 +364,24 @@ cfg_select! {
     _ => {}
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
-pub mod unsupported {
-    use crate::io;
+#[cfg(any(
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nuttx",
+    target_os = "l4re",
+))]
+pub fn unsupported<T>() -> crate::io::Result<T> {
+    Err(unsupported_err())
+}
 
-    pub fn unsupported<T>() -> io::Result<T> {
-        Err(unsupported_err())
-    }
-
-    pub fn unsupported_err() -> io::Error {
-        io::Error::UNSUPPORTED_PLATFORM
-    }
+#[cfg(any(
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nuttx",
+    target_os = "l4re",
+))]
+pub fn unsupported_err() -> crate::io::Error {
+    io::Error::UNSUPPORTED_PLATFORM
 }

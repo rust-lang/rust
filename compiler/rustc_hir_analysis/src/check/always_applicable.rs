@@ -11,11 +11,12 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, GenericArgsRef, RegionExt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::sym;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
+use crate::check::missing_items_must_implement_one_of_err;
 use crate::diagnostics;
 use crate::hir::def_id::{DefId, LocalDefId};
 
@@ -208,7 +209,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
             tcx,
             cause,
             env,
-            ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef::new(tcx, destruct_trait, [field_ty]),
                 constness: ty::BoundConstness::Maybe,
             }),
@@ -282,7 +283,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // reference the params from the ADT instead of from the impl which is bad UX. To resolve
     // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
     let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
-    let adt_env = ty::EarlyBinder::bind(tcx, tcx.param_env(adt_def_id))
+    let adt_env = ty::EarlyBinder::bind_unchecked(tcx.param_env(adt_def_id))
         .instantiate(tcx, adt_to_impl_args)
         .skip_norm_wip();
 
@@ -293,7 +294,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
         .expect("equating fully generic trait ref should never fail");
 
-    for (clause, span) in tcx.predicates_of(impl_def_id).instantiate(tcx, fresh_impl_args) {
+    for (clause, span) in tcx.clauses_of(impl_def_id).instantiate(tcx, fresh_impl_args) {
         let normalize_cause = traits::ObligationCause::misc(span, impl_def_id);
         let pred = ocx.normalize(&normalize_cause, adt_env, clause);
         let cause = traits::ObligationCause::new(
@@ -311,7 +312,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // obligation cause code, and perhaps some custom logic in `report_region_errors`.
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         let mut guar = None;
         let mut root_predicates = FxHashSet::default();
         for error in errors {
@@ -394,11 +395,12 @@ fn check_drop_xor_pin_drop<'tcx>(
     match (drop_span, pin_drop_span) {
         (None, None) => {
             if tcx.features().pin_ergonomics() {
-                return Err(tcx.dcx().emit_err(crate::diagnostics::MissingOneOfTraitItem {
-                    span: tcx.def_span(drop_impl_did),
-                    note: None,
-                    missing_items_msg: "drop`, `pin_drop".to_string(),
-                }));
+                return Err(missing_items_must_implement_one_of_err(
+                    tcx,
+                    drop_impl_did,
+                    [sym::drop, sym::pin_drop].into_iter(),
+                    None,
+                ));
             } else {
                 return Err(tcx
                     .dcx()

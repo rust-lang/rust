@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*map` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:26:13
+  --> $DIR/nll-problem-case-3-issue-21906.rs:27:13
    |
 LL |   fn from_the_rfc<'r, K: Hash + Eq + Copy, V: Default>(
    |                   -- lifetime `'r` defined here
@@ -17,7 +17,7 @@ LL | |     }
    | |_____- returning this value requires that `*map` is borrowed for `'r`
 
 error[E0499]: cannot borrow `*map` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:27:13
+  --> $DIR/nll-problem-case-3-issue-21906.rs:28:13
    |
 LL |   fn from_the_rfc<'r, K: Hash + Eq + Copy, V: Default>(
    |                   -- lifetime `'r` defined here
@@ -36,7 +36,7 @@ LL | |     }
    | |_____- returning this value requires that `*map` is borrowed for `'r`
 
 error[E0499]: cannot borrow `*map` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:45:41
+  --> $DIR/nll-problem-case-3-issue-21906.rs:46:41
    |
 LL | fn get_priority_mut_entry<'a, K, V>(
    |                           -- lifetime `'a` defined here
@@ -49,7 +49,7 @@ LL |         Entry::Vacant(_vacant) => match map.entry(key2) {
    |                                         ^^^ second mutable borrow occurs here
 
 error[E0499]: cannot borrow `*self` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:64:21
+  --> $DIR/nll-problem-case-3-issue-21906.rs:65:21
    |
 LL |     fn two(&mut self) -> &i32 {
    |            - let's call the lifetime of this reference `'1`
@@ -61,7 +61,7 @@ LL |                 return k;
    |                        - returning this value requires that `*self` is borrowed for `'1`
 
 error[E0502]: cannot borrow `x.data` as immutable because it is also borrowed as mutable
-  --> $DIR/nll-problem-case-3-issue-21906.rs:82:22
+  --> $DIR/nll-problem-case-3-issue-21906.rs:83:22
    |
 LL | fn foo(x: &mut Foo) -> Option<&mut i32> {
    |           - let's call the lifetime of this reference `'1`
@@ -74,7 +74,7 @@ LL |     println!("{:?}", x.data);
    |                      ^^^^^^ immutable borrow occurs here
 
 error[E0499]: cannot borrow `*vec` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-21906.rs:97:9
+  --> $DIR/nll-problem-case-3-issue-21906.rs:98:9
    |
 LL | fn f(vec: &mut Vec<u8>) -> &u8 {
    |           - let's call the lifetime of this reference `'1`
@@ -88,7 +88,7 @@ LL |         vec.push(10);
    |         ^^^ second mutable borrow occurs here
 
 error[E0502]: cannot borrow `*vec` as immutable because it is also borrowed as mutable
-  --> $DIR/nll-problem-case-3-issue-21906.rs:98:9
+  --> $DIR/nll-problem-case-3-issue-21906.rs:99:9
    |
 LL | fn f(vec: &mut Vec<u8>) -> &u8 {
    |           - let's call the lifetime of this reference `'1`

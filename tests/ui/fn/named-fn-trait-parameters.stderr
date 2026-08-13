@@ -1,0 +1,110 @@
+error: expected type, found `1`
+  --> $DIR/named-fn-trait-parameters.rs:17:19
+   |
+LL |     pat1: impl Fn(1..3: bool),
+   |                   ^ expected type
+
+error: unexpected token: `:`
+  --> $DIR/named-fn-trait-parameters.rs:19:25
+   |
+LL |     pat2: impl Fn((x, y): (bool, bool)),
+   |                         ^ unexpected token after this
+
+error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+  --> $DIR/named-fn-trait-parameters.rs:21:25
+   |
+LL |     pat3: impl Fn(Thing { a, b }: Thing),
+   |                         ^ expected one of `!`, `(`, `+`, `::`, or `<`
+
+error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+  --> $DIR/named-fn-trait-parameters.rs:23:27
+   |
+LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
+   |                           ^ expected one of `!`, `(`, `+`, `::`, or `<`
+
+error: unexpected token: `:`
+  --> $DIR/named-fn-trait-parameters.rs:25:30
+   |
+LL |     pat5: impl Fn((((((x))))): bool),
+   |                              ^ unexpected token after this
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:28:20
+   |
+LL |     self1: impl Fn(self),
+   |                    ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:30:20
+   |
+LL |     self2: impl Fn(self, self),
+   |                    ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:30:26
+   |
+LL |     self2: impl Fn(self, self),
+   |                          ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:33:26
+   |
+LL |     self3: impl Fn(bool, self),
+   |                          ^^^^ must be the first parameter of an associated function
+
+error: expected type, found `1`
+  --> $DIR/named-fn-trait-parameters.rs:48:19
+   |
+LL |     pat1: impl Fn(1..3: bool),
+   |                   ^ expected type
+
+error: unexpected token: `:`
+  --> $DIR/named-fn-trait-parameters.rs:50:25
+   |
+LL |     pat2: impl Fn((x, y): (bool, bool)),
+   |                         ^ unexpected token after this
+
+error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+  --> $DIR/named-fn-trait-parameters.rs:52:25
+   |
+LL |     pat3: impl Fn(Thing { a, b }: Thing),
+   |                         ^ expected one of `!`, `(`, `+`, `::`, or `<`
+
+error: expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+  --> $DIR/named-fn-trait-parameters.rs:54:27
+   |
+LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
+   |                           ^ expected one of `!`, `(`, `+`, `::`, or `<`
+
+error: unexpected token: `:`
+  --> $DIR/named-fn-trait-parameters.rs:56:30
+   |
+LL |     pat5: impl Fn((((((x))))): bool),
+   |                              ^ unexpected token after this
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:59:20
+   |
+LL |     self1: impl Fn(self), // FIXME should be accepted
+   |                    ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:61:20
+   |
+LL |     self2: impl Fn(self, self),
+   |                    ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:61:26
+   |
+LL |     self2: impl Fn(self, self),
+   |                          ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/named-fn-trait-parameters.rs:64:26
+   |
+LL |     self3: impl Fn(bool, self),
+   |                          ^^^^ must be the first parameter of an associated function
+
+error: aborting due to 18 previous errors
+

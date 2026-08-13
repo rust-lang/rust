@@ -1,8 +1,8 @@
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:4:1
+  --> $DIR/invalid-sanitize.rs:4:3
    |
 LL | #[sanitize(brontosaurus = "off")]
-   | ^^^^^^^^^^^------------^^^^^^^^^^
+   |   ^^^^^^^^^------------^^^^^^^^^
    |            |
    |            valid arguments are "address", "kernel_address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread", "hwaddress", "kernel_hwaddress" or "realtime"
 
@@ -31,32 +31,32 @@ LL | #[sanitize(address = "on")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:15:1
+  --> $DIR/invalid-sanitize.rs:15:3
    |
 LL | #[sanitize(address = "bogus")]
-   | ^^^^^^^^^^^^^^^^^^^^^-------^^
+   |   ^^^^^^^^^^^^^^^^^^^-------^
    |                      |
    |                      valid arguments are "on" or "off"
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:18:1
+  --> $DIR/invalid-sanitize.rs:18:3
    |
 LL | #[sanitize = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:21:1
+  --> $DIR/invalid-sanitize.rs:21:3
    |
 LL | #[sanitize]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:24:1
+  --> $DIR/invalid-sanitize.rs:24:3
    |
 LL | #[sanitize(realtime = "on")]
-   | ^^^^^^^^^^^^^^^^^^^^^^----^^
+   |   ^^^^^^^^^^^^^^^^^^^^----^
    |                       |
    |                       valid arguments are "nonblocking", "blocking" or "caller"
 

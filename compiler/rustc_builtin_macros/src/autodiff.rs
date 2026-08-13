@@ -18,9 +18,9 @@ mod llvm_enzyme {
         FnRetTy, FnSig, GenericArg, GenericArgs, GenericParamKind, Generics, ItemKind,
         MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
     };
+    use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
-    use rustc_hir::attrs::RustcAutodiff;
-    use rustc_span::{Ident, Span, Symbol, kw, sym};
+    use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
 
@@ -344,7 +344,7 @@ mod llvm_enzyme {
             contract: None,
             body: Some(d_body),
             define_opaque: None,
-            eii_impls: ThinVec::new(),
+            eii_impl: None,
         });
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
@@ -361,7 +361,8 @@ mod llvm_enzyme {
         let inline_item = ast::AttrItem {
             unsafety: ast::Safety::Default,
             path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
-            args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
+            args: ast::AttrArgs::Delimited(never_arg),
+            span: DUMMY_SP,
         };
         let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
@@ -423,13 +424,11 @@ mod llvm_enzyme {
             }
         };
         // Now update for d_fn
-        rustc_ad_attr.item.args = rustc_ast::ast::AttrItemKind::Unparsed(
-            rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
-                dspan: DelimSpan::dummy(),
-                delim: rustc_ast::token::Delimiter::Parenthesis,
-                tokens: ts,
-            }),
-        );
+        rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
+            dspan: DelimSpan::dummy(),
+            delim: rustc_ast::token::Delimiter::Parenthesis,
+            tokens: ts,
+        });
 
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);

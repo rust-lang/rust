@@ -1,4 +1,4 @@
-error[E0532]: expected tuple struct or tuple variant, found variant `FooB`
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:16:9
    |
 LL |     FooB { x: i32, y: i32 }
@@ -6,8 +6,10 @@ LL |     FooB { x: i32, y: i32 }
 ...
 LL |         FooB(a, b) => println!("{} {}", a, b),
    |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x: a, y: b }`
+   |
+   = note: a variant named `FooB` exists in another namespace
 
-error[E0532]: expected tuple struct or tuple variant, found variant `FooB`
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:22:9
    |
 LL |     FooB { x: i32, y: i32 }
@@ -15,8 +17,10 @@ LL |     FooB { x: i32, y: i32 }
 ...
 LL |         FooB(x, y) => println!("{} {}", x, y),
    |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x, y }`
+   |
+   = note: a variant named `FooB` exists in another namespace
 
-error[E0532]: expected tuple struct or tuple variant, found variant `FooA`
+error[E0532]: cannot find tuple struct or tuple variant `FooA` in this scope
   --> $DIR/issue-106862.rs:28:9
    |
 LL |     FooA { opt_x: Option<i32>, y: i32 },
@@ -24,8 +28,10 @@ LL |     FooA { opt_x: Option<i32>, y: i32 },
 ...
 LL |         FooA(Some(x), y) => println!("{} {}", x, y),
    |         ^^^^^^^^^^^^^^^^ help: use struct pattern syntax instead: `FooA { opt_x: Some(x), y }`
+   |
+   = note: a variant named `FooA` exists in another namespace
 
-error[E0532]: expected tuple struct or tuple variant, found variant `FooB`
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:34:9
    |
 LL |     FooB { x: i32, y: i32 }
@@ -33,8 +39,10 @@ LL |     FooB { x: i32, y: i32 }
 ...
 LL |         FooB(a, _, _) => println!("{}", a),
    |         ^^^^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x: a, y: _ }`
+   |
+   = note: a variant named `FooB` exists in another namespace
 
-error[E0532]: expected tuple struct or tuple variant, found variant `FooB`
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:40:9
    |
 LL |     FooB { x: i32, y: i32 }
@@ -42,6 +50,8 @@ LL |     FooB { x: i32, y: i32 }
 ...
 LL |         FooB() => (),
    |         ^^^^^^ help: use struct pattern syntax instead: `FooB { x, y }`
+   |
+   = note: a variant named `FooB` exists in another namespace
 
 error: aborting due to 5 previous errors
 

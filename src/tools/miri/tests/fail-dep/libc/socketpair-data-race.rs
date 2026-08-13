@@ -4,25 +4,22 @@
 //@compile-flags: -Zmiri-deterministic-concurrency
 use std::thread;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+use libc_utils::{errno_check, read_exact_array, write_all};
+
 fn main() {
     static mut VAL: u8 = 0;
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let thread1 = thread::spawn(move || {
-        let data = "a".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 1) };
-        assert_eq!(res, 1);
+        write_all(fds[0], b"a").unwrap();
         // The write to VAL is *after* the write to the socket, so there's no proper synchronization.
         unsafe { VAL = 1 };
     });
     thread::yield_now();
 
-    let mut buf: [u8; 1] = [0; 1];
-    let res: i32 = unsafe {
-        libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t).try_into().unwrap()
-    };
-    assert_eq!(res, 1);
+    let buf = read_exact_array::<1>(fds[1]).unwrap();
     assert_eq!(buf, "a".as_bytes());
 
     unsafe { assert_eq!({ VAL }, 1) }; //~ERROR: Data race

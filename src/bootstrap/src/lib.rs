@@ -15,7 +15,7 @@
 //!
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
-#![cfg_attr(test, allow(unused))]
+#![allow(clippy::assertions_on_constants, reason = "false positive for `assert!(cfg!(..))`")]
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -28,35 +28,24 @@ use std::{env, fs, io, str};
 use build_helper::ci::gha;
 use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
-use utils::build_stamp::BuildStamp;
-use utils::channel::GitInfo;
-use utils::exec::ExecutionContext;
-
-use crate::core::builder;
-use crate::core::builder::Kind;
-use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
-
-mod core;
-mod utils;
-
-#[cfg(feature = "tracing")]
-pub use core::builder::STEP_SPAN_TARGET;
-pub use core::builder::{PathSet, StepStack};
-pub use core::config::flags::{Flags, Subcommand};
-pub use core::config::{ChangeId, Config};
-
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
-pub use utils::change_tracker::{
-    CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
-};
-pub use utils::helpers::{PanicTracker, symlink_dir};
-#[cfg(feature = "tracing")]
-pub use utils::tracing::setup_tracing;
 
+use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::vendor::VENDOR_DIR;
+use crate::core::builder::{self, Kind};
+use crate::core::config::flags::{self, Subcommand};
+use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
+use crate::utils::channel::GitInfo;
+use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir, t,
+};
+
+pub mod cli_main;
+mod core;
+mod utils;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -759,8 +748,14 @@ impl Build {
 
             match &self.config.cmd {
                 Subcommand::Format { check, all } => {
+                    let builder = builder::Builder::new(self);
+                    let rustfmt_path = builder.ensure(InternalRustfmt).unwrap_or_else(|| {
+                        eprintln!("fmt error: `x fmt` is not supported on this channel");
+                        crate::exit!(1);
+                    });
                     return core::build_steps::format::format(
-                        &builder::Builder::new(self),
+                        &builder,
+                        rustfmt_path,
                         *check,
                         *all,
                         &self.config.paths,
@@ -848,10 +843,6 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
-        if self.config.llvm_enzyme {
-            features.insert("llvm_enzyme");
-        }
-
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -866,14 +857,14 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if self.config.jemalloc(target) && check("jemalloc") {
-            features.push("jemalloc");
+
+        if let Some(allocator_feature_name) = self.config.allocator(target).feature_name()
+            && check(allocator_feature_name)
+        {
+            features.push(allocator_feature_name);
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
-        }
-        if self.config.llvm_enzyme {
-            features.push("llvm_enzyme");
         }
         if self.config.llvm_offload {
             features.push("llvm_offload");
@@ -983,18 +974,6 @@ impl Build {
         }
     }
 
-    fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("enzyme")
-    }
-
-    fn offload_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("offload")
-    }
-
-    fn lld_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("lld")
-    }
-
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("doc")
@@ -1022,50 +1001,6 @@ impl Build {
     /// Path to the vendored Rust crates.
     fn vendored_crates_path(&self) -> Option<PathBuf> {
         if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
-    }
-
-    /// Returns the path to `FileCheck` binary for the specified target
-    fn llvm_filecheck(&self, target: TargetSelection) -> PathBuf {
-        let target_config = self.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
-            s.to_path_buf()
-        } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
-            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
-            if filecheck.exists() {
-                filecheck
-            } else {
-                // On Fedora the system LLVM installs FileCheck in the
-                // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
-                let lib_filecheck =
-                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
-                if lib_filecheck.exists() {
-                    lib_filecheck
-                } else {
-                    // Return the most normal file name, even though
-                    // it doesn't exist, so that any error message
-                    // refers to that.
-                    filecheck
-                }
-            }
-        } else {
-            let base = self.llvm_out(target).join("build");
-            let base = if !self.ninja() && target.is_msvc() {
-                if self.config.llvm_optimize {
-                    if self.config.llvm_release_debuginfo {
-                        base.join("RelWithDebInfo")
-                    } else {
-                        base.join("Release")
-                    }
-                } else {
-                    base.join("Debug")
-                }
-            } else {
-                base
-            };
-            base.join("bin").join(exe("FileCheck", target))
-        }
     }
 
     /// Directory for libraries built from C/C++ code and shared between stages.
@@ -1322,10 +1257,10 @@ impl Build {
 
         if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
-            let cc = self.cc(target);
-            if cc.ends_with("clang") || cc.ends_with("gcc") {
+            let cc = self.cc_tool(target);
+            if cc.is_like_clang() || cc.is_like_gnu() {
                 base.push(format!("-fdebug-prefix-map={map}"));
-            } else if cc.ends_with("clang-cl.exe") {
+            } else if cc.is_like_clang_cl() {
                 base.push("-Xclang".into());
                 base.push(format!("-fdebug-prefix-map={map}"));
             }

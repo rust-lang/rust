@@ -1,5 +1,5 @@
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
-use rustc_hir::{self as hir};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 

@@ -1,11 +1,10 @@
 //! Deeply normalize types using the old trait solver.
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
 use rustc_middle::span_bug;
@@ -14,6 +13,7 @@ use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
     TypeVisitableExt, TypingMode, Unnormalized,
 };
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use super::{BoundVarReplacer, PlaceholderReplacer, SelectionContext, project};
@@ -35,7 +35,6 @@ impl<'tcx> At<'_, 'tcx> {
             let Normalized { value, obligations } = crate::solve::normalize(*self, value);
             InferOk { value, obligations }
         } else {
-            let value = value.skip_normalization();
             let mut selcx = SelectionContext::new(self.infcx);
             let Normalized { value, obligations } =
                 normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
@@ -59,7 +58,7 @@ impl<'tcx> At<'_, 'tcx> {
         self,
         value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<T, Vec<E>>
+    ) -> Result<T, ThinVec<E>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -80,14 +79,15 @@ impl<'tcx> At<'_, 'tcx> {
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
-            if errors.is_empty() {
-                Ok(value)
-            } else {
-                // Drop pending obligations, since deep normalization may happen
-                // in a loop and we don't want to trigger the assertion on the next
-                // iteration due to pending ambiguous obligations we've left over.
-                let _ = fulfill_cx.collect_remaining_errors(self.infcx);
-                Err(errors)
+            match errors {
+                TraitErrors::NoErrors => Ok(value),
+                TraitErrors::HasErrors(errors) => {
+                    // Drop pending obligations, since deep normalization may happen
+                    // in a loop and we don't want to trigger the assertion on the next
+                    // iteration due to pending ambiguous obligations we've left over.
+                    let _ = fulfill_cx.collect_remaining_errors(self.infcx);
+                    Err(errors)
+                }
             }
         }
     }
@@ -99,7 +99,7 @@ pub(crate) fn normalize_with_depth<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: T,
+    value: Unnormalized<'tcx, T>,
 ) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
@@ -115,7 +115,7 @@ pub(crate) fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     obligations: &mut PredicateObligations<'tcx>,
 ) -> T
 where
@@ -123,7 +123,7 @@ where
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| AssocTypeNormalizer::fold(&mut normalizer, value));
+    let result = AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization());
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result
@@ -143,7 +143,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         | TypingMode::Typeck { .. }
         | TypingMode::PostTypeckUntilBorrowck { .. }
         | TypingMode::PostBorrowck { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
-        TypingMode::PostAnalysis | TypingMode::Codegen => {}
+        TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {}
     }
 
     value.has_type_flags(flags)
@@ -315,7 +315,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         // placeholders as the trait solver does not expect to encounter escaping bound
         // vars in obligations.
         //
-        // FIXME(lazy_type_alias): Check how much this actually matters for perf before
+        // FIXME(checked_type_alias): Check how much this actually matters for perf before
         // stabilization. This is a bit weird and generally not how we handle binders in
         // the compiler so ideally we'd do the same boundvar->placeholder->boundvar dance
         // that other kinds of normalization do.
@@ -323,20 +323,20 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.obligations.extend(
             infcx
                 .tcx
-                .predicates_of(def_id)
+                .clauses_of(def_id)
                 .instantiate_own(infcx.tcx, free.args)
-                .map(|(pred, span)| (pred.skip_norm_wip(), span))
-                .map(|(mut predicate, span)| {
+                .map(|(clause, span)| (clause.skip_norm_wip(), span))
+                .map(|(mut clause, span)| {
                     if free.has_escaping_bound_vars() {
-                        (predicate, ..) = BoundVarReplacer::replace_bound_vars(
+                        (clause, ..) = BoundVarReplacer::replace_bound_vars(
                             infcx,
                             &mut self.universes,
-                            predicate,
+                            clause,
                         );
                     }
                     let mut cause = self.cause.clone();
                     cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, def_id));
-                    Obligation::new(infcx.tcx, cause, self.param_env, predicate)
+                    Obligation::new(infcx.tcx, cause, self.param_env, clause)
                 }),
         );
         self.depth += 1;
@@ -432,7 +432,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     | TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
                     | TypingMode::PostBorrowck { .. } => ty.super_fold_with(self),
-                    TypingMode::PostAnalysis | TypingMode::Codegen => {
+                    TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(

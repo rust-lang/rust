@@ -1,0 +1,4 @@
+break tests/ui/locals_projected_mplace_size.rs:36
+continue
+locals
+quit

@@ -1,9 +1,10 @@
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, impl_lint_pass};
 
-use crate::lints::{ShadowedIntoIterDiag, ShadowedIntoIterDiagSub};
+use crate::diagnostics::{ShadowedIntoIterDiag, ShadowedIntoIterDiagSub};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

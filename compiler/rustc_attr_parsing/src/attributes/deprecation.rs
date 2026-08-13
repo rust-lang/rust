@@ -1,13 +1,10 @@
 use rustc_ast::LitKind;
+use rustc_attr_ir::{DeprecatedSince, Deprecation, RustcVersion, VERSION_PLACEHOLDER};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
-use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{
-    DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
-};
+use crate::diagnostics::{DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince};
 
 fn get(
     cx: &mut AcceptContext<'_, '_>,
@@ -24,7 +21,7 @@ fn get(
     if let Some(value_str) = v.value_as_ident() {
         Some(value_str)
     } else {
-        cx.adcx().expected_string_literal(v.value_span, Some(&v.value_as_lit()));
+        cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
         None
     }
 }

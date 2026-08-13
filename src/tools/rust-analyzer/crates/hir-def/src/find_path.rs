@@ -12,7 +12,8 @@ use intern::sym;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    ModuleDefId, ModuleId,
+    ModuleDefId, ModuleIdLt,
+    attrs::crate_supports_no_std,
     import_map::ImportMap,
     item_scope::ItemInNs,
     nameres::DefMap,
@@ -38,7 +39,7 @@ pub struct FindPathConfig {
 pub fn find_path(
     db: &dyn SourceDatabase,
     item: ItemInNs,
-    from: ModuleId,
+    from: ModuleIdLt<'_>,
     mut prefix_kind: PrefixKind,
     ignore_local_imports: bool,
     mut cfg: FindPathConfig,
@@ -59,7 +60,9 @@ pub fn find_path(
 
     let from_def_map = from.def_map(db);
 
-    cfg.prefer_no_std = cfg.prefer_no_std || from_def_map.is_no_std();
+    let from_crate = from.krate(db);
+    cfg.prefer_no_std =
+        cfg.prefer_no_std || from_def_map.is_no_std() || crate_supports_no_std(db, from_crate);
 
     find_path_inner(
         &FindPathCtx {
@@ -69,7 +72,7 @@ pub fn find_path(
             ignore_local_imports,
             is_std_item: item_module.krate(db).data(db).origin.is_lang(),
             from,
-            from_crate: from.krate(db),
+            from_crate,
             crate_root: from_def_map.crate_root(db),
             from_def_map,
             fuel: Cell::new(FIND_PATH_FUEL),
@@ -118,14 +121,14 @@ struct FindPathCtx<'db> {
     cfg: FindPathConfig,
     ignore_local_imports: bool,
     is_std_item: bool,
-    from: ModuleId,
+    from: ModuleIdLt<'db>,
     from_crate: Crate,
-    crate_root: ModuleId,
+    crate_root: ModuleIdLt<'db>,
     from_def_map: &'db DefMap,
     fuel: Cell<usize>,
 }
 
-/// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
+/// Attempts to find a path to refer to the given `item` visible from the `from` ModuleIdLt<'_>
 fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Option<ModPath> {
     // - if the item is a module, jump straight to module search
     if !ctx.is_std_item
@@ -171,10 +174,10 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 }
 
 #[tracing::instrument(skip_all)]
-fn find_path_for_module(
-    ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
-    module_id: ModuleId,
+fn find_path_for_module<'db>(
+    ctx: &'db FindPathCtx<'db>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>,
+    module_id: ModuleIdLt<'db>,
     maybe_extern: bool,
     max_len: usize,
 ) -> Option<Choice> {
@@ -231,7 +234,7 @@ fn find_path_for_module(
             ctx.db,
             ctx.from_def_map,
             ctx.from,
-            ItemInNs::Types(module_id.into()),
+            ItemInNs::Types(unsafe { module_id.to_static() }.into()),
             ctx.ignore_local_imports,
         );
         if let Some(scope_name) = scope_name {
@@ -253,7 +256,7 @@ fn find_path_for_module(
     }
 
     // - if the module is in the prelude, return it by that path
-    let item = ItemInNs::Types(module_id.into());
+    let item = ItemInNs::Types(unsafe { module_id.to_static() }.into());
     if let Some(choice) = find_in_prelude(ctx.db, ctx.from_def_map, item, ctx.from) {
         return Some(choice);
     }
@@ -266,10 +269,10 @@ fn find_path_for_module(
     best_choice
 }
 
-fn find_in_scope(
-    db: &dyn SourceDatabase,
+fn find_in_scope<'db>(
+    db: &'db dyn SourceDatabase,
     def_map: &DefMap,
-    from: ModuleId,
+    from: ModuleIdLt<'db>,
     item: ItemInNs,
     ignore_local_imports: bool,
 ) -> Option<Name> {
@@ -287,7 +290,7 @@ fn find_in_prelude(
     db: &dyn SourceDatabase,
     local_def_map: &DefMap,
     item: ItemInNs,
-    from: ModuleId,
+    from: ModuleIdLt<'_>,
 ) -> Option<Choice> {
     let (prelude_module, _) = local_def_map.prelude()?;
     let prelude_def_map = prelude_module.def_map(db);
@@ -319,8 +322,8 @@ fn find_in_prelude(
 fn is_kw_kind_relative_to_from(
     db: &dyn SourceDatabase,
     def_map: &DefMap,
-    item: ModuleId,
-    from: ModuleId,
+    item: ModuleIdLt<'_>,
+    from: ModuleIdLt<'_>,
 ) -> Option<PathKind> {
     if item.krate(db) != from.krate(db) || item.block(db).is_some() || from.block(db).is_some() {
         return None;
@@ -341,9 +344,9 @@ fn is_kw_kind_relative_to_from(
 }
 
 #[tracing::instrument(skip_all)]
-fn calculate_best_path(
-    ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+fn calculate_best_path<'db>(
+    ctx: &'db FindPathCtx<'db>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>,
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
@@ -381,9 +384,9 @@ fn calculate_best_path(
     }
 }
 
-fn find_in_sysroot(
-    ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+fn find_in_sysroot<'db>(
+    ctx: &'db FindPathCtx<'db>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>,
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
@@ -404,6 +407,10 @@ fn find_in_sysroot(
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
             return;
         }
+        search(LangCrateOrigin::Alloc, best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return;
+        }
         search(LangCrateOrigin::Std, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
             return;
@@ -417,6 +424,10 @@ fn find_in_sysroot(
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
             return;
         }
+        search(LangCrateOrigin::Alloc, best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return;
+        }
     }
     dependencies
         .iter()
@@ -427,9 +438,9 @@ fn find_in_sysroot(
         });
 }
 
-fn find_in_dep(
-    ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+fn find_in_dep<'db>(
+    ctx: &'db FindPathCtx<'db>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>,
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
@@ -464,9 +475,9 @@ fn find_in_dep(
     }
 }
 
-fn calculate_best_path_local(
-    ctx: &FindPathCtx<'_>,
-    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
+fn calculate_best_path_local<'db>(
+    ctx: &'db FindPathCtx<'db>,
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>,
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
@@ -563,11 +574,11 @@ fn path_kind_len(kind: PathKind) -> usize {
 }
 
 /// Finds locations in `from.krate` from which `item` can be imported by `from`.
-fn find_local_import_locations(
-    ctx: &FindPathCtx<'_>,
+fn find_local_import_locations<'db>(
+    ctx: &'db FindPathCtx<'db>,
     item: ItemInNs,
-    visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
-    mut cb: impl FnMut(&mut FxHashSet<(ItemInNs, ModuleId)>, &Name, ModuleId),
+    visited_modules: &mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>,
+    mut cb: impl FnMut(&mut FxHashSet<(ItemInNs, ModuleIdLt<'db>)>, &Name, ModuleIdLt<'db>),
 ) {
     let _p = tracing::info_span!("find_local_import_locations").entered();
     let db = ctx.db;
@@ -1485,10 +1496,41 @@ pub mod fmt {
             "#]],
         );
 
-        // Should also work (on a best-effort basis) if `no_std` is conditional.
+        // Should also work (on a best-effort basis) if `no_std` is conditionally enabled.
         check_found_path(
             r#"
 //- /main.rs crate:main deps:core,std
+#![cfg_attr(not(test), no_std)]
+
+$0
+
+//- /std.rs crate:std deps:core
+
+pub mod fmt {
+    pub use core::fmt::Error;
+}
+
+//- /zzz.rs crate:core
+
+pub mod fmt {
+    pub struct Error;
+}
+        "#,
+            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
+        );
+
+        // Should also work (on a best-effort basis) if `no_std` is conditionally disabled.
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:core,std cfg:test
 #![cfg_attr(not(test), no_std)]
 
 $0
@@ -1525,6 +1567,43 @@ pub mod fmt {
 #![no_std]
 
 extern crate alloc;
+
+$0
+
+//- /std.rs crate:std deps:alloc
+
+pub mod sync {
+    pub use alloc::sync::Arc;
+}
+
+//- /zzz.rs crate:alloc
+
+pub mod sync {
+    pub struct Arc;
+}
+            "#,
+            "alloc::sync::Arc",
+            expect![[r#"
+                Plain  (imports ✔): alloc::sync::Arc
+                Plain  (imports ✖): alloc::sync::Arc
+                ByCrate(imports ✔): alloc::sync::Arc
+                ByCrate(imports ✖): alloc::sync::Arc
+                BySelf (imports ✔): alloc::sync::Arc
+                BySelf (imports ✖): alloc::sync::Arc
+            "#]],
+        );
+    }
+
+    #[test]
+    fn prefer_alloc_paths_over_std_with_extern_crate_std() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:alloc,std
+#![no_std]
+
+extern crate alloc;
+
+extern crate std;
 
 $0
 

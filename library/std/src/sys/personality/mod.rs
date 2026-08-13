@@ -14,9 +14,6 @@ mod dwarf;
 
 #[cfg(not(any(test, doctest)))]
 cfg_select! {
-    target_os = "emscripten" => {
-        mod emcc;
-    }
     any(target_env = "msvc", target_family = "wasm", target_os = "motor") => {
         // This is required by the compiler to exist (e.g., it's a lang item),
         // but it's never actually called by the compiler because
@@ -33,7 +30,7 @@ cfg_select! {
         target_os = "psp",
         target_os = "xous",
         target_os = "solid_asp3",
-        all(target_family = "unix", not(target_os = "espidf"), not(target_os = "l4re"), not(target_os = "nuttx")),
+        all(target_family = "unix", not(target_os = "espidf"), not(target_os = "nuttx")),
         all(target_vendor = "fortanix", target_env = "sgx"),
     ) => {
         mod gcc;

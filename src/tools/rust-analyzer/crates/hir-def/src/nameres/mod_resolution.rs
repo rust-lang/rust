@@ -149,13 +149,7 @@ impl DirPath {
         if attr.starts_with("./") {
             attr = &attr["./".len()..];
         }
-        let tmp;
-        let attr = if attr.contains('\\') {
-            tmp = attr.replace('\\', "/");
-            &tmp
-        } else {
-            attr
-        };
+        let attr = if attr.contains('\\') { &attr.replace('\\', "/") } else { attr };
         let res = format!("{base}{attr}");
         res
     }

@@ -1,19 +1,16 @@
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ run-pass
 #![feature(try_as_dyn)]
 
 use std::any::try_as_dyn;
 
-trait Trait {
+trait Trait {}
 
-}
+impl Trait for for<'a> fn(&'a Box<i32>) {}
 
-impl Trait for for<'a> fn(&'a Box<i32>) {
-
-}
-
-fn store(_: &'static Box<i32>) {
-
-}
+fn store(_: &'static Box<i32>) {}
 
 fn main() {
     let fn_ptr: fn(&'static Box<i32>) = store;

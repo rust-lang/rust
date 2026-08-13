@@ -1,0 +1,14 @@
+; Preserve element metadata for the `OsStr` regression from #160327.
+OSSTR-LABEL: define void @split_once(
+OSSTR-NOT: define
+OSSTR: call void @llvm.memcpy{{.*}}"enzyme_type"="{[0]:Pointer, [0,0]:Pointer, [0,0,-1]:Integer, [0,16]:Pointer, [0,16,-1]:Integer}"
+
+; Preserve both data layout and length metadata for a prefixed slice-tail DST.
+HEADER-LABEL: define{{.*}}@header_sum(
+HEADER-SAME: ptr{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float}"
+HEADER-SAME: i64 "enzyme_type"="{[0]:Integer}"
+
+; ZST elements produce no child metadata under the slice data pointer.
+ZST-LABEL: define{{.*}}@zst_slice_len(
+ZST-SAME: ptr{{.*}}"enzyme_type"="{[-1]:Pointer}"
+ZST-SAME: i64 "enzyme_type"="{[0]:Integer}"

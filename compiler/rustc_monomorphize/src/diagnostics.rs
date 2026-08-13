@@ -51,6 +51,33 @@ pub(crate) struct CouldntDumpMonoStats {
 }
 
 #[derive(Diagnostic)]
+#[diag("could not write offload monomorphization manifest to `{$path}`: {$err}")]
+pub(crate) struct OffloadManifestWriteError {
+    pub path: String,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("could not read offload monomorphization manifest from `{$path}`: {$err}")]
+pub(crate) struct OffloadManifestReadError {
+    pub path: String,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("generic offload kernel `{$def_path}` is not instantiated")]
+#[help(
+    "with `-Zoffload=Device` (without a manifest), generic kernels are only discovered via \
+    monomorphization; if this kernel is called from host code, pass \
+    `-Zoffload=Device=<manifest>`, using the manifest written by `-Zoffload=HostMetadata=<manifest>`"
+)]
+pub(crate) struct GenericKernelNotInstantiated {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("the above error was encountered while instantiating `{$kind} {$instance}`")]
 pub(crate) struct EncounteredErrorWhileInstantiating<'tcx> {
     #[primary_span]

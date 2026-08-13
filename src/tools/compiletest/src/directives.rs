@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::process::Command;
 use std::{env, fs};
@@ -6,8 +7,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use tracing::*;
 
-use crate::common::{CodegenBackend, Config, Debugger, PassFailMode, TestMode};
-use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::common::{Config, Debugger, PassFailMode, TestMode};
+use crate::debuggers::{LldbVersion, extract_cdb_version, extract_gdb_version};
 use crate::directives::auxiliary::parse_and_update_aux;
 pub(crate) use crate::directives::auxiliary::{AuxCrate, AuxProps};
 use crate::directives::directive_names::{
@@ -19,7 +20,7 @@ use crate::directives::line::DirectiveLine;
 use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
-use crate::executor::{CollectedTestDesc, ShouldFail};
+use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 use crate::util::static_regex;
 use crate::{fatal, help};
 
@@ -850,6 +851,30 @@ pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Vers
     None
 }
 
+pub(crate) fn find_gcc_supported_targets(sysroot_base: &Utf8Path, host: &str) -> Vec<String> {
+    // E.g. `lib/rustlib/x86_64-unknown-linux-gnu/codegen-backends/lib`.
+    let backends_dir =
+        sysroot_base.join("lib").join("rustlib").join(host).join("codegen-backends").join("lib");
+
+    match std::fs::read_dir(&backends_dir) {
+        Ok(entries) => {
+            // Search for `aarch64-unknown-linux-gnu/libgccjit.so` et cetera.
+            let target_tuples: Vec<_> = entries
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.path().join("libgccjit.so").exists())
+                .filter_map(|entry| entry.file_name().into_string().ok())
+                .collect();
+
+            if target_tuples.is_empty() {
+                panic!("did not find `libgccjit.so` for any target in {backends_dir}");
+            }
+
+            target_tuples
+        }
+        Err(e) => panic!("unable to find `libgccjit.so` for any target in {backends_dir}: {e:?}",),
+    }
+}
+
 /// Takes a directive of the form `"<version1> [- <version2>]"`, returns the numeric representation
 /// of `<version1>` and `<version2>` as tuple: `(<version1>, <version2>)`.
 ///
@@ -891,61 +916,90 @@ pub(crate) fn make_test_description(
     path: &Utf8Path,
     filterable_path: &Utf8Path,
     file_directives: &FileDirectives<'_>,
-    test_revision: Option<&str>,
+    variant: &TestVariant,
     poisoned: &mut bool,
     aux_props: &mut AuxProps,
 ) -> CollectedTestDesc {
-    let mut ignore = false;
-    let mut ignore_message = None;
+    let mut ignore_message: Option<Cow<'static, str>> = None;
     let mut should_fail = false;
 
-    // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
-    iter_directives(config, file_directives, &mut |ln @ &DirectiveLine { line_number, .. }| {
-        if !ln.applies_to_test_revision(test_revision) {
-            return;
-        }
-
-        // Parse `aux-*` directives, for use by up-to-date checks.
-        parse_and_update_aux(config, ln, aux_props);
-
-        macro_rules! decision {
-            ($e:expr) => {
-                match $e {
-                    IgnoreDecision::Ignore { reason } => {
-                        ignore = true;
-                        ignore_message = Some(reason.into());
-                    }
-                    IgnoreDecision::Error { message } => {
-                        error!("{path}:{line_number}: {message}");
-                        *poisoned = true;
-                        return;
-                    }
-                    IgnoreDecision::Continue => {}
+    // Perform a per-file (rather than per-line) ignore decision to skip running debuginfo tests
+    // if we don't have a debugger for them available.
+    // We do this to materialize debuginfo tests for each debugger and explicitly ignore
+    // the variants that are not supported in our environment.
+    if let Some(debugger) = variant.debugger.as_ref() {
+        match debugger {
+            Debugger::Cdb => {
+                if let Some(msg) = check_cdb_support(config) {
+                    ignore_message = Some(Cow::Owned(msg));
                 }
-            };
+            }
+            Debugger::Gdb => {
+                if let Some(msg) = check_gdb_support(config) {
+                    ignore_message = Some(Cow::Owned(msg));
+                }
+            }
+            Debugger::Lldb => {
+                if let Some(msg) = check_lldb_support(config) {
+                    ignore_message = Some(Cow::Owned(msg));
+                }
+            }
         }
+    }
 
-        decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
-        decision!(cfg::handle_only(&cache.cfg_conditions, ln));
-        decision!(needs::handle_needs(&cache.needs, config, ln));
-        decision!(ignore_llvm(config, ln));
-        decision!(ignore_backends(config, ln));
-        decision!(needs_backends(config, ln));
-        decision!(ignore_cdb(config, ln));
-        decision!(ignore_gdb(config, ln));
-        decision!(ignore_lldb(config, ln));
-        decision!(ignore_parallel_frontend(config, ln));
+    if ignore_message.is_none() {
+        // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
+        iter_directives(
+            config,
+            file_directives,
+            &mut |ln @ &DirectiveLine { line_number, .. }| {
+                if !ln.applies_to_test_revision(variant.revision()) {
+                    return;
+                }
 
-        if config.target == "wasm32-unknown-unknown"
-            && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
-        {
-            decision!(IgnoreDecision::Ignore {
-                reason: "ignored on WASM as the run results cannot be checked there".into(),
-            });
-        }
+                // Parse `aux-*` directives, for use by up-to-date checks.
+                parse_and_update_aux(config, ln, aux_props);
 
-        should_fail |= config.parse_name_directive(ln, "should-fail");
-    });
+                macro_rules! decision {
+                    ($e:expr) => {
+                        match $e {
+                            IgnoreDecision::Ignore { reason } => {
+                                ignore_message = Some(reason.into());
+                            }
+                            IgnoreDecision::Error { message } => {
+                                error!("{path}:{line_number}: {message}");
+                                *poisoned = true;
+                                return;
+                            }
+                            IgnoreDecision::Continue => {}
+                        }
+                    };
+                }
+
+                decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
+                decision!(cfg::handle_only(&cache.cfg_conditions, ln));
+                decision!(needs::handle_needs(&cache.needs, config, ln));
+                decision!(ignore_llvm(config, ln));
+                decision!(ignore_backends(config, ln));
+                decision!(needs_backends(config, ln));
+                decision!(ignore_unsupported_backend_target(config, ln));
+                decision!(ignore_cdb(config, variant, ln));
+                decision!(ignore_gdb(config, variant, ln));
+                decision!(ignore_lldb(config, variant, ln));
+                decision!(ignore_parallel_frontend(config, ln));
+
+                if config.target == "wasm32-unknown-unknown"
+                    && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
+                {
+                    decision!(IgnoreDecision::Ignore {
+                        reason: "ignored on WASM as the run results cannot be checked there".into(),
+                    });
+                }
+
+                should_fail |= config.parse_name_directive(ln, "should-fail");
+            },
+        );
+    }
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
@@ -959,15 +1013,48 @@ pub(crate) fn make_test_description(
     CollectedTestDesc {
         name,
         filterable_path: filterable_path.to_owned(),
-        ignore,
         ignore_message,
         should_fail,
     }
 }
 
-fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Cdb) {
-        return IgnoreDecision::Continue;
+/// Returns `None` if CDB is available, otherwise returns an ignore message.
+fn check_cdb_support(config: &Config) -> Option<String> {
+    if config.cdb.is_none() { Some("cdb is not available".to_string()) } else { None }
+}
+
+/// Returns `None` if GDB is available, otherwise returns an ignore message.
+fn check_gdb_support(config: &Config) -> Option<String> {
+    if config.gdb_version.is_none() {
+        return Some("gdb is not available".to_string());
+    }
+
+    if config.matches_env("msvc") {
+        return Some("gdb tests do not run on msvc".to_string());
+    }
+
+    if config.remote_test_client.is_some() && !config.target.contains("android") {
+        return Some("gdb tests are not available when testing with remote".to_string());
+    }
+    None
+}
+
+/// Returns `None` if LLDB is available, otherwise returns an ignore message.
+fn check_lldb_support(config: &Config) -> Option<String> {
+    if config.lldb.is_none() { Some("lldb is not available".to_string()) } else { None }
+}
+
+fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Cdb) {
+        return if line.name == "only-cdb" {
+            IgnoreDecision::Ignore { reason: "debugger is not cdb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-cdb" {
+        return IgnoreDecision::Ignore { reason: "debugger is cdb".to_string() };
     }
 
     if let Some(actual_version) = config.cdb_version {
@@ -990,9 +1077,17 @@ fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Gdb) {
-        return IgnoreDecision::Continue;
+fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Gdb) {
+        return if line.name == "only-gdb" {
+            IgnoreDecision::Ignore { reason: "debugger is not gdb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-gdb" {
+        return IgnoreDecision::Ignore { reason: "debugger is gdb".to_string() };
     }
 
     if let Some(actual_version) = config.gdb_version {
@@ -1042,26 +1137,59 @@ fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Lldb) {
-        return IgnoreDecision::Continue;
+fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Lldb) {
+        return if line.name == "only-lldb" {
+            IgnoreDecision::Ignore { reason: "debugger is not lldb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
     }
 
-    if let Some(actual_version) = config.lldb_version {
-        if line.name == "min-lldb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
-        {
-            let min_version = rest.parse().unwrap_or_else(|e| {
-                panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
-            });
-            // Ignore if actual version is smaller the minimum required
-            // version
-            if actual_version < min_version {
-                return IgnoreDecision::Ignore {
-                    reason: format!("ignored when the LLDB version is {rest}"),
+    if line.name == "ignore-lldb" {
+        return IgnoreDecision::Ignore { reason: "debugger is lldb".to_string() };
+    }
+
+    if let Some(actual_version) = &config.lldb_version {
+        match (line.name, actual_version) {
+            ("min-apple-lldb-version", LldbVersion::Apple(vers)) => {
+                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                    return IgnoreDecision::Continue;
                 };
+
+                let LldbVersion::Apple(min_vers) = LldbVersion::apple_from_str(rest) else {
+                    unreachable!()
+                };
+
+                if vers < &min_vers {
+                    return IgnoreDecision::Ignore {
+                        reason: format!(
+                            "ignored when the Apple LLDB version is {}.{}.{}.{}",
+                            vers[0], vers[1], vers[2], vers[3]
+                        ),
+                    };
+                }
             }
-        }
+            ("min-llvm-lldb-version", LldbVersion::Llvm(vers)) => {
+                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                    return IgnoreDecision::Continue;
+                };
+
+                let LldbVersion::Llvm(min_vers) = LldbVersion::llvm_from_str(rest) else {
+                    unreachable!()
+                };
+
+                if vers < &min_vers {
+                    return IgnoreDecision::Ignore {
+                        reason: format!(
+                            "ignored when the LLDB version is {}.{}.{}",
+                            vers.major, vers.minor, vers.patch
+                        ),
+                    };
+                }
+            }
+            _ => {}
+        };
     }
     IgnoreDecision::Continue
 }
@@ -1069,12 +1197,10 @@ fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
 fn ignore_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     let path = line.file_path;
     if let Some(backends_to_ignore) = config.parse_name_value_directive(line, "ignore-backends") {
-        for backend in backends_to_ignore.split_whitespace().map(|backend| {
-            match CodegenBackend::try_from(backend) {
-                Ok(backend) => backend,
-                Err(error) => {
-                    panic!("Invalid ignore-backends value `{backend}` in `{path}`: {error}")
-                }
+        for backend in backends_to_ignore.split_whitespace().map(|backend| match backend.parse() {
+            Ok(backend) => backend,
+            Err(error) => {
+                panic!("Invalid ignore-backends value `{backend}` in `{path}`: {error}")
             }
         }) {
             if !config.bypass_ignore_backends && config.default_codegen_backend == backend {
@@ -1092,7 +1218,7 @@ fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends") {
         if !needed_backends
             .split_whitespace()
-            .map(|backend| match CodegenBackend::try_from(backend) {
+            .map(|backend| match backend.parse() {
                 Ok(backend) => backend,
                 Err(error) => {
                     panic!("Invalid needs-backends value `{backend}` in `{path}`: {error}")
@@ -1109,6 +1235,36 @@ fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         }
     }
     IgnoreDecision::Continue
+}
+
+/// When using the GCC backend, ignore tests for which we did not find a libgccjit.so.
+fn ignore_unsupported_backend_target(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if config.default_codegen_backend != crate::CodegenBackend::Gcc {
+        return IgnoreDecision::Continue;
+    }
+
+    let Some(compile_flags) = config.parse_name_value_directive(line, "compile-flags") else {
+        return IgnoreDecision::Continue;
+    };
+
+    // See if this line sets a `--target=...`
+    let Some((_, rest)) = compile_flags.split_once("--target") else {
+        return IgnoreDecision::Continue;
+    };
+    let Some(target) = rest.trim_start_matches([' ', '=']).split_whitespace().next() else {
+        return IgnoreDecision::Continue;
+    };
+
+    if !config.gcc_supported_target_tuples.iter().any(|t| t == target) {
+        IgnoreDecision::Ignore {
+            reason: format!(
+                "backend `{}` cannot build for target `{target}`",
+                config.default_codegen_backend.as_str()
+            ),
+        }
+    } else {
+        IgnoreDecision::Continue
+    }
 }
 
 fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {

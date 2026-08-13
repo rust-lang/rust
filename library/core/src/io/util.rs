@@ -130,7 +130,7 @@ impl Seek for Empty {
 /// [`Ok(0)`]: Ok
 ///
 /// [`write`]: crate::io::Write::write
-/// [`read`]: ../../std/io/trait.Read.html#tymethod.read
+/// [`read`]: ../../std/io/trait.Read.html#method.read
 ///
 /// # Examples
 ///

@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanExt, snippet_indent};
+use clippy_utils::source::{SpanExt as _, snippet_indent};
 use clippy_utils::tokenize_with_text;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, ItemKind, ModKind, NodeId};
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
 
@@ -251,7 +251,7 @@ impl Stop {
         Some(Self {
             span: attr.span,
             kind: match attr.kind {
-                AttrKind::Normal(_) => StopKind::Attr,
+                AttrKind::Normal(_) | AttrKind::Synthetic(_) => StopKind::Attr,
                 AttrKind::DocComment(comment_kind, _) => StopKind::Doc(comment_kind),
             },
             first: file.lookup_line(file.relative_position(lo))?,

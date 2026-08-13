@@ -714,13 +714,16 @@ impl CustomOwner {
 ///
 /// This is an [`i32`] on all currently supported platforms, but platforms
 /// added in the future (such as UEFI) may use a different primitive type like
-/// [`usize`]. Use `as` or [`into`] conversions where applicable to ensure maximum
-/// portability.
+/// [`usize`] or [`i16`]. Use `as` or [`into`] conversions where applicable to
+/// ensure maximum portability.
 ///
 /// [`into`]: Into::into
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub type RawOsError = cfg_select! {
     target_os = "uefi" => usize,
+    // For 16-bit AVR and MSP430, i16 is equivalent to c_int.
+    // Using i16 to be explicit.
+    target_pointer_width = "16" => i16,
     _ => i32,
 };
 
@@ -1115,6 +1118,7 @@ impl fmt::Display for ErrorKind {
     /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
     ///
     /// # Examples
+    ///
     /// ```
     /// use core::io::ErrorKind;
     /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());

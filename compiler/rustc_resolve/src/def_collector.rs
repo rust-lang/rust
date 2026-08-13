@@ -166,7 +166,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 nested: false,
             },
             ItemKind::Const(citem) => {
-                let is_type_const = matches!(citem.rhs_kind, ConstItemRhsKind::TypeConst { .. });
+                let is_type_const = citem.kind == ConstItemKind::TypeConst;
                 DefKind::Const { is_type_const }
             }
             ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
@@ -180,7 +180,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let mut parser = AttributeParser::new(
                     &self.r.tcx.sess,
                     self.r.features,
-                    self.r.tcx().registered_tools(()),
+                    self.r.tcx().registered_attr_tools(()),
                     ShouldEmit::Nothing,
                 );
                 let attrs = parser.parse_attribute_list(
@@ -303,7 +303,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 expr: _,
                 safety,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }) => {
                 let safety = match safety {
                     ast::Safety::Unsafe(_) | ast::Safety::Default => hir::Safety::Unsafe,
@@ -387,11 +387,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             | AssocItemKind::Delegation(Delegation { ident, .. }) => {
                 (*ident, DefKind::AssocFn, ValueNS)
             }
-            AssocItemKind::Const(ConstItem { ident, rhs_kind, .. }) => (
+            AssocItemKind::Const(ConstItem { ident, kind, .. }) => (
                 *ident,
-                DefKind::AssocConst {
-                    is_type_const: matches!(rhs_kind, ConstItemRhsKind::TypeConst { .. }),
-                },
+                DefKind::AssocConst { is_type_const: *kind == ConstItemKind::TypeConst },
                 ValueNS,
             ),
             AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
@@ -557,11 +555,18 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'a Attribute) {
+        use SyntheticAttr::*;
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
-        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
-            self.r
-                .builtin_attrs
-                .push((attr.get_normal_item().path.segments[0].ident, self.parent_scope));
+        match &attr.kind {
+            AttrKind::Normal(normal) => {
+                if attr::is_builtin_attr(&normal.item) {
+                    self.r
+                        .builtin_attrs
+                        .push((normal.item.path.segments[0].ident, self.parent_scope));
+                }
+            }
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
+            AttrKind::DocComment(..) => {}
         }
         visit::walk_attribute(self, attr);
         self.invocation_parent.in_attr = orig_in_attr;

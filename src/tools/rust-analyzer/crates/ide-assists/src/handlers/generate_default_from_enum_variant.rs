@@ -76,7 +76,7 @@ pub(crate) fn generate_default_from_enum_variant(
 
 fn default_impl(variant_name: ast::Name, adt: &ast::Adt, make: &SyntaxFactory) -> ast::Impl {
     let impl_ = utils::generate_trait_impl_intransitive(make, adt, make.ty("Default"));
-    let fn_ = default_fn(&variant_name.text(), make);
+    let fn_ = default_fn(variant_name.text(), make);
     let (impl_editor, impl_) = SyntaxEditor::with_ast_node(&impl_);
 
     impl_

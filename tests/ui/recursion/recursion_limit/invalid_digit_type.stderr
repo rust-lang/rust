@@ -1,8 +1,8 @@
 error[E0539]: malformed `recursion_limit` attribute input
-  --> $DIR/invalid_digit_type.rs:1:1
+  --> $DIR/invalid_digit_type.rs:1:4
    |
 LL | #![recursion_limit = 123]
-   | ^^^^^^^^^^^^^^^^^^^^^---^
+   |    ^^^^^^^^^^^^^^^^^^---
    |                      |
    |                      expected a string literal here
    |

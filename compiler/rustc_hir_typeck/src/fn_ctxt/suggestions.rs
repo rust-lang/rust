@@ -3,12 +3,13 @@ use core::cmp::min;
 use core::iter;
 
 use hir::def_id::LocalDefId;
+use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
     GenericBound, HirId, LoopSource, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind,
@@ -23,7 +24,6 @@ use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
@@ -34,7 +34,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::diagnostics::{self, SuggestBoxingForReturnImplTrait};
+use crate::diagnostics::{self, ExprParenthesesNeeded, SuggestBoxingForReturnImplTrait};
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
@@ -670,10 +670,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// When encountering a closure that captures variables, where a FnPtr is expected,
-    /// suggest a non-capturing closure
-    pub(in super::super) fn suggest_no_capture_closure(
+    /// explain why coercion fails and suggest changing the return type to `impl Fn(...)`.
+    pub(in super::super) fn suggest_closure_to_fn_ptr_coercion(
         &self,
         err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
@@ -701,9 +702,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 multi_span,
                 "closures can only be coerced to `fn` types if they do not capture any variables",
             );
+
+            // If the expected fn pointer type comes from the enclosing function's return type,
+            // suggest changing it to `impl Fn(...)` so that a capturing closure can be returned.
+            self.suggest_impl_fn_for_fn_ptr_ret(err, expr);
+
             return true;
         }
         false
+    }
+
+    /// When a capturing closure is returned where a `fn(...)` pointer return type is expected,
+    /// suggest changing the return type to `impl Fn(...)`.
+    fn suggest_impl_fn_for_fn_ptr_ret(&self, err: &mut Diag<'_>, expr: &hir::Expr<'_>) {
+        let Some((_, fn_decl)) = self.get_fn_decl(expr.hir_id) else { return };
+        let hir::FnRetTy::Return(ret_ty) = fn_decl.output else { return };
+        let hir::TyKind::FnPtr(fn_ptr_ty) = ret_ty.kind else { return };
+
+        let hir::FnDecl { inputs, output, .. } = fn_ptr_ty.decl;
+
+        let inputs_str =
+            inputs.iter().map(|ty| rustc_hir_pretty::ty_to_string(self, ty)).join(", ");
+
+        let output_str = match output {
+            hir::FnRetTy::DefaultReturn(_) => String::new(),
+            hir::FnRetTy::Return(ty) => {
+                format!(" -> {}", rustc_hir_pretty::ty_to_string(self, ty))
+            }
+        };
+
+        let suggestion = format!("impl Fn({inputs_str}){output_str}");
+        err.span_suggestion(
+            ret_ty.span,
+            "change the return type to return a type-erased closure instead",
+            suggestion,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// When encountering an `impl Future` where `BoxFuture` is expected, suggest `Box::pin`.
@@ -2060,7 +2094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let manually_impl = "consider manually implementing `Clone` to avoid the \
                         implicit type parameter bounds";
-                    match &errors[..] {
+                    match errors.as_slice() {
                         [] => {}
                         [error] => {
                             let msg = "`Clone` is not implemented because a trait bound is not \
@@ -2091,6 +2125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         _ => {
                             let unsatisfied_bounds: Vec<_> = errors
+                                .as_slice()
                                 .iter()
                                 .filter_map(|error| match error.obligation.cause.code() {
                                     traits::ObligationCauseCode::ImplDerived(data) => {
@@ -2125,12 +2160,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     unsatisfied_bounds_spans.push_span_label(span, label);
                                 }
                                 diag.span_help(unsatisfied_bounds_spans, msg);
-                                if errors.iter().all(|error| match error.obligation.cause.code() {
-                                    traits::ObligationCauseCode::ImplDerived(data) => {
-                                        self.tcx.is_automatically_derived(data.impl_or_alias_def_id)
-                                            && data.impl_or_alias_def_id.is_local()
+                                if errors.as_slice().iter().all(|error| {
+                                    match error.obligation.cause.code() {
+                                        traits::ObligationCauseCode::ImplDerived(data) => {
+                                            self.tcx
+                                                .is_automatically_derived(data.impl_or_alias_def_id)
+                                                && data.impl_or_alias_def_id.is_local()
+                                        }
+                                        _ => false,
                                     }
-                                    _ => false,
                                 }) {
                                     diag.help(manually_impl);
                                     suggest_derive = false;
@@ -2138,8 +2176,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 diag.help(format!(
                                     "{msg}: {}",
-                                    listify(&errors, |e| format!("`{}`", e.obligation.predicate))
-                                        .unwrap(),
+                                    listify(errors.as_slice(), |e| format!(
+                                        "`{}`",
+                                        e.obligation.predicate
+                                    ))
+                                    .unwrap(),
                                 ));
                             }
                         }

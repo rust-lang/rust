@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 
 #[rustc_pass_indirectly_in_non_rustic_abis]
-//~^ ERROR: `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute cannot be used on functions
+//~^ ERROR: the `rustc_pass_indirectly_in_non_rustic_abis` attribute cannot be used on functions
 fn not_a_struct() {}
 
 #[repr(C)]

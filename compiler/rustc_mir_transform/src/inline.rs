@@ -5,6 +5,7 @@ use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -24,7 +25,7 @@ use tracing::{debug, instrument, trace, trace_span};
 use crate::cost_checker::{CostChecker, is_call_like};
 use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
-use crate::{check_inline, util};
+use crate::{PassPolicy, check_inline, util};
 
 pub(crate) mod cycle;
 
@@ -44,19 +45,18 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
-            return enabled;
-        }
-
-        match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::More || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
-            _ => true,
-        }
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        let enabled_by_default =
+            sess.opts.unstable_opts.inline_mir.unwrap_or_else(|| match sess.mir_opt_level() {
+                0 | 1 => false,
+                2 => {
+                    (sess.opts.optimize == OptLevel::More
+                        || sess.opts.optimize == OptLevel::Aggressive)
+                        && sess.opts.incremental == None
+                }
+                _ => true,
+            });
+        PassPolicy::optimization(enabled_by_default)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -66,10 +66,6 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -82,16 +78,9 @@ impl ForceInline {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
-    fn is_enabled(&self, _: &rustc_session::Session) -> bool {
-        true
-    }
-
-    fn can_be_overridden(&self) -> bool {
-        false
-    }
-
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Forced inlining is part of MIR semantics.
+        PassPolicy::Required
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -786,9 +775,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
     }
 
     if let Some(callee_def_id) = callee_def_id.as_local()
-        && !inliner
-            .tcx()
-            .is_lang_item(inliner.tcx().parent(caller_def_id), rustc_hir::LangItem::FnOnce)
+        && !inliner.tcx().is_lang_item(inliner.tcx().parent(caller_def_id), LangItem::FnOnce)
     {
         // If we know for sure that the function we're calling will itself try to
         // call us, then we avoid inlining that function.

@@ -1,6 +1,6 @@
 // Just a test of the error message (it's different for non-local consts)
 //@ aux-build:non_local_const.rs
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 extern crate non_local_const;
 fn main() {

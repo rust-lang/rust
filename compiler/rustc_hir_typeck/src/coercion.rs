@@ -39,9 +39,10 @@ use std::ops::{ControlFlow, Deref};
 
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
@@ -181,7 +182,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
-                    if ocx.try_evaluate_obligations().is_empty() {
+                    if ocx.try_evaluate_obligations().no_errors() {
                         Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
@@ -832,7 +833,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> PredicateObligation<'tcx> {
         let pred = ty::TraitRef::new(
             self.tcx,
-            self.tcx.require_lang_item(hir::LangItem::Unpin, self.cause.span),
+            self.tcx.require_lang_item(LangItem::Unpin, self.cause.span),
             [ty],
         );
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
@@ -1002,7 +1003,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligation(obligation);
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
-        if errs.is_empty() {
+        if errs.no_errors() {
             Ok(InferOk {
                 value: (
                     vec![Adjustment {
@@ -1181,7 +1182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             };
             ocx.register_obligations(ok.obligations);
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     }
 
@@ -1354,7 +1355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let result = if self.next_trait_solver() {
                         let ocx = ObligationCtxt::new(self);
                         let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                        if ocx.try_evaluate_obligations().is_empty() {
+                        if ocx.try_evaluate_obligations().no_errors() {
                             Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                         } else {
                             Err(TypeError::Mismatch)
@@ -1950,7 +1951,7 @@ impl<'tcx> CoerceMany<'tcx> {
                             ))
                         }),
                 );
-                ocx.try_evaluate_obligations().is_empty()
+                ocx.try_evaluate_obligations().no_errors()
             })
         };
 
@@ -2103,7 +2104,7 @@ impl<'tcx> CoerceMany<'tcx> {
                 fcx.param_env,
                 ty::TraitRef::new(
                     fcx.tcx,
-                    fcx.tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP),
+                    fcx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP),
                     [sig.output()],
                 ),
             ))

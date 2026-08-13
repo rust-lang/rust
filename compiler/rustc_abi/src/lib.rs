@@ -40,8 +40,8 @@ use std::cmp::min;
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
-use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, Sub};
+use std::num::{NonZero, ParseIntError};
+use std::ops::{Add, AddAssign, Deref, Mul, Sub};
 use std::range::RangeInclusive;
 use std::str::FromStr;
 
@@ -65,6 +65,7 @@ mod extern_abi;
 mod layout;
 #[cfg(test)]
 mod tests;
+mod wrapping_range;
 
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
 pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
@@ -74,6 +75,7 @@ pub use extern_abi::{ExternAbi, all_names};
 pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
 #[cfg(feature = "nightly")]
 pub use layout::{Layout, TyAbiInterface, TyAndLayout};
+pub use wrapping_range::WrappingRange;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
@@ -90,6 +92,10 @@ bitflags! {
         /// If true, the type's crate has opted into layout randomization.
         /// Other flags can still inhibit reordering and thus randomization.
         /// The seed stored in `ReprOptions.field_shuffle_seed`.
+        ///
+        /// `repr(Rust)` structs with only zero-sized fields, single-variant `repr(Rust)` enums with only
+        /// zero-sized fields, and zero-variant `repr(Rust)` enums must remain zero-sized as per
+        /// T-lang decisions in https://github.com/rust-lang/reference/pull/2262 and https://github.com/rust-lang/reference/pull/2293
         const RANDOMIZE_LAYOUT   = 1 << 4;
         /// If true, the type is always passed indirectly by non-Rustic ABIs.
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
@@ -238,7 +244,42 @@ impl ReprOptions {
 /// This value is selected based on backend support:
 /// * LLVM does not appear to have a vector width limit.
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
-pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+pub const MAX_SIMD_LANES: u16 = 1 << 0xF;
+
+/// The number of lanes in a [`BackendRepr::SimdVector`], `1..=`[`MAX_SIMD_LANES`].
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
+pub struct BackendLaneCount(NonZero<u16>);
+
+impl BackendLaneCount {
+    pub fn new<N>(count: u64) -> Result<Self, LayoutCalculatorError<N>> {
+        let Ok(count @ ..=MAX_SIMD_LANES) = u16::try_from(count) else {
+            return Err(LayoutCalculatorError::OversizedSimdType {
+                max_lanes: crate::MAX_SIMD_LANES.into(),
+            });
+        };
+        if let Some(count) = NonZero::new(count) {
+            Ok(BackendLaneCount(count))
+        } else {
+            Err(LayoutCalculatorError::ZeroLengthSimdType)
+        }
+    }
+
+    #[inline]
+    pub fn is_power_of_two(self) -> bool {
+        self.0.is_power_of_two()
+    }
+
+    #[inline]
+    pub fn as_u64(self) -> u64 {
+        self.0.get().into()
+    }
+
+    #[inline]
+    pub fn as_u32(self) -> u32 {
+        self.0.get().into()
+    }
+}
 
 /// How pointers are represented in a given address space
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1391,10 +1432,21 @@ impl Float {
             F128 => dl.f128_align,
         })
     }
+
+    pub fn ty_str(self) -> &'static str {
+        use Float::*;
+
+        match self {
+            F16 => "f16",
+            F32 => "f32",
+            F64 => "f64",
+            F128 => "f128",
+        }
+    }
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
@@ -1407,6 +1459,29 @@ pub enum Primitive {
     Int(Integer, bool),
     Float(Float),
     Pointer(AddressSpace),
+}
+
+impl fmt::Debug for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match *self {
+            Primitive::Int(integer, is_signed) => {
+                if is_signed {
+                    integer.int_ty_str()
+                } else {
+                    integer.uint_ty_str()
+                }
+            }
+            Primitive::Float(float) => float.ty_str(),
+            Primitive::Pointer(addr_space) => {
+                if addr_space == AddressSpace::ZERO {
+                    "pointer"
+                } else {
+                    return write!(f, "pointer({addr_space:?})");
+                }
+            }
+        };
+        f.write_str(name)
+    }
 }
 
 impl Primitive {
@@ -1437,128 +1512,8 @@ impl Primitive {
     }
 }
 
-/// Inclusive wrap-around range of valid values, that is, if
-/// start > end, it represents `start..=MAX`, followed by `0..=end`.
-///
-/// That is, for an i8 primitive, a range of `254..=2` means following
-/// sequence:
-///
-///    254 (-2), 255 (-1), 0, 1, 2
-///
-/// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-pub struct WrappingRange {
-    pub start: u128,
-    pub end: u128,
-}
-
-impl WrappingRange {
-    pub fn full(size: Size) -> Self {
-        Self { start: 0, end: size.unsigned_int_max() }
-    }
-
-    /// Returns `true` if `v` is contained in the range.
-    #[inline(always)]
-    pub fn contains(&self, v: u128) -> bool {
-        if self.start <= self.end {
-            self.start <= v && v <= self.end
-        } else {
-            self.start <= v || v <= self.end
-        }
-    }
-
-    /// Returns `true` if all the values in `other` are contained in this range,
-    /// when the values are considered as having width `size`.
-    #[inline(always)]
-    pub fn contains_range(&self, other: Self, size: Size) -> bool {
-        if self.is_full_for(size) {
-            true
-        } else {
-            let trunc = |x| size.truncate(x);
-
-            let delta = self.start;
-            let max = trunc(self.end.wrapping_sub(delta));
-
-            let other_start = trunc(other.start.wrapping_sub(delta));
-            let other_end = trunc(other.end.wrapping_sub(delta));
-
-            // Having shifted both input ranges by `delta`, now we only need to check
-            // whether `0..=max` contains `other_start..=other_end`, which can only
-            // happen if the other doesn't wrap since `self` isn't everything.
-            (other_start <= other_end) && (other_end <= max)
-        }
-    }
-
-    /// Returns `self` with replaced `start`
-    #[inline(always)]
-    fn with_start(mut self, start: u128) -> Self {
-        self.start = start;
-        self
-    }
-
-    /// Returns `self` with replaced `end`
-    #[inline(always)]
-    fn with_end(mut self, end: u128) -> Self {
-        self.end = end;
-        self
-    }
-
-    /// Returns `true` if `size` completely fills the range.
-    ///
-    /// Note that this is *not* the same as `self == WrappingRange::full(size)`.
-    /// Niche calculations can produce full ranges which are not the canonical one;
-    /// for example `Option<NonZero<u16>>` gets `valid_range: (..=0) | (1..)`.
-    #[inline]
-    fn is_full_for(&self, size: Size) -> bool {
-        let max_value = size.unsigned_int_max();
-        debug_assert!(self.start <= max_value && self.end <= max_value);
-        self.start == (self.end.wrapping_add(1) & max_value)
-    }
-
-    /// Checks whether this range is considered non-wrapping when the values are
-    /// interpreted as *unsigned* numbers of width `size`.
-    ///
-    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
-    /// and `Err(..)` if the range is full so it depends how you think about it.
-    #[inline]
-    pub fn no_unsigned_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
-        if self.is_full_for(size) { Err(..) } else { Ok(self.start <= self.end) }
-    }
-
-    /// Checks whether this range is considered non-wrapping when the values are
-    /// interpreted as *signed* numbers of width `size`.
-    ///
-    /// This is heavily dependent on the `size`, as `100..=200` does wrap when
-    /// interpreted as `i8`, but doesn't when interpreted as `i16`.
-    ///
-    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
-    /// and `Err(..)` if the range is full so it depends how you think about it.
-    #[inline]
-    pub fn no_signed_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
-        if self.is_full_for(size) {
-            Err(..)
-        } else {
-            let start: i128 = size.sign_extend(self.start);
-            let end: i128 = size.sign_extend(self.end);
-            Ok(start <= end)
-        }
-    }
-}
-
-impl fmt::Debug for WrappingRange {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.start > self.end {
-            write!(fmt, "(..={}) | ({}..)", self.end, self.start)?;
-        } else {
-            write!(fmt, "{}..={}", self.start, self.end)?;
-        }
-        Ok(())
-    }
-}
-
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Scalar {
     Initialized {
@@ -1577,6 +1532,24 @@ pub enum Scalar {
         /// so there is no `valid_range`.
         value: Primitive,
     },
+}
+
+impl fmt::Debug for Scalar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Initialized { value, valid_range } => {
+                let (size, is_signed) = match *value {
+                    Primitive::Int(integer, is_signed) => (integer.size(), is_signed),
+                    Primitive::Float(float) => (float.size(), false),
+                    Primitive::Pointer(_) => (Size::from_bits(128), false),
+                };
+                write!(f, "{value:?} is {:?}", valid_range.debug_as(size, is_signed))
+            }
+            Scalar::Union { value } => {
+                write!(f, "union {value:?}")
+            }
+        }
+    }
 }
 
 impl Scalar {
@@ -1673,7 +1646,7 @@ pub enum FieldsShape<FieldIdx: Idx> {
     Primitive,
 
     /// All fields start at no offset. The `usize` is the field count.
-    Union(NonZeroUsize),
+    Union(NonZero<usize>),
 
     /// Array/vector-like placement, with all fields of identical types.
     Array { stride: Size, count: u64 },
@@ -1832,12 +1805,12 @@ pub enum BackendRepr {
     },
     SimdScalableVector {
         element: Scalar,
-        count: u64,
+        count: BackendLaneCount,
         number_of_vectors: NumScalableVectors,
     },
     SimdVector {
         element: Scalar,
-        count: u64,
+        count: BackendLaneCount,
     },
     // FIXME: I sometimes use memory, sometimes use an IR aggregate!
     Memory {
@@ -1879,10 +1852,23 @@ impl BackendRepr {
         }
     }
 
-    /// Returns `true` if this is a scalar type
+    /// Returns `true` if this is specifically a [`Self::Scalar`] type.
+    ///
+    /// This excludes SIMD types.
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, BackendRepr::Scalar(_))
+    }
+
+    /// Returns `true` if this is a scalar type or SIMD type.
+    #[inline]
+    pub fn is_scalar_or_simd(&self) -> bool {
+        matches!(
+            *self,
+            BackendRepr::Scalar(_)
+                | BackendRepr::SimdVector { .. }
+                | BackendRepr::SimdScalableVector { .. }
+        )
     }
 
     /// Returns `true` if this is a bool
@@ -2217,6 +2203,17 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
     }
+
+    /// Returns `true` if the given variant is uninhabited.
+    pub fn is_variant_uninhabited(&self, variant: VariantIdx) -> bool {
+        match self.variants {
+            Variants::Empty => true,
+            Variants::Single { index } => variant != index || self.uninhabited,
+            Variants::Multiple { ref variants, .. } => {
+                variants.get(variant).map(|v| v.uninhabited).unwrap_or(true)
+            }
+        }
+    }
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutData<FieldIdx, VariantIdx>
@@ -2309,7 +2306,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     }
 
     /// Returns the elements count of a scalable vector.
-    pub fn scalable_vector_element_count(&self) -> Option<u64> {
+    pub fn scalable_vector_element_count(&self) -> Option<BackendLaneCount> {
         match self.backend_repr {
             BackendRepr::SimdScalableVector { count, .. } => Some(count),
             _ => None,
@@ -2327,6 +2324,25 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
+        }
+    }
+
+    /// In the backend, a value with this type and layout is fully represented by
+    /// its SSA value(s), independent of the contents of memory.
+    ///
+    /// For example, you can swap by reading both then writing both without using
+    /// an alloca because the store of one cannot affect the value of the other.
+    ///
+    /// Any projection into a standalone type must also yield a standalone type,
+    /// since it might not be in memory at all.
+    #[inline]
+    pub fn is_ssa_standalone(&self) -> bool {
+        match self.backend_repr {
+            BackendRepr::Memory { .. } => self.is_zst(),
+            BackendRepr::Scalar(..)
+            | BackendRepr::ScalarPair { .. }
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::SimdScalableVector { .. } => true,
         }
     }
 
@@ -2367,7 +2383,7 @@ pub enum AbiFromStrErr {
     NoExplicitUnwind,
 }
 
-// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
+// NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct VariantLayout<FieldIdx: Idx> {

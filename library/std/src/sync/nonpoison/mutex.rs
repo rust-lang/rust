@@ -447,7 +447,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> MutexGuard<'mutex, T> {
-        return MutexGuard { lock };
+        MutexGuard { lock }
     }
 }
 

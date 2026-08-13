@@ -12,7 +12,7 @@ LL |         let f: F = async { 1 };
    = note: expected opaque type `F`
             found `async` block `{async block@$DIR/issue-78722-2.rs:17:20: 17:25}`
 
-error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:14:13: 14:18}` to be a future that resolves to `u8`, but it resolves to `()`
+error[E0271]: expected `{async block@issue-78722-2.rs:14:13}` to be a future that resolves to `u8`, but it resolves to `()`
   --> $DIR/issue-78722-2.rs:12:30
    |
 LL |         fn concrete_use() -> F {

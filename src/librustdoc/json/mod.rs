@@ -14,6 +14,7 @@ use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -32,7 +33,9 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
+use crate::formats::item_type::ItemType;
 use crate::json::conversions::IntoJson;
+use crate::passes::collect_intra_doc_links::UrlFragment;
 use crate::{clean, try_err};
 
 pub(crate) struct JsonRenderer<'tcx> {
@@ -103,6 +106,97 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    fn paths(&self) -> FxHashMap<types::Id, types::ItemSummary> {
+        let mut paths = self
+            .cache
+            .paths
+            .iter()
+            .chain(&self.cache.external_paths)
+            .map(|(&k, &(ref path, kind))| {
+                (
+                    self.id_from_item_default(k.into()),
+                    types::ItemSummary {
+                        crate_id: k.krate.as_u32(),
+                        path: path.iter().map(|s| s.to_string()).collect(),
+                        kind: kind.into_json(self),
+                    },
+                )
+            })
+            .collect();
+
+        self.add_intra_doc_link_paths(&mut paths);
+        paths
+    }
+
+    fn add_intra_doc_link_paths(&self, paths: &mut FxHashMap<types::Id, types::ItemSummary>) {
+        // The link target IDs were already interned when the `links` maps were emitted.
+        // This only fills missing summaries in `paths`, where JSON object order is not meaningful.
+        #[allow(rustc::potential_query_instability)]
+        let links = self.cache.intra_doc_links.values();
+        for link in links.flatten() {
+            let Some(UrlFragment::Item(item_id)) = link.fragment.as_ref() else {
+                continue;
+            };
+            let item_id = *item_id;
+            let id = self.id_from_item_default(item_id.into());
+
+            if paths.contains_key(&id) || (item_id.is_local() && !self.index.contains_key(&id)) {
+                continue;
+            }
+
+            let path = self.path_for_link_target(link.page_id, item_id);
+            let kind = ItemType::from_def_id(item_id, self.tcx);
+            paths.insert(
+                id,
+                types::ItemSummary {
+                    crate_id: item_id.krate.as_u32(),
+                    path,
+                    kind: kind.into_json(self),
+                },
+            );
+        }
+    }
+
+    fn path_for_link_target(&self, page_id: DefId, item_id: DefId) -> Vec<String> {
+        let parent_id = self.tcx.parent(item_id);
+        // Inherent items have an unnamed impl parent, while variant fields have one extra named
+        // parent between themselves and their page.
+        let (mut path, variant_id) = match self.tcx.def_kind(parent_id) {
+            DefKind::Impl { .. } => (
+                self.cached_path(page_id).expect("intra-doc link page should have a cached path"),
+                None,
+            ),
+            DefKind::Variant => {
+                (self.path_for_named_item(self.tcx.parent(parent_id)), Some(parent_id))
+            }
+            _ => (self.path_for_named_item(parent_id), None),
+        };
+
+        if let Some(variant_id) = variant_id {
+            path.push(self.tcx.item_name(variant_id).to_string());
+        }
+        path.push(self.tcx.item_name(item_id).to_string());
+        path
+    }
+
+    fn path_for_named_item(&self, item_id: DefId) -> Vec<String> {
+        self.cached_path(item_id).unwrap_or_else(|| {
+            let kind = ItemType::from_def_id(item_id, self.tcx);
+            clean::inline::get_item_path(self.tcx, item_id, kind)
+                .into_iter()
+                .map(|name| name.to_string())
+                .collect()
+        })
+    }
+
+    fn cached_path(&self, item_id: DefId) -> Option<Vec<String>> {
+        self.cache
+            .paths
+            .get(&item_id)
+            .or_else(|| self.cache.external_paths.get(&item_id))
+            .map(|(path, _)| path.iter().map(|name| name.to_string()).collect())
     }
 }
 
@@ -248,26 +342,12 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let target = conversions::target(sess);
 
         debug!("Constructing Output");
+        let paths = self.paths();
         let output_crate = types::Crate {
             root: self.id_from_item_default(e.def_id().into()),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
-            paths: self
-                .cache
-                .paths
-                .iter()
-                .chain(&self.cache.external_paths)
-                .map(|(&k, &(ref path, kind))| {
-                    (
-                        self.id_from_item_default(k.into()),
-                        types::ItemSummary {
-                            crate_id: k.krate.as_u32(),
-                            path: path.iter().map(|s| s.to_string()).collect(),
-                            kind: kind.into_json(&self),
-                        },
-                    )
-                })
-                .collect(),
+            paths,
             external_crates: self
                 .cache
                 .extern_locations

@@ -41,6 +41,26 @@ mod foo {
 }
 
 #[test]
+fn trailing_self_import() {
+    check(
+        r#"
+mod fmt {
+    pub struct Thing;
+}
+pub use fmt::self as alias;
+"#,
+        expect![[r#"
+            crate
+            - alias : type (import)
+            - fmt : type
+
+            crate::fmt
+            - Thing : type value
+        "#]],
+    );
+}
+
+#[test]
 fn primitive_reexport() {
     check(
         r#"

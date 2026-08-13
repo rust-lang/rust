@@ -170,7 +170,7 @@ impl Project<'_> {
                 // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
                 // useful information in there for debugging.
                 filter: std::env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
-                chalk_filter: std::env::var("CHALK_DEBUG").ok(),
+                solver_filter: std::env::var("SOLVER_DEBUG").ok(),
                 profile_filter: std::env::var("RA_PROFILE").ok(),
                 json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
             }

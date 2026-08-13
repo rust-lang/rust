@@ -17,7 +17,6 @@ la-arena.workspace = true
 dashmap.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
-query-group.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
 semver.workspace = true

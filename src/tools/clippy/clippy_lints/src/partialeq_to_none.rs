@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
-use clippy_utils::{peel_hir_expr_refs, peel_ref_operators, sugg};
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::{is_none_expr, peel_hir_expr_refs, peel_ref_operators, sugg};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem};
+use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -56,14 +56,8 @@ impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
         };
 
         // If the expression is a literal `Option::None`
-        let is_none_ctor = |expr: &Expr<'_>| {
-            !expr.span.from_expansion()
-                && peel_hir_expr_refs(expr)
-                    .0
-                    .res(cx)
-                    .ctor_parent(cx)
-                    .is_lang_item(cx, LangItem::OptionNone)
-        };
+        let is_none_ctor =
+            |expr: &Expr<'_>| !expr.span.from_expansion() && is_none_expr(cx, peel_hir_expr_refs(expr).0);
 
         let mut applicability = Applicability::MachineApplicable;
 
