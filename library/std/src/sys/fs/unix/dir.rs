@@ -49,7 +49,7 @@ impl Dir {
 
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts, 0))
-            .map(|fd| FileDesc::from_inner(fd))
+            .map(FileDesc::from_inner)
             .map(File)
     }
 

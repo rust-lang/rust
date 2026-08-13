@@ -1316,7 +1316,7 @@ mod linux_child_ext {
             self.handle
                 .pidfd
                 .take()
-                .map(|fd| <os::PidFd as FromInner<imp::PidFd>>::from_inner(fd))
+                .map(<os::PidFd as FromInner<imp::PidFd>>::from_inner)
                 .ok_or_else(|| self)
         }
     }
