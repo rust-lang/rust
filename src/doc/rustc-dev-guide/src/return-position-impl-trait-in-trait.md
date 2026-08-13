@@ -8,7 +8,7 @@ GAT either on the trait side or impl side.
 RPITIT was originally implemented in [#101224], which added support for
 async fn in trait (AFIT), since the implementation for RPITIT came for
 free as a part of implementing AFIT which had been RFC'd previously.
-It was then RFC'd independently in [RFC 3425], which was recently approved
+It was then RFC'd independently in [RFC 3425], which was then approved
 by T-lang.
 
 ## How does it work?
