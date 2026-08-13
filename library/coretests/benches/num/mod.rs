@@ -34,16 +34,16 @@ const ASCII_NUMBERS: [&str; 19] = [
 /// Long decimal strings (16-20 digits) that trigger the SWAR fast path
 /// multiple times for 64-bit integer parsing.
 const LONG_ASCII_NUMBERS: [&str; 10] = [
-    "1234567890123456", // 16 digits, exactly 2 SWAR chunks
-    "12345678901234567", // 17 digits
-    "123456789012345678", // 18 digits
-    "1234567890123456789", // 19 digits
+    "1234567890123456",     // 16 digits, exactly 2 SWAR chunks
+    "12345678901234567",    // 17 digits
+    "123456789012345678",   // 18 digits
+    "1234567890123456789",  // 19 digits
     "18446744073709551615", // 20 digits, u64::MAX
-    "9223372036854775807", // 19 digits, i64::MAX
-    "9999999999999999", // 16 digits
-    "10000000000000000", // 17 digits
+    "9223372036854775807",  // 19 digits, i64::MAX
+    "9999999999999999",     // 16 digits
+    "10000000000000000",    // 17 digits
     "-9223372036854775808", // 19 digits + sign, i64::MIN
-    "0000123456789012", // 16 digits with leading zeros
+    "0000123456789012",     // 16 digits with leading zeros
 ];
 
 macro_rules! from_str_bench {
