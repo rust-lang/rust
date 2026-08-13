@@ -4,6 +4,6 @@
 
 trait Trait<T> {}
 
-impl dyn Trait<{_}> {} //~ ERROR: the placeholder `_` is not allowed within types on item signatures
+impl dyn Trait<{_}> {} //~ ERROR: constant provided when a type was expected
 
 fn main() {}
