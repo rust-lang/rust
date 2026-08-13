@@ -4,5 +4,7 @@
 //! not be as accurate.
 
 mod cbrtf64;
+mod hypotf64;
 
 pub use cbrtf64::cbrtf64;
+pub use hypotf64::hypotf64;
