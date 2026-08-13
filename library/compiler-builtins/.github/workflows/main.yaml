@@ -132,22 +132,11 @@ jobs:
         lscpu || (sysctl -a | grep cpu) || true
         echo "home: ${HOME:-not found}"
         pwd
-
-    # Native ppc and s390x runners don't have rustup by default
-    - name: Install rustup
-      if: matrix.os == 'ubuntu-26.04-ppc64le' || matrix.os == 'ubuntu-26.04-s390x'
-      run: sudo apt-get update && sudo apt-get install -y rustup
-
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
-    - name: Install Rust (rustup)
-      run: |
-        channel="nightly"
-        # Account for channels that have required components (MinGW)
-        [ -n "$JOB_CHANNEL" ] && channel="$JOB_CHANNEL"
-        rustup update "$channel" --no-self-update
-        rustup default "$channel"
-        rustup target add "$JOB_TARGET"
+
+    - name: Set up dependencies and Rust
+      run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_CHANNEL" "$RUN_IN_DOCKER"
 
     - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
       with:
