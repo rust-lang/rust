@@ -654,6 +654,7 @@ symbols! {
         compiler_copy,
         compiler_fence,
         compiler_move,
+        complex,
         concat,
         concat_bytes,
         conservative_impl_trait,
