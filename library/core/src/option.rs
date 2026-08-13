@@ -737,6 +737,7 @@ impl<T> Option<T> {
     /// println!("still can print text: {text:?}");
     /// ```
     #[inline]
+    #[expect(clippy::match_as_ref, reason = "implements as_ref")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Option<&T> {
@@ -759,6 +760,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(42));
     /// ```
     #[inline]
+    #[expect(clippy::match_as_ref, reason = "implements as_mut")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn as_mut(&mut self) -> Option<&mut T> {
