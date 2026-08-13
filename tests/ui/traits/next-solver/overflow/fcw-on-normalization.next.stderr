@@ -1,5 +1,5 @@
-warning: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _`
-  --> $DIR/fcw-on-normalization.rs:45:12
+warning: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == ()`
+  --> $DIR/fcw-on-normalization.rs:40:12
    |
 LL |     let b: <W<W<W<W<W<W<W<W<W<W<()>>>>>>>>>> as HasAssoc>::Assoc = loop {};
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

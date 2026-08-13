@@ -502,8 +502,6 @@ pub trait Interner:
         root_depth: usize,
     ) -> (QueryResult<Self>, Self::Probe);
 
-    fn emit_next_solver_overflow_fcw(self, predicate: Self::Predicate, span: Self::Span);
-
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 
     fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<Self>>;

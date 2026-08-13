@@ -1,5 +1,5 @@
-warning: overflow evaluating the requirement `(): Trait<_>`
-  --> $DIR/overflow-discards-constraints.rs:73:5
+warning: overflow evaluating the requirement `(): Trait<i32>`
+  --> $DIR/overflow-discards-constraints.rs:69:5
    |
 LL |     foo(); // register a `(): Trait<?t>` obligation
    |     ^^^^^

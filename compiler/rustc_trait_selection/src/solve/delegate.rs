@@ -4,8 +4,10 @@ use std::mem;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
@@ -15,14 +17,17 @@ use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtx
 use rustc_infer::traits::solve::{
     ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, SucceededInErased,
 };
+use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, MaybeInfo};
+use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{
     self, CanonicalizerState, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
+use rustc_structures::Limit;
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
@@ -503,5 +508,42 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // Clear (don't deallocate) the state for later reuse.
         state.clear();
         *self.canonicalizer_state.borrow_mut() = state;
+    }
+
+    fn emit_next_solver_overflow_fcw(&self, predicate: ty::Predicate<'tcx>, span: Span) {
+        let tcx = self.tcx;
+        let predicate = self.resolve_vars_if_possible(predicate);
+        tcx.emit_node_span_lint(
+            RECURSION_DEPTH_EXCEEDING_LIMIT,
+            CRATE_HIR_ID,
+            span,
+            rustc_errors::DiagDecorator(|diag| {
+                // FIXME: share this with overflow error in fulfillment instead of duplicating.
+                let pred_str = {
+                    let s = predicate.to_string();
+                    if s.len() > 50 {
+                        let mut p: FmtPrinter<'_, '_> =
+                            FmtPrinter::new_with_limit(tcx, Namespace::TypeNS, Limit(6));
+                        predicate.print(&mut p).unwrap();
+                        p.into_buffer()
+                    } else {
+                        s
+                    }
+                };
+                diag.primary_message(format!(
+                    "overflow evaluating the requirement `{pred_str}`",
+                ));
+                diag.help(format!(
+                    "consider increasing the recursion limit by adding a \
+                     `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
+                    tcx.recursion_limit() * 2,
+                    tcx.crate_name(LOCAL_CRATE),
+                ));
+                diag.help(
+                    "or consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved",
+                );
+                diag.note("this lint is attached to the whole crate and can't be disabled on a per-function basis");
+            }),
+        )
     }
 }
