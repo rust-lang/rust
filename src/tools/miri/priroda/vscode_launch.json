@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Priroda: Run and Attach",
+            // Attaches to an already-running Priroda DAP server started by the
+            // preLaunchTask below. VS Code still needs a registered "priroda" debug
+            // type from a debug extension; a custom Priroda extension is deferred
+            // to future graphical features.
+            "type": "priroda",
+            "request": "launch",
+            "preLaunchTask": "Priroda: Start DAP Server",
+            "debugServer": 4711
+        }
+    ]
+}

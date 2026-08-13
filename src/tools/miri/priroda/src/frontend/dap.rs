@@ -1,4 +1,5 @@
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::net::{TcpListener, TcpStream};
 
 use emmy_dap_types::errors::ServerError;
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
@@ -56,15 +57,23 @@ enum ExecutionOutcome {
 }
 
 /// Debug Adapter Protocol frontend.
-pub(crate) struct Dap;
+pub(crate) struct Dap {
+    pub(crate) port: Option<u16>,
+}
 
 impl Dap {
-    /// Serve DAP requests on stdin/stdout.
+    /// Serve DAP requests on stdin/stdout, or on a TCP socket if `port` is set.
     pub(crate) fn run_dap_loop<'tcx>(
         &self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
-        if let Err(err) = DapSession::stdio().run_requests(session) {
+        let result = if let Some(port) = self.port {
+            DapSession::tcp(port).run_requests(session)
+        } else {
+            DapSession::stdio().run_requests(session)
+        };
+
+        if let Err(err) = result {
             eprintln!("priroda dap error: {err:?}");
         }
 
@@ -72,15 +81,13 @@ impl Dap {
     }
 }
 
-type DapServer = Server<io::StdinLock<'static>, io::StdoutLock<'static>>;
-
-/// Owns the DAP stdio transport and dispatches requests into Priroda handlers.
-struct DapSession {
-    server: DapServer,
+/// Owns a DAP transport and dispatches requests into Priroda handlers.
+struct DapSession<R: Read, W: Write> {
+    server: Server<R, W>,
     state: DapState,
 }
 
-impl DapSession {
+impl DapSession<io::StdinLock<'static>, io::StdoutLock<'static>> {
     fn stdio() -> Self {
         Self {
             server: Server::new(
@@ -90,7 +97,37 @@ impl DapSession {
             state: DapState::Fresh,
         }
     }
+}
 
+impl DapSession<TcpStream, TcpStream> {
+    fn tcp(port: u16) -> Self {
+        let listener = match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(listener) => listener,
+            Err(err) => fatal(&format!("failed to listen on DAP TCP socket: {err}")),
+        };
+        eprintln!("priroda dap listening on 127.0.0.1:{port}");
+        let (stream, _) = match listener.accept() {
+            Ok(conn) => conn,
+            Err(err) => fatal(&format!("failed to accept DAP TCP connection: {err}")),
+        };
+        let reader = match stream.try_clone() {
+            Ok(clone) => clone,
+            Err(err) => fatal(&format!("failed to clone DAP TCP stream: {err}")),
+        };
+
+        Self {
+            server: Server::new(BufReader::new(reader), BufWriter::new(stream)),
+            state: DapState::Fresh,
+        }
+    }
+}
+
+fn fatal(message: &str) -> ! {
+    eprintln!("priroda dap: {message}");
+    std::process::exit(1);
+}
+
+impl<R: Read, W: Write> DapSession<R, W> {
     fn run_requests<'tcx>(
         &mut self,
         session: &mut PrirodaContext<'tcx>,
