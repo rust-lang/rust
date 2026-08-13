@@ -928,9 +928,8 @@ impl Command {
             msg.msg_controllen = size_of::<Cmsg>() as _;
             msg.msg_control = (&raw mut cmsg) as *mut _;
 
-            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
-                Err(_) => return -1,
-                Ok(_) => {}
+            if cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)).is_err() {
+                return -1;
             }
 
             let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
