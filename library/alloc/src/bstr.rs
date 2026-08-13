@@ -42,7 +42,7 @@ use crate::vec::Vec;
 /// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 #[doc(alias = "BString")]
 pub struct ByteString(pub Vec<u8>);
 
@@ -186,13 +186,6 @@ impl BorrowMut<ByteStr> for ByteString {
 }
 
 // `impl BorrowMut<ByteStr> for Vec<u8>` omitted to avoid inference failures
-
-#[unstable(feature = "bstr", issue = "134915")]
-impl Default for ByteString {
-    fn default() -> Self {
-        ByteString(Vec::new())
-    }
-}
 
 // Omitted due to inference failures
 //
