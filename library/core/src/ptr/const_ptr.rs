@@ -733,7 +733,7 @@ impl<T: PointeeSized> *const T {
         let offset = unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) };
         // SAFETY: the safety contract guarantees that the pointers differ by at most
         // `isize::MAX` bytes, so the result cannot be larger than `isize::MAX` elements.
-        unsafe { crate::hint::assert_unchecked(offset <= isize::MAX as usize) };
+        unsafe { intrinsics::assume(offset <= isize::MAX as usize) };
         offset
     }
 
