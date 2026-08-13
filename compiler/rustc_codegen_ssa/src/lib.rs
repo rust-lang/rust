@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_abi::Size;
-use rustc_crate_store::{self as cstore, self, CrateSource};
+use rustc_crate_store::{self as cstore, CrateSource};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
