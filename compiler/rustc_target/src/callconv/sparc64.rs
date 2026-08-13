@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, RegKind, Size,
-    TyAbiInterface, TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg,
+    RegKind, Size, TyAbiInterface, TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
@@ -145,7 +145,7 @@ fn classify_arg<'a, Ty, C>(
 
     // Clang treats `_Complex` like a struct, GCC like a big scalar. That changes how the bits get
     // packed. We follow GCC here. See also https://github.com/llvm/llvm-project/pull/212340.
-    if arg.layout.is_complex() && !arg.layout.is_complex_float() && total < Size::from_bytes(8) {
+    if let Some(Numeric::Int(Integer::I8 | Integer::I16, _)) = arg.layout.complex_number(cx) {
         arg.cast_to(Reg { kind: RegKind::Integer, size: total });
         return;
     }
