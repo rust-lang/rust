@@ -111,24 +111,24 @@ to generate profiling data, and collecting and persisting this profiling
 data needs some infrastructure in place.
 
 In the case of LLVM, these runtime components are implemented in
-[compiler-rt][compiler-rt-profile] and statically linked into any instrumented binaries.
+[compiler-rt] and statically linked into any instrumented binaries.
 The `rustc` version of this can be found in `library/profiler_builtins` which
 basically packs the C code from `compiler-rt` into a Rust crate.
 
 In order for `profiler_builtins` to be built, `profiler = true` must be set
 in `rustc`'s `bootstrap.toml`.
 
-[compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/main/compiler-rt/lib/profile
+[compiler-rt]: https://github.com/llvm/llvm-project/tree/main/compiler-rt/lib/profile
 
 ## Testing PGO
 
 Since the PGO workflow spans multiple compiler invocations most testing happens
-in [run-make tests][rmake-tests] (the relevant tests have `pgo` in their name).
-There is also a [codegen test][codegen-test] that checks that some expected
+in [run-make tests] (the relevant tests have `pgo` in their name).
+There is also a [codegen test] that checks that some expected
 instrumentation artifacts show up in LLVM IR.
 
-[rmake-tests]: https://github.com/rust-lang/rust/tree/HEAD/tests/run-make
-[codegen-test]: https://github.com/rust-lang/rust/blob/HEAD/tests/codegen-llvm/pgo-instrumentation.rs
+[run-make tests]: https://github.com/rust-lang/rust/tree/HEAD/tests/run-make
+[codegen test]: https://github.com/rust-lang/rust/blob/HEAD/tests/codegen-llvm/pgo-instrumentation.rs
 
 ## Additional information
 
