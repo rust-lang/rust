@@ -48,6 +48,7 @@ cfg_select! {
         // no unwinder on the system!
         // - os=none ("bare metal" targets)
         // - os=hermit
+        // - os=motor
         // - os=uefi
         // - os=cuda
         // - nvptx64-nvidia-cuda
@@ -213,6 +214,10 @@ cfg_select! {
 
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]
+unsafe extern "C" {}
+
+#[cfg(all(target_os = "wasi", panic = "unwind"))]
+#[link(name = "unwind")]
 unsafe extern "C" {}
 
 #[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
