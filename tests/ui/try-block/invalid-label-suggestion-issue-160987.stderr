@@ -1,13 +1,16 @@
 error[E0268]: `break` outside of a loop or labeled block
-  --> $DIR/invalid-label-suggestion-issue-160987.rs:10:9
+  --> $DIR/invalid-label-suggestion-issue-160987.rs:12:9
    |
 LL |         break;
    |         ^^^^^ cannot `break` outside of a loop or labeled block
    |
 help: consider labeling this block to be able to break within it
    |
-LL ~     try 'block: {
+LL ~     try { 'block: {
 LL ~         break 'block;
+LL |
+LL |         None?;
+LL ~     } };
    |
 
 error: aborting due to 1 previous error

@@ -8,9 +8,9 @@
 #![allow(unreachable_code)]
 
 fn main() {
-    try {
-        break;
+    try { 'block: {
+        break 'block;
         //~^ ERROR `break` outside of a loop or labeled block
         None?;
-    };
+    } };
 }
