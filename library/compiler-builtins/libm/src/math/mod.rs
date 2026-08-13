@@ -76,7 +76,7 @@ cfg_select_nofmt! {
     }
 }
 
-pub mod approx;
+pub mod relaxed;
 
 // Private modules
 mod arch;

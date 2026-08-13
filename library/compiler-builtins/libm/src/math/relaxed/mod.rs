@@ -1,4 +1,4 @@
-//! Approximate implementations.
+//! Relaxed precision implementations.
 //!
 //! These functions may be smaller or faster than those in the main `math` module, but will
 //! not be as accurate.
