@@ -101,17 +101,30 @@ impl DapSession<io::StdinLock<'static>, io::StdoutLock<'static>> {
 
 impl DapSession<TcpStream, TcpStream> {
     fn tcp(port: u16) -> Self {
-        let listener =
-            TcpListener::bind(("127.0.0.1", port)).expect("failed to listen on DAP TCP socket");
+        let listener = match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(listener) => listener,
+            Err(err) => fatal(&format!("failed to listen on DAP TCP socket: {err}")),
+        };
         eprintln!("priroda dap listening on 127.0.0.1:{port}");
-        let (stream, _) = listener.accept().expect("failed to accept DAP TCP connection");
-        let reader = stream.try_clone().expect("failed to clone DAP TCP stream");
+        let (stream, _) = match listener.accept() {
+            Ok(conn) => conn,
+            Err(err) => fatal(&format!("failed to accept DAP TCP connection: {err}")),
+        };
+        let reader = match stream.try_clone() {
+            Ok(clone) => clone,
+            Err(err) => fatal(&format!("failed to clone DAP TCP stream: {err}")),
+        };
 
         Self {
             server: Server::new(BufReader::new(reader), BufWriter::new(stream)),
             state: DapState::Fresh,
         }
     }
+}
+
+fn fatal(message: &str) -> ! {
+    eprintln!("priroda dap: {message}");
+    std::process::exit(1);
 }
 
 impl<R: Read, W: Write> DapSession<R, W> {
