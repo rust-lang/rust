@@ -90,4 +90,10 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         dst: <Self::Interner as Interner>::Ty,
         assume: <Self::Interner as Interner>::Const,
     ) -> Result<Certainty, NoSolution>;
+
+    fn emit_next_solver_overflow_fcw(
+        &self,
+        predicate: <Self::Interner as Interner>::Predicate,
+        span: <Self::Interner as Interner>::Span,
+    );
 }

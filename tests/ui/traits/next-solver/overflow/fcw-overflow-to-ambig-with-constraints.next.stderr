@@ -1,4 +1,4 @@
-warning: overflow evaluating the requirement `u32: Constrain<_, _, W<W<W<(), W<(), _>>, _>, _>>`
+warning: overflow evaluating the requirement `u32: Constrain<u32, _, W<W<W<(), W<(), _>>, _>, _>>`
   --> $DIR/fcw-overflow-to-ambig-with-constraints.rs:29:5
    |
 LL |     fun_times();
