@@ -1,7 +1,7 @@
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
 
-use crate::{Align, HasDataLayout, Integer, Primitive, Size};
+use crate::{Align, Float, HasDataLayout, Integer, Primitive, Size};
 
 /// The "kind" of backend type, which combined with a [`Size`] forms a [`Reg`].
 #[cfg_attr(feature = "nightly", derive(StableHash))]
@@ -9,6 +9,11 @@ use crate::{Align, HasDataLayout, Integer, Primitive, Size};
 pub enum RegKind {
     Integer,
     Float,
+    /// The IBM extended-precision format: a pair of `f64`s, each passed in its own register.
+    /// This variant is needed to distinguish IEEE f128 and IBM f128 in the backends.
+    ///
+    /// Only used on PowerPC targets.
+    PpcF128,
     Vector {
         /// The `hint_vector_elem` is strictly for optimization purposes. E.g. it can be used by
         /// a codegen backend to prevent extra bitcasts that obscure a pattern. Alternatively,
@@ -21,7 +26,10 @@ impl RegKind {
     pub fn from_primitive(primitive: Primitive) -> Self {
         match primitive {
             Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
-            Primitive::Float(_) => RegKind::Float,
+            Primitive::Float(Float::PpcF128) => RegKind::PpcF128,
+            Primitive::Float(Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::F128) => {
+                RegKind::Float
+            }
         }
     }
 }
@@ -81,6 +89,7 @@ impl Reg {
                 128 => dl.f128_align,
                 _ => panic!("unsupported float: {self:?}"),
             },
+            RegKind::PpcF128 => dl.f128_align,
             RegKind::Vector { .. } => dl.rust_vector_align(self.size),
         }
     }
