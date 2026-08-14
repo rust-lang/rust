@@ -1,5 +1,7 @@
 # Parallel frontend testing on CI
 
+NOTE: this job is optional and allowed to fail.
+
 If you see any test failures in `tests/ui` from the CI job `x86_64-gnu-parallel-frontend`, please
 add `//@ ignore-parallel-frontend triage` to the failing test, even if your PR is otherwise
 entirely unrelated to parallel compiler or its testing.
