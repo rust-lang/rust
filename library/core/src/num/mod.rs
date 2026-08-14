@@ -1575,6 +1575,7 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
 ///
 /// Uses a SWAR (SIMD Within A Register) technique to check all 8 bytes
 /// without per-byte branching.
+#[cfg(not(target_pointer_width = "32"))]
 #[inline]
 const fn is_8digits(v: u64) -> bool {
     let a = v.wrapping_add(0x4646_4646_4646_4646);
@@ -1586,12 +1587,36 @@ const fn is_8digits(v: u64) -> bool {
 ///
 /// Uses a SWAR technique with 3 multiplications to convert 8 digits at once.
 /// The caller must ensure all 8 bytes are ASCII digits, e.g. via [`is_8digits`].
+#[cfg(not(target_pointer_width = "32"))]
 #[inline]
 const fn parse_8digits(v: u64) -> u64 {
     let mut v = v;
     v = (v & 0x0f0f_0f0f_0f0f_0f0f).wrapping_mul(2561) >> 8;
     v = (v & 0x00ff_00ff_00ff_00ff).wrapping_mul(6_553_601) >> 16;
     v = (v & 0x0000_ffff_0000_ffff).wrapping_mul(42_949_672_960_001) >> 32;
+    v
+}
+
+/// Checks if all 4 bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
+///
+/// Same SWAR technique as `is_8digits` but for 32-bit registers, so it can
+/// be used on platforms where 64-bit operations are expensive.
+#[inline]
+const fn is_4digits(v: u32) -> bool {
+    let a = v.wrapping_add(0x4646_4646);
+    let b = v.wrapping_sub(0x3030_3030);
+    (a | b) & 0x8080_8080 == 0
+}
+
+/// Parses 4 ASCII decimal digits packed in a u32 into a numeric value.
+///
+/// Uses a SWAR technique with 2 multiplications to convert 4 digits at once.
+/// The caller must ensure all 4 bytes are ASCII digits, e.g. via [`is_4digits`].
+#[inline]
+const fn parse_4digits(v: u32) -> u32 {
+    let mut v = v;
+    v = (v & 0x0f0f_0f0f).wrapping_mul(2561) >> 8;
+    v = (v & 0x00ff_00ff).wrapping_mul(6_553_601) >> 16;
     v
 }
 
@@ -1836,12 +1861,18 @@ macro_rules! from_str_int_impl {
                     // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
                     // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
 
-                    // SWAR fast path: process 8 decimal digits at once using
+                    // SWAR fast path: process decimal digits in batches using
                     // SIMD-within-a-register. Only applies to radix 10, where
-                    // the digit range is contiguous and the multiply-by-10^8
+                    // the digit range is contiguous and the multiply-by-10^N
                     // packing works. Safe because `can_not_overflow` guarantees
                     // the full result fits in `$int_ty`.
+                    //
+                    // On 64-bit+ platforms, use 8-digit batches (u64). On
+                    // 32-bit platforms, u64 multiplication is emulated and
+                    // slower than the per-byte loop, so only use 4-digit
+                    // batches (u32).
                     if radix == 10 {
+                        #[cfg(not(target_pointer_width = "32"))]
                         while let [a, b, c, d, e, f, g, h, rest @ ..] = digits {
                             let chunk = u64::from_le_bytes([*a, *b, *c, *d, *e, *f, *g, *h]);
                             if !is_8digits(chunk) {
@@ -1849,6 +1880,21 @@ macro_rules! from_str_int_impl {
                             }
                             let parsed = parse_8digits(chunk) as $int_ty;
                             result = result * (100_000_000u32 as $int_ty);
+                            if is_positive {
+                                result = result + parsed;
+                            } else {
+                                result = result - parsed;
+                            }
+                            digits = rest;
+                        }
+
+                        while let [a, b, c, d, rest @ ..] = digits {
+                            let chunk = u32::from_le_bytes([*a, *b, *c, *d]);
+                            if !is_4digits(chunk) {
+                                return Err(PIE { kind: InvalidDigit });
+                            }
+                            let parsed = parse_4digits(chunk) as $int_ty;
+                            result = result * (10_000u32 as $int_ty);
                             if is_positive {
                                 result = result + parsed;
                             } else {
