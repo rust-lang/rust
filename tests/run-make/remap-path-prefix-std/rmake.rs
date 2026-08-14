@@ -43,6 +43,13 @@ fn main() {
     // There must be at least one rlib (libstd itself, plus many others)
     assert!(!all_rlibs.is_empty(), "no rlibs found in target libdir {target_libdir:?}");
 
+    let source_root = source_root();
+    let cargo_home = std::env::var("CARGO_HOME").map(PathBuf::from);
+    let mut local_roots = vec![("source-root", source_root.to_string_lossy())];
+    if let Ok(cargo_home) = &cargo_home {
+        local_roots.push(("cargo-home", cargo_home.to_string_lossy()));
+    }
+
     for rlib in &all_rlibs {
         // Use a stable symlink name based on the crate part (before the '-<hash>' suffix).
         // e.g. "libstd-92abaa9b58c011c1.rlib" → "libstd.rlib"
@@ -63,13 +70,6 @@ fn main() {
         }
 
         let stdout = completed.stdout_utf8();
-        let source_root = source_root();
-
-        let cargo_home = std::env::var("CARGO_HOME").map(PathBuf::from);
-        let mut local_roots = vec![("source-root", source_root.to_string_lossy())];
-        if let Ok(cargo_home) = &cargo_home {
-            local_roots.push(("cargo-home", cargo_home.to_string_lossy()));
-        }
 
         for (kind, root) in &local_roots {
             if let Some((i, _)) =
@@ -96,6 +96,23 @@ fn main() {
                 stdout.contains("/rustc/") || stdout.contains("/rust/deps"),
                 "Expected remapped paths in dwarfdump output for {link_name}",
             );
+        }
+    }
+
+    // `-Zembed-metadata=no` creates separate rmeta that may leak absolute paths
+    let all_rmetas =
+        shallow_find_files(&target_libdir, |p| p.extension().is_some_and(|ext| ext == "rmeta"));
+    assert!(!all_rmetas.is_empty(), "no rmeta files found in target libdir {target_libdir:?}");
+
+    for rmeta in &all_rmetas {
+        let filename = rmeta.file_name().unwrap().to_string_lossy();
+        let bytes = rfs::read(rmeta);
+
+        for (kind, root_str) in &local_roots {
+            let root = root_str.as_bytes();
+            if bytes.windows(root.len()).any(|window| window == root) {
+                panic!("found leaked {kind} path in {filename} at {root_str}");
+            }
         }
     }
 }
