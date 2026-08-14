@@ -34,6 +34,14 @@ fn main() {
         //~| HELP or a vertical bar to match on alternative
         None if true => {}
     }
+    // A typo for `=>` still starts a body, so the comma is not taken for a missing one.
+    match Some(false) {
+        Some(_),
+        //~^ ERROR unexpected `,` in pattern
+        //~| HELP try adding parentheses to match on a tuple
+        //~| HELP or a vertical bar to match on alternative
+        _ = {}
+    }
     match Some(false) {
         Some(_) if true
         //~^ ERROR `match` arm with no body

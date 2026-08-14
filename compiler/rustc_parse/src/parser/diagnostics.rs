@@ -2939,8 +2939,11 @@ impl<'a> Parser<'a> {
             // end of the comma-sequence so we know the span to suggest parenthesizing.
             err.cancel();
         }
+        // A typo for `=>`, which `parse_arm` recovers from, still gives the arm a body.
+        let is_almost_fat_arrow = TokenKind::FatArrow.similar_tokens().contains(&self.token.kind);
         if let Some(snapshot) = snapshot
             && self.token != token::FatArrow
+            && !is_almost_fat_arrow
             && !self.token.is_keyword(kw::If)
         {
             // Neither parenthesising the patterns nor joining them with `|` would give the arm a
