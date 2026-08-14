@@ -118,11 +118,22 @@ pub const trait ExactSizeIterator: [const] Iterator {
         let (lower, upper) = self.size_hint();
         // Note: This assertion is overly defensive, but it checks the invariant
         // guaranteed by the trait. If this trait were rust-internal,
-        // we could use debug_assert!; assert! will check all Rust user
+        // we could use debug_assert!; assert_eq! / assert! will check all Rust user
         // implementations too.
-        assert!(
-            upper == Some(lower),
-            "the ExactSizeIterator size hint bound invariant was violated"
+        crate::intrinsics::const_eval_select!(
+            @capture {
+                lower: Option<usize> = Some(lower), 
+                upper: Option<usize> = upper, 
+                _equal: bool = upper == Some(lower)
+            } -> ():
+            if const {
+                assert!(
+                    _equal,
+                    "the ExactSizeIterator size hint bound invariant was violated"
+                )
+            } else {
+                assert_eq!(upper, lower)
+            }
         );
         lower
     }

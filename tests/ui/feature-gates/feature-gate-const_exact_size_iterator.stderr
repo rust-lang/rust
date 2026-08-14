@@ -1,0 +1,43 @@
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate-const_exact_size_iterator.rs:5:1
+   |
+LL | const impl Iterator for MyType {
+   | ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate-const_exact_size_iterator.rs:13:1
+   |
+LL | const impl ExactSizeIterator for MyType {}
+   | ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable const library feature `const_iter`
+  --> $DIR/feature-gate-const_exact_size_iterator.rs:5:12
+   |
+LL | const impl Iterator for MyType {
+   |            ^^^^^^^^ trait is not stable as const yet
+   |
+   = note: see issue #92476 <https://github.com/rust-lang/rust/issues/92476> for more information
+   = help: add `#![feature(const_iter)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable const library feature `const_exact_size_iterator`
+  --> $DIR/feature-gate-const_exact_size_iterator.rs:13:12
+   |
+LL | const impl ExactSizeIterator for MyType {}
+   |            ^^^^^^^^^^^^^^^^^ trait is not stable as const yet
+   |
+   = note: see issue #161094 <https://github.com/rust-lang/rust/issues/161094> for more information
+   = help: add `#![feature(const_exact_size_iterator)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
