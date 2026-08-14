@@ -155,7 +155,6 @@ fn inject_deps_into_manifest(
     // etc
     let new_manifest = cargo_toml.replacen("[dependencies]\n", &all_deps, 1);
 
-    // println!("{new_manifest}");
     let mut file = File::create(manifest_path)?;
     file.write_all(new_manifest.as_bytes())?;
 
