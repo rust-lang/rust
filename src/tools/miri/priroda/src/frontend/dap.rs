@@ -136,6 +136,15 @@ impl<R: Read, W: Write> DapSession<R, W> {
             let request = match self.server.poll_request() {
                 Ok(Some(request)) => request,
                 Ok(None) => return Ok(()),
+                // The message body has already been consumed. js-debug can send
+                // commands like `enableNetworking`, which `emmy_dap_types` reports
+                // as parse errors because it has no unknown-command variant.
+                // FIXME: send a DAP error response once unknown commands are
+                // representable.
+                Err(ServerError::ParseError(_)) => {
+                    eprintln!("priroda dap: skipping request that could not be deserialized");
+                    continue;
+                }
                 Err(err) => return Err(err),
             };
 
