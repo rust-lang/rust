@@ -23,6 +23,7 @@ use tracing::{debug, instrument};
 use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
+use crate::solve::assembly::structural_traits::AmbiguousOrRerunNonErased;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
@@ -116,9 +117,10 @@ where
                     ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
-                Err(_) => {
+                Err(AmbiguousOrRerunNonErased::Ambiguous) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
+                Err(AmbiguousOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun.into()),
             }
         })
     }
