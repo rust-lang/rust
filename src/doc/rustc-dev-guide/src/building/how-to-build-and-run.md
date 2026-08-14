@@ -126,7 +126,7 @@ could be replaced by:
 
 ### Running `x.py`
 
-The `x.py` command can be run directly on most Unix systems in the following format:
+The `x.py` command can be run on most systems (Unix, Windows if configured) in this way:
 
 ```sh
 ./x <subcommand> [flags]
@@ -136,10 +136,7 @@ This is how the documentation and examples assume you are running `x.py`.
 Some alternative ways are:
 
 ```sh
-# On a Unix shell if you don't have the necessary `python3` command
-./x <subcommand> [flags]
-
-# In Windows Powershell (if powershell is configured to run scripts)
+# In Windows PowerShell (if PowerShell is configured to run scripts)
 ./x <subcommand> [flags]
 ./x.ps1 <subcommand> [flags]
 
@@ -148,9 +145,12 @@ x.py <subcommand> [flags]
 
 # You can also run Python yourself, e.g.:
 python x.py <subcommand> [flags]
+
+# On a Unix shell if you have `python3` but an `sh` that doesn't support `local`, e.g. on Solaris
+./x.py <subcommand> [flags]
 ```
 
-On Windows, the Powershell commands may give you an error that looks like this:
+On Windows, the PowerShell commands may give you an error that looks like this:
 ```
 PS C:\Users\vboxuser\rust> ./x
 ./x : File C:\Users\vboxuser\rust\x.ps1 cannot be loaded because running scripts is disabled on this system. For more
