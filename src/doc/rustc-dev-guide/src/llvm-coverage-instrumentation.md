@@ -129,4 +129,4 @@ and `mir-opt` tests can be refreshed by running:
 [`tests/coverage`]: https://github.com/rust-lang/rust/tree/HEAD/tests/coverage
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/coverage-dump
 [`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/HEAD/tests/coverage-run-rustdoc
-[`tests/codegen-llvm/instrument-coverage/testprog.rs`]: https://github.com/rust-lang/rust/blob/HEAD/tests/mir-opt/coverage/instrument_coverage.rs
+[`tests/codegen-llvm/instrument-coverage/testprog.rs`]: https://github.com/rust-lang/rust/blob/HEAD/tests/codegen-llvm/instrument-coverage/testprog.rs

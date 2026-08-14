@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
   schedule:
-    # Run multiple times a day as the successfull cached links are not checked every time.
+    # Run multiple times a day as the successful cached links are not checked every time.
     - cron: "0 */8 * * *"
 
 jobs:
