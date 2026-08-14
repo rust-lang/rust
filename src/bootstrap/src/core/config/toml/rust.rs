@@ -7,12 +7,11 @@ use std::path::PathBuf;
 use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
+use crate::CodegenBackendKind;
+use crate::core::config::macros::define_config;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{
-    CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool, TargetSelection,
-};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, StringOrBool, TargetSelection};
 use crate::utils::helpers;
-use crate::{CodegenBackendKind, define_config};
 
 define_config! {
     /// TOML representation of how the Rust build is configured.

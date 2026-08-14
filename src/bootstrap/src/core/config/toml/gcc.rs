@@ -6,11 +6,7 @@
 
 use std::path::PathBuf;
 
-use serde::{Deserialize, Deserializer};
-
-use crate::core::config::Merge;
-use crate::core::config::toml::ReplaceOpt;
-use crate::define_config;
+use crate::core::config::macros::define_config;
 
 define_config! {
     /// TOML representation of how the GCC build is configured.

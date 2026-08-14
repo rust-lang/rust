@@ -11,14 +11,16 @@
 //!
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
-#[macro_export]
 macro_rules! define_config {
-    ($(#[$attr:meta])* struct $name:ident {
-        $(
-            $(#[$field_attr:meta])*
-            $field:ident: Option<$field_ty:ty> = $field_key:literal,
-        )*
-    }) => {
+    (
+        $(#[$attr:meta])*
+            struct $name:ident {
+            $(
+                $(#[$field_attr:meta])*
+                $field:ident: Option<$field_ty:ty> = $field_key:literal,
+            )*
+        }
+    ) => {
         $(#[$attr])*
         pub struct $name {
             $(
@@ -27,14 +29,15 @@ macro_rules! define_config {
             )*
         }
 
-        impl Merge for $name {
+        impl crate::core::config::Merge for $name {
             fn merge(
                 &mut self,
                 _parent_config_path: Option<std::path::PathBuf>,
                 _included_extensions: &mut std::collections::HashSet<std::path::PathBuf>,
                 other: Self,
-                replace: ReplaceOpt
+                replace: crate::core::config::ReplaceOpt
             ) {
+                use crate::core::config::ReplaceOpt;
                 $(
                     match replace {
                         ReplaceOpt::IgnoreDuplicate => {
@@ -69,10 +72,10 @@ macro_rules! define_config {
         // The following is a trimmed version of what serde_derive generates. All parts not relevant
         // for toml deserialization have been removed. This reduces the binary size and improves
         // compile time of bootstrap.
-        impl<'de> Deserialize<'de> for $name {
+        impl<'de> serde::Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
-                D: Deserializer<'de>,
+                D: serde::Deserializer<'de>,
             {
                 struct Field;
                 impl<'de> serde::de::Visitor<'de> for Field {
@@ -122,7 +125,7 @@ macro_rules! define_config {
                 const FIELDS: &'static [&'static str] = &[
                     $($field_key,)*
                 ];
-                Deserializer::deserialize_struct(
+                serde::Deserializer::deserialize_struct(
                     deserializer,
                     stringify!($name),
                     FIELDS,
@@ -133,7 +136,6 @@ macro_rules! define_config {
     }
 }
 
-#[macro_export]
 macro_rules! check_ci_llvm {
     ($name:expr) => {
         assert!(
@@ -143,3 +145,6 @@ macro_rules! check_ci_llvm {
         );
     };
 }
+
+pub(crate) use check_ci_llvm;
+pub(crate) use define_config;

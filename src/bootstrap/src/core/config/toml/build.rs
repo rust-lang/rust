@@ -9,11 +9,8 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-use serde::{Deserialize, Deserializer};
-
-use crate::core::config::toml::ReplaceOpt;
-use crate::core::config::{Allocator, CompilerBuiltins, DebuggerPath, Merge, StringOrBool};
-use crate::define_config;
+use crate::core::config::macros::define_config;
+use crate::core::config::{Allocator, CompilerBuiltins, DebuggerPath, StringOrBool};
 
 define_config! {
     /// TOML representation of various global build decisions.
