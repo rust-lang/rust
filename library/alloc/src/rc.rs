@@ -2983,7 +2983,7 @@ impl From<String> for Rc<str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
+impl<T: ?Sized, A: AllocatorClone> From<Box<T, A>> for Rc<T, A> {
     /// Move a boxed object to a new, reference counted, allocation.
     ///
     /// # Example
@@ -3002,7 +3002,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
+impl<T, A: AllocatorClone> From<Vec<T, A>> for Rc<[T], A> {
     /// Allocates a reference-counted slice and moves `v`'s items into it.
     ///
     /// # Example
@@ -3016,7 +3016,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
     #[inline]
     fn from(v: Vec<T, A>) -> Rc<[T], A> {
         unsafe {
-            let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
+            let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_allocator();
 
             let rc_ptr = Self::allocate_for_slice_in(len, &alloc);
             ptr::copy_nonoverlapping(vec_ptr, (&raw mut (*rc_ptr).value) as *mut T, len);

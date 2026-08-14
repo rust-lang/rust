@@ -1140,7 +1140,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(3);
     ///
     /// // Deconstruct the vector into parts.
-    /// let (p, len, cap, alloc) = v.into_raw_parts_with_alloc();
+    /// let (p, len, cap, alloc) = v.into_raw_parts_with_allocator();
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
@@ -1337,7 +1337,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(0);
     /// v.push(1);
     ///
-    /// let (ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
+    /// let (ptr, len, cap, alloc) = v.into_raw_parts_with_allocator();
     ///
     /// let rebuilt = unsafe {
     ///     // We can now make changes to the components, such as
@@ -1351,7 +1351,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
+    pub const fn into_raw_parts_with_allocator(self) -> (*mut T, usize, usize, A) {
         let mut me = ManuallyDrop::new(self);
         let len = me.len();
         let capacity = me.capacity();
@@ -1402,7 +1402,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
     pub const fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
-        let (ptr, len, capacity, alloc) = self.into_raw_parts_with_alloc();
+        let (ptr, len, capacity, alloc) = self.into_raw_parts_with_allocator();
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity, alloc)
     }
@@ -3439,10 +3439,10 @@ impl<T, A: Allocator> Vec<T, A> {
             self.buf.shrink_to_fit(cap - cap_remainder);
         }
 
-        let (ptr, _, _, alloc) = self.into_raw_parts_with_alloc();
+        let (ptr, _, _, alloc) = self.into_raw_parts_with_allocator();
 
         // SAFETY:
-        // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_alloc()`
+        // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_allocator()`
         // - `[T; N]` has the same alignment as `T`
         // - `size_of::<[T; N]>() * cap / N == size_of::<T>() * cap`
         // - `len / N <= cap / N` because `len <= cap`
@@ -3515,7 +3515,7 @@ impl<T, A: Allocator> Vec<T, A> {
         let (ptr, length, capacity, alloc) = self.into_parts_with_alloc();
         debug_assert_eq!(length, 0);
         // SAFETY:
-        // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_alloc()`
+        // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_allocator()`
         // - `T` & `U` have the same layout, so `capacity` does not need to be changed and we can safely use `alloc.dealloc` later
         // - the original vector was cleared, so there is no problem with "transmuting" the stored values
         unsafe { Vec::from_parts_in(ptr.cast::<U>(), length, capacity, alloc) }
@@ -3686,7 +3686,7 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
     pub fn into_flattened(self) -> Vec<T, A> {
-        let (ptr, len, cap, alloc) = self.into_raw_parts_with_alloc();
+        let (ptr, len, cap, alloc) = self.into_raw_parts_with_allocator();
         let (new_len, new_cap) = if T::IS_ZST {
             (len.checked_mul(N).expect("vec len overflow"), usize::MAX)
         } else {
