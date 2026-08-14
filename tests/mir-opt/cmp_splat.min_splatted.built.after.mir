@@ -1,0 +1,68 @@
+// MIR for `min_splatted` after built
+
+fn min_splatted(_1: T, _2: T, _3: impl MinArgs<T>) -> T {
+    debug v1 => _1;
+    debug v2 => _2;
+    debug args => _3;
+    let mut _0: T;
+    let mut _4: T;
+    let mut _5: T;
+    let mut _6: impl MinArgs<T>;
+
+    bb0: {
+        StorageLive(_4);
+        _4 = move _1;
+        StorageLive(_5);
+        _5 = move _2;
+        StorageLive(_6);
+        _6 = move _3;
+        _0 = <impl MinArgs<T> as MinArgs<T>>::min_splatted_inner(move _4, move _5, move _6) -> [return: bb1, unwind: bb5];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        drop(_3) -> [return: bb2, unwind: bb9];
+    }
+
+    bb2: {
+        drop(_2) -> [return: bb3, unwind: bb10];
+    }
+
+    bb3: {
+        drop(_1) -> [return: bb4, unwind: bb11];
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        drop(_6) -> [return: bb6, unwind terminate(cleanup)];
+    }
+
+    bb6 (cleanup): {
+        drop(_5) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        drop(_4) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        drop(_3) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb9 (cleanup): {
+        drop(_2) -> [return: bb10, unwind terminate(cleanup)];
+    }
+
+    bb10 (cleanup): {
+        drop(_1) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
+    bb11 (cleanup): {
+        resume;
+    }
+}
