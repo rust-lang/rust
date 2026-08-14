@@ -55,11 +55,13 @@ sed -i'' 's|ftp://gcc\.gnu\.org/pub/gcc/infrastructure|https://ci-mirrors.rust-l
 mkdir ../gcc-build
 cd ../gcc-build
 
+export PATH=/rustroot/bin:$PATH
 # '-fno-reorder-blocks-and-partition' is required to
 # enable BOLT optimization of the C++ standard library,
 # which is included in librustc_driver.so
 hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
+    --with-bintuils=/rustroot/bin \
     --with-as=$AS_PATH \
     --with-ld=$LD_PATH \
     --enable-languages=c,c++ \
@@ -68,12 +70,13 @@ hide_output ../gcc-$GCC/configure \
 hide_output make -j$(nproc)
 hide_output make install
 ln -s gcc /rustroot/bin/cc
-if echo 'int x __attribute__((used, retain));' | gcc -S -x c -o - - | grep -i '"a.*R"'; then
+
+if echo 'int x __attribute__((used, retain));' | /rustroot/bin/gcc -S -x c -o - - | grep -i '"a.*R"'; then
     echo "retain attribute is supported"
 else
     echo "retain attribute is not supported"
     # We display the generated asm just in case...
-    echo 'int x __attribute__((used, retain));' | gcc -S -x c -o - -
+    echo 'int x __attribute__((used, retain));' | /rustroot/bin/gcc -S -x c -o - -
     exit 1
 fi
 
