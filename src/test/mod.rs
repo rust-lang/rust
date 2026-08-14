@@ -256,11 +256,12 @@ fn warning_tests() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let manifest_dir_filter = regex::escape(manifest_dir.to_string_lossy().as_ref());
     let files = get_test_files(Path::new("tests/warning/source"), true);
-    let mut config = Config::default();
-    config.set().error_on_line_overflow(true);
-    config.set().error_on_unformatted(true);
 
     for file in &files {
+        let mut config = read_config(file);
+        config.set().error_on_line_overflow(true);
+        config.set().error_on_unformatted(true);
+
         let snapshot_name = file.file_stem().unwrap().to_str().unwrap();
         let (parsing_errors, _, report) = format_file(file, config.clone());
         assert!(!parsing_errors, "{} failed to parse", file.display());

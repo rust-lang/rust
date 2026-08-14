@@ -90,14 +90,10 @@ impl<'a> Display for FormatReportFormatter<'a> {
 }
 
 fn annotation(error: &FormattingError) -> Option<Annotation<'_>> {
-    let (range_start, range_length) = error.format_len();
-    let range_end = range_start + range_length;
-
-    if range_length > 0 {
-        Some(AnnotationKind::Primary.span(range_start..range_end))
-    } else {
-        None
-    }
+    error
+        .highlight
+        .clone()
+        .map(|range| AnnotationKind::Primary.span(range))
 }
 
 fn error_kind_to_snippet_annotation_level(error_kind: &ErrorKind) -> Level<'_> {
