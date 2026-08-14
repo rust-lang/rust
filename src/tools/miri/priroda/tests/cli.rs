@@ -7,6 +7,19 @@ use ui_test::spanned::Spanned;
 use ui_test::status_emitter::StatusEmitter;
 use ui_test::{CommandBuilder, Config, default_file_filter, run_tests_generic};
 
+fn per_file_config(config: &mut Config, file_contents: &Spanned<Vec<u8>>) {
+    // `//@ priroda-relax-exit-status` lets a fixture accept any exit code, so
+    // fixtures that terminate with rustc's error-count-driven nonzero exit can
+    // live in `tests/ui/` alongside the pass-only suite.
+    if file_contents
+        .content
+        .windows(b"//@ priroda-relax-exit-status".len())
+        .any(|w| w == b"//@ priroda-relax-exit-status")
+    {
+        config.comment_defaults.base().exit_status = None.into();
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let miri_dir = manifest_dir.parent().unwrap();
@@ -53,6 +66,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.comment_defaults.base().exit_status = Spanned::dummy(0).into();
     config.comment_defaults.base().require_annotations = Spanned::dummy(false).into();
 
+    config.custom_comments.insert("priroda-relax-exit-status", |parser, _args, span| {
+        parser.set_custom_once("priroda-relax-exit-status", (), span);
+    });
+
     let mut args = ui_test::Args::test()?;
     args.bless |= env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     config.with_args(&args);
@@ -60,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     run_tests_generic(
         vec![config],
         default_file_filter,
-        |_, _| {},
+        per_file_config,
         Box::<dyn StatusEmitter>::from(args.format),
     )?;
 
