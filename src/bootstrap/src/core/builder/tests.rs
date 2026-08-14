@@ -2388,12 +2388,12 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .path("run-make")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         ");
@@ -2405,12 +2405,12 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .path("run-make-cargo")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make-cargo 1 <host>

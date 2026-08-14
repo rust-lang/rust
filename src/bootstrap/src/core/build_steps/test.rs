@@ -2291,9 +2291,6 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 target,
             });
         }
-        if mode == CompiletestMode::RunMake {
-            builder.tool_exe(Tool::RunMakeSupport);
-        }
 
         // ensure that `libproc_macro` is available on the host.
         if suite == "mir-opt" {
@@ -2305,6 +2302,36 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
+
+        if mode == CompiletestMode::RunMake {
+            // Find .rlib and .rmeta files of the run-make-support library, and pass them to
+            // compiletest
+            let output = builder.tool(Tool::RunMakeSupport);
+            let find = |extension: &str| -> Option<&PathBuf> {
+                output.artifacts.iter().find_map(|p| {
+                    // We want librun_make_support .rlib and .rmeta files
+                    // They can be in separate directories, because Cargo currently uplifts the
+                    // .rlib file when using -Zembed-metadata=no, but it doesn't uplift the
+                    // .rmeta file
+                    let filename = p.file_name()?.to_str()?;
+                    if !filename.starts_with("librun_make_support") {
+                        return None;
+                    }
+
+                    if extension == p.extension()? { Some(p) } else { None }
+                })
+            };
+            if !builder.config.dry_run() {
+                let rlib =
+                    find("rlib").expect(".rlib not found when compiling librun_make_support");
+                cmd.arg("--run-make-support-rlib").arg(rlib);
+
+                // .rmeta might not be found if we're not using -Zembed-metadata=no
+                if let Some(rmeta) = find("rmeta") {
+                    cmd.arg("--run-make-support-rmeta").arg(rmeta);
+                }
+            }
+        }
 
         if suite == "mir-opt" {
             builder.ensure(compile::Std::new(test_compiler, target).is_for_mir_opt_tests(true));
