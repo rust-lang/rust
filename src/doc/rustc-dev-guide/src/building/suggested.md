@@ -473,11 +473,11 @@ pkgs.mkShell {
 ## Shell Completions
 
 If you use Bash, Zsh, Fish or PowerShell, you can find automatically-generated shell
-completion scripts for `x.py` in
+completion scripts for `./x` in
 [`src/etc/completions`](https://github.com/rust-lang/rust/tree/HEAD/src/etc/completions).
 
-You can use `source ./src/etc/completions/x.py.<extension>` to load completions
-for your shell of choice, or `& .\src\etc\completions\x.py.ps1` for PowerShell.
+You can use `source ./src/etc/completions/x.<extension>` to load completions
+for your shell of choice, or `& .\src\etc\completions\x.ps1` for PowerShell.
 Adding this to your shell's startup script (e.g. `.bashrc`) will automatically
 load this completion.
 

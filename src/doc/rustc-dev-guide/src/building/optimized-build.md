@@ -120,7 +120,7 @@ Here is an example of how can `opt-dist` be used locally (outside of CI):
       --target-triple <target> \ # select target, e.g. "x86_64-unknown-linux-gnu"
       --checkout-dir <path>    \ # path to rust checkout, e.g. "."
       --llvm-dir <path>        \ # path to built LLVM toolchain, e.g. "/foo/bar/llvm/install"
-      -- python3 x.py dist       # pass the actual build command
+      -- ./x dist       # pass the actual build command
     ```
     You can run `--help` to see further parameters that you can modify.
 

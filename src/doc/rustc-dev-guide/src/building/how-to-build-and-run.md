@@ -21,7 +21,7 @@ implementing a maintainable fix is taking some time.
 </div>
 
 
-The compiler is built using a tool called `x.py`.
+The compiler is built using a tool called `bootstrap`.
 You will need to have Python installed to run it.
 
 ## Quick Start
@@ -94,57 +94,32 @@ cd rust
 > For example, `git bisect` and `git blame` require access to the commit history,
 > so they don't work if the repository was cloned with `--depth 1`.
 
-## What is `x.py`?
+## What is bootstrap?
 
-`x.py` is the build tool for the `rust` repository.
+Bootstrap is the build tool for the `rust` repository.
 It can build docs, run tests, and build the compiler and standard library.
 
 This chapter focuses on the basics to be productive, but
-if you want to learn more about `x.py`, [read this chapter][bootstrap].
+if you want to learn more about bootstrap, [read this chapter][bootstrap].
 
 [bootstrap]: ./bootstrapping/intro.md
 [windows-security-exclusions]: https://support.microsoft.com/windows/add-an-exclusion-to-windows-security-811816c0-4dfd-af4a-47e4-c301afe13b26
 
-Also, using `x` rather than `x.py` is recommended as:
+### Running bootstrap
 
-> `./x` is the most likely to work on every system (on Unix it runs the shell script
-> that does python version detection, on Windows it will probably run the
-> powershell script - certainly less likely to break than `./x.py` which often just
-> opens the file in an editor).[^1]
-
-(You can find the platform related scripts around the `x.py`, like `x.ps1`)
-
-Notice that this is not absolute.
-For instance, using Nushell in VSCode on Win10,
-typing `x` or `./x` still opens `x.py` in an editor rather than invoking the program.
-
-In the rest of this guide, we use `x` rather than `x.py` directly.
-The following command:
-
-```bash
-./x check
-```
-
-could be replaced by:
-
-```bash
-./x.py check
-```
-
-### Running `x.py`
-
-The `x.py` command can be run on most systems (Unix, Windows if configured) in this way:
+Bootstrap can be run on most systems (Unix, Windows if configured) in this way:
 
 ```sh
 ./x <subcommand> [flags]
 ```
 
-This is how the documentation and examples assume you are running `x.py`.
+This is how the documentation and examples assume you are running bootstrap.
 Some alternative ways are:
 
 ```sh
 # In Windows PowerShell (if PowerShell is configured to run scripts)
 ./x <subcommand> [flags]
+# In NuShell (if PowerShell is configured to run scripts). `./x` does not work in NuShell if `.py` files are not configured to run Python.
 ./x.ps1 <subcommand> [flags]
 
 # On the Windows Command Prompt (if .py files are configured to run Python)
@@ -169,24 +144,18 @@ At line:1 char:1
     + FullyQualifiedErrorId : UnauthorizedAccess
 ```
 
-You can avoid this error by allowing powershell to run local scripts:
+You can avoid this error by allowing PowerShell to run local scripts:
 ```
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-#### Running `x.py` slightly more conveniently
+#### Running bootstrap slightly more conveniently
 
-There is a binary that wraps `x.py` called `x` in `src/tools/x`.
-All it does is run `x.py`, but it can be installed system-wide and run from any subdirectory
-of a checkout.
-It also looks up the appropriate version of `python` to use.
+There is a binary that wraps bootstrap called `x`.
+All it does is run `./x`, but it can be installed system-wide and run from any subdirectory of a checkout.
+It also looks up the appropriate version of Python to use and avoids depending on which shell you're currently using.
 
 You can install it with `cargo install --path src/tools/x`.
-
-To clarify that this is another global installed binary util, which is
-similar to the one declared in section [What is `x.py`](#what-is-xpy), but
-it works as an independent process to execute the `x.py` rather than calling the
-shell to run the platform related scripts.
 
 ## Create a `bootstrap.toml`
 
@@ -441,5 +410,3 @@ Occasionally, you may need to:
 - Remove `build-rust-analyzer/` directory (if you have a separate rust-analyzer build directory).
 - Uninstall unnecessary toolchains if you use `cargo-bisect-rustc`.
   You can check which toolchains are installed with `rustup toolchain list`.
-
-[^1]: issue[#1707](https://github.com/rust-lang/rustc-dev-guide/issues/1707)
