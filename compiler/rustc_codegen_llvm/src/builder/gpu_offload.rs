@@ -197,7 +197,11 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll ll
     (tgt_decl, tgt_fn_ty)
 }
 
-pub(crate) fn generate_decl<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll llvm::Type) {
+/// Declares the `omp_get_num_devices` runtime function and returns the
+/// declaration together with its type.
+pub(crate) fn declare_omp_get_num_devices<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> (&'ll llvm::Value, &'ll llvm::Type) {
     let ti32 = cx.type_i32();
     let tgt_fn_ty = cx.type_func(&[], ti32);
     let name = "omp_get_num_devices";

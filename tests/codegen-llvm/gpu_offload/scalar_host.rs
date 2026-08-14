@@ -6,8 +6,8 @@
 // the kernel as i64
 
 #![feature(abi_gpu_kernel)]
+#![feature(gpu_offload)]
 #![feature(rustc_attrs)]
-#![feature(core_intrinsics)]
 #![no_main]
 
 // CHECK: define{{( dso_local)?}} void @main()
@@ -28,14 +28,10 @@ fn main() {
     let mut x = 0.0f32;
     let k = core::hint::black_box(42.0f32);
 
-    core::intrinsics::offload::<_, _, ()>(
-        foo,
-        [1, 1, 1],
-        [1, 1, 1],
-        0,
-        -1,
-        (&mut x as *mut f32, k),
-    );
+    core::offload::offload! {
+        kernel = foo,
+        args = (&mut x as *mut f32, k),
+    }
 }
 
 unsafe extern "C" {

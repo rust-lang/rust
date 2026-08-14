@@ -37,7 +37,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{
-    OffloadKernelDims, gen_call_handling, gen_define_handling, generate_decl, register_offload,
+    self, OffloadKernelDims, declare_omp_get_num_devices, register_offload,
 };
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
@@ -242,7 +242,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload_get_num_devices => {
-                let (fn_decl, fn_ty) = generate_decl(self.cx);
+                let (fn_decl, fn_ty) = declare_omp_get_num_devices(self.cx);
 
                 let llval = self.call(fn_ty, None, None, fn_decl, &[], None, None);
 
@@ -1893,8 +1893,9 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     register_offload(cx);
-    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
-    gen_call_handling(
+    let offload_data =
+        gpu_offload::gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
+    gpu_offload::gen_call_handling(
         bx,
         &offload_data,
         &args,

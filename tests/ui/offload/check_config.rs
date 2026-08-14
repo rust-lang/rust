@@ -9,7 +9,7 @@
 //[fail]~? ERROR: using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>
 //[fail]~? ERROR: using the offload feature requires -C lto=fat
 
-#![feature(core_intrinsics)]
+#![feature(gpu_offload)]
 
 fn main() {
     let mut x = [3.0; 256];
@@ -17,7 +17,10 @@ fn main() {
 }
 
 fn kernel_1(x: &mut [f32; 256]) {
-    core::intrinsics::offload(_kernel_1, [1, 1, 1], [1, 1, 1], 0, -1, (x,))
+    core::offload::offload! {
+        kernel = _kernel_1,
+        args = (x,),
+    }
 }
 
 fn _kernel_1(x: &mut [f32; 256]) {}
