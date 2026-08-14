@@ -227,14 +227,25 @@ impl Cfg {
     }
 
     fn should_append_only_to_description(&self) -> bool {
-        match self.0 {
-            CfgEntry::Any(..)
-            | CfgEntry::All(..)
-            | CfgEntry::NameValue { .. }
-            | CfgEntry::Version(..)
-            | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => true,
-            CfgEntry::Not(..) | CfgEntry::Bool(..) => false,
+        fn should_append_only_to_description(cfg: &CfgEntry) -> bool {
+            match cfg {
+                CfgEntry::NameValue { .. }
+                | CfgEntry::Version(..)
+                | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => true,
+                CfgEntry::Any(a, _) | CfgEntry::All(a, _) => {
+                    if a.is_empty() {
+                        false
+                    } else if let [a] = a.as_slice() {
+                        should_append_only_to_description(&a)
+                    } else {
+                        true
+                    }
+                }
+                CfgEntry::Not(a, _) => !should_append_only_to_description(a),
+                CfgEntry::Bool(..) => false,
+            }
         }
+        should_append_only_to_description(&self.0)
     }
 
     fn should_use_with_in_description(&self) -> bool {
@@ -309,7 +320,19 @@ impl Cfg {
     }
 
     fn omit_preposition(&self) -> bool {
-        matches!(self.0, CfgEntry::Bool(..))
+        fn omit_preposition(cfg: &CfgEntry) -> bool {
+            match cfg {
+                CfgEntry::NameValue { .. }
+                | CfgEntry::Version(..)
+                | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => false,
+                CfgEntry::Any(a, _) | CfgEntry::All(a, _) => {
+                    a.is_empty() || matches!(a.as_slice(), [a] if omit_preposition(&a))
+                }
+                CfgEntry::Not(a, _) => omit_preposition(a),
+                CfgEntry::Bool(..) => true,
+            }
+        }
+        omit_preposition(&self.0)
     }
 
     pub(crate) fn inner(&self) -> &CfgEntry {
@@ -459,15 +482,20 @@ impl Display<'_> {
         use fmt::Display as _;
 
         let short_longhand = self.1.is_long() && {
-            let all_crate_features = sub_cfgs.iter().all(|sub_cfg| {
-                matches!(sub_cfg, CfgEntry::NameValue { name: sym::feature, value: Some(_), .. })
-            });
-            let all_target_features = sub_cfgs.iter().all(|sub_cfg| {
-                matches!(
-                    sub_cfg,
-                    CfgEntry::NameValue { name: sym::target_feature, value: Some(_), .. }
-                )
-            });
+            let all_crate_features = !sub_cfgs.is_empty()
+                && sub_cfgs.iter().all(|sub_cfg| {
+                    matches!(
+                        sub_cfg,
+                        CfgEntry::NameValue { name: sym::feature, value: Some(_), .. }
+                    )
+                });
+            let all_target_features = !sub_cfgs.is_empty()
+                && sub_cfgs.iter().all(|sub_cfg| {
+                    matches!(
+                        sub_cfg,
+                        CfgEntry::NameValue { name: sym::target_feature, value: Some(_), .. }
+                    )
+                });
 
             if all_crate_features {
                 fmt.write_str("crate features ")?;

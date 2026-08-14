@@ -46,7 +46,11 @@ fn cfg_not(v: CfgEntry) -> Cfg {
 }
 
 fn cfg_true() -> Cfg {
-    Cfg(CfgEntry::Bool(true, DUMMY_SP))
+    Cfg(cfg_true_e())
+}
+
+fn cfg_true_e() -> CfgEntry {
+    CfgEntry::Bool(true, DUMMY_SP)
 }
 
 fn cfg_false() -> Cfg {
@@ -376,6 +380,14 @@ fn test_render_long_html() {
             (name_value_cfg("target_arch", "x86_64") & name_value_cfg("target_feature", "sse2"))
                 .render_long_html(),
             "Available on <strong>x86-64 and target feature <code>sse2</code></strong> only."
+        );
+        assert_eq!(
+            cfg_any(thin_vec![cfg_true_e()]).render_long_html(),
+            "Available <strong>everywhere</strong>.",
+        );
+        assert_eq!(
+            cfg_any(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])]).render_long_html(),
+            "Available <strong>everywhere</strong>."
         );
     })
 }
