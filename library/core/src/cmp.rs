@@ -1935,24 +1935,19 @@ macro impl_tuples($($mac:ident,)+) {
 }
 
 /// Implementation detail for [`smallest`] and [`largest`].
-/// Marker indicating that `Self` is a tuple where all members are of the same type.
+/// Marker indicating that `Self` is a tuple where all members are of the type `T`.
+/// Cannot be an associated type as we require the empty tuple to implement this trait
+/// for all types `T`.
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a homogeneous tuple")]
 #[unstable(feature = "cmp_splat_internals", issue = "160728")]
 #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-const trait HomogeneousTuple: crate::marker::Tuple {
-    /// The type of each item in this tuple.
-    type Item;
-}
+const trait HomogeneousTuple<T>: crate::marker::Tuple {}
 
 /// Implements [`HomogeneousTuple`] for a provided tuple.
-macro impl_homogeneous_tuple($($($x:ident,)+)?) {
-    $(
-        #[unstable(feature = "cmp_splat_internals", issue = "160728")]
-        #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-        const impl<T> HomogeneousTuple for ($(${ignore($x)}T,)+) {
-            type Item = T;
-        }
-    )?
+macro impl_homogeneous_tuple($($x:ident,)*) {
+    #[unstable(feature = "cmp_splat_internals", issue = "160728")]
+    #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+    const impl<T> HomogeneousTuple<T> for ($(${ignore($x)}T,)*) { }
 }
 
 impl_tuples! {
@@ -1971,7 +1966,6 @@ impl_tuples! {
 /// #![feature(cmp_splat)]
 /// use std::cmp;
 ///
-/// assert_eq!(cmp::smallest(1), 1);
 /// assert_eq!(cmp::smallest(1, 2), 1);
 /// assert_eq!(cmp::smallest(3, 2, 1), 1);
 /// assert_eq!(cmp::smallest(1, 2, 3, 4), 1);
@@ -2008,36 +2002,35 @@ impl_tuples! {
 #[expect(private_bounds, reason = "`SmallestArgs` is an internal implementation detail")]
 #[cfg(not(test))] // FIXME: splat interacts poorly with the double linking of `core` in tests
 pub const fn smallest<T: [const] Ord + [const] Destruct>(
-    #[rustc_splat] args: impl [const] SmallestArgs<Item = T>,
+    v1: T,
+    v2: T,
+    #[rustc_splat] args: impl [const] SmallestArgs<T>,
 ) -> T {
-    SmallestArgs::smallest(args)
+    SmallestArgs::smallest(v1, v2, args)
 }
 
 /// Implementation detail for [`smallest`].
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a valid set of arguments for `smallest`")]
 #[unstable(feature = "cmp_splat_internals", issue = "160728")]
 #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-const trait SmallestArgs: HomogeneousTuple {
+const trait SmallestArgs<T>: HomogeneousTuple<T> {
     /// Reduces all elements of a homogeneous tuple to its smallest value.
-    fn smallest(self) -> Self::Item;
+    fn smallest(v1: T, v2: T, args: Self) -> T;
 }
 
 /// Implements [`SmallestArgs`] for a provided tuple if applicable.
-macro impl_smallest_args($($x:ident, $($($y:ident,)+)?)?) {
-    $(
-        #[unstable(feature = "cmp_splat_internals", issue = "160728")]
-        #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-        const impl<T> SmallestArgs for (T, $($(${ignore($y)}T,)+)?)
-        $(where T: [const] Destruct + [const] Ord, $(${ignore($y)})+)?
-        {
-            #[inline]
-            fn smallest(self) -> Self::Item {
-                let ($x, $($($y,)+)?) = self;
-                $($(let $x = $x.min($y);)+)?
-                $x
-            }
+macro impl_smallest_args($($x:ident,)*) {
+    #[unstable(feature = "cmp_splat_internals", issue = "160728")]
+    #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+    const impl<T> SmallestArgs<T> for ($(${ignore($x)}T,)*)
+    where
+        T: [const] Destruct + [const] Ord,
+    {
+        #[inline(always)] // improves unoptimised codegen
+        fn smallest(v1: T, v2: T, ($($x,)*): Self) -> T {
+            v1.min(v2)$(.min($x))*
         }
-    )?
+    }
 }
 
 impl_tuples! {
@@ -2056,7 +2049,6 @@ impl_tuples! {
 /// #![feature(cmp_splat)]
 /// use std::cmp;
 ///
-/// assert_eq!(cmp::largest(1), 1);
 /// assert_eq!(cmp::largest(1, 2), 2);
 /// assert_eq!(cmp::largest(3, 2, 1), 3);
 /// assert_eq!(cmp::largest(1, 2, 3, 4), 4);
@@ -2093,36 +2085,35 @@ impl_tuples! {
 #[expect(private_bounds, reason = "`LargestArgs` is an internal implementation detail")]
 #[cfg(not(test))] // FIXME: splat interacts poorly with the double linking of `core` in tests
 pub const fn largest<T: [const] Ord + [const] Destruct>(
-    #[rustc_splat] args: impl [const] LargestArgs<Item = T>,
+    v1: T,
+    v2: T,
+    #[rustc_splat] args: impl [const] LargestArgs<T>,
 ) -> T {
-    LargestArgs::largest(args)
+    LargestArgs::largest(v1, v2, args)
 }
 
 /// Implementation detail for [`largest`].
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a valid set of arguments for `largest`")]
 #[unstable(feature = "cmp_splat_internals", issue = "160728")]
 #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-const trait LargestArgs: HomogeneousTuple {
+const trait LargestArgs<T>: HomogeneousTuple<T> {
     /// Reduces all elements of a homogeneous tuple to its largest value.
-    fn largest(self) -> Self::Item;
+    fn largest(v1: T, v2: T, args: Self) -> T;
 }
 
 /// Implements [`LargestArgs`] for a provided tuple if applicable.
-macro impl_largest_args($($x:ident, $($($y:ident,)+)?)?) {
-    $(
-        #[unstable(feature = "cmp_splat_internals", issue = "160728")]
-        #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
-        const impl<T> LargestArgs for (T, $($(${ignore($y)}T,)+)?)
-        $(where T: [const] Destruct + [const] Ord, $(${ignore($y)})+)?
-        {
-            #[inline]
-            fn largest(self) -> Self::Item {
-                let ($x, $($($y,)+)?) = self;
-                $($(let $x = $x.max($y);)+)?
-                $x
-            }
+macro impl_largest_args($($x:ident,)*) {
+    #[unstable(feature = "cmp_splat_internals", issue = "160728")]
+    #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+    const impl<T> LargestArgs<T> for ($(${ignore($x)}T,)*)
+    where
+        T: [const] Destruct + [const] Ord,
+    {
+        #[inline(always)] // improves unoptimised codegen
+        fn largest(v1: T, v2: T, ($($x,)*): Self) -> T {
+            v1.max(v2)$(.max($x))*
         }
-    )?
+    }
 }
 
 impl_tuples! {
