@@ -371,6 +371,9 @@ impl TypeId {
         intrinsics::type_id_variants(self)
     }
 
+    // FIXME(reflection): make the errors nicer. This is a wider problem,
+    // TypeId::fields has nice errors in the docs but those are not the ones shown
+    // by rustc.
     /// Returns the variant representing type at the given index of the type represented by this `TypeId`. Use it to
     /// get the name of an enum variant or check whether it is non_exhaustive.
     ///
@@ -405,8 +408,7 @@ impl TypeId {
     /// Calling variant on the TypeId for a struct will be treated as a compile-time error. The same
     /// is true for out-of-bounds indexing on an enum.
     ///
-    /// // ```compile_fail,E0080
-    /// ```
+    /// ```compile_fail,E0080
     /// # #![feature(type_info)]
     /// # use std::any::TypeId;
     /// #
@@ -420,7 +422,7 @@ impl TypeId {
     /// #     Struct { x: u32, y: u32, z: String },
     /// # }
     /// const {
-    ///     _ = TypeId::of::<Point>().variant(0); // error:
+    ///     _ = TypeId::of::<Point>().variant(0); // error: cannot get the variant of a struct
     ///     _ = TypeId::of::<Enum>().variant(10); // error: indexing out of bounds: the len is 3 but the index is 10
     /// }
     /// ```
@@ -428,6 +430,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn variant(self, variant_index: usize) -> VariantId {
+        intrinsics::type_id_fields(self, variant_index);
         VariantId { base: self, variant: variant_index }
     }
 
