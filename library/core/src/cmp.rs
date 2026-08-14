@@ -2266,8 +2266,37 @@ mod impls {
 
     partial_ord_impl! { f16 f32 f64 f128 }
 
+    macro_rules! min_max_impl {
+        (char) => {
+            #[inline]
+            fn min(self, other: Self) -> Self {
+                let c = u32::min(self as u32, other as u32);
+                // SAFETY: it's one of the inputs
+                unsafe { char::from_u32_unchecked(c) }
+            }
+
+            #[inline]
+            fn max(self, other: Self) -> Self {
+                let c = u32::max(self as u32, other as u32);
+                // SAFETY: it's one of the inputs
+                unsafe { char::from_u32_unchecked(c) }
+            }
+        };
+        ($t:ident) => {
+            #[inline]
+            fn min(self, other: Self) -> Self {
+                crate::intrinsics::integer_min(self, other)
+            }
+
+            #[inline]
+            fn max(self, other: Self) -> Self {
+                crate::intrinsics::integer_max(self, other)
+            }
+        };
+    }
+
     macro_rules! ord_impl {
-        ($($t:ty)*) => ($(
+        ($($t:ident)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             const impl PartialOrd for $t {
@@ -2306,6 +2335,8 @@ mod impls {
                         self
                     }
                 }
+
+                min_max_impl!($t);
             }
         )*)
     }

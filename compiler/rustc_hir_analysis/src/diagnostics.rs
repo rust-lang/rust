@@ -189,12 +189,13 @@ pub(crate) struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
 
 #[derive(Diagnostic)]
 #[diag("unrecognized intrinsic function: `{$name}`", code = E0093)]
-#[help("if you're adding an intrinsic, be sure to update `check_intrinsic_type`")]
+#[help("if you're adding an intrinsic, be sure to update `check_intrinsic_type` in {$file}")]
 pub(crate) struct UnrecognizedIntrinsicFunction {
     #[primary_span]
     #[label("unrecognized intrinsic")]
     pub span: Span,
     pub name: Symbol,
+    pub file: &'static str,
 }
 
 #[derive(Diagnostic)]

@@ -1836,6 +1836,34 @@ pub const fn fdiv_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 #[rustc_intrinsic]
 pub const fn frem_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
+/// Integer `min`imum, signed or unsigned depending on `T`.
+///
+/// Allowed only on `uN`, `iN`, `usize`, and `isize`.
+/// (Not on `bool` nor on `char`.)
+///
+/// Stabilized as [`u16::min`] and [`i64::min`] and similar.
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn integer_min<T: [const] bounds::IntegerPrimitive>(a: T, b: T) -> T {
+    if a < b { a } else { b }
+}
+
+/// Integer `max`imum, signed or unsigned depending on `T`.
+///
+/// Allowed only on `uN`, `iN`, `usize`, and `isize`.
+/// (Not on `bool` nor on `char`.)
+///
+/// Stabilized as [`u16::max`] and [`i64::max`] and similar.
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn integer_max<T: [const] bounds::IntegerPrimitive>(a: T, b: T) -> T {
+    if a < b { b } else { a }
+}
+
 /// Returns the number of bits set in an integer type `T`
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
