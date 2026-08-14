@@ -823,6 +823,13 @@ fn layout_of_uncached<'tcx>(
                 layout.backend_repr = BackendRepr::Scalar(bfloat);
             }
 
+            if tcx.is_lang_item(def.did(), LangItem::PpcF128) {
+                let ppcf128 = scalar_unit(Primitive::Float(abi::Float::PpcF128));
+                assert_eq!(layout.size, abi::Float::PpcF128.size());
+                layout.align = abi::Float::PpcF128.align(cx);
+                layout.backend_repr = BackendRepr::Scalar(ppcf128);
+            }
+
             tcx.mk_layout(layout)
         }
 

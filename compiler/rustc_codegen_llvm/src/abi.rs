@@ -163,6 +163,7 @@ impl LlvmType for Reg {
                         Float::F32 => cx.type_f32(),
                         Float::F64 => cx.type_f64(),
                         Float::F128 => cx.type_f128(),
+                        Float::PpcF128 => bug!("ppcf128 is not a valid vector element type"),
                     },
                     Primitive::Pointer(_) => cx.type_ptr(),
                 };

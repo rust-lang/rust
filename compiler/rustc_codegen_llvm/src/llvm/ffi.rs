@@ -948,6 +948,7 @@ unsafe extern "C" {
 
     // Operations on non-IEEE real types
     pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMPPCFP128TypeInContext(C: &Context) -> &Type;
 
     // Operations on function types
     pub(crate) fn LLVMFunctionType<'a>(
