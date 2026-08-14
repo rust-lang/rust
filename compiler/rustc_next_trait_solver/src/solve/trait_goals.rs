@@ -1127,6 +1127,7 @@ where
                     return Ok(false);
                 }
                 match ecx.probe(|_| ProbeKind::ProjectionCompatibility).enter(|ecx| {
+                    let target_projection = ecx.resolve_vars_if_possible(target_projection);
                     ecx.enter_forall_with_assumptions(
                         target_projection,
                         param_env,
@@ -1152,6 +1153,8 @@ where
                     ty::ExistentialPredicate::Trait(target_principal) => {
                         let source_principal = upcast_principal.unwrap();
                         let target_principal = bound.rebind(target_principal);
+                        // We might unify infer vars in previous iterations.
+                        let target_principal = ecx.resolve_vars_if_possible(target_principal);
                         ecx.enter_forall_with_assumptions(
                             target_principal,
                             param_env,
@@ -1184,6 +1187,9 @@ where
                         let Some(matching) = matching_projection else {
                             return Err(NoSolution.into());
                         };
+
+                        // We might unify infer vars in previous iterations.
+                        let target_projection = ecx.resolve_vars_if_possible(target_projection);
                         ecx.enter_forall_with_assumptions(
                             target_projection,
                             param_env,
