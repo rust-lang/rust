@@ -180,6 +180,7 @@ use std::fmt;
 use std::iter::once;
 
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use smallvec::SmallVec;
@@ -752,6 +753,7 @@ impl<Cx: PatCx> Clone for Constructor<Cx> {
             Constructor::F32Range(lo, hi, end) => Constructor::F32Range(*lo, *hi, *end),
             Constructor::F64Range(lo, hi, end) => Constructor::F64Range(*lo, *hi, *end),
             Constructor::F128Range(lo, hi, end) => Constructor::F128Range(*lo, *hi, *end),
+            Constructor::PpcF128Range(lo, hi, end) => Constructor::PpcF128Range(*lo, *hi, *end),
             Constructor::Str(value) => Constructor::Str(value.clone()),
             Constructor::DerefPattern(ty) => Constructor::DerefPattern(ty.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
@@ -949,6 +951,7 @@ impl<Cx: PatCx> Constructor<Cx> {
             F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
             F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
             F128Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
+            PpcF128Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
             Str(value) => write!(f, "{value:?}")?,
             DerefPattern(_) => write!(f, "deref!({:?})", fields.next().unwrap())?,
             Opaque(..) => write!(f, "<constant pattern>")?,

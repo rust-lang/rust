@@ -142,6 +142,7 @@ impl abi::Float {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             F128 => tcx.types.f128,
+            PpcF128 => tcx.types.ppcf128,
         }
     }
 
@@ -152,6 +153,7 @@ impl abi::Float {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
             ty::FloatTy::F128 => F128,
+            ty::FloatTy::PpcF128 => PpcF128,
         }
     }
 }

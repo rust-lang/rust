@@ -24,6 +24,7 @@ use itertools::Itertools;
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
@@ -1160,6 +1161,13 @@ pub(crate) fn parse_float_into_scalar(
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
         ty::FloatTy::F128 => {
             let mut f = num.parse::<Quad>().ok()?;
+            if neg {
+                f = -f;
+            }
+            Some(ScalarInt::from(f))
+        }
+        ty::FloatTy::PpcF128 => {
+            let mut f = num.parse::<DoubleDouble>().ok()?;
             if neg {
                 f = -f;
             }

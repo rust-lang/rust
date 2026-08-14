@@ -132,6 +132,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
                         FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
                         FloatTy::F128 => x.to_scalar().to_f128()?.is_finite(),
+                        FloatTy::PpcF128 => x.to_scalar().to_ppcf128()?.is_finite(),
                     })
                 };
                 match (float_finite(&a)?, float_finite(&b)?) {
@@ -184,6 +185,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     FloatTy::F32 => host_unary_float_op::<SingleS>(this, f, op, dest)?,
                     FloatTy::F64 => host_unary_float_op::<DoubleS>(this, f, op, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
+                    FloatTy::PpcF128 => todo!("ppcf128"), // FIXME(ppcf128)
                 };
             }
 

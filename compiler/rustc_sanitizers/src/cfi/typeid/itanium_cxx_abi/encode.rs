@@ -474,6 +474,7 @@ pub(crate) fn encode_ty<'tcx>(
                     Arch::PowerPC | Arch::PowerPC64 => "u9__ieee128", // "g" is used for __ibm128
                     _ => "g",
                 },
+                FloatTy::PpcF128 => "g",
             });
         }
 

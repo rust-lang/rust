@@ -321,10 +321,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             match primitive {
                 // Explicitly spell out all the float types so that any new ones have to be added to
                 // one of the match branches.
-                Primitive::Int(..)
-                | Primitive::Float(Float::F16 | Float::F32 | Float::F64 | Float::F128) => {
+                Primitive::Int(..) => Some(primitive),
+                Primitive::Float(Float::F16 | Float::F32 | Float::F64 | Float::F128) => {
                     Some(primitive)
                 }
+                Primitive::Float(Float::PpcF128) => Some(primitive),
                 Primitive::Pointer(..) => None,
             }
         } else {

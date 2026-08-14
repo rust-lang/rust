@@ -645,6 +645,7 @@ pub enum FloatTy {
     F32,
     F64,
     F128,
+    PpcF128,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]

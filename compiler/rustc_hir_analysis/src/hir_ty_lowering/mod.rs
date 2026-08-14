@@ -2223,7 +2223,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let [leading_segments @ .., segment] = path.segments else { bug!() };
                 let _ = self
                     .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
-                self.lower_path_segment(span, did, segment)
+                if tcx.is_lang_item(did, LangItem::PpcF128) {
+                    Ty::new_float(tcx, ty::FloatTy::PpcF128)
+                } else {
+                    self.lower_path_segment(span, did, segment)
+                }
             }
             Res::Def(kind @ DefKind::Variant, def_id)
                 if let PermitVariants::Yes = permit_variants =>

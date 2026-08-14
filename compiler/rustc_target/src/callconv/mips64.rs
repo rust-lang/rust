@@ -34,6 +34,7 @@ where
                     Float::F32 => Some(Reg::f32()),
                     Float::F64 => Some(Reg::f64()),
                     Float::F128 => Some(Reg::f128()),
+                    Float::PpcF128 => unreachable!(),
                 }
             }
             _ => None,

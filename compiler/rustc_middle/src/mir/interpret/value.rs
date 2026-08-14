@@ -5,6 +5,7 @@ use either::{Either, Left, Right};
 use rustc_abi::{HasDataLayout, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 
 use super::{
@@ -90,6 +91,13 @@ impl<Prov> From<Quad> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Quad) -> Self {
         Scalar::from_f128(f)
+    }
+}
+
+impl<Prov> From<DoubleDouble> for Scalar<Prov> {
+    #[inline(always)]
+    fn from(f: DoubleDouble) -> Self {
+        Scalar::from_ppcf128(f)
     }
 }
 
@@ -226,6 +234,11 @@ impl<Prov> Scalar<Prov> {
 
     #[inline]
     pub fn from_f128(f: Quad) -> Self {
+        Scalar::Int(f.into())
+    }
+
+    #[inline]
+    pub fn from_ppcf128(f: DoubleDouble) -> Self {
         Scalar::Int(f.into())
     }
 
@@ -449,6 +462,11 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
 
     #[inline]
     pub fn to_f128(self) -> InterpResult<'tcx, Quad> {
+        self.to_float()
+    }
+
+    #[inline]
+    pub fn to_ppcf128(self) -> InterpResult<'tcx, DoubleDouble> {
         self.to_float()
     }
 }

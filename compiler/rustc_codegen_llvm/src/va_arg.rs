@@ -98,6 +98,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
                 Float::F16 | Float::F32 => unreachable!(),
                 Float::F64 => { /* fall through */ }
                 Float::F128 => return Align::from_bytes(16).unwrap(),
+                Float::PpcF128 => { /* fall through */ }
             },
             Primitive::Pointer(_) => { /* fall through */ }
         },

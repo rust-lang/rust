@@ -99,6 +99,7 @@ pub(crate) fn lit_to_const<'tcx>(
                 ast::FloatTy::F32 => ty::FloatTy::F32,
                 ast::FloatTy::F64 => ty::FloatTy::F64,
                 ast::FloatTy::F128 => ty::FloatTy::F128,
+                ast::FloatTy::PpcF128 => ty::FloatTy::PpcF128,
             };
             let bits = parse_float_into_scalar(n, fty, neg)?;
             (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, fty))

@@ -703,6 +703,7 @@ impl MsvcBasicName for ty::FloatTy {
             ty::FloatTy::F32 => "float",
             ty::FloatTy::F64 => "double",
             ty::FloatTy::F128 => "fp128",
+            ty::FloatTy::PpcF128 => bug!("MSVC does not support powerpc"),
         }
     }
 }

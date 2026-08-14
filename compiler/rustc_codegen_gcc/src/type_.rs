@@ -94,6 +94,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             ty::FloatTy::F32 => self.type_f32(),
             ty::FloatTy::F64 => self.type_f64(),
             ty::FloatTy::F128 => self.type_f128(),
+            ty::FloatTy::PpcF128 => self.type_ppcf128(),
         }
     }
 
@@ -178,6 +179,10 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
             return self.context.new_c_type(CType::Float128);
         }
         bug!("unsupported float width 128")
+    }
+
+    fn type_ppcf128(&self) -> Type<'gcc> {
+        bug!("unsupported ppcf128 type")
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {

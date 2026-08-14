@@ -1684,6 +1684,7 @@ pub(crate) enum PrimitiveType {
     F32,
     F64,
     F128,
+    PpcF128,
     Char,
     Bool,
     Str,
@@ -1720,6 +1721,7 @@ impl PrimitiveType {
             hir::PrimTy::Float(FloatTy::F32) => PrimitiveType::F32,
             hir::PrimTy::Float(FloatTy::F64) => PrimitiveType::F64,
             hir::PrimTy::Float(FloatTy::F128) => PrimitiveType::F128,
+            hir::PrimTy::Float(FloatTy::PpcF128) => PrimitiveType::PpcF128,
             hir::PrimTy::Str => PrimitiveType::Str,
             hir::PrimTy::Bool => PrimitiveType::Bool,
             hir::PrimTy::Char => PrimitiveType::Char,
@@ -1747,6 +1749,7 @@ impl PrimitiveType {
             sym::f32 => Some(PrimitiveType::F32),
             sym::f64 => Some(PrimitiveType::F64),
             sym::f128 => Some(PrimitiveType::F128),
+            sym::ppcf128 => Some(PrimitiveType::PpcF128),
             sym::array => Some(PrimitiveType::Array),
             sym::slice => Some(PrimitiveType::Slice),
             sym::tuple => Some(PrimitiveType::Tuple),
@@ -1867,6 +1870,7 @@ impl PrimitiveType {
             F32 => sym::f32,
             F64 => sym::f64,
             F128 => sym::f128,
+            PpcF128 => sym::ppcf128,
             Str => sym::str,
             Bool => sym::bool,
             Char => sym::char,
@@ -1954,6 +1958,7 @@ impl From<ty::FloatTy> for PrimitiveType {
             ty::FloatTy::F32 => PrimitiveType::F32,
             ty::FloatTy::F64 => PrimitiveType::F64,
             ty::FloatTy::F128 => PrimitiveType::F128,
+            ty::FloatTy::PpcF128 => PrimitiveType::PpcF128,
         }
     }
 }

@@ -6,6 +6,7 @@ use std::ops::{Deref, DerefMut};
 use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
@@ -1799,6 +1800,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::FloatTy::F128 => {
                     let val = Quad::try_from(int).unwrap();
                     write!(self, "{}{}f128", val, if val.is_finite() { "" } else { "_" })?;
+                }
+                ty::FloatTy::PpcF128 => {
+                    let val = DoubleDouble::try_from(int).unwrap();
+                    write!(self, "{}{}ppcf128", val, if val.is_finite() { "" } else { "_" })?;
                 }
             },
             // Int

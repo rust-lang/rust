@@ -4,6 +4,7 @@ use std::num::NonZero;
 use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -445,6 +446,11 @@ impl ScalarInt {
     pub fn to_f128(self) -> Quad {
         self.to_float()
     }
+
+    #[inline]
+    pub fn to_ppcf128(self) -> DoubleDouble {
+        self.to_float()
+    }
 }
 
 macro_rules! from_x_for_scalar_int {
@@ -613,6 +619,21 @@ impl From<ScalarInt> for Quad {
     #[inline]
     fn from(int: ScalarInt) -> Self {
         Self::from_bits(int.to_bits(Size::from_bytes(16)))
+    }
+}
+
+impl From<DoubleDouble> for ScalarInt {
+    #[inline]
+    fn from(f: DoubleDouble) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZero::new((DoubleDouble::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl From<ScalarInt> for DoubleDouble {
+    #[inline]
+    fn from(int: ScalarInt) -> Self {
+        Self::from_bits(int.to_bits(Size::from_bits(DoubleDouble::BITS as u64)))
     }
 }
 

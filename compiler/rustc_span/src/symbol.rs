@@ -1587,6 +1587,7 @@ symbols! {
         powif32,
         powif64,
         powif128,
+        ppcf128,
         pre_dash_lto: "pre-lto",
         precise_capturing,
         precise_capturing_in_traits,

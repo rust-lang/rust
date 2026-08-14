@@ -2984,6 +2984,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     RangeEnd::Excluded => (*l..*h).contains(&actual),
                 }
             }
+            Constructor::PpcF128Range(l, h, end) => {
+                let actual = valtree.to_leaf().to_ppcf128();
+                match end {
+                    RangeEnd::Included => (*l..=*h).contains(&actual),
+                    RangeEnd::Excluded => (*l..*h).contains(&actual),
+                }
+            }
             Constructor::Wildcard => true,
 
             // Opaque patterns must not be matched on structurally.

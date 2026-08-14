@@ -2,6 +2,7 @@ use std::assert_matches;
 
 use rustc_abi::{FieldIdx, Integer};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::CastKind;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
@@ -249,6 +250,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FloatTy::F32 => self.cast_from_float(src.to_scalar().to_f32()?, cast_to.ty),
             FloatTy::F64 => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
             FloatTy::F128 => self.cast_from_float(src.to_scalar().to_f128()?, cast_to.ty),
+            FloatTy::PpcF128 => {
+                // FIXME(ppcf128): this needs a better algorithm in rustc_apfloat.
+                span_bug!(self.cur_span(), "casting ppcf128 is not currently supported")
+            }
         };
         interp_ok(ImmTy::from_scalar(val, cast_to))
     }
@@ -362,6 +367,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FloatTy::F32 => Scalar::from_f32(Single::from_i128(v).value),
                     FloatTy::F64 => Scalar::from_f64(Double::from_i128(v).value),
                     FloatTy::F128 => Scalar::from_f128(Quad::from_i128(v).value),
+                    FloatTy::PpcF128 => Scalar::from_ppcf128(DoubleDouble::from_i128(v).value),
                 }
             }
             // unsigned int -> float
@@ -370,6 +376,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 FloatTy::F32 => Scalar::from_f32(Single::from_u128(v).value),
                 FloatTy::F64 => Scalar::from_f64(Double::from_u128(v).value),
                 FloatTy::F128 => Scalar::from_f128(Quad::from_u128(v).value),
+                FloatTy::PpcF128 => Scalar::from_ppcf128(DoubleDouble::from_u128(v).value),
             },
 
             // u8 -> char
@@ -421,6 +428,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 FloatTy::F128 => {
                     Scalar::from_f128(self.adjust_nan(f.convert(&mut false).value, &[f]))
+                }
+                FloatTy::PpcF128 => {
+                    // FIXME(ppcf128): this needs a better algorithm in rustc_apfloat.
+                    span_bug!(self.cur_span(), "casting ppcf128 is not currently supported")
                 }
             },
             // That's it.

@@ -461,6 +461,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         }
                         get_simple_function_f128(span, self, name)
                     }
+                    (_, PpcF128) => span_bug!(span, "ppcf128 {name} is unimplemented"),
                 };
                 self.cx.context.new_call(
                     self.location,
