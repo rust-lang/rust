@@ -9,8 +9,3 @@ expression: test library/core library/alloc library/stdarch
 [Test] test::StdarchVerify
     targets: [x86_64-unknown-linux-gnu]
     - Set({library/stdarch/crates/stdarch-verify})
-[Test] test::StdarchGenCheck
-    targets: [x86_64-unknown-linux-gnu]
-    - Set({library/stdarch/crates/stdarch-gen-arm})
-    - Set({library/stdarch/crates/stdarch-gen-hexagon})
-    - Set({library/stdarch/crates/stdarch-gen-loongarch})
