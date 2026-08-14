@@ -214,16 +214,14 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [dev-guide's instruction
 
 [llm-writing]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html
 
-| Work | Start here |
-| --- | --- |
-| Standard library | [std-dev-guide] |
-| Compiler | [rustc-dev-guide] |
-| Build or run rustc | [building and running rustc] |
-| Tests | [running tests], [adding tests], and [compiletest directives] |
-| Formatting or tidy | [formatting and tidy] |
-| Architecture or layout | [compiler architecture] and [repository layout] |
-| Subtrees, submodules, or tools | [external repositories] |
-| Pull requests and review | [contribution process] |
+- Standard library: [std-dev-guide]
+- Compiler: [rustc-dev-guide]
+- Build or run rustc: [building and running rustc]
+- Tests: [running tests], [adding tests], and [compiletest directives]
+- Formatting or tidy: [formatting and tidy]
+- Architecture or layout: [compiler architecture] and [repository layout]
+- Subtrees, submodules, or tools: [external repositories]
+- Pull requests and review: [contribution process]
 
 [rustc-dev-guide]: src/doc/rustc-dev-guide/
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
