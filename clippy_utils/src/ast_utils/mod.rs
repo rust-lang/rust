@@ -227,7 +227,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
-                && eq_coroutine_kind(*la, *ra)
+                && eq_opt_coroutine_kind(*la, *ra)
                 && lm == rm
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
@@ -247,19 +247,6 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         },
         _ => false,
     }
-}
-
-fn eq_coroutine_kind(a: Option<CoroutineKind>, b: Option<CoroutineKind>) -> bool {
-    matches!(
-        (a, b),
-        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-            | (
-                Some(CoroutineKind::AsyncGen { .. }),
-                Some(CoroutineKind::AsyncGen { .. })
-            )
-            | (None, None)
-    )
 }
 
 fn eq_field(l: &ExprField, r: &ExprField) -> bool {
