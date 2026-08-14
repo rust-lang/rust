@@ -38,7 +38,7 @@ use rustc_session::lint::builtin::{
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 
-use crate::diagnostics::{self, TildeConstReason};
+use crate::diagnostics::{self, AbiCustomCannotBeCold, AbiCustomMustBeNaked, TildeConstReason};
 
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
@@ -895,6 +895,44 @@ impl<'a> AstValidator<'a> {
             self.dcx().emit_err(diagnostics::ExternItemAscii {
                 span: ident.span,
                 block: self.current_extern_span(),
+            });
+        }
+    }
+
+    /// Check the attributes on an `extern "custom"` function:
+    ///
+    /// - require `#[naked]`
+    /// - reject `#[cold]` (these functions cannot be called so `#[cold]` is meaningless)
+    fn check_extern_custom(&self, fk: FnKind<'_>, attrs: &AttrVec) {
+        let FnKind::Fn(fn_ctxt, _, Fn { sig, body: Some(_), .. }) = fk else {
+            return;
+        };
+
+        match fn_ctxt {
+            FnCtxt::Foreign => return,
+            FnCtxt::Free | FnCtxt::Assoc(_) => { /* fall through */ }
+        }
+
+        let Extern::Explicit(StrLit { symbol_unescaped, .. }, ext_span) = sig.header.ext else {
+            return;
+        };
+
+        let Ok(ExternAbi::Custom) = ExternAbi::from_str(symbol_unescaped.as_str()) else {
+            return;
+        };
+
+        if !attr::contains_name(attrs, sym::naked) {
+            self.dcx().emit_err(AbiCustomMustBeNaked {
+                span: sig.span,
+                naked_span: sig.span.shrink_to_lo(),
+            });
+        }
+
+        if let Some(cold) = attr::find_by_name(attrs, sym::cold) {
+            self.dcx().emit_err(AbiCustomCannotBeCold {
+                span: sig.span,
+                abi_span: ext_span,
+                cold_span: cold.span,
             });
         }
     }
@@ -1937,6 +1975,7 @@ impl Visitor<'_> for AstValidator<'_> {
             }
         }
 
+        self.check_extern_custom(fk, attrs);
         self.check_c_variadic_type(fk, attrs);
 
         // Functions cannot both be `const async` or `const gen`

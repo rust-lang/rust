@@ -391,6 +391,19 @@ pub mod hint {
     }
 }
 
+pub mod num {
+    use super::Copy;
+
+    #[repr(C)]
+    #[lang = "complex"]
+    pub struct Complex<T> {
+        pub re: T,
+        pub im: T,
+    }
+
+    impl<T: Copy> Copy for Complex<T> {}
+}
+
 #[lang = "c_void"]
 #[repr(u8)]
 pub enum c_void {

@@ -1428,7 +1428,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // anywhere so we don't need to encode it for other crates.
             // FIXME(mgca): This probably isn't true, they probably are accessed, but, test case?
             if def_kind == DefKind::AnonConst
-                && matches!(tcx.hir_node_by_def_id(local_id), hir::Node::ConstArg(_))
+                && matches!(
+                    tcx.hir_node_by_def_id(local_id),
+                    hir::Node::ConstArg(_)
+                        | hir::Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. })
+                )
             {
                 continue;
             }

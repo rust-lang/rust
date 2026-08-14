@@ -5,7 +5,7 @@ use core::fmt;
 use core::mem;
 use core::pin::Pin;
 
-use crate::alloc::Allocator;
+use crate::alloc::{Allocator, StaticAllocator};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
 use crate::boxed::Box;
@@ -38,7 +38,7 @@ impl<T> From<T> for Box<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Pin<Box<T, A>>
 where
-    A: 'static,
+    A: StaticAllocator,
 {
     /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
     /// `*boxed` will be pinned in memory and unable to be moved.

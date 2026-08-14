@@ -173,9 +173,20 @@ intrinsics! {
         mul
     }
 
-    #[unadjusted_on_win64]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
+
     pub extern "C" fn __muloti4(a: i128, b: i128, oflow: &mut i32) -> i128 {
         let (mul, o) = i128_overflowing_mul(a, b);
+        *oflow = o as i32;
+        mul
+    }
+
+   #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __muloti4(a_lo: u64, a_hi: u64, b_lo: u64, b_hi: u64, oflow: &mut i32) -> i128 {
+        let (mul, o) = i128_overflowing_mul(
+            (i128::from(a_hi) << 64) | i128::from(a_lo),
+            (i128::from(b_hi) << 64) | i128::from(b_lo),
+        );
         *oflow = o as i32;
         mul
     }

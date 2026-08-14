@@ -254,7 +254,11 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                         | (
-                            GenericArg::Type(_) | GenericArg::Infer(_),
+                            GenericArg::Type(_)
+                            | GenericArg::Infer(hir::InferArg {
+                                kind: hir::InferArgKind::TypeOrConst,
+                                ..
+                            }),
                             GenericParamDefKind::Type { .. },
                             _,
                         )
