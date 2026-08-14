@@ -1,4 +1,5 @@
 use std::collections::hash_map::Entry;
+use std::mem;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -16,8 +17,8 @@ use rustc_infer::traits::solve::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, MaybeInfo};
 use rustc_middle::ty::{
-    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode,
+    self, CanonicalizerState, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
@@ -486,5 +487,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
             rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
         }
+    }
+
+    fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
+        // We temporarily take the canonicalizer state.
+        mem::take(&mut self.canonicalizer_state.borrow_mut())
+    }
+
+    fn release_canonicalizer_state(&self, mut state: CanonicalizerState<Self::Interner>) {
+        // Clear (don't deallocate) the state for later reuse.
+        state.clear();
+        *self.canonicalizer_state.borrow_mut() = state;
     }
 }

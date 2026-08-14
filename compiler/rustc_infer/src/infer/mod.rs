@@ -34,7 +34,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::MayBeErased;
+use rustc_type_ir::{CanonicalizerState, MayBeErased};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use ty::solve::TyOrConstInferVar;
@@ -344,6 +344,11 @@ pub struct InferCtxt<'tcx> {
     enable_next_solver_overflow_fcw: bool,
 
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
+
+    /// State reused by each new canonicalizer, and then cleared (but not deallocated) once the
+    /// canonicalizer is finished. A performance win, because it avoids reallocating new
+    /// vecs/hashmaps for every canonicalizer.
+    pub canonicalizer_state: RefCell<CanonicalizerState<TyCtxt<'tcx>>>,
 }
 
 impl<'tcx> Drop for InferCtxt<'tcx> {
@@ -684,6 +689,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             next_trait_solver,
             enable_next_solver_overflow_fcw,
             obligation_inspector: Cell::new(None),
+            canonicalizer_state: Default::default(),
         }
     }
 }
