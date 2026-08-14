@@ -297,7 +297,7 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    coroutine_kind: Cow<'a, Option<ast::CoroutineKind>>,
+    coroutine_kind: &'a Option<ast::CoroutineKind>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
     safety: ast::Safety,
@@ -313,7 +313,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             safety: method_sig.header.safety,
-            coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
+            coroutine_kind: &method_sig.header.coroutine_kind,
             constness: method_sig.header.constness,
             defaultness,
             ext: method_sig.header.ext,
@@ -337,7 +337,7 @@ impl<'a> FnSig<'a> {
                 generics,
                 ext: sig.header.ext,
                 constness: sig.header.constness,
-                coroutine_kind: Cow::Borrowed(&sig.header.coroutine_kind),
+                coroutine_kind: &sig.header.coroutine_kind,
                 defaultness,
                 safety: sig.header.safety,
                 visibility: vis,
