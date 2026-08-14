@@ -553,7 +553,8 @@ void LLVMSelfProfileInitializeCallbacks(
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
   PIC.registerBeforeNonSkippedPassCallback(
 #if LLVM_VERSION_GE(24, 0)
-      [LlvmSelfProfiler, BeforePassCallback](StringRef Pass, llvm::IRUnitRef Ir) {
+      [LlvmSelfProfiler, BeforePassCallback](StringRef Pass,
+                                             llvm::IRUnitRef Ir) {
 #else
       [LlvmSelfProfiler, BeforePassCallback](StringRef Pass, llvm::Any Ir) {
 #endif
@@ -564,8 +565,9 @@ void LLVMSelfProfileInitializeCallbacks(
 
   PIC.registerAfterPassCallback(
 #if LLVM_VERSION_GE(24, 0)
-      [LlvmSelfProfiler, AfterPassCallback](
-          StringRef Pass, llvm::IRUnitRef IR, const PreservedAnalyses &Preserved) {
+      [LlvmSelfProfiler,
+       AfterPassCallback](StringRef Pass, llvm::IRUnitRef IR,
+                          const PreservedAnalyses &Preserved) {
 #else
       [LlvmSelfProfiler, AfterPassCallback](
           StringRef Pass, llvm::Any IR, const PreservedAnalyses &Preserved) {
@@ -579,26 +581,26 @@ void LLVMSelfProfileInitializeCallbacks(
         AfterPassCallback(LlvmSelfProfiler);
       });
 #if LLVM_VERSION_GE(24, 0)
-  PIC.registerBeforeAnalysisCallback(
-      [LlvmSelfProfiler, BeforePassCallback](StringRef Pass, llvm::IRUnitRef Ir) {
+  PIC.registerBeforeAnalysisCallback([LlvmSelfProfiler, BeforePassCallback](
+                                         StringRef Pass, llvm::IRUnitRef Ir) {
 #else
   PIC.registerBeforeAnalysisCallback(
       [LlvmSelfProfiler, BeforePassCallback](StringRef Pass, llvm::Any Ir) {
 #endif
-        std::string PassName = Pass.str();
-        std::string IrName = LLVMRustwrappedIrGetName(Ir);
-        BeforePassCallback(LlvmSelfProfiler, PassName.c_str(), IrName.c_str());
-      });
+    std::string PassName = Pass.str();
+    std::string IrName = LLVMRustwrappedIrGetName(Ir);
+    BeforePassCallback(LlvmSelfProfiler, PassName.c_str(), IrName.c_str());
+  });
 
 #if LLVM_VERSION_GE(24, 0)
-  PIC.registerAfterAnalysisCallback(
-      [LlvmSelfProfiler, AfterPassCallback](StringRef Pass, llvm::IRUnitRef Ir) {
+  PIC.registerAfterAnalysisCallback([LlvmSelfProfiler, AfterPassCallback](
+                                        StringRef Pass, llvm::IRUnitRef Ir) {
 #else
   PIC.registerAfterAnalysisCallback(
       [LlvmSelfProfiler, AfterPassCallback](StringRef Pass, llvm::Any Ir) {
 #endif
-        AfterPassCallback(LlvmSelfProfiler);
-      });
+    AfterPassCallback(LlvmSelfProfiler);
+  });
 }
 
 enum class LLVMRustOptStage {
