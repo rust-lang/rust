@@ -16,9 +16,58 @@
 extern crate minicore;
 use minicore::*;
 
+#[repr(C)]
+struct ThreeRegStruct {
+    a: i64,
+    b: i32,
+}
+
 unsafe extern "C" {
     fn memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
     fn non_builtin_memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
+    fn test_i64_arg(s: i64) -> i64;
+    fn test_struct_arg(s: ThreeRegStruct);
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn test_i64() -> i64 {
+    // REGPARM1-LABEL: test_i64
+    // REGPARM1: pushl
+    // REGPARM1: pushl
+    // REGPARM1: calll test_i64_arg
+
+    // REGPARM2-LABEL: test_i64
+    // REGPARM2: movl $42, %eax
+    // REGPARM2: xorl %edx, %edx
+    // REGPARM2: jmp test_i64_arg
+
+    // REGPARM3-LABEL: test_i64
+    // REGPARM3: movl $42, %eax
+    // REGPARM3: xorl %edx, %edx
+    // REGPARM3: jmp test_i64_arg
+    unsafe { test_i64_arg(42) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn test_struct() {
+    // REGPARM1-LABEL: test_struct
+    // REGPARM1: movl $0, {{.*}}(%esp)
+    // REGPARM1: movl $42, {{.*}}(%esp)
+    // REGPARM1: movl $1, {{.*}}(%esp)
+    // REGPARM1: calll test_struct_arg
+
+    // REGPARM2-LABEL: test_struct
+    // REGPARM2: movl $0, {{.*}}(%esp)
+    // REGPARM2: movl $42, {{.*}}(%esp)
+    // REGPARM2: movl $1, {{.*}}(%esp)
+    // REGPARM2: calll test_struct_arg
+
+    // REGPARM3-LABEL: test_struct
+    // REGPARM3: movl $42, %eax
+    // REGPARM3: xorl %edx, %edx
+    // REGPARM3: movl $1, %ecx
+    // REGPARM3: jmp test_struct_arg
+    unsafe { test_struct_arg(ThreeRegStruct { a: 42, b: 1 }) }
 }
 
 #[unsafe(no_mangle)]
