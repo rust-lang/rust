@@ -1774,6 +1774,16 @@ pub enum BtfFieldInfoKind {
     Exists,
 }
 
+impl BtfFieldInfoKind {
+    pub fn as_u64(&self) -> u64 {
+        match self {
+            Self::ByteOffset => 0,
+            Self::ByteSize => 1,
+            Self::Exists => 2,
+        }
+    }
+}
+
 impl From<rustc_ast::BtfFieldInfoKind> for BtfFieldInfoKind {
     fn from(kind: rustc_ast::BtfFieldInfoKind) -> Self {
         match kind {
