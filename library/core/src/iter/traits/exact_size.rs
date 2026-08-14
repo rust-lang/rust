@@ -83,7 +83,7 @@
 /// assert_eq!(4, counter.len());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_exact_size_iterator", issue = "92476")]
+#[rustc_const_unstable(feature = "const_exact_size_iterator", issue = "161094")]
 pub const trait ExactSizeIterator: [const] Iterator {
     /// Returns the exact remaining length of the iterator.
     ///
