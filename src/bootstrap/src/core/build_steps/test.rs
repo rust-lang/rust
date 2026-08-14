@@ -1254,7 +1254,7 @@ impl CommandLineStep for StdarchGenCheck {
             cmd.arg("run").arg(selector).arg(pkg).arg("--release").arg("--").args(args);
             // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
             cmd.env("RUSTC_BOOTSTRAP", "1");
-            cmd.env("RUSTC", &builder.initial_rustc); 
+            cmd.env("RUSTC", &builder.initial_rustc);
             cmd.env("PATH", &new_path);
             cmd.env("CARGO_TARGET_DIR", &cargo_target_dir);
             cmd.env("STDARCH_GEN_MODE", mode);
