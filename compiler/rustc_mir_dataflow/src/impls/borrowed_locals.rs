@@ -94,7 +94,8 @@ where
             | Rvalue::Discriminant(..)
             | Rvalue::Aggregate(..)
             | Rvalue::CopyForDeref(..)
-            | Rvalue::WrapUnsafeBinder(..) => {}
+            | Rvalue::WrapUnsafeBinder(..)
+            | Rvalue::BtfFieldInfo { .. } => {}
         }
     }
 

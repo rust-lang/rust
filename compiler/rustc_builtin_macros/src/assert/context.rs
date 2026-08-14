@@ -324,7 +324,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Become(_)
             | ExprKind::Yield(_)
             | ExprKind::DirectConstArg(_)
-            | ExprKind::UnsafeBinderCast(..) => {}
+            | ExprKind::UnsafeBinderCast(..)
+            | ExprKind::BtfFieldInfo(..) => {}
         }
     }
 

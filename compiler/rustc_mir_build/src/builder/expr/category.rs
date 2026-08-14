@@ -74,7 +74,8 @@ impl Category {
             // expression itself does not denote an assignable place.
             | ExprKind::Reborrow { .. }
             | ExprKind::ThreadLocalRef(_)
-            | ExprKind::WrapUnsafeBinder { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
+            | ExprKind::WrapUnsafeBinder { .. }
+            | ExprKind::BtfFieldInfo { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
             ExprKind::ConstBlock { .. }
             | ExprKind::Literal { .. }

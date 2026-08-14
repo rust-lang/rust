@@ -1121,7 +1121,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
 
             // Unsupported values.
-            Rvalue::ThreadLocalRef(..) => return None,
+            Rvalue::ThreadLocalRef(..) | Rvalue::BtfFieldInfo { .. } => return None,
             Rvalue::CopyForDeref(_) => {
                 bug!("forbidden in runtime MIR: {rvalue:?}")
             }

@@ -438,6 +438,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp = unpack!(block = this.as_temp(block, scope, source, mutability));
                 block.and(Rvalue::Reborrow(target, mutability, temp.into()))
             }
+            ExprKind::BtfFieldInfo { base_ty, ref path, kind } => {
+                block.and(Rvalue::BtfFieldInfo { base_ty, path: path.clone(), kind: kind.into() })
+            }
         }
     }
 

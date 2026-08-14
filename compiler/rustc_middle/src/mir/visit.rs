@@ -808,7 +808,15 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
-
+                    Rvalue::BtfFieldInfo { base_ty, path, kind: _ } => {
+                        self.visit_ty($(& $mutability)? *base_ty, TyContext::Location(location));
+                        for step in path {
+                            self.visit_ty(
+                                $(& $mutability)? step.container_ty,
+                                TyContext::Location(location),
+                            );
+                        }
+                    }
                 }
             }
 

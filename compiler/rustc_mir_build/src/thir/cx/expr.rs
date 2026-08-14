@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
-use rustc_ast::UnsafeBinderCastKind;
+use rustc_ast::{BtfFieldInfoKind, UnsafeBinderCastKind};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
@@ -12,7 +12,7 @@ use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
+use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, BtfFieldStep, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,
@@ -1180,6 +1180,34 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // FIXME(unsafe_binders): Take into account the ascribed type, too.
                 let mirrored = self.mirror_expr(source);
                 ExprKind::WrapUnsafeBinder { source: mirrored }
+            }
+
+            hir::ExprKind::BtfFieldInfo(kind, _, _) => {
+                let indices = self.typeck_results.btf_field_info_data().get(expr.hir_id).unwrap();
+                let Some(&(base_ty, _, _)) = indices.first() else {
+                    return match kind {
+                        BtfFieldInfoKind::ByteOffset | BtfFieldInfoKind::ByteSize => mk_expr(
+                            ExprKind::NonHirLiteral {
+                                lit: ScalarInt::try_from_target_usize(0u128, tcx).unwrap(),
+                                user_ty: None,
+                            },
+                            tcx.types.usize,
+                        ),
+                        BtfFieldInfoKind::Exists => mk_expr(
+                            ExprKind::NonHirLiteral { lit: false.into(), user_ty: None },
+                            tcx.types.bool,
+                        ),
+                    };
+                };
+                let path = indices
+                    .iter()
+                    .map(|&(container_ty, variant, field)| BtfFieldStep {
+                        container_ty,
+                        variant,
+                        field,
+                    })
+                    .collect();
+                ExprKind::BtfFieldInfo { base_ty, path, kind }
             }
 
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },

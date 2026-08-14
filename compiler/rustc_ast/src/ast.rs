@@ -1621,6 +1621,7 @@ impl Expr {
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
             | ExprKind::DirectConstArg(..)
+            | ExprKind::BtfFieldInfo(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1920,6 +1921,9 @@ pub enum ExprKind {
     /// An mGCA `direct_const_arg!()` expression.
     DirectConstArg(Box<Expr>),
 
+    /// A BTF field metadata query.
+    BtfFieldInfo(BtfFieldInfoKind, Box<Ty>, ThinVec<Ident>),
+
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
 
@@ -2181,6 +2185,27 @@ impl YieldKind {
             (YieldKind::Prefix(_), YieldKind::Prefix(_)) => true,
             (YieldKind::Postfix(_), YieldKind::Postfix(_)) => true,
             _ => false,
+        }
+    }
+}
+
+/// The kind of BTF field metadata query.
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Eq, PartialEq, StableHash, Walkable)]
+pub enum BtfFieldInfoKind {
+    /// Offset of the field.
+    ByteOffset,
+    /// Size of the field.
+    ByteSize,
+    /// Whether the field exists.
+    Exists,
+}
+
+impl BtfFieldInfoKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::ByteOffset => "btf_field_byte_offset",
+            Self::ByteSize => "btf_field_byte_size",
+            Self::Exists => "btf_field_exists",
         }
     }
 }

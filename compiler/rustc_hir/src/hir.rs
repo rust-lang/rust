@@ -6,8 +6,8 @@ use std::ops::Not;
 use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
-    self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
-    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
+    self as ast, BtfFieldInfoKind, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
+    LitIntType, LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
 };
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
@@ -2260,6 +2260,7 @@ impl Expr<'_> {
             | ExprKind::Type(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Use(..)
+            | ExprKind::BtfFieldInfo(..)
             | ExprKind::Err(_) => prefix_attrs_precedence(),
 
             ExprKind::DropTemps(expr, ..) => expr.precedence(has_attr),
@@ -2333,7 +2334,8 @@ impl Expr<'_> {
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
-            | ExprKind::DropTemps(..) => false,
+            | ExprKind::DropTemps(..)
+            | ExprKind::BtfFieldInfo(..) => false,
         }
     }
 
@@ -2386,9 +2388,11 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) | ExprKind::Use(..) => {
-                false
-            }
+            ExprKind::Path(_)
+            | ExprKind::Lit(_)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::Use(..)
+            | ExprKind::BtfFieldInfo(..) => false,
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -2688,6 +2692,9 @@ pub enum ExprKind<'hir> {
     /// Operators which can be used to interconvert `unsafe` binder types.
     /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
     UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
+
+    /// BTF field field metadata query.
+    BtfFieldInfo(BtfFieldInfoKind, &'hir Ty<'hir>, &'hir [Ident]),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),

@@ -593,6 +593,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                     self.validate_operand(o)?;
                 }
             }
+
+            Rvalue::BtfFieldInfo { .. } => return Err(Unpromotable),
         }
 
         Ok(())

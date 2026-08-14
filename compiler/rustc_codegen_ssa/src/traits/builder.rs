@@ -354,6 +354,14 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
         self.inbounds_gep(self.cx().type_i8(), ptr, &[offset])
     }
+    fn btf_field_info(
+        &mut self,
+        _base: Self::Value,
+        _path: impl Iterator<Item = mir::BtfFieldStep<'tcx>>,
+        _kind: mir::BtfFieldInfoKind,
+    ) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backed does not support BTF relocations")
+    }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     /// Produces the same value as [`Self::trunc`] (and defaults to that),

@@ -712,6 +712,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::WrapUnsafeBinder(..) => {
                 // Unsafe binders are always trivial to create.
             }
+
+            Rvalue::BtfFieldInfo { kind, .. } => {
+                let name = match kind {
+                    BtfFieldInfoKind::ByteOffset => sym::btf_field_byte_offset,
+                    BtfFieldInfoKind::ByteSize => sym::btf_field_byte_size,
+                    BtfFieldInfoKind::Exists => sym::btf_field_exists,
+                };
+                self.check_op(ops::IntrinsicNonConst { name });
+            }
         }
     }
 

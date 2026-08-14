@@ -190,6 +190,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         Reborrow { source, mutability: _, target: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
         }
+        BtfFieldInfo { .. } => {}
     }
 }
 

@@ -480,7 +480,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::Aggregate(..)
-            | Rvalue::WrapUnsafeBinder(..) => {
+            | Rvalue::WrapUnsafeBinder(..)
+            | Rvalue::BtfFieldInfo { .. } => {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;
             }

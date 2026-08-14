@@ -483,6 +483,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let e = self.emit_bad_direct_const_arg(e.span, expr, "expression");
                 hir::ExprKind::Err(e)
             }
+
+            ExprKind::BtfFieldInfo(kind, container, fields) => hir::ExprKind::BtfFieldInfo(
+                *kind,
+                self.lower_ty_alloc(
+                    container,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::BtfFieldInfo),
+                ),
+                self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
+            ),
         };
 
         hir::Expr { hir_id: expr_hir_id, kind, span }

@@ -293,6 +293,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 self.copy_op_allow_transmute(&op, &dest)?;
             }
+
+            BtfFieldInfo { .. } => {
+                throw_unsup_format!("BTF field relocation queries cannot be interpreted");
+            }
         }
 
         trace!("{:?}", self.dump_place(&dest));

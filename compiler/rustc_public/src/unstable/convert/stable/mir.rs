@@ -264,6 +264,9 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             }
             CopyForDeref(place) => crate::mir::Rvalue::CopyForDeref(place.stable(tables, cx)),
             WrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
+            BtfFieldInfo { .. } => {
+                unimplemented!("BTF field info builtins are not exposed to the users")
+            }
         }
     }
 }

@@ -493,6 +493,7 @@ macro_rules! common_visitor_and_walkers {
             YieldKind,
             EiiDecl,
             EiiImpl,
+            BtfFieldInfoKind,
         );
 
         /// Each method of this trait is a hook to be potentially
@@ -1074,6 +1075,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!($($mut)? vis, kind, expr, ty),
                 ExprKind::DirectConstArg(expr) =>
                     visit_visitable!($($mut)? vis, expr),
+                ExprKind::BtfFieldInfo(kind, container, fields) =>
+                    visit_visitable!($($mut)? vis, kind, container, fields),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }

@@ -894,7 +894,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. }
-            | ExprKind::WrapUnsafeBinder { .. } => {
+            | ExprKind::WrapUnsafeBinder { .. }
+            | ExprKind::BtfFieldInfo { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
                     Category::Rvalue(RvalueFunc::Into) => false,
