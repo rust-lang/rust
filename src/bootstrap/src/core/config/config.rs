@@ -28,11 +28,13 @@ use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
+use crate::CodegenBackendKind;
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
+use crate::core::config::macros::check_ci_llvm;
 use crate::core::config::target_selection::TargetSelectionList;
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::toml::build::{Build, Tool};
@@ -58,7 +60,6 @@ use crate::core::download::{DownloadContext, download_beta_toolchain, is_downloa
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{self, exe, fail, get_host_target, t};
-use crate::{CodegenBackendKind, check_ci_llvm};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
