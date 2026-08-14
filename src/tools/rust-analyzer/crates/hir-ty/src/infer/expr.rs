@@ -1372,7 +1372,7 @@ impl<'db> InferenceContext<'db> {
         } else {
             self.table.next_ty_var(expr.into())
         };
-        let array_len = args.len() as u128;
+        let array_len = args.len() as u64;
         Ty::new_array(self.interner(), element_ty, array_len)
     }
 

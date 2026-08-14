@@ -305,8 +305,8 @@ pub struct MismatchedTupleStructPatArgCount {
 #[derive(Debug)]
 pub struct MismatchedArrayPatLen {
     pub pat: InFile<ExprOrPatPtr>,
-    pub expected: u128,
-    pub found: u128,
+    pub expected: u64,
+    pub found: u64,
     pub has_rest: bool,
 }
 

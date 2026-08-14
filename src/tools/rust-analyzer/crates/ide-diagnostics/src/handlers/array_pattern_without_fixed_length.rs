@@ -43,4 +43,23 @@ fn f(arr: [u8; 3]) {
 "#,
         );
     }
+
+    #[test]
+    fn regression_23133() {
+        check_diagnostics(
+            r#"
+const MAX_PAYLOAD_DATA_LENGTH: usize = loop {};
+
+pub struct PayloadPacket {
+    data: [u8; MAX_PAYLOAD_DATA_LENGTH],
+}
+impl PayloadPacket {
+    pub fn payload(&self) -> &[u8] {
+        let [_, _, encoded_payload @ ..] = &self.data;
+        encoded_payload
+    }
+}
+        "#,
+        );
+    }
 }
