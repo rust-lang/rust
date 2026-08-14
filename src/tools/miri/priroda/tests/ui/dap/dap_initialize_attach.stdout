@@ -4,4 +4,4 @@ Content-Length: {CONTENT_LENGTH}
 
 {"seq":2,"type":"event","event":"initialized"}Content-Length: {CONTENT_LENGTH}
 
-{"seq":3,"type":"response","request_seq":2,"success":false,"message":"unsupported request in Priroda DAP demo mode: attach","command":"attach","error":null}
+{"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","error":null}

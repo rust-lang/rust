@@ -10,7 +10,7 @@ Content-Length: {CONTENT_LENGTH}
 
 {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
 
-{"seq":6,"type":"response","request_seq":4,"success":false,"message":"configurationDone requires launch","command":"configurationDone","error":null}Content-Length: {CONTENT_LENGTH}
+{"seq":6,"type":"response","request_seq":4,"success":false,"message":"configurationDone requires launch or attach","command":"configurationDone","error":null}Content-Length: {CONTENT_LENGTH}
 
 {"seq":7,"type":"response","request_seq":5,"success":true,"command":"disconnect","error":null}Content-Length: {CONTENT_LENGTH}
 
