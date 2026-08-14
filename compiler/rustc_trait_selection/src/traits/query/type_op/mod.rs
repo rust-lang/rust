@@ -16,7 +16,6 @@ use crate::traits::{ObligationCause, ObligationCtxt};
 
 pub mod ascribe_user_type;
 pub mod custom;
-pub mod implied_outlives_bounds;
 pub mod normalize;
 pub mod outlives;
 pub mod prove_predicate;
