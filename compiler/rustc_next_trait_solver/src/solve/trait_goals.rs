@@ -1121,23 +1121,27 @@ where
         let projection_may_match =
             |ecx: &mut EvalCtxt<'_, D>,
              source_projection: ty::Binder<I, ty::ExistentialProjection<I>>,
-             target_projection: ty::Binder<I, ty::ExistentialProjection<I>>| {
-                source_projection.item_def_id() == target_projection.item_def_id()
-                    && ecx
-                        .probe(|_| ProbeKind::ProjectionCompatibility)
-                        .enter(|ecx| {
-                            ecx.enter_forall_with_assumptions(
-                                target_projection,
-                                param_env,
-                                |ecx, target_projection| {
-                                    let source_projection =
-                                        ecx.instantiate_binder_with_infer(source_projection);
-                                    ecx.eq(param_env, source_projection, target_projection)?;
-                                    ecx.try_evaluate_added_goals()
-                                },
-                            )
-                        })
-                        .is_ok()
+             target_projection: ty::Binder<I, ty::ExistentialProjection<I>>|
+             -> Result<bool, RerunNonErased> {
+                if source_projection.item_def_id() != target_projection.item_def_id() {
+                    return Ok(false);
+                }
+                match ecx.probe(|_| ProbeKind::ProjectionCompatibility).enter(|ecx| {
+                    ecx.enter_forall_with_assumptions(
+                        target_projection,
+                        param_env,
+                        |ecx, target_projection| {
+                            let source_projection =
+                                ecx.instantiate_binder_with_infer(source_projection);
+                            ecx.eq(param_env, source_projection, target_projection)?;
+                            ecx.try_evaluate_added_goals()
+                        },
+                    )
+                }) {
+                    Ok(_) => Ok(true),
+                    Err(NoSolutionOrRerunNonErased::NoSolution(_)) => Ok(false),
+                    Err(NoSolutionOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun),
+                }
             };
 
         self.probe_trait_candidate(source).enter(|ecx| {
@@ -1166,24 +1170,25 @@ where
                     // it with b_ty's projection.
                     ty::ExistentialPredicate::Projection(target_projection) => {
                         let target_projection = bound.rebind(target_projection);
-                        let mut matching_projections =
-                            a_data.projection_bounds().into_iter().filter(|source_projection| {
-                                projection_may_match(ecx, *source_projection, target_projection)
-                            });
-                        let Some(source_projection) = matching_projections.next() else {
+                        let mut matching_projection = None;
+                        for source_projection in a_data.projection_bounds() {
+                            if projection_may_match(ecx, source_projection, target_projection)? {
+                                if matching_projection.is_some() {
+                                    return ecx.evaluate_added_goals_and_make_canonical_response(
+                                        Certainty::AMBIGUOUS,
+                                    );
+                                }
+                                matching_projection = Some(source_projection);
+                            }
+                        }
+                        let Some(matching) = matching_projection else {
                             return Err(NoSolution.into());
                         };
-                        if matching_projections.next().is_some() {
-                            return ecx.evaluate_added_goals_and_make_canonical_response(
-                                Certainty::AMBIGUOUS,
-                            );
-                        }
                         ecx.enter_forall_with_assumptions(
                             target_projection,
                             param_env,
                             |ecx, target_projection| {
-                                let source_projection =
-                                    ecx.instantiate_binder_with_infer(source_projection);
+                                let source_projection = ecx.instantiate_binder_with_infer(matching);
                                 ecx.eq(param_env, source_projection, target_projection)?;
                                 ecx.try_evaluate_added_goals()
                             },
