@@ -34,7 +34,7 @@ The general process for performing a LUB coercion is as follows:
 
 ```rust ignore
 // * 1
-let mut coerce = CoerceMany::new(intial_lub_ty);
+let mut coerce = CoerceMany::new(initial_lub_ty);
 for expr in exprs {
     // * 2
     let expr_ty = fcx.check_expr_with_expectation(expr, expectation);
@@ -114,7 +114,7 @@ This gives us a final type for the LUB coercion of `fn() -> ()`.
 
 ### Transitive coercions
 
-[`CoerceMany`][coerce_many]'s algorithm of repeatedly attempting to coerce the currrent target type to the new type currently results in "Transitive Coercions". It's possible for a step in a LUB coercion to coerce an expression, and then a later step to coerce that expression further. 
+[`CoerceMany`][coerce_many]'s algorithm of repeatedly attempting to coerce the current target type to the new type currently results in "Transitive Coercions". It's possible for a step in a LUB coercion to coerce an expression, and then a later step to coerce that expression further.
 
 ```rust
 struct Foo;
@@ -176,7 +176,7 @@ There are three ways that we can compute a new lub ty for a LUB coercion:
 2. Coerce the current lub ty to the new type (or vice versa)
 3. Compute a mutual supertype of the current lub ty and the new type
 
-Unfortunately the actual implementation obsfucates this a fair amount. 
+Unfortunately the actual implementation obfuscates this a fair amount.
 
 Computing a mutual supertype happens implicitly due to reusing the logic for one-to-one coercions which already handles subtyping if coercing fails.
 
