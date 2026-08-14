@@ -630,6 +630,26 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let res = crate::num::codegen_int_binop(fx, BinOp::Div, x, y);
             ret.write_cvalue(fx, res);
         }
+        // FIXME: remove the guard here once `umin.i128` and friends are supported
+        // cc https://github.com/bytecodealliance/wasmtime/issues/13790
+        sym::integer_max | sym::integer_min if ret.layout().size <= Size::from_bits(64) => {
+            intrinsic_args!(fx, args => (lhs, rhs); intrinsic);
+
+            assert_eq!(lhs.layout().ty, rhs.layout().ty);
+            let signed = type_sign(lhs.layout().ty);
+            let lhs = lhs.load_scalar(fx);
+            let rhs = rhs.load_scalar(fx);
+            let res = match (intrinsic, signed) {
+                (sym::integer_max, false) => fx.bcx.ins().umax(lhs, rhs),
+                (sym::integer_max, true) => fx.bcx.ins().smax(lhs, rhs),
+                (sym::integer_min, false) => fx.bcx.ins().umin(lhs, rhs),
+                (sym::integer_min, true) => fx.bcx.ins().smin(lhs, rhs),
+                _ => unreachable!(),
+            };
+
+            let res = CValue::by_val(res, ret.layout());
+            ret.write_cvalue(fx, res);
+        }
         sym::saturating_add | sym::saturating_sub => {
             intrinsic_args!(fx, args => (lhs, rhs); intrinsic);
 
