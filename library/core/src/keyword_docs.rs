@@ -73,7 +73,7 @@
 /// [`use`]: keyword.use.html
 /// [const-cast]: pointer::cast
 /// [mut-cast]: primitive.pointer.html#method.cast-1
-mod as_keyword {}
+const _: () = ();
 
 #[doc(keyword = "break")]
 //
@@ -171,7 +171,7 @@ mod as_keyword {}
 /// [Reference on "break expression"]: ../reference/expressions/loop-expr.html#break-expressions
 /// [Reference on "break and loop values"]:
 /// ../reference/expressions/loop-expr.html#break-and-loop-values
-mod break_keyword {}
+const _: () = ();
 
 #[doc(keyword = "const")]
 //
@@ -248,7 +248,7 @@ mod break_keyword {}
 /// [Reference]: ../reference/items/constant-items.html
 /// [const-blocks]: ../reference/expressions/block-expr.html#const-blocks
 /// [const-eval]: ../reference/const_eval.html
-mod const_keyword {}
+const _: () = ();
 
 #[doc(keyword = "continue")]
 //
@@ -288,7 +288,7 @@ mod const_keyword {}
 /// See [continue expressions] from the reference for more details.
 ///
 /// [continue expressions]: ../reference/expressions/loop-expr.html#continue-expressions
-mod continue_keyword {}
+const _: () = ();
 
 #[doc(keyword = "crate")]
 //
@@ -325,7 +325,7 @@ mod continue_keyword {}
 /// module `foo`, from anywhere else in the same crate.
 ///
 /// [Reference]: ../reference/items/extern-crates.html
-mod crate_keyword {}
+const _: () = ();
 
 #[doc(keyword = "else")]
 //
@@ -378,7 +378,7 @@ mod crate_keyword {}
 /// [`match`]: keyword.match.html
 /// [`false`]: keyword.false.html
 /// [`if`]: keyword.if.html
-mod else_keyword {}
+const _: () = ();
 
 #[doc(keyword = "enum")]
 //
@@ -433,7 +433,7 @@ mod else_keyword {}
 /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
-mod enum_keyword {}
+const _: () = ();
 
 #[doc(keyword = "extern")]
 //
@@ -480,7 +480,7 @@ mod enum_keyword {}
 /// ../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
 /// [Reference]: ../reference/items/external-blocks.html
 /// [`crate`]: keyword.crate.html
-mod extern_keyword {}
+const _: () = ();
 
 #[doc(keyword = "false")]
 //
@@ -491,7 +491,7 @@ mod extern_keyword {}
 /// See the documentation for [`true`] for more information.
 ///
 /// [`true`]: keyword.true.html
-mod false_keyword {}
+const _: () = ();
 
 #[doc(keyword = "fn")]
 //
@@ -558,7 +558,7 @@ mod false_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [Rust book]: ../book/ch03-03-how-functions-work.html
 /// [Reference]: ../reference/items/functions.html
-mod fn_keyword {}
+const _: () = ();
 
 #[doc(keyword = "for")]
 //
@@ -640,7 +640,7 @@ mod fn_keyword {}
 /// [Rust book]:
 /// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 /// [Reference]: ../reference/expressions/loop-expr.html#iterator-loops
-mod for_keyword {}
+const _: () = ();
 
 #[doc(keyword = "if")]
 //
@@ -714,7 +714,7 @@ mod for_keyword {}
 ///
 /// [Rust book]: ../book/ch03-05-control-flow.html#if-expressions
 /// [Reference]: ../reference/expressions/if-expr.html
-mod if_keyword {}
+const _: () = ();
 
 #[doc(keyword = "impl")]
 //
@@ -804,7 +804,7 @@ mod if_keyword {}
 /// [book1]: ../book/ch05-03-method-syntax.html
 /// [Reference]: ../reference/items/implementations.html
 /// [book2]: ../book/ch10-02-traits.html#returning-types-that-implement-traits
-mod impl_keyword {}
+const _: () = ();
 
 #[doc(keyword = "in")]
 //
@@ -836,7 +836,7 @@ mod impl_keyword {}
 /// For more information, see the [Reference].
 ///
 /// [Reference]: ../reference/visibility-and-privacy.html#pubin-path-pubcrate-pubsuper-and-pubself
-mod in_keyword {}
+const _: () = ();
 
 #[doc(keyword = "let")]
 //
@@ -899,7 +899,7 @@ mod in_keyword {}
 /// [`if`]: keyword.if.html
 /// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
 /// [Reference]: ../reference/statements.html#let-statements
-mod let_keyword {}
+const _: () = ();
 
 #[doc(keyword = "loop")]
 //
@@ -949,7 +949,7 @@ mod let_keyword {}
 /// [`for`]: keyword.for.html
 /// [`while`]: keyword.while.html
 /// [Reference]: ../reference/expressions/loop-expr.html
-mod loop_keyword {}
+const _: () = ();
 
 #[doc(keyword = "match")]
 //
@@ -999,7 +999,7 @@ mod loop_keyword {}
 /// For more information on `match` and matching in general, see the [Reference].
 ///
 /// [Reference]: ../reference/expressions/match-expr.html
-mod match_keyword {}
+const _: () = ();
 
 #[doc(keyword = "mod")]
 //
@@ -1027,7 +1027,7 @@ mod match_keyword {}
 /// [`pub`]: keyword.pub.html
 /// [`struct`]: keyword.struct.html
 /// [modules]: ../reference/items/modules.html
-mod mod_keyword {}
+const _: () = ();
 
 #[doc(keyword = "move")]
 //
@@ -1085,7 +1085,7 @@ mod mod_keyword {}
 ///
 /// [closure]: ../book/ch13-01-closures.html
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
-mod move_keyword {}
+const _: () = ();
 
 #[doc(keyword = "mut")]
 //
@@ -1143,7 +1143,7 @@ mod move_keyword {}
 /// More information on mutable references and pointers can be found in the [Reference].
 ///
 /// [Reference]: ../reference/types/pointer.html#mutable-references-mut
-mod mut_keyword {}
+const _: () = ();
 
 #[doc(keyword = "pub")]
 //
@@ -1158,7 +1158,7 @@ mod mut_keyword {}
 ///
 /// [reference]:../reference/visibility-and-privacy.html?highlight=pub#visibility-and-privacy
 /// [Rust by Example]:../rust-by-example/mod/visibility.html
-mod pub_keyword {}
+const _: () = ();
 
 #[doc(keyword = "ref")]
 //
@@ -1208,7 +1208,7 @@ mod pub_keyword {}
 ///
 /// [`match`]: keyword.match.html
 /// [Reference]: ../reference/patterns.html#identifier-patterns
-mod ref_keyword {}
+const _: () = ();
 
 #[doc(keyword = "return")]
 //
@@ -1272,7 +1272,7 @@ mod ref_keyword {}
 ///
 /// [closures]: ../book/ch13-01-closures.html
 /// [`async`]: ../std/keyword.async.html
-mod return_keyword {}
+const _: () = ();
 
 #[doc(keyword = "become")]
 //
@@ -1376,7 +1376,7 @@ mod return_keyword {}
 /// let program = &[Inst::Inc, Inst::Inc, Inst::Dec, Inst::Inc];
 /// assert_eq!(dispatch(program, 0), 2);
 /// ```
-mod become_keyword {}
+const _: () = ();
 
 #[doc(keyword = "self")]
 //
@@ -1469,7 +1469,7 @@ mod become_keyword {}
 ///
 /// [`use`]: keyword.use.html
 /// [Reference]: ../reference/items/associated-items.html#methods
-mod self_keyword {}
+const _: () = ();
 
 // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can replace
 // these two lines with `#[doc(keyword = "Self")]` and update `is_doc_keyword` in
@@ -1540,7 +1540,7 @@ mod self_keyword {}
 ///
 /// [`impl`]: keyword.impl.html
 /// [`trait`]: keyword.trait.html
-mod self_upper_keyword {}
+const _: () = ();
 
 #[doc(keyword = "static")]
 //
@@ -1626,7 +1626,7 @@ mod self_upper_keyword {}
 /// [`RefCell`]: cell::RefCell
 /// [atomic]: sync::atomic
 /// [Reference]: ../reference/items/static-items.html
-mod static_keyword {}
+const _: () = ();
 
 #[doc(keyword = "struct")]
 //
@@ -1734,7 +1734,7 @@ mod static_keyword {}
 /// [`PhantomData`]: marker::PhantomData
 /// [book]: ../book/ch05-01-defining-structs.html
 /// [reference]: ../reference/items/structs.html
-mod struct_keyword {}
+const _: () = ();
 
 #[doc(keyword = "super")]
 //
@@ -1760,7 +1760,7 @@ mod struct_keyword {}
 ///
 /// [module]: ../reference/items/modules.html
 /// [Reference]: ../reference/paths.html#super
-mod super_keyword {}
+const _: () = ();
 
 #[doc(keyword = "trait")]
 //
@@ -1945,7 +1945,7 @@ mod super_keyword {}
 /// [`unsafe`]: keyword.unsafe.html
 /// [Ref-Traits]: ../reference/items/traits.html
 /// [Ref-Trait-Objects]: ../reference/types/trait-object.html
-mod trait_keyword {}
+const _: () = ();
 
 #[doc(keyword = "true")]
 //
@@ -1972,7 +1972,7 @@ mod trait_keyword {}
 /// [`while`]: keyword.while.html
 /// [`match`]: ../reference/expressions/match-expr.html#match-guards
 /// [`false`]: keyword.false.html
-mod true_keyword {}
+const _: () = ();
 
 #[doc(keyword = "type")]
 //
@@ -2024,7 +2024,7 @@ mod true_keyword {}
 /// [`trait`]: keyword.trait.html
 /// [associated type]: ../reference/items/associated-items.html#associated-types
 /// [alias]: ../reference/items/type-aliases.html
-mod type_keyword {}
+const _: () = ();
 
 #[doc(keyword = "unsafe")]
 //
@@ -2310,7 +2310,7 @@ mod type_keyword {}
 /// [soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 /// [Reference]: ../reference/unsafety.html
 /// [discussion on Rust Internals]: https://internals.rust-lang.org/t/what-does-unsafe-mean/6696
-mod unsafe_keyword {}
+const _: () = ();
 
 #[doc(keyword = "use")]
 //
@@ -2408,7 +2408,7 @@ mod unsafe_keyword {}
 /// [`super`]: keyword.super.html
 /// [ref-use-decls]: ../reference/items/use-declarations.html
 /// [ref-impl-trait]: ../reference/types/impl-trait.html
-mod use_keyword {}
+const _: () = ();
 
 #[doc(keyword = "where")]
 //
@@ -2508,7 +2508,7 @@ mod use_keyword {}
 /// ```
 ///
 /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/0135-where.md
-mod where_keyword {}
+const _: () = ();
 
 #[doc(keyword = "while")]
 //
@@ -2566,7 +2566,7 @@ mod where_keyword {}
 /// [`for`]: keyword.for.html
 /// [`loop`]: keyword.loop.html
 /// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
-mod while_keyword {}
+const _: () = ();
 
 // 2018 Edition keywords
 
@@ -2628,7 +2628,7 @@ mod while_keyword {}
 /// [never type]: ../reference/types/never.html
 /// [`Result`]: result::Result
 /// [async book blocks]: https://rust-lang.github.io/async-book/part-guide/more-async-await.html#async-blocks
-mod async_keyword {}
+const _: () = ();
 
 #[doc(keyword = "await")]
 //
@@ -2648,7 +2648,7 @@ mod async_keyword {}
 /// [`Future`]: future::Future
 /// [async book]: https://rust-lang.github.io/async-book/
 /// [`async`]: ../std/keyword.async.html
-mod await_keyword {}
+const _: () = ();
 
 #[doc(keyword = "dyn")]
 //
@@ -2684,7 +2684,7 @@ mod await_keyword {}
 /// [ref-dyn-compat]: ../reference/items/traits.html#dyn-compatibility
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
 /// [^1]: Formerly known as *object safe*.
-mod dyn_keyword {}
+const _: () = ();
 
 #[doc(keyword = "union")]
 //
@@ -2758,4 +2758,4 @@ mod dyn_keyword {}
 ///
 /// [`struct`]: keyword.struct.html
 /// [union]: ../reference/items/unions.html
-mod union_keyword {}
+const _: () = ();

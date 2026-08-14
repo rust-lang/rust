@@ -21,7 +21,7 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
+    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
@@ -89,18 +89,6 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
                 span,
                 UnsupportedCallingConventions { abi },
             );
-        }
-    }
-}
-
-pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
-    if fn_sig.abi() == ExternAbi::Custom {
-        // Function definitions that use `extern "custom"` must be naked functions.
-        if !find_attr!(tcx, def_id, Naked(_)) {
-            tcx.dcx().emit_err(crate::diagnostics::AbiCustomClothedFunction {
-                span: fn_sig_span,
-                naked_span: tcx.def_span(def_id).shrink_to_lo(),
-            });
         }
     }
 }

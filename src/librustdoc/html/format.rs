@@ -674,11 +674,15 @@ pub(crate) fn link_tooltip(
             fqp
         };
         if let &Some(UrlFragment::Item(id)) = fragment {
-            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            let tcx = cx.tcx();
+            write!(f, "{} ", tcx.def_descr(id))?;
             for component in fqp {
                 write!(f, "{component}::")?;
             }
-            write!(f, "{}", cx.tcx().item_name(id))?;
+            if *shortty == ItemType::Enum && tcx.def_kind(id) == DefKind::Field {
+                write!(f, "{}::", tcx.item_name(tcx.parent(id)))?;
+            }
+            write!(f, "{}", tcx.item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
             write!(f, "{}", join_path_syms(fqp))?;

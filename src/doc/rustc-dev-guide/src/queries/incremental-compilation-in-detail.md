@@ -485,6 +485,12 @@ respect to incremental compilation:
    be cached to disk for "local" keys, because values for external crates should
    be loadable from crate metadata instead.
 
+ - `feedable` - The query is not actually a function, but its own arena type.
+   This is done to declare an arena, "feed" the information
+   to store at a later point in the compilation (for example, when we actually have a
+   `Crate` object available), and then retrieve it as any other crate.
+   Thus, function definitions for these queries do not exist.
+
 [mod]: ../query.html#adding-a-new-kind-of-query
 
 

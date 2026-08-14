@@ -8,7 +8,7 @@ unsafe extern "custom" fn return_explicit_unit() -> () {
     std::arch::naked_asm!("")
 }
 
-// Rejecting an alias is the status quo, this may change in the future.
+// The unit must be syntactic, an alias is rejected.
 type UnitAlias = ();
 #[unsafe(naked)]
 unsafe extern "custom" fn return_alias_unit() -> UnitAlias {
@@ -55,7 +55,7 @@ type NoNeverReturnType = unsafe extern "custom" fn() -> !;
 //~^ ERROR invalid signature for `extern "custom"` function
 
 unsafe extern "custom" fn not_both(a: i64) -> i64 {
-    //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
+    //~^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
     //~| ERROR invalid signature for `extern "custom"` function
     unimplemented!()
 }
@@ -67,7 +67,7 @@ struct Thing(i64);
 
 impl Thing {
     extern "custom" fn is_even(self) -> bool {
-        //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
+        //~^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
         //~| ERROR invalid signature for `extern "custom"` function
         //~| ERROR functions with the "custom" ABI must be unsafe
         unimplemented!()
@@ -76,7 +76,7 @@ impl Thing {
 
 trait BitwiseNot {
     extern "custom" fn bitwise_not(a: i64) -> i64 {
-        //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
+        //~^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
         //~| ERROR invalid signature for `extern "custom"` function
         //~| ERROR functions with the "custom" ABI must be unsafe
         unimplemented!()
@@ -93,7 +93,7 @@ trait Negate {
 
 impl Negate for Thing {
     extern "custom" fn negate(a: i64) -> i64 {
-        //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
+        //~^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
         //~| ERROR functions with the "custom" ABI must be unsafe
         //~| ERROR invalid signature for `extern "custom"` function
         -a
@@ -138,13 +138,20 @@ const unsafe extern "custom" fn no_const_fn() {
 }
 
 async unsafe extern "custom" fn no_async_fn() {
-    //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
+    //~^ ERROR an `extern "custom"` function can only be declared externally or defined via naked functions
     //~| ERROR functions with the "custom" ABI cannot be `async`
 }
 
 fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {
     //~^ ERROR expected an `Fn()` closure, found `unsafe extern "custom" fn()`
     f
+}
+
+#[cold]
+#[unsafe(naked)]
+unsafe extern "custom" fn no_cold_attribute() {
+    //~^ ERROR an `extern "custom"` function cannot be marked `#[cold]`
+    std::arch::naked_asm!("")
 }
 
 pub fn main() {
