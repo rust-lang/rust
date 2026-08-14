@@ -41,6 +41,7 @@
     movrs_target_feature,
     clflushopt_target_feature,
     min_adt_const_params
+    lang_items,
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]
