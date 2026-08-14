@@ -40,7 +40,8 @@
     maybe_uninit_as_bytes,
     movrs_target_feature,
     clflushopt_target_feature,
-    min_adt_const_params
+    min_adt_const_params,
+    lang_items,
 )]
 #![cfg_attr(
     test,

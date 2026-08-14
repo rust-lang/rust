@@ -2,6 +2,18 @@
 
 pub(crate) mod macros;
 
+/// The IBM extended-precision (double-double) floating-point type.
+// FIXME(ppcf128) improve the docs.
+#[lang = "ppcf128"]
+#[doc(alias = "__ibm128")]
+#[doc(alias = "doubledouble")]
+#[doc(alias = "f64f64")]
+#[unstable(feature = "powerpc_ppcf128", issue = "163323")]
+#[allow(non_camel_case_types)]
+#[doc(cfg(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+#[derive(Clone, Copy)]
+pub struct ppcf128(u128);
+
 mod altivec;
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub use self::altivec::*;
