@@ -14,7 +14,7 @@ use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, Rew
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::types::rewrite_bound_params;
-use crate::utils::{NodeIdExt, last_line_width, left_most_sub_expr, stmt_expr};
+use crate::utils::{NodeIdExt, format_coro, last_line_width, left_most_sub_expr, stmt_expr};
 
 // This module is pretty messy because of the rules around closures and blocks:
 // FIXME - the below is probably no longer true in full.
@@ -288,9 +288,7 @@ fn rewrite_closure_fn_decl(
         ""
     };
     let coro = match coroutine_kind {
-        Some(ast::CoroutineKind::Async { .. }) => "async ",
-        Some(ast::CoroutineKind::Gen { .. }) => "gen ",
-        Some(ast::CoroutineKind::AsyncGen { .. }) => "async gen ",
+        Some(marker) => format_coro(marker),
         None => "",
     };
     let capture_str = match capture {
