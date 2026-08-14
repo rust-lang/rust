@@ -1,5 +1,5 @@
 use crate::intrinsics;
-use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
 use crate::range::RangeIter;
@@ -135,6 +135,11 @@ where
 // StepBy can only make the iterator shorter, so the len will still fit.
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+// StepBy stops yielding items once the underlying iterator does, so it is fused
+// whenever the underlying iterator is fused.
+#[stable(feature = "step_by_fused", since = "CURRENT_RUSTC_VERSION")]
+impl<I> FusedIterator for StepBy<I> where I: FusedIterator {}
 
 // SAFETY: This adapter is shortening. TrustedLen requires the upper bound to be calculated correctly.
 // These requirements can only be satisfied when the upper bound of the inner iterator's upper
