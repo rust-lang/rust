@@ -65,8 +65,11 @@ struct Cli {
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum Tristate {
+    /// Only show these features
     Require,
+    /// Has no effect
     Allow,
+    /// Do not show these features
     Deny,
 }
 
@@ -113,39 +116,28 @@ impl Args {
             return Err(DumpError::NoSources.into());
         }
 
-        // map is avoided because it would not be possible to use in the fixed variant.
         let before = match &cli.before {
             Some(string) => {
-                let version = Version::from_str(string.as_str());
-                match version {
-                    // tidy's error is opaque and does not implement Display, so we cannot propagate it.
-                    Err(_e) => {
-                        return Err(DumpError::BadSemver {
-                            cause: string.clone(),
-                            flag: SemverFlag::Before,
-                        }
-                        .into());
-                    }
-                    Ok(x) => Some(x),
-                }
+                let result = Version::from_str(string.as_str());
+                // tidy's error is opaque and does not implement Display, so we cannot propagate it into anyhow.
+                let version = result.map_err(|_| DumpError::BadSemver {
+                    cause: string.clone(),
+                    flag: SemverFlag::Before,
+                })?;
+                Some(version)
             }
             None => None,
         };
 
         let since = match &cli.since {
             Some(string) => {
-                let version = Version::from_str(string.as_str());
-                match version {
-                    // tidy's error is opaque and does not implement Display, so we cannot propagate it.
-                    Err(_e) => {
-                        return Err(DumpError::BadSemver {
-                            cause: string.clone(),
-                            flag: SemverFlag::Since,
-                        }
-                        .into());
-                    }
-                    Ok(x) => Some(x),
-                }
+                let result = Version::from_str(string.as_str());
+                // tidy's error is opaque and does not implement Display, so we cannot propagate it into anyhow.
+                let version = result.map_err(|_| DumpError::BadSemver {
+                    cause: string.clone(),
+                    flag: SemverFlag::Since,
+                })?;
+                Some(version)
             }
             None => None,
         };

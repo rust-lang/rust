@@ -17,6 +17,7 @@ pub(crate) struct SourcedFeature {
     pub(crate) feature: Feature,
 }
 
+// A new struct is defined rather than changing the old one, to keep serialization behaving the same.
 pub struct NewFeaturesStatus {
     features: HashMap<String, SourcedFeature>,
     compare: for<'a, 'b> fn(
@@ -47,12 +48,8 @@ impl Display for NewFeaturesStatus {
                 write!(f, " since {:w_since$}", since, w_since = 7)?;
             }
             if let Some(issue) = &feature.feature.tracking_issue {
-                write!(
-                    f,
-                    " <https://github.com/rust-lang/rust/issues/{:<w_issue$}>",
-                    issue,
-                    w_issue = 6
-                )?;
+                let link = format!("<https://github.com/rust-lang/rust/issues/{}>", issue);
+                write!(f, " {:<w_issue$}", link, w_issue = 49)?;
             }
             if let Some(description) = &feature.feature.description {
                 write!(f, ": {}", description)?;

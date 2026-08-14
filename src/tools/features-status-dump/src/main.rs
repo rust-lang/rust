@@ -85,10 +85,7 @@ where
             };
             let new_features = NewFeaturesStatus::new(features_status, compare);
 
-            match write!(writer, "{}", new_features) {
-                Ok(()) => Ok(()),
-                Err(e) => Err(e.into()),
-            }
+            write!(writer, "{}", new_features).map_err(Into::into)
         }
     }
 }
