@@ -473,6 +473,8 @@ declare_features! (
     (unstable, const_closures, "1.68.0", Some(106003)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
     (unstable, const_destruct, "1.85.0", Some(133214)),
+    /// Allows implementing `const ExactSizeIterator`.
+    (unstable, const_exact_size_iterator, "CURRENT_RUSTC_VERSION", Some(161094)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Be more precise when looking for live drops in a const context.

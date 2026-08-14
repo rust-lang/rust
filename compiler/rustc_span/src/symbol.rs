@@ -672,6 +672,7 @@ symbols! {
         const_eval_limit,
         const_eval_select,
         const_evaluatable_checked,
+        const_exact_size_iterator,
         const_extern_fn,
         const_fn,
         const_fn_floating_point_arithmetic,
