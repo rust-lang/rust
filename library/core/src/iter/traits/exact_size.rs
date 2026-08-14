@@ -122,8 +122,8 @@ pub const trait ExactSizeIterator: [const] Iterator {
         // implementations too.
         crate::intrinsics::const_eval_select!(
             @capture {
-                lower: Option<usize> = Some(lower), 
-                upper: Option<usize> = upper, 
+                lower: Option<usize> = Some(lower),
+                upper: Option<usize> = upper,
                 _equal: bool = upper == Some(lower)
             } -> ():
             if const {
