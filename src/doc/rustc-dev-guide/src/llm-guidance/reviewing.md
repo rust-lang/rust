@@ -44,7 +44,7 @@ Ultimately, this is up to your judgement as a reviewer.
 
 [joel-wrong]: https://www.joelonsoftware.com/2005/05/11/making-wrong-code-look-wrong/
 
-You are still expected to respect your [r+ rights](../compiler-team.html#r-rights).
+You are still expected to respect your [r+ rights](../compiler-team.md#r-rights).
 Please do not merge PRs unless you are confident in that part of that code,
 even if the maintainer does not wish to review LLM PRs.
 

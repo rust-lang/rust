@@ -197,7 +197,7 @@ and `src/tools` directories.
 So, you can simply run `x test tidy` instead of `x test src/tools/tidy`.
 Or, `x build std` instead of `x build library/std`.
 
-[rust-analyzer]: suggested.html#configuring-rust-analyzer-for-rustc
+[rust-analyzer]: suggested.md#configuring-rust-analyzer-for-rustc
 
 See the chapters on [testing](../tests/running.md) and [rustdoc](../rustdoc.md) for more details.
 
@@ -373,7 +373,7 @@ We'll cover some of them in detail in other sections:
   - `./x build` – builds everything using the stage 1 compiler,
     not just up to `std`
   - `./x build --stage 2` – builds everything with the stage 2 compiler including `rustdoc`
-- Running tests (see the [section on running tests](../tests/running.html) for more details):
+- Running tests (see the [section on running tests](../tests/running.md) for more details):
   - `./x test library/std` – runs the unit tests and integration tests from `std`
   - `./x test tests/ui` – runs the `ui` test suite
   - `./x test tests/ui/const-generics` - runs all the tests in

@@ -26,6 +26,7 @@ level = 0
 
 [output.linkcheck]
 command = "ci/linkcheck.sh"
+require-md-extension = true
 follow-web-links = true
 exclude = [
     "crates\\.io",
