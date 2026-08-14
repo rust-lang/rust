@@ -244,6 +244,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Reg {
             kind: match self.kind {
                 rustc_abi::RegKind::Integer => RegKind::Integer,
                 rustc_abi::RegKind::Float => RegKind::Float,
+                rustc_abi::RegKind::PpcF128 => RegKind::Float,
                 rustc_abi::RegKind::Vector { .. } => RegKind::Vector,
             },
             size: Size::from_bits(self.size.bits_usize()),
