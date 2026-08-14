@@ -1,3 +1,5 @@
+//@ check-fail
+
 #![feature(const_trait_impl)]
 #![feature(const_iter)]
 
