@@ -61,7 +61,7 @@ STOP, name the prohibited category, and tell the user to author it.
 Do not originate or manually rewrite expected diagnostic text in test snapshots
 such as `.stderr` files. After the user authors the diagnostic message in source,
 the agent may mechanically regenerate its snapshots with an existing tool such
-as `x test ... --bless`; follow [Mechanical rewrites](#mechanical-rewrites).
+as `./x test ... --bless`; follow [Mechanical rewrites](#mechanical-rewrites).
 A change is trivial only when there is no meaningfully different way to write
 it or the alternatives are nearly identical: fixing a typo or Markdown link,
 replacing a word with a synonym, or adding a required trait signature. Trivial
@@ -192,8 +192,8 @@ direct LLM rewriting is discouraged and ask before proceeding.
 
 [LLM guidance]: https://rustc-dev-guide.rust-lang.org/llm-guidance.html
 
-For Rust formatting, use `x fmt`; do not invoke `rustfmt` directly.
-For example, if tidy can perform the rewrite, run `x test tidy --bless` instead
+For Rust formatting, use `./x fmt`; do not invoke `rustfmt` directly.
+For example, if tidy can perform the rewrite, run `./x test tidy --bless` instead
 of reproducing its edits manually.
 
 Before regenerating snapshots containing human-facing text:
@@ -236,7 +236,8 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [dev-guide's instruction
 [repository layout]: src/doc/rustc-dev-guide/src/compiler-src.md
 [contribution process]: src/doc/rustc-dev-guide/src/contributing.md
 
-Use `x` as the default entry point for repository builds, tests, and formatting.
+[`x.py` is the build tool for this repository][building and running rustc].
+Invoke it as `./x`, the default entry point for builds, tests, and formatting.
 Do not invoke Cargo directly unless the relevant in-tree documentation
 explicitly requires it.
 
