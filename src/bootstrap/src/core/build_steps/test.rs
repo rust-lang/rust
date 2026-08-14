@@ -1211,9 +1211,6 @@ impl CommandLineStep for StdarchGenCheck {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("stdarch-gen-check")
-            .path("library/stdarch/crates/stdarch-gen-arm")
-            .path("library/stdarch/crates/stdarch-gen-loongarch")
-            .path("library/stdarch/crates/stdarch-gen-hexagon")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -1230,7 +1227,7 @@ impl CommandLineStep for StdarchGenCheck {
         // `--bless` regenerates and writes back into the tree otherwise just check.
         let mode = if builder.config.cmd.bless() { "bless" } else { "check" };
 
-        // Generators shell out to `rustfmt`skip if bootstrap has none for this channel.
+        // Generators shell out to `rustfmt`. Skip this step if bootstrap has none for this channel.
         let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
             eprintln!(
                 "WARNING: stdarch-gen-check skipped because rustfmt is required but not available on this channel"
@@ -1239,9 +1236,6 @@ impl CommandLineStep for StdarchGenCheck {
         };
 
         let mut path_dirs: Vec<PathBuf> = Vec::new();
-        if let Some(cargo_dir) = builder.initial_cargo.parent() {
-            path_dirs.push(cargo_dir.to_path_buf());
-        }
         if let Some(rustfmt_dir) = rustfmt_path.parent() {
             path_dirs.push(rustfmt_dir.to_path_buf());
         }
