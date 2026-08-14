@@ -144,6 +144,7 @@ impl LlvmType for Reg {
                 128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
+            RegKind::DoubleDouble => cx.type_ppcf128(),
             RegKind::Vector { hint_vector_elem } => {
                 // NOTE: it is valid to ignore the element type hint (and always pick i8).
                 // But providing a more accurate type means fewer casts in LLVM IR,

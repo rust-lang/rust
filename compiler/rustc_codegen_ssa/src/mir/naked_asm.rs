@@ -491,6 +491,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
                     ..=8 => "f64",
                     _ => ptr_type,
                 },
+                RegKind::DoubleDouble => bug!("not a valid wasm type"),
                 RegKind::Vector { .. } => "v128",
             };
 

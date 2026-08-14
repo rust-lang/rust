@@ -2,7 +2,7 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use rustc_abi::{BackendRepr, Float, HasDataLayout, Primitive, TyAbiInterface, TyAndLayout};
+use rustc_abi::{HasDataLayout, TyAbiInterface};
 
 use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
@@ -14,17 +14,6 @@ enum ABI {
     AIX,   // used by AIX OS, big-endian only
 }
 use ABI::*;
-
-/// Whether this is a `ppcf128`, or an aggregate built out of them.
-fn is_ppcf128<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-{
-    match layout.backend_repr {
-        BackendRepr::Scalar(scalar) => scalar.primitive() == Primitive::Float(Float::PpcF128),
-        _ => (0..layout.fields.count()).any(|i| is_ppcf128(cx, layout.field(cx, i))),
-    }
-}
 
 fn is_homogeneous_aggregate<'a, Ty, C>(
     cx: &C,
@@ -45,8 +34,7 @@ where
             }
             ELFv2 => {
                 // A `ppcf128` occupies two floating-point registers, so only four of them fit.
-                let ppcf128 = is_ppcf128(cx, arg.layout);
-                let max_members = if ppcf128 { 4 } else { 8 };
+                let max_members = if unit.kind == RegKind::DoubleDouble { 4 } else { 8 };
 
                 // Pass up to max_members uniquely addressable members.
                 if arg.layout.size > unit.size.checked_mul(max_members, cx).unwrap() {
@@ -57,13 +45,9 @@ where
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
-            RegKind::Float => true,
+            RegKind::Float | RegKind::DoubleDouble => true,
             RegKind::Vector { .. } => arg.layout.size.bits() == 128,
         };
-
-        // `Reg` cannot represent `ppc_fp128`; the `f64` pair it is passed as uses the same
-        // registers.
-        let unit = if ppcf128 { Reg::f64() } else { unit };
 
         valid_unit.then_some(Uniform::consecutive(unit, arg.layout.size))
     })

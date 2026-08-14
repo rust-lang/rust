@@ -704,6 +704,7 @@ pub enum Constructor<Cx: PatCx> {
     F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
     F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
     F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
+    PpcF128Range(DoubleDouble, DoubleDouble, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(Cx::StrLit),
     /// Deref patterns (enabled by the `deref_patterns` feature) provide a way of matching on a

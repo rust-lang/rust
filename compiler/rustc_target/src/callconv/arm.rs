@@ -26,6 +26,7 @@ where
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
+            RegKind::DoubleDouble => unreachable!(),
             RegKind::Vector { .. } => size.bits() == 64 || size.bits() == 128,
         };
 
