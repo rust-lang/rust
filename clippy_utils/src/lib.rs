@@ -133,12 +133,12 @@ macro_rules! extract_msrv_attr {
     () => {
         fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.check_attributes(sess, attrs);
+            self.msrv.check_attributes(attrs);
         }
 
         fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.check_attributes_post(sess, attrs);
+            self.msrv.check_attributes_post(attrs);
         }
     };
 }

@@ -138,7 +138,7 @@ impl Msrv {
     fn for_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         once(node)
             .chain(tcx.hir_parent_id_iter(node))
-            .find_map(|id| parse_attrs(tcx.sess, tcx.hir_attrs(id)))
+            .find_map(|id| parse_attrs(tcx.hir_attrs(id)))
             .or(self.0)
     }
 
@@ -240,24 +240,34 @@ impl MsrvStack {
         self.current().is_none_or(|msrv| msrv >= required)
     }
 
-    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
-        if let Some(version) = parse_attrs(sess, attrs) {
+    pub fn check_attributes(&mut self, attrs: &[Attribute]) {
+        if let Some(version) = parse_attrs(attrs) {
             SEEN_MSRV_ATTR.store(true, Ordering::Relaxed);
             self.stack.push(version);
         }
     }
 
-    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
-        if parse_attrs(sess, attrs).is_some() {
+    pub fn check_attributes_post(&mut self, attrs: &[Attribute]) {
+        if parse_attrs(attrs).is_some() {
             self.stack.pop();
         }
     }
 }
 
-fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+fn parse_attrs(attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+    let msrv_attr = attrs.iter().find(|attr| attr.path_matches(&[sym::clippy, sym::msrv]))?;
+
+    let msrv = msrv_attr.value_str()?;
+
+    parse_version(msrv)
+}
+
+pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
     let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
-    let msrv_attr = msrv_attrs.next()?;
+    let Some(msrv_attr) = msrv_attrs.next() else {
+        return;
+    };
 
     if let Some(duplicate) = msrv_attrs.next_back() {
         sess.dcx()
@@ -268,14 +278,11 @@ fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersi
 
     let Some(msrv) = msrv_attr.value_str() else {
         sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
-        return None;
+        return;
     };
 
-    let Some(version) = parse_version(msrv) else {
+    if parse_version(msrv).is_none() {
         sess.dcx()
             .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
-        return None;
-    };
-
-    Some(version)
+    }
 }
