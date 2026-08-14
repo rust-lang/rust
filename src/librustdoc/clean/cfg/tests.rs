@@ -42,7 +42,11 @@ fn cfg_any_e(v: ThinVec<CfgEntry>) -> CfgEntry {
 }
 
 fn cfg_not(v: CfgEntry) -> Cfg {
-    Cfg(CfgEntry::Not(Box::new(v), DUMMY_SP))
+    Cfg(cfg_not_e(v))
+}
+
+fn cfg_not_e(v: CfgEntry) -> CfgEntry {
+    CfgEntry::Not(Box::new(v), DUMMY_SP)
 }
 
 fn cfg_true() -> Cfg {
@@ -381,13 +385,31 @@ fn test_render_long_html() {
                 .render_long_html(),
             "Available on <strong>x86-64 and target feature <code>sse2</code></strong> only."
         );
+        // `any(true)`
         assert_eq!(
             cfg_any(thin_vec![cfg_true_e()]).render_long_html(),
             "Available <strong>everywhere</strong>.",
         );
+        // `not(any(true))`
+        assert_eq!(
+            cfg_not(cfg_any_e(thin_vec![cfg_true_e()])).render_long_html(),
+            "Available <strong>nowhere</strong>.",
+        );
+        // `any(all(true))`
         assert_eq!(
             cfg_any(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])]).render_long_html(),
             "Available <strong>everywhere</strong>."
+        );
+        // `not(any(all(true)))`
+        assert_eq!(
+            cfg_not(cfg_any_e(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])])).render_long_html(),
+            "Available <strong>not(everywhere)</strong>.",
+        );
+        // `not(not(any(all(true))))`
+        assert_eq!(
+            cfg_not(cfg_not_e(cfg_any_e(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])])))
+                .render_long_html(),
+            "Available <strong>everywhere</strong>.",
         );
     })
 }
