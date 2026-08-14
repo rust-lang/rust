@@ -415,6 +415,22 @@ pub(crate) fn check_generic_arg_count(
     let gen_args = seg.args();
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
+    // If we have any `Vec<foo: Bar>` constraint, where `Bar` is unresolved, the user likely meant
+    // to write `Vec<foo::Bar>`, so we silence the incorrect number of generics error.
+    let has_invalid_bound = match seg.args {
+        Some(args) => args.constraints.iter().any(|c| {
+            if let hir::AssocItemConstraintKind::Bound {
+                bounds: [hir::GenericBound::Trait(poly_trait_ref)],
+            } = c.kind
+                && let Res::Err = poly_trait_ref.trait_ref.path.res
+            {
+                true
+            } else {
+                false
+            }
+        }),
+        None => false,
+    };
 
     // Subtracting from param count to ensure type params synthesized from `impl Trait`
     // cannot be explicitly specified.
@@ -590,7 +606,7 @@ pub(crate) fn check_generic_arg_count(
                     gen_args,
                     def_id,
                 ))
-                .emit_unless_delay(all_params_are_binded)
+                .emit_unless_delay(all_params_are_binded || has_invalid_bound)
         });
 
         Err(reported)
