@@ -1533,7 +1533,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let returns = vec![AbiParam::new(types::I32)];
             let args = &[lhs_ptr, rhs_ptr, bytes_val];
             // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
-            let cmp = fx.lib_call("memcmp", params, returns, args)[0];
+            let raw = fx.lib_call("memcmp", params, returns, args)[0];
+            // `memcmp` can return things other than -1/0/+1, so similar to `BinOp::Cmp`
+            // we emit `(raw > 0) - (raw < 0)` to get the sign only.
+            let gt = fx.bcx.ins().icmp_imm_s(IntCC::SignedGreaterThan, raw, 0);
+            let lt = fx.bcx.ins().icmp_imm_s(IntCC::SignedLessThan, raw, 0);
+            let cmp = fx.bcx.ins().isub(gt, lt);
             ret.write_cvalue(fx, CValue::by_val(cmp, ret.layout()));
         }
 

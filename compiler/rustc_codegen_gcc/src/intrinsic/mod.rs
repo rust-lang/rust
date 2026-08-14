@@ -525,8 +525,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                 // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
                 let builtin = self.context.get_builtin_function("memcmp");
-                let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
-                self.sext(cmp, self.type_ix(32))
+                let raw = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
+                // Return just the sign (-1/0/+1) of the `i16` or `i32` from `memcmp`.
+                let rty = self.val_ty(raw);
+                let zero = self.const_int(rty, 0);
+                self.three_way_compare(raw, zero, /*is_signed*/ true)
             }
 
             sym::black_box => {

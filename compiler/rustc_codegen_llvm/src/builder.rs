@@ -1138,14 +1138,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn three_way_compare(
         &mut self,
-        ty: Ty<'tcx>,
         lhs: Self::Value,
         rhs: Self::Value,
+        is_signed: bool,
     ) -> Self::Value {
-        let size = ty.primitive_size(self.tcx);
-        let name = if ty.is_signed() { "llvm.scmp" } else { "llvm.ucmp" };
+        let llty = self.val_ty(lhs);
+        let name = if is_signed { "llvm.scmp" } else { "llvm.ucmp" };
 
-        self.call_intrinsic(name, &[self.type_i8(), self.type_ix(size.bits())], &[lhs, rhs])
+        self.call_intrinsic(name, &[self.type_i8(), llty], &[lhs, rhs])
     }
 
     /* Miscellaneous instructions */

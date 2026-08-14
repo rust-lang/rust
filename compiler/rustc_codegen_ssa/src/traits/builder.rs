@@ -415,16 +415,16 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// Returns `-1` if `lhs < rhs`, `0` if `lhs == rhs`, and `1` if `lhs > rhs`.
     fn three_way_compare(
         &mut self,
-        ty: Ty<'tcx>,
         lhs: Self::Value,
         rhs: Self::Value,
+        is_signed: bool,
     ) -> Self::Value {
         // FIXME: This implementation was designed around LLVM's ability to optimize, but `cg_llvm`
         // overrides this to just use `@llvm.scmp`/`ucmp` since LLVM 20. This default impl should be
         // reevaluated with respect to the remaining backends like cg_gcc, whether they might use
         // specialized implementations as well, or continue to use a generic implementation here.
         use std::cmp::Ordering;
-        let pred = |op| crate::base::bin_op_to_icmp_predicate(op, ty.is_signed());
+        let pred = |op| crate::base::bin_op_to_icmp_predicate(op, is_signed);
         if self.cx().sess().opts.optimize == OptLevel::No {
             // This actually generates tighter assembly, and is a classic trick:
             // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>.

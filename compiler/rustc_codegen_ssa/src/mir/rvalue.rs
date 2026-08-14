@@ -998,7 +998,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::BinOp::Cmp => {
                 assert!(!is_float);
-                bx.three_way_compare(lhs_ty, lhs, rhs)
+                bx.three_way_compare(lhs, rhs, is_signed)
             }
             mir::BinOp::AddWithOverflow
             | mir::BinOp::SubWithOverflow

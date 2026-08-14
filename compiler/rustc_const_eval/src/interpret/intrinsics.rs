@@ -1170,9 +1170,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let left_bytes = self.read_bytes_ptr_strip_provenance(left, n)?;
         let right_bytes = self.read_bytes_ptr_strip_provenance(right, n)?;
 
-        // `Ordering`'s discriminants are -1/0/+1, so casting does the right thing.
-        let result = Ord::cmp(left_bytes, right_bytes) as i32;
-        interp_ok(Scalar::from_i32(result))
+        // The intrinsic also returns `Ordering`, so return it directly.
+        let result = Ord::cmp(left_bytes, right_bytes) as i8;
+        interp_ok(Scalar::from_i8(result))
     }
 
     pub(crate) fn raw_eq_intrinsic(

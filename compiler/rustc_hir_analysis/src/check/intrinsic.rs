@@ -413,7 +413,7 @@ pub(crate) fn check_intrinsic_type(
         ),
         sym::compare_bytes => {
             let byte_ptr = Ty::new_imm_ptr(tcx, tcx.types.u8);
-            (0, 0, vec![byte_ptr, byte_ptr, tcx.types.usize], tcx.types.i32)
+            (0, 0, vec![byte_ptr, byte_ptr, tcx.types.usize], tcx.ty_ordering_enum(span))
         }
         sym::write_bytes | sym::volatile_set_memory => (
             1,

@@ -596,13 +596,15 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::compare_bytes => {
                 // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
-                let cmp = self.call_intrinsic(
+                let raw = self.call_intrinsic(
                     "memcmp",
                     &[],
                     &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
                 );
-                // Some targets have `memcmp` returning `i16`, but the intrinsic is always `i32`.
-                self.sext(cmp, self.type_ix(32))
+                // Note that `memcmp` returns different types on different platforms, not always `i32`.
+                let rty = self.val_ty(raw);
+                let zero = self.const_int(rty, 0);
+                self.three_way_compare(raw, zero, /*is_signed*/ true)
             }
 
             sym::black_box => {

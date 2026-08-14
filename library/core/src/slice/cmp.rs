@@ -154,7 +154,7 @@ where
         // not to overflow because it exists in memory;
         unsafe {
             let size = crate::intrinsics::unchecked_mul(len, Self::SIZE);
-            compare_bytes(lhs as _, rhs as _, size) == 0
+            compare_bytes(lhs as _, rhs as _, size).is_eq()
         }
     }
 }
@@ -323,12 +323,10 @@ const unsafe impl UnsignedBytewiseOrd for ascii::Char {}
 const impl<A: [const] Ord + [const] UnsignedBytewiseOrd> SliceOrd for A {
     #[inline]
     fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        // Since the length of a slice is always less than or equal to
-        // isize::MAX, this never underflows.
-        let diff = left.len() as isize - right.len() as isize;
-        // This comparison gets optimized away (on x86_64 and ARM) because the
-        // subtraction updates flags.
-        let len = if left.len() < right.len() { left.len() } else { right.len() };
+        // `cmp` and `min` can share the same comparison (on x86_64 and ARM)
+        // as they both work using flags from the same test.
+        let len_cmp = usize::cmp(&left.len(), &right.len());
+        let len = usize::min(left.len(), right.len());
         let left = left.as_ptr().cast();
         let right = right.as_ptr().cast();
         // SAFETY: `left` and `right` are references and are thus guaranteed to
@@ -336,11 +334,8 @@ const impl<A: [const] Ord + [const] UnsignedBytewiseOrd> SliceOrd for A {
         // are valid u8s and can be compared the same way. We use the minimum
         // of both lengths which guarantees that both regions are valid for
         // reads in that interval.
-        let mut order = unsafe { compare_bytes(left, right, len) as isize };
-        if order == 0 {
-            order = diff;
-        }
-        order.cmp(&0)
+        let order = unsafe { compare_bytes(left, right, len) };
+        order.then(len_cmp)
     }
 }
 
