@@ -368,7 +368,8 @@ impl<'a> AstValidator<'a> {
     fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrImpl) {
         let Some(const_keyword) = parent.constness() else { return };
 
-        let Some(CoroutineKind::Async { span: async_keyword, .. }) = sig.header.coroutine_kind
+        let Some(CoroutineMarker { kind: CoroutineKind::Async, span: async_keyword, .. }) =
+            sig.header.coroutine_marker
         else {
             return;
         };
@@ -657,18 +658,18 @@ impl<'a> AstValidator<'a> {
     }
 
     fn reject_coroutine(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
-        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+        if let Some(coroutine_marker) = sig.header.coroutine_marker {
             let coroutine_kind_span = self
                 .sess
                 .psess
                 .source_map()
-                .span_until_non_whitespace(coroutine_kind.span().to(sig.span));
+                .span_until_non_whitespace(coroutine_marker.span.to(sig.span));
 
             self.dcx().emit_err(diagnostics::AbiCannotBeCoroutine {
                 span: sig.span,
                 abi,
                 coroutine_kind_span,
-                coroutine_kind_str: coroutine_kind.as_str(),
+                coroutine_kind_str: coroutine_marker.kind.as_str(),
             });
         }
     }
@@ -866,7 +867,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_fn_headerless(
         &self,
         // Deconstruct to ensure exhaustiveness
-        FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
+        FnHeader { safety: _, coroutine_marker, constness, ext }: FnHeader,
     ) {
         let report_err = |span, kw| {
             self.dcx().emit_err(diagnostics::FnQualifierInExtern {
@@ -875,8 +876,8 @@ impl<'a> AstValidator<'a> {
                 block: self.current_extern_span(),
             });
         };
-        match coroutine_kind {
-            Some(kind) => report_err(kind.span(), kind.as_str()),
+        match coroutine_marker {
+            Some(marker) => report_err(marker.span, marker.kind.as_str()),
             None => (),
         }
         match constness {
@@ -923,11 +924,11 @@ impl<'a> AstValidator<'a> {
             feature_err(&self.sess, sym::const_c_variadic, sig.span, msg).emit();
         }
 
-        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+        if let Some(coroutine_marker) = sig.header.coroutine_marker {
             self.dcx().emit_err(diagnostics::CoroutineAndCVariadic {
-                spans: vec![coroutine_kind.span(), variadic_param.span],
-                coroutine_kind: coroutine_kind.as_str(),
-                coroutine_span: coroutine_kind.span(),
+                spans: vec![coroutine_marker.span, variadic_param.span],
+                coroutine_kind: coroutine_marker.kind.as_str(),
+                coroutine_span: coroutine_marker.span,
                 variadic_span: variadic_param.span,
             });
         }
@@ -1942,15 +1943,15 @@ impl Visitor<'_> for AstValidator<'_> {
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
             constness: Const::Yes(const_span),
-            coroutine_kind: Some(coroutine_kind),
+            coroutine_marker: Some(coroutine_marker),
             ..
         }) = fk.header()
         {
             self.dcx().emit_err(diagnostics::ConstAndCoroutine {
-                spans: vec![coroutine_kind.span(), const_span],
+                spans: vec![coroutine_marker.span, const_span],
                 const_span,
-                coroutine_span: coroutine_kind.span(),
-                coroutine_kind: coroutine_kind.as_str(),
+                coroutine_span: coroutine_marker.span,
+                coroutine_kind: coroutine_marker.kind.as_str(),
                 span,
             });
         }

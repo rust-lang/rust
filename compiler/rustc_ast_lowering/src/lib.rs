@@ -1944,7 +1944,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_node_id: NodeId,
         fn_span: Span,
         kind: FnDeclKind,
-        coro: Option<CoroutineKind>,
+        coro: Option<CoroutineMarker>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
         let mut splatted = decl.splatted();
@@ -2065,16 +2065,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         output: &FnRetTy,
         fn_def_id: LocalDefId,
-        coro: CoroutineKind,
+        coro: CoroutineMarker,
         fn_kind: FnDeclKind,
     ) -> hir::FnRetTy<'hir> {
         let span = self.lower_span(output.span());
 
-        let (opaque_ty_node_id, allowed_features) = match coro {
-            CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
-            CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
-            CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
-                (return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
+        let (opaque_ty_node_id, allowed_features) = match coro.kind {
+            CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
+            CoroutineKind::AsyncGen => {
+                (coro.return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
             }
         };
 
@@ -2116,7 +2115,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_coroutine_fn_output_type_to_bound(
         &mut self,
         output: &FnRetTy,
-        coro: CoroutineKind,
+        coro: CoroutineMarker,
         opaque_ty_span: Span,
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
@@ -2132,10 +2131,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // "<$assoc_ty_name = T>"
-        let (assoc_ty_name, trait_lang_item) = match coro {
-            CoroutineKind::Async { .. } => (sym::Output, LangItem::Future),
-            CoroutineKind::Gen { .. } => (sym::Item, LangItem::Iterator),
-            CoroutineKind::AsyncGen { .. } => (sym::Item, LangItem::AsyncIterator),
+        let (assoc_ty_name, trait_lang_item) = match coro.kind {
+            CoroutineKind::Async => (sym::Output, LangItem::Future),
+            CoroutineKind::Gen => (sym::Item, LangItem::Iterator),
+            CoroutineKind::AsyncGen => (sym::Item, LangItem::AsyncIterator),
         };
 
         let bound_args = self.arena.alloc(hir::GenericArgs {

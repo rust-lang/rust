@@ -297,7 +297,7 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    coroutine_kind: &'a Option<ast::CoroutineKind>,
+    coroutine_marker: &'a Option<ast::CoroutineMarker>,
     constness: ast::Const,
     defaultness: ast::Defaultness,
     safety: ast::Safety,
@@ -313,7 +313,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             safety: method_sig.header.safety,
-            coroutine_kind: &method_sig.header.coroutine_kind,
+            coroutine_marker: &method_sig.header.coroutine_marker,
             constness: method_sig.header.constness,
             defaultness,
             ext: method_sig.header.ext,
@@ -337,7 +337,7 @@ impl<'a> FnSig<'a> {
                 generics,
                 ext: sig.header.ext,
                 constness: sig.header.constness,
-                coroutine_kind: &sig.header.coroutine_kind,
+                coroutine_marker: &sig.header.coroutine_marker,
                 defaultness,
                 safety: sig.header.safety,
                 visibility: vis,
@@ -352,8 +352,8 @@ impl<'a> FnSig<'a> {
         result.push_str(&*format_visibility(context, self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
-        self.coroutine_kind
-            .map(|coroutine_kind| result.push_str(format_coro(&coroutine_kind)));
+        self.coroutine_marker
+            .map(|coroutine_marker| result.push_str(format_coro(coroutine_marker)));
         result.push_str(format_safety(self.safety));
         result.push_str(&format_extern(
             self.ext,
