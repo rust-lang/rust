@@ -6,22 +6,22 @@ source shared.sh
 
 BINUTILS="2.47"
 curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
-cd binutils-$BINUTILS
-hide_output ./configure --prefix=/rustroot
+mkdir binutils-build
+cd binutils-build
+hide_output ../binutils-$BINUTILS/configure --prefix=/rustroot
 hide_output make -j$(nproc)
 hide_output make install
 
-if echo '.section .test,"awR",@progbits' | /rustroot/bin/as - -o /dev/null 2>/dev/null; then
+cd ..
+rm -rf binutils-build binutils-$BINUTILS
+
+if echo '.section .test,"awR",@progbits' | as - -o /dev/null 2>/dev/null; then
     echo "binutils assembler supports SHF_GNU_RETAIN"
 else
     echo "binutils assembler DOES NOT support SHF_GNU_RETAIN"
     exit 1
 fi
 
-AS_PATH="/rustroot/bin/as"
-LD_PATH="/rustroot/bin/ld"
-
-cd ..
 
 # Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
 # This version is specified in the Dockerfile
@@ -61,24 +61,12 @@ export PATH=/rustroot/bin:$PATH
 # which is included in librustc_driver.so
 hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
-    --with-bintuils=/rustroot/bin \
-    --with-as=$AS_PATH \
-    --with-ld=$LD_PATH \
     --enable-languages=c,c++ \
     --disable-gnu-unique-object \
     --enable-cxx-flags='-fno-reorder-blocks-and-partition'
 hide_output make -j$(nproc)
 hide_output make install
 ln -s gcc /rustroot/bin/cc
-
-if echo 'int x __attribute__((used, retain));' | /rustroot/bin/gcc -S -x c -o - - | grep -i '"a.*R"'; then
-    echo "retain attribute is supported"
-else
-    echo "retain attribute is not supported"
-    # We display the generated asm just in case...
-    echo 'int x __attribute__((used, retain));' | /rustroot/bin/gcc -S -x c -o - -
-    exit 1
-fi
 
 cd ..
 rm -rf gcc-build
