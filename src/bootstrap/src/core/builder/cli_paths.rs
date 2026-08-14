@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::core::builder::{Builder, CommandLineStepDescription, Kind, PathSet, ShouldRun};
 use crate::utils::helpers;
@@ -55,42 +55,8 @@ pub(crate) fn match_paths_to_steps_and_run(
         }
     }
 
-    // Command-line paths are interpreted relative to the repository root
-    // (not the current working directory).
-    //
-    // If the user or shell passed an absolute path, try to strip off the
-    // repository root, to match the paths registered by command-line steps.
-    //
-    // E.g. `/home/ferris/rust/tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
-    //
-    // It is also possible that someone passed a relative path starting with . or ..
-    // In that case, we have to remove that path prefix.
-    let paths = paths
-        .iter()
-        .map(|path| {
-            // Here we "launder" the path through builder.src, to normalize relative path prefixes
-            // so ./tests/foo becomes just tests/foo
-            let path = if path.is_relative() {
-                builder
-                    .src
-                    .join(path)
-                    .strip_prefix(&builder.src)
-                    .expect("Cannot strip src path prefix")
-                    .to_path_buf()
-            } else {
-                path.to_path_buf()
-            };
-
-            if path.is_absolute()
-                && path.exists()
-                && let Ok(relative) = path.strip_prefix(&builder.src)
-            {
-                relative.to_path_buf()
-            } else {
-                path
-            }
-        })
-        .collect::<Vec<_>>();
+    // Normalize command-line selectors to account for absolute and dot-relative paths.
+    let paths = paths.iter().map(|path| normalize_selector(builder, path)).collect::<Vec<_>>();
 
     // If any absolute paths couldn't be made relative, stop now and report them.
     let bad_abs_paths = paths.iter().filter(|path| path.is_absolute()).collect::<Vec<_>>();
@@ -170,5 +136,34 @@ pub(crate) fn match_paths_to_steps_and_run(
         let step = &steps[step_ix];
         let anchors = step_anchors[&step_ix].iter().map(|p| PathSet::clone(p)).collect::<Vec<_>>();
         step.desc.maybe_run(builder, anchors);
+    }
+}
+
+/// Normalize command-line arguments that happen to be paths, e.g.:
+/// - `/home/ferris/rust/tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
+/// - `./tests/ui/asm/cfg.rs` => `tests/ui/asm/cfg.rs`
+///
+/// Normalization is performed relative to the _repository source root_,
+/// not the working directory.
+///
+/// We take care to only modify selectors that specifically resemble paths,
+/// and to only modify selectors that actually correspond to a file on disk.
+/// This avoids incorrect conversions such as:
+/// - `/home/ferris/rust/ui` =X=> `ui`
+/// - `./tidyselftest` =X=> `tidyselftest`
+fn normalize_selector<'a>(builder: &Builder<'_>, path: &'a Path) -> &'a Path {
+    // Note that `Path::strip_prefix` strips path _segments_, not substrings.
+    // So this turns `./foo` into `foo`, but ignores `../foo` entirely.
+    if let Ok(without_dot) = Path::strip_prefix(path, ".")
+        && builder.src.join(path).exists()
+    {
+        without_dot
+    } else if path.is_absolute()
+        && path.exists()
+        && let Ok(relative) = path.strip_prefix(&builder.src)
+    {
+        relative
+    } else {
+        path
     }
 }
