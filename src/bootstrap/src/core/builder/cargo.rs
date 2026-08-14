@@ -14,11 +14,10 @@ use crate::core::config::toml::pgo::PgoConfig;
 use crate::core::config::{
     CompressDebuginfo, Config, DryRun, RustcLto, SplitDebuginfo, TargetSelection,
 };
-use crate::core::session::{CLang, GitRepo, Mode, RemapScheme};
+use crate::core::session::{CLang, Mode, RemapScheme};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
-
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
 #[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
@@ -471,8 +470,7 @@ impl Cargo {
 
             // Extend `CXXFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
-            let mut cflags =
-                builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
+            let mut cflags = builder.cc_unhandled_cflags(target, CLang::C).join(" ");
             if let Some(lto_cflag) = lto_cflag {
                 cflags.push(' ');
                 cflags.push_str(lto_cflag);
@@ -496,8 +494,7 @@ impl Cargo {
 
                 // Extend `CXXFLAGS_$TARGET` with our extra flags.
                 let env = format!("CXXFLAGS_{triple_underscored}");
-                let mut cxxflags =
-                    builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
+                let mut cxxflags = builder.cc_unhandled_cflags(target, CLang::Cxx).join(" ");
                 if let Some(lto_cflag) = lto_cflag {
                     cxxflags.push(' ');
                     cxxflags.push_str(lto_cflag);
@@ -1170,16 +1167,12 @@ impl Builder<'_> {
 
         match mode {
             Mode::Rustc | Mode::Codegen => {
-                if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
-                {
+                if let Some(ref map_to) = self.build.debuginfo_map_to(RemapScheme::NonCompiler) {
                     // Tell the compiler which prefix was used for remapping the standard library
                     cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
                 }
 
-                if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
-                {
+                if let Some(ref map_to) = self.build.debuginfo_map_to(RemapScheme::Compiler) {
                     // Tell the compiler which prefix was used for remapping the compiler it-self
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
 
@@ -1191,9 +1184,7 @@ impl Builder<'_> {
             | Mode::ToolRustcPrivate
             | Mode::ToolStd
             | Mode::ToolTarget => {
-                if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
-                {
+                if let Some(ref map_to) = self.build.debuginfo_map_to(RemapScheme::NonCompiler) {
                     trim_paths(&mut cargo, map_to);
                 }
             }
