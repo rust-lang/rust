@@ -30,7 +30,7 @@ We then try to merge the assembled candidates via `EvalCtxt::merge_candidates`.
 ### `EvalCtxt::add_goal`
 
 To prove nested goals, we don't directly call `EvalCtxt::compute_goal`, but instead
-add the goal to the `EvalCtxt` with `EvalCtxt::all_goal`. We then prove all nested
+add the goal to the `EvalCtxt` with `EvalCtxt::add_goal`. We then prove all nested
 goals together in either `EvalCtxt::try_evaluate_added_goals` or
 `EvalCtxt::evaluate_added_goals_and_make_canonical_response`. This allows us to handle
 inference constraints from later goals.
