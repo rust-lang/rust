@@ -58,6 +58,18 @@ error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
 LL |     let d : X() = Default::default();
    |             ^^^ only `Fn` traits may use parentheses
 
-error: aborting due to 10 previous errors
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:45:22
+   |
+LL | fn issue_161062() -> A(impl Sized) {}
+   |                      ^^^^^^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL - fn issue_161062() -> A(impl Sized) {}
+LL + fn issue_161062() -> A<impl Sized> {}
+   |
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0214`.

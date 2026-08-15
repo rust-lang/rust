@@ -39,3 +39,8 @@ fn foo<X:Default>() {
     let d : X() = Default::default();
     //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
 }
+
+struct A<T>(T);
+
+fn issue_161062() -> A(impl Sized) {}
+//~^ ERROR parenthesized type parameters may only be used with a `Fn` trait

@@ -411,6 +411,9 @@ enum ImplTraitContext {
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
+
+    /// An error has already been emitted for this type.
+    AlreadyErrored(ErrorGuaranteed),
 }
 
 /// Position in which `impl Trait` is disallowed.
@@ -1735,6 +1738,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         });
                         hir::TyKind::Err(guar)
                     }
+                    ImplTraitContext::AlreadyErrored(guar) => hir::TyKind::Err(guar),
                 }
             }
             TyKind::Pat(ty, pat) => {
