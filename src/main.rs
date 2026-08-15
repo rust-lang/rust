@@ -6,110 +6,38 @@
 use std::env;
 use std::io::Write as _;
 use std::path::PathBuf;
-use std::process::{Command, ExitCode, Termination as _};
+use std::process::{Command, ExitCode};
 
-fn show_help() -> ExitCode {
-    writeln!(&mut anstream::stdout().lock(), "{}", help_message()).report()
-}
+fn main() -> ExitCode {
+    let args = match Args::parse(env::args()) {
+        Ok(args) => args,
+        Err(e) => {
+            e.print();
+            return ExitCode::FAILURE;
+        },
+    };
 
-fn show_version() -> ExitCode {
-    let version_info = rustc_tools_util::get_version_info!();
-    writeln!(&mut anstream::stdout().lock(), "{version_info}").report()
-}
-
-pub fn main() -> ExitCode {
-    // Check for version and help flags even when invoked as 'cargo-clippy'
-    if env::args().any(|a| a == "--help" || a == "-h") {
-        show_help()
-    } else if env::args().any(|a| a == "--version" || a == "-V") {
-        show_version()
-    } else if let Some(pos) = env::args().position(|a| a == "--explain") {
-        if let Some(mut lint) = env::args().nth(pos + 1) {
-            lint.make_ascii_lowercase();
-            clippy_lints::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"))
-        } else {
-            show_help()
-        }
-    } else {
-        process(env::args().skip(2))
+    if args.help {
+        return match anstream::stdout().write_all(HELP_MSG.as_bytes()) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(_) => ExitCode::FAILURE,
+        };
     }
-}
-
-struct ClippyCmd {
-    cargo_subcommand: &'static str,
-    args: Vec<String>,
-    clippy_args: Vec<String>,
-}
-
-impl ClippyCmd {
-    fn new<I>(mut old_args: I) -> Self
-    where
-        I: Iterator<Item = String>,
-    {
-        let mut cargo_subcommand = "check";
-        let mut args = vec![];
-        let mut clippy_args = vec![];
-
-        for arg in old_args.by_ref() {
-            match arg.as_str() {
-                "--fix" => {
-                    cargo_subcommand = "fix";
-                },
-                "--no-deps" => {
-                    clippy_args = vec!["--no-deps".to_string()];
-                },
-                "--" => break,
-                _ => {
-                    args.push(arg);
-                },
-            }
-        }
-
-        clippy_args.extend(old_args);
-
-        if cargo_subcommand == "fix" && !clippy_args.iter().any(|arg| arg == "--no-deps") {
-            clippy_args.push("--no-deps".to_string());
-        }
-
-        Self {
-            cargo_subcommand,
-            args,
-            clippy_args,
-        }
+    if args.version {
+        return match writeln!(anstream::stdout(), "{}", rustc_tools_util::get_version_info!()) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(_) => ExitCode::FAILURE,
+        };
+    }
+    if let Some(lint) = &args.explain {
+        return clippy_lints::explain(lint);
     }
 
-    fn path() -> PathBuf {
-        let mut path = env::current_exe()
-            .expect("current executable path invalid")
-            .with_file_name("clippy-driver");
-
-        if cfg!(windows) {
-            path.set_extension("exe");
-        }
-
-        path
-    }
-
-    fn into_std_cmd(self) -> Command {
-        let mut cmd = Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".to_string()));
-        let clippy_args: String = self
-            .clippy_args
-            .iter()
-            .fold(String::new(), |s, arg| s + arg + "__CLIPPY_HACKERY__");
-
-        cmd.env("RUSTC_WORKSPACE_WRAPPER", Self::path())
-            .env("CLIPPY_ARGS", clippy_args)
-            .arg(self.cargo_subcommand)
-            .args(&self.args);
-
-        cmd
-    }
-}
-
-fn process(old_args: impl Iterator<Item = String>) -> ExitCode {
-    let mut cmd = ClippyCmd::new(old_args).into_std_cmd();
-
-    let exit_status = cmd
+    let exit_status = Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
+        .env("RUSTC_WORKSPACE_WRAPPER", driver_path())
+        .env("CLIPPY_ARGS", &args.clippy_args)
+        .arg(if args.fix { "fix" } else { "check" })
+        .args(&args.cargo_args)
         .spawn()
         .expect("could not run cargo")
         .wait()
@@ -134,9 +62,119 @@ fn process(old_args: impl Iterator<Item = String>) -> ExitCode {
     }
 }
 
-#[must_use]
-pub fn help_message() -> &'static str {
-    color_print::cstr!(
+#[expect(clippy::struct_field_names)]
+struct Args {
+    /// The arguments to forward to cargo.
+    cargo_args: Vec<String>,
+    /// Arguments to pass through to `clippy-driver`. Arguments are separated by
+    /// `__CLIPPY_HACKERY__` and passed via an environment variable.
+    clippy_args: String,
+    /// Whether to stop and print info for the specified lint.
+    explain: Option<String>,
+    /// Whether to stop and print help info.
+    help: bool,
+    /// Whether to stop and print version info.
+    version: bool,
+    /// Whether to run in fix mode.
+    fix: bool,
+}
+impl Args {
+    fn parse(mut args: impl Iterator<Item = String>) -> Result<Self, ArgError> {
+        fn parse_explain(arg: Option<String>) -> Result<String, ArgError> {
+            if let Some(mut arg) = arg
+                && !arg.starts_with('-')
+            {
+                arg.make_ascii_lowercase();
+                Ok(arg.strip_prefix("clippy::").unwrap_or(&*arg).replace('-', "_"))
+            } else {
+                Err(ArgError::NoExplainArg)
+            }
+        }
+
+        let mut parsed = Args {
+            cargo_args: Vec::new(),
+            clippy_args: String::new(),
+            explain: None,
+            help: false,
+            version: false,
+            fix: false,
+        };
+        let mut no_deps = false;
+
+        // Cargo forwards to sub-commands as `cargo sub-command args`.
+        // Special case handling help and version in case this is called directly,
+        // but otherwise ignore the second argument.
+        match args.nth(1) {
+            Some(x) => match &*x {
+                "-h" | "--help" => parsed.help = true,
+                "-V" | "--version" => parsed.version = true,
+                "--explain" => parsed.explain = Some(parse_explain(args.next())?),
+                // FIXME(@Jarcho): Handle all arguments here without breaking too many existing callers.
+                _ => {},
+            },
+            None => return Ok(parsed),
+        }
+        while let Some(arg) = args.next() {
+            match &*arg {
+                "-h" | "--help" => parsed.help = true,
+                "-V" | "--version" => parsed.version = true,
+                "--explain" if parsed.explain.is_some() => return Err(ArgError::MultipleExplain),
+                "--explain" => parsed.explain = Some(parse_explain(args.next())?),
+                "--fix" => parsed.fix = true,
+                "--no-deps" => {
+                    no_deps = true;
+                    parsed.clippy_args.push_str("--no-deps__CLIPPY_HACKERY__");
+                },
+                "--" => {
+                    for arg in args {
+                        no_deps |= arg == "--no-deps";
+                        parsed.clippy_args.extend([&*arg, "__CLIPPY_HACKERY__"]);
+                    }
+                    break;
+                },
+                _ => parsed.cargo_args.push(arg),
+            }
+        }
+        if parsed.fix && !no_deps {
+            parsed.clippy_args.push_str("--no-deps__CLIPPY_HACKERY__");
+        }
+        Ok(parsed)
+    }
+}
+
+/// Gets the driver path relative to the current cargo-clippy.
+fn driver_path() -> PathBuf {
+    const DRIVER_NAME: &str = if cfg!(windows) {
+        "clippy-driver.exe"
+    } else {
+        "clippy-driver"
+    };
+
+    let mut path = env::current_exe().expect("current executable path invalid");
+    path.set_file_name(DRIVER_NAME);
+    path
+}
+
+#[derive(Debug)]
+enum ArgError {
+    MultipleExplain,
+    NoExplainArg,
+}
+impl ArgError {
+    fn print(&self) {
+        let msg = match self {
+            Self::MultipleExplain => "multiple `--explain` arguments",
+            Self::NoExplainArg => "missing value for `--explain`",
+        };
+        let mut dst = anstream::stderr().lock();
+        let _ = dst
+            .write_all(color_print::cstr!("<bold,red>error</>: ").as_bytes())
+            .and_then(|()| dst.write_all(msg.as_bytes()))
+            .and_then(|()| dst.write_all(HELP_USAGE.as_bytes()));
+    }
+}
+
+const HELP_MSG: &str = color_print::cstr!(
 "Checks a package to catch common mistakes and improve your Rust code.
 
 <green,bold>Usage</>:
@@ -169,40 +207,42 @@ You can use tool lints to allow or deny lints from your code, e.g.:
     <cyan,bold>--frozen</>                Require Cargo.lock and cache are up to date
     <cyan,bold>--locked</>                Require Cargo.lock is up to date
     <cyan,bold>--offline</>               Run without accessing the network
-")
-}
+
+");
+const HELP_USAGE: &str = {
+    let mut i = 0usize;
+    while HELP_MSG.as_bytes()[i] != b'\n' {
+        i += 1;
+    }
+    HELP_MSG.split_at(i).1 // include leading line ends
+};
+
 #[cfg(test)]
 mod tests {
-    use super::ClippyCmd;
+    use super::Args;
 
-    #[test]
-    fn fix() {
-        let args = "cargo clippy --fix".split_whitespace().map(ToString::to_string);
-        let cmd = ClippyCmd::new(args);
-        assert_eq!("fix", cmd.cargo_subcommand);
-        assert!(!cmd.args.iter().any(|arg| arg.ends_with("unstable-options")));
+    fn parse(args: &[&str]) -> Args {
+        Args::parse(args.iter().copied().map(String::from)).unwrap()
+    }
+    fn clippy_args(args: &Args) -> impl Iterator<Item = &str> {
+        args.clippy_args.split("__CLIPPY_HACKERY__")
     }
 
     #[test]
     fn fix_implies_no_deps() {
-        let args = "cargo clippy --fix".split_whitespace().map(ToString::to_string);
-        let cmd = ClippyCmd::new(args);
-        assert!(cmd.clippy_args.iter().any(|arg| arg == "--no-deps"));
+        let args = parse(&["cargo", "clippy", "--fix"]);
+        assert!(clippy_args(&args).any(|arg| arg == "--no-deps"));
     }
 
     #[test]
     fn no_deps_not_duplicated_with_fix() {
-        let args = "cargo clippy --fix --no-deps --no-deps"
-            .split_whitespace()
-            .map(ToString::to_string);
-        let cmd = ClippyCmd::new(args);
-        assert_eq!(cmd.clippy_args.iter().filter(|arg| *arg == "--no-deps").count(), 1);
+        let args = parse(&["cargo", "clippy", "--fix", "--no-deps"]);
+        assert_eq!(clippy_args(&args).filter(|&arg| arg == "--no-deps").count(), 1);
     }
 
     #[test]
-    fn check() {
-        let args = "cargo clippy".split_whitespace().map(ToString::to_string);
-        let cmd = ClippyCmd::new(args);
-        assert_eq!("check", cmd.cargo_subcommand);
+    fn no_deps_not_duplicated_with_fix_extra() {
+        let args = parse(&["cargo", "clippy", "--fix", "--", "--no-deps"]);
+        assert_eq!(clippy_args(&args).filter(|&arg| arg == "--no-deps").count(), 1);
     }
 }
