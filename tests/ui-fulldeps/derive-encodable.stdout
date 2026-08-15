@@ -40,7 +40,7 @@ const _: () =
     {
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for EmptyEnum {
-            fn encode(&self, __encoder: &mut __E) { match *self {} }
+            fn encode(&self, __encoder: &mut __E) {}
         }
     };
 

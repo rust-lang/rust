@@ -190,9 +190,7 @@ fn encodable_body(
 
     let encode_body = match s.variants() {
         [] => {
-            quote! {
-                match *self {}
-            }
+            quote! {}
         }
         [vi] => {
             let pat = vi.pat();
