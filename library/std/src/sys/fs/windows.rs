@@ -301,7 +301,7 @@ impl OpenOptions {
                 if self.truncate && !self.create_new {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
+                        "append and truncate cannot both be enabled",
                     ));
                 }
             }
