@@ -67,8 +67,11 @@ pub(super) fn send_vectored_with_ancillary_to(
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<usize> {
     unsafe {
-        let (mut msg_name, msg_namelen) =
-            if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
+        let (mut msg_name, msg_namelen) = if let Some(path) = path {
+            sockaddr_un(path)?
+        } else {
+            ([0; crate::os::unix::net::SOCK_MAX_SIZE], 0)
+        };
 
         let mut msg: libc::msghdr = zeroed();
         msg.msg_name = (&raw mut msg_name) as *mut _;
