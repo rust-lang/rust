@@ -11,9 +11,9 @@ use crate::FileType;
 use crate::core::build_steps::dist::distdir;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::BUILDER_CONFIG_FILENAME;
+use crate::utils::channel;
 use crate::utils::exec::BootstrapCommand;
-use crate::utils::helpers::{move_file, t};
-use crate::utils::{channel, helpers};
+use crate::utils::helpers::{self, move_file, t};
 
 #[derive(Copy, Clone)]
 pub(crate) enum OverlayKind {

@@ -17,7 +17,8 @@ use std::{env, fs};
 use crate::Build;
 use crate::core::build_steps::tool;
 use crate::core::builder::Builder;
-use crate::core::config::{CompilerBuiltins, DebuggerPath, Subcommand, Target};
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
 

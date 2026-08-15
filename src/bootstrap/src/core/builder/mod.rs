@@ -14,7 +14,6 @@ use clap::ValueEnum;
 use tracing::instrument;
 
 pub use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
-pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
@@ -29,7 +28,7 @@ use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::utils::tracing::format_location;
-use crate::{Build, Crate, trace};
+use crate::{Build, Compiler, Crate, trace};
 
 mod cargo;
 mod cli_paths;

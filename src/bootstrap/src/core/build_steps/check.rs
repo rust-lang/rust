@@ -16,7 +16,8 @@ use crate::core::builder::{
     self, Alias, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     crate_description,
 };
-use crate::core::config::{Subcommand, TargetSelection};
+use crate::core::config::TargetSelection;
+use crate::core::config::flags::Subcommand;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::helpers::t;
 use crate::{CodegenBackendKind, Compiler, Mode};
