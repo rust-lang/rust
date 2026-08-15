@@ -128,6 +128,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
+#![feature(wrapping_funnel_shifts)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]

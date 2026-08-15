@@ -242,6 +242,28 @@ macro_rules! uint_module {
         }
 
         #[test]
+        #[should_panic = "attempt to funnel shift left with overflow"]
+        fn test_strict_funnel_shl_overflow() {
+            let _ = <$T>::strict_funnel_shl(A, B, $T::BITS);
+        }
+
+        #[test]
+        #[should_panic = "attempt to funnel shift right with overflow"]
+        fn test_strict_funnel_shr_overflow() {
+            let _ = <$T>::strict_funnel_shr(A, B, $T::BITS);
+        }
+
+        #[test]
+        fn test_wrapping_funnel_shl_overflow() {
+            let _ = <$T>::wrapping_funnel_shl(A, B, $T::BITS);
+        }
+
+        #[test]
+        fn test_wrapping_funnel_shr_overflow() {
+            let _ = <$T>::wrapping_funnel_shr(A, B, $T::BITS);
+        }
+
+        #[test]
         fn test_funnel_shifts_runtime() {
             for i in 0..$T::BITS - 1 {
                 assert_eq!(<$T>::funnel_shl(A, 0, i), A << i);
