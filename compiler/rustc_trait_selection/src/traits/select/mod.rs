@@ -1009,8 +1009,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         if !self.typing_mode().is_coherence()
-            && obligation.is_global()
-            && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
+            && obligation.predicate.is_global()
+            && obligation.param_env.caller_bounds().iter().all(|bound| {
+                bound.has_param()
+                    || matches!(
+                        bound.kind().skip_binder(),
+                        ty::ClauseKind::RegionOutlives(_) | ty::ClauseKind::TypeOutlives(_)
+                    )
+            })
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
