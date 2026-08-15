@@ -14,8 +14,8 @@ use std::time::Instant;
 use std::{env, process};
 
 use crate::core::builder::StepStack;
-use crate::core::config::flags::Flags;
-use crate::core::config::{ChangeId, Config, Subcommand};
+use crate::core::config::flags::{Flags, Subcommand};
+use crate::core::config::{ChangeId, Config};
 use crate::utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };

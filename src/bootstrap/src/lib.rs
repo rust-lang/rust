@@ -30,14 +30,13 @@ use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
-use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
 use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::vendor::VENDOR_DIR;
-use crate::core::builder::{self, Kind};
+use crate::core::builder::{Builder, Kind};
 use crate::core::config::flags::{self, Subcommand};
 use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
@@ -597,7 +596,7 @@ impl Build {
         }
 
         build.do_if_verbose(|| println!("finding compilers"));
-        utils::cc_detect::fill_compilers(&mut build);
+        crate::utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
         // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
@@ -752,12 +751,12 @@ impl Build {
 
             match &self.config.cmd {
                 Subcommand::Format { check, all } => {
-                    let builder = builder::Builder::new(self);
+                    let builder = Builder::new(self);
                     let rustfmt_path = builder.ensure(InternalRustfmt).unwrap_or_else(|| {
                         eprintln!("fmt error: `x fmt` is not supported on this channel");
                         helpers::exit_process(1);
                     });
-                    return core::build_steps::format::format(
+                    return crate::core::build_steps::format::format(
                         &builder,
                         rustfmt_path,
                         *check,
@@ -766,7 +765,7 @@ impl Build {
                     );
                 }
                 Subcommand::Perf(args) => {
-                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
+                    return crate::core::build_steps::perf::perf(&Builder::new(self), args);
                 }
                 _cmd => {
                     debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
@@ -787,7 +786,7 @@ impl Build {
                 let _sanity_check_span =
                     span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
                 self.config.set_dry_run(DryRun::SelfCheck);
-                let builder = builder::Builder::new(self);
+                let builder = Builder::new(self);
                 builder.execute_cli();
             }
 
@@ -797,14 +796,14 @@ impl Build {
                 let _actual_run_span =
                     span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
                 self.config.set_dry_run(DryRun::Disabled);
-                let builder = builder::Builder::new(self);
+                let builder = Builder::new(self);
                 builder.execute_cli();
             }
         } else {
             #[cfg(feature = "tracing")]
             let _dry_run_span = span!(tracing::Level::DEBUG, "executing dry run").entered();
 
-            let builder = builder::Builder::new(self);
+            let builder = Builder::new(self);
             builder.execute_cli();
         }
 
@@ -1207,12 +1206,12 @@ impl Build {
     }
 
     /// Returns the internal `cc::Tool` for the C compiler.
-    fn cc_tool(&self, target: TargetSelection) -> Tool {
+    fn cc_tool(&self, target: TargetSelection) -> cc::Tool {
         self.cc[&target].clone()
     }
 
     /// Returns the internal `cc::Tool` for the C++ compiler.
-    fn cxx_tool(&self, target: TargetSelection) -> Tool {
+    fn cxx_tool(&self, target: TargetSelection) -> cc::Tool {
         self.cxx[&target].clone()
     }
 
