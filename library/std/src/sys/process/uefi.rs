@@ -254,7 +254,7 @@ impl ExitStatus {
             // (e.g. DEVICE_ERROR is 0x8000000000000007 on 64-bit).
             // Strip the platform-width high bit and re-set bit 31 to
             // produce the equivalent 32-bit UEFI error representation.
-            let err_num = code & !(0x80usize << (usize::BITS - 8));
+            let err_num = code & !(1usize << (usize::BITS - 1));
             i32::try_from(err_num).ok().map(|n| n | i32::MIN)
         } else {
             i32::try_from(code).ok()
@@ -298,7 +298,7 @@ impl ExitStatusError {
         if self.0.is_error() {
             // same as ExitStatus::code(), stripping the platform-width
             // high bit and re-setting bit 31 for the 32-bit equivalent.
-            let err_num = code & !(0x80usize << (usize::BITS - 8));
+            let err_num = code & !(1usize << (usize::BITS - 1));
             NonZeroI32::new(i32::try_from(err_num).ok()? | i32::MIN)
         } else {
             NonZeroI32::new(i32::try_from(code).ok()?)
