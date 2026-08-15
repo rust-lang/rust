@@ -12,20 +12,54 @@ use crate::{fmt, io, mem, ptr};
 #[allow(non_camel_case_types)]
 mod libc {
     pub use core::ffi::c_int;
+    pub type sa_family_t = u8;
     pub type socklen_t = u32;
     pub struct sockaddr;
     #[derive(Clone)]
     pub struct sockaddr_un {
+        pub sun_family: sa_family_t,
         pub sun_path: [u8; 1],
     }
 }
 
-const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
+cfg_if::cfg_if! {
+    if #[cfg(any(target_os = "macos", target_os = "dragonfly"))] {
+        // MacOS and DragonFly utilize `SOCK_MAXADDRLEN` to define
+        // the maximum size that the `sockaddr_un` struct could be.
+        // SOCK_MAXADDRLEN = 255 on these platforms, and it's based on
+        // sizeof(sa_len) (a u8) + sizeof(sun_family) (a u8) + 253 bytes
+        // (excluding nul). We add +1 for nul byte just in case.
+        // See https://github.com/rust-lang/rust/issues/160684
+        pub(crate) const SOCK_MAX_SIZE: usize = libc::SOCK_MAXADDRLEN as usize + 1;
+    } else if #[cfg(any(target_os = "netbsd"))] {
+        // NetBSD uses `UCHAR_MAX` (essentially a `u8::MAX`) + 1 as defined by `sockaddr_big` here:
+        // https://github.com/IIJ-NetBSD/netbsd-src/blob/master/sys/sys/socket.h#L272-L287
+        pub(crate) const SOCK_MAX_SIZE: usize = u8::MAX as usize + 1;
+    } else {
+        pub(crate) const SOCK_MAX_SIZE: usize = size_of::<libc::sockaddr_un>();
+    }
+}
 
-pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
+// Offset to `libc::sockaddr_un.sun_path`
+const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
+// This represents the maximum number of characters + 1 allowed to be
+// stored in the socket path (e.g. 254 for NetBSD because it allows 253
+// valid characters for its path, 104 for FreeBSD because it allows up to
+// 103 characters for its path)
+pub(crate) const SUN_PATH_MAX_LEN: usize = SOCK_MAX_SIZE - SUN_PATH_OFFSET;
+pub(super) fn sockaddr_un(path: &Path) -> io::Result<([u8; SOCK_MAX_SIZE], libc::socklen_t)> {
     // SAFETY: All zeros is a valid representation for `sockaddr_un`.
-    let mut addr: libc::sockaddr_un = unsafe { mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    let mut addr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
+
+    // SAFETY: All Unix platforms should have a `libc::sockaddr_un` struct,
+    // `sun_family` field, and a `sa_family_t` type. `offset_of!` macro
+    // guarantees that we would be writing `AF_UNIX` into the correct spot.
+    unsafe {
+        addr.as_mut_ptr()
+            .byte_add(mem::offset_of!(libc::sockaddr_un, sun_family))
+            .cast::<libc::sa_family_t>()
+            .write_unaligned(libc::AF_UNIX as libc::sa_family_t);
+    }
 
     let bytes = path.as_os_str().as_bytes();
 
@@ -36,21 +70,53 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
         ));
     }
 
-    if bytes.len() >= addr.sun_path.len() {
-        return Err(io::const_error!(
-            io::ErrorKind::InvalidInput,
-            "path must be shorter than SUN_LEN",
-        ));
+    if bytes.len() >= SUN_PATH_MAX_LEN {
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_os = "macos", target_os = "dragonfly"))] {
+                return Err(io::const_error!(
+                    io::ErrorKind::InvalidInput,
+                    "path must be shorter than SOCK_MAXADDRLEN - 1",
+                ));
+            } else if #[cfg(any(target_os = "netbsd"))] {
+                return Err(io::const_error!(
+                    io::ErrorKind::InvalidInput,
+                    "path must be shorter than UCHAR_MAX - 1",
+                ));
+            } else {
+                return Err(io::const_error!(
+                    io::ErrorKind::InvalidInput,
+                    "path must be shorter than SUN_LEN",
+                ));
+            }
+        }
     }
+
     // SAFETY: `bytes` and `addr.sun_path` are not overlapping and
     // both point to valid memory.
     // NOTE: We zeroed the memory above, so the path is already null
     // terminated.
     unsafe {
-        ptr::copy_nonoverlapping(bytes.as_ptr(), addr.sun_path.as_mut_ptr().cast(), bytes.len())
+        ptr::copy_nonoverlapping(
+            bytes.as_ptr(),
+            addr.as_mut_ptr().byte_add(SUN_PATH_OFFSET),
+            bytes.len(),
+        )
     };
 
     let mut len = SUN_PATH_OFFSET + bytes.len();
+    #[cfg(any(
+        target_os = "dragonfly",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    {
+        const _: () = assert!((SUN_PATH_MAX_LEN as u16) <= (u8::MAX as u16));
+        // For these platforms, `sockaddr_un` has a `sun_len` (u8) field that should be initialized with a value
+        // (nul byte excluding)
+        addr[mem::offset_of!(libc::sockaddr_un, sun_len)] = len as u8;
+    }
+
     match bytes.get(0) {
         Some(&0) | None => {}
         Some(_) => {
@@ -63,6 +129,14 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
             }
         }
     }
+
+    #[cfg(target_os = "freebsd")]
+    {
+        // For these platforms, `sockaddr_un` has a `sun_len` (u8) field that should be initialized with a value
+        // (nul byte including)
+        addr[mem::offset_of!(libc::sockaddr_un, sun_len)] = len as u8;
+    }
+
     Ok((addr, len as libc::socklen_t))
 }
 
@@ -92,8 +166,13 @@ enum AddressKind<'a> {
 #[derive(Clone)]
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct SocketAddr {
-    pub(super) addr: libc::sockaddr_un,
+    /// Size of the socket address, `sun_family` and `sun_path`
+    /// fields from `libc::sockaddr_un` included
     pub(super) len: libc::socklen_t,
+    /// Stack allocated buffer that contains full size of what `libc::sockaddr_un`
+    /// could be (as `sun_path` field defined for `sockaddr_un` does not represent
+    /// the maximum path length of a Unix Domain socket name)
+    pub(super) addr: [u8; SOCK_MAX_SIZE],
 }
 
 impl SocketAddr {
@@ -134,7 +213,31 @@ impl SocketAddr {
             ));
         }
 
-        Ok(SocketAddr { addr, len })
+        let mut sockaddr: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
+        let addr_ptr = ptr::addr_of!(addr) as *const u8;
+        cfg_if::cfg_if! {
+            if #[cfg(all(unix, any(target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly")))] {
+                // SAFETY: `addr_ptr` and `sockaddr` are not overlapping and
+                // both point to valid memory.
+                // NOTE: We zeroed the memory above, so the `.sun_path` is already null
+                // terminated.
+                unsafe {
+                    // BSD platforms have a `sun_len` field for their `sockaddr_un` struct
+                    // which tells us the size of the socket address
+                    ptr::copy_nonoverlapping(addr_ptr, sockaddr.as_mut_ptr(), addr.sun_len as usize)
+                };
+            } else {
+                // SAFETY: `addr` and `sockaddr` are not overlapping and
+                // both point to valid memory.
+                // NOTE: We zeroed the memory above, so the path is already null
+                // terminated.
+                unsafe {
+                    // The `SOCK_MAX_SIZE` internally is the sizeof(libc::sockaddr_un)
+                    ptr::copy_nonoverlapping(addr_ptr, sockaddr.as_mut_ptr(), SOCK_MAX_SIZE)
+                };
+            }
+        };
+        Ok(SocketAddr { len, addr: sockaddr })
     }
 
     /// Constructs a `SockAddr` with the family `AF_UNIX` and the provided path.
@@ -171,7 +274,7 @@ impl SocketAddr {
     where
         P: AsRef<Path>,
     {
-        sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len })
+        sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { len, addr })
     }
 
     /// Returns `true` if the address is unnamed.
@@ -251,15 +354,15 @@ impl SocketAddr {
 
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
-        let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
+        let path = &self.addr[SUN_PATH_OFFSET..];
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
         if len == 0
             || (cfg!(not(any(target_os = "linux", target_os = "android", target_os = "cygwin")))
-                && self.addr.sun_path[0] == 0)
+                && path[0] == 0)
         {
             AddressKind::Unnamed
-        } else if self.addr.sun_path[0] == 0 {
+        } else if path[0] == 0 {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
             // the value returned by getsockname(2) and similar on QNX7.1 and
