@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/normalization-preserve-equality.rs:28:1
+  --> $DIR/normalization-preserve-equality.rs:34:1
    |
 LL | fn test_borrowck<'a, 'b>(_: (<Equal<'a, 'b> as Trait>::Ty, Equal<'a, 'b>)) {
    | ^^^^^^^^^^^^^^^^^--^^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL | fn test_borrowck<'a, 'b>(_: (<Equal<'a, 'b> as Trait>::Ty, Equal<'a, 'b>)) 
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/normalization-preserve-equality.rs:28:1
+  --> $DIR/normalization-preserve-equality.rs:34:1
    |
 LL | fn test_borrowck<'a, 'b>(_: (<Equal<'a, 'b> as Trait>::Ty, Equal<'a, 'b>)) {
    | ^^^^^^^^^^^^^^^^^--^^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

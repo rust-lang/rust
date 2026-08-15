@@ -6,8 +6,14 @@
 //@ [borrowck_current] check-fail
 //@ [borrowck_current] known-bug: #106569
 //@ [borrowck_next] compile-flags: -Znext-solver
-//@ [borrowck_next] check-fail
-//@ [borrowck_next] known-bug: #160491
+//@ [borrowck_next] check-pass
+
+
+// We previously computed implied bounds while using region variables for
+// `'a` and `'b`. That resulted in implied bounds computation actually
+// just equating these two regions, and resolving `'b` to `'a`, causing
+// the implied bound to be useless. See #106569. We're now properly using
+// universal regions (params and placeholders) when computing implied bounds.
 
 struct Equal<'a, 'b>(&'a &'b (), &'b &'a ()); // implies 'a == 'b
 

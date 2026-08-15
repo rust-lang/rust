@@ -186,6 +186,17 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    pub fn num_registered_region_obligations(&self) -> usize {
+        self.inner.borrow().region_obligations.len()
+    }
+
+    pub fn registered_region_obligations_since(
+        &self,
+        prev: usize,
+    ) -> Vec<TypeOutlivesConstraint<'tcx>> {
+        self.inner.borrow().region_obligations.iter().skip(prev).cloned().collect()
+    }
+
     pub fn clone_registered_region_obligations(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
         self.inner.borrow().region_obligations.clone()
     }
