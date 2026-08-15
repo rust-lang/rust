@@ -136,6 +136,15 @@ impl<R: Read, W: Write> DapSession<R, W> {
             let request = match self.server.poll_request() {
                 Ok(Some(request)) => request,
                 Ok(None) => return Ok(()),
+                // The message body has already been consumed. js-debug can send
+                // commands like `enableNetworking`, which `emmy_dap_types` reports
+                // as parse errors because it has no unknown-command variant.
+                // FIXME: send a DAP error response once unknown commands are
+                // representable.
+                Err(ServerError::ParseError(_)) => {
+                    eprintln!("priroda dap: skipping request that could not be deserialized");
+                    continue;
+                }
                 Err(err) => return Err(err),
             };
 
@@ -175,6 +184,7 @@ impl<R: Read, W: Write> DapSession<R, W> {
         match &request.command {
             Command::Initialize(_) => self.handle_initialize(),
             Command::Launch(_) => self.handle_launch(),
+            Command::Attach(_) => self.handle_attach(),
             Command::ConfigurationDone => self.handle_configuration_done(session),
             Command::Threads => self.handle_threads(),
             Command::StackTrace(args) => self.handle_stack_trace(args.thread_id, session),
@@ -186,8 +196,7 @@ impl<R: Read, W: Write> DapSession<R, W> {
             Command::StepIn(args) =>
                 self.handle_step(ResponseBody::StepIn, args.thread_id, session),
             Command::Disconnect(_) => self.handle_disconnect(),
-            Command::Attach(_)
-            | Command::BreakpointLocations(_)
+            Command::BreakpointLocations(_)
             | Command::Cancel(_)
             | Command::Completions(_)
             | Command::DataBreakpointInfo(_)
@@ -225,6 +234,19 @@ impl<R: Read, W: Write> DapSession<R, W> {
 
         Ok(HandlerSuccess {
             response: HandlerResponse::Success(ResponseBody::Launch),
+            state: Some(DapState::Launched),
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
+    }
+
+    fn handle_attach(&self) -> Result<HandlerSuccess, &'static str> {
+        self.require_state(DapState::Initialized)?;
+
+        // VS Code's extension-free `debugServer` template uses `attach`.
+        // Priroda still starts the same single interpreted session as `launch`.
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Attach),
             state: Some(DapState::Launched),
             events: Vec::new(),
             outcome: HandlerOutcome::Continue,
@@ -592,8 +614,8 @@ impl<R: Read, W: Write> DapSession<R, W> {
     fn require_state(&self, expected: DapState) -> Result<(), &'static str> {
         if self.state != expected {
             return Err(match expected {
-                DapState::Initialized => "launch requires initialize",
-                DapState::Launched => "configurationDone requires launch",
+                DapState::Initialized => "launch or attach requires initialize",
+                DapState::Launched => "configurationDone requires launch or attach",
                 _ => "invalid session state for request",
             });
         }

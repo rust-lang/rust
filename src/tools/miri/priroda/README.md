@@ -58,10 +58,15 @@ when you run the debugger configuration. The launch configuration does not spawn
 Priroda directly; it starts a background task and then connects through
 `debugServer`.
 
-`debugServer` only tells VS Code to connect to an already-running adapter; it
-does not register a debug type. VS Code still needs a registered `priroda`
-debug type, which must come from a debug extension. A custom Priroda extension
-is deferred to future graphical features.
+`debugServer` tells VS Code to connect to an already-running adapter, but VS Code
+still requires the launch configuration's `type` to be one it knows. Priroda has
+no installed extension, so the configuration uses VS Code's built-in `node`
+debug type as the registered editor-side type. `debugServer` redirects the DAP
+transport to Priroda before the Node adapter is spawned, so no custom Priroda
+extension is needed. The configuration uses `request: "attach"`, which makes VS
+Code send the DAP `attach` request; Priroda accepts `attach` as the same startup
+transition as `launch`. A richer custom Priroda extension is deferred to future
+graphical features.
 
 The templates assume `${workspaceFolder}` is the `miri/priroda` directory that
 contains them. Copy them into that directory's `.vscode/`, or edit
@@ -75,15 +80,18 @@ cp vscode_tasks.json /path/to/miri/priroda/.vscode/tasks.json
 
 Before running the debugger configuration, make sure:
 
-- `MIRI_SYSROOT` points at a Miri sysroot, for example from
-  `cargo +miri miri setup --print-sysroot`.
-- The `cargo` in `command` resolves to the `miri` toolchain's cargo, so the
-  task builds Priroda with `rustc_private`.
 - The Rust file path at the end of `args` is the file you want Priroda to run.
 - Port `4711` is free, or both `--port` and `debugServer` use the same different
   port.
-- VS Code has a debugger contribution installed that accepts
-  `type: "priroda"` debug configurations.
+- `MIRI_SYSROOT` points at a Miri sysroot, for example from
+  `cargo +miri miri setup --print-sysroot`. VS Code resolves `${env:MIRI_SYSROOT}`
+  from the environment it was started with, not from the task's `env`, so export
+  it in your shell before launching VS Code, or replace the argument with the
+  absolute sysroot path.
+- The `cargo` in `command` resolves to the `miri` toolchain's cargo, so the task
+  builds Priroda with `rustc_private`. That is automatic when the workspace is
+  `miri/priroda`; when using the templates from another project, pass `+miri` as
+  the first `cargo` argument.
 
 The task runs Priroda through `cargo run` against the Priroda crate:
 
@@ -107,15 +115,17 @@ the background task as ready and connects with:
 
 ```json
 {
-    "type": "priroda",
-    "request": "launch",
+    "type": "node",
+    "request": "attach",
     "preLaunchTask": "Priroda: Start DAP Server",
     "debugServer": 4711
 }
 ```
 
 Priroda accepts one TCP connection and waits for VS Code before running the DAP
-handshake.
+handshake. VS Code's built-in JavaScript debugger may also send extension
+requests of its own, such as `enableNetworking` for its network preview; Priroda
+skips unrecognized requests rather than failing, so those are ignored.
 
 ## Test
 
