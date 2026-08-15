@@ -227,14 +227,22 @@ impl Cfg {
     }
 
     fn should_append_only_to_description(&self) -> bool {
-        match self.0 {
-            CfgEntry::Any(..)
-            | CfgEntry::All(..)
-            | CfgEntry::NameValue { .. }
-            | CfgEntry::Version(..)
-            | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => true,
-            CfgEntry::Not(..) | CfgEntry::Bool(..) => false,
+        fn should_append_only_to_description(cfg: &CfgEntry) -> bool {
+            match cfg {
+                CfgEntry::NameValue { .. }
+                | CfgEntry::Version(..)
+                | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => true,
+                CfgEntry::Any(a, _) | CfgEntry::All(a, _) => {
+                    if a.is_empty() {
+                        false
+                    } else {
+                        a.iter().any(|sub| should_append_only_to_description(sub))
+                    }
+                }
+                CfgEntry::Not(..) | CfgEntry::Bool(..) => false,
+            }
         }
+        should_append_only_to_description(&self.0)
     }
 
     fn should_use_with_in_description(&self) -> bool {
@@ -309,7 +317,19 @@ impl Cfg {
     }
 
     fn omit_preposition(&self) -> bool {
-        matches!(self.0, CfgEntry::Bool(..))
+        fn omit_preposition(cfg: &CfgEntry) -> bool {
+            match cfg {
+                CfgEntry::NameValue { .. }
+                | CfgEntry::Version(..)
+                | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => false,
+                CfgEntry::Any(a, _) | CfgEntry::All(a, _) => {
+                    a.is_empty() || matches!(a.as_slice(), [a] if omit_preposition(&a))
+                }
+                CfgEntry::Not(a, _) => omit_preposition(a),
+                CfgEntry::Bool(..) => true,
+            }
+        }
+        omit_preposition(&self.0)
     }
 
     pub(crate) fn inner(&self) -> &CfgEntry {
@@ -459,15 +479,20 @@ impl Display<'_> {
         use fmt::Display as _;
 
         let short_longhand = self.1.is_long() && {
-            let all_crate_features = sub_cfgs.iter().all(|sub_cfg| {
-                matches!(sub_cfg, CfgEntry::NameValue { name: sym::feature, value: Some(_), .. })
-            });
-            let all_target_features = sub_cfgs.iter().all(|sub_cfg| {
-                matches!(
-                    sub_cfg,
-                    CfgEntry::NameValue { name: sym::target_feature, value: Some(_), .. }
-                )
-            });
+            let all_crate_features = !sub_cfgs.is_empty()
+                && sub_cfgs.iter().all(|sub_cfg| {
+                    matches!(
+                        sub_cfg,
+                        CfgEntry::NameValue { name: sym::feature, value: Some(_), .. }
+                    )
+                });
+            let all_target_features = !sub_cfgs.is_empty()
+                && sub_cfgs.iter().all(|sub_cfg| {
+                    matches!(
+                        sub_cfg,
+                        CfgEntry::NameValue { name: sym::target_feature, value: Some(_), .. }
+                    )
+                });
 
             if all_crate_features {
                 fmt.write_str("crate features ")?;
@@ -506,20 +531,45 @@ impl Display<'_> {
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            CfgEntry::Not(CfgEntry::Any(sub_cfgs, _), _) => {
-                let separator = if sub_cfgs.iter().all(is_simple_cfg) { " nor " } else { ", nor " };
-                fmt.write_str("neither ")?;
+        fn display_bool(fmt: &mut fmt::Formatter<'_>, value: bool) -> fmt::Result {
+            if value { fmt.write_str("everywhere") } else { fmt.write_str("nowhere") }
+        }
 
-                sub_cfgs
-                    .iter()
-                    .map(|sub_cfg| {
-                        Wrapped::with_parens()
-                            .when(is_any_cfg(sub_cfg))
-                            .wrap(Display(sub_cfg, self.1))
-                    })
-                    .joined(separator, fmt)
-            }
+        match &self.0 {
+            CfgEntry::Not(CfgEntry::Not(sub_cfg, _), _) => Display(sub_cfg, self.1).fmt(fmt),
+            CfgEntry::Not(CfgEntry::Any(sub_cfgs, _), _) => match sub_cfgs.as_slice() {
+                // `not(any())` is `true` because `any()` is `false`.
+                [] => display_bool(fmt, true),
+                [CfgEntry::Bool(value, _)] => display_bool(fmt, !*value),
+                sub_cfgs => {
+                    let separator =
+                        if sub_cfgs.iter().all(is_simple_cfg) { " nor " } else { ", nor " };
+                    if sub_cfgs.len() > 1 {
+                        fmt.write_str("neither ")?;
+                    } else {
+                        fmt.write_str("not(")?;
+                    }
+
+                    sub_cfgs
+                        .iter()
+                        .map(|sub_cfg| {
+                            Wrapped::with_parens()
+                                .when(is_any_cfg(sub_cfg))
+                                .wrap(Display(sub_cfg, self.1))
+                        })
+                        .joined(separator, fmt)?;
+                    if sub_cfgs.len() == 1 {
+                        fmt.write_str(")")?;
+                    }
+                    Ok(())
+                }
+            },
+            CfgEntry::Not(s @ CfgEntry::All(sub_cfgs, _), _) => match sub_cfgs.as_slice() {
+                // `not(all())` is `false` because `all()` is `true`.
+                [] => display_bool(fmt, false),
+                [CfgEntry::Bool(value, _)] => display_bool(fmt, !*value),
+                _ => write!(fmt, "not ({})", Display(s, self.1)),
+            },
             CfgEntry::Not(simple @ CfgEntry::NameValue { .. }, _) => {
                 write!(fmt, "non-{}", Display(simple, self.1))
             }
@@ -531,13 +581,7 @@ impl fmt::Display for Display<'_> {
             }
             CfgEntry::All(sub_cfgs, _) => self.display_sub_cfgs(fmt, sub_cfgs.as_slice(), " and "),
 
-            CfgEntry::Bool(v, _) => {
-                if *v {
-                    fmt.write_str("everywhere")
-                } else {
-                    fmt.write_str("nowhere")
-                }
-            }
+            CfgEntry::Bool(v, _) => display_bool(fmt, *v),
 
             &CfgEntry::NameValue { name, value, .. } => {
                 let human_readable = match (*name, value) {
