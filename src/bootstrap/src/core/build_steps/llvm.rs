@@ -147,7 +147,6 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
     // Try to download LLVM from CI, if possible
     let llvm_ci = builder.ensure(LlvmFromCi { target });
     if let Some(llvm) = llvm_ci {
-        // Just a sanity check that the downloaded LLVM has the correct version
         return Some(llvm.output);
     }
 
@@ -256,7 +255,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
         return None;
     }
 
-    let ci_llvm = builder.config.maybe_download_ci_llvm()?;
+    let ci_llvm = builder.config.maybe_download_host_ci_llvm()?;
     let link_shared = if !builder.config.dry_run() {
         let link_type = t!(
             std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),

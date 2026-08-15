@@ -272,7 +272,7 @@ impl Config {
 
     /// Attempts to download LLVM from CI for the **host target**.
     /// Returns a path to the downloaded and extracted directory.
-    pub(crate) fn maybe_download_ci_llvm(&self) -> Option<PathBuf> {
+    pub(crate) fn maybe_download_host_ci_llvm(&self) -> Option<PathBuf> {
         // Never try to download CI LLVM during unit tests.
         if cfg!(test) {
             return None;
