@@ -714,7 +714,7 @@ to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
 renaming a dependency.
 For example, `//@ aux-crate: foo=bar.rs` will compile
-`auxiliary/bar.rs` and make it available under then name `foo` within the test.
+`auxiliary/bar.rs` and make it available under the name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
 It is also possible to
 specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
