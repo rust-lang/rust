@@ -1624,7 +1624,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     ),
                                 );
                                 if let Some(dotdot_span) = dotdot_span {
-                                    err.tool_only_span_suggestion(
+                                    err.span_suggestion_hidden(
                                         *dotdot_span,
                                         format!("include `{field}` in the pattern"),
                                         format!("{field}, .."),
