@@ -639,8 +639,22 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 last: all_indices.rev().find(|v| needs_disc(*v)).unwrap(),
             };
 
-            let count =
-                (niche_variants.last.index() as u128 - niche_variants.start.index() as u128) + 1;
+            let embedded_payload = {
+                let embedded = niche_variants.last;
+                let layout = &variant_layouts[embedded];
+                if let BackendRepr::Scalar(Scalar::Initialized { valid_range, .. }) =
+                    layout.backend_repr
+                    && layout.field_offsets.len() == 1
+                    && layout.field_offsets[FieldIdx::new(0)] == Size::ZERO
+                {
+                    Some((embedded, valid_range.end - valid_range.start + 1))
+                } else {
+                    None
+                }
+            };
+
+            let count = (niche_variants.last.index() as u128 - niche_variants.start.index() as u128)
+                + embedded_payload.map_or(1, |(_, states)| states);
 
             // Use the largest niche in the largest variant.
             let niche = variant_layouts[largest_variant_index].largest_niche?;
@@ -655,6 +669,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
 
                 layout.largest_niche = None;
+
+                if embedded_payload.is_some_and(|(embedded, _)| i == embedded) {
+                    // Its payload lives in the tag, so its own layout is unused.
+                    return true;
+                }
 
                 if layout.size <= niche_offset {
                     // This variant will fit before the niche.
@@ -731,6 +750,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         untagged_variant: largest_variant_index,
                         niche_variants,
                         niche_start,
+                        embedded_payload,
                     },
                     tag_field: FieldIdx::new(0),
                     variants: variant_layouts,

@@ -138,7 +138,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Return the cast value, and the index.
                 index.0
             }
-            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, .. } => {
                 let tag_val = tag_val.to_scalar();
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
@@ -298,7 +298,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             abi::Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, .. },
                 tag: tag_layout,
                 tag_field,
                 ..

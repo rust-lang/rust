@@ -229,6 +229,10 @@ pub enum TagEncoding {
         untagged_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,
         niche_start: u128,
+        /// If set, the last variant in `niche_variants` has an additional
+        /// scalar payload field at offset 0 that is stored in the niche
+        /// encoding (the "embedded payload" optimization).
+        embedded_payload: Option<(VariantIdx, u128)>,
     },
 }
 

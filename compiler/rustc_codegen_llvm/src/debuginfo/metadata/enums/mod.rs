@@ -406,7 +406,7 @@ fn compute_discriminant_value<'ll, 'tcx>(
             enum_type_and_layout.ty.discriminant_for_variant(cx.tcx, variant_index).unwrap().val,
         ),
         &Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, untagged_variant },
+            tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, untagged_variant, .. },
             tag,
             ..
         } => {

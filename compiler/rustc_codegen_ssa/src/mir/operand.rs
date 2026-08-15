@@ -519,7 +519,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 };
                 bx.intcast(tag_imm, cast_to, signed)
             }
-            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, .. } => {
                 // Cast to an integer so we don't have to treat a pointer as a
                 // special case.
                 let (tag, tag_llty) = match tag_scalar.primitive() {

@@ -1116,7 +1116,7 @@ where
                     // dereferenceable.
                     Variants::Multiple {
                         tag_encoding:
-                            TagEncoding::Niche { untagged_variant, niche_variants, niche_start },
+                            TagEncoding::Niche { untagged_variant, niche_variants, niche_start, .. },
                         tag_field,
                         variants,
                         ..

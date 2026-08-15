@@ -497,7 +497,7 @@ pub(super) fn codegen_tag_value<'tcx, V>(
             Some((tag_field, imm))
         }
         Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
+            tag_encoding: TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start, .. },
             tag_field,
             ..
         } => {

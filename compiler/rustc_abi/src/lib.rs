@@ -2030,6 +2030,10 @@ pub enum TagEncoding<VariantIdx: Idx> {
         /// This is inbounds of the type of the niche field
         /// (not sign-extended, i.e., all bits beyond the niche field size are 0).
         niche_start: u128,
+        /// The last `niche_variants` variant stores its payload in the tag:
+        /// `(variant, value_count)`. It must be a scalar with a primitive
+        /// field at offset 0. Its tag is `niche_start + (i - niche_variants.start) + payload`.
+        embedded_payload: Option<(VariantIdx, u128)>,
     },
 }
 

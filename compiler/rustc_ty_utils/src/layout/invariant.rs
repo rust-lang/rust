@@ -297,7 +297,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             }
         }
         Variants::Multiple { variants, tag, tag_encoding, .. } => {
-            if let TagEncoding::Niche { niche_start, untagged_variant, niche_variants } =
+            if let TagEncoding::Niche { niche_start, untagged_variant, niche_variants, .. } =
                 tag_encoding
             {
                 let niche_size = tag.size(cx);
