@@ -1,0 +1,37 @@
+error[E0004]: non-exhaustive patterns: type `&!` is non-empty
+  --> $DIR/always-inhabited-union-ref.rs:24:11
+   |
+LL |     match uninhab_ref() {
+   |           ^^^^^^^^^^^^^
+   |
+   = note: the matched value is of type `&!`
+   = note: references are always considered inhabited
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match uninhab_ref() {
+LL +         _ => todo!(),
+LL +     }
+   |
+
+error[E0004]: non-exhaustive patterns: type `Foo` is non-empty
+  --> $DIR/always-inhabited-union-ref.rs:28:11
+   |
+LL |     match uninhab_union() {
+   |           ^^^^^^^^^^^^^^^
+   |
+note: `Foo` defined here
+  --> $DIR/always-inhabited-union-ref.rs:11:11
+   |
+LL | pub union Foo {
+   |           ^^^
+   = note: the matched value is of type `Foo`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match uninhab_union() {
+LL +         _ => todo!(),
+LL +     }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

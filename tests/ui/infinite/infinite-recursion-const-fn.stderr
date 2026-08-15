@@ -1,0 +1,645 @@
+error[E0080]: reached the configured maximum number of stack frames
+  --> $DIR/infinite-recursion-const-fn.rs:9:18
+   |
+LL | const ARR: [i32; a()] = [5; 6];
+   |                  ^^^ evaluation of `ARR::{constant#0}` failed inside this call
+   |
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `b`
+  --> $DIR/infinite-recursion-const-fn.rs:7:5
+   |
+LL |     a()
+   |     ^^^
+note: inside `a`
+  --> $DIR/infinite-recursion-const-fn.rs:4:5
+   |
+LL |     b()
+   |     ^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

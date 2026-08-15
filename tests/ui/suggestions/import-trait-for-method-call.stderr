@@ -1,0 +1,35 @@
+error[E0599]: no method named `finish` found for struct `DefaultHasher` in the current scope
+  --> $DIR/import-trait-for-method-call.rs:6:7
+   |
+LL |     h.finish()
+   |       ^^^^^^ method not found in `DefaultHasher`
+   |
+  --> $SRC_DIR/core/src/hash/mod.rs:LL:COL
+   |
+   = note: the method is available for `DefaultHasher` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Hasher` which provides `finish` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use std::hash::Hasher;
+   |
+
+error[E0599]: the method `as_ref` exists for reference `&dyn Bar`, but its trait bounds were not satisfied
+  --> $DIR/import-trait-for-method-call.rs:15:7
+   |
+LL | trait Bar {}
+   | --------- doesn't satisfy `dyn Bar: AsRef<_>`
+...
+LL |     x.as_ref();
+   |       ^^^^^^ method cannot be called on `&dyn Bar` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `dyn Bar: AsRef<_>`
+           which is required by `&dyn Bar: AsRef<_>`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `as_ref`, perhaps you need to implement it:
+           candidate #1: `AsRef`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,20 @@
+[package]
+name = "rustdoc-tool"
+version = "0.0.0"
+edition = "2024"
+
+# Cargo adds a number of paths to the dylib search path on windows, which results in
+# the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+# rustdoc a different name.
+[[bin]]
+name = "rustdoc_tool_binary"
+path = "main.rs"
+
+[dependencies]
+rustdoc = { path = "../../librustdoc" }
+
+[features]
+max_level_info = ["rustdoc/max_level_info"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true

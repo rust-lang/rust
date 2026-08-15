@@ -1,0 +1,136 @@
+- // MIR for `opt2` before EarlyOtherwiseBranch
++ // MIR for `opt2` after EarlyOtherwiseBranch
+  
+  fn opt2(_1: Option2<u32>, _2: Option2<u32>, _3: Option2<u32>) -> u32 {
+      debug x => _1;
+      debug y => _2;
+      debug z => _3;
+      let mut _0: u32;
+      let mut _4: (Option2<u32>, Option2<u32>, Option2<u32>);
+      let mut _5: Option2<u32>;
+      let mut _6: Option2<u32>;
+      let mut _7: Option2<u32>;
+      let mut _8: isize;
+      let mut _9: isize;
+      let mut _10: isize;
+      let mut _11: isize;
+      let mut _12: isize;
+      let mut _13: isize;
+      let mut _14: isize;
+      let _15: u32;
+      let _16: u32;
+      let _17: u32;
++     let mut _18: isize;
++     let mut _19: bool;
+      scope 1 {
+          debug a => _15;
+          debug b => _16;
+          debug c => _17;
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = move _1;
+          StorageLive(_6);
+          _6 = move _2;
+          StorageLive(_7);
+          _7 = move _3;
+          _4 = (move _5, move _6, move _7);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          _14 = discriminant((_4.0: Option2<u32>));
+-         switchInt(move _14) -> [0: bb2, 1: bb4, 2: bb6, otherwise: bb12];
++         _18 = discriminant((_4.1: Option2<u32>));
++         _19 = Ne(copy _14, move _18);
++         switchInt(move _19) -> [0: bb10, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 1_u32;
+-         goto -> bb11;
++         goto -> bb8;
+      }
+  
+      bb2: {
+-         _9 = discriminant((_4.1: Option2<u32>));
+-         switchInt(move _9) -> [0: bb3, otherwise: bb1];
+-     }
+- 
+-     bb3: {
+          _8 = discriminant((_4.2: Option2<u32>));
+-         switchInt(move _8) -> [0: bb10, otherwise: bb1];
++         switchInt(move _8) -> [0: bb7, otherwise: bb1];
+      }
+  
+-     bb4: {
+-         _11 = discriminant((_4.1: Option2<u32>));
+-         switchInt(move _11) -> [1: bb5, otherwise: bb1];
+-     }
+- 
+-     bb5: {
++     bb3: {
+          _10 = discriminant((_4.2: Option2<u32>));
+-         switchInt(move _10) -> [1: bb9, otherwise: bb1];
++         switchInt(move _10) -> [1: bb6, otherwise: bb1];
+      }
+  
+-     bb6: {
+-         _13 = discriminant((_4.1: Option2<u32>));
+-         switchInt(move _13) -> [2: bb7, otherwise: bb1];
+-     }
+- 
+-     bb7: {
++     bb4: {
+          _12 = discriminant((_4.2: Option2<u32>));
+-         switchInt(move _12) -> [2: bb8, otherwise: bb1];
++         switchInt(move _12) -> [2: bb5, otherwise: bb1];
+      }
+  
+-     bb8: {
++     bb5: {
+          _0 = const 3_u32;
+-         goto -> bb11;
++         goto -> bb8;
+      }
+  
+-     bb9: {
++     bb6: {
+          _0 = const 2_u32;
+-         goto -> bb11;
++         goto -> bb8;
+      }
+  
+-     bb10: {
++     bb7: {
+          StorageLive(_15);
+          _15 = copy (((_4.0: Option2<u32>) as Some).0: u32);
+          StorageLive(_16);
+          _16 = copy (((_4.1: Option2<u32>) as Some).0: u32);
+          StorageLive(_17);
+          _17 = copy (((_4.2: Option2<u32>) as Some).0: u32);
+          _0 = const 0_u32;
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageDead(_15);
+-         goto -> bb11;
++         goto -> bb8;
+      }
+  
+-     bb11: {
++     bb8: {
+          StorageDead(_4);
+          return;
+      }
+  
+-     bb12: {
++     bb9: {
+          unreachable;
++     }
++ 
++     bb10: {
++         switchInt(copy _14) -> [0: bb2, 1: bb3, 2: bb4, otherwise: bb9];
+      }
+  }
+  

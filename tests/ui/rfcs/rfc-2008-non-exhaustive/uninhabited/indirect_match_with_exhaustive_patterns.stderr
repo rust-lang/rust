@@ -1,0 +1,79 @@
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedEnum` is non-empty
+  --> $DIR/indirect_match_with_exhaustive_patterns.rs:22:11
+   |
+LL |     match x {}
+   |           ^
+   |
+note: `IndirectUninhabitedEnum` defined here
+  --> $DIR/auxiliary/uninhabited.rs:32:1
+   |
+LL | pub struct IndirectUninhabitedEnum(UninhabitedEnum);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the matched value is of type `IndirectUninhabitedEnum`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
+
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedStruct` is non-empty
+  --> $DIR/indirect_match_with_exhaustive_patterns.rs:26:11
+   |
+LL |     match x {}
+   |           ^
+   |
+note: `IndirectUninhabitedStruct` defined here
+  --> $DIR/auxiliary/uninhabited.rs:34:1
+   |
+LL | pub struct IndirectUninhabitedStruct(UninhabitedStruct);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the matched value is of type `IndirectUninhabitedStruct`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
+
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedTupleStruct` is non-empty
+  --> $DIR/indirect_match_with_exhaustive_patterns.rs:30:11
+   |
+LL |     match x {}
+   |           ^
+   |
+note: `IndirectUninhabitedTupleStruct` defined here
+  --> $DIR/auxiliary/uninhabited.rs:36:1
+   |
+LL | pub struct IndirectUninhabitedTupleStruct(UninhabitedTupleStruct);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the matched value is of type `IndirectUninhabitedTupleStruct`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
+
+error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedVariants` is non-empty
+  --> $DIR/indirect_match_with_exhaustive_patterns.rs:36:11
+   |
+LL |     match x {}
+   |           ^
+   |
+note: `IndirectUninhabitedVariants` defined here
+  --> $DIR/auxiliary/uninhabited.rs:38:1
+   |
+LL | pub struct IndirectUninhabitedVariants(UninhabitedVariants);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the matched value is of type `IndirectUninhabitedVariants`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

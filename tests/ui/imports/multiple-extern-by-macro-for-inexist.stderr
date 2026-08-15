@@ -1,0 +1,29 @@
+error[E0463]: can't find crate for `non_existent`
+  --> $DIR/multiple-extern-by-macro-for-inexist.rs:5:1
+   |
+LL | extern crate non_existent;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0259]: the name `non_existent` is defined multiple times
+  --> $DIR/multiple-extern-by-macro-for-inexist.rs:10:9
+   |
+LL | extern crate non_existent;
+   | -------------------------- previous import of the extern crate `non_existent` here
+...
+LL |         extern crate std as non_existent;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `non_existent` reimported here
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: `non_existent` must be defined only once in the type namespace of this module
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can use `as` to change the binding name of the import
+   |
+LL |         extern crate std as other_non_existent;
+   |                             ++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0259, E0463.
+For more information about an error, try `rustc --explain E0259`.

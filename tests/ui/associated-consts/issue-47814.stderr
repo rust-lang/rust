@@ -1,0 +1,16 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/issue-47814.rs:8:32
+   |
+LL |     pub fn to_buffer() -> [u8; Self::LENGTH] {
+   |                                ^^^^
+   |
+note: not a concrete type
+  --> $DIR/issue-47814.rs:5:10
+   |
+LL | impl<'a> ArpIPv4<'a> {
+   |          ^^^^^^^^^^^
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,43 @@
+// This test checks that the font weight is correctly applied.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
+assert-css: ("//*[@class='rust item-decl']//a[normalize-space()='Alias']", {"font-weight": "400"})
+assert-css: (
+    "//*[@class='structfield section-header']//a[normalize-space()='Alias']",
+    {"font-weight": "400"},
+)
+assert-css: ("#method\.a_method > .code-header", {"font-weight": "600"})
+assert-css: ("#associatedtype\.X > .code-header", {"font-weight": "600"})
+assert-css: ("#associatedconstant\.Y > .code-header", {"font-weight": "600"})
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeType.html"
+assert-css: (".top-doc .docblock p", {"font-weight": "400"}, ALL)
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+assert-css: (".impl-items .method > .code-header", {"font-weight": "600"}, ALL)
+
+go-to: "file://" + |DOC_PATH| + "/lib2/trait.Trait.html"
+
+// This is a complex selector, so here's how it works:
+//
+// * //pre[@class='rust item-decl'] — selects item-decl code block
+// * /code — selects immediate child with tag code
+// * /a[@class='constant'] — selects immediate child with tag a and class constant
+// * //text() — selects child that is text node
+// * /parent::* — selects immediate parent of the text node (the * means it can be any tag)
+//
+// This uses '/parent::*' as a proxy for the style of the text node.
+// We can't just select the '<a>' because intermediate tags could be added.
+assert-count: (
+    "//pre[@class='rust item-decl']/code/a[@class='constant']//text()/parent::*",
+    1,
+)
+assert-css: (
+    "//pre[@class='rust item-decl']/code/a[@class='constant']//text()/parent::*",
+    {"font-weight": "400"},
+)
+
+assert-count: (".methods .associatedtype", 1)
+assert-css: (".methods .associatedtype", {"font-weight": "600"})
+assert-count: (".methods .constant", 1)
+assert-css: (".methods .constant", {"font-weight": "600"})
+assert-css: (".methods .method > .code-header", {"font-weight": "600"})

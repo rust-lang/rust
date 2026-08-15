@@ -1,0 +1,4 @@
+test_vld3
+test_vld4
+neon::load_tests
+neon::store_tests

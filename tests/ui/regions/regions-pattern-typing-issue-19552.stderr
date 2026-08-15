@@ -1,0 +1,22 @@
+error[E0597]: `line` does not live long enough
+  --> $DIR/regions-pattern-typing-issue-19552.rs:5:14
+   |
+LL |     let line = String::new();
+   |         ---- binding `line` declared here
+LL |     match [&*line] {
+   |              ^^^^ borrowed value does not live long enough
+LL |         [ word ] => { assert_static(word); }
+   |                       ------------------- argument requires that `line` is borrowed for `'static`
+LL |     }
+LL | }
+   | - `line` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/regions-pattern-typing-issue-19552.rs:1:21
+   |
+LL | fn assert_static<T: 'static>(_t: T) {}
+   |                     ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

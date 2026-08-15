@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found `cat`
+  --> $DIR/class-implements-bad-trait.rs:1:7
+   |
+LL | class cat : nonexistent {
+   |       ^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

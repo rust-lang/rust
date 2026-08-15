@@ -1,0 +1,12 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/single-line.rs:2:52
+   |
+LL |     let _ = match Some(42) { Some(x) => x, None => "" };
+   |             --------------              -          ^^ expected integer, found `&str`
+   |             |                           |
+   |             |                           this is found to be of type `{integer}`
+   |             `match` arms have incompatible types
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

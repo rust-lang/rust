@@ -1,0 +1,59 @@
+error[E0308]: mismatched types
+  --> $DIR/unboxing-needing-parenthases-issue-132924.rs:5:29
+   |
+LL |     let test: Option<i32> = x;
+   |               -----------   ^ expected `Option<i32>`, found `Box<Option<{integer}>>`
+   |               |
+   |               expected due to this
+   |
+   = note: expected enum `Option<i32>`
+            found struct `Box<Option<{integer}>>`
+help: consider unboxing the value
+   |
+LL |     let test: Option<i32> = *x;
+   |                             +
+
+error[E0308]: mismatched types
+  --> $DIR/unboxing-needing-parenthases-issue-132924.rs:8:31
+   |
+LL |     let test: Option<i32> = { x as Box<Option<i32>> };
+   |                               ^^^^^^^^^^^^^^^^^^^^^ expected `Option<i32>`, found `Box<Option<i32>>`
+   |
+   = note: expected enum `Option<_>`
+            found struct `Box<Option<_>>`
+help: consider unboxing the value
+   |
+LL |     let test: Option<i32> = { *(x as Box<Option<i32>>) };
+   |                               ++                     +
+
+error[E0308]: mismatched types
+  --> $DIR/unboxing-needing-parenthases-issue-132924.rs:12:39
+   |
+LL |     let test: Option<i32> = if true { x as Box<Option<i32>> } else { None };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^ expected `Option<i32>`, found `Box<Option<i32>>`
+   |
+   = note: expected enum `Option<_>`
+            found struct `Box<Option<_>>`
+help: consider unboxing the value
+   |
+LL |     let test: Option<i32> = if true { *(x as Box<Option<i32>>) } else { None };
+   |                                       ++                     +
+
+error[E0308]: mismatched types
+  --> $DIR/unboxing-needing-parenthases-issue-132924.rs:16:29
+   |
+LL |     let test: Option<i32> = x as std::rc::Rc<Option<i32>>;
+   |               -----------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<i32>`, found `Rc<Option<i32>>`
+   |               |
+   |               expected due to this
+   |
+   = note: expected enum `Option<_>`
+            found struct `Rc<Option<_>>`
+help: consider dereferencing the type
+   |
+LL |     let test: Option<i32> = *(x as std::rc::Rc<Option<i32>>);
+   |                             ++                             +
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

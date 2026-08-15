@@ -1,0 +1,19 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/expr-type-error-plus-sized-obligation.rs:7:9
+   |
+LL |       let (a, _) = if true {
+   |  __________________-
+LL | |         produce()
+   | |         --------- expected because of this
+LL | |     } else {
+LL | |         (Vec::new(), &[])
+   | |         ^^^^^^^^^^^^^^^^^ expected `(Vec<Foo>, &[Bar])`, found `(Vec<_>, &[_; 0])`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected tuple `(Vec<Foo>, &[Bar])`
+              found tuple `(Vec<_>, &[_; 0])`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

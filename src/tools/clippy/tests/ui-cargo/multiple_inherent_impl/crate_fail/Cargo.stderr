@@ -1,0 +1,57 @@
+error: multiple implementations of this structure
+  --> src/main.rs:11:1
+   |
+11 | / impl S {
+12 | |     //^ Must trigger
+13 | |     fn second() {}
+14 | | }
+   | |_^
+   |
+note: first implementation here
+  --> src/main.rs:7:1
+   |
+ 7 | / impl S {
+ 8 | |     fn first() {}
+ 9 | | }
+   | |_^
+note: the lint level is defined here
+  --> src/main.rs:2:9
+   |
+ 2 | #![deny(clippy::multiple_inherent_impl)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple implementations of this structure
+  --> src/main.rs:22:5
+   |
+22 | /     impl T {
+23 | |         //^ Must trigger
+24 | |         fn second() {}
+25 | |     }
+   | |_____^
+   |
+note: first implementation here
+  --> src/main.rs:16:1
+   |
+16 | / impl T {
+17 | |     fn first() {}
+18 | | }
+   | |_^
+
+error: multiple implementations of this structure
+  --> src/main.rs:36:1
+   |
+36 | / impl b::T {
+37 | |     //^ Must trigger
+38 | |     fn second() {}
+39 | | }
+   | |_^
+   |
+note: first implementation here
+  --> src/b.rs:4:1
+   |
+ 4 | / impl T {
+ 5 | |     fn first() {}
+ 6 | | }
+   | |_^
+
+error: could not compile `crate_fail` (bin "crate_fail") due to 3 previous errors

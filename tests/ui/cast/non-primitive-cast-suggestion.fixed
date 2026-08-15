@@ -1,0 +1,23 @@
+//! Test that casting non-primitive types with `as` is rejected with a helpful suggestion.
+//!
+//! You can't use `as` to cast between non-primitive types, even if they have
+//! `From`/`Into` implementations. The compiler should suggest using `From::from()`
+//! or `.into()` instead, and rustfix should be able to apply the suggestion.
+
+//@ run-rustfix
+
+#[derive(Debug)]
+struct Foo {
+    x: isize,
+}
+
+impl From<Foo> for isize {
+    fn from(val: Foo) -> isize {
+        val.x
+    }
+}
+
+fn main() {
+    let _ = isize::from(Foo { x: 1 });
+    //~^ ERROR non-primitive cast: `Foo` as `isize` [E0605]
+}

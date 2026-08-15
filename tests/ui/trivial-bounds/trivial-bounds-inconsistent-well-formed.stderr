@@ -1,0 +1,16 @@
+warning: trait bound Vec<str>: Debug does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-well-formed.rs:7:30
+   |
+LL | pub fn foo() where Vec<str>: Debug, str: Copy {
+   |                              ^^^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: trait bound str: Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-well-formed.rs:7:42
+   |
+LL | pub fn foo() where Vec<str>: Debug, str: Copy {
+   |                                          ^^^^
+
+warning: 2 warnings emitted
+

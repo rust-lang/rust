@@ -1,0 +1,37 @@
+// Checks sidebar resizing
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+set-window-size: (1280, 600)
+wait-for-property: (".sidebar", {"clientWidth": 200}, [NEAR])
+
+// resize past maximum (don't grow past 500)
+drag-and-drop: ((205, 100), (600, 100))
+wait-for-property: (".sidebar", {"clientWidth": 500}, [NEAR])
+
+// make the window small enough that the sidebar has to shrink
+set-window-size: (750, 600)
+wait-for-property: (".sidebar", {"clientWidth": 350}, [NEAR])
+
+// grow the window again to make the sidebar bigger
+set-window-size: (1280, 600)
+wait-for-property: (".sidebar", {"clientWidth": 500}, [NEAR])
+
+// make the window small enough that the sidebar has to shrink
+set-window-size: (750, 600)
+wait-for-property: (".sidebar", {"clientWidth": 350}, [NEAR])
+assert-local-storage: {"rustdoc-desktop-sidebar-width": "350"}
+set-window-size: (400, 600)
+wait-for-css: (".sidebar", {"display": "block", "left": "-1000px"})
+assert-local-storage: {"rustdoc-desktop-sidebar-width": "350"}
+
+// grow the window again to make the sidebar bigger
+set-window-size: (1280, 600)
+wait-for-property: (".sidebar", {"clientWidth": 500}, [NEAR])
+
+// shrink back down again, then reload the page
+// the "desired size" is a bit of remembered implicit state,
+// and rustdoc tries to minimize things like this
+set-window-size: (800, 600)
+wait-for-property: (".sidebar", {"clientWidth": 400}, [NEAR])
+reload:
+set-window-size: (1280, 600)
+wait-for-property: (".sidebar", {"clientWidth": 400}, [NEAR])

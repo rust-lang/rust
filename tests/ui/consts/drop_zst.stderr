@@ -1,0 +1,11 @@
+error[E0493]: destructor of `S` cannot be evaluated at compile-time
+  --> $DIR/drop_zst.rs:14:9
+   |
+LL |     let s = S;
+   |         ^ the destructor for this type cannot be evaluated in constant functions
+LL | }
+   | - value is dropped here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0493`.

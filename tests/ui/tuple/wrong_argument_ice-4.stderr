@@ -1,0 +1,27 @@
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/wrong_argument_ice-4.rs:2:5
+   |
+LL |       (|| {})(|| {
+   |  _____^^^^^^^_-
+LL | |
+LL | |         let b = 1;
+LL | |     });
+   | |_____- unexpected argument of type `{closure@$DIR/wrong_argument_ice-4.rs:2:13: 2:15}`
+   |
+note: closure defined here
+  --> $DIR/wrong_argument_ice-4.rs:2:6
+   |
+LL |     (|| {})(|| {
+   |      ^^
+help: remove the extra argument
+   |
+LL -     (|| {})(|| {
+LL -
+LL -         let b = 1;
+LL -     });
+LL +     (|| {})();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0057`.

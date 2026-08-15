@@ -1,0 +1,40 @@
+error[E0599]: no method named `frobnicate_ref` found for struct `CppRef<T>` in the current scope
+  --> $DIR/arbitrary_self_types_not_allow_call_with_no_deref.rs:29:17
+   |
+LL | struct CppRef<T>(T);
+   | ---------------- method `frobnicate_ref` not found for this struct
+...
+LL |     foo_cpp_ref.frobnicate_ref();
+   |                 ^^^^^^^^^^^^^^
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     foo_cpp_ref.0.frobnicate_ref();
+   |                 ++
+help: there is a method `frobnicate_cpp_ref` with a similar name
+   |
+LL |     foo_cpp_ref.frobnicate_cpp_ref();
+   |                            ++++
+
+error[E0599]: no method named `frobnicate_self` found for struct `CppRef<T>` in the current scope
+  --> $DIR/arbitrary_self_types_not_allow_call_with_no_deref.rs:32:17
+   |
+LL | struct CppRef<T>(T);
+   | ---------------- method `frobnicate_self` not found for this struct
+...
+LL |     foo_cpp_ref.frobnicate_self(); // would desugar to `Foo::frobnicate_self(*foo_cpp_ref)`
+   |                 ^^^^^^^^^^^^^^^
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     foo_cpp_ref.0.frobnicate_self(); // would desugar to `Foo::frobnicate_self(*foo_cpp_ref)`
+   |                 ++
+help: there is a method `frobnicate_cpp_ref` with a similar name
+   |
+LL -     foo_cpp_ref.frobnicate_self(); // would desugar to `Foo::frobnicate_self(*foo_cpp_ref)`
+LL +     foo_cpp_ref.frobnicate_cpp_ref(); // would desugar to `Foo::frobnicate_self(*foo_cpp_ref)`
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

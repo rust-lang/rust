@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `<T as Base>::Base<C>: Functor<C>` is not satisfied
+  --> $DIR/method-chain-gats.rs:18:20
+   |
+LL |     input.fmap(f1).fmap(f2)
+   |                    ^^^^ the trait `Functor<C>` is not implemented for `<T as Base>::Base<C>`
+   |
+note: the method call chain might not have had the expected associated types
+  --> $DIR/method-chain-gats.rs:13:29
+   |
+LL | fn fmap2<T, A, B, C>(input: T, f1: impl Fn(A) -> B, f2: impl Fn(B) -> C) -> T::Base<C>
+   |                             ^ `Base::Base` is `<T as Base>::Base<_>` here
+note: required by a bound in `Functor::fmap`
+  --> $DIR/method-chain-gats.rs:10:24
+   |
+LL |     fn fmap<B>(self, f: impl Fn(A) -> B) -> Self::Base<B>
+   |        ---- required by a bound in this associated function
+LL |     where
+LL |         Self::Base<B>: Functor<B>;
+   |                        ^^^^^^^^^^ required by this bound in `Functor::fmap`
+help: consider further restricting the associated type
+   |
+LL |     T::Base<B>: Functor<B, Base<C> = T::Base<C>>, <T as Base>::Base<C>: Functor<C>
+   |                                                   ++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

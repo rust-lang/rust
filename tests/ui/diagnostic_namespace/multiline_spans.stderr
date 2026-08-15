@@ -1,0 +1,64 @@
+error: there is no parameter `unknown` on trait `MultiLine`
+  --> $DIR/multiline_spans.rs:7:43
+   |
+LL | ...                   {unknown}")]
+   |                        ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+note: the lint level is defined here
+  --> $DIR/multiline_spans.rs:2:9
+   |
+LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(malformed_diagnostic_format_literals)]` implied by `#[deny(unknown_or_malformed_diagnostic_attributes)]`
+
+error: there is no parameter `unknown` on trait `MultiLine2`
+  --> $DIR/multiline_spans.rs:12:60
+   |
+LL | ...                   multiline string {unknown}")]
+   |                                         ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error: there is no parameter `unknown` on trait `MultiLine3`
+  --> $DIR/multiline_spans.rs:17:23
+   |
+LL |     multiline string {unknown}")]
+   |                       ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error: there is no parameter `unknown` on trait `MultiLine4`
+  --> $DIR/multiline_spans.rs:27:23
+   |
+LL |     multiline string {unknown}")]
+   |                       ^^^^^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/multiline_spans.rs:33:47
+   |
+LL | ...                   {Self:+}")]
+   |                            ^^ remove this format specifier
+
+error: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/multiline_spans.rs:38:64
+   |
+LL | ...                   multiline string {Self:X}")]
+   |                                             ^^ remove this format specifier
+
+error: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/multiline_spans.rs:43:27
+   |
+LL |     multiline string {Self:#}")]
+   |                           ^^ remove this format specifier
+
+error: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/multiline_spans.rs:53:27
+   |
+LL |     multiline string {Self:?}")]
+   |                           ^^ remove this format specifier
+
+error: aborting due to 8 previous errors
+

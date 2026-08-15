@@ -1,0 +1,16 @@
+error[E0618]: expected function, found `bool`
+  --> $DIR/issue-51055-missing-semicolon-between-call-and-tuple.rs:4:5
+   |
+LL |   fn vindictive() -> bool { true }
+   |   ----------------------- `vindictive` defined here returns `bool`
+...
+LL |       vindictive()
+   |       -^^^^^^^^^^^- help: consider using a semicolon here to finish the statement: `;`
+   |  _____|
+   | |
+LL | |     (1, 2)
+   | |__________- call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

@@ -1,0 +1,16 @@
+error[E0597]: `bar` does not live long enough
+  --> $DIR/feature-self-return-type.rs:21:18
+   |
+LL |     let x = {
+   |         - borrow later stored here
+LL |         let bar = 22;
+   |             --- binding `bar` declared here
+LL |         Foo::new(&bar).await
+   |                  ^^^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `bar` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,20 @@
+error[E0499]: cannot borrow `r` as mutable more than once at a time
+  --> $DIR/only-inhabited-variant.rs:16:17
+   |
+LL |     let mut f = || {
+   |                 -- first mutable borrow occurs here
+LL |         let Err((ref mut a, _)) = r;
+   |                                   - first borrow occurs due to use of `r` in closure
+...
+LL |     let mut g = || {
+   |                 ^^ second mutable borrow occurs here
+LL |
+LL |         let Err((_, ref mut b)) = r;
+   |                                   - second borrow occurs due to use of `r` in closure
+...
+LL |     f();
+   |     - first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

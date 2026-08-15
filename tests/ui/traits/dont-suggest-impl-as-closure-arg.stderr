@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/dont-suggest-impl-as-closure-arg.rs:3:17
+   |
+LL |     let c = |f: dyn Fn()| f();
+   |                 ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     let c = |f: &dyn Fn()| f();
+   |                 +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

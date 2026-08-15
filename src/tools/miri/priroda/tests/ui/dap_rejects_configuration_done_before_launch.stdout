@@ -1,0 +1,11 @@
+Content-Length: {CONTENT_LENGTH}
+
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsSingleThreadExecutionRequests":true},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":2,"type":"event","event":"initialized"}Content-Length: {CONTENT_LENGTH}
+
+{"seq":3,"type":"response","request_seq":2,"success":false,"message":"configurationDone requires launch","command":"configurationDone","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"disconnect","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":5,"type":"event","event":"terminated","body":null}

@@ -1,0 +1,46 @@
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-34784-match-on-non-int-raw-ptr.rs:9:9
+   |
+LL | const C: *const u8 = &0;
+   | ------------------ constant defined here
+...
+LL |         C => {}
+   |         ^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-34784-match-on-non-int-raw-ptr.rs:16:9
+   |
+LL | const C_INNER: (*const u8, u8) = (C, 0);
+   | ------------------------------ constant defined here
+...
+LL |         C_INNER => {}
+   |         ^^^^^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-34784-match-on-non-int-raw-ptr.rs:27:9
+   |
+LL | const D: *const [u8; 4] = b"abcd";
+   | ----------------------- constant defined here
+...
+LL |         D => {}
+   |         ^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon
+  --> $DIR/issue-34784-match-on-non-int-raw-ptr.rs:32:9
+   |
+LL | const STR: *const str = "abcd";
+   | --------------------- constant defined here
+...
+LL |         STR => {}
+   |         ^^^ can't be used in patterns
+   |
+   = note: see https://github.com/rust-lang/rust/issues/70861 for details
+
+error: aborting due to 4 previous errors
+

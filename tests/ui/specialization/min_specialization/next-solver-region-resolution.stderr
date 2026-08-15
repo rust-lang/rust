@@ -1,0 +1,34 @@
+error[E0391]: cycle detected when coherence checking all impls of trait `Foo`
+  --> $DIR/next-solver-region-resolution.rs:7:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+   |
+   = note: ...which requires building specialization graph of trait `Foo`...
+note: ...which requires computing whether impls specialize one another...
+  --> $DIR/next-solver-region-resolution.rs:13:1
+   |
+LL | / impl<'a, T> Foo for &'a T
+LL | | where
+LL | |     Self::Item: 'a,
+   | |___________________^
+note: ...which requires computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:19:1: 21:21>`...
+  --> $DIR/next-solver-region-resolution.rs:19:1
+   |
+LL | / impl<'a, T> Foo for &T
+LL | | where
+LL | |     Self::Item: Baz,
+   | |____________________^
+   = note: ...which again requires coherence checking all impls of trait `Foo`, completing the cycle
+note: cycle used when checking that `<impl at $DIR/next-solver-region-resolution.rs:13:1: 15:20>` is well-formed
+  --> $DIR/next-solver-region-resolution.rs:13:1
+   |
+LL | / impl<'a, T> Foo for &'a T
+LL | | where
+LL | |     Self::Item: 'a,
+   | |___________________^
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

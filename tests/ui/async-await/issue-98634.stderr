@@ -1,0 +1,39 @@
+error[E0271]: expected `callback` to return `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
+  --> $DIR/issue-98634.rs:45:23
+   |
+LL |         StructAsync { callback }.await;
+   |                       ^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
+   |
+note: required by a bound in `StructAsync`
+  --> $DIR/issue-98634.rs:9:35
+   |
+LL | pub struct StructAsync<F: Fn() -> Pin<Box<dyn Future<Output = ()>>>> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StructAsync`
+
+error[E0271]: expected `callback` to return `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
+  --> $DIR/issue-98634.rs:45:9
+   |
+LL |         StructAsync { callback }.await;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
+   |
+note: required by a bound in `StructAsync`
+  --> $DIR/issue-98634.rs:9:35
+   |
+LL | pub struct StructAsync<F: Fn() -> Pin<Box<dyn Future<Output = ()>>>> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StructAsync`
+
+error[E0271]: expected `callback` to return `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
+  --> $DIR/issue-98634.rs:45:34
+   |
+LL |         StructAsync { callback }.await;
+   |                                  ^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
+   |
+note: required by a bound in `StructAsync`
+  --> $DIR/issue-98634.rs:9:35
+   |
+LL | pub struct StructAsync<F: Fn() -> Pin<Box<dyn Future<Output = ()>>>> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StructAsync`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

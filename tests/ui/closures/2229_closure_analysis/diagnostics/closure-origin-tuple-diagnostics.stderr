@@ -1,0 +1,22 @@
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
+  --> $DIR/closure-origin-tuple-diagnostics.rs:9:13
+   |
+LL |     let c = || {
+   |             ^^ this closure implements `FnOnce`, not `Fn`
+LL |         let s = s.1;
+   |                 --- closure is `FnOnce` because it moves the variable `s.1` out of its environment
+LL |     };
+LL |     expect_fn(c);
+   |     --------- - the requirement to implement `Fn` derives from here
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `expect_fn`
+  --> $DIR/closure-origin-tuple-diagnostics.rs:5:17
+   |
+LL | fn expect_fn<F: Fn()>(_f: F) {}
+   |                 ^^^^ required by this bound in `expect_fn`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0525`.

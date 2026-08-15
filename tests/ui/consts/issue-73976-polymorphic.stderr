@@ -1,0 +1,29 @@
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/issue-73976-polymorphic.rs:19:37
+   |
+LL | impl<T: 'static> GetTypeId<T> {
+   | -----------------------------
+LL |     pub const VALUE: TypeId = TypeId::of::<T>();
+   |     ----------------------- constant defined here
+...
+LL | const fn check_type_id<T: 'static>() -> bool {
+   |                        - constant depends on this generic parameter
+LL |     matches!(GetTypeId::<T>::VALUE, GetTypeId::<T>::VALUE)
+   |                                     ^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
+
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/issue-73976-polymorphic.rs:30:42
+   |
+LL | impl<T: 'static> GetTypeNameLen<T> {
+   | ----------------------------------
+LL |     pub const VALUE: usize = any::type_name::<T>().len();
+   |     ---------------------- constant defined here
+...
+LL | const fn check_type_name_len<T: 'static>() -> bool {
+   |                              - constant depends on this generic parameter
+LL |     matches!(GetTypeNameLen::<T>::VALUE, GetTypeNameLen::<T>::VALUE)
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0158`.

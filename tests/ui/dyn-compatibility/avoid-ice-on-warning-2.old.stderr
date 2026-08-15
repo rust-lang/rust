@@ -1,0 +1,70 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |             ^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn id<F>(f: dyn Copy) -> usize {
+   |             +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |             ^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn id<F>(f: dyn Copy) -> usize {
+   |             +++
+
+error[E0038]: the trait `Copy` is not dyn compatible
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |             ^^^^ `Copy` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error[E0618]: expected function, found `(dyn Copy + 'static)`
+  --> $DIR/avoid-ice-on-warning-2.rs:12:5
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |          - `f` has type `(dyn Copy + 'static)`
+...
+LL |     f()
+   |     ^--
+   |     |
+   |     call expression requires function
+
+error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |             ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL | fn id<F>(f: impl Copy) -> usize {
+   |             ++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn id<F>(f: &dyn Copy) -> usize {
+   |             ++++
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0038, E0277, E0618.
+For more information about an error, try `rustc --explain E0038`.

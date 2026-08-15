@@ -1,0 +1,11 @@
+// This test ensures that the documentation list markers are correctly placed.
+// It also serves as a regression test for <https://github.com/rust-lang/rust/issues/130622>.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/long_list/index.html"
+show-text: true
+
+// 0.3em
+assert-css: (".docblock li p:not(last-child)", {"margin-bottom": "4.8px"})
+assert-css: (".docblock li p + p:last-child", {"margin-bottom": "0px"})
+// 0.4em
+assert-css: (".docblock li", {"margin-bottom": "6.4px"})

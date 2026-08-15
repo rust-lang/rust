@@ -1,0 +1,47 @@
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:10:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+   |
+   = note: `-D clippy::manual-option-zip` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_option_zip)]`
+
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:16:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:21:13
+   |
+LL |     let _ = None::<i32>.and_then(|a| b.map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `None::<i32>.zip(b)`
+
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:27:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| (b, a)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.zip(a)`
+
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:34:13
+   |
+LL |     let _ = a.and_then(|a| { b.map(|b| (a, b)) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:37:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| { (a, b) }));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:40:13
+   |
+LL |     let _ = a.and_then(|a| { b.map(|b| { (a, b) }) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+
+error: aborting due to 7 previous errors
+

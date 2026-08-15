@@ -1,0 +1,27 @@
+warning: the item `TryFrom` is imported redundantly
+  --> $DIR/use-redundant-prelude-rust-2021.rs:5:5
+   |
+LL | use std::convert::TryFrom;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `TryFrom` is already defined here
+note: the lint level is defined here
+  --> $DIR/use-redundant-prelude-rust-2021.rs:3:9
+   |
+LL | #![warn(redundant_imports)]
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: the item `TryInto` is imported redundantly
+  --> $DIR/use-redundant-prelude-rust-2021.rs:6:5
+   |
+LL | use std::convert::TryInto;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+   |
+   = note: the item `TryInto` is already defined here
+
+warning: 2 warnings emitted
+

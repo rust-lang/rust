@@ -1,0 +1,18 @@
+//@run-rustfix
+
+#![feature(const_trait_impl)]
+struct Foo;
+
+const impl Foo {
+    fn bar() {}
+    const fn baz() {}
+    //~^ ERROR: redundant `const`
+}
+
+const _: () = {
+    Foo::bar();
+    Foo::baz();
+};
+
+fn main() {
+}

@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'f`
+  --> $DIR/span-bug-issue-121414.rs:5:22
+   |
+LL | impl<'a> Bar for Foo<'f> {
+   |                      ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'f` here
+   |
+LL | impl<'f, 'a> Bar for Foo<'f> {
+   |      +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

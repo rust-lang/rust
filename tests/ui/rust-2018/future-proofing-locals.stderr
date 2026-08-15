@@ -1,0 +1,56 @@
+error: imports cannot refer to type parameters
+  --> $DIR/future-proofing-locals.rs:14:9
+   |
+LL |     use T as _;
+   |         ^
+
+error: imports cannot refer to type parameters
+  --> $DIR/future-proofing-locals.rs:15:9
+   |
+LL |     use T::U;
+   |         ^
+
+error: imports cannot refer to type parameters
+  --> $DIR/future-proofing-locals.rs:16:9
+   |
+LL |     use T::*;
+   |         ^
+
+error: imports cannot refer to type parameters
+  --> $DIR/future-proofing-locals.rs:20:9
+   |
+LL |     use T;
+   |         ^
+
+error: imports cannot refer to local variables
+  --> $DIR/future-proofing-locals.rs:26:9
+   |
+LL |     use x as _;
+   |         ^
+
+error: imports cannot refer to local variables
+  --> $DIR/future-proofing-locals.rs:32:9
+   |
+LL |     use x;
+   |         ^
+
+error: imports cannot refer to local variables
+  --> $DIR/future-proofing-locals.rs:38:17
+   |
+LL |             use x;
+   |                 ^
+
+error: imports cannot refer to type parameters
+  --> $DIR/future-proofing-locals.rs:46:10
+   |
+LL |     use {T as _, x};
+   |          ^
+
+error: imports cannot refer to local variables
+  --> $DIR/future-proofing-locals.rs:46:18
+   |
+LL |     use {T as _, x};
+   |                  ^
+
+error: aborting due to 9 previous errors
+

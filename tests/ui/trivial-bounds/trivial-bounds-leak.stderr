@@ -1,0 +1,59 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/trivial-bounds-leak.rs:12:25
+   |
+LL | fn cant_return_str() -> str {
+   |                         ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the return type of a function must have a statically known size
+
+error[E0599]: no method named `test` found for type `i32` in the current scope
+  --> $DIR/trivial-bounds-leak.rs:24:10
+   |
+LL |     3i32.test();
+   |          ^^^^ method not found in `i32`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Foo` defines an item `test`, perhaps you need to implement it
+  --> $DIR/trivial-bounds-leak.rs:4:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/trivial-bounds-leak.rs:25:15
+   |
+LL |     Foo::test(&4i32);
+   |     --------- ^^^^^ the trait `Foo` is not implemented for `i32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/trivial-bounds-leak.rs:4:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/trivial-bounds-leak.rs:26:22
+   |
+LL |     generic_function(5i32);
+   |     ---------------- ^^^^ the trait `Foo` is not implemented for `i32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/trivial-bounds-leak.rs:4:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
+note: required by a bound in `generic_function`
+  --> $DIR/trivial-bounds-leak.rs:29:24
+   |
+LL | fn generic_function<T: Foo>(t: T) {}
+   |                        ^^^ required by this bound in `generic_function`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,31 @@
+error: where clauses are not allowed before the type for type aliases
+  --> $DIR/cfg-attr-issue-138010-2.rs:10:1
+   |
+LL | / where
+LL | |
+LL | |     #[cfg(true)]
+LL | |     Foo: Trait,
+   | |_______________^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+help: move it to the end of the type declaration
+   |
+LL + 
+LL | = Foo
+LL | where
+LL ~     (): Sized, Foo: Trait;
+   |
+
+error: where clauses are not allowed before the type for type aliases
+  --> $DIR/cfg-attr-issue-138010-2.rs:19:1
+   |
+LL | / where
+LL | |
+LL | |     #[cfg(false)]
+LL | |     Foo: Trait,
+   | |_______________^ help: remove this `where`
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+
+error: aborting due to 2 previous errors
+

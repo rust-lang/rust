@@ -1,0 +1,28 @@
+error: imports need to be explicitly named
+  --> $DIR/use-mod.rs:8:6
+   |
+LL | use {self};
+   |      ^^^^
+   |
+help: try renaming it with a name
+   |
+LL | use {self as name};
+   |           +++++++
+
+error[E0252]: the name `bar` is defined multiple times
+  --> $DIR/use-mod.rs:4:5
+   |
+LL |     self,
+   |     ---- previous import of the module `bar` here
+LL |     Bar,
+LL |     self
+   |     ^^^^
+   |     |
+   |     `bar` reimported here
+   |     help: remove unnecessary import
+   |
+   = note: `bar` must be defined only once in the type namespace of this module
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0252`.

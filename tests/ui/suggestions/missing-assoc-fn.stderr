@@ -1,0 +1,26 @@
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `baz`, `bat`
+  --> $DIR/missing-assoc-fn.rs:14:1
+   |
+LL |     fn foo<T: TraitB<Item = A>>(_: T) -> Self;
+   |     ------------------------------------------ `foo` from trait
+LL |     fn bar<T>(_: T) -> Self;
+   |     ------------------------ `bar` from trait
+LL |     fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: Copy;
+   |     ------------------------------------------------------------------- `baz` from trait
+LL |     fn bat<T: TraitB<Item: Copy>>(_: T) -> Self;
+   |     -------------------------------------------- `bat` from trait
+...
+LL | impl TraitA<()> for S {
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `baz`, `bat` in implementation
+
+error[E0046]: not all trait items implemented, missing: `from_iter`
+  --> $DIR/missing-assoc-fn.rs:19:1
+   |
+LL | impl FromIterator<()> for X {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_iter` in implementation
+   |
+   = help: implement the missing item: `fn from_iter<T: IntoIterator<Item = ()>>(_: T) -> Self { todo!() }`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

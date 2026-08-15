@@ -1,0 +1,39 @@
+error[E0392]: type parameter `T` is never used
+  --> $DIR/macro-const-arg-infer.rs:11:10
+   |
+LL | struct A<T>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/macro-const-arg-infer.rs:6:9
+   |
+LL |           _
+   |           ^
+...
+LL | /         y! {
+LL | |             x
+LL | |         }
+   | |_________- in this macro invocation
+   |
+   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/macro-const-arg-infer.rs:6:9
+   |
+LL |           _
+   |           ^ not allowed in type signatures
+...
+LL | /         y! {
+LL | |             x
+LL | |         }
+   | |_________- in this macro invocation
+   |
+   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0121, E0392, E0747.
+For more information about an error, try `rustc --explain E0121`.

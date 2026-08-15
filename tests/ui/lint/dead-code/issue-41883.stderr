@@ -1,0 +1,34 @@
+error: variant `Dead` is never constructed
+  --> $DIR/issue-41883.rs:4:5
+   |
+LL | enum Category {
+   |      -------- variant in this enum
+LL |     Dead,
+   |     ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-41883.rs:1:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: trait `UnusedTrait` is never used
+  --> $DIR/issue-41883.rs:8:7
+   |
+LL | trait UnusedTrait {
+   |       ^^^^^^^^^^^
+
+error: struct `UnusedStruct` is never constructed
+  --> $DIR/issue-41883.rs:14:8
+   |
+LL | struct UnusedStruct;
+   |        ^^^^^^^^^^^^
+
+error: struct `UnusedStruct` is never constructed
+  --> $DIR/issue-41883.rs:24:12
+   |
+LL |     struct UnusedStruct;
+   |            ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

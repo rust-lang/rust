@@ -1,0 +1,38 @@
+- // MIR for `match_u8_i8_fallback` before MatchBranchSimplification
++ // MIR for `match_u8_i8_fallback` after MatchBranchSimplification
+  
+  fn match_u8_i8_fallback(_1: EnumAu8) -> i8 {
+      debug i => _1;
+      let mut _0: i8;
+      let mut _2: u8;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb4, 127: bb3, 128: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const -1_i8;
+          goto -> bb5;
+      }
+  
+      bb2: {
+          _0 = const i8::MIN;
+          goto -> bb5;
+      }
+  
+      bb3: {
+          _0 = const i8::MAX;
+          goto -> bb5;
+      }
+  
+      bb4: {
+          _0 = const 0_i8;
+          goto -> bb5;
+      }
+  
+      bb5: {
+          return;
+      }
+  }
+  

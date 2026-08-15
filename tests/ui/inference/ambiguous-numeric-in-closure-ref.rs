@@ -1,0 +1,14 @@
+// Test for better error message when numeric type is ambiguous in closure parameter with reference
+
+//@ run-rustfix
+
+fn main() {
+    let _ = (0..10).filter(|&v| v.pow(2) > 0);
+    //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
+    //~| SUGGESTION &i32
+
+    let v = vec![0, 1, 2];
+    let _ = v.iter().filter(|&&v| v.pow(2) > 0);
+    //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
+    //~| SUGGESTION &&i32
+}

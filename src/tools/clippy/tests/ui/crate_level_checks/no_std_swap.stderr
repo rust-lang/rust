@@ -1,0 +1,13 @@
+error: this looks like you are trying to swap `a` and `b`
+  --> tests/ui/crate_level_checks/no_std_swap.rs:10:5
+   |
+LL | /     a = b;
+...  |
+LL | |     b = a;
+   | |_________^ help: try: `core::mem::swap(&mut a, &mut b)`
+   |
+   = note: or maybe you should use `core::mem::replace`?
+   = note: `#[deny(clippy::almost_swapped)]` on by default
+
+error: aborting due to 1 previous error
+

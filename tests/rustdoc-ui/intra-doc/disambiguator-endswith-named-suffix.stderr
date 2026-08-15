@@ -1,0 +1,515 @@
+warning: unmatched disambiguator `struct` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:4:6
+   |
+LL | //! [struct@m!()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
+
+warning: unmatched disambiguator `struct` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:5:6
+   |
+LL | //! [struct@m!{}]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `struct` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:7:6
+   |
+LL | //! [struct@f()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `struct` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:8:6
+   |
+LL | //! [struct@m!]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `enum` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:10:6
+   |
+LL | //! [enum@m!()]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `enum` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:11:6
+   |
+LL | //! [enum@m!{}]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `enum` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:13:6
+   |
+LL | //! [enum@f()]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `enum` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:14:6
+   |
+LL | //! [enum@m!]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `trait` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:16:6
+   |
+LL | //! [trait@m!()]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `trait` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:17:6
+   |
+LL | //! [trait@m!{}]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `trait` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:19:6
+   |
+LL | //! [trait@f()]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `trait` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:20:6
+   |
+LL | //! [trait@m!]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `module` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:22:6
+   |
+LL | //! [module@m!()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `module` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:23:6
+   |
+LL | //! [module@m!{}]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `module` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:25:6
+   |
+LL | //! [module@f()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `module` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:26:6
+   |
+LL | //! [module@m!]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `mod` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:28:6
+   |
+LL | //! [mod@m!()]
+   |      ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `mod` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:29:6
+   |
+LL | //! [mod@m!{}]
+   |      ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `mod` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:31:6
+   |
+LL | //! [mod@f()]
+   |      ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `mod` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:32:6
+   |
+LL | //! [mod@m!]
+   |      ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `const` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:34:6
+   |
+LL | //! [const@m!()]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `const` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:35:6
+   |
+LL | //! [const@m!{}]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: incompatible link kind for `f`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:37:6
+   |
+LL | //! [const@f()]
+   |      ^^^^^^^^^ this link resolved to a function, which is not a constant
+   |
+help: to link to the function, add parentheses
+   |
+LL - //! [const@f()]
+LL + //! [f()]
+   |
+
+warning: unmatched disambiguator `const` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:38:6
+   |
+LL | //! [const@m!]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `constant` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:40:6
+   |
+LL | //! [constant@m!()]
+   |      ^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `constant` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:41:6
+   |
+LL | //! [constant@m!{}]
+   |      ^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: incompatible link kind for `f`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:43:6
+   |
+LL | //! [constant@f()]
+   |      ^^^^^^^^^^^^ this link resolved to a function, which is not a constant
+   |
+help: to link to the function, add parentheses
+   |
+LL - //! [constant@f()]
+LL + //! [f()]
+   |
+
+warning: unmatched disambiguator `constant` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:44:6
+   |
+LL | //! [constant@m!]
+   |      ^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `static` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:46:6
+   |
+LL | //! [static@m!()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `static` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:47:6
+   |
+LL | //! [static@m!{}]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: incompatible link kind for `f`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:49:6
+   |
+LL | //! [static@f()]
+   |      ^^^^^^^^^^ this link resolved to a function, which is not a static
+   |
+help: to link to the function, add parentheses
+   |
+LL - //! [static@f()]
+LL + //! [f()]
+   |
+
+warning: unmatched disambiguator `static` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:50:6
+   |
+LL | //! [static@m!]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `function` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:52:6
+   |
+LL | //! [function@m!()]
+   |      ^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `function` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:53:6
+   |
+LL | //! [function@m!{}]
+   |      ^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `function` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:56:6
+   |
+LL | //! [function@m!]
+   |      ^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `fn` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:58:6
+   |
+LL | //! [fn@m!()]
+   |      ^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `fn` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:59:6
+   |
+LL | //! [fn@m!{}]
+   |      ^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `fn` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:62:6
+   |
+LL | //! [fn@m!]
+   |      ^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `method` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:64:6
+   |
+LL | //! [method@m!()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `method` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:65:6
+   |
+LL | //! [method@m!{}]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `method` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:68:6
+   |
+LL | //! [method@m!]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: incompatible link kind for `m`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:70:6
+   |
+LL | //! [derive@m!()]
+   |      ^^^^^^^^^^^ this link resolved to a macro, which is not a derive macro
+   |
+help: to link to the macro, add an exclamation mark
+   |
+LL - //! [derive@m!()]
+LL + //! [m!!()]
+   |
+
+warning: incompatible link kind for `m`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:71:6
+   |
+LL | //! [derive@m!{}]
+   |      ^^^^^^^^^^^ this link resolved to a macro, which is not a derive macro
+   |
+help: to link to the macro, add an exclamation mark
+   |
+LL - //! [derive@m!{}]
+LL + //! [m!!{}]
+   |
+
+warning: unmatched disambiguator `derive` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:73:6
+   |
+LL | //! [derive@f()]
+   |      ^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: incompatible link kind for `m`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:74:6
+   |
+LL | //! [derive@m!]
+   |      ^^^^^^^^^ this link resolved to a macro, which is not a derive macro
+   |
+help: to link to the macro, add an exclamation mark
+   |
+LL - //! [derive@m!]
+LL + //! [m!!]
+   |
+
+warning: unmatched disambiguator `type` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:76:6
+   |
+LL | //! [type@m!()]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `type` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:77:6
+   |
+LL | //! [type@m!{}]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `type` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:79:6
+   |
+LL | //! [type@f()]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `type` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:80:6
+   |
+LL | //! [type@m!]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `value` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:82:6
+   |
+LL | //! [value@m!()]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `value` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:83:6
+   |
+LL | //! [value@m!{}]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `value` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:86:6
+   |
+LL | //! [value@m!]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `macro` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:91:6
+   |
+LL | //! [macro@f()]
+   |      ^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `prim` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:94:6
+   |
+LL | //! [prim@m!()]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `prim` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:95:6
+   |
+LL | //! [prim@m!{}]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `prim` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:97:6
+   |
+LL | //! [prim@f()]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `prim` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:98:6
+   |
+LL | //! [prim@m!]
+   |      ^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `primitive` and suffix `!()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:100:6
+   |
+LL | //! [primitive@m!()]
+   |      ^^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `primitive` and suffix `!{}`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:101:6
+   |
+LL | //! [primitive@m!{}]
+   |      ^^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `primitive` and suffix `()`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:103:6
+   |
+LL | //! [primitive@f()]
+   |      ^^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: unmatched disambiguator `primitive` and suffix `!`
+  --> $DIR/disambiguator-endswith-named-suffix.rs:104:6
+   |
+LL | //! [primitive@m!]
+   |      ^^^^^^^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+warning: 61 warnings emitted
+

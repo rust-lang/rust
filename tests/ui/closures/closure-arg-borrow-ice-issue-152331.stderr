@@ -1,0 +1,32 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/closure-arg-borrow-ice-issue-152331.rs:2:5
+   |
+LL |     h2(|_: (), _: (), _: (), x: &_| {});
+   |     ^^^----------------------------^^^^
+   |     |  |
+   |     |  found signature defined here
+   |     expected due to this
+   |
+   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
+              found closure signature `fn((), (), (), &_) -> _`
+note: required by a bound in `h2`
+  --> $DIR/closure-arg-borrow-ice-issue-152331.rs:8:8
+   |
+LL | fn h2<F>(_: F)
+   |    -- required by a bound in this function
+LL | where
+LL |     F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())),
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `h2`
+help: consider adjusting the signature so it borrows its arguments
+   |
+LL |     h2(|_: &(), _: (), _: &(), x: &_| {});
+   |            +              +
+help: consider adjusting the signature so it does not borrow its argument
+   |
+LL -     h2(|_: (), _: (), _: (), x: &_| {});
+LL +     h2(|_: (), _: (), _: (), x: _| {});
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0631`.

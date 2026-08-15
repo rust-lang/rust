@@ -1,0 +1,10 @@
+[package]
+name = "cross-lang-integer-normalization-not-abort"
+version = "0.1.0"
+edition = "2021"
+
+# Not a member of the parent `sanitizer-cfi-build-std-clang` workspace so it can
+# be built with different `RUSTFLAGS` (i.e., integer normalization).
+[workspace]
+members = ["."]
+resolver = "2"

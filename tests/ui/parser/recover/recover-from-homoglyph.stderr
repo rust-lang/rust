@@ -1,0 +1,23 @@
+error: unknown start of token: \u{37e}
+  --> $DIR/recover-from-homoglyph.rs:2:17
+   |
+LL |     println!("");
+   |                 ^
+   |
+help: Unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it is not
+   |
+LL -     println!("");
+LL +     println!("");
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/recover-from-homoglyph.rs:3:20
+   |
+LL |     let x: usize = ();
+   |            -----   ^^ expected `usize`, found `()`
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/E0223.rs:8:14
+   |
+LL |     let foo: MyTrait::X;
+   |              ^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let foo: MyTrait::X;
+LL +     let foo: <MyStruct as MyTrait>::X;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

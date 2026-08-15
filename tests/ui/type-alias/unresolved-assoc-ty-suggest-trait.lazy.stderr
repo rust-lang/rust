@@ -1,0 +1,41 @@
+error[E0220]: associated type `Assoc` not found for `T`
+  --> $DIR/unresolved-assoc-ty-suggest-trait.rs:9:22
+   |
+LL | type AssocOf<T> = T::Assoc;
+   |                      ^^^^^ there is an associated type `Assoc` in the trait `Trait`
+   |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | type AssocOf<T: Trait> = T::Assoc;
+   |               +++++++
+
+error[E0220]: associated type `Assok` not found for `T`
+  --> $DIR/unresolved-assoc-ty-suggest-trait.rs:13:22
+   |
+LL | type AssokOf<T> = T::Assok;
+   |                      ^^^^^ there is a similarly named associated type `Assoc` in the trait `Trait`
+   |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | type AssokOf<T: Trait> = T::Assok;
+   |               +++++++
+help: ...and changing the associated type name
+   |
+LL - type AssokOf<T> = T::Assok;
+LL + type AssokOf<T> = T::Assoc;
+   |
+
+error[E0220]: associated type `Proj` not found for `T`
+  --> $DIR/unresolved-assoc-ty-suggest-trait.rs:22:21
+   |
+LL | type ProjOf<T> = T::Proj;
+   |                     ^^^^ there is an associated type `Proj` in the trait `Parametrized`
+   |
+help: consider restricting type parameter `T` with trait `Parametrized`
+   |
+LL | type ProjOf<T: Parametrized</* 'a, T, N */>> = T::Proj;
+   |              ++++++++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

@@ -1,0 +1,85 @@
+error[E0425]: cannot find type `E` in this scope
+  --> $DIR/disjoint-spans-issue-151607.rs:8:24
+   |
+LL | struct B;
+   | --------- similarly named struct `B` defined here
+...
+LL | fn foo(g: F, y: F, e: &E) {
+   |                        ^
+   |
+help: a struct with a similar name exists
+   |
+LL - fn foo(g: F, y: F, e: &E) {
+LL + fn foo(g: F, y: F, e: &B) {
+   |
+help: you might be missing a type parameter
+   |
+LL | fn foo<E>(g: F, y: F, e: &E) {
+   |       +++
+
+error[E0425]: cannot find value `E` in this scope
+  --> $DIR/disjoint-spans-issue-151607.rs:10:18
+   |
+LL |     foo(B, g, D, E, F, G)
+   |                  ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     foo(B, g, D, E, F, G)
+LL +     foo(B, g, D, e, F, G)
+   |
+help: consider importing one of these constants
+   |
+LL + use std::f128::consts::E;
+   |
+LL + use std::f16::consts::E;
+   |
+LL + use std::f32::consts::E;
+   |
+LL + use std::f64::consts::E;
+   |
+
+error[E0425]: cannot find value `G` in this scope
+  --> $DIR/disjoint-spans-issue-151607.rs:10:24
+   |
+LL |     foo(B, g, D, E, F, G)
+   |                        ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     foo(B, g, D, E, F, G)
+LL +     foo(B, g, D, E, F, g)
+   |
+help: you might be missing a const parameter
+   |
+LL | fn foo<const G: /* Type */>(g: F, y: F, e: &E) {
+   |       +++++++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 6 arguments were supplied
+  --> $DIR/disjoint-spans-issue-151607.rs:10:5
+   |
+LL |     foo(B, g, D, E, F, G)
+   |     ^^^ -     -  - unexpected argument #4
+   |         |     |
+   |         |     unexpected argument #3 of type `D`
+   |         unexpected argument #1 of type `B`
+   |
+note: function defined here
+  --> $DIR/disjoint-spans-issue-151607.rs:8:4
+   |
+LL | fn foo(g: F, y: F, e: &E) {
+   |    ^^^             -----
+help: consider borrowing here
+   |
+LL |     foo(B, g, D, E, F, &G)
+   |                        +
+help: remove the extra arguments
+   |
+LL -     foo(B, g, D, E, F, G)
+LL +     foo(, g, F, G)
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0061, E0425.
+For more information about an error, try `rustc --explain E0061`.

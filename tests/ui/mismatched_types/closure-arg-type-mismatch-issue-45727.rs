@@ -1,0 +1,14 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[current] run-rustfix
+fn main() {
+    let _ = (-10..=10).find(|x: i32| x.signum() == 0);
+    //[current]~^ ERROR type mismatch in closure arguments
+    //[next]~^^ ERROR: expected an `FnMut(&{integer})` closure, found
+    //[next]~| ERROR: type mismatch resolving `<{closure@closure-arg-type-mismatch-issue-45727.rs:6:29} as FnOnce<(&{integer},)>>::Output == bool`
+    let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
+    //[current]~^ ERROR type mismatch in closure arguments
+    //[next]~^^ ERROR: expected an `FnMut(&{integer})` closure, found
+    //[next]~| ERROR: type mismatch resolving `<{closure@closure-arg-type-mismatch-issue-45727.rs:10:29} as FnOnce<(&{integer},)>>::Output == bool`
+}

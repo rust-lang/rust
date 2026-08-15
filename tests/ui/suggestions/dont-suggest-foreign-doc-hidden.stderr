@@ -1,0 +1,87 @@
+error[E0425]: cannot find type `Foo` in this scope
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:11:16
+   |
+LL | pub fn test(_: Foo) {}
+   |                ^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use local::Foo;
+   |
+
+error[E0425]: cannot find type `Bar` in this scope
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:14:17
+   |
+LL | pub fn test2(_: Bar) {}
+   |                 ^^^ not found in this scope
+
+error[E0425]: cannot find type `Baz` in this scope
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:17:17
+   |
+LL | pub fn test3(_: Baz) {}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use hidden_struct::Baz;
+   |
+
+error[E0425]: cannot find type `Quux` in this scope
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:20:17
+   |
+LL | pub fn test4(_: Quux) {}
+   |                 ^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use hidden_struct::Quux;
+   |
+
+error[E0277]: the trait bound `i32: Marker` is not satisfied
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:28:13
+   |
+LL |     test5::<i32>();
+   |             ^^^ the trait `Marker` is not implemented for `i32`
+   |
+help: the following other types implement trait `Marker`
+  --> $DIR/auxiliary/hidden-struct.rs:31:1
+   |
+LL | impl Marker for Option<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Option<u32>`
+...
+LL | impl Marker for Baz {}
+   | ^^^^^^^^^^^^^^^^^^^ `Baz`
+LL | impl Marker for Quux {}
+   | ^^^^^^^^^^^^^^^^^^^^ `Quux`
+note: required by a bound in `test5`
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:23:13
+   |
+LL | fn test5<T: hidden_struct::Marker>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `test5`
+
+error[E0277]: the trait bound `i32: Marker` is not satisfied
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:31:13
+   |
+LL |     test6::<i32>();
+   |             ^^^ the trait `Marker` is not implemented for `i32`
+   |
+help: the following other types implement trait `Marker`
+  --> $DIR/auxiliary/hidden-struct.rs:31:1
+   |
+LL | impl Marker for Option<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Option<u32>`
+...
+LL | impl Marker for Baz {}
+   | ^^^^^^^^^^^^^^^^^^^ `Baz`
+LL | impl Marker for Quux {}
+   | ^^^^^^^^^^^^^^^^^^^^ `Quux`
+note: required by a bound in `test6`
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:25:13
+   |
+LL | fn test6<T: hidden_struct::library::Marker>() {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `test6`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

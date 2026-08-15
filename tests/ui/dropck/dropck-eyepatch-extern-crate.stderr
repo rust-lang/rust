@@ -1,0 +1,37 @@
+error[E0597]: `c_shortest` does not live long enough
+  --> $DIR/dropck-eyepatch-extern-crate.rs:46:23
+   |
+LL |         let (mut dt, mut dr, c_shortest): (Dt<_>, Dr<_>, Cell<_>);
+   |                              ---------- binding `c_shortest` declared here
+...
+LL |         dt = Dt("dt", &c_shortest);
+   |                       ^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     -
+   |     |
+   |     `c_shortest` dropped here while still borrowed
+   |     borrow might be used here, when `dt` is dropped and runs the `Drop` code for type `Dt`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `c_shortest` does not live long enough
+  --> $DIR/dropck-eyepatch-extern-crate.rs:68:32
+   |
+LL |         let (mut pt, mut pr, c_shortest): (Pt<_, _>, Pr<_>, Cell<_>);
+   |                              ---------- binding `c_shortest` declared here
+...
+LL |         pt = Pt("pt", &c_long, &c_shortest);
+   |                                ^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     -
+   |     |
+   |     `c_shortest` dropped here while still borrowed
+   |     borrow might be used here, when `pt` is dropped and runs the `Drop` code for type `Pt`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

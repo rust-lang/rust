@@ -1,0 +1,117 @@
+// MIR for `f` after built
+
+fn f() -> () {
+    let mut _0: ();
+    let mut _1: !;
+    let _2: std::string::String;
+    let _6: ();
+    let mut _7: std::string::String;
+    scope 1 {
+        debug _a => _2;
+        let _3: i32;
+        scope 2 {
+            debug _b => _3;
+            let _4: std::string::String;
+            scope 3 {
+                debug _c => _4;
+                let _5: std::string::String;
+                scope 4 {
+                    debug _d => _5;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = String::new() -> [return: bb1, unwind: bb17];
+    }
+
+    bb1: {
+        FakeRead(ForLet(None), _2);
+        StorageLive(_3);
+        _3 = const 12_i32;
+        FakeRead(ForLet(None), _3);
+        StorageLive(_4);
+        _4 = String::new() -> [return: bb2, unwind: bb16];
+    }
+
+    bb2: {
+        FakeRead(ForLet(None), _4);
+        StorageLive(_5);
+        _5 = String::new() -> [return: bb3, unwind: bb15];
+    }
+
+    bb3: {
+        FakeRead(ForLet(None), _5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = move _4;
+        _6 = std::mem::drop::<String>(move _7) -> [return: bb4, unwind: bb13];
+    }
+
+    bb4: {
+        StorageDead(_7);
+        StorageDead(_6);
+        drop(_5) -> [return: bb5, unwind: bb15];
+    }
+
+    bb5: {
+        StorageDead(_5);
+        drop(_4) -> [return: bb6, unwind: bb16];
+    }
+
+    bb6: {
+        StorageDead(_4);
+        drop(_2) -> [return: bb7, unwind: bb17];
+    }
+
+    bb7: {
+        StorageDead(_2);
+        tailcall g();
+    }
+
+    bb8: {
+        drop(_5) -> [return: bb9, unwind: bb15];
+    }
+
+    bb9: {
+        StorageDead(_5);
+        drop(_4) -> [return: bb10, unwind: bb16];
+    }
+
+    bb10: {
+        StorageDead(_4);
+        StorageDead(_3);
+        drop(_2) -> [return: bb11, unwind: bb17];
+    }
+
+    bb11: {
+        StorageDead(_2);
+        unreachable;
+    }
+
+    bb12: {
+        return;
+    }
+
+    bb13 (cleanup): {
+        drop(_7) -> [return: bb14, unwind terminate(cleanup)];
+    }
+
+    bb14 (cleanup): {
+        drop(_5) -> [return: bb15, unwind terminate(cleanup)];
+    }
+
+    bb15 (cleanup): {
+        drop(_4) -> [return: bb16, unwind terminate(cleanup)];
+    }
+
+    bb16 (cleanup): {
+        drop(_2) -> [return: bb17, unwind terminate(cleanup)];
+    }
+
+    bb17 (cleanup): {
+        resume;
+    }
+}

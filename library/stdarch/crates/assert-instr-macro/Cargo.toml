@@ -1,0 +1,17 @@
+[package]
+name = "assert-instr-macro"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+edition = "2024"
+
+[lib]
+proc-macro = true
+test = false
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }
+
+[lints.rust]
+unexpected_cfgs = {level = "warn", check-cfg = ['cfg(optimized)'] }

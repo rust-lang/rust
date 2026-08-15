@@ -1,0 +1,12 @@
+error[E0080]: evaluation panicked: aborted execution: attempted to instantiate uninhabited type `Infallible`
+  --> $DIR/conjure_zst.rs:5:38
+   |
+LL | const INVALID: Infallible = unsafe { mem::conjure_zst() };
+   |                                      ^^^^^^^^^^^^^^^^^^ evaluation of `INVALID` failed inside this call
+   |
+note: inside `conjure_zst::<Infallible>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

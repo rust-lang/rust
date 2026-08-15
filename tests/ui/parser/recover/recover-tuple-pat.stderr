@@ -1,0 +1,8 @@
+error: expected pattern, found `.`
+  --> $DIR/recover-tuple-pat.rs:7:13
+   |
+LL |         (1, .=., 4) => { let _: usize = ""; }
+   |             ^ expected pattern
+
+error: aborting due to 1 previous error
+

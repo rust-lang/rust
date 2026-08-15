@@ -1,0 +1,10 @@
+error: cannot use value of type `!` for inline assembly
+  --> $DIR/issue-87802.rs:11:36
+   |
+LL |         asm!("/* {0} */", out(reg) x);
+   |                                    ^
+   |
+   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: aborting due to 1 previous error
+

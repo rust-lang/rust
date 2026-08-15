@@ -1,0 +1,49 @@
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
+  --> $DIR/unboxed-closures-mutate-upvar.rs:15:9
+   |
+LL |         n += 1;
+   |         ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut n = 0;
+   |         +++
+
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
+  --> $DIR/unboxed-closures-mutate-upvar.rs:32:9
+   |
+LL |         n += 1;
+   |         ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut n = 0;
+   |         +++
+
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
+  --> $DIR/unboxed-closures-mutate-upvar.rs:46:9
+   |
+LL |         n += 1;
+   |         ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut n = 0;
+   |         +++
+
+error[E0594]: cannot assign to `n`, as it is a captured variable in a `Fn` closure
+  --> $DIR/unboxed-closures-mutate-upvar.rs:53:9
+   |
+LL | fn to_fn<A:std::marker::Tuple,F:Fn<A>>(f: F) -> F { f }
+   |                                           - change this to accept `FnMut` instead of `Fn`
+...
+LL |     let mut f = to_fn(move || {
+   |                 ----- ------- in this closure
+   |                 |
+   |                 expects `Fn` instead of `FnMut`
+LL |         n += 1;
+   |         ^^^^^^ cannot assign
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

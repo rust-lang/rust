@@ -1,0 +1,11 @@
+error[E0703]: invalid ABI: found `fictional`
+  --> $DIR/fictional-abi.rs:3:12
+   |
+LL | pub extern "fictional" fn lol() {}
+   |            ^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0703`.

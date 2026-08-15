@@ -1,0 +1,384 @@
+use std::iter;
+
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::{self as hir, find_attr};
+use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_span::Span;
+use tracing::debug;
+
+use crate::query::LocalCrate;
+use crate::traits::specialization_graph;
+use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
+use crate::ty::{self, Ident, Interner, RestrictionKind, Ty, TyCtxt, VisitorResult, try_visit};
+
+/// A trait's definition with type information.
+#[derive(StableHash, Encodable, Decodable)]
+pub struct TraitDef {
+    pub def_id: DefId,
+
+    /// Restrictions on trait implementations.
+    pub impl_restriction: RestrictionKind,
+
+    pub safety: hir::Safety,
+
+    /// Whether this trait is `const`.
+    pub constness: hir::Constness,
+
+    /// If `true`, then this trait had the `#[rustc_paren_sugar]`
+    /// attribute, indicating that it should be used with `Foo()`
+    /// sugar. This is a temporary thing -- eventually any trait will
+    /// be usable with the sugar (or without it).
+    pub paren_sugar: bool,
+
+    pub has_auto_impl: bool,
+
+    /// If `true`, then this trait has the `#[marker]` attribute, indicating
+    /// that all its associated items have defaults that cannot be overridden,
+    /// and thus `impl`s of it are allowed to overlap.
+    pub is_marker: bool,
+
+    /// If `true`, then this trait has the `#[rustc_coinductive]` attribute or
+    /// is an auto trait. This indicates that trait solver cycles involving an
+    /// `X: ThisTrait` goal are accepted.
+    ///
+    /// In the future all traits should be coinductive, but we need a better
+    /// formal understanding of what exactly that means and should probably
+    /// also have already switched to the new trait solver.
+    pub is_coinductive: bool,
+
+    /// If `true`, then this trait has the `#[fundamental]` attribute. This
+    /// affects how conherence computes whether a trait may have trait implementations
+    /// added in the future.
+    pub is_fundamental: bool,
+
+    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(array)]`
+    /// attribute, indicating that editions before 2021 should not consider this trait
+    /// during method dispatch if the receiver is an array.
+    pub skip_array_during_method_dispatch: bool,
+
+    /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(boxed_slice)]`
+    /// attribute, indicating that editions before 2024 should not consider this trait
+    /// during method dispatch if the receiver is a boxed slice.
+    pub skip_boxed_slice_during_method_dispatch: bool,
+
+    /// Used to determine whether the standard library is allowed to specialize
+    /// on this trait.
+    pub specialization_kind: TraitSpecializationKind,
+
+    /// List of functions from `#[rustc_must_implement_one_of]` attribute one of which
+    /// must be implemented.
+    pub must_implement_one_of: Option<Box<[Ident]>>,
+
+    /// Whether the trait should be considered dyn-incompatible, even if it otherwise
+    /// satisfies the requirements to be dyn-compatible.
+    pub force_dyn_incompatible: Option<Span>,
+
+    /// Whether a trait is fully built-in, and any implementation is disallowed.
+    /// This only applies to built-in traits, and is marked via
+    /// `#[rustc_deny_explicit_impl]`.
+    pub deny_explicit_impl: bool,
+}
+
+/// Whether this trait is treated specially by the standard library
+/// specialization lint.
+#[derive(StableHash, PartialEq, Clone, Copy, Encodable, Decodable)]
+pub enum TraitSpecializationKind {
+    /// The default. Specializing on this trait is not allowed.
+    None,
+    /// Specializing on this trait is allowed because it doesn't have any
+    /// methods. For example `Sized` or `FusedIterator`.
+    /// Applies to traits with the `rustc_allow_lifetime_dependent_specialization`
+    /// attribute.
+    Marker,
+    /// Specializing on this trait is allowed because all of the impls of this
+    /// trait are "always applicable". Always applicable means that if
+    /// `X<'x>: T<'y>` for any lifetimes, then `for<'a, 'b> X<'a>: T<'b>`.
+    /// Applies to traits with the `rustc_specialization_trait` attribute.
+    AlwaysApplicable,
+}
+
+#[derive(Default, Debug, StableHash)]
+pub struct TraitImpls {
+    blanket_impls: Vec<DefId>,
+    /// Impls indexed by their simplified self type, for fast lookup.
+    non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
+}
+
+impl TraitImpls {
+    pub fn is_empty(&self) -> bool {
+        self.blanket_impls.is_empty() && self.non_blanket_impls.is_empty()
+    }
+
+    pub fn blanket_impls(&self) -> &[DefId] {
+        self.blanket_impls.as_slice()
+    }
+
+    pub fn non_blanket_impls(&self) -> &FxIndexMap<SimplifiedType, Vec<DefId>> {
+        &self.non_blanket_impls
+    }
+}
+
+impl<'tcx> TraitDef {
+    pub fn ancestors(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        of_impl: DefId,
+    ) -> Result<specialization_graph::Ancestors<'tcx>, ErrorGuaranteed> {
+        specialization_graph::ancestors(tcx, self.def_id, of_impl)
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// Iterate over every impl that could possibly match the self type `self_ty`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn for_each_relevant_impl<R: VisitorResult>(
+        self,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
+        let tcx = self;
+        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        let mut consider_impls_for_simplified_type = |simp| {
+            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
+                for &impl_def_id in impls_for_type {
+                    try_visit!(f(impl_def_id))
+                }
+            }
+
+            R::output()
+        };
+
+        match self_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(..)
+            | ty::Dynamic(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::UnsafeBinder(_) => {
+                let simp = ty::fast_reject::simplify_type(
+                    tcx,
+                    self_ty,
+                    ty::fast_reject::TreatParams::AsRigid,
+                )
+                .unwrap();
+                try_visit!(consider_impls_for_simplified_type(simp));
+            }
+
+            // HACK: For integer and float variables we have to manually look at all impls
+            // which have some integer or float as a self type.
+            ty::Infer(ty::IntVar(_)) => {
+                use ty::IntTy::*;
+                use ty::UintTy::*;
+                // This causes a compiler error if any new integer kinds are added.
+                let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
+                let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
+                let possible_integers = [
+                    // signed integers
+                    ty::SimplifiedType::Int(I8),
+                    ty::SimplifiedType::Int(I16),
+                    ty::SimplifiedType::Int(I32),
+                    ty::SimplifiedType::Int(I64),
+                    ty::SimplifiedType::Int(I128),
+                    ty::SimplifiedType::Int(Isize),
+                    // unsigned integers
+                    ty::SimplifiedType::Uint(U8),
+                    ty::SimplifiedType::Uint(U16),
+                    ty::SimplifiedType::Uint(U32),
+                    ty::SimplifiedType::Uint(U64),
+                    ty::SimplifiedType::Uint(U128),
+                    ty::SimplifiedType::Uint(Usize),
+                ];
+                for simp in possible_integers {
+                    try_visit!(consider_impls_for_simplified_type(simp));
+                }
+            }
+
+            ty::Infer(ty::FloatVar(_)) => {
+                // This causes a compiler error if any new float kinds are added.
+                let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
+                let possible_floats = [
+                    ty::SimplifiedType::Float(ty::FloatTy::F16),
+                    ty::SimplifiedType::Float(ty::FloatTy::F32),
+                    ty::SimplifiedType::Float(ty::FloatTy::F64),
+                    ty::SimplifiedType::Float(ty::FloatTy::F128),
+                ];
+
+                for simp in possible_floats {
+                    try_visit!(consider_impls_for_simplified_type(simp));
+                }
+            }
+
+            // Pattern type might not have a simplified type.
+            ty::Pat(_, _) => {
+                if let Some(simp) = ty::fast_reject::simplify_type(
+                    tcx,
+                    self_ty,
+                    ty::fast_reject::TreatParams::AsRigid,
+                ) {
+                    try_visit!(consider_impls_for_simplified_type(simp));
+                }
+            }
+
+            // This is only for diagnostics and normally ty vars should be handled by the callers.
+            ty::Infer(ty::TyVar(_)) => {
+                for &impl_def_id in trait_impls.non_blanket_impls().values().flatten() {
+                    try_visit!(f(impl_def_id));
+                }
+            }
+
+            // The only traits applying to aliases and placeholders are blanket impls.
+            //
+            // Impls which apply to an alias after normalization are handled by
+            // `assemble_candidates_after_normalizing_self_ty`.
+            ty::Alias(ty::IsRigid::Yes, _) | ty::Placeholder(..) | ty::Error(_) => (),
+            // FIXME(-Znext-solver=no): Need to support aliases not marked as
+            // rigid for the old solver.
+            ty::Alias(ty::IsRigid::No, _) => (),
+
+            // FIXME: These should ideally not exist as a self type. It would be nice for
+            // the builtin auto trait impls of coroutines to instead directly recurse
+            // into the witness.
+            ty::CoroutineWitness(..) => (),
+
+            // These are used in diagnostics or in the old solver.
+            ty::Param(_) | ty::Bound(_, _) => (),
+
+            // These variants should not exist as a self type.
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("unexpected self type: {self_ty:?}");
+            }
+        }
+
+        #[allow(rustc::usage_of_type_ir_traits)]
+        self.for_each_blanket_impl(trait_def_id, f)
+    }
+
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn non_blanket_impls_for_ty(
+        self,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+    ) -> impl Iterator<Item = DefId> {
+        let impls = self.trait_impls_of(trait_def_id);
+        if let Some(simp) =
+            fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
+        {
+            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+                return impls.iter().copied();
+            }
+        }
+
+        [].iter().copied()
+    }
+
+    /// Returns an iterator containing all impls for `trait_def_id`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
+        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
+
+        blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
+    }
+}
+
+/// Query provider for `trait_impls_of`.
+pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
+    let mut impls = TraitImpls::default();
+
+    // Traits defined in the current crate can't have impls in upstream
+    // crates, so we don't bother querying the cstore.
+    if !trait_id.is_local() {
+        for &cnum in tcx.crates(()).iter() {
+            for &(impl_def_id, simplified_self_ty) in
+                tcx.implementations_of_trait((cnum, trait_id)).iter()
+            {
+                if let Some(simplified_self_ty) = simplified_self_ty {
+                    impls
+                        .non_blanket_impls
+                        .entry(simplified_self_ty)
+                        .or_default()
+                        .push(impl_def_id);
+                } else {
+                    impls.blanket_impls.push(impl_def_id);
+                }
+            }
+        }
+    }
+
+    for &impl_def_id in tcx.local_trait_impls(trait_id) {
+        let impl_def_id = impl_def_id.to_def_id();
+
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+
+        if let Some(simplified_self_ty) =
+            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::InstantiateWithInfer)
+        {
+            impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
+        } else {
+            impls.blanket_impls.push(impl_def_id);
+        }
+    }
+
+    impls
+}
+
+/// Query provider for `incoherent_impls`.
+pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
+    if let Some(def_id) = simp.def()
+        && !find_attr!(tcx, def_id, RustcHasIncoherentInherentImpls)
+    {
+        return &[];
+    }
+
+    let mut impls = Vec::new();
+    for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
+        for &impl_def_id in tcx.crate_incoherent_impls((cnum, simp)) {
+            impls.push(impl_def_id)
+        }
+    }
+    debug!(?impls);
+
+    tcx.arena.alloc_slice(&impls)
+}
+
+pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
+    let mut traits = Vec::new();
+    for id in tcx.hir_free_items() {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
+            traits.push(id.owner_id.to_def_id())
+        }
+    }
+
+    tcx.arena.alloc_slice(&traits)
+}
+
+pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
+    let mut trait_impls = Vec::new();
+    for id in tcx.hir_free_items() {
+        if tcx.def_kind(id.owner_id) == (DefKind::Impl { of_trait: true }) {
+            trait_impls.push(id.owner_id.to_def_id())
+        }
+    }
+
+    tcx.arena.alloc_slice(&trait_impls)
+}

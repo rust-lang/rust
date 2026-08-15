@@ -1,0 +1,15 @@
+error: unused import: `std::option`
+  --> $DIR/bad-lint-cap2.rs:6:5
+   |
+LL | use std::option;
+   |     ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/bad-lint-cap2.rs:4:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(unused_imports)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+

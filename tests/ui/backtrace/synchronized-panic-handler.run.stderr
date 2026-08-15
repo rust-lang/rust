@@ -1,0 +1,7 @@
+
+thread '<unnamed>' ($TID) panicked at $DIR/synchronized-panic-handler.rs:12:5:
+oops oh no woe is me
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread '<unnamed>' ($TID) panicked at $DIR/synchronized-panic-handler.rs:12:5:
+oops oh no woe is me

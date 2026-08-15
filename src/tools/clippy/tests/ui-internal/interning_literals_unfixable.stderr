@@ -1,0 +1,43 @@
+error: interning a string literal
+  --> tests/ui-internal/interning_literals_unfixable.rs:10:13
+   |
+LL |     let _ = Symbol::intern("xyz123");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+   = note: `-D clippy::interning-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::interning_literals)]`
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("xyz123");
+LL +     let _ = sym::xyz123;
+   |
+
+error: interning a string literal
+  --> tests/ui-internal/interning_literals_unfixable.rs:12:13
+   |
+LL |     let _ = Symbol::intern("with-dash");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("with-dash");
+LL +     let _ = sym::with_dash;
+   |
+
+error: interning a string literal
+  --> tests/ui-internal/interning_literals_unfixable.rs:14:13
+   |
+LL |     let _ = Symbol::intern("with.dot");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("with.dot");
+LL +     let _ = sym::with_dot;
+   |
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,40 @@
+error[E0308]: mismatched types
+  --> $DIR/alloc-error-handler-bad-signature-1.rs:10:1
+   |
+LL |    #[alloc_error_handler]
+   |    ---------------------- in this attribute macro expansion
+LL | // fn oom(
+LL | ||     info: &Layout,
+LL | || ) -> ()
+   | ||_______- arguments to this function are incorrect
+...  |
+LL | |  }
+   | |__^ expected `&Layout`, found `Layout`
+   |
+note: function defined here
+  --> $DIR/alloc-error-handler-bad-signature-1.rs:10:4
+   |
+LL | fn oom(
+   |    ^^^
+LL |     info: &Layout,
+   |     -------------
+
+error[E0308]: mismatched types
+  --> $DIR/alloc-error-handler-bad-signature-1.rs:10:1
+   |
+LL |    #[alloc_error_handler]
+   |    ---------------------- in this attribute macro expansion
+LL | // fn oom(
+LL | ||     info: &Layout,
+LL | || ) -> ()
+   | ||_______^ expected `!`, found `()`
+...  |
+LL | |  }
+   | |__- expected `!` because of return type
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

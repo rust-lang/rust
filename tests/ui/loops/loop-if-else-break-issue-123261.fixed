@@ -1,0 +1,31 @@
+//@ run-rustfix
+
+#![allow(unused)]
+
+fn main() {
+    let n = 1;
+    let m = 2;
+    let x = 'block: {
+        if n == 0 {
+            break 'block 1; //~ ERROR [E0268]
+        } else {
+            break 'block 2;
+        }
+    };
+
+    let y = 'block: {
+        if n == 0 {
+            break 'block 1; //~ ERROR [E0268]
+        }
+        break 'block 0;
+    };
+
+    let z = 'block: {
+        if n == 0 {
+            if m > 1 {
+                break 'block 3; //~ ERROR [E0268]
+            }
+        }
+        break 'block 1;
+    };
+}

@@ -1,0 +1,22 @@
+<html>
+<body>
+  <a href="#localfrag">test local frag</a>
+  <a href="../outer.html">remote link</a>
+  <a href="../outer.html#somefrag">remote link with fragment</a>
+  <a href="bar.html">this book</a>
+  <a href="bar.html#barfrag">this book with fragment</a>
+  <a href="https://example.com/doesnotexist">external links not validated</a>
+  <a href="redir.html#redirfrag">Redirect</a>
+
+  <!-- testing urlecoded anchor link against a non-urlencoded heading IDs -->
+  <a href="#localfrag-%C3%A8"></a>
+  <a href="bar.html#barfrag-%C3%A8"></a>
+  <a href="redir.html#redirfrag-%C3%A8"></a>
+
+  <h2 id="localfrag">Local</h2>
+
+  <!-- testing urlecoded anchor link against a non-urlencoded heading IDs -->
+  <h2 id="localfrag-è">Local</h2>
+
+</body>
+</html>

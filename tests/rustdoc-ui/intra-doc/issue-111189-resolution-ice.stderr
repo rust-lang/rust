@@ -1,0 +1,21 @@
+error: unresolved link to `rustfmt::skip`
+  --> $DIR/issue-111189-resolution-ice.rs:6:7
+   |
+LL | /// #[rustfmt::skip]
+   |       ^^^^^^^^^^^^^ no item named `rustfmt` in scope
+   |
+note: the lint level is defined here
+  --> $DIR/issue-111189-resolution-ice.rs:4:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(warnings)]`
+
+error: unresolved link to `clippy::whatever`
+  --> $DIR/issue-111189-resolution-ice.rs:8:7
+   |
+LL | /// #[clippy::whatever]
+   |       ^^^^^^^^^^^^^^^^ no item named `clippy` in scope
+
+error: aborting due to 2 previous errors
+

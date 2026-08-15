@@ -1,0 +1,9 @@
+error[E0511]: invalid monomorphization of `simd_add` intrinsic: expected SIMD input type, found non-SIMD `i32`
+  --> $DIR/E0511.rs:9:9
+   |
+LL |         simd_add(0, 1)
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0511`.

@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/issue-51892.rs:14:5
+   |
+LL |     type Type = [u8; std::mem::size_of::<<T as Trait>::Type>()];
+   |     ^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     type Type = [u8; std::mem::size_of::<<T as Trait>::Type>()] where [(); std::mem::size_of::<<T as Trait>::Type>()]:;
+   |                                                                 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

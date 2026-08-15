@@ -1,0 +1,13 @@
+//! The I/O Prelude.
+//!
+//! The purpose of this module is to alleviate imports of many common I/O traits
+//! by adding a glob import to the top of I/O heavy modules:
+//!
+//! ```
+//! # #![feature(core_io)]
+//! # #![allow(unused_imports)]
+//! use core::io::prelude::*;
+//! ```
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use crate::io::{Seek, Write};

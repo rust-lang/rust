@@ -1,0 +1,31 @@
+error[E0792]: expected generic type parameter, found `i32`
+  --> $DIR/issue-77179.rs:8:14
+   |
+LL | type Pointer<T> = impl std::ops::Deref<Target = T>;
+   |              - this generic parameter must be used with a generic type parameter
+...
+LL | fn test() -> Pointer<_> {
+   |              ^^^^^^^^^^
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-77179.rs:8:22
+   |
+LL | fn test() -> Pointer<_> {
+   |                      ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn test() -> Pointer<_> {
+LL + fn test() -> Pointer<i32> {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/issue-77179.rs:19:25
+   |
+LL |     fn bar() -> Pointer<_>;
+   |                         ^ not allowed in type signatures
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0121, E0792.
+For more information about an error, try `rustc --explain E0121`.

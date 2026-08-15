@@ -1,0 +1,21 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/implicit-capture-late.rs:9:55
+   |
+LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
+   |                                                       ^^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/implicit-capture-late.rs:9:36
+   |
+LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
+   |                                    ^^
+
+error: ['a: o]
+  --> $DIR/implicit-capture-late.rs:9:55
+   |
+LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
+   |                                                       ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

@@ -1,0 +1,95 @@
+error[E0308]: mismatched types
+  --> $DIR/wrap-function-local-constructors.rs:14:13
+   |
+LL |     _ = Bar(false);
+   |         --- ^^^^^ expected `Foo`, found `bool`
+   |         |
+   |         arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/wrap-function-local-constructors.rs:12:12
+   |
+LL |     struct Bar(Foo);
+   |            ^^^
+help: try wrapping the expression in `Foo`
+   |
+LL |     _ = Bar(Foo(false));
+   |             ++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/wrap-function-local-constructors.rs:25:13
+   |
+LL |     _ = Bar(false);
+   |         --- ^^^^^ expected `LocalResult<bool>`, found `bool`
+   |         |
+   |         arguments to this struct are incorrect
+   |
+   = note: expected enum `LocalResult<bool>`
+              found type `bool`
+note: tuple struct defined here
+  --> $DIR/wrap-function-local-constructors.rs:23:12
+   |
+LL |     struct Bar(LocalResult<bool>);
+   |            ^^^
+help: try wrapping the expression in `LocalResult::Ok`
+   |
+LL |     _ = Bar(LocalResult::Ok(false));
+   |             ++++++++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/wrap-function-local-constructors.rs:36:13
+   |
+LL |     _ = Bar(false);
+   |         --- ^^^^^ expected `Foo`, found `bool`
+   |         |
+   |         arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/wrap-function-local-constructors.rs:34:12
+   |
+LL |     struct Bar(inner::Foo);
+   |            ^^^
+help: try wrapping the expression in `inner::Foo`
+   |
+LL |     _ = Bar(inner::Foo(false));
+   |             +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/wrap-function-local-constructors.rs:46:17
+   |
+LL |         _ = Bar(false);
+   |             --- ^^^^^ expected `Foo`, found `bool`
+   |             |
+   |             arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/wrap-function-local-constructors.rs:44:16
+   |
+LL |         struct Bar(Foo);
+   |                ^^^
+help: try wrapping the expression in `Foo`
+   |
+LL |         _ = Bar(Foo(false));
+   |                 ++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/wrap-function-local-constructors.rs:57:17
+   |
+LL |         _ = Bar(false);
+   |             --- ^^^^^ expected `Foo`, found `bool`
+   |             |
+   |             arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/wrap-function-local-constructors.rs:55:16
+   |
+LL |         struct Bar(Foo);
+   |                ^^^
+help: try wrapping the expression in `Foo`
+   |
+LL |         _ = Bar(Foo(false));
+   |                 ++++     +
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

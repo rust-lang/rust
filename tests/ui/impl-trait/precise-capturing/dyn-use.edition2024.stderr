@@ -1,0 +1,26 @@
+error: expected identifier, found keyword `dyn`
+  --> $DIR/dyn-use.rs:4:4
+   |
+LL | fn dyn() -> &'static dyn use<> { &() }
+   |    ^^^ expected identifier, found keyword
+   |
+help: escape `dyn` to use it as an identifier
+   |
+LL | fn r#dyn() -> &'static dyn use<> { &() }
+   |    ++
+
+error: `use<...>` precise capturing syntax not allowed in `dyn` trait object bounds
+  --> $DIR/dyn-use.rs:4:26
+   |
+LL | fn dyn() -> &'static dyn use<> { &() }
+   |                          ^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/dyn-use.rs:4:22
+   |
+LL | fn dyn() -> &'static dyn use<> { &() }
+   |                      ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

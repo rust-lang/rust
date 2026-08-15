@@ -1,0 +1,27 @@
+error[E0741]: `CompileTimeSettings` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/refs_check_const_eq-issue-88384.rs:9:21
+   |
+LL | struct Foo<const T: CompileTimeSettings>;
+   |                     ^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the struct
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct CompileTimeSettings {
+   |
+
+error[E0741]: `CompileTimeSettings` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/refs_check_const_eq-issue-88384.rs:12:15
+   |
+LL | impl<const T: CompileTimeSettings> Foo<T> {
+   |               ^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the struct
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct CompileTimeSettings {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0741`.

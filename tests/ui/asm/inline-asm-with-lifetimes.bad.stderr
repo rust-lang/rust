@@ -1,0 +1,17 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/inline-asm-with-lifetimes.rs:17:26
+   |
+LL | fn test<'a: 'a, T>() {
+   |         -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     unsafe {
+LL |         asm!("/* {} */", sym dep::<'a, T> );
+   |                          ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test<'a: 'a, T: 'a>() {
+   |                  ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0309`.

@@ -1,0 +1,21 @@
+warning: unexpected `cfg` condition name: `target_architecture`
+  --> $DIR/compact-names.rs:12:28
+   |
+LL | #[cfg(target(os = "linux", architecture = "arm"))]
+   |                            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(target_architecture, values("arm"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `target_architecture`
+  --> $DIR/compact-names.rs:16:30
+   |
+LL | #[cfg(target(os = "windows", architecture = "arm"))]
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(target_architecture, values("arm"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

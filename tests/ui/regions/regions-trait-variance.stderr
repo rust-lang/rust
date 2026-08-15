@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing local data `*b`
+  --> $DIR/regions-trait-variance.rs:38:5
+   |
+LL |     let bb: &B = &*b;
+   |                  --- `*b` is borrowed here
+LL |     make_a(bb)
+   |     ^^^^^^^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

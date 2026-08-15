@@ -1,0 +1,35 @@
+
+running 2 tests
+test $DIR/non-local-defs-impl.rs - doctest (line 13) - compile ... FAILED
+test $DIR/non-local-defs-impl.rs - doctest (line 25) - compile ... ok
+
+failures:
+
+---- $DIR/non-local-defs-impl.rs - doctest (line 13) stdout ----
+error: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/non-local-defs-impl.rs:20:5
+   |
+LL | fn foo() {
+   | -------- move the `impl` block outside of this function `foo` and up 3 bodies
+LL |     impl Trait for &Local {}
+   |     ^^^^^-----^^^^^^-----
+   |          |          |
+   |          |          `Local` is not local
+   |          `Trait` is not local
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+note: the lint level is defined here
+  --> $DIR/non-local-defs-impl.rs:11:9
+   |
+LL | #![deny(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/non-local-defs-impl.rs - doctest (line 13)
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

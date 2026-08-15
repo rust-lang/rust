@@ -1,0 +1,27 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/failing_goal_with_repeat_expr_anon_const.rs:14:15
+   |
+LL |         [0u8; std::mem::size_of::<Self::A>()] == Self::P;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/failing_goal_with_repeat_expr_anon_const.rs:14:47
+   |
+LL |         [0u8; std::mem::size_of::<Self::A>()] == Self::P;
+   |                                               ^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error[E0277]: can't compare `[u8; std::mem::size_of::<Self::A>()]` with `<Self as T>::A`
+  --> $DIR/failing_goal_with_repeat_expr_anon_const.rs:14:47
+   |
+LL |         [0u8; std::mem::size_of::<Self::A>()] == Self::P;
+   |                                               ^^ no implementation for `[u8; std::mem::size_of::<Self::A>()] == <Self as T>::A`
+   |
+   = help: the trait `PartialEq<<Self as T>::A>` is not implemented for `[u8; std::mem::size_of::<Self::A>()]`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

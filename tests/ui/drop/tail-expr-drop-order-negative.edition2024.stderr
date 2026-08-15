@@ -1,0 +1,16 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/tail-expr-drop-order-negative.rs:8:15
+   |
+LL |     x.replace(std::cell::RefCell::new(123).borrow()).is_some()
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^                   - temporary value is freed at the end of this statement
+   |               |
+   |               creates a temporary value which is freed while still in use
+LL |
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the destructor for type `Option<Ref<'_, i32>>`
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

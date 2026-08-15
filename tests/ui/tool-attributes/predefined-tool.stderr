@@ -1,0 +1,8 @@
+error: tool `rustc` is reserved and cannot be registered
+  --> $DIR/predefined-tool.rs:9:18
+   |
+LL | #![register_tool(rustc)]
+   |                  ^^^^^
+
+error: aborting due to 1 previous error
+

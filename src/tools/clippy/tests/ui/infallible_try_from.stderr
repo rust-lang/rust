@@ -1,0 +1,23 @@
+error: infallible TryFrom impl; consider implementing From instead
+  --> tests/ui/infallible_try_from.rs:8:1
+   |
+LL | impl TryFrom<i8> for MyStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Error = !;
+   |                  - infallible error type
+   |
+   = note: `-D clippy::infallible-try-from` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::infallible_try_from)]`
+
+error: infallible TryFrom impl; consider implementing From instead
+  --> tests/ui/infallible_try_from.rs:16:1
+   |
+LL | impl TryFrom<i16> for MyStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Error = Infallible;
+   |                  ---------- infallible error type
+
+error: aborting due to 2 previous errors
+

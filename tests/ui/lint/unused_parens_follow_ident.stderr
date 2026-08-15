@@ -1,0 +1,31 @@
+error: unnecessary parentheses around function argument
+  --> $DIR/unused_parens_follow_ident.rs:12:16
+   |
+LL |     wrap!(unary(routine()));
+   |                ^         ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused_parens_follow_ident.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     wrap!(unary(routine()));
+LL +     wrap!(unary routine());
+   |
+
+error: unnecessary parentheses around function argument
+  --> $DIR/unused_parens_follow_ident.rs:13:17
+   |
+LL |     wrap!(unary (routine()));
+   |                 ^         ^
+   |
+help: remove these parentheses
+   |
+LL -     wrap!(unary (routine()));
+LL +     wrap!(unary routine());
+   |
+
+error: aborting due to 2 previous errors
+

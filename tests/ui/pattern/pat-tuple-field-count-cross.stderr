@@ -1,0 +1,540 @@
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/pat-tuple-field-count-cross.rs:13:9
+   |
+LL | use declarations_for_tuple_field_count_errors::*;
+   |     -------------------------------------------- the tuple struct `Z1` is imported here
+...
+LL |         Z1 => {}
+   |         ^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `Z1(..)`
+
+error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
+  --> $DIR/pat-tuple-field-count-cross.rs:9:9
+   |
+LL |         Z0() => {}
+   |         ^^^^
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:1:1
+   |
+LL | pub struct Z0;
+   | ------------- `Z0` defined here
+LL | pub struct Z1();
+   | ------------- similarly named tuple struct `Z1` defined here
+   |
+help: use this syntax instead
+   |
+LL -         Z0() => {}
+LL +         Z0 => {}
+   |
+help: a tuple struct with a similar name exists
+   |
+LL -         Z0() => {}
+LL +         Z1() => {}
+   |
+
+error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
+  --> $DIR/pat-tuple-field-count-cross.rs:10:9
+   |
+LL |         Z0(x) => {}
+   |         ^^^^^
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:1:1
+   |
+LL | pub struct Z0;
+   | ------------- `Z0` defined here
+LL | pub struct Z1();
+   | ------------- similarly named tuple struct `Z1` defined here
+   |
+help: use this syntax instead
+   |
+LL -         Z0(x) => {}
+LL +         Z0 => {}
+   |
+help: a tuple struct with a similar name exists
+   |
+LL -         Z0(x) => {}
+LL +         Z1(x) => {}
+   |
+
+error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
+  --> $DIR/pat-tuple-field-count-cross.rs:31:9
+   |
+LL |         E1::Z0() => {}
+   |         ^^^^^^^^
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:15
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |               --  -- similarly named tuple variant `Z1` defined here
+   |               |
+   |               `E1::Z0` defined here
+   |
+help: use this syntax instead
+   |
+LL -         E1::Z0() => {}
+LL +         E1::Z0 => {}
+   |
+help: a tuple variant with a similar name exists
+   |
+LL -         E1::Z0() => {}
+LL +         E1::Z1() => {}
+   |
+
+error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
+  --> $DIR/pat-tuple-field-count-cross.rs:32:9
+   |
+LL |         E1::Z0(x) => {}
+   |         ^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:15
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |               --  -- similarly named tuple variant `Z1` defined here
+   |               |
+   |               `E1::Z0` defined here
+   |
+help: use this syntax instead
+   |
+LL -         E1::Z0(x) => {}
+LL +         E1::Z0 => {}
+   |
+help: a tuple variant with a similar name exists
+   |
+LL -         E1::Z0(x) => {}
+LL +         E1::Z1(x) => {}
+   |
+
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E1::Z1`
+  --> $DIR/pat-tuple-field-count-cross.rs:35:9
+   |
+LL |         E1::Z1 => {}
+   |         ^^^^^^
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:19
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |               --  -- `E1::Z1` defined here
+   |               |
+   |               similarly named unit variant `Z0` defined here
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         E1::Z1() => {}
+   |               ++
+help: a unit variant with a similar name exists
+   |
+LL -         E1::Z1 => {}
+LL +         E1::Z0 => {}
+   |
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 0 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:14:12
+   |
+LL |         Z1(x) => {}
+   |            ^ expected 0 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:2:1
+   |
+LL | pub struct Z1();
+   | ------------- tuple struct has 0 fields
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:18:9
+   |
+LL |         S() => {}
+   |         ^^^ expected 3 fields, found 0
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
+   |
+LL | pub struct S(pub u8, pub u8, pub u8);
+   |              ------  ------  ------ tuple struct has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(_, _, _) => {}
+   |           +++++++
+help: use `..` to ignore all fields
+   |
+LL |         S(..) => {}
+   |           ++
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:19:11
+   |
+LL |         S(1) => {}
+   |           ^ expected 3 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
+   |
+LL | pub struct S(pub u8, pub u8, pub u8);
+   |              ------  ------  ------ tuple struct has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(1, _, _) => {}
+   |            ++++++
+help: use `..` to ignore the rest of the fields
+   |
+LL |         S(1, ..) => {}
+   |            ++++
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:20:11
+   |
+LL |         S(xyz, abc) => {}
+   |           ^^^  ^^^ expected 3 fields, found 2
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
+   |
+LL | pub struct S(pub u8, pub u8, pub u8);
+   |              ------  ------  ------ tuple struct has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(xyz, abc, _) => {}
+   |                   +++
+
+error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:21:11
+   |
+LL |         S(1, 2, 3, 4) => {}
+   |           ^  ^  ^  ^ expected 3 fields, found 4
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:4:14
+   |
+LL | pub struct S(pub u8, pub u8, pub u8);
+   |              ------  ------  ------ tuple struct has 3 fields
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:24:9
+   |
+LL |         M() => {}
+   |         ^^^ expected 3 fields, found 0
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:12
+   |
+LL | pub struct M(
+   |            - tuple struct defined here
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------ tuple struct has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         M(_, _, _) => {}
+   |           +++++++
+help: use `..` to ignore all fields
+   |
+LL |         M(..) => {}
+   |           ++
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:25:11
+   |
+LL |         M(1) => {}
+   |           ^ expected 3 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:12
+   |
+LL | pub struct M(
+   |            - tuple struct defined here
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------ tuple struct has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         M(1, _, _) => {}
+   |            ++++++
+help: use `..` to ignore the rest of the fields
+   |
+LL |         M(1, ..) => {}
+   |            ++++
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:26:11
+   |
+LL |         M(xyz, abc) => {}
+   |           ^^^  ^^^ expected 3 fields, found 2
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:12
+   |
+LL | pub struct M(
+   |            - tuple struct defined here
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------ tuple struct has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         M(xyz, abc, _) => {}
+   |                   +++
+
+error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:27:11
+   |
+LL |         M(1, 2, 3, 4) => {}
+   |           ^  ^  ^  ^ expected 3 fields, found 4
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:5:12
+   |
+LL | pub struct M(
+   |            - tuple struct defined here
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------
+LL |     pub u8,
+   |     ------ tuple struct has 3 fields
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 0 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:36:16
+   |
+LL |         E1::Z1(x) => {}
+   |                ^ expected 0 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:19
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                   -- tuple variant has 0 fields
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:39:9
+   |
+LL |         E1::S() => {}
+   |         ^^^^^^^ expected 3 fields, found 0
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                           --  --  -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E1::S(_, _, _) => {}
+   |               +++++++
+help: use `..` to ignore all fields
+   |
+LL |         E1::S(..) => {}
+   |               ++
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:40:15
+   |
+LL |         E1::S(1) => {}
+   |               ^ expected 3 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                           --  --  -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E1::S(1, _, _) => {}
+   |                ++++++
+help: use `..` to ignore the rest of the fields
+   |
+LL |         E1::S(1, ..) => {}
+   |                ++++
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:41:15
+   |
+LL |         E1::S(xyz, abc) => {}
+   |               ^^^  ^^^ expected 3 fields, found 2
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                           --  --  -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E1::S(xyz, abc, _) => {}
+   |                       +++
+
+error[E0023]: this pattern has 4 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:42:15
+   |
+LL |         E1::S(1, 2, 3, 4) => {}
+   |               ^  ^  ^  ^ expected 3 fields, found 4
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:11:27
+   |
+LL | pub enum E1 { Z0, Z1(), S(u8, u8, u8) }
+   |                           --  --  -- tuple variant has 3 fields
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:46:9
+   |
+LL |         E2::S() => {}
+   |         ^^^^^^^ expected 3 fields, found 0
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
+   |
+LL |     S(u8, u8, u8),
+   |       --  --  -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E2::S(_, _, _) => {}
+   |               +++++++
+help: use `..` to ignore all fields
+   |
+LL |         E2::S(..) => {}
+   |               ++
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:47:15
+   |
+LL |         E2::S(1) => {}
+   |               ^ expected 3 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
+   |
+LL |     S(u8, u8, u8),
+   |       --  --  -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E2::S(1, _, _) => {}
+   |                ++++++
+help: use `..` to ignore the rest of the fields
+   |
+LL |         E2::S(1, ..) => {}
+   |                ++++
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:48:15
+   |
+LL |         E2::S(xyz, abc) => {}
+   |               ^^^  ^^^ expected 3 fields, found 2
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
+   |
+LL |     S(u8, u8, u8),
+   |       --  --  -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E2::S(xyz, abc, _) => {}
+   |                       +++
+
+error[E0023]: this pattern has 4 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:49:15
+   |
+LL |         E2::S(1, 2, 3, 4) => {}
+   |               ^  ^  ^  ^ expected 3 fields, found 4
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:14:7
+   |
+LL |     S(u8, u8, u8),
+   |       --  --  -- tuple variant has 3 fields
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:52:9
+   |
+LL |         E2::M() => {}
+   |         ^^^^^^^ expected 3 fields, found 0
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
+   |
+LL |     M(
+   |     - tuple variant defined here
+LL |         u8,
+   |         --
+LL |         u8,
+   |         --
+LL |         u8,
+   |         -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E2::M(_, _, _) => {}
+   |               +++++++
+help: use `..` to ignore all fields
+   |
+LL |         E2::M(..) => {}
+   |               ++
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:53:15
+   |
+LL |         E2::M(1) => {}
+   |               ^ expected 3 fields, found 1
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
+   |
+LL |     M(
+   |     - tuple variant defined here
+LL |         u8,
+   |         --
+LL |         u8,
+   |         --
+LL |         u8,
+   |         -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E2::M(1, _, _) => {}
+   |                ++++++
+help: use `..` to ignore the rest of the fields
+   |
+LL |         E2::M(1, ..) => {}
+   |                ++++
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:54:15
+   |
+LL |         E2::M(xyz, abc) => {}
+   |               ^^^  ^^^ expected 3 fields, found 2
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
+   |
+LL |     M(
+   |     - tuple variant defined here
+LL |         u8,
+   |         --
+LL |         u8,
+   |         --
+LL |         u8,
+   |         -- tuple variant has 3 fields
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E2::M(xyz, abc, _) => {}
+   |                       +++
+
+error[E0023]: this pattern has 4 fields, but the corresponding tuple variant has 3 fields
+  --> $DIR/pat-tuple-field-count-cross.rs:55:15
+   |
+LL |         E2::M(1, 2, 3, 4) => {}
+   |               ^  ^  ^  ^ expected 3 fields, found 4
+   |
+  ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:15:5
+   |
+LL |     M(
+   |     - tuple variant defined here
+LL |         u8,
+   |         --
+LL |         u8,
+   |         --
+LL |         u8,
+   |         -- tuple variant has 3 fields
+
+error: aborting due to 28 previous errors
+
+Some errors have detailed explanations: E0023, E0530, E0532.
+For more information about an error, try `rustc --explain E0023`.

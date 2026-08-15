@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: aborted execution: attempted to instantiate uninhabited type `!`
+  --> $DIR/assert-type-intrinsics.rs:11:9
+   |
+LL |         MaybeUninit::<!>::uninit().assume_init();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::_BAD1` failed here
+
+error[E0080]: evaluation panicked: aborted execution: attempted to leave type `&i32` uninitialized, which is invalid
+  --> $DIR/assert-type-intrinsics.rs:15:9
+   |
+LL |         intrinsics::assert_mem_uninitialized_valid::<&'static i32>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::_BAD2` failed here
+
+error[E0080]: evaluation panicked: aborted execution: attempted to zero-initialize type `&i32`, which is invalid
+  --> $DIR/assert-type-intrinsics.rs:19:9
+   |
+LL |         intrinsics::assert_zero_valid::<&'static i32>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::_BAD3` failed here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

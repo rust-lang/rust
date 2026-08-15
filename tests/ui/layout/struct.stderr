@@ -1,0 +1,14 @@
+error: backend_repr: Memory { sized: true }
+  --> $DIR/struct.rs:9:1
+   |
+LL | struct AlignedZstPreventsScalar(i16, [i32; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(i32 is ..)
+  --> $DIR/struct.rs:12:1
+   |
+LL | struct AlignedZstButStillScalar(i32, [i16; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,15 @@
+error[E0477]: the type `&()` does not fulfill the required lifetime
+  --> $DIR/gat-wf.rs:13:18
+   |
+LL |     type T<'a> = ();
+   |                  ^^
+   |
+note: type must outlive the lifetime `'a` as defined here
+  --> $DIR/gat-wf.rs:13:12
+   |
+LL |     type T<'a> = ();
+   |            ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0477`.

@@ -1,0 +1,20 @@
+- // MIR for `set_discriminant` before GVN
++ // MIR for `set_discriminant` after GVN
+  
+  fn set_discriminant(_1: &mut Value) -> Value {
+      let mut _0: Value;
+      let mut _2: &Value;
+      let mut _3: i32;
+  
+      bb0: {
+          _2 = get::<Value>(copy _1) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _3 = copy (((*_2) as variant#0).0: i32);
+          discriminant((*_1)) = 1;
+          _0 = Value::V0(copy _3);
+          return;
+      }
+  }
+  

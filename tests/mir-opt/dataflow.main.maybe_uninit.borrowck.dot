@@ -1,0 +1,6 @@
+digraph graph_for_def_id_0_3 {
+    graph[fontname="Courier, monospace"];
+    node[fontname="Courier, monospace"];
+    edge[fontname="Courier, monospace"];
+    bb_0[label=<<table border="1" cellborder="1" cellspacing="0" cellpadding="3" sides="rb"><tr><td colspan="3" sides="tl">bb0</td></tr><tr><td colspan="2" bgcolor="#a0a0a0" sides="tl">MIR</td><td bgcolor="#a0a0a0" sides="tl">STATE</td></tr><tr><td valign="bottom" sides="tl"  align="right"></td><td valign="bottom" sides="tl"  align="left">(on start)</td><td colspan="1" valign="bottom" sides="tl"  align="left">{_0}</td></tr><tr><td valign="top" sides="tl" bgcolor="#f0f0f0" align="right">0</td><td valign="top" sides="tl" bgcolor="#f0f0f0" align="left">_0 = const ()</td><td valign="top" sides="tl" bgcolor="#f0f0f0" align="left"><font color="red">-_0</font></td></tr><tr><td valign="top" sides="tl"  align="right">T</td><td valign="top" sides="tl"  align="left">return</td><td valign="top" sides="tl"  align="left"></td></tr><tr><td valign="bottom" sides="tl" bgcolor="#f0f0f0" align="right"></td><td valign="bottom" sides="tl" bgcolor="#f0f0f0" align="left">(on end)</td><td colspan="1" valign="bottom" sides="tl" bgcolor="#f0f0f0" align="left">{}</td></tr></table>>][shape="none"];
+}

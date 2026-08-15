@@ -1,0 +1,113 @@
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:8:17
+   |
+LL | const VAR_ONE: &'static str = "Test constant #1"; // ERROR: Consider removing 'static.
+   |                -^^^^^^^---- help: consider removing `'static`: `&str`
+   |
+   = note: `-D clippy::redundant-static-lifetimes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_static_lifetimes)]`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:13:21
+   |
+LL | const VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR: Consider removing 'static
+   |                    -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:16:32
+   |
+LL | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
+   |                               -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:16:47
+   |
+LL | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
+   |                                              -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:20:17
+   |
+LL | const VAR_SIX: &'static u8 = &5;
+   |                -^^^^^^^--- help: consider removing `'static`: `&u8`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:23:20
+   |
+LL | const VAR_HEIGHT: &'static Foo = &Foo {};
+   |                   -^^^^^^^---- help: consider removing `'static`: `&Foo`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:26:19
+   |
+LL | const VAR_SLICE: &'static [u8] = b"Test constant #1"; // ERROR: Consider removing 'static.
+   |                  -^^^^^^^----- help: consider removing `'static`: `&[u8]`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:29:19
+   |
+LL | const VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR: Consider removing 'static.
+   |                  -^^^^^^^--------- help: consider removing `'static`: `&(u8, u8)`
+
+error: constants have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:32:19
+   |
+LL | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR: Consider removing 'static.
+   |                  -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:35:25
+   |
+LL | static STATIC_VAR_ONE: &'static str = "Test static #1"; // ERROR: Consider removing 'static.
+   |                        -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:40:29
+   |
+LL | static STATIC_VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR: Consider removing 'static
+   |                            -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:43:25
+   |
+LL | static STATIC_VAR_SIX: &'static u8 = &5;
+   |                        -^^^^^^^--- help: consider removing `'static`: `&u8`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:46:28
+   |
+LL | static STATIC_VAR_HEIGHT: &'static Foo = &Foo {};
+   |                           -^^^^^^^---- help: consider removing `'static`: `&Foo`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:49:27
+   |
+LL | static STATIC_VAR_SLICE: &'static [u8] = b"Test static #3"; // ERROR: Consider removing 'static.
+   |                          -^^^^^^^----- help: consider removing `'static`: `&[u8]`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:52:27
+   |
+LL | static STATIC_VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR: Consider removing 'static.
+   |                          -^^^^^^^--------- help: consider removing `'static`: `&(u8, u8)`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:55:27
+   |
+LL | static STATIC_VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR: Consider removing 'static.
+   |                          -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:58:31
+   |
+LL | static mut STATIC_MUT_SLICE: &'static mut [u32] = &mut [0];
+   |                              -^^^^^^^---------- help: consider removing `'static`: `&mut [u32]`
+
+error: statics have by default a `'static` lifetime
+  --> tests/ui/redundant_static_lifetimes.rs:88:16
+   |
+LL |     static V: &'static u8 = &17;
+   |               -^^^^^^^--- help: consider removing `'static`: `&u8`
+
+error: aborting due to 18 previous errors
+

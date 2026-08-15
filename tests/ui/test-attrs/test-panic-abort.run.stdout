@@ -1,0 +1,33 @@
+
+running 6 tests
+test benchmark ... ok
+test it_exits ... FAILED
+test it_fails ... FAILED
+test it_panics - should panic ... ok
+test it_works ... ok
+test no_residual_environment ... ok
+
+failures:
+
+---- it_exits stdout ----
+---- it_exits stderr ----
+note: got unexpected return code 123
+---- it_fails stdout ----
+hello, world
+testing123
+---- it_fails stderr ----
+testing321
+
+thread 'main' ($TID) panicked at $DIR/test-panic-abort.rs:36:5:
+assertion `left == right` failed
+  left: 2
+ right: 5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    it_exits
+    it_fails
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

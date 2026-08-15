@@ -1,0 +1,23 @@
+- // MIR for `non_freeze` before CopyProp
++ // MIR for `non_freeze` after CopyProp
+  
+  fn non_freeze(_1: T) -> bool {
+      let mut _0: bool;
+      let mut _2: T;
+      let mut _3: &T;
+  
+      bb0: {
+          _2 = copy _1;
+          _3 = &_1;
+          _0 = opaque::<&T>(copy _3) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _0 = opaque::<T>(copy _2) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  

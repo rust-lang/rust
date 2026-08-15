@@ -1,0 +1,9 @@
+error[E0799]: expected type or const parameter, found function `main`
+  --> $DIR/E0799.rs:1:31
+   |
+LL | fn test() -> impl Sized + use<main> {}
+   |                               ^^^^ not a type or const parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0799`.

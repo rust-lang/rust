@@ -1,0 +1,36 @@
+error: First Pass analysis includes:
+  --> $DIR/issue-87378.rs:15:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |        unsafe { u.value }
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing u[(0, 0)] -> Immutable
+  --> $DIR/issue-87378.rs:18:17
+   |
+LL |        unsafe { u.value }
+   |                 ^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/issue-87378.rs:15:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |        unsafe { u.value }
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture u[] -> Immutable
+  --> $DIR/issue-87378.rs:18:17
+   |
+LL |        unsafe { u.value }
+   |                 ^^^^^^^
+
+error: aborting due to 2 previous errors
+

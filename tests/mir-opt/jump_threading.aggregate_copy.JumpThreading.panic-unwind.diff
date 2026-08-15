@@ -1,0 +1,56 @@
+- // MIR for `aggregate_copy` before JumpThreading
++ // MIR for `aggregate_copy` after JumpThreading
+  
+  fn aggregate_copy() -> u32 {
+      let mut _0: u32;
+      let _1: (u32, u32);
+      let mut _4: bool;
+      let mut _5: u32;
+      scope 1 {
+          debug a => _1;
+          let _2: (u32, u32);
+          scope 2 {
+              debug b => _2;
+              let _3: u32;
+              scope 3 {
+                  debug c => _3;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const aggregate_copy::Foo;
+          StorageLive(_2);
+          _2 = copy _1;
+          StorageLive(_3);
+          _3 = copy (_2.1: u32);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _3;
+          _4 = Eq(move _5, const 2_u32);
+-         switchInt(move _4) -> [0: bb2, otherwise: bb1];
++         goto -> bb2;
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          _0 = copy (_2.0: u32);
+          goto -> bb3;
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          _0 = const 13_u32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -1,0 +1,13 @@
+error: `IndexMut` is not yet stable as a const trait
+  --> $DIR/issue-94675.rs:11:17
+   |
+LL |         self.bar[0] = baz.len();
+   |                 ^^^
+   |
+help: add `#![feature(const_index)]` to the crate attributes to enable
+   |
+LL + #![feature(const_index)]
+   |
+
+error: aborting due to 1 previous error
+

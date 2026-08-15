@@ -1,0 +1,19 @@
+error: unexpected token: `...`
+  --> $DIR/dotdotdot-expr.rs:2:24
+   |
+LL |     let _redemptive = 1...21;
+   |                        ^^^
+   |
+help: use `..` for an exclusive range
+   |
+LL -     let _redemptive = 1...21;
+LL +     let _redemptive = 1..21;
+   |
+help: or `..=` for an inclusive range
+   |
+LL -     let _redemptive = 1...21;
+LL +     let _redemptive = 1..=21;
+   |
+
+error: aborting due to 1 previous error
+

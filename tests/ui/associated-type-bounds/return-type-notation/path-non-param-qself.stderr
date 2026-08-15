@@ -1,0 +1,38 @@
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:11:5
+   |
+LL |     <()>::method(..): Send,
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated function `method` implemented for `()`, you could use the fully-qualified path
+   |
+LL |     <() as Example>::method(..): Send,
+   |         ++++++++++
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:13:5
+   |
+LL |     i32::method(..): Send,
+   |     ^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated function `method` implemented for `i32`, you could use the fully-qualified path
+   |
+LL -     i32::method(..): Send,
+LL +     <i32 as Example>::method(..): Send,
+   |
+
+error[E0223]: ambiguous associated function
+  --> $DIR/path-non-param-qself.rs:15:5
+   |
+LL |     Adt::method(..): Send,
+   |     ^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated function `method` implemented for `Adt`, you could use the fully-qualified path
+   |
+LL -     Adt::method(..): Send,
+LL +     <Adt as Example>::method(..): Send,
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

@@ -1,0 +1,35 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "M"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PTR_TYPE
+      STAR "*"
+      MUT_KW "mut"
+      WHITESPACE " "
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PTR_TYPE
+      STAR "*"
+      MUT_KW "mut"
+      WHITESPACE " "
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

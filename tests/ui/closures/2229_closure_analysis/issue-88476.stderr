@@ -1,0 +1,74 @@
+error: First Pass analysis includes:
+  --> $DIR/issue-88476.rs:20:39
+   |
+LL |       let x = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |         println!("{:?}", f.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing f[(0, 0)] -> Immutable
+  --> $DIR/issue-88476.rs:23:26
+   |
+LL |         println!("{:?}", f.0);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/issue-88476.rs:20:39
+   |
+LL |       let x = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |         println!("{:?}", f.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture f[] -> ByValue
+  --> $DIR/issue-88476.rs:23:26
+   |
+LL |         println!("{:?}", f.0);
+   |                          ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/issue-88476.rs:45:39
+   |
+LL |       let c = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |         println!("{}", character.hp)
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing character[(0, 0)] -> Immutable
+  --> $DIR/issue-88476.rs:48:24
+   |
+LL |         println!("{}", character.hp)
+   |                        ^^^^^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/issue-88476.rs:45:39
+   |
+LL |       let c = #[rustc_capture_analysis] move || {
+   |  _______________________________________^
+LL | |
+LL | |
+LL | |         println!("{}", character.hp)
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture character[(0, 0)] -> ByValue
+  --> $DIR/issue-88476.rs:48:24
+   |
+LL |         println!("{}", character.hp)
+   |                        ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

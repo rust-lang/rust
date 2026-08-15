@@ -1,0 +1,26 @@
+error: environment variable `\t` not defined at compile time
+  --> $DIR/name-whitespace-issue-110547.rs:4:5
+   |
+LL |     env!{"\t"};
+   |     ^^^^^^^^^^
+   |
+   = help: use `std::env::var("\t")` to read the variable at run time
+
+error: environment variable `\t` not defined at compile time
+  --> $DIR/name-whitespace-issue-110547.rs:5:5
+   |
+LL |     env!("\t");
+   |     ^^^^^^^^^^
+   |
+   = help: use `std::env::var("\t")` to read the variable at run time
+
+error: environment variable `\u{2069}` not defined at compile time
+  --> $DIR/name-whitespace-issue-110547.rs:6:5
+   |
+LL |     env!("\u{2069}");
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: use `std::env::var("\u{2069}")` to read the variable at run time
+
+error: aborting due to 3 previous errors
+

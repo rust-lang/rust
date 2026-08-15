@@ -1,0 +1,24 @@
+error[E0425]: cannot find type `T` in this scope
+  --> $DIR/transmute-to-tail-with-err.rs:3:26
+   |
+LL | struct Bar(Box<dyn Trait<T>>);
+   |                          ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | struct Bar<T>(Box<dyn Trait<T>>);
+   |           +++
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-to-tail-with-err.rs:7:27
+   |
+LL |     let x: Bar = unsafe { std::mem::transmute(()) };
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `()` (0 bits)
+   = note: target type: `Bar` (the type has an unknown layout)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0425, E0512.
+For more information about an error, try `rustc --explain E0425`.

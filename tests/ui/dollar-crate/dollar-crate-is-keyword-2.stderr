@@ -1,0 +1,36 @@
+error: `$crate` in paths can only be used in start position
+  --> $DIR/dollar-crate-is-keyword-2.rs:5:16
+   |
+LL |         use a::$crate;
+   |                ^^^^^^
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: `$crate` in paths can only be used in start position
+  --> $DIR/dollar-crate-is-keyword-2.rs:6:16
+   |
+LL |         use a::$crate::b;
+   |                ^^^^^^ can only be used in path start position
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: `$crate` in paths can only be used in start position
+  --> $DIR/dollar-crate-is-keyword-2.rs:8:21
+   |
+LL |         type A = a::$crate;
+   |                     ^^^^^^ can only be used in path start position
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

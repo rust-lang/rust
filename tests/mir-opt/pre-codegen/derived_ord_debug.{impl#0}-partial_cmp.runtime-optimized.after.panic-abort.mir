@@ -1,0 +1,17 @@
+// MIR for `<impl at $DIR/derived_ord_debug.rs:6:10: 6:20>::partial_cmp` after runtime-optimized
+
+fn <impl at $DIR/derived_ord_debug.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &MultiField) -> Option<std::cmp::Ordering> {
+    debug self => _1;
+    debug other => _2;
+    let mut _0: std::option::Option<std::cmp::Ordering>;
+    let mut _3: std::cmp::Ordering;
+
+    bb0: {
+        _3 = <MultiField as Ord>::cmp(copy _1, copy _2) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        _0 = Option::<std::cmp::Ordering>::Some(move _3);
+        return;
+    }
+}

@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `A == _`
+  --> $DIR/free-const-recursive.rs:7:1
+   |
+LL | type const A: () = A;
+   | ^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `the constant `A` has type `()``
+  --> $DIR/free-const-recursive.rs:7:1
+   |
+LL | type const A: () = A;
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

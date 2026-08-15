@@ -1,0 +1,16 @@
+error[E0532]: expected tuple struct or tuple variant, found constant `C1`
+  --> $DIR/issue-28992-empty.rs:13:12
+   |
+LL |     if let C1(..) = 0 {}
+   |            ^^ not a tuple struct or tuple variant
+
+error[E0164]: expected tuple struct or tuple variant, found associated constant `S::C2`
+  --> $DIR/issue-28992-empty.rs:14:12
+   |
+LL |     if let S::C2(..) = 0 {}
+   |            ^^^^^^^^^ not a tuple struct or tuple variant
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0164, E0532.
+For more information about an error, try `rustc --explain E0164`.

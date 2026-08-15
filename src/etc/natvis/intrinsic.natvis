@@ -1,0 +1,372 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="ref$&lt;str$&gt;">
+    <AlternativeType Name="ref_mut$&lt;str$&gt;" />
+    <AlternativeType Name="ptr_const$&lt;str$&gt;" />
+    <AlternativeType Name="ptr_mut$&lt;str$&gt;" />
+
+    <DisplayString>{(char*)data_ptr,[length]s8}</DisplayString>
+    <StringView>(char*)data_ptr,[length]s8</StringView>
+    <Expand>
+      <Item Name="[len]" ExcludeView="simple">length</Item>
+      <Synthetic Name="[chars]">
+        <Expand>
+          <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>data_ptr</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="ref$&lt;slice2$&lt;*&gt; &gt;">
+    <AlternativeType Name="ref_mut$&lt;slice2$&lt;*&gt; &gt;" />
+    <AlternativeType Name="ptr_const$&lt;slice2$&lt;*&gt; &gt;" />
+    <AlternativeType Name="ptr_mut$&lt;slice2$&lt;*&gt; &gt;" />
+
+    <DisplayString>{{ len={length} }}</DisplayString>
+    <Expand>
+      <Item Name="[len]" ExcludeView="simple">length</Item>
+      <ArrayItems>
+        <Size>length</Size>
+        <ValuePointer>data_ptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="f16">
+    <Intrinsic Name="sign_mask" Expression="(unsigned __int16) 0x8000" />
+    <Intrinsic Name="exponent_mask" Expression="(unsigned __int16) 0x7c00" />
+    <Intrinsic Name="significand_mask" Expression="(unsigned __int16) 0x03ff" />
+    <Intrinsic Name="sign_bit" Expression="(unsigned __int16) (bits &amp; sign_mask())" />
+    <Intrinsic Name="exponent_bits" Expression="(unsigned __int16) (bits &amp; exponent_mask())" />
+    <Intrinsic Name="significand_bits" Expression="(unsigned __int16) (bits &amp; significand_mask())" />
+
+    <Intrinsic Name="if_set" Expression="(bits &amp; mask) != 0 ? value : 1.0">
+      <Parameter Name="mask" Type="unsigned __int16" />
+      <Parameter Name="value" Type="float" />
+    </Intrinsic>
+    <!-- Calculates 2**exp without needing a pow function. Each float in if_set() is the square of the previous float. 32768 == 2.pow(bias), bias == 15 -->
+    <Intrinsic Name="two_pow_exponent" Expression="if_set(0x0400, 2.0) * if_set(0x0800, 4.0) * if_set(0x1000, 16.0) * if_set(0x2000, 256.0) * if_set(0x4000, 65536.0) / 32768.0" />
+    <!-- Calculates 0.significand, without any implicit bit. 1024 == 2.pow(explicit significand width), explicit significand width == 10 -->
+    <Intrinsic Name="raw_significand" Expression="((float) significand_bits()) / 1024.0" />
+    <Intrinsic Name="sign" Expression="sign_bit() == 0 ? 1.0 : -1.0" />
+
+    <DisplayString Condition="bits == 0x7c00">inf</DisplayString>
+    <DisplayString Condition="bits == 0xfc00">-inf</DisplayString>
+    <DisplayString Condition="exponent_bits() == exponent_mask()">NaN</DisplayString>
+    <!-- Subnormal or zero (16384 == 2.pow(bias - 1), bias - 1 == 14) -->
+    <DisplayString Condition="exponent_bits() == 0">{(float) (sign() * raw_significand() / 16384.0)}</DisplayString>
+    <!-- Normal -->
+    <DisplayString>{(float) (sign() * (raw_significand() + 1.0) * two_pow_exponent())}</DisplayString>
+  </Type>
+  <Type Name="tuple$&lt;&gt;">
+    <DisplayString>()</DisplayString>
+  </Type>
+  <Type Name="tuple$&lt;*&gt;">
+    <DisplayString>({__0})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*&gt;">
+    <DisplayString>({__0}, {__1})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+      <Item Name="[8]">__8</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8}, {__9})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+      <Item Name="[8]">__8</Item>
+      <Item Name="[9]">__9</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8}, {__9}, ...)</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+      <Item Name="[8]">__8</Item>
+      <Item Name="[9]">__9</Item>
+      <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
+    </Expand>
+  </Type>
+
+  <!--
+    This is the visualizer for all enums. It takes care of selecting the active variant.
+    See `compiler\rustc_codegen_llvm\src\debuginfo\metadata\enums\cpp_like.rs` for more information.
+  -->
+  <Type Name="enum2$&lt;*&gt;">
+    <!-- NOTE: That tag ranges can wrap around, in which case `end` is less than `begin` and we
+               have to do a different check -->
+    <Intrinsic Name="in_range" Expression="(begin &lt;= end) ? ((x &gt;= begin) &amp;&amp; (x &lt;= end)) : ((x &gt;= begin) || (x &lt;= end))">
+      <Parameter Name="x" Type="unsigned __int64" />
+      <Parameter Name="begin" Type="unsigned __int64" />
+      <Parameter Name="end" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <Intrinsic Name="eq128" Expression="(x_hi == y_hi) &amp;&amp; (x_lo == y_lo)">
+      <Parameter Name="x_hi" Type="unsigned __int64" />
+      <Parameter Name="x_lo" Type="unsigned __int64" />
+      <Parameter Name="y_hi" Type="unsigned __int64" />
+      <Parameter Name="y_lo" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <Intrinsic Name="lt128" Expression="(x_hi &lt; y_hi) || ((x_hi == y_hi) &amp;&amp; (x_lo &lt; y_lo))">
+      <Parameter Name="x_hi" Type="unsigned __int64" />
+      <Parameter Name="x_lo" Type="unsigned __int64" />
+      <Parameter Name="y_hi" Type="unsigned __int64" />
+      <Parameter Name="y_lo" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <Intrinsic Name="lt_or_eq128" Expression="((x_hi == y_hi) &amp;&amp; (x_lo == y_lo)) || lt128(x_hi, x_lo, y_hi, y_lo)">
+      <Parameter Name="x_hi" Type="unsigned __int64" />
+      <Parameter Name="x_lo" Type="unsigned __int64" />
+      <Parameter Name="y_hi" Type="unsigned __int64" />
+      <Parameter Name="y_lo" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <!-- NOTE: That tag ranges can wrap around, in which case `end` is less than `begin` and we
+               have to do a different check -->
+    <Intrinsic Name="in_range128" Expression="(lt_or_eq128(begin_hi, begin_lo, end_hi, end_lo)) ?
+                                              (lt_or_eq128(begin_hi, begin_lo, x_hi, x_lo) &amp;&amp; lt_or_eq128(x_hi, x_lo, end_hi, end_lo)) :
+                                              (lt_or_eq128(begin_hi, begin_lo, x_hi, x_lo) || lt_or_eq128(x_hi, x_lo, end_hi, end_lo))">
+      <Parameter Name="x_hi" Type="unsigned __int64" />
+      <Parameter Name="x_lo" Type="unsigned __int64" />
+      <Parameter Name="begin_hi" Type="unsigned __int64" />
+      <Parameter Name="begin_lo" Type="unsigned __int64" />
+      <Parameter Name="end_hi" Type="unsigned __int64" />
+      <Parameter Name="end_lo" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <DisplayString Condition="tag == variant0.DISCR_EXACT" Optional="true">{variant0.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant1.DISCR_EXACT" Optional="true">{variant1.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant2.DISCR_EXACT" Optional="true">{variant2.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant3.DISCR_EXACT" Optional="true">{variant3.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant4.DISCR_EXACT" Optional="true">{variant4.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant5.DISCR_EXACT" Optional="true">{variant5.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant6.DISCR_EXACT" Optional="true">{variant6.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant7.DISCR_EXACT" Optional="true">{variant7.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant8.DISCR_EXACT" Optional="true">{variant8.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant9.DISCR_EXACT" Optional="true">{variant9.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant10.DISCR_EXACT" Optional="true">{variant10.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant11.DISCR_EXACT" Optional="true">{variant11.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant12.DISCR_EXACT" Optional="true">{variant12.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant13.DISCR_EXACT" Optional="true">{variant13.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en}</DisplayString>
+    <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en}</DisplayString>
+
+    <DisplayString Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">{variant0.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">{variant1.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">{variant2.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">{variant3.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">{variant4.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">{variant5.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">{variant6.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">{variant7.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">{variant8.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">{variant9.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">{variant10.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">{variant11.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">{variant12.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">{variant13.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">{variant14.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">{variant15.NAME,en}</DisplayString>
+
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en}</DisplayString>
+    <DisplayString Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en}</DisplayString>
+
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">{variant0.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">{variant1.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">{variant2.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">{variant3.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">{variant4.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">{variant5.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">{variant6.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">{variant7.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">{variant8.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">{variant9.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">{variant10.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">{variant11.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">{variant12.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">{variant13.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">{variant14.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">{variant15.NAME,en}</DisplayString>
+
+    <Expand HideRawView="true">
+      <ExpandedItem Condition="tag == variant0.DISCR_EXACT" Optional="true">variant0.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant1.DISCR_EXACT" Optional="true">variant1.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant2.DISCR_EXACT" Optional="true">variant2.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant3.DISCR_EXACT" Optional="true">variant3.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant4.DISCR_EXACT" Optional="true">variant4.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant5.DISCR_EXACT" Optional="true">variant5.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant6.DISCR_EXACT" Optional="true">variant6.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant7.DISCR_EXACT" Optional="true">variant7.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant8.DISCR_EXACT" Optional="true">variant8.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant9.DISCR_EXACT" Optional="true">variant9.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant10.DISCR_EXACT" Optional="true">variant10.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant11.DISCR_EXACT" Optional="true">variant11.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant12.DISCR_EXACT" Optional="true">variant12.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant13.DISCR_EXACT" Optional="true">variant13.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant14.DISCR_EXACT" Optional="true">variant14.value</ExpandedItem>
+      <ExpandedItem Condition="tag == variant15.DISCR_EXACT" Optional="true">variant15.value</ExpandedItem>
+
+      <ExpandedItem Condition="in_range(tag, variant0.DISCR_BEGIN, variant0.DISCR_END)" Optional="true">variant0.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant1.DISCR_BEGIN, variant1.DISCR_END)" Optional="true">variant1.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant2.DISCR_BEGIN, variant2.DISCR_END)" Optional="true">variant2.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant3.DISCR_BEGIN, variant3.DISCR_END)" Optional="true">variant3.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant4.DISCR_BEGIN, variant4.DISCR_END)" Optional="true">variant4.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant5.DISCR_BEGIN, variant5.DISCR_END)" Optional="true">variant5.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant6.DISCR_BEGIN, variant6.DISCR_END)" Optional="true">variant6.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant7.DISCR_BEGIN, variant7.DISCR_END)" Optional="true">variant7.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant8.DISCR_BEGIN, variant8.DISCR_END)" Optional="true">variant8.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant9.DISCR_BEGIN, variant9.DISCR_END)" Optional="true">variant9.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant10.DISCR_BEGIN, variant10.DISCR_END)" Optional="true">variant10.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant11.DISCR_BEGIN, variant11.DISCR_END)" Optional="true">variant11.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant12.DISCR_BEGIN, variant12.DISCR_END)" Optional="true">variant12.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant13.DISCR_BEGIN, variant13.DISCR_END)" Optional="true">variant13.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant14.DISCR_BEGIN, variant14.DISCR_END)" Optional="true">variant14.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant15.DISCR_BEGIN, variant15.DISCR_END)" Optional="true">variant15.value</ExpandedItem>
+
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">variant0.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">variant1.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">variant2.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">variant3.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">variant4.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">variant5.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">variant6.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">variant7.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">variant8.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">variant9.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">variant10.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">variant11.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">variant12.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">variant13.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">variant14.value</ExpandedItem>
+      <ExpandedItem Condition="eq128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">variant15.value</ExpandedItem>
+
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant0.DISCR128_BEGIN_HI, variant0.DISCR128_BEGIN_LO, variant0.DISCR128_END_HI, variant0.DISCR128_END_LO)" Optional="true">variant0.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant1.DISCR128_BEGIN_HI, variant1.DISCR128_BEGIN_LO, variant1.DISCR128_END_HI, variant1.DISCR128_END_LO)" Optional="true">variant1.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant2.DISCR128_BEGIN_HI, variant2.DISCR128_BEGIN_LO, variant2.DISCR128_END_HI, variant2.DISCR128_END_LO)" Optional="true">variant2.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant3.DISCR128_BEGIN_HI, variant3.DISCR128_BEGIN_LO, variant3.DISCR128_END_HI, variant3.DISCR128_END_LO)" Optional="true">variant3.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant4.DISCR128_BEGIN_HI, variant4.DISCR128_BEGIN_LO, variant4.DISCR128_END_HI, variant4.DISCR128_END_LO)" Optional="true">variant4.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant5.DISCR128_BEGIN_HI, variant5.DISCR128_BEGIN_LO, variant5.DISCR128_END_HI, variant5.DISCR128_END_LO)" Optional="true">variant5.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant6.DISCR128_BEGIN_HI, variant6.DISCR128_BEGIN_LO, variant6.DISCR128_END_HI, variant6.DISCR128_END_LO)" Optional="true">variant6.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant7.DISCR128_BEGIN_HI, variant7.DISCR128_BEGIN_LO, variant7.DISCR128_END_HI, variant7.DISCR128_END_LO)" Optional="true">variant7.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant8.DISCR128_BEGIN_HI, variant8.DISCR128_BEGIN_LO, variant8.DISCR128_END_HI, variant8.DISCR128_END_LO)" Optional="true">variant8.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant9.DISCR128_BEGIN_HI, variant9.DISCR128_BEGIN_LO, variant9.DISCR128_END_HI, variant9.DISCR128_END_LO)" Optional="true">variant9.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant10.DISCR128_BEGIN_HI, variant10.DISCR128_BEGIN_LO, variant10.DISCR128_END_HI, variant10.DISCR128_END_LO)" Optional="true">variant10.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant11.DISCR128_BEGIN_HI, variant11.DISCR128_BEGIN_LO, variant11.DISCR128_END_HI, variant11.DISCR128_END_LO)" Optional="true">variant11.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant12.DISCR128_BEGIN_HI, variant12.DISCR128_BEGIN_LO, variant12.DISCR128_END_HI, variant12.DISCR128_END_LO)" Optional="true">variant12.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant13.DISCR128_BEGIN_HI, variant13.DISCR128_BEGIN_LO, variant13.DISCR128_END_HI, variant13.DISCR128_END_LO)" Optional="true">variant13.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant14.DISCR128_BEGIN_HI, variant14.DISCR128_BEGIN_LO, variant14.DISCR128_END_HI, variant14.DISCR128_END_LO)" Optional="true">variant14.value</ExpandedItem>
+      <ExpandedItem Condition="in_range128(tag128_hi, tag128_lo, variant15.DISCR128_BEGIN_HI, variant15.DISCR128_BEGIN_LO, variant15.DISCR128_END_HI, variant15.DISCR128_END_LO)" Optional="true">variant15.value</ExpandedItem>
+    </Expand>
+  </Type>
+</AutoVisualizer>

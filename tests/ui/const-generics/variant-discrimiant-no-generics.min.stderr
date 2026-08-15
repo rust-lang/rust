@@ -1,0 +1,34 @@
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/variant-discrimiant-no-generics.rs:7:15
+   |
+LL |     Variant = N,
+   |               ^ cannot perform const operation using `N`
+   |
+   = note: const parameters may not be used in enum discriminant values
+
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/variant-discrimiant-no-generics.rs:12:17
+   |
+LL |     Variant = { N + 1 },
+   |                 ^ cannot perform const operation using `N`
+   |
+   = note: const parameters may not be used in enum discriminant values
+
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/variant-discrimiant-no-generics.rs:18:37
+   |
+LL |     Variant = { std::mem::size_of::<T>() as isize },
+   |                                     ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in enum discriminant values
+
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/variant-discrimiant-no-generics.rs:25:17
+   |
+LL |         let a: &'a ();
+   |                 ^^ cannot perform const operation using `'a`
+   |
+   = note: lifetime parameters may not be used in enum discriminant values
+
+error: aborting due to 4 previous errors
+

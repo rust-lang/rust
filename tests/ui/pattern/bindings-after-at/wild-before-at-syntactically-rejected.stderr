@@ -1,0 +1,58 @@
+error: pattern on wrong side of `@`
+  --> $DIR/wild-before-at-syntactically-rejected.rs:8:9
+   |
+LL |     let _ @ a = 0;
+   |         -^^^-
+   |         |   |
+   |         |   binding on the right, should be on the left
+   |         pattern on the left, should be on the right
+   |
+help: switch the order
+   |
+LL -     let _ @ a = 0;
+LL +     let a @ _ = 0;
+   |
+
+error: pattern on wrong side of `@`
+  --> $DIR/wild-before-at-syntactically-rejected.rs:10:9
+   |
+LL |     let _ @ ref a = 0;
+   |         -^^^-----
+   |         |   |
+   |         |   binding on the right, should be on the left
+   |         pattern on the left, should be on the right
+   |
+help: switch the order
+   |
+LL -     let _ @ ref a = 0;
+LL +     let ref a @ _ = 0;
+   |
+
+error: pattern on wrong side of `@`
+  --> $DIR/wild-before-at-syntactically-rejected.rs:12:9
+   |
+LL |     let _ @ ref mut a = 0;
+   |         -^^^---------
+   |         |   |
+   |         |   binding on the right, should be on the left
+   |         pattern on the left, should be on the right
+   |
+help: switch the order
+   |
+LL -     let _ @ ref mut a = 0;
+LL +     let ref mut a @ _ = 0;
+   |
+
+error: left-hand side of `@` must be a binding
+  --> $DIR/wild-before-at-syntactically-rejected.rs:14:9
+   |
+LL |     let _ @ (a, .., b) = (0, 1, 2, 3);
+   |         -^^^----------
+   |         |   |
+   |         |   also a pattern
+   |         interpreted as a pattern, not a binding
+   |
+   = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
+
+error: aborting due to 4 previous errors
+

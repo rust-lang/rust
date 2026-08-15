@@ -1,0 +1,14 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/no-entry-found-for-key-ice-gce-nlb-113133.rs:9:15
+   |
+LL |     for<const N: usize = { const fn bar() {} bar(); 1 }> ():,
+   |               ^
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/no-entry-found-for-key-ice-gce-nlb-113133.rs:9:9
+   |
+LL |     for<const N: usize = { const fn bar() {} bar(); 1 }> ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

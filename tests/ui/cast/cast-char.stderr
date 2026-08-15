@@ -1,0 +1,130 @@
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:12:31
+   |
+LL |     const VALID_LOW_1: char = 0x1000 as char; // 4096
+   |                               ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{1000}'`
+   |
+note: the lint level is defined here
+  --> $DIR/cast-char.rs:1:9
+   |
+LL | #![deny(overflowing_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:14:31
+   |
+LL |     const VALID_LOW_2: char = 0xD7FF as char; // last valid in lower range
+   |                               ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{D7FF}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:16:31
+   |
+LL |     const VALID_LOW_3: char = 0x0500 as char; // cyrillic range
+   |                               ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{500}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:20:32
+   |
+LL |     const VALID_HIGH_1: char = 0xE000 as char; // first valid in upper range
+   |                                ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{E000}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:22:32
+   |
+LL |     const VALID_HIGH_2: char = 0x1F888 as char; // 129160 - example from issue
+   |                                ^^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{1F888}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:24:32
+   |
+LL |     const VALID_HIGH_3: char = 0x10FFFF as char; // maximum valid Unicode
+   |                                ^^^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{10FFFF}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:26:32
+   |
+LL |     const VALID_HIGH_4: char = 0xFFFD as char; // replacement character
+   |                                ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{FFFD}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:28:32
+   |
+LL |     const VALID_HIGH_5: char = 0x1F600 as char; // emoji
+   |                                ^^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{1F600}'`
+
+error: surrogate values are not valid for `char`
+  --> $DIR/cast-char.rs:34:39
+   |
+LL |     const INVALID_SURROGATE_1: char = 0xD800 as char; // first surrogate
+   |                                       ^^^^^^^^^^^^^^
+   |
+   = note: `0xD800..=0xDFFF` are reserved for Unicode surrogates and are not valid `char` values
+
+error: surrogate values are not valid for `char`
+  --> $DIR/cast-char.rs:36:39
+   |
+LL |     const INVALID_SURROGATE_2: char = 0xDFFF as char; // last surrogate
+   |                                       ^^^^^^^^^^^^^^
+   |
+   = note: `0xD800..=0xDFFF` are reserved for Unicode surrogates and are not valid `char` values
+
+error: surrogate values are not valid for `char`
+  --> $DIR/cast-char.rs:38:39
+   |
+LL |     const INVALID_SURROGATE_3: char = 0xDB00 as char; // middle of surrogate range
+   |                                       ^^^^^^^^^^^^^^
+   |
+   = note: `0xD800..=0xDFFF` are reserved for Unicode surrogates and are not valid `char` values
+
+error: value exceeds maximum `char` value
+  --> $DIR/cast-char.rs:42:37
+   |
+LL |     const INVALID_TOO_BIG_1: char = 0x110000 as char; // one more than maximum
+   |                                     ^^^^^^^^^^^^^^^^
+   |
+   = note: maximum valid `char` value is `0x10FFFF`
+
+error: value exceeds maximum `char` value
+  --> $DIR/cast-char.rs:44:37
+   |
+LL |     const INVALID_TOO_BIG_2: char = 0xEF8888 as char; // example from issue
+   |                                     ^^^^^^^^^^^^^^^^
+   |
+   = note: maximum valid `char` value is `0x10FFFF`
+
+error: value exceeds maximum `char` value
+  --> $DIR/cast-char.rs:46:37
+   |
+LL |     const INVALID_TOO_BIG_3: char = 0x1FFFFF as char; // much larger
+   |                                     ^^^^^^^^^^^^^^^^
+   |
+   = note: maximum valid `char` value is `0x10FFFF`
+
+error: value exceeds maximum `char` value
+  --> $DIR/cast-char.rs:48:37
+   |
+LL |     const INVALID_TOO_BIG_4: char = 0xFFFFFF as char; // 24-bit maximum
+   |                                     ^^^^^^^^^^^^^^^^
+   |
+   = note: maximum valid `char` value is `0x10FFFF`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:52:30
+   |
+LL |     const BOUNDARY_1: char = 0xD7FE as char; // valid, before surrogate
+   |                              ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{D7FE}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:54:30
+   |
+LL |     const BOUNDARY_2: char = 0xE001 as char; // valid, after surrogate
+   |                              ^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{E001}'`
+
+error: only `u8` can be cast into `char`
+  --> $DIR/cast-char.rs:56:30
+   |
+LL |     const BOUNDARY_3: char = 0x10FFFE as char; // valid, near maximum
+   |                              ^^^^^^^^^^^^^^^^ help: use a `char` literal instead: `'\u{10FFFE}'`
+
+error: aborting due to 18 previous errors
+

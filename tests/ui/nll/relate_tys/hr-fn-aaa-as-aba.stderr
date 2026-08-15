@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/hr-fn-aaa-as-aba.rs:12:58
+   |
+LL |     let a: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
+   |                                                          ^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(&'a _, &'b _) -> &'a _`
+              found fn pointer `for<'a> fn(&'a _, &'a _) -> &'a _`
+
+error[E0308]: mismatched types
+  --> $DIR/hr-fn-aaa-as-aba.rs:20:12
+   |
+LL |     let _: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(&'a _, &'b _) -> &'a _`
+              found fn pointer `for<'a> fn(&'a _, &'a _) -> &'a _`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,46 @@
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/use-from-trait.rs:1:5
+   |
+LL | use Trait::foo;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/use-from-trait.rs:2:5
+   |
+LL | use Trait::Assoc;
+   |     ^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/use-from-trait.rs:3:5
+   |
+LL | use Trait::C;
+   |     ^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0432]: unresolved import `Foo`
+  --> $DIR/use-from-trait.rs:5:5
+   |
+LL | use Foo::new;
+   |     ^^^ `Foo` is a struct, not a module
+
+error[E0432]: unresolved import `Foo`
+  --> $DIR/use-from-trait.rs:7:5
+   |
+LL | use Foo::C2;
+   |     ^^^ `Foo` is a struct, not a module
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0432, E0658.
+For more information about an error, try `rustc --explain E0432`.

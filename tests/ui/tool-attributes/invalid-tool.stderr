@@ -1,0 +1,109 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/invalid-tool.rs:5:18
+   |
+LL | #![register_tool(_)]
+   |                  ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/invalid-tool.rs:5:18
+   |
+LL | #![register_tool(_)]
+   |                  ^ expected identifier, found reserved identifier
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:3:4
+   |
+LL | #![register_tool(1)]
+   |    ^^^^^^^^^^^^^^-^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(1)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/invalid-tool.rs:5:18
+   |
+LL | #![register_tool(_)]
+   |                  ^ expected identifier, found reserved identifier
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:5:4
+   |
+LL | #![register_tool(_)]
+   |    ^^^^^^^^^^^^^^-^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(_)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
+
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:12:4
+   |
+LL | #![register_tool(crate)]
+   |    ^^^^^^^^^^^^^^-----^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(crate)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
+
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:14:4
+   |
+LL | #![register_tool(self)]
+   |    ^^^^^^^^^^^^^^----^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(self)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
+
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:16:4
+   |
+LL | #![register_tool(Self)]
+   |    ^^^^^^^^^^^^^^----^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(Self)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
+
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:18:4
+   |
+LL | #![register_tool(super)]
+   |    ^^^^^^^^^^^^^^-----^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(super)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0565`.

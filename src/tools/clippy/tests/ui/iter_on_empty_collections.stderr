@@ -1,0 +1,47 @@
+error: `into_iter` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:5:16
+   |
+LL |     assert_eq!([].into_iter().next(), Option::<i32>::None);
+   |                ^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+   |
+   = note: `-D clippy::iter-on-empty-collections` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_on_empty_collections)]`
+
+error: `iter_mut` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:7:16
+   |
+LL |     assert_eq!([].iter_mut().next(), Option::<&mut i32>::None);
+   |                ^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: `iter` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:9:16
+   |
+LL |     assert_eq!([].iter().next(), Option::<&i32>::None);
+   |                ^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: `into_iter` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:11:16
+   |
+LL |     assert_eq!(None.into_iter().next(), Option::<i32>::None);
+   |                ^^^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: `iter_mut` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:13:16
+   |
+LL |     assert_eq!(None.iter_mut().next(), Option::<&mut i32>::None);
+   |                ^^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: `iter` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:15:16
+   |
+LL |     assert_eq!(None.iter().next(), Option::<&i32>::None);
+   |                ^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: `iter` call on an empty collection
+  --> tests/ui/iter_on_empty_collections.rs:34:66
+   |
+LL |     for i in smth.as_ref().map_or([].iter(), |s| s.iter()).chain([].iter()) {
+   |                                                                  ^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: aborting due to 7 previous errors
+

@@ -1,0 +1,22 @@
+error[E0259]: the name `empty` is defined multiple times
+  --> $DIR/multiple-extern-by-macro-for-custom.rs:10:9
+   |
+LL | extern crate empty;
+   | ------------------- previous import of the extern crate `empty` here
+...
+LL |         extern crate std as empty;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `empty` reimported here
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: `empty` must be defined only once in the type namespace of this module
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can use `as` to change the binding name of the import
+   |
+LL |         extern crate std as other_empty;
+   |                             ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0259`.

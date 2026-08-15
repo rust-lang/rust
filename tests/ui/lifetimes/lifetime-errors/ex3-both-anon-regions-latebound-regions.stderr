@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-latebound-regions.rs:2:5
+   |
+LL | fn foo<'a,'b>(x: &mut Vec<&'a u8>, y: &'b u8) {
+   |        -- -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     x.push(y);
+   |     ^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to `Vec<&u8>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

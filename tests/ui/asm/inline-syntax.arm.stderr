@@ -1,0 +1,90 @@
+error: unknown directive
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:1
+   |
+LL | .intel_syntax noprefix
+   | ^
+
+error: unknown directive
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:1
+   |
+LL | .intel_syntax noprefix
+   | ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:21:15
+   |
+LL |         asm!(".intel_syntax noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .intel_syntax noprefix
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:24:15
+   |
+LL |         asm!(".intel_syntax aaa noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .intel_syntax aaa noprefix
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:27:15
+   |
+LL |         asm!(".att_syntax noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .att_syntax noprefix
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:30:15
+   |
+LL |         asm!(".att_syntax bbb noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .att_syntax bbb noprefix
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:33:15
+   |
+LL |         asm!(".intel_syntax noprefix; nop");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .intel_syntax noprefix; nop
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:39:13
+   |
+LL |             .intel_syntax noprefix
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:2:13
+   |
+LL |             .intel_syntax noprefix
+   |             ^
+
+error: aborting due to 8 previous errors
+

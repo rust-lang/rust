@@ -1,0 +1,16 @@
+error[E0053]: associated function `foo` has an incompatible generic parameter for trait `Foo`
+  --> $DIR/generics-mismatch.rs:8:18
+   |
+LL | trait Foo {
+   |       ---
+LL |     async fn foo<T>();
+   |                  - expected type parameter
+...
+LL | impl Foo for () {
+   | ---------------
+LL |     async fn foo<const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ found const parameter of type `usize`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

@@ -1,0 +1,10 @@
+error: mix of deref patterns and normal constructors
+  --> $DIR/box-pattern-constructor-mismatch.rs:8:9
+   |
+LL |         box _ => {}
+   |         ^^^^^ matches on the result of dereferencing `Box<i32>`
+LL |         Box { .. } => {}
+   |         ^^^^^^^^^^ matches directly on `Box<i32>`
+
+error: aborting due to 1 previous error
+

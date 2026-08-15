@@ -1,0 +1,34 @@
+
+running 103 tests
+abc --- FAILED
+....................................................................................... 88/103
+............. 101/103
+foo --- FAILED
+foo2 --- FAILED
+
+failures:
+
+---- abc stdout ----
+
+thread 'abc' ($TID) panicked at $DIR/terse.rs:12:5:
+explicit panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- foo stdout ----
+
+thread 'foo' ($TID) panicked at $DIR/terse.rs:17:5:
+explicit panic
+
+---- foo2 stdout ----
+
+thread 'foo2' ($TID) panicked at $DIR/terse.rs:22:5:
+explicit panic
+
+
+failures:
+    abc
+    foo
+    foo2
+
+test result: FAILED. 100 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

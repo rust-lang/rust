@@ -1,0 +1,39 @@
+- // MIR for `assume` before JumpThreading
++ // MIR for `assume` after JumpThreading
+  
+  fn assume(_1: u8, _2: bool) -> u8 {
+      let mut _0: u8;
+  
+      bb0: {
+          switchInt(copy _1) -> [7: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          assume(copy _2);
+-         goto -> bb3;
++         goto -> bb6;
+      }
+  
+      bb2: {
+          goto -> bb3;
+      }
+  
+      bb3: {
+          switchInt(copy _2) -> [0: bb4, otherwise: bb5];
+      }
+  
+      bb4: {
+          _0 = const 4_u8;
+          return;
+      }
+  
+      bb5: {
+          _0 = const 5_u8;
+          return;
++     }
++ 
++     bb6: {
++         goto -> bb5;
+      }
+  }
+  

@@ -1,0 +1,56 @@
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:2:8
+   |
+LL |     0b121;
+   |        ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:3:12
+   |
+LL |     0b10_10301;
+   |            ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:4:7
+   |
+LL |     0b30;
+   |       ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:5:7
+   |
+LL |     0b41;
+   |       ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:6:7
+   |
+LL |     0b5;
+   |       ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:7:7
+   |
+LL |     0b6;
+   |       ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:8:7
+   |
+LL |     0b7;
+   |       ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:9:7
+   |
+LL |     0b8;
+   |       ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/lex-bad-binary-literal.rs:10:7
+   |
+LL |     0b9;
+   |       ^
+
+error: aborting due to 9 previous errors
+

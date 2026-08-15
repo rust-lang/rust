@@ -1,0 +1,137 @@
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:11:9
+   |
+LL |         (1 | 2,) => {}
+   |         -------- matches all the relevant values
+LL |
+LL |         (2,) => {}
+   |         ^^^^ no value can reach this
+   |
+note: the lint level is defined here
+  --> $DIR/explain-unreachable-pats.rs:3:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:22:9
+   |
+LL |         (1 | 2,) => {}
+   |         ^^^^^^^^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> $DIR/explain-unreachable-pats.rs:22:9
+   |
+LL |         (1,) => {}
+   |         ---- matches some of the same values
+LL |
+LL |         (2,) => {}
+   |         ---- matches some of the same values
+LL |
+LL |         (1 | 2,) => {}
+   |         ^^^^^^^^ collectively making this unreachable
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:41:9
+   |
+LL |         1 ..= 6 => {}
+   |         ^^^^^^^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> $DIR/explain-unreachable-pats.rs:41:9
+   |
+LL |         1 => {}
+   |         - matches some of the same values
+LL |
+LL |         2 => {}
+   |         - matches some of the same values
+LL |
+LL |         3 => {}
+   |         - matches some of the same values
+LL |
+LL |         4 => {}
+   |         - matches some of the same values
+...
+LL |         1 ..= 6 => {}
+   |         ^^^^^^^ ...and 2 other patterns collectively make this unreachable
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:52:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^------
+   |         |
+   |         matches no values because `!` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:66:9
+   |
+LL |         (Err(_), Err(_)) => {}
+   |         ^^^^^^^^^^^^^^^^------
+   |         |
+   |         matches no values because `Void2` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:73:9
+   |
+LL |         (Err(_), Err(_)) => {}
+   |         ^^^^^^^^^^^^^^^^------
+   |         |
+   |         matches no values because `Void1` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:83:11
+   |
+LL |     if let (0
+   |             - matches all the relevant values
+LL |
+LL |         | 0, _) = (0, 0) {}
+   |           ^ no value can reach this
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:93:9
+   |
+LL |         (_, true) => {}
+   |         ^^^^^^^^^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> $DIR/explain-unreachable-pats.rs:93:9
+   |
+LL |         (true, _) => {}
+   |         --------- matches some of the same values
+LL |
+LL |         (false, _) => {}
+   |         ---------- matches some of the same values
+LL |
+LL |         (_, true) => {}
+   |         ^^^^^^^^^ collectively making this unreachable
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:106:9
+   |
+LL |         (true, _) => {}
+   |         --------- matches all the relevant values
+...
+LL |         (true, true) => {}
+   |         ^^^^^^^^^^^^ no value can reach this
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:118:9
+   |
+LL |         (_, true, 0..10) => {}
+   |         ---------------- matches all the relevant values
+...
+LL |         (_, true, 3) => {}
+   |         ^^^^^^^^^^^^ no value can reach this
+
+error: aborting due to 10 previous errors
+

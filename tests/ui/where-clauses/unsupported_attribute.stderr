@@ -1,0 +1,158 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/unsupported_attribute.rs:27:7
+   |
+LL |     #[derive(Clone)] T: Trait,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/unsupported_attribute.rs:30:7
+   |
+LL |     #[derive(Clone)] 'a: 'static,
+   |       ^^^^^^ not a non-macro attribute
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:13:5
+   |
+LL |     #[doc = "doc"] T: Trait,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:14:5
+   |
+LL |     #[doc = "doc"] 'a: 'static,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: the `ignore` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:15:7
+   |
+LL |     #[ignore] T: Trait,
+   |       ^^^^^^
+   |
+   = help: the `ignore` attribute can only be applied to functions
+
+error: the `ignore` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:16:7
+   |
+LL |     #[ignore] 'a: 'static,
+   |       ^^^^^^
+   |
+   = help: the `ignore` attribute can only be applied to functions
+
+error: the `should_panic` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:17:7
+   |
+LL |     #[should_panic] T: Trait,
+   |       ^^^^^^^^^^^^
+   |
+   = help: the `should_panic` attribute can only be applied to functions
+
+error: the `should_panic` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:18:7
+   |
+LL |     #[should_panic] 'a: 'static,
+   |       ^^^^^^^^^^^^
+   |
+   = help: the `should_panic` attribute can only be applied to functions
+
+error: the `macro_use` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:19:7
+   |
+LL |     #[macro_use] T: Trait,
+   |       ^^^^^^^^^
+   |
+   = help: the `macro_use` attribute can be applied to extern crates and modules
+
+error: the `macro_use` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:20:7
+   |
+LL |     #[macro_use] 'a: 'static,
+   |       ^^^^^^^^^
+   |
+   = help: the `macro_use` attribute can be applied to extern crates and modules
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:21:5
+   |
+LL |     #[allow(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:22:5
+   |
+LL |     #[allow(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: the `deprecated` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:23:7
+   |
+LL |     #[deprecated] T: Trait,
+   |       ^^^^^^^^^^
+   |
+   = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+
+error: the `deprecated` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:24:7
+   |
+LL |     #[deprecated] 'a: 'static,
+   |       ^^^^^^^^^^
+   |
+   = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+
+error: the `automatically_derived` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:25:7
+   |
+LL |     #[automatically_derived] T: Trait,
+   |       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `automatically_derived` attribute can only be applied to trait impl blocks
+
+error: the `automatically_derived` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:26:7
+   |
+LL |     #[automatically_derived] 'a: 'static,
+   |       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `automatically_derived` attribute can only be applied to trait impl blocks
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:27:5
+   |
+LL |     #[derive(Clone)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:30:5
+   |
+LL |     #[derive(Clone)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:33:5
+   |
+LL |     #[rustfmt::skip] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:34:5
+   |
+LL |     #[rustfmt::skip] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: aborting due to 20 previous errors
+

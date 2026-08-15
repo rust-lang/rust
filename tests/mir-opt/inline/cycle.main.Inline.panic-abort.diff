@@ -1,0 +1,19 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = f::<fn() {g}>(g) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

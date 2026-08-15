@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/method-ambig-two-traits-with-default-method.rs:12:13
+   |
+LL |     1_usize.method();
+   |             ^^^^^^ multiple `method` found
+   |
+note: candidate #1 is defined in an impl of the trait `Bar` for the type `usize`
+  --> $DIR/method-ambig-two-traits-with-default-method.rs:6:13
+   |
+LL | trait Bar { fn method(&self) {} }
+   |             ^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `Foo` for the type `usize`
+  --> $DIR/method-ambig-two-traits-with-default-method.rs:5:13
+   |
+LL | trait Foo { fn method(&self) {} }
+   |             ^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     1_usize.method();
+LL +     Bar::method(&1_usize);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     1_usize.method();
+LL +     Foo::method(&1_usize);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

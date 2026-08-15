@@ -1,0 +1,10 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-107705.rs:3:67
+   |
+LL | fn f() {a(b:&,
+   |        - - unclosed delimiter                                    ^
+   |        |
+   |        unclosed delimiter
+
+error: aborting due to 1 previous error
+

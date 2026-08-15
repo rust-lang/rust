@@ -1,0 +1,13 @@
+error: missing `fn` for function definition
+  --> $DIR/missing-fn-issue-65381-1.rs:1:1
+   |
+LL | main() {
+   | ^^^^
+   |
+help: add `fn` here to parse `main` as a function
+   |
+LL | fn main() {
+   | ++
+
+error: aborting due to 1 previous error
+

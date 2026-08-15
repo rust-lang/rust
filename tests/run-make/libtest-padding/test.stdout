@@ -1,0 +1,9 @@
+
+running 4 tests
+test short_bench_name ... ok
+test short_test_name ... ok
+test this_is_a_really_long_bench_name ... ok
+test this_is_a_really_long_test_name ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ??s
+

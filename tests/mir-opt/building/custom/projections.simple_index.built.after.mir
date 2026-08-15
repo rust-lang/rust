@@ -1,0 +1,13 @@
+// MIR for `simple_index` after built
+
+fn simple_index(_1: [i32; 10], _2: &[i32]) -> i32 {
+    let mut _0: i32;
+    let mut _3: usize;
+
+    bb0: {
+        _3 = const 3_usize;
+        _0 = copy _1[_3];
+        _0 = copy (*_2)[_3];
+        return;
+    }
+}

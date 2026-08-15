@@ -1,0 +1,65 @@
+warning: trait item `hello` from `B` shadows identically named item from supertrait
+  --> $DIR/common-ancestor.rs:24:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: item from `A` is shadowed by a subtrait item
+  --> $DIR/common-ancestor.rs:12:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/common-ancestor.rs:6:9
+   |
+LL | #![warn(shadowing_supertrait_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: trait item `Assoc` from `B` shadows identically named item from supertrait
+  --> $DIR/common-ancestor.rs:28:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+   |
+note: item from `A` is shadowed by a subtrait item
+  --> $DIR/common-ancestor.rs:15:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+warning: trait item `CONST` from `B` shadows identically named item from supertrait
+  --> $DIR/common-ancestor.rs:30:5
+   |
+LL |     type const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: item from `A` is shadowed by a subtrait item
+  --> $DIR/common-ancestor.rs:16:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+
+warning: trait item `hello` from `B` shadows identically named item from supertrait
+  --> $DIR/common-ancestor.rs:39:19
+   |
+LL |     assert_eq!(().hello(), "B");
+   |                   ^^^^^
+   |
+note: item from `B` shadows a supertrait item
+  --> $DIR/common-ancestor.rs:24:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: item from `A` is shadowed by a subtrait item
+  --> $DIR/common-ancestor.rs:12:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/common-ancestor.rs:5:9
+   |
+LL | #![warn(resolving_to_items_shadowing_supertrait_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 4 warnings emitted
+

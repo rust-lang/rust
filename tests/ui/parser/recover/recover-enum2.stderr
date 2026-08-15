@@ -1,0 +1,37 @@
+error: expected type, found `{`
+  --> $DIR/recover-enum2.rs:6:18
+   |
+LL |         Var3 {
+   |         ---- while parsing this struct
+LL |             abc: {},
+   |                  ^ expected type
+
+error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `{`
+  --> $DIR/recover-enum2.rs:25:22
+   |
+LL |         enum Test4 {
+   |              ----- while parsing this enum
+LL |             Nope(i32 {})
+   |                      ^ expected one of 7 possible tokens
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-enum2.rs:11:9
+   |
+LL |     let () = 1;
+   |         ^^   - this expression has type `{integer}`
+   |         |
+   |         expected integer, found `()`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-enum2.rs:27:13
+   |
+LL |         let () = 1;
+   |             ^^   - this expression has type `{integer}`
+   |             |
+   |             expected integer, found `()`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

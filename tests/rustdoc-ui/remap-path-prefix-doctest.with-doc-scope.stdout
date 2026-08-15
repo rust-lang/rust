@@ -1,0 +1,24 @@
+
+running 1 test
+test remapped_path/remap-path-prefix-doctest.rs - SomeStruct (line 19) ... FAILED
+
+failures:
+
+---- remapped_path/remap-path-prefix-doctest.rs - SomeStruct (line 19) stdout ----
+error: this file contains an unclosed delimiter
+  --> remapped_path/remap-path-prefix-doctest.rs:20:12
+   |
+LL | fn invalid(
+   |           -^
+   |           |
+   |           unclosed delimiter
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    remapped_path/remap-path-prefix-doctest.rs - SomeStruct (line 19)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

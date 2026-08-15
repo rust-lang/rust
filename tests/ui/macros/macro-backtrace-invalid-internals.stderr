@@ -1,0 +1,100 @@
+error[E0599]: no method named `fake` found for type `{integer}` in the current scope
+  --> $DIR/macro-backtrace-invalid-internals.rs:5:13
+   |
+LL |           1.fake()
+   |             ^^^^ method not found in `{integer}`
+...
+LL |     fake_method_stmt!();
+   |     ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fake_method_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/macro-backtrace-invalid-internals.rs:11:13
+   |
+LL |           1.fake
+   |             ^^^^
+...
+LL |     fake_field_stmt!();
+   |     ------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `fake_field_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/macro-backtrace-invalid-internals.rs:17:15
+   |
+LL |           (1).0
+   |               ^
+...
+LL |     fake_anon_field_stmt!();
+   |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fake_anon_field_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
+  --> $DIR/macro-backtrace-invalid-internals.rs:41:15
+   |
+LL |           2.0.neg()
+   |               ^^^
+...
+LL |     real_method_stmt!();
+   |     ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `real_method_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+LL |           2.0_f32.neg()
+   |              ++++
+
+error[E0599]: no method named `fake` found for type `{integer}` in the current scope
+  --> $DIR/macro-backtrace-invalid-internals.rs:23:13
+   |
+LL |           1.fake()
+   |             ^^^^ method not found in `{integer}`
+...
+LL |     let _ = fake_method_expr!();
+   |             ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fake_method_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/macro-backtrace-invalid-internals.rs:29:13
+   |
+LL |           1.fake
+   |             ^^^^
+...
+LL |     let _ = fake_field_expr!();
+   |             ------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `fake_field_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/macro-backtrace-invalid-internals.rs:35:15
+   |
+LL |           (1).0
+   |               ^
+...
+LL |     let _ = fake_anon_field_expr!();
+   |             ----------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fake_anon_field_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
+  --> $DIR/macro-backtrace-invalid-internals.rs:47:15
+   |
+LL |           2.0.neg()
+   |               ^^^
+...
+LL |     let _ = real_method_expr!();
+   |             ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `real_method_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+LL |           2.0_f32.neg()
+   |              ++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0599, E0610, E0689.
+For more information about an error, try `rustc --explain E0599`.

@@ -1,0 +1,57 @@
+error[E0426]: use of undeclared label `'label_use`
+  --> $DIR/gen-macro-rules-hygiene.rs:13:1
+   |
+LL | gen_macro_rules!();
+   | ^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
+...
+LL |         generated!();
+   |         ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `local_use` in this scope
+  --> $DIR/gen-macro-rules-hygiene.rs:13:1
+   |
+LL | gen_macro_rules!();
+   | ^^^^^^^^^^^^^^^^^^
+...
+LL |         generated!();
+   |         ------------ in this macro invocation
+   |
+help: an identifier with the same name exists, but is not accessible due to macro hygiene
+  --> $DIR/gen-macro-rules-hygiene.rs:19:13
+   |
+LL |         let local_use = 1;
+   |             ^^^^^^^^^
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a local variable with a similar name exists
+   |
+LL - gen_macro_rules!();
+LL + local_def;
+   |
+
+error[E0425]: cannot find value `local_def` in this scope
+  --> $DIR/gen-macro-rules-hygiene.rs:22:9
+   |
+LL |         local_def;
+   |         ^^^^^^^^^
+   |
+help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
+  --> $DIR/gen-macro-rules-hygiene.rs:13:1
+   |
+LL | gen_macro_rules!();
+   | ^^^^^^^^^^^^^^^^^^
+...
+LL |         generated!();
+   |         ------------ in this macro invocation
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a local variable with a similar name exists
+   |
+LL -         local_def;
+LL +         local_use;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0426.
+For more information about an error, try `rustc --explain E0425`.

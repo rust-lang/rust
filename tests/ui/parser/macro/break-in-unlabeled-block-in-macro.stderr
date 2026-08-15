@@ -1,0 +1,69 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block-in-macro.rs:3:9
+   |
+LL |         break ();
+   |         ^^^^^^^^ cannot `break` outside of a loop or labeled block
+...
+LL |         foo!();
+   |         ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block-in-macro.rs:6:9
+   |
+LL |         break $e;
+   |         ^^^^^^^^ cannot `break` outside of a loop or labeled block
+...
+LL |         foo!(());
+   |         -------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block-in-macro.rs:33:17
+   |
+LL |         foo!(=> break ());
+   |                 ^^^^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block-in-macro.rs:38:17
+   |
+LL |                 break ()
+   |                 ^^^^^^^^ cannot `break` outside of a loop or labeled block
+...
+LL |         bar!()
+   |         ------ in this macro invocation
+   |
+   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block-in-macro.rs:12:11
+   |
+LL |         { break $e; }
+   |           ^^^^^^^^ cannot `break` outside of a loop or labeled block
+...
+LL |         foo!(@ ());
+   |         ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider labeling this block to be able to break within it
+   |
+LL |         'block: { break 'block $e; }
+   |         +++++++         ++++++
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-in-unlabeled-block-in-macro.rs:27:19
+   |
+LL |         foo!(stmt break ());
+   |                   ^^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~     'block: {
+LL ~         foo!(stmt break 'block ());
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0268`.

@@ -1,0 +1,19 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/issue-7573.rs:17:9
+   |
+LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
+   |         ---------------- `lines_to_use` declared here, outside of the closure body
+LL |
+LL |     let push_id = |installed_id: &CrateId| {
+   |                    ------------ `installed_id` is a reference that is only valid in the closure body
+LL |
+LL |         lines_to_use.push(installed_id);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `installed_id` escapes the closure body here
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&CrateId>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

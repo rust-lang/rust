@@ -1,0 +1,39 @@
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links-expansion.rs:32:43
+   |
+LL | #[doc = "provided by a [`BufferProvider`](crate::BufferProvider)."]
+   |                         ----------------  ^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |                         |
+   |                         because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+note: the lint level is defined here
+  --> $DIR/redundant_explicit_links-expansion.rs:4:9
+   |
+LL | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove explicit link target
+   |
+LL - #[doc = "provided by a [`BufferProvider`](crate::BufferProvider)."]
+LL + #[doc = "provided by a [`BufferProvider`]."]
+   |
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links-expansion.rs:38:26
+   |
+LL | /// a [`BufferProvider`](crate::BufferProvider).
+   |        ----------------  ^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |        |
+   |        because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL - /// a [`BufferProvider`](crate::BufferProvider).
+LL + /// a [`BufferProvider`].
+   |
+
+error: aborting due to 2 previous errors
+

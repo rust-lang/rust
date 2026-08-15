@@ -1,0 +1,56 @@
+//@ run-rustfix
+//@ check-pass
+//@ normalize-stderr: "warning: 9 warnings emitted\n\n" -> "warning: 9 warnings emitted\n"
+#![feature(pin_ergonomics, mut_ref)]
+#![allow(dead_code)]
+#![warn(unused_parens)]
+
+fn pinned_reference_patterns(
+    pin_const: &pin const i32,
+    pin_mut: &pin mut i32,
+    nested_pin_const: &pin const &pin const i32,
+) {
+    let &pin const (_x) = pin_const;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin const (mut _x) = pin_const;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin const (mut _x @ _) = pin_const;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin mut (mut _x) = pin_mut;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin const (&pin const _x) = nested_pin_const;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin const (ref pin const _x) = pin_const;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin mut (ref pin mut _x) = pin_mut;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin const (mut ref pin const _x) = pin_const;
+    //~^ WARN unnecessary parentheses around pattern
+
+    let &pin mut (mut ref pin mut _x) = pin_mut;
+    //~^ WARN unnecessary parentheses around pattern
+}
+
+fn pinned_or_patterns_are_still_ambiguous(pin_const: &pin const i32) {
+    match pin_const {
+        &pin const (0 | 1) => {}
+        _ => {}
+    }
+}
+
+fn plain_shared_reference_patterns_still_need_parens(shared: &i32) {
+    let &(mut _x) = shared;
+
+    let &(mut ref _x) = shared;
+
+    let &(mut ref pin const _x) = shared;
+}
+
+fn main() {}

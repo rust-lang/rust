@@ -1,0 +1,96 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/issue-84973-blacklist.rs:16:12
+   |
+LL |     f_copy("".to_string());
+   |     ------ ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `f_copy`
+  --> $DIR/issue-84973-blacklist.rs:7:14
+   |
+LL | fn f_copy<T: Copy>(t: T) {}
+   |              ^^^^ required by this bound in `f_copy`
+help: consider removing this method call, as the receiver has type `&'static str` and `&'static str: Copy` trivially holds
+   |
+LL -     f_copy("".to_string());
+LL +     f_copy("");
+   |
+
+error[E0277]: the trait bound `S: Clone` is not satisfied
+  --> $DIR/issue-84973-blacklist.rs:17:13
+   |
+LL |     f_clone(S);
+   |     ------- ^ the trait `Clone` is not implemented for `S`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `f_clone`
+  --> $DIR/issue-84973-blacklist.rs:8:15
+   |
+LL | fn f_clone<T: Clone>(t: T) {}
+   |               ^^^^^ required by this bound in `f_clone`
+help: consider annotating `S` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct S;
+   |
+
+error[E0277]: `{static coroutine@$DIR/issue-84973-blacklist.rs:18:26: 18:35}` cannot be unpinned
+  --> $DIR/issue-84973-blacklist.rs:18:26
+   |
+LL |     f_unpin(#[coroutine] static || { yield; });
+   |     -------              ^^^^^^^^^^^^^^^^^^^^ the trait `Unpin` is not implemented for `{static coroutine@$DIR/issue-84973-blacklist.rs:18:26: 18:35}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+note: required by a bound in `f_unpin`
+  --> $DIR/issue-84973-blacklist.rs:9:15
+   |
+LL | fn f_unpin<T: Unpin>(t: T) {}
+   |               ^^^^^ required by this bound in `f_unpin`
+
+error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilation time
+  --> $DIR/issue-84973-blacklist.rs:23:13
+   |
+LL |     f_sized(*ref_cl);
+   |     ------- ^^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn Fn()`
+note: required by a bound in `f_sized`
+  --> $DIR/issue-84973-blacklist.rs:10:15
+   |
+LL | fn f_sized<T: Sized>(t: T) {}
+   |               ^^^^^ required by this bound in `f_sized`
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     f_sized(*ref_cl);
+LL +     f_sized(ref_cl);
+   |
+
+error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
+  --> $DIR/issue-84973-blacklist.rs:28:12
+   |
+LL |     f_send(rc);
+   |     ------ ^^ `Rc<{integer}>` cannot be sent between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Send` is not implemented for `Rc<{integer}>`
+note: required by a bound in `f_send`
+  --> $DIR/issue-84973-blacklist.rs:11:14
+   |
+LL | fn f_send<T: Send>(t: T) {}
+   |              ^^^^ required by this bound in `f_send`
+help: consider dereferencing here
+   |
+LL |     f_send(*rc);
+   |            +
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

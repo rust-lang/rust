@@ -1,0 +1,51 @@
+error[E0599]: no method named `iter` found for reference `&'static str` in the current scope
+  --> $DIR/suggest-using-chars.rs:2:19
+   |
+LL |     let _ = "foo".iter();
+   |                   ^^^^ method not found in `&'static str`
+   |
+help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
+   |
+LL -     let _ = "foo".iter();
+LL +     let _ = "foo".chars();
+   |
+
+error[E0599]: no method named `foo` found for reference `&'static str` in the current scope
+  --> $DIR/suggest-using-chars.rs:3:19
+   |
+LL |     let _ = "foo".foo();
+   |                   ^^^ method not found in `&'static str`
+
+error[E0599]: no method named `iter` found for struct `String` in the current scope
+  --> $DIR/suggest-using-chars.rs:4:33
+   |
+LL |     let _ = String::from("bar").iter();
+   |                                 ^^^^ method not found in `String`
+   |
+help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
+   |
+LL -     let _ = String::from("bar").iter();
+LL +     let _ = String::from("bar").chars();
+   |
+
+error[E0599]: no method named `iter` found for reference `&String` in the current scope
+  --> $DIR/suggest-using-chars.rs:5:36
+   |
+LL |     let _ = (&String::from("bar")).iter();
+   |                                    ^^^^ method not found in `&String`
+   |
+help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
+   |
+LL -     let _ = (&String::from("bar")).iter();
+LL +     let _ = (&String::from("bar")).chars();
+   |
+
+error[E0599]: no method named `iter` found for type `{integer}` in the current scope
+  --> $DIR/suggest-using-chars.rs:6:15
+   |
+LL |     let _ = 0.iter();
+   |               ^^^^ method not found in `{integer}`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,128 @@
+error: coroutine cannot be sent between threads safely
+  --> $DIR/parent-expression.rs:25:13
+   |
+LL |               assert_send(g);
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+help: within `{coroutine@$DIR/parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `derived_drop::Client`
+  --> $DIR/parent-expression.rs:51:46
+   |
+LL |         derived_drop => { #[derive(Default)] pub struct Client { pub nickname: String } };
+   |                                              ^^^^^^^^^^^^^^^^^
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/parent-expression.rs:23:22
+   |
+LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                                         ------------------------ has type `derived_drop::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/parent-expression.rs:42:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: coroutine cannot be sent between threads safely
+  --> $DIR/parent-expression.rs:25:13
+   |
+LL |               assert_send(g);
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+help: within `{coroutine@$DIR/parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `significant_drop::Client`
+  --> $DIR/parent-expression.rs:55:13
+   |
+LL |             pub struct Client;
+   |             ^^^^^^^^^^^^^^^^^
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/parent-expression.rs:23:22
+   |
+LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                                         ------------------------ has type `significant_drop::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/parent-expression.rs:42:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: coroutine cannot be sent between threads safely
+  --> $DIR/parent-expression.rs:25:13
+   |
+LL |               assert_send(g);
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+help: within `{coroutine@$DIR/parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+  --> $DIR/parent-expression.rs:64:13
+   |
+LL |             pub struct Client;
+   |             ^^^^^^^^^^^^^^^^^
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/parent-expression.rs:23:22
+   |
+LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                                         ------------------------ has type `insignificant_dtor::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/parent-expression.rs:42:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

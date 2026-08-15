@@ -1,0 +1,10 @@
+warning: trait `Bar` is never used
+  --> $DIR/issue-69654-run-pass.rs:2:7
+   |
+LL | trait Bar<T> {}
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

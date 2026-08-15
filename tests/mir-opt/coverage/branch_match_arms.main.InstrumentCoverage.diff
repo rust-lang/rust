@@ -1,0 +1,141 @@
+- // MIR for `main` before InstrumentCoverage
++ // MIR for `main` after InstrumentCoverage
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: Enum;
+      let mut _2: isize;
+      let _3: u32;
+      let mut _4: u32;
+      let _5: u32;
+      let mut _6: u32;
+      let _7: u32;
+      let mut _8: u32;
+      let _9: u32;
+      let mut _10: u32;
+      scope 1 {
+          debug d => _3;
+      }
+      scope 2 {
+          debug c => _5;
+      }
+      scope 3 {
+          debug b => _7;
+      }
+      scope 4 {
+          debug a => _9;
+      }
+  
++     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:14:1: 14:10 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:15:11: 15:21 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:18 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:23: 16:30 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:31: 16:32 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:18 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:23: 17:30 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:31: 17:32 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:17: 18:18 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:23: 18:30 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:31: 18:32 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:18 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:23: 19:30 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:31: 19:32 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:1: 21:2 (#0);
++ 
+      bb0: {
++         Coverage::VirtualCounter(bcb0);
+          StorageLive(_1);
+          _1 = Enum::A(const 0_u32);
+          PlaceMention(_1);
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb5, 1: bb4, 2: bb3, 3: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          FakeRead(ForMatchedPlace(None), _1);
+          unreachable;
+      }
+  
+      bb2: {
++         Coverage::VirtualCounter(bcb1);
+          falseEdge -> [real: bb8, imaginary: bb3];
+      }
+  
+      bb3: {
++         Coverage::VirtualCounter(bcb3);
+          falseEdge -> [real: bb7, imaginary: bb4];
+      }
+  
+      bb4: {
++         Coverage::VirtualCounter(bcb4);
+          falseEdge -> [real: bb6, imaginary: bb5];
+      }
+  
+      bb5: {
++         Coverage::VirtualCounter(bcb5);
+          StorageLive(_9);
+          _9 = copy ((_1 as A).0: u32);
+          StorageLive(_10);
+          _10 = copy _9;
+          _0 = consume(move _10) -> [return: bb12, unwind: bb14];
+      }
+  
+      bb6: {
+          StorageLive(_7);
+          _7 = copy ((_1 as B).0: u32);
+          StorageLive(_8);
+          _8 = copy _7;
+          _0 = consume(move _8) -> [return: bb11, unwind: bb14];
+      }
+  
+      bb7: {
+          StorageLive(_5);
+          _5 = copy ((_1 as C).0: u32);
+          StorageLive(_6);
+          _6 = copy _5;
+          _0 = consume(move _6) -> [return: bb10, unwind: bb14];
+      }
+  
+      bb8: {
+          StorageLive(_3);
+          _3 = copy ((_1 as D).0: u32);
+          StorageLive(_4);
+          _4 = copy _3;
+          _0 = consume(move _4) -> [return: bb9, unwind: bb14];
+      }
+  
+      bb9: {
+          StorageDead(_4);
+          StorageDead(_3);
+          goto -> bb13;
+      }
+  
+      bb10: {
+          StorageDead(_6);
+          StorageDead(_5);
+          goto -> bb13;
+      }
+  
+      bb11: {
+          StorageDead(_8);
+          StorageDead(_7);
+          goto -> bb13;
+      }
+  
+      bb12: {
+          StorageDead(_10);
+          StorageDead(_9);
+          goto -> bb13;
+      }
+  
+      bb13: {
++         Coverage::VirtualCounter(bcb2);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb14 (cleanup): {
+          resume;
+      }
+  }
+  

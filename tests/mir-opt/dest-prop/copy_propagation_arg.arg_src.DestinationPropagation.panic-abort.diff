@@ -1,0 +1,26 @@
+- // MIR for `arg_src` before DestinationPropagation
++ // MIR for `arg_src` after DestinationPropagation
+  
+  fn arg_src(_1: i32) -> i32 {
+      debug x => _1;
+      let mut _0: i32;
+      let _2: i32;
+      scope 1 {
+-         debug y => _2;
++         debug y => _0;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1;
++         nop;
++         _0 = copy _1;
+          _1 = const 123_i32;
+-         _0 = copy _2;
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

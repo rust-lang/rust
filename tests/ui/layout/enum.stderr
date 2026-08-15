@@ -1,0 +1,26 @@
+error: align: Align(2 bytes)
+  --> $DIR/enum.rs:9:1
+   |
+LL | enum UninhabitedVariantAlign {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(16 bytes)
+  --> $DIR/enum.rs:15:1
+   |
+LL | enum UninhabitedVariantSpace {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: ScalarPair { a: u8 is 0..=1, b: u8 is .., b_offset: Size(1 bytes) }
+  --> $DIR/enum.rs:21:1
+   |
+LL | enum ScalarPairDifferingSign {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:31:1
+   |
+LL | enum DefinedLayoutAllUninhabited {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

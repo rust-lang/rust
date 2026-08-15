@@ -1,0 +1,9 @@
+error[E0275]: overflow assigning `_` to `*const _`
+  --> $DIR/subtype-recursion-limit.rs:12:17
+   |
+LL |     let mut w = (x, y);
+   |                 ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

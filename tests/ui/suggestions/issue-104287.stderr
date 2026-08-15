@@ -1,0 +1,30 @@
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-104287.rs:10:5
+   |
+LL |     foo::<()>(x);
+   |     ^^^------ help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: method defined here, with 0 generic parameters
+  --> $DIR/issue-104287.rs:6:8
+   |
+LL |     fn foo(&self) {}
+   |        ^^^
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/issue-104287.rs:10:5
+   |
+LL |     foo::<()>(x);
+   |     ^^^ not found in this scope
+   |
+help: use the `.` operator to call the method `foo` on `&S`
+   |
+LL -     foo::<()>(x);
+LL +     x.foo();
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0425.
+For more information about an error, try `rustc --explain E0107`.

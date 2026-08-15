@@ -1,0 +1,38 @@
+error: [Self: o, 'i: o, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:6:44
+   |
+LL |     fn implicit_capture_early<'a: 'a>() -> impl Sized {}
+   |                                            ^^^^^^^^^^
+
+error: [Self: o, 'i: o, 'a: *, 'i: o, 'a: o]
+  --> $DIR/variance.rs:9:44
+   |
+LL |     fn explicit_capture_early<'a: 'a>() -> impl Sized + use<'i, 'a, Self> {}
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [Self: o, 'i: o, 'a: *, 'i: o]
+  --> $DIR/variance.rs:12:40
+   |
+LL |     fn not_captured_early<'a: 'a>() -> impl Sized + use<'i, Self> {}
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [Self: o, 'i: o, 'i: o, 'a: o]
+  --> $DIR/variance.rs:15:48
+   |
+LL |     fn implicit_capture_late<'a>(_: &'a ()) -> impl Sized {}
+   |                                                ^^^^^^^^^^
+
+error: [Self: o, 'i: o, 'i: o, 'a: o]
+  --> $DIR/variance.rs:18:48
+   |
+LL |     fn explicit_capture_late<'a>(_: &'a ()) -> impl Sized + use<'i, 'a, Self> {}
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [Self: o, 'i: o, 'i: o]
+  --> $DIR/variance.rs:21:44
+   |
+LL |     fn not_captured_late<'a>(_: &'a ()) -> impl Sized + use<'i, Self> {}
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

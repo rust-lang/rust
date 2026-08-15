@@ -1,0 +1,156 @@
+Function name: conditions::assign_3_and_or
+Raw bytes (75): 0x[01, 01, 05, 01, 05, 05, 09, 01, 09, 01, 13, 09, 0d, 0b, 01, 1c, 01, 00, 2e, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 02, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 06, 00, 12, 00, 13, 0a, 00, 17, 00, 18, 20, 0d, 0e, 00, 17, 00, 18, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 5
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(0), rhs = Expression(4, Add)
+- expression 4 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 11
+- Code(Counter(0)) at (prev + 28, 1) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 18) to (start + 0, 19)
+- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 18) to (start + 0, 19)
+    true  = c2
+    false = (c1 - c2)
+- Code(Expression(2, Sub)) at (prev + 0, 23) to (start + 0, 24)
+    = (c0 - c2)
+- Branch { true: Counter(3), false: Expression(3, Sub) } at (prev + 0, 23) to (start + 0, 24)
+    true  = c3
+    false = (c0 - (c2 + c3))
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+
+Function name: conditions::assign_3_or_and
+Raw bytes (73): 0x[01, 01, 04, 01, 05, 01, 0b, 05, 09, 09, 0d, 0b, 01, 17, 01, 00, 2e, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 02, 00, 0d, 00, 0e, 02, 00, 12, 00, 13, 20, 09, 06, 00, 12, 00, 13, 09, 00, 17, 00, 18, 20, 0d, 0e, 00, 17, 00, 18, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(2), rhs = Counter(3)
+Number of file 0 mappings: 11
+- Code(Counter(0)) at (prev + 23, 1) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c1
+    false = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 18) to (start + 0, 19)
+    = (c0 - c1)
+- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 18) to (start + 0, 19)
+    true  = c2
+    false = (c0 - (c1 + c2))
+- Code(Counter(2)) at (prev + 0, 23) to (start + 0, 24)
+- Branch { true: Counter(3), false: Expression(3, Sub) } at (prev + 0, 23) to (start + 0, 24)
+    true  = c3
+    false = (c2 - c3)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+
+Function name: conditions::assign_and
+Raw bytes (57): 0x[01, 01, 02, 01, 05, 05, 09, 09, 01, 0d, 01, 00, 20, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 02, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 06, 00, 12, 00, 13, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 13, 1) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 18) to (start + 0, 19)
+- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 18) to (start + 0, 19)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: conditions::assign_or
+Raw bytes (59): 0x[01, 01, 03, 01, 05, 01, 0b, 05, 09, 09, 01, 12, 01, 00, 1f, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 02, 00, 0d, 00, 0e, 02, 00, 12, 00, 13, 20, 09, 06, 00, 12, 00, 13, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 18, 1) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c1
+    false = (c0 - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 18) to (start + 0, 19)
+    = (c0 - c1)
+- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 18) to (start + 0, 19)
+    true  = c2
+    false = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: conditions::foo
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 21, 01, 00, 18, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 33, 1) to (start + 0, 24)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: conditions::func_call
+Raw bytes (47): 0x[01, 01, 02, 01, 05, 05, 09, 07, 01, 25, 01, 00, 1f, 01, 01, 05, 00, 08, 01, 00, 09, 00, 0a, 20, 05, 02, 00, 09, 00, 0a, 05, 00, 0e, 00, 0f, 20, 09, 06, 00, 0e, 00, 0f, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 7
+- Code(Counter(0)) at (prev + 37, 1) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 10)
+- Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 0, 9) to (start + 0, 10)
+    true  = c1
+    false = (c0 - c1)
+- Code(Counter(1)) at (prev + 0, 14) to (start + 0, 15)
+- Branch { true: Counter(2), false: Expression(1, Sub) } at (prev + 0, 14) to (start + 0, 15)
+    true  = c2
+    false = (c1 - c2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: conditions::simple_assign
+Raw bytes (34): 0x[01, 01, 00, 06, 01, 08, 01, 00, 1a, 01, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/conditions.rs
+Number of expressions: 0
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 8, 1) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+

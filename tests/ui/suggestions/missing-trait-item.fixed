@@ -1,0 +1,21 @@
+//@ run-rustfix
+#![allow(dead_code)]
+
+trait T {
+    unsafe fn foo(a: &usize, b: &usize) -> usize;
+    fn bar(&self, a: &usize, b: &usize) -> usize;
+}
+
+mod foo {
+    use super::T;
+    impl T for () {    fn bar(&self, _: &usize, _: &usize) -> usize { todo!() }
+        unsafe fn foo(_: &usize, _: &usize) -> usize { todo!() }
+    } //~ ERROR not all trait items
+
+    impl T for usize { //~ ERROR not all trait items
+        fn bar(&self, _: &usize, _: &usize) -> usize { todo!() }
+        unsafe fn foo(_: &usize, _: &usize) -> usize { todo!() }
+    }
+}
+
+fn main() {}

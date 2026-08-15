@@ -1,0 +1,15 @@
+error[E0741]: `Nat` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/issue-80471.rs:9:17
+   |
+LL | fn foo<const N: Nat>() {}
+   |                 ^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | enum Nat {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

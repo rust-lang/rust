@@ -1,0 +1,54 @@
+{
+    0: CrateBuilder {
+        basic: CrateData {
+            root_file_id: FileId(
+                1,
+            ),
+            edition: Edition2024,
+            dependencies: [],
+            origin: Local {
+                repo: None,
+                name: Some(
+                    "foo",
+                ),
+            },
+            crate_attrs: [
+                "#![no_std]",
+                "#![feature(f16,f128)]",
+                "#![crate_type = \"lib\"]",
+            ],
+            is_proc_macro: false,
+            proc_macro_cwd: AbsPathBuf(
+                "$ROOT$",
+            ),
+        },
+        extra: ExtraCrateData {
+            version: None,
+            display_name: Some(
+                CrateDisplayName {
+                    crate_name: CrateName(
+                        "foo",
+                    ),
+                    canonical_name: "foo",
+                },
+            ),
+            potential_cfg_options: None,
+        },
+        cfg_options: CfgOptions(
+            [
+                "rust_analyzer",
+                "test",
+                "true",
+            ],
+        ),
+        env: Env {
+            entries: {},
+        },
+        ws_data: CrateWorkspaceData {
+            target: Err(
+                "test has no target data",
+            ),
+            toolchain: None,
+        },
+    },
+}

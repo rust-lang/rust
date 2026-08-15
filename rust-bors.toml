@@ -1,0 +1,104 @@
+# 6 hours timeout for CI builds
+timeout = 21600
+
+# Do not allow approving PRs with certain labels
+labels_blocking_approval = [
+    # Waiting for an FCP to finish
+    "final-comment-period",
+    "proposed-final-comment-period",
+    # PRs that were closed or postponed by an FCP
+    "disposition-close",
+    "disposition-postpone",
+    # Waiting for library ACP
+    "S-waiting-on-ACP",
+    "S-waiting-on-concerns",
+    "S-waiting-on-crater",
+    "S-waiting-on-fcp",
+    "S-waiting-on-MCP",
+    "S-waiting-on-t-lang",
+    "S-waiting-on-t-compiler",
+    "S-waiting-on-t-libs",
+    "S-waiting-on-t-types",
+    "S-waiting-on-t-opsem",
+    "S-waiting-on-t-rustdoc",
+    "S-waiting-on-t-rustdoc-frontend",
+    "S-waiting-on-t-clippy",
+    # PR manually set to blocked
+    "S-blocked",
+    # Needs a Crater run before being approved
+    "needs-crater",
+    # Needs a formal decision to be made
+    "needs-rfc",
+    "needs-fcp",
+    "needs-acp",
+    "needs-mcp",
+    # A PR in the Rust reference must be done first
+    "needs-reference-pr"
+]
+
+# If CI runs quicker than this duration, consider it to be a failure
+min_ci_time = 600
+
+merge_queue_enabled = true
+report_merge_conflicts = true
+
+[labels]
+approved = [
+    "+S-waiting-on-bors",
+    "-S-blocked",
+    "-S-waiting-on-author",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-review",
+    "-S-waiting-on-team",
+]
+unapproved = [
+    "+S-waiting-on-author",
+    "-S-blocked",
+    "-S-waiting-on-bors",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-review",
+    "-S-waiting-on-team",
+]
+try_failed = [
+    "+S-waiting-on-author",
+    "-S-waiting-on-review",
+    "-S-waiting-on-crater",
+]
+auto_build_succeeded = [
+    "+merged-by-bors",
+    "-S-waiting-on-bors",
+]
+auto_build_failed = [
+    "+S-waiting-on-review",
+    "-S-blocked",
+    "-S-waiting-on-bors",
+    "-S-waiting-on-author",
+    "-S-waiting-on-crater",
+    "-S-waiting-on-team",
+]
+
+# Enable management of EC2 self-hosted runners
+[ec2_runners]
+runner_group_id = 8
+label_prefix = "ec2"
+region = "us-east-2"
+images = {
+    "x86_64ami" = "latest-gha-runner-ami"
+}
+jit_runner = "organization"
+# Prices per hour of on-demand compute in us-east-2 (as of Aug 2026)
+# See rough assessment of build speed for dist-x86_64-quick in https://github.com/rust-lang/simpleinfra/issues/1132
+# m8a.2x     8 vCPU, 32 GB   $0.48688/hr
+# c8a.4x    16 vCPU, 32 GB   $0.86216/hr
+# c8a.8x    32 vCPU, 64 GB   $1.72432/hr
+# c8a.12x   48 vCPU, 96 GB   $2.58648/hr
+# CodeBuild 36 vCPU          $4.78799/hr
+allowed_instances = [
+    "m8a.2xlarge",
+    "c8a.4xlarge",
+    "c8a.8xlarge",
+    "c8a.12xlarge",
+]
+
+# Enable unrolling of rollup member PRs after rollup merge
+[unroll]

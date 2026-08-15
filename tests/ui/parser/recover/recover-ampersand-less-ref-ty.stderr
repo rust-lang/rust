@@ -1,0 +1,24 @@
+error: expected type, found lifetime
+  --> $DIR/recover-ampersand-less-ref-ty.rs:4:11
+   |
+LL |     name: 'a str,
+   |           ^^ expected type
+   |
+help: you might have meant to write a reference type here
+   |
+LL |     name: &'a str,
+   |           +
+
+error: expected type, found lifetime
+  --> $DIR/recover-ampersand-less-ref-ty.rs:9:12
+   |
+LL |     bytes: 'buf mut [u8],
+   |            ^^^^ expected type
+   |
+help: you might have meant to write a reference type here
+   |
+LL |     bytes: &'buf mut [u8],
+   |            +
+
+error: aborting due to 2 previous errors
+

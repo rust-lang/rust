@@ -1,0 +1,8 @@
+error: requires `sized` lang_item
+  --> $DIR/lang-item-missing.rs:9:60
+   |
+LL | extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
+   |                                                            ^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,17 @@
+error: this write lock is used only for reading
+  --> tests/ui/readonly_write_lock.rs:16:22
+   |
+LL |         let writer = lock.write().unwrap();
+   |                      ^^^^^^^^^^^^ help: consider using a read lock instead: `lock.read()`
+   |
+   = note: `-D clippy::readonly-write-lock` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::readonly_write_lock)]`
+
+error: this write lock is used only for reading
+  --> tests/ui/readonly_write_lock.rs:23:22
+   |
+LL |         let writer = lock.write().unwrap();
+   |                      ^^^^^^^^^^^^ help: consider using a read lock instead: `lock.read()`
+
+error: aborting due to 2 previous errors
+

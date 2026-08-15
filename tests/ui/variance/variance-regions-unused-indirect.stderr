@@ -1,0 +1,43 @@
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-regions-unused-indirect.rs:3:10
+   |
+LL | enum Foo<'a> {
+   |          ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0072]: recursive types `Foo` and `Bar` have infinite size
+  --> $DIR/variance-regions-unused-indirect.rs:3:1
+   |
+LL | enum Foo<'a> {
+   | ^^^^^^^^^^^^
+LL |
+LL |     Foo1(Bar<'a>)
+   |          ------- recursive without indirection
+...
+LL | enum Bar<'a> {
+   | ^^^^^^^^^^^^
+LL |     Bar1(Foo<'a>)
+   |          ------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL ~     Foo1(Box<Bar<'a>>)
+LL | }
+LL |
+LL | enum Bar<'a> {
+LL ~     Bar1(Box<Foo<'a>>)
+   |
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-regions-unused-indirect.rs:8:10
+   |
+LL | enum Bar<'a> {
+   |          ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0072, E0392.
+For more information about an error, try `rustc --explain E0072`.

@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `Box<(dyn Send + 'static)>: Copy` is not satisfied
+  --> $DIR/discriminant-for-variant.rs:3:13
+   |
+LL | const None: Option<unsafe<> Option<Box<dyn Send>>> = None;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<(dyn Send + 'static)>`
+   |
+   = note: required for `Option<Box<(dyn Send + 'static)>>` to implement `Copy`
+
+error[E0277]: the trait bound `Box<(dyn Send + 'static)>: Copy` is not satisfied
+  --> $DIR/discriminant-for-variant.rs:3:54
+   |
+LL | const None: Option<unsafe<> Option<Box<dyn Send>>> = None;
+   |                                                      ^^^^ the trait `Copy` is not implemented for `Box<(dyn Send + 'static)>`
+   |
+   = note: required for `Option<Box<(dyn Send + 'static)>>` to implement `Copy`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

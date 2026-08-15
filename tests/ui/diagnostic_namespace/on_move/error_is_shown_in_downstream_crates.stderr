@@ -1,0 +1,21 @@
+error[E0382]: Foo
+  --> $DIR/error_is_shown_in_downstream_crates.rs:12:15
+   |
+LL |     let foo = Foo;
+   |         --- Bar
+LL |     takes_foo(foo);
+   |               --- value moved here
+LL |     let bar = foo;
+   |               ^^^ value used here after move
+   |
+note: consider changing this parameter type in function `takes_foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/error_is_shown_in_downstream_crates.rs:7:17
+   |
+LL | fn takes_foo(_: Foo) {}
+   |    ---------    ^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

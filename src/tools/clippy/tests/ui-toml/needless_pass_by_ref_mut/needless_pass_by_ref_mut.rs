@@ -1,0 +1,10 @@
+#![warn(clippy::needless_pass_by_ref_mut)]
+#![allow(clippy::ptr_arg)]
+
+// Should warn
+pub fn pub_foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
+    //~^ needless_pass_by_ref_mut
+    *x += *b + s.len() as u32;
+}
+
+fn main() {}

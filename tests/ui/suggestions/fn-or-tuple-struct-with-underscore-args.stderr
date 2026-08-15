@@ -1,0 +1,38 @@
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:24
+   |
+LL |     let _: usize = foo(_, _);
+   |                        ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:27
+   |
+LL |     let _: usize = foo(_, _);
+   |                           ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:13:18
+   |
+LL |     let _: S = S(_, _);
+   |                  ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:13:21
+   |
+LL |     let _: S = S(_, _);
+   |                     ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:16:27
+   |
+LL |     let _: usize = T::baz(_, _);
+   |                           ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:16:30
+   |
+LL |     let _: usize = T::baz(_, _);
+   |                              ^ `_` not allowed here
+
+error: aborting due to 6 previous errors
+

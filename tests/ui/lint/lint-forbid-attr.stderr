@@ -1,0 +1,12 @@
+error[E0453]: allow(deprecated) incompatible with previous forbid
+  --> $DIR/lint-forbid-attr.rs:3:9
+   |
+LL | #![forbid(deprecated)]
+   |           ---------- `forbid` level set here
+LL |
+LL | #[allow(deprecated)]
+   |         ^^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0453`.

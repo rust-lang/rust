@@ -1,0 +1,21 @@
+Function name: call_site_body::fn_with_call_site_body
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 15, 05, 00, 06, 01, 01, 09, 00, 0c, 01, 00, 0d, 00, 14]
+Number of files: 1
+- file 0 => $DIR/call-site-body.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 21, 5) to (start + 0, 6)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 0, 13) to (start + 0, 20)
+Highest counter ID seen: c0
+
+Function name: call_site_body::fn_with_call_site_inner (unused)
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 1e, 09, 02, 0f, 00, 05, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/call-site-body.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 30, 9) to (start + 2, 15)
+- Code(Zero) at (prev + 5, 9) to (start + 0, 10)
+Highest counter ID seen: (none)
+

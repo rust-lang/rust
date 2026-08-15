@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-both-are-structs.rs:6:5
+   |
+LL | fn foo(mut x: Vec<Ref>, y: Ref) {
+   |        -----            - has type `Ref<'1>`
+   |        |
+   |        has type `Vec<Ref<'2>>`
+LL |     x.push(y);
+   |     ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<Ref<'_>>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(mut x: Vec<Ref<'a>>, y: Ref<'a>) {
+   |       ++++               ++++         ++++
+
+error: aborting due to 1 previous error
+

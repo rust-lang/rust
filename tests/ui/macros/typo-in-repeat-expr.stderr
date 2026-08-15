@@ -1,0 +1,14 @@
+error: attempted to repeat an expression containing no syntax variables matched as repeating at this depth
+  --> $DIR/typo-in-repeat-expr.rs:4:11
+   |
+LL |         [$($arg),*]
+   |           ^^^^^^
+   |
+help: there's a macro metavariable with a similar name
+   |
+LL -         [$($arg),*]
+LL +         [$($ard),*]
+   |
+
+error: aborting due to 1 previous error
+

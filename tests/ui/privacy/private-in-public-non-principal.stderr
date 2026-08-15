@@ -1,0 +1,27 @@
+warning: trait `PrivNonPrincipal` is more private than the item `leak_dyn_nonprincipal`
+  --> $DIR/private-in-public-non-principal.rs:8:1
+   |
+LL | pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loop {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function `leak_dyn_nonprincipal` is reachable at visibility `pub`
+   |
+note: but trait `PrivNonPrincipal` is only usable at visibility `pub(crate)`
+  --> $DIR/private-in-public-non-principal.rs:6:1
+   |
+LL | auto trait PrivNonPrincipal {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+error: missing documentation for an associated function
+  --> $DIR/private-in-public-non-principal.rs:14:9
+   |
+LL |         pub fn check_doc_lint() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/private-in-public-non-principal.rs:11:8
+   |
+LL | #[deny(missing_docs)]
+   |        ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

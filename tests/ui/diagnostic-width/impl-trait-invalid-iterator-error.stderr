@@ -1,0 +1,11 @@
+error[E0277]: `()` is not an iterator
+  --> $DIR/impl-trait-invalid-iterator-error.rs:3:33
+   |
+LL | fn will_ice(something: &u32) -> impl Iterator<Item = &u32> {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

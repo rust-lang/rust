@@ -1,0 +1,15 @@
+error: expected one of `,`, `.`, `?`, `}`, or an operator, found `second`
+  --> $DIR/struct-initializer-comma.rs:11:9
+   |
+LL |     let _ = Foo {
+   |             --- while parsing this struct
+LL |         first: true
+   |                    -
+   |                    |
+   |                    expected one of `,`, `.`, `?`, `}`, or an operator
+   |                    help: try adding a comma: `,`
+LL |         second: 25
+   |         ^^^^^^ unexpected token
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
+  --> $DIR/mismatch_safety2.rs:11:1
+   |
+LL | unsafe static HELLO_IMPL: u64 = 5;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,35 @@
+error[E0453]: allow(unsafe_code) incompatible with previous forbid
+  --> $DIR/deny-inside-forbid-ignored.rs:12:17
+   |
+LL | #[forbid(unsafe_code)] // NO UNSAFE CODE IN HERE!!
+   |          ----------- `forbid` level set here
+...
+LL |         #[allow(unsafe_code)] // let's have some unsafe code in here
+   |                 ^^^^^^^^^^^ overruled by previous forbid
+
+error[E0453]: allow(unsafe_code) incompatible with previous forbid
+  --> $DIR/deny-inside-forbid-ignored.rs:12:17
+   |
+LL | #[forbid(unsafe_code)] // NO UNSAFE CODE IN HERE!!
+   |          ----------- `forbid` level set here
+...
+LL |         #[allow(unsafe_code)] // let's have some unsafe code in here
+   |                 ^^^^^^^^^^^ overruled by previous forbid
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: usage of an `unsafe` block
+  --> $DIR/deny-inside-forbid-ignored.rs:16:13
+   |
+LL |             unsafe { /* ≽^•⩊•^≼ */ }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deny-inside-forbid-ignored.rs:8:10
+   |
+LL | #[forbid(unsafe_code)] // NO UNSAFE CODE IN HERE!!
+   |          ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0453`.

@@ -1,0 +1,18 @@
+//@ run-rustfix
+struct S {
+    field_name: (),
+}
+
+fn main() {
+    match (S {field_name: ()}) {
+        S {field_name: ref _foo} => {} //~ ERROR expected `,`
+    }
+    match (S {field_name: ()}) {
+        S {field_name: mut _foo} => {} //~ ERROR expected `,`
+    }
+    match (S {field_name: ()}) {
+        S {field_name: ref mut _foo} => {} //~ ERROR expected `,`
+    }
+    // Verify that we recover enough to run typeck.
+    let _: usize = 3usize; //~ ERROR mismatched types
+}

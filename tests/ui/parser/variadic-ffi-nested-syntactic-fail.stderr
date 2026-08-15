@@ -1,0 +1,30 @@
+error[E0743]: C-variadic type `...` may not be nested inside another type
+  --> $DIR/variadic-ffi-nested-syntactic-fail.rs:1:25
+   |
+LL | fn f1<'a>(x: u8, y: &'a ...) {}
+   |                         ^^^
+
+error[E0743]: C-variadic type `...` may not be nested inside another type
+  --> $DIR/variadic-ffi-nested-syntactic-fail.rs:4:29
+   |
+LL | fn f2<'a>(x: u8, y: Vec<&'a ...>) {}
+   |                             ^^^
+
+error[E0743]: C-variadic type `...` may not be nested inside another type
+  --> $DIR/variadic-ffi-nested-syntactic-fail.rs:8:21
+   |
+LL | fn f3() where for<> ...: {}
+   |                     ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/variadic-ffi-nested-syntactic-fail.rs:12:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0743.
+For more information about an error, try `rustc --explain E0308`.

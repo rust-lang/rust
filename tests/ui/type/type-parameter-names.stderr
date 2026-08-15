@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> $DIR/type-parameter-names.rs:8:5
+   |
+LL | fn foo<Foo, Bar>(x: Foo) -> Bar {
+   |        ---  ---             --- expected `Bar` because of return type
+   |        |    |
+   |        |    expected type parameter
+   |        found type parameter
+LL |     x
+   |     ^ expected type parameter `Bar`, found type parameter `Foo`
+   |
+   = note: expected type parameter `Bar`
+              found type parameter `Foo`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: the caller chooses a type for `Bar` which can be different from `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/type-parameter-names.rs:17:10
+   |
+LL | fn bar<Foo, Bar>(x: Foo, y: Bar) {
+   |        ---  --- found type parameter
+   |        |
+   |        expected type parameter
+LL |     let mut xx = x;
+   |                  - expected due to this value
+LL |     xx = y;
+   |          ^ expected type parameter `Foo`, found type parameter `Bar`
+   |
+   = note: expected type parameter `Foo`
+              found type parameter `Bar`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

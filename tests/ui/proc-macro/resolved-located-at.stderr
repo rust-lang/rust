@@ -1,0 +1,21 @@
+error: expected error
+  --> $DIR/resolved-located-at.rs:7:25
+   |
+LL |     resolve_located_at!(a b)
+   |                         ^
+   |
+   = note: this error originates in the macro `resolve_located_at` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/resolved-located-at.rs:7:27
+   |
+LL | fn main() {
+   |          - expected `()` because of default return type
+LL |     resolve_located_at!(a b)
+   |                           ^ expected `()`, found `S`
+   |
+   = note: this error originates in the macro `resolve_located_at` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

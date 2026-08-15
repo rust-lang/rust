@@ -1,0 +1,13 @@
+   LL|       |//@ edition: 2021
+   LL|       |//@ ignore-coverage-map
+   LL|       |//@ ignore-windows
+   LL|       |//@ llvm-cov-flags: --use-color
+   LL|       |
+   LL|       |// Verify that telling `llvm-cov` to use colored output actually works.
+   LL|       |// Ignored on Windows because we can't tell the tool to use ANSI escapes.
+   LL|       |
+   LL|      1|fn main() {
+   LL|      [0;35m1[0m|    for [0;41m_i[0m in 0..0 [0;41m{}[0m
+                      ^0         ^0
+   LL|      1|}
+

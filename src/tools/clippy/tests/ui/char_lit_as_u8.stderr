@@ -1,0 +1,36 @@
+error: casting a character literal to `u8` truncates
+  --> tests/ui/char_lit_as_u8.rs:4:13
+   |
+LL |     let _ = 'a' as u8;
+   |             ^^^^^^^^^ help: use a byte literal instead: `b'a'`
+   |
+   = note: `char` is four bytes wide, but `u8` is a single byte
+   = note: `-D clippy::char-lit-as-u8` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::char_lit_as_u8)]`
+
+error: casting a character literal to `u8` truncates
+  --> tests/ui/char_lit_as_u8.rs:6:13
+   |
+LL |     let _ = '\n' as u8;
+   |             ^^^^^^^^^^ help: use a byte literal instead: `b'\n'`
+   |
+   = note: `char` is four bytes wide, but `u8` is a single byte
+
+error: casting a character literal to `u8` truncates
+  --> tests/ui/char_lit_as_u8.rs:8:13
+   |
+LL |     let _ = '\0' as u8;
+   |             ^^^^^^^^^^ help: use a byte literal instead: `b'\0'`
+   |
+   = note: `char` is four bytes wide, but `u8` is a single byte
+
+error: casting a character literal to `u8` truncates
+  --> tests/ui/char_lit_as_u8.rs:10:13
+   |
+LL |     let _ = '\x01' as u8;
+   |             ^^^^^^^^^^^^ help: use a byte literal instead: `b'\x01'`
+   |
+   = note: `char` is four bytes wide, but `u8` is a single byte
+
+error: aborting due to 4 previous errors
+

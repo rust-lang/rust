@@ -1,0 +1,48 @@
+warning: unused comparison that must be used
+  --> $DIR/must-use-macros.rs:28:17
+   |
+LL |                 $a == $b
+   |                 ^^^^^^^^ the comparison produces a value
+...
+LL |         cmp!(a, b);
+   |         ---------- in this macro invocation
+   |
+note: the lint level is defined here
+  --> $DIR/must-use-macros.rs:9:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+   = note: this warning originates in the macro `cmp` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = cmp!(a, b);
+   |         +++++++
+
+warning: unused comparison that must be used
+  --> $DIR/must-use-macros.rs:41:17
+   |
+LL |                 $a == $b
+   |                 ^^^^^^^^ the comparison produces a value
+...
+LL |         cmp!(1, 1);
+   |         ---------- in this macro invocation
+   |
+   = note: this warning originates in the macro `cmp` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = cmp!(1, 1);
+   |         +++++++
+
+warning: unused return value of `std::cmp::PartialEq::eq` that must be used
+  --> $DIR/must-use-macros.rs:56:9
+   |
+LL |         cmp!(1, 1);
+   |         ^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = cmp!(1, 1);
+   |         +++++++
+
+warning: 3 warnings emitted
+

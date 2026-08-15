@@ -1,0 +1,12 @@
+error: this returns a `Result<_, ()>`
+  --> tests/ui/result_unit_error_no_std.rs:12:1
+   |
+LL | pub fn returns_unit_error_lint() -> Result<u32, ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+   = note: `-D clippy::result-unit-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
+
+error: aborting due to 1 previous error
+

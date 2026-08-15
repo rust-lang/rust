@@ -1,0 +1,109 @@
+error[E0425]: cannot find type `esize` in this scope
+  --> $DIR/levenshtein.rs:5:11
+   |
+LL | fn foo(c: esize) {} // Misspelled primitive type name.
+   |           ^^^^^
+   |
+help: a builtin type with a similar name exists
+   |
+LL - fn foo(c: esize) {} // Misspelled primitive type name.
+LL + fn foo(c: isize) {} // Misspelled primitive type name.
+   |
+
+error[E0425]: cannot find type `Baz` in this scope
+  --> $DIR/levenshtein.rs:10:10
+   |
+LL | enum Bar { }
+   | -------- similarly named enum `Bar` defined here
+LL |
+LL | type A = Baz; // Misspelled type name.
+   |          ^^^
+   |
+help: an enum with a similar name exists
+   |
+LL - type A = Baz; // Misspelled type name.
+LL + type A = Bar; // Misspelled type name.
+   |
+
+error[E0425]: cannot find type `Opiton` in this scope
+  --> $DIR/levenshtein.rs:12:10
+   |
+LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
+   |          ^^^^^^
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: similarly named enum `Option` defined here
+help: an enum with a similar name exists
+   |
+LL - type B = Opiton<u8>; // Misspelled type name from the prelude.
+LL + type B = Option<u8>; // Misspelled type name from the prelude.
+   |
+
+error[E0425]: cannot find type `Baz` in this scope
+  --> $DIR/levenshtein.rs:16:14
+   |
+LL |     type A = Baz; // No suggestion here, Bar is not visible
+   |              ^^^ not found in this scope
+
+error[E0425]: cannot find value `MAXITEM` in this scope
+  --> $DIR/levenshtein.rs:24:20
+   |
+LL | const MAX_ITEM: usize = 10;
+   | --------------------------- similarly named constant `MAX_ITEM` defined here
+...
+LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
+   |                    ^^^^^^^
+   |
+help: a constant with a similar name exists
+   |
+LL |     let v = [0u32; MAX_ITEM]; // Misspelled constant name.
+   |                       +
+
+error[E0425]: cannot find type `first` in module `m`
+  --> $DIR/levenshtein.rs:28:15
+   |
+LL |     pub struct First;
+   |     ----------------- similarly named struct `First` defined here
+...
+LL |     let b: m::first = m::second; // Misspelled item in module.
+   |               ^^^^^
+   |
+help: a struct with a similar name exists (notice the capitalization)
+   |
+LL -     let b: m::first = m::second; // Misspelled item in module.
+LL +     let b: m::First = m::second; // Misspelled item in module.
+   |
+
+error[E0425]: cannot find value `second` in module `m`
+  --> $DIR/levenshtein.rs:28:26
+   |
+LL |     pub struct Second;
+   |     ------------------ similarly named unit struct `Second` defined here
+...
+LL |     let b: m::first = m::second; // Misspelled item in module.
+   |                          ^^^^^^
+   |
+help: a unit struct with a similar name exists (notice the capitalization)
+   |
+LL -     let b: m::first = m::second; // Misspelled item in module.
+LL +     let b: m::first = m::Second; // Misspelled item in module.
+   |
+
+error[E0425]: cannot find function `foobar` in this scope
+  --> $DIR/levenshtein.rs:26:5
+   |
+LL | fn foo_bar() {}
+   | ------------ similarly named function `foo_bar` defined here
+...
+LL |     foobar(); // Misspelled function name.
+   |     ^^^^^^
+   |
+help: a function with a similar name exists
+   |
+LL |     foo_bar(); // Misspelled function name.
+   |        +
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

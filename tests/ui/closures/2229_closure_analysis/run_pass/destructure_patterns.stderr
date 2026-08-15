@@ -1,0 +1,39 @@
+warning: unused variable: `t1`
+  --> $DIR/destructure_patterns.rs:14:14
+   |
+LL |         let (t1, t2) = t;
+   |              ^^ help: if this is intentional, prefix it with an underscore: `_t1`
+   |
+note: the lint level is defined here
+  --> $DIR/destructure_patterns.rs:3:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `t2`
+  --> $DIR/destructure_patterns.rs:14:18
+   |
+LL |         let (t1, t2) = t;
+   |                  ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+
+warning: unused variable: `t1`
+  --> $DIR/destructure_patterns.rs:26:14
+   |
+LL |         let (t1, _) = t;
+   |              ^^ help: if this is intentional, prefix it with an underscore: `_t1`
+
+warning: unused variable: `t2`
+  --> $DIR/destructure_patterns.rs:37:17
+   |
+LL |         let (_, t2) = t;
+   |                 ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+
+warning: unused variable: `x`
+  --> $DIR/destructure_patterns.rs:88:21
+   |
+LL |         let Point { x, y } = p;
+   |                     ^ help: try ignoring the field: `x: _`
+
+warning: 5 warnings emitted
+

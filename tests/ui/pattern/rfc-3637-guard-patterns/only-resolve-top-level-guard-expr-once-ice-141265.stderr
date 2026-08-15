@@ -1,0 +1,48 @@
+error: expected identifier, found keyword `else`
+  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:5
+   |
+LL |     else if b 0 {}
+   |     ^^^^ expected identifier, found keyword
+
+error: missing `in` in `for` loop
+  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:14
+   |
+LL |     else if b 0 {}
+   |              ^
+   |
+help: try adding `in` here
+   |
+LL |     else if b in 0 {}
+   |               ++
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:13
+   |
+LL |     else if b 0 {}
+   |             ^ not found in this scope
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:13
+   |
+LL |     else if b 0 {}
+   |             ^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error[E0277]: `{integer}` is not an iterator
+  --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:15
+   |
+LL |     else if b 0 {}
+   |               ^ `{integer}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `{integer}`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
+   = note: required for `{integer}` to implement `IntoIterator`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0425, E0658.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,43 @@
+- // MIR for `enums` before ScalarReplacementOfAggregates
++ // MIR for `enums` after ScalarReplacementOfAggregates
+  
+  fn enums(_1: usize) -> usize {
+      debug a => _1;
+      let mut _0: usize;
+      let mut _2: std::option::Option<usize>;
+      let mut _3: usize;
+      let mut _4: isize;
+      scope 1 {
+          debug a => _5;
+          let _5: usize;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = Option::<usize>::Some(move _3);
+          StorageDead(_3);
+          _4 = discriminant(_2);
+          switchInt(move _4) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          StorageLive(_5);
+          _5 = copy ((_2 as Some).0: usize);
+          _0 = copy _5;
+          StorageDead(_5);
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _0 = const 0_usize;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

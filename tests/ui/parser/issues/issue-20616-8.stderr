@@ -1,0 +1,8 @@
+error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `,`
+  --> $DIR/issue-20616-8.rs:31:16
+   |
+LL | type Type_8<'a,,> = &'a ();
+   |                ^ expected one of `#`, `>`, `const`, identifier, or lifetime
+
+error: aborting due to 1 previous error
+

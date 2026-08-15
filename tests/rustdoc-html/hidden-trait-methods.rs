@@ -1,0 +1,35 @@
+// test for trait methods with `doc(hidden)`.
+#![crate_name = "foo"]
+
+//@ has foo/trait.Trait.html
+//@ !has - '//*[@id="associatedtype.Foo"]' 'type Foo'
+//@ has - '//*[@id="associatedtype.Bar"]' 'type Bar'
+//@ !has - '//*[@id="tymethod.f"]' 'fn f()'
+//@ has - '//*[@id="tymethod.g"]' 'fn g()'
+pub trait Trait {
+    #[doc(hidden)]
+    type Foo;
+    type Bar;
+    #[doc(hidden)]
+    fn f();
+    fn g();
+}
+
+//@ has foo/struct.S.html
+//@ !has - '//*[@id="associatedtype.Foo"]' 'type Foo'
+//@ has - '//*[@id="associatedtype.Bar"]' 'type Bar'
+//@ !has - '//*[@id="method.f"]' 'fn f()'
+//@ has - '//*[@id="method.g"]' 'fn g()'
+pub struct S;
+impl Trait for S {
+    type Foo = ();
+    type Bar = ();
+    fn f() {}
+    fn g() {}
+}
+
+// Regression test for https://github.com/rust-lang/rust/issues/151454.
+//@ has foo/fn.hidden_projection.html
+//@ has - '//pre[@class="rust item-decl"]' 'T::Foo'
+//@ count - '//pre[@class="rust item-decl"]//a' 'Foo' 0
+pub fn hidden_projection<T: Trait>(_: T::Foo) {}

@@ -1,0 +1,79 @@
+// This config uses a separate build directory for rust-analyzer,
+// so that r-a's checks don't block user `x` commands and vice-verse.
+// R-a's build directory is located in `build-rust-analyzer`.
+//
+// To download rustfmt and proc macro server for r-a run the following command
+// (proc macro server is downloaded automatically with pretty much any command,
+// this specific one also downloads rustfmt):
+// ```
+// x fmt --check
+// ```
+// (if that doesn't work -- do `x clean` first)
+{
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "linkedProjects": [
+          "Cargo.toml",
+          "compiler/rustc_codegen_cranelift/Cargo.toml",
+          "compiler/rustc_codegen_gcc/Cargo.toml",
+          "library/Cargo.toml",
+          "src/bootstrap/Cargo.toml",
+          "src/tools/rust-analyzer/Cargo.toml"
+        ],
+        "check": {
+          "invocationStrategy": "once",
+          "overrideCommand": [
+            "python3",
+            "x.py",
+            "check",
+            "--json-output",
+            "--build-dir",
+            "build-rust-analyzer"
+          ]
+        },
+        "rustfmt": {
+          "overrideCommand": [
+            "build/host/rustfmt/bin/rustfmt",
+            "--edition=2024"
+          ]
+        },
+        "procMacro": {
+          "enable": true,
+          "server": "build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+        },
+        "rustc": {
+          "source": "./Cargo.toml"
+        },
+        "cargo": {
+          "sysrootSrc": "./library",
+          "extraEnv": {
+            "RUSTC_BOOTSTRAP": "1"
+          },
+          "buildScripts": {
+            "enable": true,
+            "invocationStrategy": "once",
+            "overrideCommand": [
+              "python3",
+              "x.py",
+              "check",
+              "--json-output",
+              "--compile-time-deps",
+              "--build-dir",
+              "build-rust-analyzer"
+            ]
+          }
+        },
+        "server": {
+          "extraEnv": {
+            "RUSTC": "build/host/stage0/bin/rustc",
+            "CARGO": "build/host/stage0/bin/cargo"
+          }
+        }
+      }
+    }
+  },
+  "file_types": {
+    "Rust": ["fixed", "pp", "mir"]
+  }
+}

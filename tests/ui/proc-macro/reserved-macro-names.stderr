@@ -1,0 +1,14 @@
+error: name `cfg` is reserved in attribute namespace
+  --> $DIR/reserved-macro-names.rs:10:8
+   |
+LL | pub fn cfg(_: TokenStream, input: TokenStream) -> TokenStream {
+   |        ^^^
+
+error: name `cfg_attr` is reserved in attribute namespace
+  --> $DIR/reserved-macro-names.rs:16:8
+   |
+LL | pub fn cfg_attr(_: TokenStream, input: TokenStream) -> TokenStream {
+   |        ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

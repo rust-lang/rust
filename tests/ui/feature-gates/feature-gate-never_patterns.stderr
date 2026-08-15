@@ -1,0 +1,140 @@
+error: unexpected `,` in pattern
+  --> $DIR/feature-gate-never_patterns.rs:33:16
+   |
+LL |         Some(_),
+   |                ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL |         (Some(_),)
+   |         +        +
+help: ...or a vertical bar to match on alternatives
+   |
+LL -         Some(_),
+LL +         Some(_) |
+   |
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:8:24
+   |
+LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
+   |                        ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:14:13
+   |
+LL |             !
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:20:13
+   |
+LL |             !
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:25:13
+   |
+LL |             ! => {}
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:38:9
+   |
+LL |         Some(_)
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => { todo!() }
+   |                 ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:43:9
+   |
+LL |         Some(_) if false,
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) if false => { todo!() },
+   |                          ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:45:9
+   |
+LL |         Some(_) if false
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) if false => { todo!() }
+   |                          ++++++++++++++
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:50:13
+   |
+LL |         Err(!),
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:54:13
+   |
+LL |         Err(!) if false,
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:64:9
+   |
+LL |         Some(_)
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => { todo!() }
+   |                 ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:70:9
+   |
+LL |         Some(_) if false
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) if false => { todo!() }
+   |                          ++++++++++++++
+
+error: a guard on a never pattern will never be run
+  --> $DIR/feature-gate-never_patterns.rs:54:19
+   |
+LL |         Err(!) if false,
+   |                   ^^^^^ help: remove this guard
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

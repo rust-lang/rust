@@ -1,0 +1,86 @@
+- // MIR for `inner` before GVN
++ // MIR for `inner` after GVN
+  
+  fn inner(_1: u32) -> i64 {
+      debug fields => _1;
+      let mut _0: i64;
+      let mut _2: i32;
+      let mut _3: u32;
+      let mut _4: u32;
+      let mut _5: u32;
+      let mut _6: u32;
+      let mut _7: u32;
+      let mut _8: u32;
+      let mut _9: u32;
+      let mut _10: u32;
+      let mut _11: bool;
+      let mut _12: u32;
+      let mut _13: bool;
+      scope 1 (inlined imm8) {
+          let mut _14: u32;
+          scope 2 {
+          }
+      }
+      scope 3 (inlined core::num::<impl u32>::rotate_right) {
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+-         StorageLive(_14);
+-         _14 = BitAnd(copy _5, const 255_u32);
+-         _4 = BitOr(const 0_u32, move _14);
+-         StorageDead(_14);
++         nop;
++         _14 = BitAnd(copy _1, const 255_u32);
++         _4 = copy _14;
++         nop;
+          StorageDead(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _1;
+-         _10 = const 8_i32 as u32 (IntToInt);
+-         _11 = Lt(move _10, const 32_u32);
+-         assert(move _11, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> [success: bb1, unwind unreachable];
++         _10 = const 8_u32;
++         _11 = const true;
++         assert(const true, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _8 = Shr(move _9, const 8_i32);
++         _8 = Shr(copy _1, const 8_i32);
+          StorageDead(_9);
+          _7 = BitAnd(move _8, const 15_u32);
+          StorageDead(_8);
+-         _12 = const 1_i32 as u32 (IntToInt);
+-         _13 = Lt(move _12, const 32_u32);
+-         assert(move _13, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> [success: bb2, unwind unreachable];
++         _12 = const 1_u32;
++         _13 = const true;
++         assert(const true, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          _6 = Shl(move _7, const 1_i32);
+          StorageDead(_7);
+-         _3 = rotate_right::<u32>(move _4, move _6) -> [return: bb3, unwind unreachable];
++         _3 = rotate_right::<u32>(copy _14, move _6) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_6);
+          StorageDead(_4);
+          _2 = move _3 as i32 (IntToInt);
+          StorageDead(_3);
+          _0 = move _2 as i64 (IntToInt);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

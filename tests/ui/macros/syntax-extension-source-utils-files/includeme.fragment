@@ -1,0 +1,7 @@
+/* this is for run-pass/syntax-extension-source-utils.rs */
+
+{
+    assert!(file!().ends_with("includeme.fragment"));
+    assert_eq!(line!(), 5u32);
+    format!("victory robot {}", line!())
+}

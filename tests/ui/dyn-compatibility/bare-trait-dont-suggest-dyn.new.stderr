@@ -1,0 +1,14 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/bare-trait-dont-suggest-dyn.rs:6:33
+   |
+LL | fn ord_prefer_dot(s: String) -> Ord {
+   |                                 ^^^
+   |
+help: `Ord` is dyn-incompatible, use `impl Ord` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn ord_prefer_dot(s: String) -> impl Ord {
+   |                                 ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0782`.

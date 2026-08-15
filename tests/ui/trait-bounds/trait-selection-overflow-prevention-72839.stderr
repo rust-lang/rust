@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `missing_var` in this scope
+  --> $DIR/trait-selection-overflow-prevention-72839.rs:19:8
+   |
+LL |     if missing_var % 8 == 0 {}
+   |        ^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,9 @@
+error[E0220]: associated type `A` not found for `T`
+  --> $DIR/issue-79465.rs:1:20
+   |
+LL | pub fn f1<T>(x: T::A) {}
+   |                    ^ associated type `A` not found
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

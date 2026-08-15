@@ -1,0 +1,12 @@
+# Reproducing #14553 requires the `# Safety` comment to be in the first line of 
+# the file. Since `unnecessary_safety_comment` is not enabled by default, we
+# will set it up here.
+
+[package]
+name = "undocumented_unsafe_blocks"
+edition = "2024"
+publish = false
+version = "0.1.0"
+
+[lints.clippy]
+unnecessary_safety_comment = "deny"

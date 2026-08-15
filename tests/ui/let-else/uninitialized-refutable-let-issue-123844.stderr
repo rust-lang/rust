@@ -1,0 +1,13 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/uninitialized-refutable-let-issue-123844.rs:6:9
+   |
+LL |     let Some(x);
+   |         ^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Option<i32>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

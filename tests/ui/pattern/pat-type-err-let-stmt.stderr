@@ -1,0 +1,51 @@
+error[E0308]: mismatched types
+  --> $DIR/pat-type-err-let-stmt.rs:6:29
+   |
+LL |     let Ok(0): Option<u8> = 42u8;
+   |                ----------   ^^^^ expected `Option<u8>`, found `u8`
+   |                |
+   |                expected due to this
+   |
+   = note: expected enum `Option<u8>`
+              found type `u8`
+help: try wrapping the expression in `Some`
+   |
+LL |     let Ok(0): Option<u8> = Some(42u8);
+   |                             +++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/pat-type-err-let-stmt.rs:6:9
+   |
+LL |     let Ok(0): Option<u8> = 42u8;
+   |         ^^^^^  ---------- expected due to this
+   |         |
+   |         expected `Option<u8>`, found `Result<_, _>`
+   |
+   = note: expected enum `Option<u8>`
+              found enum `Result<_, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/pat-type-err-let-stmt.rs:11:9
+   |
+LL |     let Ok(0): Option<u8>;
+   |         ^^^^^  ---------- expected due to this
+   |         |
+   |         expected `Option<u8>`, found `Result<_, _>`
+   |
+   = note: expected enum `Option<u8>`
+              found enum `Result<_, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/pat-type-err-let-stmt.rs:15:9
+   |
+LL |     let Ok(0) = 42u8;
+   |         ^^^^^   ---- this expression has type `u8`
+   |         |
+   |         expected `u8`, found `Result<_, _>`
+   |
+   = note: expected type `u8`
+              found enum `Result<_, _>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

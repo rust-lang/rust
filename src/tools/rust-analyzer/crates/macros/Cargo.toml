@@ -1,0 +1,19 @@
+[package]
+name = "macros"
+version = "0.0.0"
+repository.workspace = true
+description = "Proc macros for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = "2.0.9"
+synstructure = "0.13.0"

@@ -1,0 +1,8 @@
+error: cannot export macro_rules! macros from a `proc-macro` crate type currently
+  --> $DIR/export-macro.rs:7:1
+   |
+LL | macro_rules! foo {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,12 @@
+error: unsupported operation: `DuplicateHandle` called on a pseudo handle, which is unsupported
+  --> tests/fail-dep/win/duplicate-pseudo-handle.rs:LL:CC
+   |
+LL |             DuplicateHandle(cur_proc, pseudo, cur_proc, &mut out, 0, 0, DUPLICATE_SAME_ACCESS);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

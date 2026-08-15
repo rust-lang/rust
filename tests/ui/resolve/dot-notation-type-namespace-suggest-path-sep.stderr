@@ -1,0 +1,266 @@
+error[E0423]: cannot find value `String` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:10:13
+   |
+LL |     let _ = String.new();
+   |             ^^^^^^
+   |
+   = note: a struct named `String` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     let _ = String.new();
+LL +     let _ = String::new();
+   |
+
+error[E0423]: cannot find value `String` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:14:13
+   |
+LL |     let _ = String.default;
+   |             ^^^^^^
+   |
+   = note: a struct named `String` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     let _ = String.default;
+LL +     let _ = String::default;
+   |
+
+error[E0423]: cannot find value `Vec` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:18:13
+   |
+LL |     let _ = Vec::<()>.with_capacity(1);
+   |             ^^^
+   |
+   = note: a struct named `Vec` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Vec::<()>.with_capacity(1);
+LL +     let _ = Vec::<()>::with_capacity(1);
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:22:13
+   |
+LL |     let _ = Alias.new();
+   |             ^^^^^
+   |
+   = note: a type alias named `Alias` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Alias.new();
+LL +     let _ = Alias::new();
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:26:13
+   |
+LL |     let _ = Alias.default;
+   |             ^^^^^
+   |
+   = note: a type alias named `Alias` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     let _ = Alias.default;
+LL +     let _ = Alias::default;
+   |
+
+error[E0423]: cannot find value `foo` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:30:13
+   |
+LL |     let _ = foo.bar;
+   |             ^^^
+   |
+   = note: a module named `foo` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     let _ = foo.bar;
+LL +     let _ = foo::bar;
+   |
+
+error[E0423]: cannot find value `Cell` in module `::std::cell`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:22
+   |
+LL |         ::std::cell::Cell
+   |                      ^^^^
+...
+LL |     Type!().get();
+   |     ------- in this macro invocation
+   |
+   = note: a struct named `::std::cell::Cell` exists in another namespace
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type!().get();
+LL +     <Type!()>::get();
+   |
+
+error[E0423]: cannot find value `Cell` in module `::std::cell`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:22
+   |
+LL |         ::std::cell::Cell
+   |                      ^^^^
+...
+LL |     Type! {}.get;
+   |     -------- in this macro invocation
+   |
+   = note: a struct named `::std::cell::Cell` exists in another namespace
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type! {}.get;
+LL +     <Type! {}>::get;
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     Type!(alias).get();
+   |     ------------ in this macro invocation
+   |
+   = note: a type alias named `Alias` exists in another namespace
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type!(alias).get();
+LL +     <Type!(alias)>::get();
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     Type! {alias}.get;
+   |     ------------- in this macro invocation
+   |
+   = note: a type alias named `Alias` exists in another namespace
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -     Type! {alias}.get;
+LL +     <Type! {alias}>::get;
+   |
+
+error[E0423]: cannot find value `Vec` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:52:9
+   |
+LL |         Vec.new()
+   |         ^^^
+...
+LL |     let _ = create!(type method);
+   |             -------------------- in this macro invocation
+   |
+   = note: a struct named `Vec` exists in another namespace
+   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Vec.new()
+LL +         Vec::new()
+   |
+
+error[E0423]: cannot find value `Vec` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:57:9
+   |
+LL |         Vec.new
+   |         ^^^
+...
+LL |     let _ = create!(type field);
+   |             ------------------- in this macro invocation
+   |
+   = note: a struct named `Vec` exists in another namespace
+   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Vec.new
+LL +         Vec::new
+   |
+
+error[E0423]: cannot find value `Cell` in module `::std::cell`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:22
+   |
+LL |         ::std::cell::Cell
+   |                      ^^^^
+...
+LL |     let _ = create!(macro method);
+   |             --------------------- in this macro invocation
+   |
+   = note: a struct named `::std::cell::Cell` exists in another namespace
+   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Type!().new(0)
+LL +         <Type!()>::new(0)
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     let _ = create!(macro method alias);
+   |             --------------------------- in this macro invocation
+   |
+   = note: a type alias named `Alias` exists in another namespace
+   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Type!(alias).new(0)
+LL +         <Type!(alias)>::new(0)
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:118:23
+   |
+LL |         $Ty.foo
+   |         --- due to this macro variable
+...
+LL |     let _ = check_ty!(Alias);
+   |                       ^^^^^
+   |
+   = note: a type alias named `Alias` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -         $Ty.foo
+LL +         $Ty::foo
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:79:9
+   |
+LL |         Alias.$Ident
+   |         ^^^^^
+...
+LL |     let _ = check_ident!(foo);
+   |             ----------------- in this macro invocation
+   |
+   = note: a type alias named `Alias` exists in another namespace
+   = note: this error originates in the macro `check_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL -         Alias.$Ident
+LL +         <Alias>::$Ident
+   |
+
+error[E0423]: cannot find value `Alias` in this scope
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:121:29
+   |
+LL |         $Ty.$Ident
+   |         --- due to this macro variable
+...
+LL |     let _ = check_ty_ident!(Alias, foo);
+   |                             ^^^^^
+   |
+   = note: a type alias named `Alias` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -         $Ty.$Ident
+LL +         <$Ty>::$Ident
+   |
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

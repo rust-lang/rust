@@ -1,0 +1,43 @@
+error[E0515]: cannot return value referencing local variable `os_string`
+  --> $DIR/cow-into-owned-suggestion.rs:6:9
+   |
+LL |         os_string.to_string_lossy().to_owned()
+   |         ---------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         returns a value referencing data owned by the current function
+   |         `os_string` is borrowed here
+   |
+help: try using `.into_owned()` if you meant to convert a `Cow<'_, T>` to an owned `T`
+   |
+LL |         os_string.to_string_lossy().into_owned()
+   |                                     ++
+
+error[E0515]: cannot return value referencing local variable `s`
+  --> $DIR/cow-into-owned-suggestion.rs:13:9
+   |
+LL |         let cow = std::borrow::Cow::from(&s);
+   |                                          -- `s` is borrowed here
+LL |         cow.to_owned()
+   |         ^^^^^^^^^^^^^^ returns a value referencing data owned by the current function
+   |
+help: try using `.into_owned()` if you meant to convert a `Cow<'_, T>` to an owned `T`
+   |
+LL |         cow.into_owned()
+   |             ++
+
+error[E0515]: cannot return value referencing local variable `bytes`
+  --> $DIR/cow-into-owned-suggestion.rs:20:9
+   |
+LL |         let cow = std::borrow::Cow::from(&bytes[..]);
+   |                                           ----- `bytes` is borrowed here
+LL |         cow.to_owned()
+   |         ^^^^^^^^^^^^^^ returns a value referencing data owned by the current function
+   |
+help: try using `.into_owned()` if you meant to convert a `Cow<'_, T>` to an owned `T`
+   |
+LL |         cow.into_owned()
+   |             ++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

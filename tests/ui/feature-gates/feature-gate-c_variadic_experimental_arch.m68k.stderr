@@ -1,0 +1,23 @@
+error[E0658]: C-variadic function definitions on this target are unstable
+  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:39:39
+   |
+LL | pub unsafe extern "C" fn test(_: i32, ap: ...) {}
+   |                                       ^^^^^^^
+   |
+   = note: see issue #155973 <https://github.com/rust-lang/rust/issues/155973> for more information
+   = help: add `#![feature(c_variadic_experimental_arch)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: C-variadic function definitions on this target are unstable
+  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:43:45
+   |
+LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) {}
+   |                                             ^^^^^^^
+   |
+   = note: see issue #155973 <https://github.com/rust-lang/rust/issues/155973> for more information
+   = help: add `#![feature(c_variadic_experimental_arch)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

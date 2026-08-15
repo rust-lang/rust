@@ -1,0 +1,8 @@
+error: unnamed enum variants are not yet implemented
+  --> $DIR/unimplemented.rs:7:5
+   |
+LL |     _ = 1,
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+

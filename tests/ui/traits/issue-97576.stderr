@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `String: From<impl ToString>` is not satisfied
+  --> $DIR/issue-97576.rs:8:22
+   |
+LL |             bar: bar.into(),
+   |                      ^^^^ the trait `From<impl ToString>` is not implemented for `String`
+   |
+   = note: required for `impl ToString` to implement `Into<String>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

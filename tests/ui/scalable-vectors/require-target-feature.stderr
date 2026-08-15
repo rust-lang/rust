@@ -1,0 +1,25 @@
+warning: `extern` block uses type `svint32_t`, which is not FFI-safe
+  --> $DIR/require-target-feature.rs:21:37
+   |
+LL |         fn _svdup_n_s32(op: i32) -> svint32_t;
+   |                                     ^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/require-target-feature.rs:14:1
+   |
+LL | pub struct svint32_t(i32);
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(improper_ctypes)]` on by default
+
+error: this function definition uses scalable vector type `svint32_t` which (with the chosen ABI) requires the `sve` target feature, which is not enabled
+  --> $DIR/require-target-feature.rs:27:1
+   |
+LL | pub fn non_annotated_callee(x: svint32_t) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: consider enabling it globally (`-C target-feature=+sve`) or locally (`#[target_feature(enable="sve")]`)
+
+error: aborting due to 1 previous error; 1 warning emitted
+

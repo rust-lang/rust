@@ -1,0 +1,18 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/mismatched-where-clause-regions.rs:8:38
+   |
+LL |     type T<'a1, 'b1>
+   |     ---------------- definition of `T` from trait
+...
+LL |     type T<'a2, 'b2> = () where 'b2: 'a2;
+   |                                      ^^^ impl has extra requirement `'b2: 'a2`
+   |
+help: copy the `where` clause predicates from the trait
+   |
+LL -     type T<'a2, 'b2> = () where 'b2: 'a2;
+LL +     type T<'a2, 'b2> = () where 'a2: 'b2;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0276`.

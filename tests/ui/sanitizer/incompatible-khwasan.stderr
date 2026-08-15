@@ -1,0 +1,4 @@
+error: `-Zsanitizer=kernel-address` is incompatible with `-Zsanitizer=kernel-hwaddress`
+
+error: aborting due to 1 previous error
+

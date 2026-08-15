@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value-2.rs:8:17
+   |
+LL | fn foo4(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+LL |     match true {
+LL |         true => x,
+   |                 ^ expected `Result<(), B>`, found `Result<(), A>`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+   |
+LL |         true => Ok(x?),
+   |                 +++ ++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value-2.rs:14:24
+   |
+LL | fn foo5(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+LL |     match true {
+LL |         true => return x,
+   |                        ^ expected `Result<(), B>`, found `Result<(), A>`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+   |
+LL |         true => return Ok(x?),
+   |                        +++ ++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value-2.rs:21:28
+   |
+LL |       let _: Result<(), B> = {
+   |  ____________________________^
+LL | |         Err(A);
+LL | |     };
+   | |_____^ expected `Result<(), B>`, found `()`
+   |
+   = note:   expected enum `Result<(), B>`
+           found unit type `()`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

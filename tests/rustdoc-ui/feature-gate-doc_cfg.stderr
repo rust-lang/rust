@@ -1,0 +1,63 @@
+error[E0658]: `#[doc(auto_cfg)]` is experimental
+  --> $DIR/feature-gate-doc_cfg.rs:1:1
+   |
+LL | #![doc(auto_cfg)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(auto_cfg)]` is experimental
+  --> $DIR/feature-gate-doc_cfg.rs:2:1
+   |
+LL | #![doc(auto_cfg(false))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(auto_cfg)]` is experimental
+  --> $DIR/feature-gate-doc_cfg.rs:3:1
+   |
+LL | #![doc(auto_cfg(true))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(auto_cfg)]` is experimental
+  --> $DIR/feature-gate-doc_cfg.rs:4:1
+   |
+LL | #![doc(auto_cfg(hide(feature = "solecism")))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(auto_cfg)]` is experimental
+  --> $DIR/feature-gate-doc_cfg.rs:5:1
+   |
+LL | #![doc(auto_cfg(show(feature = "bla")))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(cfg)]` is experimental
+  --> $DIR/feature-gate-doc_cfg.rs:6:1
+   |
+LL | #![doc(cfg(feature = "solecism"))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
+   = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,171 @@
+// Checks that the setting "line numbers" is working as expected.
+include: "utils.goml"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+
+// Otherwise, we can't check text color
+show-text: true
+
+store-value: (line_numbers_selector, ".example-wrap pre.rust code [data-nosnippet]")
+// We check that without this setting, there is no line number displayed.
+assert-count: (|line_numbers_selector|, 0)
+
+// All corners should be rounded.
+assert-css: (
+    ".example-wrap .rust",
+    {
+        "border-top-left-radius": "6px",
+        "border-bottom-left-radius": "6px",
+        "border-top-right-radius": "6px",
+        "border-bottom-right-radius": "6px",
+    },
+    ALL,
+)
+
+// Before we add line numbers, we get the X position of a span in a code example that we will
+// use later on to ensure that when we disable the line numbers, it goes back to its original
+// position.
+store-position: (".example-wrap code .macro", {"x": span_x_pos})
+
+// We enable the setting to show the line numbers on code examples.
+call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
+// We ensure that there are actually line numbers generated in the DOM.
+assert-text: (".example-wrap pre.rust code span[data-nosnippet]", "1")
+assert-position-false: (".example-wrap code .macro", {"x": |span_x_pos|})
+
+// Let's now check some CSS properties...
+define-function: (
+    "check-colors",
+    [theme, color],
+    block {
+        // Page will be reloaded in "switch-theme".
+        call-function: ("switch-theme", {"theme": |theme|})
+        // If the test didn't fail, it means that it was found!
+        assert-css: (
+            ".digits-1 pre [data-nosnippet]",
+            {
+                "color": |color|,
+                "margin-top": "0px",
+                "margin-bottom": "0px",
+                "margin-left": "0px",
+                "margin-right": "20px",
+                "padding-top": "0px",
+                "padding-bottom": "0px",
+                "padding-left": "4px",
+                "padding-right": "4px",
+                "text-align": "right",
+            },
+            ALL,
+        )
+    },
+)
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "#5c6773",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "#3b91e2",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "#c67e2d",
+})
+
+// Now, try changing the setting dynamically. We'll turn it off, using the settings menu,
+// and make sure it goes away.
+
+call-function: ("switch-line-numbers-setting", {"expected_status": "false"})
+assert: ".digits-1.hide-lines"
+
+// The line numbers not being displayed, their "space" should have disappear as well.
+assert-position: (".example-wrap code .macro", {"x": |span_x_pos|})
+
+// Finally, turn it on again.
+call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
+wait-for: ".digits-1:not(.hide-lines)"
+
+// The line numbers are being displayed, their "space" should be back.
+assert-position-false: (".example-wrap code .macro", {"x": |span_x_pos|})
+
+// Same check with scraped examples line numbers.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+define-function: (
+    "check-padding",
+    [path, padding_bottom],
+    block {
+        assert-css: (|path| + " span[data-nosnippet]", {
+            "padding-top": "0px",
+            "padding-bottom": "0px",
+            "padding-left": "4px",
+            "padding-right": "4px",
+            "margin-right": "20px",
+            "margin-left": "0px",
+            "margin-top": "0px",
+            "margin-bottom": "0px",
+        }, ALL)
+    },
+)
+
+call-function: ("check-padding", {
+    "path": ".scraped-example .example-wrap",
+    "padding_bottom": "0px",
+})
+
+move-cursor-to: ".scraped-example .example-wrap .rust"
+wait-for: ".scraped-example .example-wrap .button-holder .expand"
+click: ".scraped-example .example-wrap .button-holder .expand"
+wait-for: ".scraped-example.expanded"
+
+call-function: ("check-padding", {
+    "path": ".scraped-example.expanded .example-wrap",
+    "padding_bottom": "14px",
+})
+
+define-function: ("check-line-numbers-existence", [], block {
+    assert-local-storage: {"rustdoc-line-numbers": "true"}
+    assert-count-false: (|line_numbers_selector|, 0)
+    call-function: ("switch-line-numbers-setting", {"expected_status": "false"})
+    // Line numbers should still be there.
+    assert-count-false: (|line_numbers_selector|, 0)
+    assert-css: (|line_numbers_selector|, {"display": "block"})
+    // Now re-enabling the setting.
+    call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
+})
+
+// Checking that turning off the line numbers setting won't remove line numbers from scraped
+// examples.
+call-function: ("check-line-numbers-existence", {})
+
+// Now checking the line numbers in the source code page.
+click: ".src"
+assert-css: ("a[data-nosnippet]", {
+    "padding-top": "0px",
+    "padding-bottom": "0px",
+    "padding-left": "4px",
+    "padding-right": "4px",
+    "margin-top": "0px",
+    "margin-bottom": "0px",
+    "margin-left": "0px",
+    "margin-right": "20px",
+}, ALL)
+// Checking that turning off the line numbers setting won't remove line numbers.
+call-function: ("check-line-numbers-existence", {})
+
+// Now checking that even non-rust code blocks have line numbers generated.
+go-to: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
+assert-local-storage: {"rustdoc-line-numbers": "true" }
+assert: ".example-wrap > pre.language-txt"
+assert: ".example-wrap > pre.rust"
+assert-count: (".example-wrap", 2)
+assert-count: (".example-wrap.digits-1", 2)
+
+// Disabling the line numbers setting.
+call-function: ("switch-line-numbers-setting", {"expected_status": "false"})
+wait-for-count: (".example-wrap.digits-1.hide-lines", 2)
+
+// Now re-enabling the setting.
+call-function: ("switch-line-numbers-setting", {"expected_status": "true"})
+wait-for-count: (".example-wrap.digits-1", 2)
+wait-for-count: (".example-wrap.digits-1.hide-lines", 0)

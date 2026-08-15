@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/macro-shorthand-issue-140659.rs:42:44
+   |
+LL |                     Instruction::Suspend { tag_index }
+   |                                            ^^^^^^^^^ expected `u32`, found `Result<u32, <T as Reencode>::Error>`
+...
+LL |     for_each_operator!(translate)
+   |     ----------------------------- in this macro invocation
+   |
+   = note: expected type `u32`
+              found enum `Result<u32, <T as Reencode>::Error>`
+   = note: this error originates in the macro `translate` which comes from the expansion of the macro `for_each_operator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

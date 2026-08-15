@@ -1,0 +1,9 @@
+error[E0616]: field `inner` of struct `std::sync::Mutex` is private
+  --> $DIR/private-field-access-in-mutex-54062.rs:10:24
+   |
+LL |     let _ = test.comps.inner.try_lock();
+   |                        ^^^^^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.

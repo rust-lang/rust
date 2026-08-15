@@ -1,0 +1,167 @@
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:8:5
+   |
+LL |     drop(&SomeStruct);
+   |     ^^^^^-----------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+note: the lint level is defined here
+  --> $DIR/dropping_references.rs:3:9
+   |
+LL | #![warn(dropping_references)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&SomeStruct);
+LL +     let _ = &SomeStruct;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:11:5
+   |
+LL |     drop(&owned1);
+   |     ^^^^^-------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&owned1);
+LL +     let _ = &owned1;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:12:5
+   |
+LL |     drop(&&owned1);
+   |     ^^^^^--------^
+   |          |
+   |          argument has type `&&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&&owned1);
+LL +     let _ = &&owned1;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:13:5
+   |
+LL |     drop(&mut owned1);
+   |     ^^^^^-----------^
+   |          |
+   |          argument has type `&mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&mut owned1);
+LL +     let _ = &mut owned1;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:17:5
+   |
+LL |     drop(reference1);
+   |     ^^^^^----------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(reference1);
+LL +     let _ = reference1;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:20:5
+   |
+LL |     drop(reference2);
+   |     ^^^^^----------^
+   |          |
+   |          argument has type `&mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(reference2);
+LL +     let _ = reference2;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:23:5
+   |
+LL |     drop(reference3);
+   |     ^^^^^----------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(reference3);
+LL +     let _ = reference3;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:28:5
+   |
+LL |     drop(&val);
+   |     ^^^^^----^
+   |          |
+   |          argument has type `&T`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&val);
+LL +     let _ = &val;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:36:5
+   |
+LL |     std::mem::drop(&SomeStruct);
+   |     ^^^^^^^^^^^^^^^-----------^
+   |                    |
+   |                    argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     std::mem::drop(&SomeStruct);
+LL +     let _ = &SomeStruct;
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:91:13
+   |
+LL |             drop(println_and(&13));
+   |             ^^^^^----------------^
+   |                  |
+   |                  argument has type `&i32`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -             drop(println_and(&13));
+LL +             let _ = println_and(&13);
+   |
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:94:14
+   |
+LL |         3 if drop(println_and(&14)) == () => (),
+   |              ^^^^^----------------^
+   |                   |
+   |                   argument has type `&i32`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references.rs:96:14
+   |
+LL |         4 => drop(&2),
+   |              ^^^^^--^
+   |                   |
+   |                   argument has type `&i32`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+
+warning: 12 warnings emitted
+

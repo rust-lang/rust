@@ -1,0 +1,12 @@
+print-type-size type: `ReprCu8`: 4 bytes, alignment: 2 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `A`: 3 bytes
+print-type-size         padding: 1 bytes
+print-type-size         field `.0`: 2 bytes, alignment: 2 bytes
+print-type-size     variant `B`: 1 bytes
+print-type-size type: `Repru8`: 4 bytes, alignment: 2 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `A`: 3 bytes
+print-type-size         padding: 1 bytes
+print-type-size         field `.0`: 2 bytes, alignment: 2 bytes
+print-type-size     variant `B`: 0 bytes

@@ -1,0 +1,78 @@
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:11:12
+   |
+LL |     become a + b;
+   |     -------^^^^^
+   |     |
+   |     help: try using `return` instead: `return`
+   |
+   = note: using `become` on a builtin operator is not useful
+
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:15:12
+   |
+LL |     become a + b;
+   |            ^^^^^
+   |
+help: try using the method directly
+   |
+LL -     become a + b;
+LL +     become (a).add(b);
+   |
+
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:19:12
+   |
+LL |     become !x;
+   |     -------^^
+   |     |
+   |     help: try using `return` instead: `return`
+   |
+   = note: using `become` on a builtin operator is not useful
+
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:23:12
+   |
+LL |     become !x;
+   |            ^^
+   |
+help: try using the method directly
+   |
+LL -     become !x;
+LL +     become (x).not();
+   |
+
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:27:12
+   |
+LL |     become x[i]
+   |     -------^^^^
+   |     |
+   |     help: try using `return` instead: `return`
+   |
+   = note: using `become` on a builtin operator is not useful
+
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:34:12
+   |
+LL |     become *a ^= 1;
+   |     -------^^^^^^^
+   |     |
+   |     help: try using `return` instead: `return`
+   |
+   = note: using `become` on a builtin operator is not useful
+
+error: `become` does not support operators
+  --> $DIR/become-operator.rs:38:12
+   |
+LL |     become *b ^= 1;
+   |            ^^^^^^^
+   |
+help: try using the method directly
+   |
+LL -     become *b ^= 1;
+LL +     become (*b).bitxor_assign(1);
+   |
+
+error: aborting due to 7 previous errors
+

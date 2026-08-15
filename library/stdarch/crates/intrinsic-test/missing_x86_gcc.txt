@@ -1,0 +1,33 @@
+# not present in GCC
+_bextr2_u32
+_bextr2_u64
+_mm512_cvtepi32lo_pd
+_mm512_mask_cvtepi32lo_pd
+_mm512_cvtepu32lo_pd
+_mm512_mask_cvtepu32lo_pd
+_mm512_cvtpd_pslo
+_mm512_mask_cvtpd_pslo
+_mm512_cvtpslo_pd
+_mm512_mask_cvtpslo_pd
+_mm512_permutevar_epi32
+_mm512_mask_permutevar_epi32
+_mm_tzcnt_32
+_mm_tzcnt_64
+
+# GCC bug
+_mm512_reduce_max_pd
+_mm512_reduce_max_ps
+_mm512_reduce_min_pd
+_mm512_reduce_min_ps
+_mm512_mask_reduce_max_pd
+_mm512_mask_reduce_max_ps
+_mm512_mask_reduce_min_pd
+_mm512_mask_reduce_min_ps
+
+# Rounding errors in release mode
+_mm_maskz_fmadd_sd
+_mm_maskz_fmadd_ss
+_mm_maskz_fmsub_sd
+_mm_maskz_fmsub_ss
+_mm_maskz_fnmadd_sd
+_mm_maskz_fnmadd_ss

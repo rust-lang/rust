@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce2.rs:15:33
+   |
+LL |     let f3: &mut Fat<[isize]> = f2;
+   |             -----------------   ^^ types differ in mutability
+   |             |
+   |             expected due to this
+   |
+   = note: expected mutable reference `&mut Fat<[isize]>`
+                      found reference `&Fat<[isize; 3]>`
+
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce2.rs:20:33
+   |
+LL |     let f3: &mut Fat<dyn Bar> = f2;
+   |             -----------------   ^^ types differ in mutability
+   |             |
+   |             expected due to this
+   |
+   = note: expected mutable reference `&mut Fat<dyn Bar>`
+                      found reference `&Fat<Foo>`
+
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce2.rs:25:31
+   |
+LL |     let f3: &mut ([isize],) = f2;
+   |             ---------------   ^^ types differ in mutability
+   |             |
+   |             expected due to this
+   |
+   = note: expected mutable reference `&mut ([isize],)`
+                      found reference `&([isize; 3],)`
+
+error[E0308]: mismatched types
+  --> $DIR/dst-bad-coerce2.rs:30:31
+   |
+LL |     let f3: &mut (dyn Bar,) = f2;
+   |             ---------------   ^^ types differ in mutability
+   |             |
+   |             expected due to this
+   |
+   = note: expected mutable reference `&mut (dyn Bar,)`
+                      found reference `&(Foo,)`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

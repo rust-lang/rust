@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/required-const.rs:6:17
+   |
+LL |         const { panic!() }
+   |                 ^^^^^^^^ evaluation of `foo::<i32>::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/required-const.rs:6:9
+   |
+LL |         const { panic!() }
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

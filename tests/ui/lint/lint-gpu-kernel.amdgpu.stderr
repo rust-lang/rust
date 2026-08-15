@@ -1,0 +1,86 @@
+warning: `extern` fn uses type `()`, which is not FFI-safe
+  --> $DIR/lint-gpu-kernel.rs:36:35
+   |
+LL | extern "gpu-kernel" fn arg_zst(_: ()) { }
+   |                                   ^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: passing type `()` to a function with "gpu-kernel" ABI may have unexpected behavior
+  --> $DIR/lint-gpu-kernel.rs:36:35
+   |
+LL | extern "gpu-kernel" fn arg_zst(_: ()) { }
+   |                                   ^^
+   |
+   = help: use primitive types and raw pointers to get reliable behavior
+   = note: `#[warn(improper_gpu_kernel_arg)]` on by default
+
+warning: passing type `&i32` to a function with "gpu-kernel" ABI may have unexpected behavior
+  --> $DIR/lint-gpu-kernel.rs:41:35
+   |
+LL | extern "gpu-kernel" fn arg_ref(_: &i32) { }
+   |                                   ^^^^
+   |
+   = help: use primitive types and raw pointers to get reliable behavior
+
+warning: passing type `&mut i32` to a function with "gpu-kernel" ABI may have unexpected behavior
+  --> $DIR/lint-gpu-kernel.rs:44:39
+   |
+LL | extern "gpu-kernel" fn arg_ref_mut(_: &mut i32) { }
+   |                                       ^^^^^^^^
+   |
+   = help: use primitive types and raw pointers to get reliable behavior
+
+warning: `extern` fn uses type `S`, which is not FFI-safe
+  --> $DIR/lint-gpu-kernel.rs:49:38
+   |
+LL | extern "gpu-kernel" fn arg_struct(_: S) { }
+   |                                      ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/lint-gpu-kernel.rs:47:1
+   |
+LL | struct S { a: i32, b: i32 }
+   | ^^^^^^^^
+
+warning: passing type `S` to a function with "gpu-kernel" ABI may have unexpected behavior
+  --> $DIR/lint-gpu-kernel.rs:49:38
+   |
+LL | extern "gpu-kernel" fn arg_struct(_: S) { }
+   |                                      ^
+   |
+   = help: use primitive types and raw pointers to get reliable behavior
+
+warning: `extern` fn uses type `(i32, i32)`, which is not FFI-safe
+  --> $DIR/lint-gpu-kernel.rs:54:35
+   |
+LL | extern "gpu-kernel" fn arg_tup(_: (i32, i32)) { }
+   |                                   ^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+warning: passing type `(i32, i32)` to a function with "gpu-kernel" ABI may have unexpected behavior
+  --> $DIR/lint-gpu-kernel.rs:54:35
+   |
+LL | extern "gpu-kernel" fn arg_tup(_: (i32, i32)) { }
+   |                                   ^^^^^^^^^^
+   |
+   = help: use primitive types and raw pointers to get reliable behavior
+
+warning: function with the "gpu-kernel" ABI has a mangled name
+  --> $DIR/lint-gpu-kernel.rs:61:1
+   |
+LL | pub extern "gpu-kernel" fn mangled_kernel() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `unsafe(no_mangle)` or `unsafe(export_name = "<name>")`
+   = note: mangled names make it hard to find the kernel, this is usually not intended
+   = note: `#[warn(missing_gpu_kernel_export_name)]` on by default
+
+warning: 9 warnings emitted
+
