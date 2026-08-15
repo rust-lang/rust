@@ -12,9 +12,9 @@ enum Source {
     Compiler,
 }
 
-pub(crate) struct SourcedFeature {
+pub struct SourcedFeature {
     source: Source,
-    pub(crate) feature: Feature,
+    pub feature: Feature,
 }
 
 // A new struct is defined rather than changing the old one, to keep serialization behaving the same.

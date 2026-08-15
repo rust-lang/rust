@@ -9,7 +9,7 @@ use tidy::diagnostics::RunningCheck;
 use tidy::features::{Feature, Status, collect_lang_features, collect_lib_features};
 
 use crate::display::{NewFeaturesStatus, SourcedFeature};
-use crate::parse::{Args, Tristate};
+use crate::parse::{Cli, Tristate};
 
 mod display;
 mod err;
@@ -23,7 +23,7 @@ struct FeaturesStatus {
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse()?;
+    let args = crate::parse::parse()?;
 
     let lang_features_status: HashMap<_, _> = args
         .compiler_path
@@ -68,7 +68,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn write_output<W>(mut writer: W, features_status: FeaturesStatus, args: &Args) -> Result<()>
+fn write_output<W>(mut writer: W, features_status: FeaturesStatus, args: &Cli) -> Result<()>
 where
     W: io::Write,
 {
@@ -101,7 +101,7 @@ fn compare_ascending<'a, 'b>(
     a.1.feature.tracking_issue.cmp(&b.1.feature.tracking_issue)
 }
 
-fn include(feature: &Feature, args: &Args) -> bool {
+fn include(feature: &Feature, args: &Cli) -> bool {
     let accept = match args.accepted {
         Tristate::Require => feature.level == Status::Accepted,
         Tristate::Allow => true,
@@ -117,24 +117,24 @@ fn include(feature: &Feature, args: &Args) -> bool {
         Tristate::Allow => true,
         Tristate::Deny => feature.level != Status::Unstable,
     };
-    let tracking = match args.tracking_issue {
+    let tracking_issue = match args.tracking_issue {
         Tristate::Require => feature.tracking_issue.is_some(),
         Tristate::Allow => true,
         Tristate::Deny => feature.tracking_issue.is_none(),
     };
-    let before = match args.before {
-        Some(before) => match feature.since {
-            Some(version) => version < before,
-            None => false, // reject features without version
-        },
-        None => true,
-    };
     let since = match args.since {
-        Some(since) => match feature.since {
-            Some(version) => version >= since,
-            None => false, // reject features without version
-        },
-        None => true,
+        Tristate::Require => feature.since.is_some(),
+        Tristate::Allow => true,
+        Tristate::Deny => feature.since.is_none(),
     };
-    accept && remove && unstable && tracking && before && since
+
+    let last_version = args
+        .last_version
+        .is_none_or(|last_version| feature.since.is_some_and(|version| version <= last_version));
+
+    let first_version = args
+        .first_version
+        .is_none_or(|last_version| feature.since.is_some_and(|version| version >= last_version));
+
+    accept && remove && unstable && tracking_issue && since && last_version && first_version
 }
