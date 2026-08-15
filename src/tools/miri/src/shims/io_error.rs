@@ -353,7 +353,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let target = &this.tcx.sess.target;
 
         if target.families.iter().any(|f| f == "unix") {
-            // FIXME: consult UNIX_ERRNO_TABLE.
+            // If the host is also Unix, we can use the raw OS error and avoid a potentially lossy
+            // trip through `ErrorKind`.
+            #[cfg(unix)]
+            if let Some(host_errno) = err.raw_os_error() {
+                for &(name, errno) in UNIX_ERRNO_TABLE {
+                    if host_errno == errno {
+                        return interp_ok(this.eval_libc(name));
+                    }
+                }
+            }
+            // For other hosts or other constants, we fall back to translating via `ErrorKind`.
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if err.kind() == kind {
                     return interp_ok(this.eval_libc(name));
