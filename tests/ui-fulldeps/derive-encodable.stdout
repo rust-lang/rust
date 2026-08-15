@@ -85,7 +85,6 @@ const _: () =
                         FieldlessEnum::B => { 1usize }
                     };
                 ::rustc_serialize::Encoder::emit_u8(__encoder, disc as u8);
-                match *self { FieldlessEnum::A => {} FieldlessEnum::B => {} }
             }
         }
     };

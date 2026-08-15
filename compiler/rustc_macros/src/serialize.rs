@@ -244,27 +244,32 @@ fn encodable_body(
                 }
             };
 
-            let encode_inner = s.each_variant(|vi| {
-                let encode_fields: TokenStream = vi
-                    .bindings()
-                    .iter()
-                    .map(|binding| {
-                        let bind_ident = &binding.binding;
-                        let result = quote! {
-                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
-                                #bind_ident,
-                                __encoder,
-                            );
-                        };
-                        result
-                    })
-                    .collect();
-                encode_fields
-            });
-            quote! {
-                #disc
-                match *self {
-                    #encode_inner
+            if s.variants().iter().all(|v| v.bindings().is_empty()) {
+                // Avoid generating second match statement if all variants are fieldless
+                disc
+            } else {
+                let encode_inner = s.each_variant(|vi| {
+                    let encode_fields: TokenStream = vi
+                        .bindings()
+                        .iter()
+                        .map(|binding| {
+                            let bind_ident = &binding.binding;
+                            let result = quote! {
+                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                    #bind_ident,
+                                    __encoder,
+                                );
+                            };
+                            result
+                        })
+                        .collect();
+                    encode_fields
+                });
+                quote! {
+                    #disc
+                    match *self {
+                        #encode_inner
+                    }
                 }
             }
         }
