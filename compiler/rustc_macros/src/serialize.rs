@@ -248,9 +248,8 @@ fn encodable_body(
                 // Avoid generating second match statement if all variants are fieldless
                 disc
             } else {
-                let encode_inner = s.each_variant(|vi| {
-                    let encode_fields: TokenStream = vi
-                        .bindings()
+                let encode_inner = s.each_variant(|vi| -> TokenStream {
+                    vi.bindings()
                         .iter()
                         .map(|binding| {
                             let bind_ident = &binding.binding;
@@ -262,8 +261,7 @@ fn encodable_body(
                             };
                             result
                         })
-                        .collect();
-                    encode_fields
+                        .collect()
                 });
                 quote! {
                     #disc
