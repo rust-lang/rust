@@ -142,6 +142,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         TypingMode::Coherence
         | TypingMode::Typeck { .. }
         | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::BorrowckPendingScc { .. }
         | TypingMode::PostBorrowck { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {}
     }
@@ -431,6 +432,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     TypingMode::Coherence
                     | TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::BorrowckPendingScc { .. }
                     | TypingMode::PostBorrowck { .. } => ty.super_fold_with(self),
                     TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();

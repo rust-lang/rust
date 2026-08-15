@@ -202,6 +202,9 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Clauses<Self>;
 
+    /// Create a `ParamEnv` from a slice of clauses.
+    fn mk_param_env(self, clauses: &[Self::Clause]) -> Self::ParamEnv;
+
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
     fn with_canonical_param_env_cache<R>(
@@ -285,12 +288,43 @@ pub trait Interner:
 
     fn assumptions_on_binders(self) -> bool;
 
+    fn dxf(self) -> bool;
+
     fn renormalize_rigid_aliases(self) -> bool;
 
     fn coroutine_hidden_types(
         self,
         def_id: Self::CoroutineId,
     ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::CoroutineWitnessTypes<Self>>>;
+
+    /// Try to merge coroutine witness bound variables using NLL SCC data.
+    /// Merges positions with the same SCC into a single bound variable,
+    /// and adds NLL-derived outlives edges to the assumptions.
+    /// The default implementation is a no-op.
+    ///
+    /// Do not call this function at any time before the borrowck has completed.
+    fn try_hydrate_coroutine_witness_scc(
+        self,
+        _: Self::CoroutineId,
+        _: Self::GenericArgs,
+        bound: ty::Binder<Self, ty::CoroutineWitnessTypes<Self>>,
+    ) -> ty::Binder<Self, ty::CoroutineWitnessTypes<Self>> {
+        bound
+    }
+
+    /// Returns the typeck root of `def_id`. For nested bodies this walks up to
+    /// the outermost function.
+    /// For top-level items, returns `def_id` itself.
+    fn typeck_root_def_id(self, def_id: Self::DefId) -> Self::DefId;
+
+    /// Ensure `mir_borrowck` has run for the typeck root, so that
+    /// feedable queries like `coroutine_witness_scc_data` are available.
+    /// Returns `true` if mir_borrowck completed successfully.
+    fn ensure_mir_borrowck(self, _typeck_root: Self::DefId) -> bool {
+        false
+    }
+
+    fn typeck_root_def_id_local(self, def_id: Self::LocalDefId) -> Self::LocalDefId;
 
     fn fn_sig(
         self,

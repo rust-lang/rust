@@ -621,6 +621,24 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         TyCtxtFeed { tcx: self, key }.visibility(vis.to_mod_id())
     }
+
+    pub fn feed_coroutine_witness_scc_data(
+        self,
+        key: LocalDefId,
+        value: crate::mir::CoroutineNllOutlives<'tcx>,
+    ) {
+        debug_assert!(matches!(
+            self.def_kind(key),
+            DefKind::Closure | DefKind::SyntheticCoroutineBody
+        ));
+        // Get the witness binder's bound vars so the NLL data lives in
+        // the same binder namespace as the witness types.
+        let hidden_types = self.coroutine_hidden_types(key.to_def_id());
+        let bound_vars = hidden_types.skip_binder().bound_vars();
+        let binder = ty::Binder::bind_with_vars(value, bound_vars);
+        TyCtxtFeed { tcx: self, key }
+            .coroutine_witness_scc_data(ty::EarlyBinder::bind(self, binder))
+    }
 }
 
 impl<'tcx, K: Copy> TyCtxtFeed<'tcx, K> {
@@ -2713,6 +2731,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn assumptions_on_binders(self) -> bool {
         self.sess.opts.unstable_opts.assumptions_on_binders
+    }
+
+    pub fn dxf(self) -> bool {
+        self.sess.opts.unstable_opts.dxf && self.next_trait_solver_globally()
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

@@ -445,6 +445,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 | TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
                 | TypingMode::Reflection
+                | TypingMode::BorrowckPendingScc { .. }
                 | TypingMode::PostBorrowck { .. } => false,
                 TypingMode::PostAnalysis | TypingMode::Codegen => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);

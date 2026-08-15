@@ -965,6 +965,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::PredicateKind::NormalizesTo(..) => {
                 bug!("NormalizesTo is only used by the new solver")
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::CoroutineWitnessRegionConstraints(..)) => {
+                bug!(
+                    "CoroutineWitnessRegionConstraints should not be evaluated as a goal in select"
+                )
+            }
             ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                 let ct = self.infcx.shallow_resolve_const(ct);
@@ -1475,6 +1480,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::Reflection
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Ok(()),
@@ -1522,7 +1528,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types, .. }
+            | TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators: defining_opaque_types,
+                ..
+            } => {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
@@ -2565,6 +2575,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_)
@@ -2915,11 +2926,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
+            TypingMode::BorrowckPendingScc { .. } => {
+                // Stall all local coroutines here.
+                def_id.as_local().is_some()
+            }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
             | TypingMode::Reflection
             | TypingMode::Codegen
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _, .. }
             | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
         }
     }

@@ -130,6 +130,7 @@ where
                 TypingMode::Typeck { .. }
                 | TypingMode::Reflection
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::BorrowckPendingScc { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen => structurally_relate_tys(relation, a, b),

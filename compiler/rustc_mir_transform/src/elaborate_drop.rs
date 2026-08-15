@@ -789,6 +789,7 @@ where
                     | ty::TypingMode::Reflection
                     | ty::TypingMode::Typeck { .. }
                     | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::BorrowckPendingScc { .. }
                     | ty::TypingMode::PostBorrowck { .. } => {
                         bug!()
                     }

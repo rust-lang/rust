@@ -454,7 +454,7 @@ fn best_definition_site_of_opaque<'tcx>(
                 .tcx
                 .mir_borrowck(item_def_id)
                 .ok()
-                .and_then(|opaque_types| opaque_types.get(&self.opaque_def_id))
+                .and_then(|result| result.opaque_types.get(&self.opaque_def_id))
             {
                 ControlFlow::Break((hidden_ty.span, item_def_id))
             } else {
@@ -2259,7 +2259,13 @@ pub(super) fn check_coroutine_obligations(
 
     debug!(?typeck_results.coroutine_stalled_predicates);
 
-    let mode = if tcx.next_trait_solver_globally() {
+    let mode = if tcx.dxf() {
+        // When dxf is active and called from mir_borrowck, NLL data
+        // is not yet available.
+        // Use BorrowckPendingScc to stall coroutine auto-trait goals
+        // as pending.
+        TypingMode::borrowck_pending_scc(tcx, def_id)
+    } else if tcx.next_trait_solver_globally() {
         // This query is conceptually between HIR typeck and
         // MIR borrowck. We use the opaque types defined by HIR
         // and ignore region constraints.
@@ -2279,7 +2285,14 @@ pub(super) fn check_coroutine_obligations(
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, *predicate));
     }
 
-    let errors = ocx.evaluate_obligations_error_on_ambiguity();
+    // In BorrowckPendingScc mode, coroutine auto-trait goals are expected
+    // to stall awaiting NLL data (StalledOnCoroutines::Yes).
+    // Evaluate without treating ambiguity as a hard error.
+    let errors = if mode.is_borrowck_pending_scc() {
+        ocx.try_evaluate_obligations()
+    } else {
+        ocx.evaluate_obligations_error_on_ambiguity()
+    };
     debug!(?errors);
     if let TraitErrors::HasErrors(errors) = errors {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));

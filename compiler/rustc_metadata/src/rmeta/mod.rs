@@ -454,6 +454,7 @@ define_tables! {
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
+    coroutine_witness_scc_data: Table<DefIndex, LazyValue<mir::CoroutineNllOutlives<'static>>>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
     adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,
     adt_async_destructor: Table<DefIndex, LazyValue<ty::AsyncDestructor>>,

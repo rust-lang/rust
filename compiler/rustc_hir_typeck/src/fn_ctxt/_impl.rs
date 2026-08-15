@@ -726,6 +726,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::TypingMode::Coherence
             | ty::TypingMode::Reflection
             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::BorrowckPendingScc { .. }
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen => {
@@ -733,9 +734,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if defining_opaque_types_and_generators
-            .iter()
-            .any(|def_id| self.tcx.is_coroutine(def_id.to_def_id()))
+        if self.tcx.sess.opts.unstable_opts.dxf
+            || defining_opaque_types_and_generators
+                .iter()
+                .any(|def_id| self.tcx.is_coroutine(def_id.to_def_id()))
         {
             self.typeck_results.borrow_mut().coroutine_stalled_predicates.extend(
                 self.fulfillment_cx

@@ -88,12 +88,18 @@ where
             Ty::new_coroutine_witness_for_coroutine(ecx.cx(), def_id, args),
         ])),
 
-        ty::CoroutineWitness(def_id, args) => Ok(ecx
-            .cx()
-            .coroutine_hidden_types(def_id)
-            .instantiate(cx, args)
-            .skip_norm_wip()
-            .map_bound(|bound| bound.types.to_vec())),
+        ty::CoroutineWitness(def_id, args) => {
+            let bound = if should_hydrate_coroutine_witness(ecx, cx, def_id) {
+                cx.try_hydrate_coroutine_witness_scc(
+                    def_id,
+                    args,
+                    ecx.cx().coroutine_hidden_types(def_id).instantiate(cx, args).skip_norm_wip(),
+                )
+            } else {
+                ecx.cx().coroutine_hidden_types(def_id).instantiate(cx, args).skip_norm_wip()
+            };
+            Ok(bound.map_bound(|witness| witness.types.to_vec()))
+        }
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
@@ -116,6 +122,45 @@ where
             ]))
         }
     }
+}
+
+/// Determines whether the coroutine witness NLL facts is available for hydration.
+///
+/// Returns `true` if `coroutine_witness_scc_data` is available for `def_id`.
+/// For cross-crate coroutines, data comes from metadata.
+/// For local coroutines not defined by the current body, data is queried via
+/// the `coroutine_witness_scc_data` query (only safe after borrowck).
+/// For local coroutines defined by the current body, data is only available
+/// towards the end of borrowck.
+pub(in crate::solve) fn should_hydrate_coroutine_witness<D, I>(
+    ecx: &EvalCtxt<'_, D>,
+    cx: I,
+    def_id: I::CoroutineId,
+) -> bool
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    if !cx.dxf() {
+        return false;
+    }
+
+    let Some(local_def_id) = def_id.as_local() else {
+        return true;
+    };
+
+    if ecx.typing_mode().has_nll_inferred_bounds() {
+        return true;
+    }
+
+    if ecx.typing_mode().is_borrowck_pending_scc()
+        && let Some(borrowck_root) = ecx.typing_mode().borrowck_root()
+    {
+        let root = cx.typeck_root_def_id_local(local_def_id);
+        return root != borrowck_root;
+    }
+
+    false
 }
 
 #[instrument(level = "trace", skip(ecx), ret)]

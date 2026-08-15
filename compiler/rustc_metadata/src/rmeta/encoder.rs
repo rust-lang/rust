@@ -1554,7 +1554,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Closure | DefKind::SyntheticCoroutineBody = def_kind
                 && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
             {
-                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind))
+                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind));
+                // Encode NLL-derived SCC data for coroutine witnesses.
+                // This is fed during mir_borrowck and needs to be available cross-crate
+                // for try_hydrate_coroutine_witness_scc.
+                if self.tcx.sess.opts.unstable_opts.dxf {
+                    let scc_data = self
+                        .tcx
+                        .coroutine_witness_scc_data(def_id)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .skip_binder();
+                    if !scc_data.assumptions.is_empty() {
+                        let lazy_scc = self.lazy(scc_data);
+                        self.tables.coroutine_witness_scc_data.set(def_id.index, Some(lazy_scc));
+                    }
+                }
             }
             if def_kind == DefKind::Closure
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()

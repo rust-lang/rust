@@ -1,0 +1,16 @@
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-negative.rs:31:5
+   |
+LL |     assert_send(use_phantom(&(), &()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-negative.rs:31:5
+   |
+LL |     assert_send(use_phantom(&(), &()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-dyn-object-static.rs:59:5
+   |
+LL |     assert_send(fut);
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

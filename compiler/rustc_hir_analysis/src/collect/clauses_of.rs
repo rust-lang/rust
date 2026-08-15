@@ -796,6 +796,7 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
                     | ty::ClauseKind::UnstableFeature(_)
+                    | ty::ClauseKind::CoroutineWitnessRegionConstraints(..)
                     | ty::ClauseKind::ConstEvaluatable(_) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \
@@ -824,6 +825,7 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                     | ty::ClauseKind::WellFormed(_)
                     | ty::ClauseKind::ConstEvaluatable(_)
                     | ty::ClauseKind::UnstableFeature(_)
+                    | ty::ClauseKind::CoroutineWitnessRegionConstraints(..)
                     | ty::ClauseKind::HostEffect(..) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \

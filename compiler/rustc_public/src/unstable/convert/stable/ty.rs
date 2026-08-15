@@ -797,6 +797,9 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
             ClauseKind::UnstableFeature(_) => {
                 unimplemented!()
             }
+            ClauseKind::CoroutineWitnessRegionConstraints(..) => {
+                unimplemented!()
+            }
         }
     }
 }

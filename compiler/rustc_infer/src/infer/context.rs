@@ -58,7 +58,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         u: ty::UniverseIndex,
     ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
-        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().as_ref().cloned()
+        self.placeholder_assumptions_for_next_solver
+            .borrow()
+            .get(&u)
+            .and_then(|v| v.as_ref().cloned())
     }
 
     fn get_solver_region_constraint(
@@ -387,6 +390,25 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             ty::ProvisionalHiddenType { span, ty: hidden_ty },
         )
     }
+
+    fn lookup_hidden_type_in_storage(
+        &self,
+        opaque_type_key: &ty::OpaqueTypeKey<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        self.lookup_hidden_type_in_storage(opaque_type_key)
+    }
+
+    fn lookup_hidden_type_by_def_id(
+        &self,
+        def_id: rustc_hir::def_id::LocalDefId,
+    ) -> Option<Ty<'tcx>> {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .iter_lookup_table()
+            .find_map(|(k, v)| (k.def_id == def_id).then_some(v.ty))
+    }
+
     fn add_duplicate_opaque_type(
         &self,
         opaque_type_key: ty::OpaqueTypeKey<'tcx>,

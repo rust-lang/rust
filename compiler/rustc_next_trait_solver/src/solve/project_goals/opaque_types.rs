@@ -42,7 +42,11 @@ where
                     .map_err(Into::into)
             }
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types, .. }
+            | TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators: defining_opaque_types,
+                ..
+            } => {
                 let Some(def_id) = def_id
                     .as_local()
                     .filter(|&def_id| defining_opaque_types.contains(&def_id.into()))
@@ -89,7 +93,8 @@ where
                     // computed in HIR typeck as the initial value.
                     match self.typing_mode().assert_not_erased() {
                         TypingMode::Typeck { .. } => {}
-                        TypingMode::PostTypeckUntilBorrowck { .. } => {
+                        TypingMode::PostTypeckUntilBorrowck { .. }
+                        | TypingMode::BorrowckPendingScc { .. } => {
                             let actual = cx
                                 .type_of_opaque_hir_typeck(def_id)
                                 .instantiate(cx, opaque_ty.args);
@@ -135,17 +140,26 @@ where
                         .map_err(Into::into);
                 };
 
-                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
-                // FIXME: Actually use a proper binder here instead of relying on `ReErased`.
-                //
-                // This is also probably unsound or sth :shrug:
-                let actual = actual.map(|v| {
-                    fold_regions(cx, v, |re, _dbi| match re.kind() {
-                        ty::ReErased => self.next_region_var(),
-                        _ => re,
-                    })
-                });
-                let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
+                // First check if the opaque type was pre-populated in storage by
+                // resolve_deferred_coroutine_goals.
+                // This avoids query cycle via type_of inside mir_borrowck.
+                let stored = self.lookup_hidden_type_by_def_id(def_id.into());
+
+                let actual = if let Some(stored) = stored {
+                    stored
+                } else {
+                    let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
+                    // FIXME: Actually use a proper binder here instead of relying on `ReErased`.
+                    //
+                    // This is also probably unsound or sth :shrug:
+                    let actual = actual.map(|v| {
+                        fold_regions(cx, v, |re, _dbi| match re.kind() {
+                            ty::ReErased => self.next_region_var(),
+                            _ => re,
+                        })
+                    });
+                    self.normalize(GoalSource::Misc, goal.param_env, actual)?
+                };
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)

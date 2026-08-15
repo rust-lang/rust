@@ -454,6 +454,15 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<LocalDefId> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::ArgOutlivesClause<'tcx>> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_outlives_from_iter(
+            (0..len).map::<ty::ArgOutlivesClause<'tcx>, _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
     fn decode(d: &mut D) -> Self {
         RefDecodable::decode(d)
@@ -470,6 +479,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
     &'tcx ty::List<Const<'tcx>>,
+    &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>,
 }
 
 #[macro_export]

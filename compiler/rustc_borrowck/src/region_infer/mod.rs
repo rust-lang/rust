@@ -478,6 +478,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values.placeholders_contained_in(scc)
     }
 
+    /// Returns `true` if the SCC value of `sup_scc` is a superset of `sub_scc`'s
+    /// value across all components (CFG points, universals, placeholders).
+    pub(crate) fn scc_values_contain(
+        &self,
+        sup_scc: ConstraintSccIndex,
+        sub_scc: ConstraintSccIndex,
+    ) -> bool {
+        if sup_scc == sub_scc {
+            return true;
+        }
+        self.scc_values.contains_region_values(sup_scc, sub_scc)
+    }
+
     /// Performs region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
@@ -1860,6 +1873,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
     pub fn constraint_sccs(&self) -> &ConstraintSccs {
         &self.constraint_sccs
+    }
+
+    /// Returns the universal regions outlived by the given SCC.
+    pub fn universal_regions_outlived_by_scc(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> impl Iterator<Item = RegionVid> {
+        self.scc_values.universal_regions_outlived_by(scc)
     }
 
     /// Returns the representative `RegionVid` for a given SCC.

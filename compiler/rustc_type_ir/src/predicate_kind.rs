@@ -5,7 +5,40 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::visit::TypeVisitable;
 use crate::{self as ty, Interner, Region};
+
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub struct CoroutineRegionConstraints<I: Interner>(pub ty::Binder<I, I::RegionAssumptions>);
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E>
+    for CoroutineRegionConstraints<I>
+where
+    I::RegionAssumptions: rustc_serialize::Encodable<E>,
+    I::BoundVarKinds: rustc_serialize::Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        self.0.bound_vars().encode(e);
+        self.0.as_ref().skip_binder().encode(e);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D>
+    for CoroutineRegionConstraints<I>
+where
+    I::RegionAssumptions: TypeVisitable<I> + rustc_serialize::Decodable<D>,
+    I::BoundVarKinds: rustc_serialize::Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        let bound_vars = rustc_serialize::Decodable::decode(decoder);
+        let value = rustc_serialize::Decodable::decode(decoder);
+        CoroutineRegionConstraints(ty::Binder::bind_with_vars(value, bound_vars))
+    }
+}
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
@@ -53,6 +86,9 @@ pub enum ClauseKind<I: Interner> {
         #[type_visitable(ignore)]
         I::Symbol,
     ),
+
+    /// NLL-derived region constraints for a coroutine witness.
+    CoroutineWitnessRegionConstraints(I::DefId, CoroutineRegionConstraints<I>),
 }
 
 impl<I: Interner> Eq for ClauseKind<I> {}
@@ -122,6 +158,9 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             }
             ClauseKind::UnstableFeature(feature_name) => {
                 write!(f, "UnstableFeature({feature_name:?})")
+            }
+            ClauseKind::CoroutineWitnessRegionConstraints(def_id, binder) => {
+                write!(f, "CoroutineWitnessRegionConstraints({def_id:?}, {binder:?})")
             }
         }
     }

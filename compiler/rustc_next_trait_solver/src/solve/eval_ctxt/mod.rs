@@ -5,14 +5,15 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::{RegionConstraint, evaluate_solver_constraint};
+use rustc_type_ir::region_constraint::{Assumptions, RegionConstraint, evaluate_solver_constraint};
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, StalledOnCoroutines,
+    TyOrConstInferVar,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -159,6 +160,7 @@ where
     pub(super) opaque_accesses: AccessedOpaques<I>,
 
     pub(super) inspect: inspect::EvaluationStepBuilder<D>,
+    pub(super) coroutine_witness_universes: Vec<ty::UniverseIndex>,
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
@@ -498,6 +500,7 @@ where
             origin_span,
             tainted: Ok(()),
             opaque_accesses: AccessedOpaques::default(),
+            coroutine_witness_universes: Vec::new(),
         };
         let result = f(&mut ecx);
         assert!(
@@ -563,6 +566,7 @@ where
             tainted: Ok(()),
             inspect: proof_tree_builder.new_evaluation_step(var_values),
             opaque_accesses: AccessedOpaques::default(),
+            coroutine_witness_universes: Vec::new(),
         };
 
         let result = f(&mut ecx, input.goal);
@@ -679,6 +683,7 @@ where
                 TypingMode::Reflection | TypingMode::Coherence => true,
                 TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::BorrowckPendingScc { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::Codegen
                 | TypingMode::PostAnalysis
@@ -926,6 +931,11 @@ where
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
                     ecx.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })?
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::CoroutineWitnessRegionConstraints(
+                    ..,
+                )) => {
+                    panic!("CoroutineWitnessRegionConstraints should not be a goal")
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {
                     panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
@@ -1291,7 +1301,9 @@ where
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
             let u = self.delegate.universe();
-            let assumptions = if self.cx().assumptions_on_binders() {
+            let assumptions = if self.cx().assumptions_on_binders()
+                || !self.coroutine_witness_universes.is_empty()
+            {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
             } else {
                 None
@@ -1306,6 +1318,25 @@ where
         T: TypeFoldable<I>,
     {
         self.delegate.resolve_vars_if_possible(value)
+    }
+
+    pub(super) fn universe(&self) -> ty::UniverseIndex {
+        self.delegate.universe()
+    }
+
+    pub(super) fn get_placeholder_assumptions(
+        &self,
+        u: ty::UniverseIndex,
+    ) -> Option<Assumptions<I>> {
+        self.delegate.get_placeholder_assumptions(u)
+    }
+
+    pub(super) fn insert_placeholder_assumptions(
+        &self,
+        u: ty::UniverseIndex,
+        assumptions: Option<Assumptions<I>>,
+    ) {
+        self.delegate.insert_placeholder_assumptions(u, assumptions);
     }
 
     pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
@@ -1382,6 +1413,10 @@ where
         hidden_ty: I::Ty,
     ) -> Option<I::Ty> {
         self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
+    }
+
+    pub(super) fn lookup_hidden_type_by_def_id(&self, def_id: I::LocalDefId) -> Option<I::Ty> {
+        self.delegate.lookup_hidden_type_by_def_id(def_id)
     }
 
     pub(super) fn add_item_bounds_for_hidden_type(
@@ -1530,20 +1565,45 @@ where
             previous call to `try_evaluate_added_goals!`"
         );
 
-        let goals_certainty = match self.delegate.cx().assumptions_on_binders() {
-            true => {
-                let certainty = self.eagerly_handle_placeholders()?;
-                certainty.and(goals_certainty)
-            }
-            false => {
-                // We only check for leaks from universes which were entered inside
-                // of the query.
-                self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
-                    trace!("failed the leak check");
-                    NoSolution
-                })?;
+        // Use eagerly_handle_placeholders when:
+        // 1. Global -Zassumptions-on-binders is active, OR
+        // 2. We entered universes for coroutine witness binders which carry NLL-derived
+        //    outlives assumptions that leak_check would have ignored.
+        let use_eager_placeholders = self.delegate.cx().assumptions_on_binders()
+            || !self.coroutine_witness_universes.is_empty();
 
-                goals_certainty
+        // During pre-borrowck, i.e. Typeck and BorrowckPendingScc, within
+        // coroutine witness universes, placeholder and leak failures may be due to
+        // missing NLL data, not structural non-Send types.
+        // Convert to AMBIGUOUS so the goal gets stalled and re-evaluated in
+        // PostBorrowck against NLL data.
+        let is_pre_borrowck_witness = !self.coroutine_witness_universes.is_empty()
+            && !self.typing_mode().has_nll_inferred_bounds();
+
+        let goals_certainty = if use_eager_placeholders {
+            match self.eagerly_handle_placeholders() {
+                Ok(certainty) => certainty.and(goals_certainty),
+                Err(NoSolution) if is_pre_borrowck_witness => Certainty::Maybe(MaybeInfo {
+                    cause: MaybeCause::Ambiguity,
+                    opaque_types_jank: OpaqueTypesJank::AllGood,
+                    stalled_on_coroutines: StalledOnCoroutines::Yes,
+                }),
+                Err(e) => return Err(e)?,
+            }
+        } else {
+            // We only check for leaks from universes which were entered inside
+            // of the query.
+            match self.delegate.leak_check(self.max_input_universe) {
+                Ok(()) => goals_certainty,
+                Err(NoSolution) if is_pre_borrowck_witness => Certainty::Maybe(MaybeInfo {
+                    cause: MaybeCause::Ambiguity,
+                    opaque_types_jank: OpaqueTypesJank::AllGood,
+                    stalled_on_coroutines: StalledOnCoroutines::Yes,
+                }),
+                Err(NoSolution) => {
+                    trace!("failed the leak check");
+                    return Err(NoSolution)?;
+                }
             }
         };
 
@@ -1783,7 +1843,10 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             RerunCondition::OpaqueInStorage(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
             | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques, .. }
+            | TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators: opaques, ..
+            },
         ) => opaque_in_storage(opaques, defids),
         // =============================
         (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
@@ -1795,7 +1858,8 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
             | TypingMode::Reflection
-            | TypingMode::PostTypeckUntilBorrowck { .. },
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::BorrowckPendingScc { .. },
         ) => RerunDecision::No,
         // =============================
         (
@@ -1817,7 +1881,10 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques, .. }
+            | TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators: opaques, ..
+            },
         ) => opaque_in_storage(opaques, defids),
     }
 }

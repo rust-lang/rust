@@ -89,6 +89,7 @@ fn layout_of<'tcx>(
         ty::TypingMode::Coherence
         | ty::TypingMode::Typeck { .. }
         | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::BorrowckPendingScc { .. }
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
         | ty::TypingMode::ErasedNotCoherence(_)
@@ -555,6 +556,7 @@ fn layout_of_uncached<'tcx>(
                 ty::TypingMode::Coherence
                 | ty::TypingMode::Typeck { .. }
                 | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                | ty::TypingMode::BorrowckPendingScc { .. }
                 | ty::TypingMode::PostBorrowck { .. }
                 | ty::TypingMode::Reflection
                 | ty::TypingMode::ErasedNotCoherence(_)

@@ -102,7 +102,8 @@ where
                 | ty::ClauseKind::WellFormed(..)
                 | ty::ClauseKind::ConstEvaluatable(..)
                 | ty::ClauseKind::HostEffect(..)
-                | ty::ClauseKind::UnstableFeature(..) => {
+                | ty::ClauseKind::UnstableFeature(..)
+                | ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => {
                     unreachable!("expected trait or projection predicate as an assumption")
                 }
             });
@@ -495,6 +496,7 @@ where
                     TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
                     | TypingMode::Reflection
+                    | TypingMode::BorrowckPendingScc { .. }
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::Codegen
@@ -1101,6 +1103,7 @@ where
             TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
             | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Reflection

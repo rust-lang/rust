@@ -1,18 +1,23 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
+#[cfg(feature = "nightly")]
+use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::region_constraint::Assumptions;
+#[cfg(not(feature = "nightly"))]
+use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunNonErased,
     RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, ExistentialPredicate, FieldInfo, Interner, MayBeErased, Movability,
-    PredicatePolarity, Region, TraitPredicate, TraitRef, TypeVisitableExt as _, TypingMode,
-    Unnormalized, Upcast as _, elaborate,
+    self as ty, CoroutineRegionConstraints, ExistentialPredicate, FieldInfo, Interner, MayBeErased,
+    Movability, PredicatePolarity, Region, TraitPredicate, TraitRef, TypeVisitableExt as _,
+    TypingMode, Unnormalized, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace, warn};
 
@@ -267,6 +272,31 @@ where
         // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
         if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
             return cand;
+        }
+
+        // In erased mode, CoroutineWitness auto-trait goals need rerun_always
+        // so they get re-evaluated in the original typing mode where
+        // NLL hydration kicks in.
+        // Only needed when NLL hydration and AoB are both active.
+        if ecx.cx().dxf()
+            && ecx.cx().assumptions_on_binders()
+            && matches!(goal.predicate.self_ty().kind(), ty::CoroutineWitness(..))
+        {
+            match ecx.typing_mode() {
+                TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    return match ecx.opaque_accesses.rerun_always(RerunReason::TryStallCoroutine) {
+                        Err(e) => Err(e.into()),
+                    };
+                }
+                TypingMode::Typeck { .. }
+                | TypingMode::Coherence
+                | TypingMode::Reflection
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::BorrowckPendingScc { .. }
+                | TypingMode::PostBorrowck { .. } => {}
+            }
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -1418,20 +1448,230 @@ where
         ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         self.probe_trait_candidate(source).enter(|ecx| {
-            let goals = ecx.enter_forall_with_assumptions(
-                constituent_tys(ecx, goal.predicate.self_ty())?,
+            let tys_binder = constituent_tys(ecx, goal.predicate.self_ty())?;
+            let goals = ecx.enter_forall_for_constituent_tys(goal, tys_binder);
+            ecx.add_goals(GoalSource::ImplWhereBound, goals)?;
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
+    /// Enter a forall scope for constituent type goals, optionally applying
+    /// NLL-derived coroutine witness region constraints from the ParamEnv.
+    ///
+    /// When checking `CoroutineWitness: Send`, the ParamEnv may contain a
+    /// `CoroutineWitnessRegionConstraints` clause with NLL-derived outlives
+    /// edges. This function merges those constraints into the forall's
+    /// placeholder assumptions so the solver can prove region obligations
+    /// that would otherwise fail.
+    fn enter_forall_for_constituent_tys(
+        &mut self,
+        goal: Goal<I, TraitPredicate<I>>,
+        tys_binder: ty::Binder<I, Vec<I::Ty>>,
+    ) -> Vec<Goal<I, I::Predicate>> {
+        let nll_constraints = self.lookup_coroutine_witness_constraints(goal);
+        let is_coroutine_witness =
+            matches!(goal.predicate.self_ty().kind(), ty::CoroutineWitness(..));
+        let dxf = self.cx().dxf();
+
+        if let Some(constraints) = nll_constraints {
+            assert_eq!(tys_binder.bound_vars().len(), constraints.0.bound_vars().len());
+
+            let bound_vars = tys_binder.bound_vars();
+            let hydrated_binder = ty::Binder::bind_with_vars(
+                (tys_binder.skip_binder(), constraints.0.skip_binder()),
+                bound_vars,
+            );
+
+            self.enter_forall_with_assumptions(
+                hydrated_binder,
                 goal.param_env,
-                |ecx, tys| {
+                |ecx, (tys, assumptions)| {
+                    if dxf {
+                        let u = ecx.universe();
+                        ecx.coroutine_witness_universes.push(u);
+                    }
+                    ecx.register_nll_assumptions(assumptions);
                     tys.into_iter()
                         .map(|ty| {
                             goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
                         })
                         .collect::<Vec<_>>()
                 },
-            );
-            ecx.add_goals(GoalSource::ImplWhereBound, goals)?;
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+            )
+        } else if dxf && is_coroutine_witness {
+            let coro_def_id = match goal.predicate.self_ty().kind() {
+                ty::CoroutineWitness(def_id, _) => def_id,
+                _ => unreachable!(),
+            };
+            // Only hydrate for cross-crate or PostBorrowck mode.
+            // All local coroutine auto-trait goals are stalled during typeck and re-evaluated
+            // during resolve_deferred_coroutine_goals in PostBorrowck mode.
+            if !super::assembly::structural_traits::should_hydrate_coroutine_witness(
+                self,
+                self.cx(),
+                coro_def_id,
+            ) {
+                return self.enter_forall_with_assumptions(
+                    tys_binder,
+                    goal.param_env,
+                    |ecx, tys| {
+                        let u = ecx.universe();
+                        ecx.coroutine_witness_universes.push(u);
+                        tys.into_iter()
+                            .map(|ty| {
+                                goal.with(
+                                    ecx.cx(),
+                                    goal.predicate.with_replaced_self_ty(ecx.cx(), ty),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                    },
+                );
+            }
+            let cx = self.cx();
+            let coro_args = match goal.predicate.self_ty().kind() {
+                ty::CoroutineWitness(_, args) => args,
+                _ => unreachable!(),
+            };
+            let assumptions = cx
+                .try_hydrate_coroutine_witness_scc(
+                    coro_def_id,
+                    coro_args,
+                    cx.coroutine_hidden_types(coro_def_id)
+                        .instantiate(cx, coro_args)
+                        .skip_norm_wip(),
+                )
+                .skip_binder()
+                .assumptions;
+
+            if assumptions.is_empty() {
+                self.enter_forall_with_assumptions(tys_binder, goal.param_env, |ecx, tys| {
+                    let u = ecx.universe();
+                    ecx.coroutine_witness_universes.push(u);
+                    tys.into_iter()
+                        .map(|ty| {
+                            goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
+                        })
+                        .collect::<Vec<_>>()
+                })
+            } else {
+                let bound_vars = tys_binder.bound_vars();
+                let assumptions_rebind = tys_binder.rebind(assumptions);
+                let hydrated_binder = ty::Binder::bind_with_vars(
+                    (tys_binder.skip_binder(), assumptions_rebind.skip_binder()),
+                    bound_vars,
+                );
+                self.enter_forall_with_assumptions(
+                    hydrated_binder,
+                    goal.param_env,
+                    |ecx, (tys, nll_assumptions)| {
+                        let u = ecx.universe();
+                        ecx.coroutine_witness_universes.push(u);
+                        ecx.register_nll_assumptions(nll_assumptions.clone());
+                        // Enrich the param_env with NLL outlives now so they survive
+                        // canonicalization of sub-goals.
+                        let cx = ecx.cx();
+                        let mut clauses: Vec<I::Clause> =
+                            goal.param_env.caller_bounds().iter().collect();
+                        for pred in nll_assumptions.iter() {
+                            let ty::OutlivesClause(sup, sub) = pred;
+                            match sup.kind() {
+                                ty::GenericArgKind::Lifetime(r) => {
+                                    clauses.push(
+                                        ty::Binder::dummy(ty::ClauseKind::RegionOutlives(
+                                            ty::OutlivesClause(r, sub),
+                                        ))
+                                        .upcast(cx),
+                                    );
+                                }
+                                _ => {}
+                            }
+                        }
+                        let enriched_param_env = cx.mk_param_env(&clauses);
+                        tys.into_iter()
+                            .map(|ty| {
+                                Goal::new(
+                                    cx,
+                                    enriched_param_env,
+                                    goal.predicate.with_replaced_self_ty(cx, ty),
+                                )
+                            })
+                            .collect()
+                    },
+                )
+            }
+        } else {
+            self.enter_forall_with_assumptions(tys_binder, goal.param_env, |ecx, tys| {
+                tys.into_iter()
+                    .map(|ty| {
+                        goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
+                    })
+                    .collect()
+            })
+        }
+    }
+
+    /// Look up `CoroutineWitnessRegionConstraints` in the ParamEnv for
+    /// the current goal's self type (if it's a `CoroutineWitness`).
+    fn lookup_coroutine_witness_constraints(
+        &self,
+        goal: Goal<I, TraitPredicate<I>>,
+    ) -> Option<CoroutineRegionConstraints<I>> {
+        let self_ty = goal.predicate.self_ty();
+        let coro_def_id = match self_ty.kind() {
+            ty::CoroutineWitness(def_id, _) => def_id,
+            _ => return None,
+        };
+
+        for clause in goal.param_env.caller_bounds().iter() {
+            if let ty::ClauseKind::CoroutineWitnessRegionConstraints(def_id, constraints) =
+                clause.kind().skip_binder()
+            {
+                if def_id == coro_def_id.into() {
+                    return Some(constraints);
+                }
+            }
+        }
+        None
+    }
+
+    /// Register NLL-derived outlives assumptions as placeholder assumptions
+    /// at the current universe level. Merges with any existing assumptions.
+    fn register_nll_assumptions(&mut self, assumptions: I::RegionAssumptions) {
+        let u = self.universe();
+        let mut type_outlives = Vec::new();
+        let mut region_outlives_builder = TransitiveRelationBuilder::default();
+        for pred in assumptions.iter() {
+            let ty::OutlivesClause(sup, sub) = pred;
+            match sup.kind() {
+                ty::GenericArgKind::Type(ty) => {
+                    type_outlives.push(ty::Binder::dummy(ty::OutlivesClause(ty, sub)));
+                }
+                ty::GenericArgKind::Lifetime(r) => {
+                    region_outlives_builder.add(r, sub);
+                }
+                ty::GenericArgKind::Const(_) => {}
+            }
+        }
+        let new_assumptions = Assumptions::new(type_outlives, region_outlives_builder.freeze());
+
+        let existing = self.get_placeholder_assumptions(u);
+        let merged = if let Some(existing) = existing {
+            let mut merged_type_outlives = existing.type_outlives;
+            merged_type_outlives.extend(new_assumptions.type_outlives);
+
+            let mut merged_region_builder = TransitiveRelationBuilder::default();
+            for (r1, r2) in existing.region_outlives.base_edges() {
+                merged_region_builder.add(r1, r2);
+            }
+            for (r1, r2) in new_assumptions.region_outlives.base_edges() {
+                merged_region_builder.add(r1, r2);
+            }
+            Assumptions::new(merged_type_outlives, merged_region_builder.freeze())
+        } else {
+            new_assumptions
+        };
+        self.insert_placeholder_assumptions(u, Some(merged));
     }
 }
 
@@ -1662,11 +1902,23 @@ where
                         },
                     );
                 }
+                TypingMode::BorrowckPendingScc { .. } => {
+                    // In BorrowckPendingScc mode, NLL facts is not yet available.
+                    // So stall local coroutine auto-trait goals as pending obligations.
+                    // They will be re-evaluated towards the end of the borrowck.
+                    if def_id.as_local().is_some() {
+                        return Some(self.forced_ambiguity(MaybeInfo {
+                            cause: MaybeCause::Ambiguity,
+                            opaque_types_jank: OpaqueTypesJank::AllGood,
+                            stalled_on_coroutines: StalledOnCoroutines::Yes,
+                        }));
+                    }
+                }
                 TypingMode::Coherence
-                | TypingMode::PostAnalysis
                 | TypingMode::Reflection
+                | TypingMode::PostAnalysis
                 | TypingMode::Codegen
-                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _, .. }
                 | TypingMode::PostBorrowck { defined_opaque_types: _ } => {}
             }
         }

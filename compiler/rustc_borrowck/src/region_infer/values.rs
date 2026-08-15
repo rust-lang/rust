@@ -344,6 +344,42 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
         }
     }
 
+    /// Returns `true` if `sup_region`'s value is a superset of `sub_region`'s
+    /// value across ALL components: CFG points, free (universal) regions, and
+    /// placeholders. This is the full outlives check for NLL region values.
+    pub(crate) fn contains_region_values(&self, sup_region: N, sub_region: N) -> bool {
+        // Short-circuit on CFG points first.
+        if !self.contains_points(sup_region, sub_region) {
+            return false;
+        }
+
+        // Check universal (free) regions.
+        if let Some(sub_row) = self.free_regions.row(sub_region)
+            && !sub_row.is_empty()
+        {
+            let Some(sup_row) = self.free_regions.row(sup_region) else {
+                return false;
+            };
+            if !sup_row.superset(sub_row) {
+                return false;
+            }
+        }
+
+        // Check placeholders.
+        if let Some(sub_row) = self.placeholders.row(sub_region)
+            && !sub_row.is_empty()
+        {
+            let Some(sup_row) = self.placeholders.row(sup_region) else {
+                return false;
+            };
+            if !sup_row.superset(sub_row) {
+                return false;
+            }
+        }
+
+        true
+    }
+
     /// Returns the locations contained within a given region `r`.
     pub(crate) fn locations_outlived_by(&self, r: N) -> impl Iterator<Item = Location> {
         self.points

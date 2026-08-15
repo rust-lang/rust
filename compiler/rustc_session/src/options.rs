@@ -2446,6 +2446,8 @@ options! {
         "do not treat all aliases in the environment as rigid with `-Znext-solver`"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
+    dxf: bool = (false, parse_bool, [TRACKED],
+        "merge coroutine witness bound variables using NLL SCC data (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) \
         (default: no)"),

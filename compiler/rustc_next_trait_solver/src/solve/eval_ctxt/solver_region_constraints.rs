@@ -36,7 +36,7 @@ where
         u: UniverseIndex,
         param_env: I::ParamEnv,
     ) -> Option<Assumptions<I>> {
-        assert!(self.cx().assumptions_on_binders());
+        assert!(self.cx().assumptions_on_binders() || !self.coroutine_witness_universes.is_empty());
 
         struct RawAssumptions<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
             ecx: &'a mut EvalCtxt<'b, D, I>,
@@ -107,6 +107,17 @@ where
             reqs.into_iter().filter_map(|goal| goal.predicate.as_clause()),
         );
 
+        // Also extract RegionOutlives from the param_env's caller_bounds.
+        // These include NLL-derived outlives injected for DXF coroutine witnesses.
+        let param_env_clauses: Vec<_> = param_env
+            .caller_bounds()
+            .iter()
+            .filter(|clause| {
+                matches!(clause.kind().skip_binder(), RegionOutlives(_))
+                    && max_universe(&**self.delegate, *clause) == u
+            })
+            .collect();
+
         clauses.filter(move |clause| max_universe(&**self.delegate, *clause) == u).for_each(
             |clause| match clause.kind().skip_binder() {
                 RegionOutlives(OutlivesClause(r1, r2)) => {
@@ -119,6 +130,12 @@ where
                 _ => (),
             },
         );
+
+        for clause in param_env_clauses {
+            if let RegionOutlives(OutlivesClause(r1, r2)) = clause.kind().skip_binder() {
+                region_outlives_builder.add(r1, r2);
+            }
+        }
 
         Some(Assumptions::new(type_outlives, region_outlives_builder.freeze()))
     }

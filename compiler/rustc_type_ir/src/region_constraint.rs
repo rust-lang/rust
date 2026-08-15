@@ -642,6 +642,11 @@ fn pull_region_outlives_constraints_out_of_universe<
             constraint
         }
         RegionOutlives(region_1, region_2) => {
+            // Trivially true: any region outlives itself.
+            if region_1 == region_2 {
+                return RegionConstraint::new_true();
+            }
+
             let region_1_u = max_universe(infcx, region_1);
             let region_2_u = max_universe(infcx, region_2);
 
@@ -653,6 +658,18 @@ fn pull_region_outlives_constraints_out_of_universe<
                 Some(assumptions) => assumptions,
                 None => return RegionConstraint::Ambiguity,
             };
+
+            // When assumptions contain evidence that same-universe
+            // placeholders satisfy an outlives constraint, be it from NLL
+            // or WF-derived bounds, we can just resolve directly.
+            // Without this, constraints like `'!0_u1: '!1_u1` would fail
+            // because the lower-universe intermediary search below discards
+            // same-universe regions.
+            if region_1_u == u && region_2_u == u {
+                if regions_outlived_by(region_1, assumptions).any(|r| r == region_2) {
+                    return RegionConstraint::new_true();
+                }
+            }
 
             let mut candidates = vec![];
             for ub in
@@ -898,6 +915,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
                 TypingMode::Typeck { .. }
                 | TypingMode::ErasedNotCoherence { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::BorrowckPendingScc { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::Reflection
                 | TypingMode::PostAnalysis

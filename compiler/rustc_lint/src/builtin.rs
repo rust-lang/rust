@@ -1437,7 +1437,8 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
                     | ClauseKind::ConstEvaluatable(..)
                     // Users don't write this directly, only via another trait ref.
-                    | ty::ClauseKind::HostEffect(..) => continue,
+                    | ty::ClauseKind::HostEffect(..)
+                    | ClauseKind::CoroutineWitnessRegionConstraints(..) => continue,
                 };
                 if clause.is_global() {
                     cx.emit_span_lint(

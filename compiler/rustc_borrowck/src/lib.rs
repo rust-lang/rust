@@ -26,19 +26,21 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
+use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, ParamEnv, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypingMode, fold_regions,
+    self, ParamEnv, RegionVid, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitor, TypingMode, Upcast, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
@@ -48,7 +50,10 @@ use rustc_mir_dataflow::move_paths::{
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::{QueryTypeOp, TypeOp, TypeOpOutput};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -115,12 +120,14 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> Result<&FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'_>>, ErrorGuaranteed> {
+) -> Result<&rustc_middle::mir::BorrowCheckResult<'_>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     if tcx.is_trivial_const(def) {
         debug!("Skipping borrowck because of trivial const");
-        let opaque_types = Default::default();
-        return Ok(tcx.arena.alloc(opaque_types));
+        return Ok(tcx.arena.alloc(rustc_middle::mir::BorrowCheckResult {
+            opaque_types: Default::default(),
+            coroutine_nll_constraints: Default::default(),
+        }));
     }
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
@@ -128,6 +135,11 @@ fn mir_borrowck(
     // We should eagerly check stalled coroutine obligations from HIR typeck.
     // Not doing so leads to silent normalization failures later, which will
     // fail to register opaque types in the next solver.
+    //
+    // When dxf is active, check_coroutine_obligations uses a special typing
+    // mode that delays auto-trait goals on coroutine witnesses. These delayed
+    // goals are re-evaluated later inside mir_borrowck (before finalize),
+    // allowing try_hydrate_coroutine_witness_scc to access SCC data.
     tcx.ensure_result().check_coroutine_obligations(def)?;
 
     let input_body: &Body<'_> = &input_body.borrow();
@@ -136,12 +148,19 @@ fn mir_borrowck(
         Err(guar)
     } else if input_body.should_skip() {
         debug!("Skipping borrowck because of injected body");
-        let opaque_types = Default::default();
-        Ok(tcx.arena.alloc(opaque_types))
+        Ok(tcx.arena.alloc(rustc_middle::mir::BorrowCheckResult {
+            opaque_types: Default::default(),
+            coroutine_nll_constraints: Default::default(),
+        }))
     } else {
         let tainted_by_errors = Default::default();
         let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None, &tainted_by_errors);
         root_cx.do_mir_borrowck();
+        if tainted_by_errors.get().is_none() && tcx.dxf() {
+            if let Err(err) = resolve_deferred_coroutine_goals(tcx, def, root_cx.hidden_types()) {
+                tainted_by_errors.set(Some(err));
+            }
+        }
         root_cx.finalize()
     }
 }
@@ -443,6 +462,146 @@ fn borrowck_check_region_constraints<'diag, 'tcx>(
         polonius_facts,
         polonius_context,
     );
+
+    // Extract SCC data for coroutine witnesses.
+    // This enables merging bound variables that NLL proves are equal,
+    // fixing false Send/Sync failures (see #110338).
+    if body.coroutine.is_some() {
+        // Always feed coroutine_witness_scc_data so the query doesn't panic
+        // when read in post-borrowck modes such as PostAnalysis, Codegen.
+        // The actual SCC analysis is only computed when dxf() is enabled.
+        let layout = if tcx.dxf() { tcx.mir_coroutine_witnesses(def.to_def_id()) } else { None };
+        let nll_data = if let Some(layout) = layout {
+            let sccs = regioncx.constraint_sccs();
+            // For each witness field, use reverse_local_map
+            // to look up the original body local. The body local has
+            // RegionVid regions that we can extract for SCC comparison.
+            let mut region_vids = vec![];
+
+            for (saved_local, decl) in layout.field_tys.iter_enumerated() {
+                if decl.ignore_for_traits {
+                    continue;
+                }
+                // Use the reverse_local_map to find the original Local.
+                let local = layout.reverse_local_map[saved_local];
+                let local_decl = &body.local_decls[local];
+                // Visit (not fold) — we only need to collect RegionVids,
+                // not rebuild the type.
+                struct RegionVidCollector<'a>(&'a mut Vec<ty::RegionVid>);
+                impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for RegionVidCollector<'_> {
+                    fn visit_region(&mut self, r: ty::Region<'tcx>) {
+                        if let ty::ReVar(vid) = r.kind() {
+                            self.0.push(vid);
+                        }
+                    }
+                }
+                local_decl.ty.visit_with(&mut RegionVidCollector(&mut region_vids));
+            }
+
+            // Build SCC groups: map each SCC id to the list of witness
+            // bound regions belonging to it. The first element of each
+            // group is the representative.
+            let mut scc_group_map = FxIndexMap::<_, SmallVec<[_; 2]>>::default();
+            for (idx, &vid) in region_vids.iter().enumerate() {
+                let br = ty::Region::new_bound(
+                    tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion {
+                        var: ty::BoundVar::from_usize(idx),
+                        kind: ty::BoundRegionKind::Anon,
+                    },
+                );
+                scc_group_map.entry(sccs.scc(vid)).or_default().push(br);
+            }
+            // Build outlives edges between witness bound regions
+            // using NLL region values.
+            // Build a mapping: universal_region_vid -> witness representative region.
+            let mut ur_to_rep = UnordMap::default();
+            for (&scc, members) in &scc_group_map {
+                let rep = members[0];
+                for ur in regioncx.universal_regions_outlived_by_scc(scc) {
+                    ur_to_rep.entry(ur).or_insert(rep);
+                }
+            }
+
+            // For each distinct witness SCC, check which universal
+            // regions it outlives. Emit outlives edges and 'static bounds.
+            let mut outlives_edges = vec![];
+            let mut outlives_static = vec![];
+            let fr_static = regioncx.universal_regions().fr_static;
+            for (&scc, members) in &scc_group_map {
+                let rep = members[0];
+
+                for ur in regioncx.universal_regions_outlived_by_scc(scc) {
+                    if ur == fr_static {
+                        outlives_static.push(rep);
+                    }
+                    if let Some(&target_rep) = ur_to_rep.get(&ur) {
+                        if rep != target_rep {
+                            outlives_edges.push((rep, target_rep));
+                        }
+                    }
+                }
+            }
+
+            // Containment-based outlives.
+            for (&scc_i, members_i) in &scc_group_map {
+                for (&scc_j, members_j) in &scc_group_map {
+                    if scc_i == scc_j {
+                        continue;
+                    }
+                    if regioncx.scc_values_contain(scc_i, scc_j) {
+                        let rep_i = members_i[0];
+                        let rep_j = members_j[0];
+                        outlives_edges.push((rep_i, rep_j));
+                    }
+                }
+            }
+
+            // Emit SCC equivalence edges as directed cycles.
+            for members in scc_group_map.into_values() {
+                if members.len() < 2 {
+                    continue;
+                }
+                for window in members.windows(2) {
+                    outlives_edges.push((window[0], window[1]));
+                }
+                outlives_edges.push((members[members.len() - 1], members[0]));
+            }
+
+            debug!(
+                ?def,
+                ?region_vids,
+                ?outlives_edges,
+                ?outlives_static,
+                "coroutine nll hydration",
+            );
+
+            // Build OutlivesClause assumptions directly from regions.
+            let preds: Vec<_> = outlives_edges
+                .into_iter()
+                .map(|(sup, sub)| ty::OutlivesClause(sup.into(), sub))
+                .chain(
+                    outlives_static
+                        .into_iter()
+                        .map(|r| ty::OutlivesClause(r.into(), tcx.lifetimes.re_static)),
+                )
+                .collect();
+
+            CoroutineNllOutlives { assumptions: tcx.mk_outlives(&preds) }
+        } else {
+            CoroutineNllOutlives { assumptions: tcx.mk_outlives(&[]) }
+        };
+        root_cx.coroutine_nll_constraints.insert(def, nll_data);
+        tcx.feed_coroutine_witness_scc_data(def, nll_data);
+        if tcx.needs_coroutine_by_move_body_def_id(def.to_def_id()) {
+            let by_move_def_id = tcx.coroutine_by_move_body_def_id(def.to_def_id());
+            if let Some(by_move_local_id) = by_move_def_id.as_local() {
+                root_cx.coroutine_nll_constraints.insert(by_move_local_id, nll_data);
+                tcx.feed_coroutine_witness_scc_data(by_move_local_id, nll_data);
+            }
+        }
+    }
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
@@ -2771,4 +2930,263 @@ enum Overlap {
     /// The places are disjoint, so we know all extensions of them
     /// will also be disjoint.
     Disjoint,
+}
+
+#[instrument(level = "debug", skip(tcx))]
+fn build_coroutine_constraints<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    coro_def_id: LocalDefId,
+) -> Option<ty::CoroutineRegionConstraints<'tcx>> {
+    let nll_outlives = tcx
+        .coroutine_witness_scc_data(coro_def_id)
+        .instantiate_identity()
+        .skip_norm_wip()
+        .skip_binder();
+
+    let hidden_types = tcx.coroutine_hidden_types(coro_def_id.to_def_id());
+    let identity_args =
+        rustc_middle::ty::GenericArgs::identity_for_item(tcx, coro_def_id.to_def_id());
+    let binder = hidden_types.instantiate(tcx, identity_args).skip_norm_wip();
+    let bound_vars = binder.bound_vars();
+    let num_vars = bound_vars.len();
+    debug!(?coro_def_id, ?binder, num_vars);
+
+    if num_vars == 0 {
+        return None;
+    }
+
+    // Keep existing assumptions from typeck WF as-is.
+    let witness = binder.skip_binder();
+    let new_assumptions: SmallVec<[_; 2]> =
+        witness.assumptions.iter().chain(&*nll_outlives.assumptions).collect();
+    if new_assumptions.is_empty() {
+        None
+    } else {
+        Some(rustc_middle::ty::CoroutineRegionConstraints(
+            rustc_middle::ty::Binder::bind_with_vars(tcx.mk_outlives(&new_assumptions), bound_vars),
+        ))
+    }
+}
+
+fn is_coroutine_auto_trait_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicate: ty::Predicate<'tcx>,
+) -> bool {
+    let Some(poly_trait_pred) = predicate.as_trait_clause() else {
+        return false;
+    };
+    let trait_pred = poly_trait_pred.skip_binder();
+    if trait_pred.polarity != ty::PredicatePolarity::Positive
+        || !tcx.trait_is_auto(trait_pred.def_id())
+    {
+        return false;
+    }
+    match trait_pred.self_ty().kind() {
+        ty::Coroutine(..) | ty::CoroutineWitness(..) => true,
+        ty::Alias(_, alias_ty) => matches!(alias_ty.kind, ty::AliasTyKind::Opaque { .. }),
+        _ => false,
+    }
+}
+
+#[instrument(level = "debug", skip(tcx, borrowck_hidden_types))]
+fn resolve_deferred_coroutine_goals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: LocalDefId,
+    borrowck_hidden_types: &rustc_data_structures::fx::FxIndexMap<
+        LocalDefId,
+        ty::DefinitionSiteHiddenType<'tcx>,
+    >,
+) -> Result<(), rustc_errors::ErrorGuaranteed> {
+    let typeck_results = tcx.typeck(def);
+    if typeck_results.coroutine_stalled_predicates.is_empty() {
+        return Ok(());
+    }
+
+    // Collect local opaque types from stalled predicates so we can
+    // reveal them when normalizing. This is needed because stalled predicates
+    // may reference opaque types (e.g. `impl Future: Send`) that hide
+    // coroutine types underneath.
+    let mut expanded_opaque_types: Vec<LocalDefId> = tcx.opaque_types_defined_by(def).to_vec();
+    struct OpaqueCollector<'a>(&'a mut Vec<LocalDefId>);
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueCollector<'_> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
+            if let ty::Alias(_, alias_ty) = t.kind()
+                && let ty::AliasTyKind::Opaque { def_id } = alias_ty.kind
+                && let Some(local_def_id) = def_id.as_local()
+                && !self.0.contains(&local_def_id)
+            {
+                self.0.push(local_def_id);
+            }
+            t.super_visit_with(self);
+        }
+    }
+    let mut collector = OpaqueCollector(&mut expanded_opaque_types);
+    for (predicate, _) in &typeck_results.coroutine_stalled_predicates {
+        predicate.visit_with(&mut collector);
+    }
+    debug!(?expanded_opaque_types);
+
+    // Discover coroutines from stalled predicates and opaque hidden types.
+    let mut coroutines = FxIndexSet::default();
+    struct CoroutineCollector<'a>(&'a mut FxIndexSet<LocalDefId>);
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CoroutineCollector<'_> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
+            if let ty::CoroutineWitness(coro_def_id, _) | ty::Coroutine(coro_def_id, _) = t.kind()
+                && let Some(local_id) = coro_def_id.as_local()
+            {
+                self.0.insert(local_id);
+            }
+            t.super_visit_with(self);
+        }
+    }
+    for (predicate, _) in &typeck_results.coroutine_stalled_predicates {
+        predicate.visit_with(&mut CoroutineCollector(&mut coroutines));
+    }
+    // Walk hidden types of def's own opaques from borrowck results (no cycle).
+    for (_, hidden_ty) in borrowck_hidden_types {
+        hidden_ty.ty.instantiate_identity().visit_with(&mut CoroutineCollector(&mut coroutines));
+    }
+    // Walk hidden types of expanded opaques beyond def's own set via type_of.
+    let orig_opaque_count = tcx.opaque_types_defined_by(def).len();
+    for &opaque_def_id in &expanded_opaque_types[orig_opaque_count..] {
+        let hidden_ty = tcx.type_of(opaque_def_id).skip_binder();
+        debug!(?opaque_def_id, ?hidden_ty);
+        hidden_ty.visit_with(&mut CoroutineCollector(&mut coroutines));
+    }
+    debug!(?coroutines);
+
+    // Use PostBorrowck with all opaques in scope. To avoid a query cycle
+    // by solving a goal involving an opaque under root DefId, we pre-populate
+    // the InferCtxt's opaque type storage with hidden types already computed
+    // by do_mir_borrowck(). The solver checks storage read-only before
+    // falling back to type_of, so the cycle is avoided.
+    let defined_opaque_types = tcx.mk_local_def_ids(&expanded_opaque_types);
+    let mode = ty::TypingMode::PostBorrowck { defined_opaque_types };
+    let infcx = tcx.infer_ctxt().build(mode);
+    // Only inject hidden types for def's own opaques into storage.
+    // These are the ones that would cause a type_of → mir_borrowck cycle.
+    // Other opaques can be resolved via type_of without cycling.
+    let self_opaques = tcx.opaque_types_defined_by(def);
+    for (&opaque_def_id, hidden_ty) in borrowck_hidden_types {
+        if !self_opaques.contains(&opaque_def_id) {
+            continue;
+        }
+        let args = ty::GenericArgs::identity_for_item(tcx, opaque_def_id);
+        let key = ty::OpaqueTypeKey { def_id: opaque_def_id, args };
+        let ty = hidden_ty.ty.instantiate_identity();
+        // Replace erased regions with fresh region vars.
+        // This is also what the solver does in PostBorrowck mode.
+        let ty = fold_regions(tcx, ty, |re, _| match re.kind() {
+            ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(hidden_ty.span)),
+            _ => re,
+        })
+        .skip_norm_wip();
+        let provisional = ty::ProvisionalHiddenType { span: hidden_ty.span, ty };
+        infcx.register_hidden_type_in_storage(key, provisional);
+    }
+
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let param_env = tcx.param_env(def);
+    // Build enriched ParamEnv.
+    let mut clauses = param_env.caller_bounds().to_vec();
+    let mut coroutines_without_constraints = vec![];
+    for &coro_id in &coroutines {
+        // Ensure borrowck has run for this coroutine's root so that
+        // coroutine_witness_scc_data has been fed.
+        // For same-function coroutines (coro_root == def), the data was
+        // already fed during do_mir_borrowck() which ran before this point.
+        let coro_root = tcx.typeck_root_def_id_local(coro_id);
+        if coro_root != def && tcx.ensure_result().mir_borrowck(coro_root).is_err() {
+            continue;
+        }
+        let constraints = build_coroutine_constraints(tcx, coro_id);
+        debug!(?coro_id, ?constraints);
+        if constraints.is_none() {
+            coroutines_without_constraints.push(coro_id);
+        }
+        if let Some(constraints) = constraints {
+            let pred_kind = ty::PredicateKind::Clause(
+                ty::ClauseKind::CoroutineWitnessRegionConstraints(coro_id.to_def_id(), constraints),
+            );
+            let predicate: ty::Predicate<'tcx> = ty::Binder::dummy(pred_kind).upcast(tcx);
+            let clause = predicate.expect_clause();
+            clauses.push(clause);
+        }
+    }
+
+    let enriched_param_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
+    debug!(?enriched_param_env);
+    for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
+        if !is_coroutine_auto_trait_predicate(tcx, *predicate) {
+            continue;
+        }
+        debug!(?predicate, "register");
+        ocx.register_obligation(Obligation::new(
+            tcx,
+            cause.clone(),
+            enriched_param_env,
+            *predicate,
+        ));
+    }
+
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
+    debug!(?errors);
+    // Drain opaque types from storage. We pre-populated them for cycle avoidance
+    // and the solver may have added more during evaluation. The defining uses
+    // are handled by borrowck itself, not by this deferred resolution.
+    let _ = infcx.take_opaque_types();
+    let mut errors = match errors {
+        TraitErrors::NoErrors => {
+            let result = ocx.resolve_regions_and_report_errors(def, enriched_param_env, []);
+            let _ = infcx.take_opaque_types();
+            return result;
+        }
+        TraitErrors::HasErrors(errors) => errors,
+    };
+    // Adjust obligation causes to include FunctionArg info so that
+    // error reporting can show "required by a bound introduced by
+    // this call" notes. The stalled predicates have WhereClauseInExpr
+    // causes that contain the call HirId, but without FunctionArg
+    // wrapping the note won't appear.
+    for error in &mut errors {
+        // Check both the error's obligation and the root obligation
+        // for WhereClauseInExpr cause code.
+        let root_code = error.root_obligation.cause.code().peel_derives();
+        if let ObligationCauseCode::WhereClauseInExpr(_def_id, _span, call_hir_id, _idx) =
+            *root_code
+        {
+            // Use the root obligation's call_hir_id for both.
+            // The arg_hir_id ideally should point to the argument
+            // expression, but we approximate with call_hir_id.
+            error.obligation.cause.map_code(|parent_code| ObligationCauseCode::FunctionArg {
+                arg_hir_id: call_hir_id,
+                call_hir_id,
+                parent_code,
+            });
+        }
+    }
+    let err = infcx.err_ctxt().report_fulfillment_errors(errors);
+
+    // If any coroutines had unprovable region constraints, add a
+    // note explaining that NLL couldn't establish the needed
+    // lifetime relationships.
+    if !coroutines_without_constraints.is_empty() {
+        for &coro_id in &coroutines_without_constraints {
+            let hidden_types = tcx.coroutine_hidden_types(coro_id.to_def_id());
+            let identity_args = ty::GenericArgs::identity_for_item(tcx, coro_id.to_def_id());
+            let binder = hidden_types.instantiate(tcx, identity_args).skip_norm_wip();
+            let num_vars = binder.bound_vars().len();
+            if num_vars > 0 {
+                let coro_span = tcx.def_span(coro_id);
+                tcx.dcx().span_note(
+                    coro_span,
+                    "this `async` fn holds references with different lifetimes across \
+                         an `.await` point; the `Send` trait requires these lifetimes to \
+                         satisfy certain bounds, but the borrow checker could not verify them",
+                );
+            }
+        }
+    }
+
+    Err(err)
 }

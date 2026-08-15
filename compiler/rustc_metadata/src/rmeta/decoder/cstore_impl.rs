@@ -280,6 +280,26 @@ provide! { tcx, def_id, other, cdata,
     asyncness => { table_direct }
     fn_arg_idents => { table }
     coroutine_kind => { table_direct }
+    coroutine_witness_scc_data => {
+        let value = cdata
+            .root
+            .tables
+            .coroutine_witness_scc_data
+            .get(cdata, def_id.index);
+        let data = match value {
+            Some(v) => v.decode((cdata, tcx)),
+            None => rustc_middle::mir::CoroutineNllOutlives {
+                assumptions: tcx.mk_outlives(&[]),
+            },
+        };
+        ty::EarlyBinder::bind(
+            tcx,
+            ty::Binder::bind_with_vars(
+                data,
+                tcx.coroutine_hidden_types(def_id).skip_binder().bound_vars(),
+            )
+        )
+    }
     coroutine_for_closure => { table }
     coroutine_by_move_body_def_id => { table }
     eval_static_initializer => {

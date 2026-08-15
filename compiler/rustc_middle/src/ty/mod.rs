@@ -86,13 +86,13 @@ pub use self::opaque_types::OpaqueTypeKey;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, AliasTermKind, ArgOutlivesClause, Clause, ClauseKind, CoercePredicate,
-    ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
-    ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
-    PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionPredicate, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionPredicate,
-    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitPredicate,
-    TraitRef, TypeOutlivesClause,
+    CoroutineRegionConstraints, ExistentialPredicate, ExistentialPredicateStableCmpExt,
+    ExistentialProjection, ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause,
+    PolyCoercePredicate, PolyExistentialPredicate, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyProjectionPredicate, PolyRegionOutlivesClause,
+    PolySubtypePredicate, PolyTraitPredicate, PolyTraitRef, PolyTypeOutlivesClause, Predicate,
+    PredicateKind, ProjectionPredicate, RegionConstraint, RegionEqPredicate, RegionOutlivesClause,
+    SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesClause,
 };
 pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionExt, RegionKind,
@@ -1293,6 +1293,7 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. } => {}
             TypingMode::PostAnalysis | TypingMode::Codegen => return self,
         }
@@ -1310,6 +1311,7 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis => {}
             TypingMode::Codegen => return self,
@@ -2128,6 +2130,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
                 let proxy_layout = CoroutineLayout {
                     field_tys: [].into(),
+                    reverse_local_map: IndexVec::new(),
                     variant_fields,
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),

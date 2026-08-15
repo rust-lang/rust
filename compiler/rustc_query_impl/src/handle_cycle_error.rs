@@ -429,3 +429,12 @@ pub(crate) fn create_cycle_error<'tcx>(
         })
     }
 }
+
+pub(crate) fn mir_borrowck<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _key: LocalDefId,
+    _: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> Result<&'tcx rustc_middle::mir::BorrowCheckResult<'tcx>, ErrorGuaranteed> {
+    Err(err.delay_as_bug())
+}

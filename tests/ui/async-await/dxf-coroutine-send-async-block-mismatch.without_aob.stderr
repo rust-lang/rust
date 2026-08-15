@@ -1,0 +1,32 @@
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-async-block-mismatch.rs:65:1
+   |
+LL | fn trouble() -> impl Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-async-block-mismatch.rs:65:1
+   |
+LL | fn trouble() -> impl Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-async-block-mismatch.rs:65:1
+   |
+LL | fn trouble() -> impl Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-async-block-mismatch.rs:65:1
+   |
+LL | fn trouble() -> impl Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

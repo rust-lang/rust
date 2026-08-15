@@ -56,6 +56,10 @@ impl ParameterizedOverTcx for GenericArg<'static> {
     type Value<'tcx> = GenericArg<'tcx>;
 }
 
+impl ParameterizedOverTcx for rustc_middle::mir::CoroutineNllOutlives<'static> {
+    type Value<'tcx> = rustc_middle::mir::CoroutineNllOutlives<'tcx>;
+}
+
 macro_rules! trivially_parameterized_over_tcx {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -119,6 +123,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
     rustc_middle::mir::ConstQualifs,
     rustc_middle::mir::ConstValue,
+
     rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::AssocContainer,
     rustc_middle::ty::AsyncDestructor,

@@ -217,6 +217,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                     TypingMode::Coherence
                     | TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::BorrowckPendingScc { .. }
                     | TypingMode::PostBorrowck { .. } => ty.try_super_fold_with(self)?,
 
                     TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {

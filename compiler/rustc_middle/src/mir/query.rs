@@ -3,13 +3,15 @@
 use std::fmt::{self, Debug};
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
-use super::{ConstValue, SourceInfo};
+use super::{ConstValue, Local, SourceInfo};
 use crate::ty::{self, CoroutineArgsExt, Ty};
 
 rustc_index::newtype_index! {
@@ -37,6 +39,13 @@ pub struct CoroutineSavedTy<'tcx> {
 pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
+
+    /// Maps each `CoroutineSavedLocal` back to the original `Local` in the
+    /// MIR body. This is the reverse of the `saved_locals` bitset: the i-th
+    /// saved local corresponds to `reverse_local_map[i]` in the body.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub reverse_local_map: IndexVec<CoroutineSavedLocal, Local>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.
@@ -79,6 +88,48 @@ impl Debug for CoroutineLayout<'_> {
             .field("storage_conflicts", &self.storage_conflicts)
             .finish()
     }
+}
+
+/// NLL-derived outlives constraints for a coroutine's witness bound variables.
+///
+/// Stores `OutlivesClause(sup_arg, sub_region)` assumptions using bound
+/// regions that match the sequential region traversal order in
+/// `coroutine_hidden_types`. These include:
+/// - Equivalent regions, encoded as directed cycles.
+/// - Outlives relationships from the maximised NLL constraint graph
+/// - `'static` bounds for SCCs that outlive `'static`
+///   - This one might be oddly specific, but we shall see.
+///
+/// The `coroutine_witness_scc_data` query wraps this in
+/// `EarlyBinder<Binder<CoroutineNllOutlives>>`, which strictly matches
+/// that of `coroutine_hidden_types`.
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Hash,
+    StableHash,
+    TyEncodable,
+    TyDecodable,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub struct CoroutineNllOutlives<'tcx> {
+    /// All NLL-derived outlives assumptions for hydration.
+    pub assumptions: &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>,
+}
+
+/// The result of the `mir_borrowck` query.
+///
+/// Contains opaque type definitions and NLL-derived outlives constraints
+/// for coroutine witnesses.
+#[derive(Debug, StableHash)]
+pub struct BorrowCheckResult<'tcx> {
+    /// Opaque type definitions discovered during borrowck.
+    pub opaque_types: FxIndexMap<LocalDefId, crate::ty::DefinitionSiteHiddenType<'tcx>>,
+    /// NLL-derived outlives constraints for each nested coroutine.
+    /// Keyed by the coroutine's `LocalDefId`.
+    pub coroutine_nll_constraints: FxIndexMap<LocalDefId, CoroutineNllOutlives<'tcx>>,
 }
 
 /// The result of the `mir_const_qualif` query.
