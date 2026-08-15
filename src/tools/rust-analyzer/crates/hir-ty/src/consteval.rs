@@ -161,7 +161,7 @@ pub(crate) fn literal_ty<'db>(
         Literal::String(..) => types.types.static_str_ref,
         Literal::ByteString(bs) => {
             let byte_type = types.types.u8;
-            let array_type = Ty::new_array(interner, byte_type, bs.len() as u128);
+            let array_type = Ty::new_array(interner, byte_type, bs.len() as u64);
             Ty::new_ref(interner, types.regions.statik, array_type, Mutability::Not)
         }
         Literal::CString(..) => Ty::new_ref(

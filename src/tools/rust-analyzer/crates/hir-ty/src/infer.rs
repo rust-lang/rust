@@ -59,6 +59,7 @@ use hir_expand::{mod_path::ModPath, name::Name};
 use indexmap::IndexSet;
 use la_arena::ArenaMap;
 use macros::{TypeFoldable, TypeVisitable};
+use rustc_abi::TargetDataLayout;
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
@@ -307,9 +308,9 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         pat: PatId,
         #[type_visitable(ignore)]
-        expected: u128,
+        expected: u64,
         #[type_visitable(ignore)]
-        found: u128,
+        found: u64,
         #[type_visitable(ignore)]
         has_rest: bool,
     },
@@ -1340,6 +1341,7 @@ pub(crate) struct InferenceContext<'db> {
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
     target_features: OnceCell<(TargetFeatures<'db>, TargetFeatureIsSafeInTarget)>,
+    data_layout: OnceCell<&'db TargetDataLayout>,
     pub(crate) edition: Edition,
     allow_using_generic_params: bool,
     generics: OnceCell<Generics<'db>>,
@@ -1436,6 +1438,7 @@ impl<'db> InferenceContext<'db> {
             return_ty: types.types.error, // set in collect_* calls
             types,
             target_features: OnceCell::new(),
+            data_layout: OnceCell::new(),
             lang_items: table.interner().lang_items(),
             features: resolver.top_level_def_map().features(),
             edition: resolver.krate().data(db).edition,
@@ -1574,6 +1577,10 @@ impl<'db> InferenceContext<'db> {
             (target_features, target_feature_is_safe)
         });
         (target_features, *target_feature_is_safe)
+    }
+
+    fn data_layout(&self) -> &'db TargetDataLayout {
+        self.data_layout.get_or_init(|| self.db.target_data_layout_or_default(self.krate()))
     }
 
     /// How should a deref pattern find the place for its inner pattern to match on?

@@ -61,6 +61,13 @@ impl<'db> ValueConst<'db> {
         let size = db.layout_of_ty(self.ty.store(), param_env.store()).ok()?.size;
         Some(scalar.to_bits(size))
     }
+
+    pub fn try_to_target_usize(self, data_layout: &TargetDataLayout) -> Option<u64> {
+        if !self.ty.is_usize() {
+            return None;
+        }
+        self.try_to_leaf().map(|s| s.to_target_usize(data_layout))
+    }
 }
 
 pub(super) fn allocation_to_const<'db>(
@@ -342,6 +349,10 @@ impl<'db> ValTree<'db> {
     pub fn inner(&self) -> &ValTreeKind<'db> {
         let inner = &self.interned.0;
         unsafe { std::mem::transmute::<&ValTreeKind<'static>, &ValTreeKind<'db>>(inner) }
+    }
+
+    pub fn from_scalar_int(_interner: DbInterner<'db>, i: ScalarInt) -> Self {
+        ValTree::new(ValTreeKind::Leaf(i))
     }
 }
 
