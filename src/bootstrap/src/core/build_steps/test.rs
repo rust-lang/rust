@@ -1261,7 +1261,11 @@ impl CommandLineStep for StdarchGenCheck {
             cmd.run(builder);
         };
 
-        run_gen("--bin", "stdarch-gen-arm", &[OsStr::new("crates/stdarch-gen-arm/spec")]);
+        run_gen(
+            "--bin",
+            "stdarch-gen-arm",
+            &[OsStr::new("crates/stdarch-gen-arm/spec"), OsStr::new("crates/core_arch/src")],
+        );
         run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lsx")]);
         run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lasx")]);
         run_gen("-p", "stdarch-gen-hexagon", &[]);
