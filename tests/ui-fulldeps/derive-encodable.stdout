@@ -20,9 +20,7 @@ const _: () =
     {
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for UnitStruct {
-            fn encode(&self, __encoder: &mut __E) {
-                match *self { UnitStruct => {} }
-            }
+            fn encode(&self, __encoder: &mut __E) { let UnitStruct = *self; }
         }
     };
 
@@ -32,7 +30,7 @@ const _: () =
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for EmptyStruct {
             fn encode(&self, __encoder: &mut __E) {
-                match *self { EmptyStruct {} => {} }
+                let EmptyStruct {} = *self;
             }
         }
     };
@@ -52,7 +50,7 @@ const _: () =
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for SingleFieldlessEnum {
             fn encode(&self, __encoder: &mut __E) {
-                match *self { SingleFieldlessEnum::A => {} }
+                let SingleFieldlessEnum::A = *self;
             }
         }
     };
@@ -63,12 +61,9 @@ const _: () =
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for SingleEnum {
             fn encode(&self, __encoder: &mut __E) {
-                match *self {
-                    SingleEnum::A(ref __binding_0) => {
-                        ::rustc_serialize::Encodable::<__E>::encode(__binding_0,
-                            __encoder);
-                    }
-                }
+                let SingleEnum::A(ref __binding_0) = *self;
+                ::rustc_serialize::Encodable::<__E>::encode(__binding_0,
+                    __encoder);
             }
         }
     };

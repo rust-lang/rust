@@ -194,24 +194,26 @@ fn encodable_body(
                 match *self {}
             }
         }
-        [_] => {
-            let encode_inner = s.each_variant(|vi| {
-                vi.bindings()
-                    .iter()
-                    .map(|binding| {
-                        let bind_ident = &binding.binding;
-                        let result = quote! {
-                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
-                                #bind_ident,
-                                __encoder,
-                            );
-                        };
-                        result
-                    })
-                    .collect::<TokenStream>()
-            });
+        [vi] => {
+            let pat = vi.pat();
+            let body = vi
+                .bindings()
+                .iter()
+                .map(|binding| {
+                    let bind_ident = &binding.binding;
+                    let result = quote! {
+                        ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                            #bind_ident,
+                            __encoder,
+                        );
+                    };
+                    result
+                })
+                .collect::<TokenStream>();
+
             quote! {
-                match *self { #encode_inner }
+                let #pat = *self;
+                #body
             }
         }
         _ => {
