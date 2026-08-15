@@ -3130,7 +3130,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     fn on_failure(&self, dfn: usize) {
         debug!(?dfn, "on_failure");
         self.map.borrow_mut().retain(|key, eval| {
-            if !eval.from_dfn >= dfn {
+            if eval.from_dfn >= dfn {
                 debug!("on_failure: removing {:?}", key);
                 false
             } else {
