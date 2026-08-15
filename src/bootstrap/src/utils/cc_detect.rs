@@ -25,7 +25,8 @@ use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use crate::core::config::{CompressDebuginfo, Subcommand, TargetSelection};
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{CompressDebuginfo, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 

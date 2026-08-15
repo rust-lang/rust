@@ -12,7 +12,7 @@ use std::path::Path;
 use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, crate_description,
 };
-use crate::core::config::Subcommand;
+use crate::core::config::flags::Subcommand;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Mode};

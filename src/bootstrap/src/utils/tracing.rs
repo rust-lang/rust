@@ -74,7 +74,7 @@ pub fn format_location(location: std::panic::Location<'static>) -> String {
 const COMMAND_SPAN_TARGET: &str = "COMMAND";
 
 #[cfg(feature = "tracing")]
-pub fn trace_cmd(command: &crate::BootstrapCommand) -> tracing::span::EnteredSpan {
+pub fn trace_cmd(command: &crate::utils::exec::BootstrapCommand) -> tracing::span::EnteredSpan {
     let fingerprint = command.fingerprint();
     let location = command.get_created_location();
     let location = format_location(location);
