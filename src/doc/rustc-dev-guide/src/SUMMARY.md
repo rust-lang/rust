@@ -36,6 +36,7 @@
         - [GCC codegen backend](./tests/codegen-backend-tests/cg_gcc.md)
     - [Performance testing](./tests/perf.md)
     - [Autodiff CI job](./tests/autodiff-ci-job.md)
+    - [Offload CI job](./tests/offload-ci-job.md)
     - [Pre-stabilization CI job for the next solver and polonius alpha](./tests/x86_64-gnu-next-trait-solver-polonius-ci-job.md)
     - [Standard library semver breakage test](./tests/stdlib-semver-check.md)
     - [Misc info](./tests/misc.md)
