@@ -3110,10 +3110,13 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
         //          A // depth 0
         //   D (reached depth 1)
         //      C (cache -- reached depth = 2)
-        for (_k, v) in &mut *map {
-            if v.from_dfn >= from_dfn {
-                v.reached_depth = reached_depth.min(v.reached_depth);
+        // Anything this can affect was inserted while `from_dfn` was on the
+        // stack, so it is a suffix of this insertion-ordered map.
+        for (_k, v) in map.iter_mut().rev() {
+            if v.from_dfn < from_dfn {
+                break;
             }
+            v.reached_depth = reached_depth.min(v.reached_depth);
         }
 
         map.insert(fresh_trait_pred, ProvisionalEvaluation { from_dfn, reached_depth, result });
