@@ -716,8 +716,7 @@ renaming a dependency.
 For example, `//@ aux-crate: foo=bar.rs` will compile
 `auxiliary/bar.rs` and make it available under the name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
-It is also possible to
-specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
+It is also possible to specify [`--extern` modifiers].
 For example, `//@ aux-crate: noprelude:foo=bar.rs`.
 
 `aux-bin` is similar to `aux-build` but will build a binary instead of a library.
@@ -905,3 +904,5 @@ Where `N` is the number of threads to use for the parallel frontend, and `M` is 
 Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests, since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
 
 The parallel frontend is available in UI tests only at the moment, and is not currently supported in other test suites.
+
+[`--extern` modifiers]: https://github.com/rust-lang/rust/issues/98405
