@@ -2,8 +2,7 @@
 
 This page defines the best practices procedure for making bug fixes or soundness
 corrections in the compiler that can cause existing code to stop compiling.
-This text is based on
-[RFC 1589](https://github.com/rust-lang/rfcs/blob/master/text/1589-rustc-bug-fix-procedure.md).
+This text is based on [RFC 1589].
 
 # Motivation
 
@@ -13,9 +12,8 @@ From time to time, we encounter the need to make a bug fix, soundness
 correction, or other change in the compiler which will cause existing code to stop compiling.
 When this happens, it is important that we handle the change in
 a way that gives users of Rust a smooth transition.
-What we want to avoid is
-that existing programs suddenly stop compiling with opaque error messages: we
-would prefer to have a gradual period of warnings, with clear guidance as to
+What we want to avoid is that existing programs suddenly stop compiling with opaque error messages:
+we would prefer to have a gradual period of warnings, with clear guidance as to
 what the problem is, how to fix it, and why the change was made.
 This RFC describes the procedure that we have been developing for handling breaking
 changes that aims to achieve that kind of smooth transition.
@@ -26,14 +24,14 @@ causes existing code to stop compiling will have an associated tracking issue.
 This issue provides a point to collect feedback on the results of that change.
 Sometimes changes have unexpectedly large consequences or there may be a way to
 avoid the change that was not considered.
-In those cases, we may decide to
-change course and roll back the change, or find another solution (if warnings
-are being used, this is particularly easy to do).
+In those cases,
+we may decide to change course and roll back the change,
+or find another solution (and if warnings are being used, this is particularly easy to do).
 
 ### What qualifies as a bug fix?
 
 Note that this RFC does not try to define when a breaking change is permitted.
-That is already covered under [RFC 1122][].
+That is already covered under [RFC 1122].
 This document assumes that the change being made is in accordance with those policies.
 Here is a summary of the conditions from RFC 1122:
 
@@ -92,7 +90,7 @@ These are a special category of lint warning.
 Adding a new future-compatibility warning can be done as follows.
 
 ```rust
-// 1. Define the lint in `compiler/rustc_lint/src/builtin.rs` and 
+// 1. Define the lint in `compiler/rustc_lint/src/builtin.rs` and
 //    add the metadata for the future incompatibility:
 declare_lint! {
     pub YOUR_LINT_HERE,
@@ -111,7 +109,7 @@ pub struct MyLintPass {
     ...
 }
 
-impl {Early,Late}LintPass for MyLintPass { 
+impl {Early,Late}LintPass for MyLintPass {
     ...
 }
 
@@ -146,15 +144,15 @@ there were no errors before.
 
 [Crater] is a bot that will compile all crates.io crates and many
 public github repos with the compiler with your changes.
-A report will then be
-generated with crates that ceased to compile with or began to compile with your changes.
+A report will then be generated with crates that ceased to compile with,
+or began to compile with your changes.
 Crater runs can take a few days to complete.
 
 [Crater]: ./tests/crater.md
 
 We should always do a crater run to assess impact.
-It is polite and considerate to at least notify the authors of affected crates the breaking change.
-If we can submit PRs to fix the problem, so much the better.
+It is polite and considerate to notify the authors of crates affected by the breaking change.
+It is even better to submit PRs fixing the breakage.
 
 #### Is it ever acceptable to go directly to issuing errors?
 
@@ -165,14 +163,14 @@ In such cases, we should still make the "breaking change"
 page as before, and we should ensure that the error directs users to this page.
 In other words, everything should be the same except that users are getting an
 error, and not a warning.
-Moreover, we should submit PRs to the affected
-projects (ideally before the PR implementing the change lands in rustc).
+Moreover, we should submit PRs to the affected projects
+(ideally before the PR implementing the change lands in rustc).
 
 If the impact is not believed to be negligible (e.g., more than 10 crates are
 affected), then warnings are required (unless the compiler team agrees to grant
 a special exemption in some particular case).
-If implementing warnings is not
-feasible, then we should make an aggressive strategy of migrating crates before
+If implementing warnings is not feasible,
+then we should make an aggressive strategy of migrating crates before
 we land the change so as to lower the number of affected crates.
 Here are some techniques for approaching this scenario:
 
@@ -211,8 +209,8 @@ Once we have decided to make a "future warning" into a hard error, we need a PR
 that removes the custom lint.
 As an example, here are the steps required to
 remove the `overlapping_inherent_impls` compatibility lint.
-First, convert the name of the lint to uppercase (`OVERLAPPING_INHERENT_IMPLS`) ripgrep through the
-source for that string.
+First, convert the name of the lint to uppercase (`OVERLAPPING_INHERENT_IMPLS`);
+search the source for that string.
 We will basically by converting each place where this
 lint name is mentioned (in the compiler, we use the upper-case name, and a macro
 automatically generates the lower-case string; so searching for
@@ -304,7 +302,7 @@ struct MyDiagnostic {
 
 Finally, run the test suite.
 These should be some tests that used to reference
-the `overlapping_inherent_impls` lint, those will need to be updated.
+the `overlapping_inherent_impls` lint; those will need to be updated.
 In general, if the test used to have `#[deny(overlapping_inherent_impls)]`, that
 can just be removed.
 
@@ -315,7 +313,6 @@ can just be removed.
 #### All done!
 
 Open a PR.
-=)
 
 [addlintsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc_typeck/coherence/inherent.rs#L300-L303
 [futuresource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc_lint/lib.rs#L202-L205
@@ -324,3 +321,4 @@ Open a PR.
 
 [rfc 1122]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [breaking-change-issue]: https://gist.github.com/nikomatsakis/631ec8b4af9a18b5d062d9d9b7d3d967
+[RFC 1589]: https://github.com/rust-lang/rfcs/blob/master/text/1589-rustc-bug-fix-procedure.md
