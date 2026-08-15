@@ -1,7 +1,6 @@
 //@ edition: 2021
 //@ check-fail
 //@ needs-asm-support
-#![feature(abi_custom)]
 
 #[unsafe(naked)]
 unsafe extern "custom" fn return_explicit_unit() -> () {
