@@ -241,7 +241,6 @@ fn encodable_body(
                 }
             };
 
-            let mut variant_idx = 0usize;
             let encode_inner = s.each_variant(|vi| {
                 let encode_fields: TokenStream = vi
                     .bindings()
@@ -257,7 +256,6 @@ fn encodable_body(
                         result
                     })
                     .collect();
-                variant_idx += 1;
                 encode_fields
             });
             quote! {
