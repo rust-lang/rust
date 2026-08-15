@@ -123,8 +123,8 @@ mod inner {
         let filter = EnvFilter::from_env(env_name);
 
         let mut printer = TracingPrinter::default();
-        printer.skip_time =
-            std::env::var("BOOTSTRAP_TRACING_SKIP_TIME").map(|v| v == "1").unwrap_or(false);
+        printer.show_time =
+            !std::env::var("BOOTSTRAP_TRACING_SKIP_TIME").map(|v| v == "1").unwrap_or(false);
         let registry = tracing_subscriber::registry().with(filter).with(printer);
 
         // When we're creating this layer, we do not yet know the location of the tracing output
@@ -236,7 +236,7 @@ mod inner {
     struct TracingPrinter {
         indent: std::sync::atomic::AtomicU32,
         span_values: std::sync::Mutex<std::collections::HashMap<tracing::Id, FieldValues>>,
-        skip_time: bool,
+        show_time: bool,
     }
 
     impl TracingPrinter {
@@ -246,7 +246,7 @@ mod inner {
             time: DateTime<Utc>,
             level: &Level,
         ) -> std::io::Result<()> {
-            if !self.skip_time {
+            if self.show_time {
                 // Use a fixed-width timestamp without date, that shouldn't be very important
                 let timestamp = time.format("%H:%M:%S.%3f");
                 write!(writer, "{timestamp} ")?;
