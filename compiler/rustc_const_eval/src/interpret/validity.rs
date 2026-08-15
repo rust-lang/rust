@@ -21,7 +21,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
-    InterpErrorKind, InvalidMetaKind, Misalignment, Provenance, alloc_range, interp_ok,
+    InterpErrorKind, InvalidMetaKind, Misalignment, PointerArithmetic, Provenance, alloc_range,
+    interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -653,9 +654,13 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             let scalar = Scalar::from_maybe_pointer(place.ptr(), self.ecx);
             // Skip this if we don't know the absolute address (during CTFE).
             if let Ok(addr) = scalar.try_to_scalar_int() {
-                // Try to compute the end address.
-                let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx));
-                if addr.checked_add(size, self.ecx).is_none() {
+                // Try to compute the end address. Cannot use `Size` addition as that also applies
+                // the "max obj size" bound.
+                let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx)).bytes();
+                if addr
+                    .checked_add(size.bytes())
+                    .is_none_or(|result| result >= self.ecx.target_usize_max())
+                {
                     throw_validation_failure!(
                         self.path,
                         format!(
