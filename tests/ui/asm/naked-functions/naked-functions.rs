@@ -3,7 +3,7 @@
 //@ ignore-spirv
 //@ reference: attributes.codegen.naked.body
 
-#![feature(asm_unwind, linkage, rustc_attrs, cfg_target_object_format, abi_custom)]
+#![feature(asm_unwind, linkage, rustc_attrs, cfg_target_object_format)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};
