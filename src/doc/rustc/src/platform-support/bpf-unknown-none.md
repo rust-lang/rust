@@ -152,7 +152,7 @@ println!("cargo:rustc-link-lib=link-arg={out_dir}/my_module.bpf.o");
 
 [ebpf]: https://ebpf.io/
 [bpf-linker]: https://github.com/aya-rs/bpf-linker
-[bpf-abi]: https://www.kernel.org/doc/html/v6.13-rc5/bpf/standardization/abi.html
+[bpf-abi]: https://www.kernel.org/doc/html/latest/bpf/standardization/abi.html
 [jit]: https://www.kernel.org/doc/html/latest/networking/filter.html#jit-compiler
 [linux-commit-btf]: https://github.com/torvalds/linux/commit/69b693f0a
 [linux-commit-riscv]: https://github.com/torvalds/linux/commit/5f316b65e
