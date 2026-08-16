@@ -192,6 +192,11 @@ fn encodable_body(
         [] => {
             quote! {}
         }
+        // Unit-like types don't need to encode anything.
+        // This covers fieldless structs and enums with zero or one fieldless variant.
+        [vi] if vi.bindings().is_empty() => {
+            quote! {}
+        }
         [vi] => {
             let pat = vi.pat();
             let body = vi

@@ -20,7 +20,7 @@ const _: () =
     {
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for UnitStruct {
-            fn encode(&self, __encoder: &mut __E) { let UnitStruct = *self; }
+            fn encode(&self, __encoder: &mut __E) {}
         }
     };
 
@@ -29,9 +29,7 @@ const _: () =
     {
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for EmptyStruct {
-            fn encode(&self, __encoder: &mut __E) {
-                let EmptyStruct {} = *self;
-            }
+            fn encode(&self, __encoder: &mut __E) {}
         }
     };
 
@@ -49,9 +47,7 @@ const _: () =
     {
         impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
             for SingleFieldlessEnum {
-            fn encode(&self, __encoder: &mut __E) {
-                let SingleFieldlessEnum::A = *self;
-            }
+            fn encode(&self, __encoder: &mut __E) {}
         }
     };
 
