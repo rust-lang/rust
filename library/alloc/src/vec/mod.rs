@@ -3878,7 +3878,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     /// capacity of the original.
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
-        <[T]>::to_vec_in(&**self, alloc)
+        <[T]>::to_vec_in(self, alloc)
     }
 
     /// Overwrites the contents of `self` with a clone of the contents of `source`.
