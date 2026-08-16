@@ -1884,80 +1884,91 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
 }
 
+#[cfg(target_os = "android")]
+pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    // Currently Android seems to be having inconsistent behavior with fchmodat
+    // with `AT_SYMLINK_NOFOLLOW` or openat with `O_NOFOLLOW` + fchmod.
+    // See this issue here mentioning inconsistent behavior on fchmodat:
+    // https://github.com/android/ndk/issues/1258
+    // On the arm-android CI job, using fchmodat with `AT_SYMLINK_NOFOLLOW` +
+    // fallback behavior on a symlink sets the target file's permissions,
+    // which is incorrect behavior.
+    Err(crate::io::ErrorKind::Unsupported.into())
+}
+
+#[cfg(not(target_os = "android"))]
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
-    cfg_select! {
-        target_os = "linux" => {
-            let res = cvt_r(|| unsafe {
-                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
-            })
-            .map(|_| ());
+    #[inline]
+    /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior
+    fn open_and_set_permissions(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+        use crate::fs::{OpenOptions, Permissions};
 
-            match res {
-                Ok(_) => return Ok(()),
-                Err(err) => {
-                    if err.kind() == crate::io::ErrorKind::Unsupported {
-                        use crate::fs::OpenOptions;
-                        use crate::fs::Permissions;
-                        use crate::os::unix::ffi::OsStrExt;
-                        use crate::os::unix::fs::OpenOptionsExt;
+        let mut options = OpenOptions::new();
 
-                        let mut options = OpenOptions::new();
-                        options.read(true).custom_flags(libc::O_NOFOLLOW);
+        // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+        // Their filesystems do not have symbolic links, so no special handling is required.
+        #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+        {
+            #[cfg(not(target_os = "wasi"))]
+            use crate::os::unix::fs::OpenOptionsExt;
+            #[cfg(target_os = "wasi")]
+            use crate::os::wasi::fs::OpenOptionsExt;
+            options.read(true).custom_flags(libc::O_NOFOLLOW);
+        }
 
-                        let os_str = OsStr::from_bytes(p.to_bytes());
-                        let path = Path::new(os_str);
-                        match options.open(path) {
-                            Ok(file) => {
-                                return file.set_permissions(Permissions::from_inner(perm));
-                            },
-                            Err(e) => {
-                                if e.kind() == crate::io::ErrorKind::FilesystemLoop {
-                                    // When O_NOFOLLOW flag is enabled, if the trailing component of
-                                    // a path is a symbolic link, open should fail with ELOOP error
-                                    // For consistency with other Linux distributions, we return
-                                    // `ErrorKind::Unsupported`.
-                                    return Err(err);
-                                }
-                                return Err(e);
-                            }
+        // SAFETY: Since this function is called with `with_native_path`
+        // and that successfully converted the `&Path` to a `CString`,
+        // it should be safe to convert the `&CStr` back to a `Path`.
+        let os_str = unsafe { OsStr::from_encoded_bytes_unchecked(p.to_bytes()) };
+        options.open(Path::new(os_str))?.set_permissions(Permissions::from_inner(perm))
+    }
+
+    // This res value is modified for platforms that support the `fchmodat` syscall.
+    #[allow(unused)]
+    let mut res: Result<(), core::io::Error> = Err(crate::io::ErrorKind::Unsupported.into());
+
+    // These platforms support `fchmodat`, so utilize this syscall over `open` + `fchmod`
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly",
+        target_os = "nto",
+        target_os = "qnx"
+    ))]
+    {
+        res = cvt_r(|| unsafe {
+            libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
+        })
+        .map(|_| ());
+    }
+
+    // If fchmodat fails with `ErrorKind::Unsupported` fallback to using open + fchmod. This is just in case
+    // for older systems like Ubuntu 20.04 where fchmodat fails with EOPNOTSUPP on both regular files and
+    // symlinks when AT_SYMLINK_NOFOLLOW is passed in.
+    match res {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            if err.kind() == crate::io::ErrorKind::Unsupported {
+                match open_and_set_permissions(p, perm) {
+                    Ok(_) => return Ok(()),
+                    Err(e) => {
+                        if e.kind() == crate::io::ErrorKind::FilesystemLoop {
+                            // When open is used with O_NOFOLLOW flag, if the trailing component of
+                            // a path is a symbolic link, it should fail with ELOOP error. Instead of
+                            // returning `FilesystemLoop`, this returns `Unsupported` to keep it consistent
+                            // with what `fchmodat` would return when chmoding a symlink using AT_SYMLINK_NOFOLLOW.
+                            return Err(err);
                         }
+                        return Err(e);
                     }
-
-                    return Err(err);
                 }
             }
-        }
-        any(target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "android") => {
-            cvt_r(|| unsafe {
-                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
-            })
-            .map(|_| ())
-        },
-        // Not all targets support fchmodat, so we fall back to
-        // open + fchmod.
-        _ => {
-            use crate::fs::OpenOptions;
-            use crate::fs::Permissions;
-            let mut options = OpenOptions::new();
-            // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
-            // Their filesystems do not have symbolic links, so no special handling is required.
-            #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
-            {
-                #[cfg(target_os = "wasi")]
-                use crate::os::wasi::fs::OpenOptionsExt;
-                #[cfg(not(target_os = "wasi"))]
-                use crate::os::unix::fs::OpenOptionsExt;
-                options.read(true).custom_flags(libc::O_NOFOLLOW);
-            }
 
-            // SAFETY: Since this function is called with `with_native_path`
-            // and that successfully converted the `&Path` to a `CString`, it
-            // should be safe to slice away the nul byte from `&CStr` and convert
-            // it back to a `&Path`.
-            let path = unsafe { Path::from_u8_slice(p.to_bytes()) };
-            options.open(path)?.set_permissions(Permissions::from_inner(perm))
+            Err(err)
         }
-        _ => cvt_r(|| unsafe { libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0) }).map(|_| ()),
     }
 }
 
