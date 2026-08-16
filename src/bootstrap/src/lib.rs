@@ -50,21 +50,6 @@ pub mod cli_main;
 mod core;
 mod utils;
 
-/// Extra `--check-cfg` to add when building the compiler or tools
-/// (Mode restriction, config name, config values (if any))
-#[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
-const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
-    (Some(Mode::Rustc), "bootstrap", None),
-    (Some(Mode::Codegen), "bootstrap", None),
-    (Some(Mode::ToolRustcPrivate), "bootstrap", None),
-    (Some(Mode::ToolStd), "bootstrap", None),
-    (Some(Mode::ToolRustcPrivate), "rust_analyzer", None),
-    (Some(Mode::ToolStd), "rust_analyzer", None),
-    // Any library specific cfgs like `target_os`, `target_arch` should be put in
-    // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
-    // in the appropriate `library/{std,alloc,core}/Cargo.toml`
-];
-
 /// A structure representing a Rust compiler.
 ///
 /// Each compiler has a `stage` that it is associated with and a `host` that
