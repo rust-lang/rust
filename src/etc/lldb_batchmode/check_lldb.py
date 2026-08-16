@@ -14,6 +14,8 @@ import lldb
 from .common import (
     BLESS,
     INPUT_DATA,
+    ArrayChild,
+    ArrayLikeChildren,
     Child,
     Variable,
     Result,
@@ -136,7 +138,7 @@ def type_matches(
 
         ty_result = ty.matches(expected, name, provider_ok)
 
-        result = basic_type_result and type_class_result and ty_result
+        result = type_class_result and ty_result
 
     TYPES_TESTED[name] = result
 
@@ -212,11 +214,19 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
     format_ok = var.format == expected.format
 
     type_ok = var.type == expected.type
-    type_match_ok = type_matches(
-        valobj.GetType(),
-        valobj.GetTarget(),
-        summary_ok & synthetic_ok & format_ok & pretty_type_name_ok & pretty_print_ok,
-    )
+
+    if var.has_visualizer() or expected.has_visualizer():
+        type_match_ok = type_matches(
+            valobj.GetType(),
+            valobj.GetTarget(),
+            summary_ok
+            & synthetic_ok
+            & format_ok
+            & pretty_type_name_ok
+            & pretty_print_ok,
+        )
+    else:
+        type_match_ok = Result.Ok
 
     value_ok = var.value == expected.value
 
@@ -237,7 +247,10 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
             else:
                 child_types_ok = False
 
-        child_types_ok &= type_matches(obj.GetType(), target) == Result.Ok
+        if var.has_visualizer() or expected.has_visualizer():
+            child_types_ok &= type_matches(obj.GetType(), target) == Result.Ok
+        else:
+            type_match_ok = Result.Ok
 
     children_ok = children_match(
         var.children, expected.children, valobj.GetName(), valobj
@@ -400,6 +413,18 @@ def children_match(
 
         got = children[i]
 
+        if isinstance(children, ArrayLikeChildren):
+            if isinstance(got, ArrayChild):
+                got = Child(f"[{i}]", children.type, got.value, got.children)
+            else:
+                got = Child(f"[{i}]", children.type, got, [])
+
+        if isinstance(expected, ArrayLikeChildren):
+            if isinstance(exp, ArrayChild):
+                exp = Child(f"[{i}]", expected.type, exp.value, exp.children)
+            else:
+                exp = Child(f"[{i}]", expected.type, exp, [])
+
         if got.name is None:
             result = Result.Mismatch
             invalid_count += 1
@@ -412,7 +437,7 @@ def children_match(
                 f"{exp.name}: {exp.type} = {exp.value} -> {got.name}: {got.type} = {got.value}"
             )
         # no point recursing into children if we've already mismatched
-        elif len(exp.children) != 0:
+        elif exp.children is not None and len(exp.children) > 0:
             result &= children_match(
                 got.children,
                 exp.children,

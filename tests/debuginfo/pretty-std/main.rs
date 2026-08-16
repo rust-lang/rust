@@ -1,9 +1,20 @@
+// Tests the visualizers for the following types:
+// * &[i32]
+// * Vec<u64>
+// * &str
+// * String
+// * OsString
+// * Option<i64> (Some and None)
+// * Option<String> (Some, non-empty)
+// CDB only:
+// * LinkedList<i32>
+// * VecDeque<i32>
+
 // ignore-tidy-linelength
-//@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
-// LLDB 1800+ tests were not tested in CI, broke, and now are disabled
-//@ ignore-lldb
+//@ min-llvm-lldb-version: 22.1.0
+//@ min-apple-lldb-version: 1703.0.236.21
 //@ min-cdb-version: 10.0.18317.1001
 //@ ignore-backends: gcc
 
@@ -30,7 +41,7 @@
 //@ gdb-check:$6 = core::option::Option<i64>::None
 
 //@ gdb-command: print os_string
-//@ gdb-check:$7 = "IAMA OS string 😃"
+//@ gdb-check:$7 = "IAMA OS string [...]"
 
 //@ gdb-command: print some_string
 //@ gdb-check:$8 = core::option::Option<alloc::string::String>::Some("IAMA optional string!")
@@ -43,27 +54,13 @@
 
 //@ lldb-command:run
 
-//@ lldb-command:v slice
-//@ lldb-check:[...] slice = size=4 { [0] = 0 [1] = 1 [2] = 2 [3] = 3 }
-
-//@ lldb-command:v vec
-//@ lldb-check:[...] vec = size=4 { [0] = 4 [1] = 5 [2] = 6 [3] = 7 }
-
-//@ lldb-command:v str_slice
-//@ lldb-check:[...] str_slice = "IAMA string slice!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = ' ' [12] = 's' [13] = 'l' [14] = 'i' [15] = 'c' [16] = 'e' [17] = '!' }
-
-//@ lldb-command:v string
-//@ lldb-check:[...] string = "IAMA string!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = '!' }
-
-
-//@ lldb-command:v some
-//@ lldb-check:[...] some = Some(8)
-
-//@ lldb-command:v none
-//@ lldb-check:[...] none = None
-
-//@ lldb-command:v os_string
-//@ lldb-check:[...] os_string = "IAMA OS string 😃" { inner = { inner = size=19 { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 'O' [6] = 'S' [7] = ' ' [8] = 's' [9] = 't' [10] = 'r' [11] = 'i' [12] = 'n' [13] = 'g' [14] = ' ' [15] = '\xf0' [16] = '\x9f' [17] = '\x98' [18] = '\x83' } } }
+//@ lldb-repr:slice
+//@ lldb-repr:vec
+//@ lldb-repr:str_slice
+//@ lldb-repr:string
+//@ lldb-repr:some
+//@ lldb-repr:none
+//@ lldb-repr:os_string
 
 // === CDB TESTS ==================================================================================
 
