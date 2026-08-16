@@ -22,6 +22,7 @@ fn main() {
     let local = String::from("...");
     let mut coro = demo(&local);
     drop(local);
+    //~^ ERROR cannot move out of `local` because it is borrowed
     let _unrelated = String::from("UAF");
     coro.as_mut().resume("");
 }

@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -465,6 +466,49 @@ fn live_args_for_outlives_clause<'tcx>(
     }
 }
 
+/// For a given alias, return the set of args that show up in its trait or projection bounds.
+/// For something like `type Foo<'a, 'b>: Trait<'a> + 'b`, this is `{0}` (`'a`).
+#[tracing::instrument(level = "debug", skip(tcx), ret)]
+fn args_in_alias_bounds<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSet<u32> {
+    struct Collector {
+        positions: DenseBitSet<u32>,
+    }
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Collector {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) {
+            if let ty::ReEarlyParam(ebr) = r.kind() {
+                self.positions.insert(ebr.index);
+            }
+        }
+        fn visit_ty(&mut self, ty: Ty<'tcx>) {
+            if let ty::Param(pt) = *ty.kind() {
+                self.positions.insert(pt.index);
+            }
+            ty.super_visit_with(self);
+        }
+    }
+
+    let mut collector =
+        Collector { positions: DenseBitSet::new_empty(tcx.generics_of(def_id).count()) };
+    for clause in tcx.item_bounds(def_id).instantiate_identity().skip_norm_wip() {
+        match clause.kind().skip_binder() {
+            ty::ClauseKind::Trait(trait_pred) => {
+                for arg in &trait_pred.trait_ref.args[1..] {
+                    arg.visit_with(&mut collector);
+                }
+            }
+            ty::ClauseKind::Projection(proj_pred) => {
+                for arg in &proj_pred.projection_term.args[1..] {
+                    arg.visit_with(&mut collector);
+                }
+                proj_pred.term.visit_with(&mut collector);
+            }
+            ty::ClauseKind::TypeOutlives(_) | ty::ClauseKind::RegionOutlives(_) => {}
+            _ => {}
+        }
+    }
+    collector.positions
+}
+
 /// Visits free regions in the type that are relevant for liveness computation.
 /// These regions are passed to `OP`.
 ///
@@ -566,6 +610,10 @@ where
 
                 match capturable {
                     Some(capturable_args) => {
+                        for idx in args_in_alias_bounds(tcx, def_id).iter() {
+                            let arg = args[idx as usize];
+                            arg.visit_with(self);
+                        }
                         for arg in capturable_args {
                             let arg = arg.instantiate(tcx, args).skip_norm_wip();
                             arg.visit_with(self);

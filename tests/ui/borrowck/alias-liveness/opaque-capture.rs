@@ -1,5 +1,3 @@
-//@ check-pass
-
 // Check that opaques capturing early and late-bound vars correctly mark
 // regions required to be live using the item bounds.
 
@@ -10,8 +8,8 @@ fn captures_temp_late<'a>(x: &'a Vec<i32>) -> impl Sized + Captures<'a> + 'stati
 fn captures_temp_early<'a: 'a>(x: &'a Vec<i32>) -> impl Sized + Captures<'a> + 'static {}
 
 fn test() {
-    let x = captures_temp_early(&vec![]);
-    let y = captures_temp_late(&vec![]);
+    let x = captures_temp_early(&vec![]); //~ ERROR temporary value dropped while borrowed
+    let y = captures_temp_late(&vec![]); //~ ERROR temporary value dropped while borrowed
 }
 
 fn main() {}

@@ -1,0 +1,35 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-static-raw-ptr-160979.rs:28:49
+   |
+LL |     let x: Box<Payload> = Box::new(Box::new(1));
+   |         - binding `x` declared here
+LL |     let wrong: &'static Payload = make_producer(&x).produce();
+   |                ----------------                 ^^ borrowed value does not live long enough
+   |                |
+   |                type annotation requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/rpit-static-raw-ptr-160979.rs:30:10
+   |
+LL |     let x: Box<Payload> = Box::new(Box::new(1));
+   |         - binding `x` declared here
+LL |     let wrong: &'static Payload = make_producer(&x).produce();
+   |                ----------------                 -- borrow of `x` occurs here
+   |                |
+   |                type annotation requires that `x` is borrowed for `'static`
+LL |
+LL |     drop(x);
+   |          ^ move out of `x` occurs here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let wrong: &'static Payload = make_producer(&x.clone()).produce();
+   |                                                   ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0505, E0597.
+For more information about an error, try `rustc --explain E0505`.

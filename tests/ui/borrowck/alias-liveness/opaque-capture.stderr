@@ -1,0 +1,36 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/opaque-capture.rs:11:34
+   |
+LL |     let x = captures_temp_early(&vec![]);
+   |                                  ^^^^^^ - temporary value is freed at the end of this statement
+   |                                  |
+   |                                  creates a temporary value which is freed while still in use
+LL |     let y = captures_temp_late(&vec![]);
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the destructor for type `impl Captures<'_> + 'static`
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = vec![];
+LL ~     let x = captures_temp_early(&binding);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/opaque-capture.rs:12:33
+   |
+LL |     let y = captures_temp_late(&vec![]);
+   |                                 ^^^^^^ - temporary value is freed at the end of this statement
+   |                                 |
+   |                                 creates a temporary value which is freed while still in use
+LL | }
+   | - borrow might be used here, when `y` is dropped and runs the destructor for type `impl Captures<'_> + 'static`
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = vec![];
+LL ~     let y = captures_temp_late(&binding);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.
