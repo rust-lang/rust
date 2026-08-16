@@ -287,7 +287,7 @@ where
     fn write_node_label(
         &mut self,
         block: BasicBlock,
-        diffs: StateDiffCollector<A::Domain>,
+        diffs: StateDiffCollector<'_, 'tcx, A>,
     ) -> io::Result<Vec<u8>> {
         use std::io::Write;
 
@@ -527,7 +527,7 @@ where
         &mut self,
         w: &mut impl io::Write,
         block: BasicBlock,
-        diffs: StateDiffCollector<A::Domain>,
+        diffs: StateDiffCollector<'_, 'tcx, A>,
     ) -> io::Result<()> {
         let mut diffs_before = diffs.before.map(|v| v.into_iter());
         let mut diffs_after = diffs.after.into_iter();
@@ -627,24 +627,25 @@ where
     }
 }
 
-struct StateDiffCollector<D> {
-    prev_state: D,
+struct StateDiffCollector<'a, 'tcx, A: Analysis<'tcx>> {
+    analysis: &'a A,
+    prev_state: A::Domain,
     before: Option<Vec<String>>,
     after: Vec<String>,
 }
 
-impl<D: Clone> StateDiffCollector<D> {
-    fn run<'tcx, A>(
+impl<'a, 'tcx, A: Analysis<'tcx>> StateDiffCollector<'a, 'tcx, A> {
+    fn run(
         body: &Body<'tcx>,
         block: BasicBlock,
-        results: &Results<'tcx, A>,
+        results: &'a Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self
     where
-        A: Analysis<'tcx, Domain = D>,
-        D: DebugWithContext<A>,
+        A::Domain: DebugWithContext<A>,
     {
         let mut collector = StateDiffCollector {
+            analysis: &results.analysis,
             prev_state: results.entry_states[block].clone(),
             after: vec![],
             before: (style == OutputStyle::BeforeAndAfter).then_some(vec![]),
@@ -655,56 +656,52 @@ impl<D: Clone> StateDiffCollector<D> {
     }
 }
 
-impl<'tcx, A> ResultsVisitor<'tcx, A> for StateDiffCollector<A::Domain>
+impl<'a, 'tcx, A: Analysis<'tcx>> ResultsVisitor<'tcx, A> for StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
     fn visit_after_early_statement_effect(
         &mut self,
-        analysis: &A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
-            before.push(diff_pretty(state, &self.prev_state, analysis));
+            before.push(diff_pretty(state, &self.prev_state, self.analysis));
             self.prev_state.clone_from(state)
         }
     }
 
     fn visit_after_primary_statement_effect(
         &mut self,
-        analysis: &A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
-        self.after.push(diff_pretty(state, &self.prev_state, analysis));
+        self.after.push(diff_pretty(state, &self.prev_state, self.analysis));
         self.prev_state.clone_from(state)
     }
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        analysis: &A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
-            before.push(diff_pretty(state, &self.prev_state, analysis));
+            before.push(diff_pretty(state, &self.prev_state, self.analysis));
             self.prev_state.clone_from(state)
         }
     }
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        analysis: &A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
-        self.after.push(diff_pretty(state, &self.prev_state, analysis));
+        self.after.push(diff_pretty(state, &self.prev_state, self.analysis));
         self.prev_state.clone_from(state)
     }
 }

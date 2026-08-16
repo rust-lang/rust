@@ -704,9 +704,18 @@ impl FetchMetadata {
         }
 
         if !config.targets.is_empty() {
-            other_options.extend(
-                config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
-            );
+            let mut has_json_target = false;
+            other_options.extend(config.targets.iter().flat_map(|target| {
+                has_json_target |= target.ends_with(".json");
+                ["--filter-platform".to_owned(), target.clone()]
+            }));
+            if has_json_target
+                && config.toolchain_version.as_ref().is_some_and(|version| {
+                    *version >= toolchain::MINIMUM_TOOLCHAIN_VERSION_REQUIRING_JSON_TARGET_SPEC_FLAG
+                })
+            {
+                other_options.push("-Zjson-target-spec".to_owned());
+            }
         }
 
         command.other_options(other_options.clone());

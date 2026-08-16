@@ -539,24 +539,24 @@ pub use core::future;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
@@ -577,24 +577,24 @@ pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::u128;
 #[unstable(feature = "unsafe_binders", issue = "130516")]
 pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -740,6 +740,7 @@ mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
+#[allow(clippy::len_zero)] // FIXME
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]

@@ -1176,7 +1176,7 @@ pub use macros::Debug;
     ),
     on(
         from_desugaring = "FormatLiteral",
-        note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead",
+        note = "in format strings you may be able to use `{{:?}}` (or `{{:#?}}` for pretty-print) instead",
         label = "`{Self}` cannot be formatted with the default formatter",
     ),
     message = "`{Self}` doesn't implement `{This}`"
@@ -2942,7 +2942,7 @@ impl Debug for str {
         // the loop here first skips over runs of printable ASCII as a fast path.
         // other chars (unicode, or ASCII that needs escaping) are then handled per-`char`.
         let mut rest = self;
-        while rest.len() > 0 {
+        while !rest.is_empty() {
             let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
             else {
                 printable_range.end += rest.len();

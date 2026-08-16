@@ -6,6 +6,7 @@ use std::ops::Deref;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
@@ -1580,7 +1581,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                     ty::Adt(def, args)
                         if self.tcx.features().pin_ergonomics()
-                            && self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) =>
+                            && self.tcx.is_lang_item(def.did(), LangItem::Pin) =>
                     {
                         // make sure this is a pinned reference (and not a `Pin<Box>` or something)
                         if let ty::Ref(_, _, mutbl) = args[0].expect_ty().kind() {
@@ -1649,7 +1650,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         // make sure self is a Pin<&mut T>
         let inner_ty = match self_ty.kind() {
-            ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) => {
+            ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), LangItem::Pin) => {
                 match args[0].expect_ty().kind() {
                     ty::Ref(_, ty, hir::Mutability::Mut) => *ty,
                     _ => {

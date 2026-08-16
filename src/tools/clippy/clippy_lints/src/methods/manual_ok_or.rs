@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{ResultErr, ResultOk};
+use rustc_hir::attrs::lang_items::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;

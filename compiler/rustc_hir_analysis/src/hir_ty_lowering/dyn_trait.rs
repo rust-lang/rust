@@ -5,9 +5,10 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, StashKey,
     Suggestions, struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{

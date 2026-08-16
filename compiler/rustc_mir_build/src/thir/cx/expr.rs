@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{AttributeKind, HasAttrs};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, LangItem, find_attr};
+use rustc_hir::{HirId, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -78,15 +78,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
     ///
     /// [dev-guide]: https://rustc-dev-guide.rust-lang.org/thir.html
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
-        // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
-        ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
+        self.mirror_expr_inner(expr)
     }
 
     pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
-        // `mirror_exprs` may also recurse deeply, so it needs protection from stack overflow.
-        // Note that we *could* forward to `mirror_expr` for that, but we can consolidate the
-        // overhead of stack growth by doing it outside the iteration.
-        ensure_sufficient_stack(|| exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect())
+        exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
     }
 
     #[instrument(level = "trace", skip(self, hir_expr))]
@@ -279,7 +275,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 });
 
                 // kind = Pin { pointer }
-                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
+                let pin_did = self.tcx.require_lang_item(LangItem::Pin, span);
                 let args = self.tcx.mk_args(&[new_pin_target.into()]);
                 let kind = ExprKind::Adt(Box::new(AdtExpr {
                     adt_def: self.tcx.adt_def(pin_did),
@@ -547,7 +543,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             // Make `&pin mut $expr` and `&pin const $expr` into
             // `Pin { __pointer: &mut { $expr } }` and `Pin { __pointer: &$expr }`.
             hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg_expr) => match expr_ty.kind() {
-                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin) => {
+                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), LangItem::Pin) => {
                     let ty = args.type_at(0);
                     let arg_ty = self.typeck_results.expr_ty(arg_expr);
                     let mut arg = self.mirror_expr(arg_expr);

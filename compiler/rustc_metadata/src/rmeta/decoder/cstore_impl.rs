@@ -2,7 +2,8 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_data_structures::unord::ExtendUnord;
+use rustc_crate_store::{CrateStore, ExternCrate};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
@@ -19,7 +20,6 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
-use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
@@ -473,7 +473,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // the former.
             // This is a rudimentary check that does not catch all cases,
             // just the easiest.
-            let mut fallback_map: DefIdMap<DefId> = Default::default();
+            let mut fallback_map: FxHashMap<DefId, DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -574,10 +574,16 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // We must extend the fallback map with items from the visible parent map
             // as the extend call overrides existing entries from the latter map,
             // which we prefer over fallback entries.
-            let mut merged_visible_parent_map = fallback_map;
-            merged_visible_parent_map.extend_unord(visible_parent_map.into_items());
+            // FIXME: The Unord* APIs lack an efficient way of merging
+            //        the values of one map for only the missing keys of the other map,
+            //        which is required to merge the fallback map into the visible parent map.
+            //        In the meantime, use an "ordered" map internally for fallback entries.
+            #[allow(rustc::potential_query_instability)]
+            for (child, parent) in fallback_map {
+                visible_parent_map.entry(child).or_insert(parent);
+            }
 
-            merged_visible_parent_map
+            visible_parent_map
         },
 
         dependency_formats: |tcx, ()| Arc::new(crate::dependency_format::calculate(tcx)),

@@ -206,10 +206,10 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{AllocError, Allocator, Global, Layout, StaticAllocator};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
-use crate::str::from_boxed_utf8_unchecked;
+use crate::str::from_boxed_utf8_unchecked_in;
 
 /// Conversion related impls for `Box<_>` (`From`, `downcast`, etc)
 mod convert;
@@ -715,7 +715,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[inline(always)]
     pub fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
-        A: 'static + Allocator,
+        A: StaticAllocator,
     {
         Self::into_pin(Self::new_in(x, alloc))
     }
@@ -1897,11 +1897,12 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// `'static`.
     ///
     /// This function is mainly useful for data that lives for the remainder of the program's life,
-    /// i.e., memory that is meant to leak. Reconstructing ("unleaking") a `Box` from the mutable
-    /// reference returned here (e.g. via [`Box::from_raw`]) is a grey area (meaning it is possible
-    /// under specific circumstances but many seemingly harmless ways of doing it are undefined
-    /// behavior) and should be avoided. If the memory should eventually be freed, prefer to use
-    /// [`Box::into_raw`] or [`Box::into_non_null`] instead.
+    /// i.e., memory that is meant to leak. If the memory should eventually be freed, prefer to use
+    /// [`Box::into_raw`] or [`Box::into_non_null`] instead. Reconstructing ("unleaking") a `Box` from
+    /// the mutable reference returned here (e.g. via [`Box::from_raw`]) is only possible if the
+    /// allocator is `Global`, and even then it is a grey area (meaning it is possible under specific
+    /// circumstances but many seemingly harmless ways of doing it are undefined behavior) and should
+    /// be avoided.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
@@ -1976,7 +1977,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[stable(feature = "box_into_pin", since = "1.63.0")]
     pub fn into_pin(boxed: Self) -> Pin<Self>
     where
-        A: 'static,
+        A: StaticAllocator,
     {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`, so it's safe to pin it directly without any
@@ -2065,6 +2066,8 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
+// NB: This is not `AllocatorClone` since we don't care about allocator
+// equivalence when cloning boxes.
 impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// Returns a new box with a `clone()` of this box's contents.
     ///
@@ -2150,11 +2153,10 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl Clone for Box<str> {
+impl<A: Allocator + Clone> Clone for Box<str, A> {
     fn clone(&self) -> Self {
-        // this makes a copy of the data
-        let buf: Box<[u8]> = self.as_bytes().into();
-        unsafe { from_boxed_utf8_unchecked(buf) }
+        let buf = Box::clone_from_ref_in(self.as_bytes(), self.1.clone());
+        unsafe { from_boxed_utf8_unchecked_in(buf) }
     }
 }
 
@@ -2385,7 +2387,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> fo
 // wrapped in `Pin`, since the same conversion could have been carried out
 // safely as `Box::pin((*p).clone())`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Box<T, A> {}
+unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for Box<T, A> {}
 
 // It is quite crucial that we only allow the `Global` allocator here.
 // Handling arbitrary custom allocators (which can affect the `Box` layout heavily!)

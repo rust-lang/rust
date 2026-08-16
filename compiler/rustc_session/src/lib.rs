@@ -24,7 +24,6 @@ pub mod parse;
 pub mod utils;
 #[macro_use]
 pub mod config;
-pub mod cstore;
 pub mod filesearch;
 mod macros;
 mod options;

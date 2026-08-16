@@ -12,10 +12,12 @@ use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
 use super::toml::rust::parse_codegen_backends;
 use super::{Config, DebuggerPath, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
-use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
-use crate::core::config::{BootstrapOverrideLld, CompilerBuiltins, Target, TargetSelection};
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{
+    BootstrapOverrideLld, ChangeId, CompilerBuiltins, Target, TargetSelection,
+};
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
@@ -286,7 +288,7 @@ fn order_of_clippy_rules() {
     let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
-        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+        Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
             let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
             get_clippy_rules_in_order(&args_vec, &cfg)
@@ -310,7 +312,7 @@ fn clippy_rule_separate_prefix() {
     let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
-        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+        Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
             let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
             get_clippy_rules_in_order(&args_vec, &cfg)

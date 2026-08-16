@@ -12,7 +12,6 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Spanned, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -21,12 +20,12 @@ use crate::diagnostics::{
     self, AmbiguousRangePattern, AtDotDotInStructPattern, AtInStructPattern,
     DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed, DotDotDotRestPattern,
     EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt, ExpectedCommaAfterPatternField,
-    GenericArgsInPatRequireTurbofishSyntax, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
-    InclusiveRangeNoEnd, InvalidMutInPattern, ParenRangeSuggestion, PatternOnWrongSideOfAt,
-    RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder, TopLevelOrPatternNotAllowed,
-    TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed, TrailingVertSuggestion,
-    UnexpectedExpressionInPattern, UnexpectedExpressionInPatternSugg, UnexpectedLifetimeInPattern,
-    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    ExprParenthesesNeeded, GenericArgsInPatRequireTurbofishSyntax, InclusiveRangeExtraEquals,
+    InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern, ParenRangeSuggestion,
+    PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder,
+    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
+    TrailingVertSuggestion, UnexpectedExpressionInPattern, UnexpectedExpressionInPatternSugg,
+    UnexpectedLifetimeInPattern, UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
 use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};

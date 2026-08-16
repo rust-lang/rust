@@ -36,7 +36,6 @@ pub const unwinder_private_data_size: usize = cfg_select! {
     target_arch = "s390x" => 2,
     any(target_arch = "sparc", target_arch = "sparc64") => 2,
     any(target_arch = "riscv64", target_arch = "riscv32") => 2,
-    all(target_family = "wasm", target_os = "emscripten") => 20,
     target_family = "wasm" => 2,
     target_arch = "hexagon" => 5,
     any(target_arch = "loongarch32", target_arch = "loongarch64") => 2,

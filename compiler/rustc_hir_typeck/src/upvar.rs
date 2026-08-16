@@ -36,6 +36,7 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, HirId, find_attr};
@@ -1637,7 +1638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
-            let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, closure_span);
+            let drop_trait = self.tcx.require_lang_item(LangItem::Drop, closure_span);
             self.infcx
                 .type_implements_trait(drop_trait, [ty], self.tcx.param_env(closure_def_id))
                 .must_apply_modulo_regions()

@@ -5,7 +5,6 @@
 
 use std::any::Any;
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::par_join;
 use rustc_hir::def_id::{LocalDefId, LocalModId};
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
@@ -160,12 +159,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        ensure_sufficient_stack(|| {
-            self.with_lint_attrs(e.hir_id, |cx| {
-                lint_callback!(cx, check_expr, e);
-                hir_visit::walk_expr(cx, e);
-                lint_callback!(cx, check_expr_post, e);
-            })
+        self.with_lint_attrs(e.hir_id, |cx| {
+            lint_callback!(cx, check_expr, e);
+            hir_visit::walk_expr(cx, e);
+            lint_callback!(cx, check_expr_post, e);
         })
     }
 

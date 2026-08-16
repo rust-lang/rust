@@ -36,6 +36,7 @@ use rustc_type_ir::{
     inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem},
     solve::{AdtDestructorKind, SizedTraitKind},
+    try_visit,
 };
 
 use crate::{
@@ -54,7 +55,6 @@ use crate::{
         TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, Unnormalized,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
-    ret,
 };
 
 use super::{
@@ -211,12 +211,7 @@ macro_rules! impl_stored_interned_slice {
         }
 
         // SAFETY: It is safe to store this type in queries (but not `$name`).
-        unsafe impl salsa::Update for $stored_name {
-            unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-                // SAFETY: Comparing by (pointer) equality is safe.
-                unsafe { salsa::update_fallback(old_pointer, new_value) }
-            }
-        }
+        unsafe impl salsa::SalsaValue for $stored_name {}
 
         impl std::fmt::Debug for $stored_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -296,7 +291,7 @@ pub(crate) use impl_foldable_for_stored_type;
 
 macro_rules! impl_stored_interned {
     ( $storage:ident, $name:ident, $stored_name:ident $(,)? ) => {
-        #[derive(Clone, PartialEq, Eq, Hash)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::salsa::SalsaValue)]
         pub struct $stored_name {
             interned: ::intern::Interned<$storage>,
         }
@@ -311,12 +306,6 @@ macro_rules! impl_stored_interned {
             pub fn as_ref<'a, 'db>(&'a self) -> $name<'db> {
                 let it = $name { interned: self.interned.as_ref() };
                 unsafe { std::mem::transmute::<$name<'a>, $name<'db>>(it) }
-            }
-        }
-
-        unsafe impl salsa::Update for $stored_name {
-            unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-                unsafe { salsa::update_fallback(old_pointer, new_value) }
             }
         }
 
@@ -1671,10 +1660,10 @@ impl<'db> Interner for DbInterner<'db> {
                     let (regular_impls, builtin_derive_impls) =
                         impls.for_trait_and_self_ty(trait_def_id.0, &simp);
                     for &impl_ in regular_impls {
-                        ret!(f(impl_.into()));
+                        try_visit!(f(impl_.into()));
                     }
                     for &impl_ in builtin_derive_impls {
-                        ret!(f(impl_.into()));
+                        try_visit!(f(impl_.into()));
                     }
                     R::output()
                 },
@@ -1707,7 +1696,7 @@ impl<'db> Interner for DbInterner<'db> {
                 let simp =
                     fast_reject::simplify_type(self, self_ty, fast_reject::TreatParams::AsRigid)
                         .unwrap();
-                ret!(consider_impls_for_simplified_type(simp));
+                try_visit!(consider_impls_for_simplified_type(simp));
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -1735,7 +1724,7 @@ impl<'db> Interner for DbInterner<'db> {
                     SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    ret!(consider_impls_for_simplified_type(simp));
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1750,7 +1739,7 @@ impl<'db> Interner for DbInterner<'db> {
                 ];
 
                 for simp in possible_floats {
-                    ret!(consider_impls_for_simplified_type(simp));
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1791,7 +1780,7 @@ impl<'db> Interner for DbInterner<'db> {
 
         TraitImpls::for_each_crate_and_block(self.db, krate, block, &mut |impls| {
             for &impl_ in impls.blanket_impls(trait_def_id.0) {
-                ret!(f(impl_.into()));
+                try_visit!(f(impl_.into()));
             }
             R::output()
         })

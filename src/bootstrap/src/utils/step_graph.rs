@@ -5,7 +5,7 @@ use std::panic::Location;
 use std::path::Path;
 
 use crate::core::builder::{AnyDebug, Step, pretty_step_name};
-use crate::t;
+use crate::utils::helpers::t;
 use crate::utils::tracing::format_location;
 
 /// Records the executed steps and their dependencies in a directed graph,

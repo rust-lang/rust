@@ -241,6 +241,11 @@ pub struct MacroCallLoc {
     pub krate: Crate,
     pub kind: MacroCallKind,
     pub ctxt: SyntaxContext,
+    /// The macro recursion depth of this expansion.
+    ///
+    /// Because macro expansions can cross `DefMap` boundaries, we must track this inside the expansion
+    /// to not recurse infinitely.
+    pub macro_depth: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -960,7 +965,7 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
 /// parse queries being LRU cached. If they weren't the invalidations would only happen if the
 /// user wrote in the file that defines the proc-macro.
 fn proc_macro_span(db: &dyn SourceDatabase, ast: AstId<ast::Fn>) -> Span {
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     fn proc_macro_span(db: &dyn SourceDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
         let (parse, span_map) = ast.file_id.parse_with_map(db);
         let root = parse.syntax_node();
@@ -1014,8 +1019,9 @@ impl MacroDefId {
         krate: Crate,
         kind: MacroCallKind,
         ctxt: SyntaxContext,
+        macro_depth: u32,
     ) -> MacroCallId {
-        MacroCallId::new(db, MacroCallLoc { def: self, krate, kind, ctxt })
+        MacroCallId::new(db, MacroCallLoc { def: self, krate, kind, ctxt, macro_depth })
     }
 
     pub fn definition_range(&self, db: &dyn SourceDatabase) -> InFile<TextRange> {
@@ -1544,7 +1550,7 @@ impl ExpandTo {
 ///
 /// We encode macro definitions into ids of macro calls, this what allows us
 /// to be incremental.
-#[salsa::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[salsa::interned(unsafe(no_lifetime), debug, revisions = usize::MAX)]
 #[doc(alias = "MacroFileId")]
 pub struct MacroCallId {
     #[returns(ref)]
@@ -1720,6 +1726,24 @@ impl HirFileId {
                 let (parse, map) = &macro_file.parse_macro_expansion(db).value;
                 (parse.clone(), SpanMap::ExpansionSpanMap(map))
             }
+        }
+    }
+
+    /// How many macro expansions separate this file from the real file it originates from.
+    ///
+    /// `Expander` and `DefCollector` seed their expansion depth counters from this. Both otherwise
+    /// start at zero for every body and every block, so a macro expanding to an item that invokes
+    /// the macro again advances neither counter past one and never reaches the recursion limit.
+    ///
+    /// Written recursively rather than as a loop so that salsa memoizes each file's depth. Callers
+    /// ask for this once per body, and the bodies of one expansion chain sit at depths 1..n, so a
+    /// loop would walk 1 + 2 + ... + n steps for that chain. Reusing the parent's memoized depth
+    /// makes each file O(1) once computed, and the chain linear.
+    #[inline]
+    pub fn macro_expansion_depth(self, db: &dyn SourceDatabase) -> u32 {
+        match self {
+            HirFileId::MacroFile(macro_call) => macro_call.loc(db).macro_depth,
+            HirFileId::FileId(_) => 0,
         }
     }
 }

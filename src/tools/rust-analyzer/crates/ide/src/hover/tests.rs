@@ -3829,7 +3829,7 @@ fn test_hover_tuple_has_goto_type_actions() {
 struct A(u32);
 struct B(u32);
 mod M {
-    pub struct C(u32);
+    pub struct C(pub u32);
 }
 
 fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
@@ -3870,12 +3870,12 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                                 file_id: FileId(
                                     0,
                                 ),
-                                full_range: 42..60,
+                                full_range: 42..64,
                                 focus_range: 53..54,
                                 name: "C",
                                 kind: Struct,
                                 container_name: "M",
-                                description: "pub struct C(u32)",
+                                description: "pub struct C(pub u32)",
                             },
                         },
                     ],
@@ -11913,5 +11913,38 @@ fn foo() { foo$0(); }
             ```
         "#]],
         &HoverConfig { documentation: false, ..HOVER_BASE_CONFIG },
+    );
+}
+
+#[test]
+fn doc_attr_macro() {
+    check(
+        r#"
+//- minicore: concat
+/// Comment A
+#[macro_export]
+macro_rules! A {
+    () => {
+        "Comment B"
+    };
+}
+#[doc = concat!(A$0!())]
+fn main() {}
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            macro_rules! A
+            ```
+
+            ---
+
+            Comment A
+        "#]],
     );
 }

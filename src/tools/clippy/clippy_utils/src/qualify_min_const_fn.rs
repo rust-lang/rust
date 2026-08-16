@@ -4,9 +4,9 @@
 // differ from the time of `rustc` even if the name stays the same.
 
 use crate::msrvs::{self, Msrv};
-use hir::LangItem;
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir::attrs::RustcVersion;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, StableSince};
 use rustc_infer::infer::TyCtxtInferExt as _;
@@ -371,7 +371,7 @@ fn check_terminator<'tcx>(
             let fn_ty = func.ty(body, cx.tcx);
             if let ty::FnDef(fn_def_id, fn_substs) = fn_ty.kind() {
                 // FIXME: when analyzing a function with generic parameters, we may not have enough information to
-                // resolve to an instance. However, we could check if a host effect predicate can guarantee that
+                // resolve to an instance. However, we could check if a host effect clause can guarantee that
                 // this can be made a `const` call.
                 let fn_def_id = match Instance::try_resolve(
                     cx.tcx,

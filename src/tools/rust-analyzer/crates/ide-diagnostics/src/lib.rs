@@ -64,9 +64,7 @@ mod handlers {
     pub(crate) mod missing_lifetime;
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
-    pub(crate) mod moved_out_of_ref;
     pub(crate) mod mut_ref_in_imm_ref_pat;
-    pub(crate) mod mutability_errors;
     pub(crate) mod mutable_ref;
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
@@ -103,7 +101,6 @@ mod handlers {
     pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_module;
     pub(crate) mod unused_must_use;
-    pub(crate) mod unused_variables;
     pub(crate) mod yield_outside_coroutine;
 
     // The handlers below are unusual, the implement the diagnostics as well.
@@ -286,7 +283,6 @@ pub struct DiagnosticsConfig {
     pub prefer_prelude: bool,
     pub prefer_absolute: bool,
     pub term_search_fuel: u64,
-    pub term_search_borrowck: bool,
     pub show_rename_conflicts: bool,
 }
 
@@ -315,7 +311,6 @@ impl DiagnosticsConfig {
             prefer_prelude: true,
             prefer_absolute: false,
             term_search_fuel: 400,
-            term_search_borrowck: true,
             show_rename_conflicts: true,
         }
     }
@@ -482,13 +477,8 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
-            AnyDiagnostic::MovedOutOfRef(d) => handlers::moved_out_of_ref::moved_out_of_ref(&ctx, &d),
             AnyDiagnostic::MutRefInImmRefPat(d) => handlers::mut_ref_in_imm_ref_pat::mut_ref_in_imm_ref_pat(&ctx, &d),
             AnyDiagnostic::MutableRefBinding(d) => handlers::mutable_ref::mutable_ref_binding(&ctx, &d),
-            AnyDiagnostic::NeedMut(d) => match handlers::mutability_errors::need_mut(&ctx, &d) {
-                Some(it) => it,
-                None => continue,
-            },
             AnyDiagnostic::NonExhaustiveLet(d) => handlers::non_exhaustive_let::non_exhaustive_let(&ctx, &d),
             AnyDiagnostic::NonExhaustiveRecordExpr(d) => {
                 handlers::non_exhaustive_record_expr::non_exhaustive_record_expr(&ctx, &d)
@@ -522,14 +512,6 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::UnresolvedMethodCall(d) => handlers::unresolved_method::unresolved_method(&ctx, &d),
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnusedMustUse(d) => handlers::unused_must_use::unused_must_use(&ctx, &d),
-            AnyDiagnostic::UnusedMut(d) => match handlers::mutability_errors::unused_mut(&ctx, &d) {
-                Some(it) => it,
-                None => continue,
-            },
-            AnyDiagnostic::UnusedVariable(d) => match handlers::unused_variables::unused_variables(&ctx, &d) {
-                Some(it) => it,
-                None => continue,
-            },
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MismatchedTupleStructPatArgCount(d) => handlers::mismatched_arg_count::mismatched_tuple_struct_pat_arg_count(&ctx, &d),
             AnyDiagnostic::RemoveTrailingReturn(d) => match handlers::remove_trailing_return::remove_trailing_return(&ctx, &d) {

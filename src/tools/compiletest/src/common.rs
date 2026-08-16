@@ -347,6 +347,12 @@ pub(crate) struct Config {
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage0/bin/rustc`
     pub(crate) stage0_rustc_path: Option<Utf8PathBuf>,
 
+    /// Path to the run-make-support .rlib file, used to build `run-make` recipes.
+    pub(crate) run_make_support_rlib: Option<Utf8PathBuf>,
+
+    /// Path to the run-make-support .rmeta file, used to build `run-make` recipes.
+    pub(crate) run_make_support_rmeta: Option<Utf8PathBuf>,
+
     /// Path to the stage 1 or higher `rustc` used to obtain target information via
     /// `--print=all-target-specs-json` and similar queries.
     ///
@@ -766,6 +772,8 @@ pub(crate) struct Config {
     pub(crate) parallel_frontend_threads: u32,
     /// Number of times to execute each test.
     pub(crate) iteration_count: u32,
+
+    pub(crate) wasm_proc_macros: bool,
 }
 
 impl Config {

@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::{is_full_collection_range, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, LangItem};
+use rustc_hir::Expr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

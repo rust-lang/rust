@@ -391,6 +391,7 @@ impl CheckCfg {
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);
+        ins!(sym::rust_analyzer, no_values);
         ins!(sym::rustfmt, no_values);
 
         ins!(sym::overflow_checks, no_values);

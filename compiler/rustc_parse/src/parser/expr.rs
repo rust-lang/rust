@@ -18,10 +18,9 @@ use rustc_ast::{
     Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_literal_escaper::unescape_char;
-use rustc_session::diagnostics::{ExprParenthesesNeeded, report_lit_error};
+use rustc_session::diagnostics::report_lit_error;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
@@ -35,6 +34,7 @@ use super::{
     AttrWrapper, BlockMode, ClosureSpans, ExpTokenPair, ForceCollect, Parser, PathStyle,
     Restrictions, SemiColonMode, SeqSep, TokenType, Trailing, UsePreAttrPos,
 };
+use crate::diagnostics::ExprParenthesesNeeded;
 use crate::{diagnostics, exp, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(Debug)]
@@ -911,49 +911,46 @@ impl<'a> Parser<'a> {
         mut e: Box<Expr>,
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
-        let mut res = ensure_sufficient_stack(|| {
-            loop {
-                let has_question =
-                    if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
-                        // We are using noexpect here because we don't expect a `?` directly after
-                        // a `return` which could be suggested otherwise.
-                        self.eat_noexpect(&token::Question)
-                    } else {
-                        self.eat(exp!(Question))
-                    };
-                if has_question {
-                    // `expr?`
-                    e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
-                    continue;
-                }
-                let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
-                    // We are using noexpect here because we don't expect a `.` directly after
-                    // a `return` which could be suggested otherwise.
-                    self.eat_noexpect(&token::Dot)
-                } else if self.token == TokenKind::RArrow && self.may_recover() {
-                    // Recovery for `expr->suffix`.
-                    self.bump();
-                    let span = self.prev_token.span;
-                    self.dcx().emit_err(diagnostics::ExprRArrowCall { span });
-                    true
-                } else {
-                    self.eat(exp!(Dot))
-                };
-                if has_dot {
-                    // expr.f
-                    e = self.parse_dot_suffix_expr(lo, e)?;
-                    continue;
-                }
-                if self.expr_is_complete(&e) {
-                    return Ok(e);
-                }
-                e = match self.token.kind {
-                    token::OpenParen => self.parse_expr_fn_call(lo, e),
-                    token::OpenBracket => self.parse_expr_index(lo, e)?,
-                    _ => return Ok(e),
-                }
+        let mut res = loop {
+            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+                // We are using noexpect here because we don't expect a `?` directly after
+                // a `return` which could be suggested otherwise.
+                self.eat_noexpect(&token::Question)
+            } else {
+                self.eat(exp!(Question))
+            };
+            if has_question {
+                // `expr?`
+                e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
+                continue;
             }
-        });
+            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+                // We are using noexpect here because we don't expect a `.` directly after
+                // a `return` which could be suggested otherwise.
+                self.eat_noexpect(&token::Dot)
+            } else if self.token == TokenKind::RArrow && self.may_recover() {
+                // Recovery for `expr->suffix`.
+                self.bump();
+                let span = self.prev_token.span;
+                self.dcx().emit_err(diagnostics::ExprRArrowCall { span });
+                true
+            } else {
+                self.eat(exp!(Dot))
+            };
+            if has_dot {
+                // expr.f
+                e = self.parse_dot_suffix_expr(lo, e)?;
+                continue;
+            }
+            if self.expr_is_complete(&e) {
+                break Ok(e);
+            }
+            e = match self.token.kind {
+                token::OpenParen => self.parse_expr_fn_call(lo, e),
+                token::OpenBracket => self.parse_expr_index(lo, e)?,
+                _ => break Ok(e),
+            }
+        };
 
         // Stitch the list of outer attributes onto the return value. A little
         // bit ugly, but the best way given the current code structure.
@@ -2780,6 +2777,17 @@ impl<'a> Parser<'a> {
                                 "you likely meant to continue parsing the let-chain starting here",
                             );
                         } else {
+                            if self.prev_token == token::Semi
+                                && (self.token == token::OpenBrace || AssocOp::from_token(&self.token).is_some())
+                            {
+                                err.span_suggestion_verbose(
+                                    self.prev_token.span,
+                                    "remove this semicolon",
+                                    "",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+
                             // Look for usages of '=>' where '>=' might be intended
                             if maybe_fatarrow == token::FatArrow {
                                 err.span_suggestion_verbose(
@@ -2871,7 +2879,7 @@ impl<'a> Parser<'a> {
         let else_span = self.prev_token.span; // `else`
         let attrs = self.parse_outer_attributes()?; // For recovery.
         let expr = if self.eat_keyword(exp!(If)) {
-            ensure_sufficient_stack(|| self.parse_expr_if())?
+            self.parse_expr_if()?
         } else if self.check(exp!(OpenBrace)) {
             self.parse_simple_block()?
         } else {

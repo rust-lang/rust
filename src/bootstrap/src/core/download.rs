@@ -13,11 +13,10 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::build_steps::llvm::detect_llvm_freshness;
 use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
-use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
+use crate::core::config::{BUILDER_CONFIG_FILENAME, Config, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, hex_encode, move_file};
-use crate::{Config, exit, t};
+use crate::utils::helpers::{self, exe, hex_encode, move_file, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
@@ -294,7 +293,7 @@ impl Config {
                 eprintln!("HELP: maybe your repository history is too shallow?");
                 eprintln!("HELP: consider disabling `download-ci-llvm`");
                 eprintln!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
         };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
@@ -350,7 +349,7 @@ impl Config {
                 }
                 Err(e) => {
                     eprintln!("ERROR: Failed to parse CI LLVM bootstrap.toml: {e}");
-                    exit!(2);
+                    helpers::exit_process(2);
                 }
             };
         };
@@ -530,25 +529,20 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 
 /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
 /// reuse target directories or artifacts
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    out: &Path,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt(config: &Config, out: &Path) -> Option<PathBuf> {
     // Don't actually download rustfmt during unit tests.
     if cfg!(test) {
         return Some(PathBuf::new());
     }
 
-    let dwn_ctx = dwn_ctx.as_ref();
-
-    if dwn_ctx.exec_ctx.dry_run() {
+    if config.dry_run() {
         return Some(PathBuf::new());
     }
 
-    let VersionMetadata { date, version, .. } = dwn_ctx.stage0_metadata.rustfmt.as_ref()?;
+    let VersionMetadata { date, version, .. } = config.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
 
-    let host = dwn_ctx.host_target;
+    let host = config.host_target;
     let bin_root = out.join(host).join("rustfmt");
     let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
     let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
@@ -557,7 +551,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     }
 
     download_component(
-        dwn_ctx,
+        DownloadContext::from(config),
         out,
         DownloadSource::Dist,
         format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
@@ -567,7 +561,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     );
 
     download_component(
-        dwn_ctx,
+        DownloadContext::from(config),
         out,
         DownloadSource::Dist,
         format!("rustc-{version}-{build}.tar.xz", build = host.triple),
@@ -576,14 +570,14 @@ pub(crate) fn maybe_download_rustfmt<'a>(
         "rustfmt",
     );
 
-    if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
-        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), dwn_ctx.exec_ctx);
-        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), dwn_ctx.exec_ctx);
+    if should_fix_bins_and_dylibs(config.patch_binaries_for_nix, &config.exec_ctx) {
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), &config.exec_ctx);
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), &config.exec_ctx);
         let lib_dir = bin_root.join("lib");
         for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if path_is_dylib(&lib.path()) {
-                fix_bin_or_dylib(out, &lib.path(), dwn_ctx.exec_ctx);
+                fix_bin_or_dylib(out, &lib.path(), &config.exec_ctx);
             }
         }
     }
@@ -1126,7 +1120,7 @@ fn download_http_with_retries(
         if !help_on_error.is_empty() {
             eprintln!("{help_on_error}");
         }
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 }
 

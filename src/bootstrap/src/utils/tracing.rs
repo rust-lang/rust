@@ -74,7 +74,7 @@ pub fn format_location(location: std::panic::Location<'static>) -> String {
 const COMMAND_SPAN_TARGET: &str = "COMMAND";
 
 #[cfg(feature = "tracing")]
-pub fn trace_cmd(command: &crate::BootstrapCommand) -> tracing::span::EnteredSpan {
+pub fn trace_cmd(command: &crate::utils::exec::BootstrapCommand) -> tracing::span::EnteredSpan {
     let fingerprint = command.fingerprint();
     let location = command.get_created_location();
     let location = format_location(location);
@@ -117,7 +117,7 @@ mod inner {
     use tracing_subscriber::{EnvFilter, Layer};
 
     use super::{COMMAND_SPAN_TARGET, IO_SPAN_TARGET};
-    use crate::STEP_SPAN_TARGET;
+    use crate::core::builder::STEP_SPAN_TARGET;
 
     pub fn setup_tracing(env_name: &str) -> TracingGuard {
         let filter = EnvFilter::from_env(env_name);

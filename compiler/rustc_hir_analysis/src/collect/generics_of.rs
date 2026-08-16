@@ -219,7 +219,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
-        Node::ConstArg(..) => {
+        Node::ConstArg(..) | Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. }) => {
             // These can show up in mGCA when representing "direct" const arguments. The
             // DefCollector cannot know whether an anon const will be represented by an actual HIR
             // Node::AnonConst, or whether it will be represented directly, so it must generate a

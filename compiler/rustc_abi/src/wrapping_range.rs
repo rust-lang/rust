@@ -171,20 +171,36 @@ impl WrappingRange {
         size: Size,
     ) -> Option<Self> {
         let mut values: Vec<_> = values.into_iter().collect();
-        values.sort_unstable();
+
+        let (min, max) = values
+            .iter()
+            .copied()
+            .map(|x| (x, x))
+            .reduce(|a, b| (u128::min(a.0, b.0), u128::max(a.1, b.1)))?;
+
+        // Just checking the max is enough to ensure that everything is in-range.
+        assert!(max <= size.unsigned_int_max(), "Value {max:?} is too big for {size:?}");
 
         // The simple answer is the non-wraparound range `min..=max`.
-        let obvious_range = WrappingRange { start: *values.first()?, end: *values.last()? };
+        let obvious_range = WrappingRange { start: min, end: max };
 
-        // Having sorted the inputs, one test is enough to double-check they all fit in `size`.
-        let max_input = obvious_range.end;
-        assert!(
-            max_input <= size.unsigned_int_max(),
-            "Value {max_input:?} is too big for {size:?}",
-        );
+        // It's very common that the input was only small non-negative integers and the
+        // obvious range turns out to be the best we can do.
+        // Every possible wraparound range must include at least `(...=min) | (max..)`,
+        // so if what we found already is at least that good, just use it.
+        //     WR(min, max).width() ≤ WR(max, min).width()
+        //         (max - min) % 2ⁿ ≤ (min - max) % 2ⁿ
+        //                max - min ≤ min - max + 2ⁿ
+        //            2×(max - min) ≤ 2ⁿ
+        //                max - min ≤ 2ⁿ⁻¹
+        let half_range = 1 << (size.bits() - 1);
+        if max - min <= half_range {
+            return Some(obvious_range);
+        }
 
         // But every `[.., end, start, ..]` is also a potential candidate for a wraparound
         // range `(..=end) | (start..)`, so long as `start` and `end` aren't duplicates.
+        values.sort_unstable();
         let wraparound_ranges = values
             .array_windows::<2>()
             .filter_map(|&[end, start]| (start != end).then_some(WrappingRange { start, end }));

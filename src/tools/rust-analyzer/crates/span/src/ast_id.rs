@@ -59,53 +59,13 @@ pub struct ErasedFileAstId(u32);
 
 impl fmt::Debug for ErasedFileAstId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let kind = self.kind();
-        macro_rules! kind {
-            ($($kind:ident),* $(,)?) => {
-                if false {
-                    // Ensure we covered all variants.
-                    match ErasedFileAstIdKind::Root {
-                        $( ErasedFileAstIdKind::$kind => {} )*
-                    }
-                    unreachable!()
-                }
-                $( else if kind == ErasedFileAstIdKind::$kind as u32 {
-                    stringify!($kind)
-                } )*
-                else {
-                    "Unknown"
-                }
-            };
-        }
-        let kind = kind!(
-            Root,
-            Enum,
-            Struct,
-            Union,
-            ExternCrate,
-            MacroDef,
-            MacroRules,
-            Module,
-            Static,
-            Trait,
-            Variant,
-            Const,
-            Fn,
-            MacroCall,
-            TypeAlias,
-            ExternBlock,
-            Use,
-            Impl,
-            BlockExpr,
-            AsmExpr,
-            Fixup,
-            NoDownmap,
-        );
+        let kind =
+            self.kind_typed().map_or_else(|| "Unknown".to_owned(), |kind| format!("{kind:?}"));
         if f.alternate() {
             write!(f, "{kind}[{:04X}, {}]", self.hash_value(), self.index())
         } else {
             f.debug_struct("ErasedFileAstId")
-                .field("kind", &format_args!("{kind}"))
+                .field("kind", &kind)
                 .field("index", &self.index())
                 .field("hash", &format_args!("{:04X}", self.hash_value()))
                 .finish()
@@ -161,6 +121,35 @@ enum ErasedFileAstIdKind {
     Root,
 }
 
+impl ErasedFileAstIdKind {
+    fn syntax_kind(self) -> Option<SyntaxKind> {
+        match self {
+            ErasedFileAstIdKind::Enum => Some(SyntaxKind::ENUM),
+            ErasedFileAstIdKind::Struct => Some(SyntaxKind::STRUCT),
+            ErasedFileAstIdKind::Union => Some(SyntaxKind::UNION),
+            ErasedFileAstIdKind::ExternCrate => Some(SyntaxKind::EXTERN_CRATE),
+            ErasedFileAstIdKind::MacroDef => Some(SyntaxKind::MACRO_DEF),
+            ErasedFileAstIdKind::MacroRules => Some(SyntaxKind::MACRO_RULES),
+            ErasedFileAstIdKind::Module => Some(SyntaxKind::MODULE),
+            ErasedFileAstIdKind::Static => Some(SyntaxKind::STATIC),
+            ErasedFileAstIdKind::Trait => Some(SyntaxKind::TRAIT),
+            ErasedFileAstIdKind::Variant => Some(SyntaxKind::VARIANT),
+            ErasedFileAstIdKind::Const => Some(SyntaxKind::CONST),
+            ErasedFileAstIdKind::Fn => Some(SyntaxKind::FN),
+            ErasedFileAstIdKind::MacroCall => Some(SyntaxKind::MACRO_CALL),
+            ErasedFileAstIdKind::TypeAlias => Some(SyntaxKind::TYPE_ALIAS),
+            ErasedFileAstIdKind::ExternBlock => Some(SyntaxKind::EXTERN_BLOCK),
+            ErasedFileAstIdKind::Use => Some(SyntaxKind::USE),
+            ErasedFileAstIdKind::Impl => Some(SyntaxKind::IMPL),
+            ErasedFileAstIdKind::BlockExpr => Some(SyntaxKind::BLOCK_EXPR),
+            ErasedFileAstIdKind::AsmExpr => Some(SyntaxKind::ASM_EXPR),
+            ErasedFileAstIdKind::Fixup
+            | ErasedFileAstIdKind::NoDownmap
+            | ErasedFileAstIdKind::Root => None,
+        }
+    }
+}
+
 // First hash, then index, then kind.
 const HASH_BITS: u32 = 16;
 const INDEX_BITS: u32 = 11;
@@ -204,6 +193,51 @@ impl ErasedFileAstId {
     #[inline]
     fn kind(self) -> u32 {
         self.0 >> (HASH_BITS + INDEX_BITS)
+    }
+
+    fn kind_typed(self) -> Option<ErasedFileAstIdKind> {
+        let kind = self.kind();
+        macro_rules! kind {
+            ($($kind:ident),* $(,)?) => {
+                if false {
+                    // Ensure we covered all variants.
+                    match ErasedFileAstIdKind::Root {
+                        $( ErasedFileAstIdKind::$kind => {} )*
+                    }
+                    unreachable!()
+                }
+                $( else if kind == ErasedFileAstIdKind::$kind as u32 {
+                    Some(ErasedFileAstIdKind::$kind)
+                } )*
+                else {
+                    None
+                }
+            };
+        }
+        kind!(
+            Root,
+            Enum,
+            Struct,
+            Union,
+            ExternCrate,
+            MacroDef,
+            MacroRules,
+            Module,
+            Static,
+            Trait,
+            Variant,
+            Const,
+            Fn,
+            MacroCall,
+            TypeAlias,
+            ExternBlock,
+            Use,
+            Impl,
+            BlockExpr,
+            AsmExpr,
+            Fixup,
+            NoDownmap,
+        )
     }
 
     #[inline]
@@ -290,6 +324,20 @@ impl<N> FileAstId<N> {
     where
         N: Into<M>,
     {
+        FileAstId { raw: self.raw, _marker: PhantomData }
+    }
+
+    #[inline]
+    pub fn downcast_unchecked<M: AstIdNode + Into<N>>(self) -> FileAstId<M> {
+        debug_assert!(
+            self.erase()
+                .kind_typed()
+                .and_then(|kind| kind.syntax_kind())
+                .is_some_and(|kind| M::can_cast(kind)),
+            "`FileAstId::<{}>::downcast_unchecked::<{}>()` is invalid",
+            std::any::type_name::<N>(),
+            std::any::type_name::<M>(),
+        );
         FileAstId { raw: self.raw, _marker: PhantomData }
     }
 

@@ -1,0 +1,37 @@
+error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_multiple_lifetimes.rs:16:1
+   |
+LL | impl<'a, 'b, T> Reborrow for ManualPair<'a, 'b, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_multiple_lifetimes.rs:19:10
+   |
+LL | #[derive(Reborrow)]
+   |          ^^^^^^^^
+
+error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_multiple_lifetimes.rs:43:1
+   |
+LL | impl<'a, 'b, T> Reborrow for ManualMut<'a, 'b, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_multiple_lifetimes.rs:60:10
+   |
+LL | #[derive(Reborrow, CoerceShared)]
+   |          ^^^^^^^^
+
+error: implementing `CoerceShared` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_multiple_lifetimes.rs:45:1
+   |
+LL | impl<'a, 'b, T> CoerceShared<ManualShared<'a, 'b, T>> for ManualMut<'a, 'b, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementing `CoerceShared` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_multiple_lifetimes.rs:60:20
+   |
+LL | #[derive(Reborrow, CoerceShared)]
+   |                    ^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors

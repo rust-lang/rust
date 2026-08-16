@@ -168,9 +168,10 @@ impl ExprScopes {
         if let Some(Param { formal: self_param, user_written: _ }) = body.self_param {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
-        body.params.iter().for_each(|param| scopes.add_pat_bindings(body, root, param.formal));
-        ExprScopeVisitor { store: body, scopes: &mut scopes, scope: root, const_scope: root }
-            .on_expr(body.root_expr());
+        let mut visitor =
+            ExprScopeVisitor { store: body, scopes: &mut scopes, scope: root, const_scope: root };
+        body.params.iter().for_each(|param| visitor.on_pat(param.formal));
+        visitor.on_expr(body.root_expr());
         scopes
     }
 
@@ -258,15 +259,6 @@ impl ExprScopes {
             IdxRange::new_inclusive(self.scopes[scope].entries.start()..=entry);
     }
 
-    fn add_pat_bindings(&mut self, store: &ExpressionStore, scope: ScopeId, pat: PatId) {
-        let pattern = &store[pat];
-        if let Pat::Bind { id, .. } = *pattern {
-            self.add_bindings(store, scope, id, store.binding_hygiene(id));
-        }
-
-        pattern.walk_child_pats(|pat| self.add_pat_bindings(store, scope, pat));
-    }
-
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
         self.scope_by_expr.insert(node, scope);
     }
@@ -321,7 +313,7 @@ impl ExprScopeVisitor<'_> {
                         this.on_expr_opt(*initializer);
                         this.on_expr_opt(*else_branch);
                         this.scope = this.scopes.new_scope(this.scope);
-                        this.scopes.add_pat_bindings(this.store, this.scope, *pat);
+                        this.on_pat(*pat);
                     }
                     Statement::Expr { expr, has_semi: _ } => this.on_expr(*expr),
                     Statement::Item(Item::MacroDef(macro_id)) => {
@@ -346,7 +338,6 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
             Expr::Block { statements, tail, id, label } => {
                 self.visit_block(expr, *id, statements, *tail, *label);
             }
-            Expr::Const(expr) => self.on_anon_const_expr(*expr),
             Expr::Unsafe { id, statements, tail } => {
                 self.visit_block(expr, *id, statements, *tail, None);
             }
@@ -355,21 +346,21 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
                 self.with_scope(scope, |this| this.on_expr(*body));
             }
             Expr::Closure { args, arg_types, ret_type, body, capture_by: _, closure_kind: _ } => {
-                arg_types.iter().flatten().for_each(|type_ref| self.on_type(*type_ref));
+                arg_types.iter().for_each(|type_ref| self.on_type_opt(*type_ref));
                 self.on_type_opt(*ret_type);
                 let scope = self.scopes.new_scope(self.scope);
-                args.iter().for_each(|arg| self.scopes.add_pat_bindings(self.store, scope, *arg));
-                self.with_scope(scope, |this| this.on_expr(*body));
+                self.with_scope(scope, |this| {
+                    this.on_pats(args);
+                    this.on_expr(*body);
+                });
             }
             Expr::Match { expr, arms } => {
                 self.on_expr(*expr);
                 for arm in arms.iter() {
                     let scope = self.scopes.new_scope(self.scope);
                     self.with_scope(scope, |this| {
-                        this.scopes.add_pat_bindings(this.store, scope, arm.pat);
-                        if let Some(guard) = arm.guard {
-                            this.on_expr(guard);
-                        }
+                        this.on_pat(arm.pat);
+                        this.on_expr_opt(arm.guard);
                         this.on_expr(arm.expr);
                     });
                 }
@@ -385,9 +376,9 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
             &Expr::Let { pat, expr } => {
                 self.on_expr(expr);
                 self.scope = self.scopes.new_scope(self.scope);
-                self.scopes.add_pat_bindings(self.store, self.scope, pat);
+                self.on_pat(pat);
             }
-            _ => self.store.visit_expr_children(expr, &mut *self),
+            _ => self.store.visit_expr_children(expr, self),
         }
     }
 
@@ -396,6 +387,10 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
     }
 
     fn on_pat(&mut self, pat: PatId) {
+        if let Pat::Bind { id, .. } = self.store[pat] {
+            self.scopes.add_bindings(self.store, self.scope, id, self.store.binding_hygiene(id));
+        }
+
         self.store.visit_pat_children(pat, self);
     }
 
@@ -824,6 +819,68 @@ fn test() {
 }
 "#,
             100,
+        );
+    }
+    #[test]
+    fn pattern_const_block_expressions_have_scopes() {
+        do_check(
+            r#"
+fn foo() {
+    match () {
+        const { |x: i32| { let y = x; $0 } } => (),
+    }
+}
+"#,
+            &["y", "x"],
+        );
+    }
+
+    #[test]
+    fn let_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize) {
+    let local = 0;
+    let const { $0 } = ();
+}
+"#,
+            &["param"],
+        );
+    }
+
+    #[test]
+    fn closure_param_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize) {
+    let local = 0;
+    let _ = |const { $0 }: ()| ();
+}
+"#,
+            &["param"],
+        );
+    }
+
+    #[test]
+    fn fn_param_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize, const { $0 }: ()) {}
+"#,
+            &["param"],
+        );
+    }
+
+    #[test]
+    fn if_let_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize) {
+    let local = 0;
+    if let const { $0 } = () {}
+}
+"#,
+            &["param"],
         );
     }
 }

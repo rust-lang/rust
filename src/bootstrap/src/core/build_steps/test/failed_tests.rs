@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader, ErrorKind};
 use std::path::{Path, PathBuf};
 
 use crate::core::builder::{Builder, Step};
-use crate::t;
+use crate::utils::helpers::t;
 
 #[derive(Clone)]
 pub struct RecordFailedTests {

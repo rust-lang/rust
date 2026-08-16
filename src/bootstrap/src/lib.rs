@@ -15,7 +15,11 @@
 //!
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
+
+// tidy-alphabetical-start
 #![allow(clippy::assertions_on_constants, reason = "false positive for `assert!(cfg!(..))`")]
+#![allow(clippy::map_clone, reason = "false positive for `|x: &&Foo| Foo::clone(x)`")]
+// tidy-alphabetical-end
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -26,37 +30,25 @@ use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
-use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
-use utils::build_stamp::BuildStamp;
-use utils::channel::GitInfo;
-use utils::exec::ExecutionContext;
-
-use crate::core::builder;
-use crate::core::builder::Kind;
-use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
-
-mod core;
-mod utils;
-
-#[cfg(feature = "tracing")]
-pub use core::builder::STEP_SPAN_TARGET;
-pub use core::builder::{PathSet, StepStack};
-pub use core::config::flags::{Flags, Subcommand};
-pub use core::config::{ChangeId, Config};
-
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
-pub use utils::change_tracker::{
-    CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
-};
-pub use utils::helpers::{PanicTracker, symlink_dir};
-#[cfg(feature = "tracing")]
-pub use utils::tracing::setup_tracing;
 
+use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::vendor::VENDOR_DIR;
+use crate::core::builder::{Builder, Kind};
+use crate::core::config::flags::{self, Subcommand};
+use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
+use crate::utils::channel::GitInfo;
+use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir, t,
+};
+
+pub mod cli_main;
+mod core;
+mod utils;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -604,7 +596,7 @@ impl Build {
         }
 
         build.do_if_verbose(|| println!("finding compilers"));
-        utils::cc_detect::fill_compilers(&mut build);
+        crate::utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
         // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
@@ -699,7 +691,7 @@ impl Build {
                 "submodule {submodule} does not appear to be checked out, \
                  but it is required for this step{maybe_enable}{err_hint}"
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
     }
 
@@ -759,15 +751,21 @@ impl Build {
 
             match &self.config.cmd {
                 Subcommand::Format { check, all } => {
-                    return core::build_steps::format::format(
-                        &builder::Builder::new(self),
+                    let builder = Builder::new(self);
+                    let rustfmt_path = builder.ensure(InternalRustfmt).unwrap_or_else(|| {
+                        eprintln!("fmt error: `x fmt` is not supported on this channel");
+                        helpers::exit_process(1);
+                    });
+                    return crate::core::build_steps::format::format(
+                        &builder,
+                        rustfmt_path,
                         *check,
                         *all,
                         &self.config.paths,
                     );
                 }
                 Subcommand::Perf(args) => {
-                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
+                    return crate::core::build_steps::perf::perf(&Builder::new(self), args);
                 }
                 _cmd => {
                     debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
@@ -788,7 +786,7 @@ impl Build {
                 let _sanity_check_span =
                     span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
                 self.config.set_dry_run(DryRun::SelfCheck);
-                let builder = builder::Builder::new(self);
+                let builder = Builder::new(self);
                 builder.execute_cli();
             }
 
@@ -798,14 +796,14 @@ impl Build {
                 let _actual_run_span =
                     span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
                 self.config.set_dry_run(DryRun::Disabled);
-                let builder = builder::Builder::new(self);
+                let builder = Builder::new(self);
                 builder.execute_cli();
             }
         } else {
             #[cfg(feature = "tracing")]
             let _dry_run_span = span!(tracing::Level::DEBUG, "executing dry run").entered();
 
-            let builder = builder::Builder::new(self);
+            let builder = Builder::new(self);
             builder.execute_cli();
         }
 
@@ -979,22 +977,6 @@ impl Build {
         }
     }
 
-    fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("enzyme")
-    }
-
-    fn omp_offload_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("offload")
-    }
-
-    fn rust_offload_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("rust-offload")
-    }
-
-    fn lld_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("lld")
-    }
-
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("doc")
@@ -1022,50 +1004,6 @@ impl Build {
     /// Path to the vendored Rust crates.
     fn vendored_crates_path(&self) -> Option<PathBuf> {
         if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
-    }
-
-    /// Returns the path to `FileCheck` binary for the specified target
-    fn llvm_filecheck(&self, target: TargetSelection) -> PathBuf {
-        let target_config = self.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
-            s.to_path_buf()
-        } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
-            let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
-            if filecheck.exists() {
-                filecheck
-            } else {
-                // On Fedora the system LLVM installs FileCheck in the
-                // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
-                let lib_filecheck =
-                    Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
-                if lib_filecheck.exists() {
-                    lib_filecheck
-                } else {
-                    // Return the most normal file name, even though
-                    // it doesn't exist, so that any error message
-                    // refers to that.
-                    filecheck
-                }
-            }
-        } else {
-            let base = self.llvm_out(target).join("build");
-            let base = if !self.ninja() && target.is_msvc() {
-                if self.config.llvm_optimize {
-                    if self.config.llvm_release_debuginfo {
-                        base.join("RelWithDebInfo")
-                    } else {
-                        base.join("Release")
-                    }
-                } else {
-                    base.join("Debug")
-                }
-            } else {
-                base
-            };
-            base.join("bin").join(exe("FileCheck", target))
-        }
     }
 
     /// Directory for libraries built from C/C++ code and shared between stages.
@@ -1268,12 +1206,12 @@ impl Build {
     }
 
     /// Returns the internal `cc::Tool` for the C compiler.
-    fn cc_tool(&self, target: TargetSelection) -> Tool {
+    fn cc_tool(&self, target: TargetSelection) -> cc::Tool {
         self.cc[&target].clone()
     }
 
     /// Returns the internal `cc::Tool` for the C++ compiler.
-    fn cxx_tool(&self, target: TargetSelection) -> Tool {
+    fn cxx_tool(&self, target: TargetSelection) -> cc::Tool {
         self.cxx[&target].clone()
     }
 
@@ -1751,7 +1689,7 @@ impl Build {
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.path().display()
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         let mut paths = Vec::new();
@@ -2026,7 +1964,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
 
@@ -2149,11 +2087,4 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
 
         t!(INITIALIZED.set(true));
     }
-}
-
-#[macro_export]
-macro_rules! exit {
-    ($code:expr) => {
-        $crate::utils::helpers::detail_exit($code, cfg!(test));
-    };
 }

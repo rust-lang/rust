@@ -24,7 +24,6 @@ pub struct AssistConfig {
     pub prefer_absolute: bool,
     pub assist_emit_must_use: bool,
     pub term_search_fuel: u64,
-    pub term_search_borrowck: bool,
     pub code_action_grouping: bool,
     pub expr_fill_default: ExprFillDefaultMode,
     pub prefer_self_ty: bool,

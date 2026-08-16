@@ -101,6 +101,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     interp_ok(true)
                 }
             }
+            // Types that are considered transparent in `unfold_transparent` should also act
+            // like transparent types here.
+            ty::Pat(base, _) => self.has_trivial_abi(self.layout_of(base)?),
+            ty::UnsafeBinder(bound_ty) => {
+                let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                self.has_trivial_abi(self.layout_of(ty)?)
+            }
 
             ty::Alias(..) => panic!("non-normalized type"),
             _ => interp_ok(false),
@@ -116,8 +123,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: TyAndLayout<'tcx>,
         may_unfold: impl Fn(AdtDef<'tcx>) -> bool,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        match layout.ty.kind() {
-            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
+        match *layout.ty.kind() {
+            ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(adt_def) => {
                 assert_matches!(layout.variants, rustc_abi::Variants::Single { .. });
                 // Look for non-trivial-ABI field(s).
                 let mut found = None;
@@ -142,7 +149,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Recurse.
                 self.unfold_transparent(field, may_unfold)
             }
-            ty::Pat(base, _) => interp_ok(self.layout_of(*base)?),
+            ty::Pat(base, _) => self.unfold_transparent(self.layout_of(base)?, may_unfold),
+            ty::UnsafeBinder(bound_ty) => {
+                let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                self.unfold_transparent(self.layout_of(ty)?, may_unfold)
+            }
             // Not a transparent type, no further unfolding.
             _ => interp_ok(layout),
         }
@@ -660,7 +671,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, Option<&FnAbi<'tcx, Ty<'tcx>>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
@@ -674,6 +685,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
+                let caller_fn_abi =
+                    caller_fn_abi.expect("FnAbi should have been computed for this call");
                 return M::call_extra_fn(
                     self,
                     extra,
@@ -738,6 +751,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn.
                 // Note that this can be an intrinsic, if we are executing its fallback body.
+                let caller_fn_abi =
+                    caller_fn_abi.expect("FnAbi should have been computed for this call");
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
                     instance,
@@ -789,6 +804,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
             // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceKind::Virtual(def_id, idx) => {
+                let caller_fn_abi =
+                    caller_fn_abi.expect("FnAbi should have been computed for this call");
                 let mut args = args.to_vec();
                 // We have to implement all "dyn-compatible receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
@@ -867,7 +884,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // recurse with concrete function
                 self.init_fn_call(
                     FnVal::Instance(fn_inst),
-                    (caller_abi, &caller_fn_abi),
+                    (caller_abi, Some(&caller_fn_abi)),
                     &args,
                     with_caller_location,
                     destination,
@@ -910,7 +927,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_tail_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, Option<&FnAbi<'tcx, Ty<'tcx>>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {
@@ -1007,7 +1024,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         self.init_fn_call(
             FnVal::Instance(instance),
-            (ExternAbi::Rust, fn_abi),
+            (ExternAbi::Rust, Some(fn_abi)),
             &[FnArg::Copy(arg.into())],
             false,
             &ret.into(),

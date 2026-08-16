@@ -5,6 +5,7 @@ use hir::{HirId, ItemKind};
 use rustc_ast::join_path_idents;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -176,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We check that the self type is `Pin<&mut _>` to avoid false positives for this common name.
                 if !span.at_least_rust_2024()
                     && let ty::Adt(adt_def, args) = self_ty.kind()
-                    && self.tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin)
+                    && self.tcx.is_lang_item(adt_def.did(), LangItem::Pin)
                     && let ty::Ref(_, _, ty::Mutability::Mut) =
                         args[0].as_type().unwrap().kind() =>
             {

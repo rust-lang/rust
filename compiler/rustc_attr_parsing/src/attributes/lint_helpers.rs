@@ -1,6 +1,5 @@
+use rustc_attr_ir::{ReprAttr, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::ReprAttr;
-use rustc_hir::find_attr;
 
 use super::prelude::*;
 use crate::diagnostics::RustcPubTransparent;

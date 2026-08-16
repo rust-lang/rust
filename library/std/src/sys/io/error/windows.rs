@@ -65,6 +65,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
         c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
         c::ERROR_CANT_RESOLVE_FILENAME => return FilesystemLoop,
         c::ERROR_IO_DEVICE => return InputOutputError,
+        c::ERROR_NEGATIVE_SEEK => return InvalidInput,
         _ => {}
     }
 

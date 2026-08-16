@@ -7,8 +7,9 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{LangItem, Node, find_attr, intravisit};
+use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
@@ -20,7 +21,7 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
+    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
@@ -88,18 +89,6 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
                 span,
                 UnsupportedCallingConventions { abi },
             );
-        }
-    }
-}
-
-pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
-    if fn_sig.abi() == ExternAbi::Custom {
-        // Function definitions that use `extern "custom"` must be naked functions.
-        if !find_attr!(tcx, def_id, Naked(_)) {
-            tcx.dcx().emit_err(crate::diagnostics::AbiCustomClothedFunction {
-                span: fn_sig_span,
-                naked_span: tcx.def_span(def_id).shrink_to_lo(),
-            });
         }
     }
 }
@@ -414,6 +403,12 @@ fn check_opaque_meets_bounds<'tcx>(
         return Err(guar);
     }
 
+    // FIXME(impl_trait_in_assoc_type): This computes the implied bounds
+    // while being able to normalize opaque types. This is unsound if checking that the
+    // opaque type is well-formed relies on an implied bound mentioning that opaque type.
+    // This should only affect TAIT as this function is not soundness critical for RPITs.
+    //
+    // cc trait-system-refactor-initiative#159
     let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
     ocx.resolve_regions_and_report_errors(defining_use_anchor, param_env, wf_tys)?;
 
@@ -1377,7 +1372,7 @@ fn check_impl_items_against_trait<'tcx>(
                     // instead of `Drop::drop` is unstable that might be confusing.
                     EvalResult::Deny { .. }
                         if !tcx.features().pin_ergonomics()
-                            && tcx.is_lang_item(trait_ref.def_id, hir::LangItem::Drop)
+                            && tcx.is_lang_item(trait_ref.def_id, LangItem::Drop)
                             && tcx.item_name(trait_item_id) == sym::drop =>
                     {
                         missing_items.push(tcx.associated_item(trait_item_id));

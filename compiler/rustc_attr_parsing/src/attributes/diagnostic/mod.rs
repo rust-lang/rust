@@ -1,11 +1,11 @@
 use std::ops::Range;
 
 use rustc_ast::PathSegment;
-use rustc_errors::{Diagnostic, MultiSpan};
-use rustc_hir::attrs::diagnostic::{
+use rustc_attr_ir::diagnostic::{
     Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
     NameValue, Piece, Predicate,
 };
+use rustc_errors::{Diagnostic, MultiSpan};
 use rustc_lint_defs::LintId;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,

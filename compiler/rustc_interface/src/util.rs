@@ -121,7 +121,7 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
 }
 
 pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
-pub const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+pub const DEFAULT_STACK_SIZE: usize = 16 * 1024 * 1024;
 
 fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     // Obey the environment setting or default
@@ -363,7 +363,7 @@ pub fn get_codegen_backend(
             filename if filename.contains('.') => {
                 load_backend_from_dylib(early_dcx, filename.as_ref())
             }
-            "dummy" => || Box::new(DummyCodegenBackend { target_config_override: None }),
+            "dummy" => || Box::new(DummyCodegenBackend),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
@@ -376,9 +376,7 @@ pub fn get_codegen_backend(
     unsafe { load() }
 }
 
-pub struct DummyCodegenBackend {
-    pub target_config_override: Option<Box<dyn Fn(&Session) -> TargetConfig>>,
-}
+pub struct DummyCodegenBackend;
 
 impl CodegenBackend for DummyCodegenBackend {
     fn name(&self) -> &'static str {
@@ -386,10 +384,6 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
-        if let Some(target_config_override) = &self.target_config_override {
-            return target_config_override(sess);
-        }
-
         let abi_required_features = sess.target.abi_required_features();
         let internal_target_features = internal_target_features::<0>(
             sess,

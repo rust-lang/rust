@@ -26,7 +26,7 @@ case $HOST_TARGET in
     python3 "$X_PY" test --stage 2 miri cargo-miri --target aarch64-apple-darwin
     python3 "$X_PY" test --stage 2 miri cargo-miri --target i686-pc-windows-msvc
     # Only run "pass" tests for the remaining targets, which is a bit faster. We have to use `miri`
-    # instead of `src/tools/miri` here to avoid also running the cargo-miri tests.
+    # instead of `src/tools/miri` here to avoid also running the cargo-miri and priroda tests.
     python3 "$X_PY" test --stage 2 miri --target x86_64-pc-windows-gnu -- tests/pass
     python3 "$X_PY" test --stage 2 miri --target i686-unknown-linux-gnu -- tests/pass
     python3 "$X_PY" test --stage 2 miri --target aarch64-unknown-linux-gnu -- tests/pass

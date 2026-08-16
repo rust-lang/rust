@@ -23,6 +23,7 @@ use either::Either;
 use hir_expand::{
     InFile, Lookup,
     attrs::{AstKeyValueMetaExt, AstPathExt, expand_cfg_attr},
+    name::Name,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -38,7 +39,7 @@ use tt::TextSize;
 
 use crate::{
     AdtId, AstIdLoc, AttrDefId, FieldId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
-    LocalFieldId, MacroId, ModuleId, TypeOrConstParamId, VariantId,
+    LocalFieldId, MacroId, ModuleId, TraitId, TypeOrConstParamId, VariantId,
     hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::ModuleOrigin,
     resolver::{HasResolver, Resolver},
@@ -178,6 +179,9 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                     }
                     "rustc_deprecated_safe_2024" => {
                         attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
+                    }
+                    "rustc_must_implement_one_of" => {
+                        attr_flags.insert(AttrFlags::HAS_RUSTC_MUST_IMPLEMENT_ONE_OF)
                     }
                     _ => {}
                 },
@@ -347,6 +351,8 @@ bitflags::bitflags! {
         const IS_MUST_USE = 1 << 50;
 
         const DIAGNOSTIC_DO_NOT_RECOMMEND = 1 << 51;
+
+        const HAS_RUSTC_MUST_IMPLEMENT_ONE_OF = 1 << 52;
     }
 }
 
@@ -593,7 +599,7 @@ fn extract_cfgs(result: &mut Vec<CfgExpr>, attr: ast::Meta) -> ControlFlow<Infal
 
 #[salsa::tracked]
 impl AttrFlags {
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn query(db: &dyn SourceDatabase, owner: AttrDefId) -> AttrFlags {
         let mut attr_flags = AttrFlags::empty();
         collect_attrs(db, owner, |attr| match_attr_flags(&mut attr_flags, attr));
@@ -740,7 +746,7 @@ impl AttrFlags {
 
         return lang_item(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(clone))]
         fn lang_item(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
             collect_attrs(db, owner, |attr| {
                 if let ast::Meta::KeyValueMeta(attr) = attr
@@ -769,7 +775,7 @@ impl AttrFlags {
     ///
     /// Prefer [`AttrFlags::repr()`] in non-perf-sensitive places as it also has a check that
     /// that the ADT has repr.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn repr_assume_has(db: &dyn SourceDatabase, owner: AdtId) -> Option<ReprOptions> {
         let mut result = None;
         collect_attrs::<Infallible>(db, owner.into(), |attr| {
@@ -922,7 +928,7 @@ impl AttrFlags {
 
         return rustc_layout_scalar_valid_range(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(copy))]
         fn rustc_layout_scalar_valid_range(
             db: &dyn SourceDatabase,
             owner: AdtId,
@@ -1049,7 +1055,7 @@ impl AttrFlags {
         }
         return doc_keyword(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(clone))]
         fn doc_keyword(db: &dyn SourceDatabase, owner: ModuleId) -> Option<Symbol> {
             collect_attrs(db, AttrDefId::ModuleId(owner), |attr| {
                 if let ast::Meta::TokenTreeMeta(attr) = attr
@@ -1070,7 +1076,7 @@ impl AttrFlags {
     }
 
     // We LRU this query because it is only used by IDE.
-    #[salsa::tracked(returns(ref), lru = 250)]
+    #[salsa::tracked(returns(as_deref), lru = 250)]
     pub fn docs(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
         let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
@@ -1090,27 +1096,27 @@ impl AttrFlags {
 
     #[inline]
     pub fn field_docs(db: &dyn SourceDatabase, field: FieldId) -> Option<&Docs> {
-        return fields_docs(db, field.parent).get(field.local_id).and_then(|it| it.as_deref());
+        Self::fields_docs(db, field.parent).get(field.local_id).and_then(|it| it.as_deref())
+    }
 
-        // We LRU this query because it is only used by IDE.
-        #[salsa::tracked(returns(ref), lru = 50)]
-        pub fn fields_docs(
-            db: &dyn SourceDatabase,
-            variant: VariantId,
-        ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
-            let krate = variant.module(db).krate(db);
-            collect_field_attrs(db, variant, |cfg_options, field| {
-                self::docs::extract_docs(
-                    db,
-                    krate,
-                    &|| variant.resolver(db),
-                    &|| cfg_options,
-                    field,
-                    None,
-                    None,
-                )
-            })
-        }
+    // We LRU this query because it is only used by IDE.
+    #[salsa::tracked(returns(ref), lru = 50)]
+    pub fn fields_docs(
+        db: &dyn SourceDatabase,
+        variant: VariantId,
+    ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
+        let krate = variant.module(db).krate(db);
+        collect_field_attrs(db, variant, |cfg_options, field| {
+            self::docs::extract_docs(
+                db,
+                krate,
+                &|| variant.resolver(db),
+                &|| cfg_options,
+                field,
+                None,
+                None,
+            )
+        })
     }
 
     #[inline]
@@ -1166,7 +1172,7 @@ impl AttrFlags {
 
         return unstable_feature(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(clone))]
         fn unstable_feature(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
             collect_attrs(db, owner, |attr| {
                 if let ast::Meta::TokenTreeMeta(attr) = attr
@@ -1210,6 +1216,36 @@ impl AttrFlags {
                     && let Some(message) = attr.value_string()
                 {
                     return ControlFlow::Break(Box::from(&*message));
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
+
+    pub fn must_implement_one_of(db: &dyn SourceDatabase, owner: TraitId) -> Option<&[Name]> {
+        if !AttrFlags::query(db, owner.into()).contains(AttrFlags::HAS_RUSTC_MUST_IMPLEMENT_ONE_OF)
+        {
+            return None;
+        }
+        return must_implement_one_of(db, owner);
+
+        #[salsa::tracked(returns(as_deref))]
+        pub fn must_implement_one_of(
+            db: &dyn SourceDatabase,
+            owner: TraitId,
+        ) -> Option<Box<[Name]>> {
+            collect_attrs(db, owner.into(), |attr| {
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && attr.path().is1("rustc_must_implement_one_of")
+                    && let Some(tt) = attr.token_tree()
+                    && let names = tt
+                        .token_trees_and_tokens()
+                        .filter_map(|it| ast::Ident::cast(it.into_token()?))
+                        .map(|name| Name::new_symbol_root(Symbol::intern(name.text())))
+                        .collect::<Box<[_]>>()
+                    && !names.is_empty()
+                {
+                    return ControlFlow::Break(names);
                 }
                 ControlFlow::Continue(())
             })

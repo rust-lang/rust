@@ -188,6 +188,7 @@ symbols! {
         Clone,
         CoercePointee,
         CoercePointeeValidated,
+        CoerceShared,
         CoerceUnsized,
         Const,
         ConstParamTy,
@@ -653,6 +654,7 @@ symbols! {
         compiler_copy,
         compiler_fence,
         compiler_move,
+        complex,
         concat,
         concat_bytes,
         conservative_impl_trait,
@@ -1388,6 +1390,7 @@ symbols! {
         naked_functions_rustic_abi,
         naked_functions_target_feature,
         name,
+        named_fn_trait_parameters,
         names,
         native_link_modifiers,
         native_link_modifiers_as_needed,
@@ -2177,6 +2180,7 @@ symbols! {
         type_id_field_representing_type,
         type_id_fields,
         type_id_generics,
+        type_id_is_signed,
         type_id_variants,
         type_id_vtable,
         type_info,
@@ -2925,9 +2929,13 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
+#[diagnostic::on_unknown(
+    label = "`{Unresolved}` is not a pre-interned symbol",
+    note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+)]
 pub mod sym {
-    // Used from a macro in `librustc_feature/accepted.rs`
     use super::Symbol;
+    // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
     #[doc(inline)]
     pub use super::sym_generated::*;

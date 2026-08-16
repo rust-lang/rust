@@ -14,11 +14,13 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::builder::Builder;
+use crate::Build;
 use crate::core::build_steps::tool;
+use crate::core::builder::Builder;
+use crate::core::config::flags::Subcommand;
 use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand, t};
+use crate::utils::helpers::{self, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -160,7 +162,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     build.config.python = build
@@ -310,17 +312,6 @@ than building it.
     if !skip_tools_checks {
         for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-
-            if build.config.llvm_enabled(*host) {
-                // Externally configured LLVM requires FileCheck to exist
-                let filecheck = build.llvm_filecheck(build.host_target);
-                if !filecheck.starts_with(&build.out)
-                    && !filecheck.exists()
-                    && build.config.codegen_tests
-                {
-                    panic!("FileCheck executable {filecheck:?} does not exist");
-                }
-            }
         }
     }
 

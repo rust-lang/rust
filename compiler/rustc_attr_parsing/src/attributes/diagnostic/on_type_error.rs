@@ -1,4 +1,4 @@
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::AttributeKind;
 use rustc_span::sym;
 
 use crate::attributes::AttributeStability;

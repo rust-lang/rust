@@ -83,7 +83,7 @@ pub fn structurally_normalize_ty<'db>(
     ty.replace_infer_with_error(infcx.interner)
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Update)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::SalsaValue)]
 pub enum FnTrait {
     // Warning: Order is important. If something implements `x` it should also implement
     // `y` if `y <= x`.

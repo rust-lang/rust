@@ -4,7 +4,7 @@ use std::fmt;
 use crate::{AliasConst, ClosureKind};
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    HostEffectPredicate, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
+    HostEffectClause, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
     ProjectionPredicate, Region, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
@@ -46,7 +46,7 @@ define_display_via_print!(
     NormalizesTo,
     SubtypePredicate,
     CoercePredicate,
-    HostEffectPredicate,
+    HostEffectClause,
     AliasTy,
     AliasTerm,
     FnSig,

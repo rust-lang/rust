@@ -1,8 +1,7 @@
-use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{
-    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+use rustc_attr_ir::{
+    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy, find_attr,
 };
-use rustc_hir::find_attr;
+use rustc_feature::AttributeStability;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 

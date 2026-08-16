@@ -3128,6 +3128,14 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
     unsafe { crate::mem::transmute::<_, u128>(a) == crate::mem::transmute::<_, u128>(b) }
 }
 
+/// Returns whether the type represented by this `TypeId` is a signed integer.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::is_signed`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_is_signed(_id: crate::any::TypeId) -> bool;
+
 /// Gets the size of the type represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::size`].

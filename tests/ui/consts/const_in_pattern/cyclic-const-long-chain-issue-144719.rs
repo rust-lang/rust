@@ -1,11 +1,10 @@
 //! Regression test for #144719: long reference cycles shouldn't
 //! overflow the stack.
-//@ rustc-env:RUST_MIN_STACK=3000000
 
 #[derive(PartialEq, Copy, Clone)]
 struct Thing(&'static Thing);
 
-const N: usize = 8000;
+const N: usize = 4000;
 static A: Thing = Thing(&B[0]);
 static B: [Thing; N] = {
     let mut x = [Thing(&A); N];

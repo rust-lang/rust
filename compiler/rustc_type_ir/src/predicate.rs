@@ -137,7 +137,13 @@ impl<I: Interner> TraitRef<I> {
 
     pub fn from_assoc(interner: I, trait_id: I::TraitId, args: I::GenericArgs) -> TraitRef<I> {
         let generics = interner.generics_of(trait_id.into());
-        TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
+        if generics.count() == args.len() {
+            // Can reuse `args` in its entirety.
+            TraitRef::new_from_args(interner, trait_id, args)
+        } else {
+            // Need only some of `args`.
+            TraitRef::new(interner, trait_id, args.iter().take(generics.count()))
+        }
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -175,7 +181,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
 
     pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
         self.map_bound(|trait_ref| {
-            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
+            ty::ClauseKind::HostEffect(HostEffectClause { trait_ref, constness })
         })
         .upcast(cx)
     }
@@ -654,15 +660,15 @@ where
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-pub struct HostEffectPredicate<I: Interner> {
+pub struct HostEffectClause<I: Interner> {
     pub trait_ref: ty::TraitRef<I>,
     #[lift(identity)]
     pub constness: BoundConstness,
 }
 
-impl<I: Interner> Eq for HostEffectPredicate<I> {}
+impl<I: Interner> Eq for HostEffectClause<I> {}
 
-impl<I: Interner> HostEffectPredicate<I> {
+impl<I: Interner> HostEffectClause<I> {
     pub fn self_ty(self) -> I::Ty {
         self.trait_ref.self_ty()
     }
@@ -676,7 +682,7 @@ impl<I: Interner> HostEffectPredicate<I> {
     }
 }
 
-impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
+impl<I: Interner> ty::Binder<I, HostEffectClause<I>> {
     pub fn def_id(self) -> I::TraitId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()

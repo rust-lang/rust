@@ -14,9 +14,10 @@ use rustc_errors::{
     pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::CustomDiagnostic;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem, Node, expr_needs_parens, find_attr};
+use rustc_hir::{self as hir, Node, expr_needs_parens, find_attr};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{ImplSource, TraitErrors};
@@ -635,9 +636,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err
                     }
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => self
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(clause)) => self
                         .report_host_effect_error(
-                            bound_predicate.rebind(predicate),
+                            bound_predicate.rebind(clause),
                             &obligation,
                             span,
                         ),
@@ -857,22 +858,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn report_host_effect_error(
         &self,
-        predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        clause: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
         main_obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Diag<'a> {
-        // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
+        // FIXME(const_trait_impl): We should recompute the clause with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
         // *conditionally* holds.
-        let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
-            trait_ref: predicate.trait_ref,
+        let trait_ref = clause.map_bound(|clause| ty::TraitPredicate {
+            trait_ref: clause.trait_ref,
             polarity: ty::PredicatePolarity::Positive,
         });
         let mut file = None;
 
         let err_msg = self.get_standard_error_message(
             trait_ref,
-            Some(predicate.constness()),
+            Some(clause.constness()),
             String::new(),
             &mut file,
         );
@@ -1511,8 +1512,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_host_effect(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        goal: ty::HostEffectPredicate<'tcx>,
-        assumption: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        goal: ty::HostEffectClause<'tcx>,
+        assumption: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
     ) -> bool {
         let assumption = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
@@ -1526,9 +1527,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn as_host_effect_clause(
         predicate: ty::Predicate<'tcx>,
-    ) -> Option<ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>> {
+    ) -> Option<ty::Binder<'tcx, ty::HostEffectClause<'tcx>>> {
         predicate.as_clause().and_then(|clause| match clause.kind().skip_binder() {
-            ty::ClauseKind::HostEffect(pred) => Some(clause.kind().rebind(pred)),
+            ty::ClauseKind::HostEffect(host_clause) => Some(clause.kind().rebind(host_clause)),
             _ => None,
         })
     }
@@ -1654,7 +1655,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let mut file = None;
-            let (msg, span, closure_span) = values
+            let (msg, mut span, mut closure_span) = values
                 .and_then(|(predicate, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(
                         obligation.cause.span,
@@ -1675,6 +1676,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         None,
                     )
                 });
+
+            // When the obligation comes from a closure arg and the projection isn't FnOnceOutput
+            // (which maybe_detailed_projection_msg handles via self_ty), point at the closure's
+            // return expression and label the closure declaration.
+            if closure_span.is_none()
+                && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+                && let Node::Expr(arg_expr) = self.tcx.hir_node(*arg_hir_id)
+                && let hir::ExprKind::Closure(closure) = arg_expr.kind
+                && closure.kind == hir::ClosureKind::Closure
+            {
+                let body = self.tcx.hir_body(closure.body);
+                let ret_span = match body.value.kind {
+                    hir::ExprKind::Block(hir::Block { expr: Some(expr), .. }, _) => expr.span,
+                    hir::ExprKind::Block(hir::Block { expr: None, stmts: [.., last], .. }, _) => {
+                        last.span
+                    }
+                    _ => body.value.span,
+                };
+                if !closure.fn_decl_span.overlaps(ret_span) {
+                    closure_span = Some(closure.fn_decl_span);
+                    span = ret_span;
+                }
+            }
+
             let mut diag = struct_span_code_err!(self.dcx(), span, E0271, "{msg}");
             *diag.long_ty_path() = file;
             let mut mention_bounds = true;

@@ -15,4 +15,4 @@ impl Local for bool {}
 //@ has "$.index[?(@.name=='bool')]"
 #[rustc_doc_primitive = "bool"]
 /// Boolean docs
-mod prim_bool {}
+const _: () = ();

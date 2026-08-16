@@ -9,7 +9,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
-    Binder, BoundConstness, ClauseKind, HostEffectPredicate, Interner, PredicatePolarity,
+    Binder, BoundConstness, ClauseKind, HostEffectClause, Interner, PredicatePolarity,
     TraitPredicate, TraitRef,
 };
 
@@ -155,7 +155,7 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitRef<I>>> {
         let inner = self
             .value
             .map_bound(|trait_ref| {
-                ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
+                ClauseKind::HostEffect(HostEffectClause { trait_ref, constness })
             })
             .upcast(cx);
         Unnormalized::new(inner)

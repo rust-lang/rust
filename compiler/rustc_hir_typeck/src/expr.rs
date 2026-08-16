@@ -9,7 +9,6 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
@@ -18,12 +17,11 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
-use rustc_hir_analysis::NoVariantNamed;
-use rustc_hir_analysis::diagnostics::NoFieldOnType;
+use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
@@ -31,7 +29,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::diagnostics::{ExprParenthesesNeeded, feature_err};
+use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{Ident, Span, Spanned, Symbol, kw, sym};
@@ -44,10 +42,10 @@ use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
-    BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
-    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn,
-    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
-    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    BaseExpressionDoubleDotRemove, CantDereference, ExprParenthesesNeeded,
+    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
+    NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
+    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -266,13 +264,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(self.function_diverges_because_of_empty_arguments.get())
         };
 
-        let ty = ensure_sufficient_stack(|| match &expr.kind {
+        let ty = match &expr.kind {
             // Intercept the callee path expr and give it better spans.
             hir::ExprKind::Path(
                 qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
             ) => self.check_expr_path(qpath, expr, call_expr_and_args),
             _ => self.check_expr_kind(expr, expected),
-        });
+        };
         let ty = self.resolve_vars_if_possible(ty);
 
         // Warn for non-block expressions with diverging children.

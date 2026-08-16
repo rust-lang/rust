@@ -313,8 +313,8 @@ static_assert!(@usize_eq: size_of::<CustomOwner>(), 8);
 
 static_assert!((TAG_MASK + 1).is_power_of_two());
 // And they must have sufficient alignment.
-static_assert!(align_of::<SimpleMessage>() >= TAG_MASK + 1);
-static_assert!(align_of::<Custom>() >= TAG_MASK + 1);
+static_assert!(align_of::<SimpleMessage>() > TAG_MASK);
+static_assert!(align_of::<Custom>() > TAG_MASK);
 
 static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE_MESSAGE, TAG_SIMPLE_MESSAGE);
 static_assert!(@usize_eq: TAG_MASK & TAG_CUSTOM, TAG_CUSTOM);

@@ -776,18 +776,18 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
-                    ty::ClauseKind::TypeOutlives(outlives_predicate) => {
+                    ty::ClauseKind::TypeOutlives(outlives_clause) => {
                         assert_eq!(
-                            outlives_predicate.0, ty,
-                            "expected `Self` predicate when computing \
+                            outlives_clause.0, ty,
+                            "expected `Self` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
-                    ty::ClauseKind::HostEffect(host_effect_predicate) => {
+                    ty::ClauseKind::HostEffect(host_effect_clause) => {
                         assert_eq!(
-                            host_effect_predicate.self_ty(),
+                            host_effect_clause.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing \
+                            "expected `Self` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
@@ -836,13 +836,13 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
         PredicateFilter::ConstIfConst => {
             for (clause, _) in bounds {
                 match clause.kind().skip_binder() {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    ty::ClauseKind::HostEffect(ty::HostEffectClause {
                         trait_ref: _,
                         constness: ty::BoundConstness::Maybe,
                     }) => {}
                     _ => {
                         bug!(
-                            "unexpected non-`HostEffect` predicate when computing \
+                            "unexpected non-`HostEffect` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
@@ -852,23 +852,23 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
         PredicateFilter::SelfConstIfConst => {
             for (clause, _) in bounds {
                 match clause.kind().skip_binder() {
-                    ty::ClauseKind::HostEffect(pred) => {
+                    ty::ClauseKind::HostEffect(host_clause) => {
                         assert_eq!(
-                            pred.constness,
+                            host_clause.constness,
                             ty::BoundConstness::Maybe,
-                            "expected `[const]` predicate when computing `{filter:?}` \
+                            "expected `[const]` clause when computing `{filter:?}` \
                             implied bounds: {clause:?}",
                         );
                         assert_eq!(
-                            pred.trait_ref.self_ty(),
+                            host_clause.trait_ref.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing `{filter:?}` \
+                            "expected `Self` clause when computing `{filter:?}` \
                             implied bounds: {clause:?}"
                         );
                     }
                     _ => {
                         bug!(
-                            "unexpected non-`HostEffect` predicate when computing \
+                            "unexpected non-`HostEffect` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
@@ -1151,10 +1151,10 @@ pub(super) fn const_conditions<'tcx>(
 
     ty::ConstConditions {
         parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
-        predicates: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
+        clauses: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    ty::ClauseKind::HostEffect(ty::HostEffectClause {
                         trait_ref,
                         constness: ty::BoundConstness::Maybe,
                     }) => trait_ref,
@@ -1206,7 +1206,7 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
         &*tcx.arena.alloc_from_iter(bounds.iter().copied().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    ty::ClauseKind::HostEffect(ty::HostEffectClause {
                         trait_ref,
                         constness: ty::BoundConstness::Maybe,
                     }) => trait_ref,

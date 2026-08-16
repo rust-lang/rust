@@ -5,7 +5,7 @@ use std::fmt::Write;
 use cranelift_codegen::isa::CallConv;
 use rustc_abi::CanonAbi;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_span::sym;
 use rustc_target::asm::*;

@@ -15,7 +15,6 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
     pluralize,
 };
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::symbol::used_keywords;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -31,7 +30,7 @@ use crate::diagnostics::{
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, FoundPathInGenerics,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,

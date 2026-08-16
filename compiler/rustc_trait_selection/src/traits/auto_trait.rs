@@ -685,8 +685,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(p)) => {
-                    let p = bound_predicate.rebind(p);
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(c)) => {
+                    let p = bound_predicate.rebind(c);
                     if self.is_param_no_infer(p.skip_binder().trait_ref.args) && is_new_pred {
                         self.add_user_clause(computed_clauses, predicate.expect_clause());
                     }

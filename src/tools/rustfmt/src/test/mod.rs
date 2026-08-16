@@ -754,6 +754,15 @@ fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<Format
             continue;
         }
 
+        if sig_comments.contains_key("stable") && is_nightly_channel!() {
+            debug!(
+                "Skipping '{}' because nightly introduces formatting changes. \
+                 Formatting should be stable on the `stable` channel.",
+                file_name.display()
+            );
+            continue;
+        }
+
         debug!("Testing '{}'...", file_name.display());
 
         match idempotent_check(&file_name, opt_config) {
@@ -824,7 +833,7 @@ fn read_config(filename: &Path) -> Config {
     };
 
     for (key, val) in &sig_comments {
-        if key != "target" && key != "config" && key != "unstable" {
+        if key != "target" && key != "config" && key != "unstable" && key != "stable" {
             config.override_value(key, val);
             if config.is_default(key) {
                 warn!("Default value {} used explicitly for {}", val, key);

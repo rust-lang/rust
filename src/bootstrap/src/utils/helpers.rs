@@ -14,10 +14,10 @@ use build_helper::ci::CiEnv;
 use object::read::archive::ArchiveFile;
 pub(crate) use shim_utils::{dylib_path, dylib_path_var};
 
-use crate::core::builder::Builder;
-use crate::core::config::{Config, TargetSelection};
+pub(crate) use self::macros::t;
+use crate::core::builder::{Builder, StepStack};
+use crate::core::config::{BootstrapOverrideLld, Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::{BootstrapOverrideLld, StepStack};
 
 #[cfg(test)]
 mod tests;
@@ -39,34 +39,36 @@ impl Drop for PanicTracker<'_> {
     }
 }
 
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-///
-/// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change one day...
-#[macro_export]
-macro_rules! t {
-    ($e:expr) => {{
-        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {}", stringify!($e), e),
-        }
-    }};
-    // it can show extra info in the second parameter
-    ($e:expr, $extra:expr) => {{
-        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
-        }
-    }};
+mod macros {
+    /// A helper macro to `unwrap` a result except also print out details like:
+    ///
+    /// * The file/line of the panic
+    /// * The expression that failed
+    /// * The error itself
+    ///
+    /// This is currently used judiciously throughout the build system rather than
+    /// using a `Result` with `try!`, but this may change one day...
+    macro_rules! t {
+        ($e:expr) => {{
+            let _panic_guard = $crate::utils::helpers::PanicTracker(std::panic::Location::caller());
+            match $e {
+                Ok(e) => e,
+                Err(e) => panic!("{} failed with {}", stringify!($e), e),
+            }
+        }};
+        // it can show extra info in the second parameter
+        ($e:expr, $extra:expr) => {{
+            let _panic_guard = $crate::utils::helpers::PanicTracker(std::panic::Location::caller());
+            match $e {
+                Ok(e) => e,
+                Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
+            }
+        }};
+    }
+
+    pub(crate) use t;
 }
 
-pub use t;
 pub fn exe(name: &str, target: TargetSelection) -> String {
     shim_utils::exe(name, &target.triple)
 }
@@ -569,11 +571,16 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
     f.set_times(times)
 }
 
-/// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
-/// If `is_test` true and code is an error code, it will cause a panic.
-pub fn detail_exit(code: i32, is_test: bool) -> ! {
-    // if in test and code is an error code, panic with status code provided
-    if is_test {
+/// Exits the process by calling [`std::process::exit`].
+///
+/// In CI, extra information will be printed to make failures easier to investigate.
+///
+/// If `cfg!(test)` is true, this will panic instead of exiting the process.
+/// Doing so avoids disturbing other tests in the process, and allows `#[should_panic]`
+/// to detect expected failures.
+pub(crate) fn exit_process(code: i32) -> ! {
+    // In bootstrap unit tests, panic instead of killing the whole test process.
+    if cfg!(test) {
         panic!("status code: {code}");
     } else {
         // If we're in CI, print the current bootstrap invocation command, to make it easier to
@@ -598,5 +605,5 @@ pub fn detail_exit(code: i32, is_test: bool) -> ! {
 
 pub fn fail(s: &str) -> ! {
     eprintln!("\n\n{s}\n\n");
-    detail_exit(1, cfg!(test));
+    exit_process(1);
 }

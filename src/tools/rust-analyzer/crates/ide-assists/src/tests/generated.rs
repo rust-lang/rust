@@ -3227,6 +3227,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_replace_arith_with_strict() {
+    check_doc_test(
+        "replace_arith_with_strict",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.strict_add(2);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_arith_with_wrapping() {
     check_doc_test(
         "replace_arith_with_wrapping",

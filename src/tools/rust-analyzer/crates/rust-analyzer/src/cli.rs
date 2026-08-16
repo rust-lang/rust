@@ -42,6 +42,9 @@ impl Verbosity {
     pub fn is_spammy(self) -> bool {
         matches!(self, Verbosity::Spammy)
     }
+    pub fn is_quiet(self) -> bool {
+        matches!(self, Verbosity::Quiet)
+    }
 }
 
 fn read_stdin() -> anyhow::Result<String> {

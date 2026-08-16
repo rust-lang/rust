@@ -935,6 +935,27 @@
 #
 #rust.parallel-frontend-threads = 1
 
+# Baseline commit SHA for comparing semver breakages in the Rust standard library.
+# The in-tree stdlib API will be evaluated for semver breakages against this commit.
+# Used for the `./x test std-semver-check` command.
+# If unset, the first upstream parent commit will be used.
+#
+# The SHA must point to a merge commit merged into the mainline rust-lang/rust `main` branch,
+# because bootstrap will attempt to download the JSON docs data for this commit from its CI.
+#rust.stdlib-semver-baseline = "<commit-sha>"
+
+# Enables building a wasm proc macro compatible toolchain.
+#
+# This requires building an additional standard library for a different target and adding it
+# to the sysroot before running tests, and so needs special handling in bootstrap. Currently
+# off by default.
+#
+# This currently opts compiletest into running/building proc-macro tests via wasm.
+#
+# The implementation for this has not finished landing, so you probably don't
+# want to enable this right now.
+#rust.wasm-proc-macros = false
+
 # =============================================================================
 # Distribution options
 #

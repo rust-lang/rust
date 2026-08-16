@@ -13,9 +13,7 @@ use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::Cycle;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{ErrorGuaranteed, Span};
-
-use crate::job::create_cycle_error;
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.
@@ -341,5 +339,93 @@ fn find_item_ty_spans(
             tys.iter().for_each(|ty| find_item_ty_spans(tcx, ty, needle, spans, seen_representable))
         }
         _ => {}
+    }
+}
+
+#[inline(never)]
+#[cold]
+pub(crate) fn create_cycle_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    Cycle { usage, frames }: &Cycle<'tcx>,
+    nested: bool,
+) -> Diag<'tcx> {
+    assert!(!frames.is_empty());
+
+    let span = frames[0].tagged_key.catch_default_span(tcx, frames[1 % frames.len()].span);
+
+    let mut cycle_stack = Vec::new();
+
+    use crate::diagnostics::StackCount;
+    let stack_bottom = frames[0].tagged_key.catch_description(tcx);
+    let stack_count = if frames.len() == 1 {
+        StackCount::Single { stack_bottom: stack_bottom.clone() }
+    } else {
+        StackCount::Multiple { stack_bottom: stack_bottom.clone() }
+    };
+
+    let mut prev = span;
+    for i in 1..frames.len() {
+        let frame = &frames[i];
+        let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
+        cycle_stack.push(crate::diagnostics::CycleStack {
+            span: if span == prev { DUMMY_SP } else { span },
+            desc: frame.tagged_key.catch_description(tcx),
+        });
+        prev = span;
+    }
+
+    let cycle_usage = usage.as_ref().map(|usage| {
+        let cycle_span = usage.tagged_key.catch_default_span(tcx, usage.span);
+        crate::diagnostics::CycleUsage {
+            span: if cycle_span != span { cycle_span } else { DUMMY_SP },
+            usage: usage.tagged_key.catch_description(tcx),
+        }
+    });
+
+    let is_all_def_kind = |def_kind| {
+        // Trivial type alias and trait alias cycles consists of `type_of` and
+        // `explicit_implied_clauses_of` queries, so we just check just these here.
+        frames.iter().all(|frame| match frame.tagged_key {
+            TaggedQueryKey::type_of(def_id)
+            | TaggedQueryKey::explicit_implied_clauses_of(def_id)
+                if tcx.def_kind(def_id) == def_kind =>
+            {
+                true
+            }
+            _ => false,
+        })
+    };
+
+    let alias = if !nested {
+        if is_all_def_kind(DefKind::TyAlias) {
+            Some(crate::diagnostics::Alias::Ty)
+        } else if is_all_def_kind(DefKind::TraitAlias) {
+            Some(crate::diagnostics::Alias::Trait)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    if nested {
+        tcx.sess.dcx().create_err(crate::diagnostics::NestedCycle {
+            span,
+            cycle_stack,
+            stack_bottom: crate::diagnostics::NestedCycleBottom { stack_bottom },
+            cycle_usage,
+            stack_count,
+            note_span: (),
+        })
+    } else {
+        tcx.sess.dcx().create_err(crate::diagnostics::Cycle {
+            span,
+            cycle_stack,
+            stack_bottom,
+            alias,
+            cycle_usage,
+            stack_count,
+            note_span: (),
+        })
     }
 }
