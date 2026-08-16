@@ -65,6 +65,11 @@ impl S {
         arr[self] = true;
         //~^ ERROR cannot find value `self` in this scope
     }
+
+    fn reset(other: S) {
+        self = other;
+        //~^ ERROR cannot find value `self` in this scope
+    }
 }
 
 fn main() {}

@@ -1534,16 +1534,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // If `self` is being mutated on the left-hand side of an
                     // assignment, a `&self` receiver would not compile, so
                     // suggest `&mut self` instead.
-                    let (self_param, self_receiver) = if self.should_suggest_mut_self() {
-                        ("&mut self, ", "&mut self")
-                    } else {
-                        ("&self, ", "&self")
-                    };
+                    let self_receiver =
+                        if self.should_suggest_mut_self() { "&mut self" } else { "&self" };
                     let (span, sugg) = fn_kind
                         .decl()
                         .inputs
                         .get(0)
-                        .map(|p| (p.span.shrink_to_lo(), self_param))
+                        .map(|p| (p.span.shrink_to_lo(), format!("{self_receiver}, ")))
                         .unwrap_or_else(|| {
                             // Try to look for the "(" after the function name, if possible.
                             // This avoids placing the suggestion into the visibility specifier.
@@ -1557,7 +1554,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     .source_map()
                                     .span_through_char(span, '(')
                                     .shrink_to_hi(),
-                                self_receiver,
+                                self_receiver.to_owned(),
                             )
                         });
                     err.span_suggestion_verbose(
@@ -1602,14 +1599,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// `self` merely read on the left-hand side (`arr[self] = ...`) and a
     /// bare `self = ...` (which would need `mut self`) are excluded.
     fn should_suggest_mut_self(&self) -> bool {
-        fn is_self_place(expr: &Expr) -> bool {
-            match &expr.peel_parens().kind {
+        fn is_self_place(expr: &ExprKind) -> bool {
+            match expr {
                 ExprKind::Path(None, path) => {
                     path.segments.len() == 1 && path.segments[0].ident.name == kw::SelfLower
                 }
                 ExprKind::Field(base, _)
                 | ExprKind::Index(base, _, _)
-                | ExprKind::Unary(ast::UnOp::Deref, base) => is_self_place(base),
+                | ExprKind::Unary(ast::UnOp::Deref, base) => {
+                    is_self_place(&base.peel_parens().kind)
+                }
                 _ => false,
             }
         }
@@ -1622,10 +1621,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return false;
         };
 
-        // `lhs` is peeled, so a bare path here means the target *is* `self`,
+        // `lhs_kind` is peeled, so a bare path here means the target *is* `self`,
         // which would need `mut self` rather than `&mut self`.
-        let lhs = lhs.peel_parens();
-        is_self_place(lhs) && !matches!(lhs.kind, ExprKind::Path(None, _))
+        let lhs_kind = &lhs.peel_parens().kind;
+        is_self_place(lhs_kind) && !matches!(lhs_kind, ExprKind::Path(None, _))
     }
 
     fn detect_missing_binding_available_from_pattern(
