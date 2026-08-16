@@ -477,13 +477,13 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // the DT_SONAME will be used by the linker to populate DT_NEEDED
     // which the loader uses to find the library.
     stub.write_align_dynamic();
-    stub.write_dynamic_string(elf::DT_SONAME, soname);
+    stub.write_dynamic_string(elf::DT_SONAME, soname).unwrap();
     // LSB section "2.7. Symbol Versioning" requires `DT_VERDEFNUM` to be reliable.
     if verdef_count > 1 {
-        stub.write_dynamic(elf::DT_VERDEFNUM, verdef_count as u64);
+        stub.write_dynamic(elf::DT_VERDEFNUM, verdef_count as u64).unwrap();
     }
     // DT_NULL terminates the .dynamic table.
-    stub.write_dynamic(elf::DT_NULL, 0);
+    stub.write_dynamic(elf::DT_NULL, 0).unwrap();
 
     stub_buf
 }
