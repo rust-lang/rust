@@ -1051,7 +1051,7 @@ impl<'b> Pattern for &'b str {
 
     #[inline]
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        Some(Utf8Pattern::StringPattern(*self))
+        Some(Utf8Pattern::StringPattern(self))
     }
 }
 
