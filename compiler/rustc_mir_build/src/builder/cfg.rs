@@ -1,6 +1,5 @@
 //! Routines for manipulating the control-flow graph.
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
@@ -132,7 +131,7 @@ impl<'tcx> CFG<'tcx> {
             self.block_data(block)
         );
         self.block_data_mut(block).terminator =
-            Some(Terminator { source_info, kind, attributes: ThinVec::new() });
+            Some(Terminator { source_info, kind, attributes: None });
         self.block_data_mut(block).terminator.as_mut().unwrap()
     }
 
