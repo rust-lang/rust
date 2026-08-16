@@ -7,7 +7,7 @@ use crate::diagnostics::{CheckId, TidyCtx};
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
     let path = path.join("rustdoc-html");
-    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_html_tests").path(&path));
+    let check = tidy_ctx.start_check(CheckId::new("rustdoc_html_tests").path(&path));
 
     // The list of subdirectories in rustdoc-html tests.
     // Compare previous subdirectory with current subdirectory

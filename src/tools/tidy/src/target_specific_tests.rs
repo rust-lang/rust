@@ -20,7 +20,7 @@ struct RevisionInfo<'a> {
 }
 
 pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("target-specific-tests").path(tests_path));
+    let check = tidy_ctx.start_check(CheckId::new("target-specific-tests").path(tests_path));
 
     crate::walk::walk(tests_path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         if content.contains("// ignore-tidy-target-specific-tests") {
