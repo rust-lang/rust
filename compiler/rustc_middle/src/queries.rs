@@ -2154,8 +2154,8 @@ rustc_queries! {
     ///   - `foo` outlives `'a`, but we know that `'b: 'a` holds, so `'b` is *also* potentially live
     ///     (and so is `T`, since `T: 'static` implies `T: 'a`)
     ///   - `bar` outlives `'static`, so we know that no args are potentially live and we can return an empty set
-    ///   - `baz` has no outlives bound, so return `None` and let the caller decide what to do
-    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx Option<rustc_index::bit_set::DenseBitSet<u32>> {
+    ///   - `baz` has no outlives bound, so all args are potentially live
+    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
         arena_cache
         desc { "identifying live args for alias `{:?}`", kind }
     }

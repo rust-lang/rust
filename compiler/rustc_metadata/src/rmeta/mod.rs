@@ -482,7 +482,7 @@ define_tables! {
     anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
     associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
-    live_args_for_alias_from_outlives_bounds: Table<DefIndex, LazyValue<Option<DenseBitSet<u32>>>>,
+    live_args_for_alias_from_outlives_bounds: Table<DefIndex, LazyValue<DenseBitSet<u32>>>,
     args_known_to_outlive_alias_params: Table<DefIndex, LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
     mut_restriction: Table<DefIndex, LazyValue<ty::RestrictionKind>>,
 }
