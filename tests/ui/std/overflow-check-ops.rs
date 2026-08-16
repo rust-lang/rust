@@ -7,6 +7,7 @@
 //@[WRAP] compile-flags: -C overflow-checks=false
 
 #![feature(cfg_overflow_checks)]
+#![feature(funnel_shifts)]
 
 use std::hint::black_box as bb;
 use std::{assert_matches, fmt, panic};
@@ -28,6 +29,8 @@ fn main() {
     check(|| bb(u32::MAX) * bb(2), u32::MAX << 1, "mul");
     check(|| bb(1u32) << bb(32), 1, "shl");
     check(|| bb(u32::MAX) >> bb(32), u32::MAX, "shr");
+    check(|| bb(1234u32).funnel_shl(4567, bb(32)), 1234, "funnel_shl");
+    check(|| bb(1234u32).funnel_shr(4567, bb(32)), 4567, "funnel_shr");
     check(|| bb(u32::MAX).pow(bb(2)), 1, "pow");
     check(|| bb(u32::MAX).next_power_of_two(), 0, "next_power_of_two");
 
