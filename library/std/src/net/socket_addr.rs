@@ -257,6 +257,6 @@ impl<T: ToSocketAddrs + ?Sized> ToSocketAddrs for &T {
 impl ToSocketAddrs for String {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
-        (&**self).to_socket_addrs()
+        (**self).to_socket_addrs()
     }
 }

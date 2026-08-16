@@ -642,7 +642,7 @@ impl io::Read for UnixStream {
 
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        io::Read::is_read_vectored(&&*self)
+        io::Read::is_read_vectored(&self)
     }
 }
 
@@ -678,7 +678,7 @@ impl io::Write for UnixStream {
 
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        io::Write::is_write_vectored(&&*self)
+        io::Write::is_write_vectored(&self)
     }
 
     fn flush(&mut self) -> io::Result<()> {
