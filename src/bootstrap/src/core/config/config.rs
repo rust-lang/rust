@@ -227,6 +227,7 @@ pub struct Config {
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_annotate_moves_size_limit: Option<u64>,
+    pub rust_coverage: bool,
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
     pub rust_std_features: BTreeSet<String>,
@@ -1188,6 +1189,8 @@ impl Config {
 
         let download_rustc = download_rustc_commit.is_some();
 
+        let rust_coverage = flags_paths.iter().any(|p| p.ends_with("compiler-coverage"));
+
         let stage = match flags_cmd {
             Subcommand::Check { .. } => flags_stage.or(build_check_stage).unwrap_or(1),
             Subcommand::Clippy { .. } | Subcommand::Fix => {
@@ -1207,6 +1210,9 @@ impl Config {
             Subcommand::Dist => flags_stage.or(build_dist_stage).unwrap_or(2),
             Subcommand::Install => flags_stage.or(build_install_stage).unwrap_or(2),
             Subcommand::Perf { .. } => flags_stage.unwrap_or(1),
+            // `compiler-coverage` is the exception: it needs a real compiler to
+            // instrument, so it starts at stage 1 rather than stage 0.
+            Subcommand::Run { .. } if rust_coverage => flags_stage.unwrap_or(1),
             // Most of the run commands execute bootstrap tools, which don't depend on the compiler.
             // Other commands listed here should always use bootstrap tools.
             Subcommand::Clean { .. }
@@ -1299,6 +1305,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         }
 
         let with_defaults = |debuginfo_level_specific: Option<_>| {
+            // Coverage needs line tables to map counts back to source, so it
+            // overrides whatever level was asked for.
+            if rust_coverage {
+                return DebuginfoLevel::Limited;
+            }
             debuginfo_level_specific.or(rust_debuginfo_level).unwrap_or(
                 if rust_debug == Some(true) {
                     DebuginfoLevel::Limited
@@ -1547,6 +1558,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rust_codegen_units: rust_codegen_units.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
             rust_compress_debuginfo: rust_compress_debuginfo.unwrap_or_default(),
+            rust_coverage,
             rust_debug_logging: rust_debug_logging
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
@@ -1857,7 +1869,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     }
 
     pub fn any_profiler_enabled(&self) -> bool {
-        self.target_config.values().any(|t| matches!(&t.profiler, Some(p) if p.is_string_or_true()))
+        self.rust_coverage
+            || self
+                .target_config
+                .values()
+                .any(|t| matches!(&t.profiler, Some(p) if p.is_string_or_true()))
             || self.profiler
     }
 
@@ -1938,6 +1954,9 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     }
 
     pub fn profiler_enabled(&self, target: TargetSelection) -> bool {
+        if self.rust_coverage {
+            return true;
+        }
         self.target_config
             .get(&target)
             .and_then(|t| t.profiler.as_ref())

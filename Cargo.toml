@@ -15,6 +15,7 @@ members = [
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",
   "src/tools/collect-license-metadata",
+  "src/tools/compiler-coverage-tool",
   "src/tools/compiletest",
   "src/tools/coverage-dump",
   "src/tools/features-status-dump",

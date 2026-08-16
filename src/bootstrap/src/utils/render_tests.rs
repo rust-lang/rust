@@ -58,6 +58,20 @@ fn run_tests(
     stream: bool,
     record_failed_tests: RecordFailedTests,
 ) -> bool {
+    run_tests_with_callback(builder, cmd, stream, record_failed_tests, None)
+}
+
+// Called with the name of every test that finishes, whether it passed or
+// failed. Only ignored tests skip this, since they never actually ran.
+pub(crate) type OnTestFinished = Box<dyn Fn(&str)>;
+
+pub(crate) fn run_tests_with_callback(
+    builder: &Builder<'_>,
+    cmd: &mut BootstrapCommand,
+    stream: bool,
+    record_failed_tests: RecordFailedTests,
+    on_test_finished: Option<OnTestFinished>,
+) -> bool {
     builder.do_if_verbose(|| println!("running: {cmd:?}"));
 
     let Some(mut streaming_command) = cmd.stream_capture_stdout(&builder.config.exec_ctx) else {
@@ -66,8 +80,11 @@ fn run_tests(
 
     // This runs until the stdout of the child is closed, which means the child exited. We don't
     // run this on another thread since the builder is not Sync.
-    let renderer =
+    let mut renderer =
         Renderer::new(streaming_command.stdout.take().unwrap(), builder, record_failed_tests);
+    if let Some(cb) = on_test_finished {
+        renderer = renderer.with_on_test_finished(cb);
+    }
     if stream {
         renderer.stream_all();
     } else {
@@ -85,7 +102,7 @@ fn run_tests(
     status.success()
 }
 
-struct Renderer<'a> {
+pub(crate) struct Renderer<'a> {
     stdout: BufReader<ChildStdout>,
     failures: Vec<TestOutcome>,
     benches: Vec<BenchOutcome>,
@@ -100,10 +117,11 @@ struct Renderer<'a> {
     ci_latest_logged_percentage: f64,
 
     failed_tests: Option<File>,
+    on_test_finished: Option<OnTestFinished>,
 }
 
 impl<'a> Renderer<'a> {
-    fn new(
+    pub(crate) fn new(
         stdout: ChildStdout,
         builder: &'a Builder<'a>,
         record_failed_tests: RecordFailedTests,
@@ -134,10 +152,16 @@ impl<'a> Renderer<'a> {
             terse_tests_in_line: 0,
             ci_latest_logged_percentage: 0.0,
             failed_tests,
+            on_test_finished: None,
         }
     }
 
-    fn render_all(mut self) {
+    pub(crate) fn with_on_test_finished(mut self, cb: OnTestFinished) -> Self {
+        self.on_test_finished = Some(cb);
+        self
+    }
+
+    pub(crate) fn render_all(mut self) {
         let mut line = Vec::new();
         loop {
             line.clear();
@@ -169,7 +193,7 @@ impl<'a> Renderer<'a> {
     }
 
     /// Renders the stdout characters one by one
-    fn stream_all(mut self) {
+    pub(crate) fn stream_all(mut self) {
         let mut buffer = [0; 1];
         loop {
             match self.stdout.read(&mut buffer) {
@@ -388,8 +412,12 @@ impl<'a> Renderer<'a> {
                 self.render_test_outcome(Outcome::BenchOk, &fake_test_outcome);
                 self.benches.push(outcome);
             }
+
             Message::Test(TestMessage::Ok(outcome)) => {
                 self.render_test_outcome(Outcome::Ok, &outcome);
+                if let Some(cb) = &self.on_test_finished {
+                    cb(&outcome.name);
+                }
             }
             Message::Test(TestMessage::Ignored(outcome)) => {
                 self.render_test_outcome(
@@ -405,6 +433,9 @@ impl<'a> Renderer<'a> {
                     eprintln!(
                         "failed to write test failure to file: {e} (attempted because `--record` was passed)"
                     );
+                }
+                if let Some(cb) = &self.on_test_finished {
+                    cb(&outcome.name);
                 }
                 self.failures.push(outcome);
             }

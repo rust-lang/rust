@@ -44,7 +44,7 @@ use crate::utils::helpers::{
     dylib_path, dylib_path_var, linker_args, linker_flags, t, target_supports_cranelift_backend,
     up_to_date,
 };
-use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
+use crate::utils::render_tests::{Renderer, add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, Compiler, GitRepo, Mode, TestTarget, envify};
 
 mod compiletest;
@@ -1200,6 +1200,216 @@ impl CommandLineStep for IntrinsicTest {
     }
 }
 
+/// Run the test suites that compiler coverage is collected from.
+pub(crate) fn collect_coverage_suites(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) {
+    // These exercise the compiler broadly. Adding one here makes a coverage
+    // run longer by however long that suite takes on its own.
+    let suites = [
+        (CompiletestMode::Ui, "ui", "tests/ui"),
+        (CompiletestMode::Incremental, "incremental", "tests/incremental"),
+        (CompiletestMode::RunMake, "run-make", "tests/run-make"),
+        (CompiletestMode::RunMake, "run-make-cargo", "tests/run-make-cargo"),
+        (CompiletestMode::Ui, "ui-fulldeps", "tests/ui-fulldeps"),
+        (CompiletestMode::Ui, "crashes", "tests/crashes"),
+    ];
+
+    for (mode, suite, path) in suites {
+        builder.info(&format!("Collecting compiler coverage ({suite} test suite)"));
+        builder.ensure(Compiletest {
+            test_compiler: compiler,
+            target,
+            mode,
+            suite,
+            path,
+            compare_mode: None,
+            run_tests_fn: TestRunnerKind::Coverage,
+        });
+    }
+}
+
+/// Run compiletest and merge the coverage that the tests produce.
+///
+/// The compiler is already instrumented by the time we get here, see
+/// `rust_coverage` in `compile.rs`. All this adds is telling it where to put
+/// the `.profraw` files and merging them as tests finish.
+// FIXME: most of this is copied from `try_run_tests`. Only the profile
+// environment variable, `--force-rerun` and the merging are new, so the two
+// should share once it is clear what the common shape looks like.
+fn coverage_run_tests(
+    builder: &Builder<'_>,
+    cmd: &mut BootstrapCommand,
+    stream: bool,
+    record_failed_tests: RecordFailedTests,
+) -> bool {
+    let paths = crate::core::build_steps::run::CoveragePaths::new(builder);
+    let llvm_profdata =
+        builder.llvm_out(builder.config.host_target).join("bin").join("llvm-profdata");
+
+    cmd.env("LLVM_PROFILE_FILE", paths.profraw_dir.join("rustc_%m_%p.profraw").as_os_str());
+
+    // A test compiletest skips as up to date never writes coverage, which then
+    // reads as the compiler never running that code at all.
+    cmd.arg("--force-rerun");
+
+    // Merging after every single test means one llvm-profdata process per
+    // test, which gets slow once there are thousands of them. Batch them up
+    // instead, and only actually merge once enough have piled up.
+    const MERGE_BATCH_SIZE: usize = 100;
+
+    let (finished_tx, finished_rx) = std::sync::mpsc::channel::<usize>();
+
+    let merge_profraw_dir = paths.profraw_dir.clone();
+    let merge_profdata_path = paths.profdata_path.clone();
+    let merge_llvm_profdata = llvm_profdata.clone();
+    let merge_thread = std::thread::spawn(move || {
+        // Every profraw this thread has already merged. Only ever grows, so
+        // a file that gets picked up in one batch never gets merged again in
+        // a later one.
+        let mut merged: HashSet<PathBuf> = HashSet::new();
+
+        let mut do_merge = || {
+            let new_profraws: Vec<PathBuf> = match fs::read_dir(&merge_profraw_dir) {
+                Ok(entries) => entries
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| p.extension().map(|x| x == "profraw").unwrap_or(false))
+                    .filter(|p| !merged.contains(p))
+                    .collect(),
+                Err(e) => {
+                    eprintln!("coverage: failed to read profraw dir: {e}");
+                    return;
+                }
+            };
+
+            if new_profraws.is_empty() {
+                return;
+            }
+
+            // Merge the new profraws into whatever's already in combined.profdata,
+            // then delete them so the same files never get counted twice.
+            let mut merge = std::process::Command::new(&merge_llvm_profdata);
+            merge.arg("merge").arg("--sparse").arg("-o").arg(&merge_profdata_path);
+            if merge_profdata_path.exists() {
+                merge.arg(&merge_profdata_path);
+            }
+            for p in &new_profraws {
+                merge.arg(p);
+            }
+            match merge.output() {
+                Ok(out) if out.status.success() => {
+                    for p in &new_profraws {
+                        if let Err(e) = fs::remove_file(p) {
+                            eprintln!("coverage: failed to remove {}: {e}", p.display());
+                        }
+                        merged.insert(p.clone());
+                    }
+                }
+                Ok(out) => {
+                    eprintln!(
+                        "coverage: llvm-profdata merge failed:\n{}",
+                        String::from_utf8_lossy(&out.stderr)
+                    );
+                }
+                Err(e) => {
+                    eprintln!("coverage: failed to run llvm-profdata: {e}");
+                }
+            }
+        };
+
+        let mut pending = 0usize;
+        // recv() returns Err once every sender is dropped, i.e. once the test
+        // run is done and the last batch needs flushing.
+        while let Ok(new_count) = finished_rx.recv() {
+            pending += new_count;
+            if pending >= MERGE_BATCH_SIZE {
+                do_merge();
+                pending = 0;
+            }
+        }
+        if pending > 0 {
+            do_merge();
+        }
+
+        merged.len()
+    });
+
+    // Its own record of which profraws it has already counted, separate from
+    // the merge thread's. It only grows too, so a file that gets deleted by
+    // the merge thread later doesn't get double counted here just because it
+    // vanished from disk.
+    let seen_by_callback: std::cell::RefCell<HashSet<PathBuf>> =
+        std::cell::RefCell::new(HashSet::new());
+    let on_test_finished = move |test_name: &str| {
+        let new_count = match fs::read_dir(&paths.profraw_dir) {
+            Ok(entries) => {
+                let mut seen = seen_by_callback.borrow_mut();
+                entries
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| p.extension().map(|x| x == "profraw").unwrap_or(false))
+                    .filter(|p| seen.insert(p.clone()))
+                    .count()
+            }
+            Err(_) => 0,
+        };
+        if new_count == 0 {
+            eprintln!(
+                "coverage: test `{test_name}` finished but wrote no profraw files; \
+                 the instrumented rustc may not have run"
+            );
+        }
+        // ignore send errors -- if the merge thread already exited there's
+        // nothing left to signal
+        let _ = finished_tx.send(new_count);
+    };
+
+    builder.do_if_verbose(|| println!("running: {cmd:?}"));
+
+    let Some(mut streaming_command) = cmd.stream_capture_stdout(&builder.config.exec_ctx) else {
+        return true;
+    };
+
+    let renderer =
+        Renderer::new(streaming_command.stdout.take().unwrap(), builder, record_failed_tests)
+            .with_on_test_finished(Box::new(on_test_finished));
+
+    if stream {
+        renderer.stream_all();
+    } else {
+        renderer.render_all();
+    }
+
+    let total_merged = merge_thread.join().unwrap();
+    if total_merged == 0 {
+        // Not fatal here: this only covers the one suite that just ran, and
+        // a suite with no passing tests -- `crashes` is expected to fail its
+        // tests -- legitimately merges nothing. `CompilerCoverage::run`
+        // checks across the whole run once every suite has finished.
+        eprintln!("coverage: no profraw files were produced for `{cmd:?}`");
+    }
+
+    let status = streaming_command.wait(&builder.config.exec_ctx).unwrap();
+    if !status.success() && builder.is_verbose() {
+        println!(
+            "\n\ncommand did not execute successfully: {cmd:?}\n\
+             expected success, got: {status}",
+        );
+    }
+
+    if !status.success() {
+        if builder.fail_fast {
+            helpers::exit_process(1);
+        }
+        builder.config.exec_ctx().add_to_delay_failure(format!("{cmd:?}"));
+    }
+
+    status.success()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
@@ -1477,6 +1687,7 @@ impl CommandLineStep for RustdocJSNotStd {
             suite: "rustdoc-js",
             path: "tests/rustdoc-js",
             compare_mode: None,
+            run_tests_fn: TestRunnerKind::Default,
         });
     }
 }
@@ -1914,6 +2125,7 @@ macro_rules! test {
                         $( value = $compare_mode; )?
                         value
                     }),
+                    run_tests_fn: TestRunnerKind::Default,
                 })
             }
         }
@@ -2086,6 +2298,7 @@ impl CommandLineStep for Coverage {
             suite: Self::SUITE,
             path: Self::PATH,
             compare_mode: None,
+            run_tests_fn: TestRunnerKind::Default,
         });
     }
 }
@@ -2173,6 +2386,7 @@ impl CommandLineStep for MirOpt {
                 suite: "mir-opt",
                 path: "tests/mir-opt",
                 compare_mode: None,
+                run_tests_fn: TestRunnerKind::Default,
             })
         };
 
@@ -2207,7 +2421,7 @@ impl CommandLineStep for MirOpt {
 /// Compiles all tests with `test_compiler` for `target` with the specified
 /// compiletest `mode` and `suite` arguments. For example `mode` can be
 /// "mir-opt" and `suite` can be something like "debuginfo".
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
     /// The compiler that we're testing.
     test_compiler: Compiler,
@@ -2216,6 +2430,50 @@ struct Compiletest {
     suite: &'static str,
     path: &'static str,
     compare_mode: Option<&'static str>,
+    /// How to run the tests. `Coverage` also merges what each test produces.
+    run_tests_fn: TestRunnerKind,
+}
+
+// An enum instead of a function pointer, because Compiletest derives Hash and
+// Eq so bootstrap can use it as a cache key, and two function pointers don't
+// tell you anything about whether they're really the same thing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum TestRunnerKind {
+    Default,
+    Coverage,
+}
+
+impl TestRunnerKind {
+    fn run(
+        self,
+        builder: &Builder<'_>,
+        cmd: &mut BootstrapCommand,
+        stream: bool,
+        record_failed_tests: RecordFailedTests,
+    ) -> bool {
+        match self {
+            TestRunnerKind::Default => {
+                crate::utils::render_tests::try_run_tests(builder, cmd, stream, record_failed_tests)
+            }
+            TestRunnerKind::Coverage => {
+                coverage_run_tests(builder, cmd, stream, record_failed_tests)
+            }
+        }
+    }
+}
+
+impl std::fmt::Debug for Compiletest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Compiletest")
+            .field("test_compiler", &self.test_compiler)
+            .field("target", &self.target)
+            .field("mode", &self.mode)
+            .field("suite", &self.suite)
+            .field("path", &self.path)
+            .field("compare_mode", &self.compare_mode)
+            .field("run_tests_fn", &self.run_tests_fn)
+            .finish()
+    }
 }
 
 impl Step for Compiletest {
@@ -2897,7 +3155,12 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.env("RUSTC_SANITIZER_SUPPORT", "1");
         }
 
-        if builder.config.profiler_enabled(target) {
+        // Tests marked `needs-profiler-runtime` generate their own `.profraw`
+        // files and then read them back. A coverage run points every `.profraw`
+        // on the machine at the coverage directory, so those tests never find
+        // theirs. Leaving this argument off makes compiletest ignore them.
+        if builder.config.profiler_enabled(target) && self.run_tests_fn != TestRunnerKind::Coverage
+        {
             cmd.arg("--profiler-runtime");
         }
 
@@ -2935,7 +3198,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             target,
             test_compiler.stage,
         );
-        try_run_tests(builder, &mut cmd, false, record_failed_tests.clone());
+        self.run_tests_fn.run(builder, &mut cmd, false, record_failed_tests.clone());
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -2958,7 +3221,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                 suite, mode, compare_mode, test_compiler.host, target
             ));
             let _time = helpers::timeit(builder);
-            try_run_tests(builder, &mut cmd, false, record_failed_tests);
+            self.run_tests_fn.run(builder, &mut cmd, false, record_failed_tests);
         }
     }
 
