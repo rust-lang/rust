@@ -1,0 +1,9 @@
+warning: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexport-glob.rs:14:1
+   |
+LL | #[unstable(feature = "stable_glob_reexport", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: 1 warning emitted

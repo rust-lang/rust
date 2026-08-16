@@ -964,6 +964,10 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 #[note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")]
 pub(crate) struct IneffectiveUnstableImpl;
 
+#[derive(Diagnostic)]
+#[diag("`#[unstable]` does not make this re-exported path unstable")]
+pub(crate) struct IneffectiveUnstableReexport;
+
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]
 #[diag(
