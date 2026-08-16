@@ -126,6 +126,7 @@ enum InstructionVisibility {
 pub(super) enum StepResult {
     Step,
     Breakpoint,
+    Exception { message: String },
 }
 
 pub(super) enum ExecutionResult {
@@ -177,6 +178,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
         self.resume(ResumeMode::MirInstruction)
     }
+
     /// Step until the displayed source file or line changes.
     pub(super) fn step(&mut self) -> InterpResult<'tcx, ExecutionResult> {
         if let Some(result) = self.already_finished() {
@@ -235,15 +237,24 @@ impl<'tcx> PrirodaContext<'tcx> {
         Some(*code)
     }
 
+    fn stop_at_exception(&mut self, err: InterpErrorInfo<'tcx>) -> StepResult {
+        let message = err.kind().to_string();
+        self.last_location = self.current_location.take();
+        self.current_location = self.resolve_current_location();
+        StepResult::Exception { message }
+    }
+
     /// Advance execution until the selected resume mode reaches a stopping point.
     fn resume(&mut self, mode: ResumeMode) -> InterpResult<'tcx, ExecutionResult> {
         loop {
+            // Program exits are not debugger exceptions. Preserve all other
+            // interpreter errors as stopped debugger events.
             if let Err(err) = self.advance().report_err() {
                 if let Some(code) = Self::program_exit(&err) {
                     self.exit_code = Some(code);
                     return interp_ok(ExecutionResult::ProgramExited { code });
                 }
-                return Err(err).into();
+                return interp_ok(ExecutionResult::Stopped(self.stop_at_exception(err)));
             }
 
             // An explicit breakpoint should stop execution even when the current

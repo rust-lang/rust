@@ -1,1 +1,5 @@
-(priroda) 
+(priroda) program stopped with error: memory access failed: attempting to access 1 byte, but got null pointer
+{MANIFEST_DIR}/tests/ui/ub_exception_stop.rs:4
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: <none>, Id: _1, Ty: *mut u8, Value: {0x0 as *mut u8}
+(priroda) quitting

@@ -1,4 +1,3 @@
-//@ priroda-relax-exit-status
 #![allow(deref_nullptr)]
 fn main() {
     unsafe {

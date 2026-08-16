@@ -337,15 +337,20 @@ impl<R: Read, W: Write> DapSession<R, W> {
         self.require_state(DapState::Launched)?;
 
         match Self::execution_outcome(session.stop_at_first_user_location()) {
-            ExecutionOutcome::Stopped(_) =>
+            ExecutionOutcome::Stopped(result) => {
+                // A normal startup stop is an entry event, but an interpreter
+                // error before the first user location is an exception stop.
+                let stopped = match result {
+                    StepResult::Step => Self::stopped_event_body(StoppedEventReason::Entry),
+                    result => Self::stopped_event_for(result),
+                };
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(ResponseBody::ConfigurationDone),
                     state: Some(DapState::Stopped),
-                    events: vec![Event::Stopped(Self::stopped_event_body(
-                        StoppedEventReason::Entry,
-                    ))],
+                    events: vec![Event::Stopped(stopped)],
                     outcome: HandlerOutcome::Continue,
-                }),
+                })
+            }
             ExecutionOutcome::Terminated { code } =>
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(ResponseBody::ConfigurationDone),
@@ -471,9 +476,7 @@ impl<R: Read, W: Write> DapSession<R, W> {
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(body),
                     state: Some(DapState::Stopped),
-                    events: vec![Event::Stopped(Self::stopped_event_body(Self::stopped_reason(
-                        result,
-                    )))],
+                    events: vec![Event::Stopped(Self::stopped_event_for(result))],
                     outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Terminated { code } =>
@@ -511,9 +514,7 @@ impl<R: Read, W: Write> DapSession<R, W> {
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(body),
                     state: Some(DapState::Stopped),
-                    events: vec![Event::Stopped(Self::stopped_event_body(Self::stopped_reason(
-                        result,
-                    )))],
+                    events: vec![Event::Stopped(Self::stopped_event_for(result))],
                     outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Terminated { code } =>
@@ -669,6 +670,23 @@ impl<R: Read, W: Write> DapSession<R, W> {
         ExecutionOutcome::Failed(kind.to_string())
     }
 
+    fn stopped_event_for(result: StepResult) -> StoppedEventBody {
+        let (reason, text) = match result {
+            StepResult::Step => (StoppedEventReason::Step, None),
+            StepResult::Breakpoint => (StoppedEventReason::Breakpoint, None),
+            StepResult::Exception { message } => (StoppedEventReason::Exception, Some(message)),
+        };
+        StoppedEventBody {
+            reason,
+            description: None,
+            thread_id: Some(THREAD_ID),
+            preserve_focus_hint: None,
+            text,
+            all_threads_stopped: Some(true),
+            hit_breakpoint_ids: None,
+        }
+    }
+
     fn stopped_event_body(reason: StoppedEventReason) -> StoppedEventBody {
         StoppedEventBody {
             reason,
@@ -678,13 +696,6 @@ impl<R: Read, W: Write> DapSession<R, W> {
             text: None,
             all_threads_stopped: Some(true),
             hit_breakpoint_ids: None,
-        }
-    }
-
-    fn stopped_reason(result: StepResult) -> StoppedEventReason {
-        match result {
-            StepResult::Step => StoppedEventReason::Step,
-            StepResult::Breakpoint => StoppedEventReason::Breakpoint,
         }
     }
 

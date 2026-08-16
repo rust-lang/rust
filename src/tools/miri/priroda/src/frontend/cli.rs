@@ -56,6 +56,8 @@ impl Cli {
                                 println!("Hit breakpoint");
                                 Self::print_location(session);
                             }
+                            StepResult::Exception { ref message } =>
+                                Self::print_exception_stop(message, session),
                         },
                     ExecutionResult::ProgramExited { code } => {
                         println!("program finished with exit code {code}");
@@ -114,6 +116,11 @@ impl Cli {
             }
         }
         interp_ok(true)
+    }
+
+    fn print_exception_stop<'tcx>(message: &str, session: &PrirodaContext<'tcx>) {
+        println!("program stopped with error: {message}");
+        Self::print_location(session);
     }
 
     fn parse_command(&self, input: &str) -> Option<DebuggerCommand> {
