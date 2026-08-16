@@ -171,7 +171,7 @@ impl fmt::Display for FromBytesUntilNulError {
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(crate::bstr::ByteStr::from_bytes(self.to_bytes()), f)
+        fmt::Debug::fmt(crate::byte_str::ByteStr::from_bytes(self.to_bytes()), f)
     }
 }
 
@@ -652,7 +652,7 @@ impl CStr {
                   it returns an object that can be displayed"]
     #[inline]
     pub fn display(&self) -> impl fmt::Display {
-        crate::bstr::ByteStr::from_bytes(self.to_bytes())
+        crate::byte_str::ByteStr::from_bytes(self.to_bytes())
     }
 
     /// Returns the same string as a string slice `&CStr`.
