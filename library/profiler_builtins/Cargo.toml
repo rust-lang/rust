@@ -11,5 +11,6 @@ doc = false
 [dependencies]
 
 [build-dependencies]
-# Pinned so `cargo update` bumps don't cause breakage
-cc = "=1.2.0"
+# Pinned so `cargo update` bumps don't cause breakage.
+# (This is not about any specific issue, just a general precaution.)
+cc = "=1.2.62"
