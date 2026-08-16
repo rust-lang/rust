@@ -19,9 +19,10 @@ use crate::core::builder::{
     self, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
-use crate::{Compiler, FileType, Mode};
+use crate::{FileType, Mode};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {

@@ -19,6 +19,7 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::span;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::llvm::{LlvmFromCi, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
@@ -27,6 +28,7 @@ use crate::core::builder::{
     self, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     apply_pgo, crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
@@ -37,10 +39,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{
-    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, trace,
-};
+use crate::{CLang, DependencyType, FileType, GitRepo, Mode, debug, trace};
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2180,7 +2179,7 @@ impl CommandLineStep for Assemble {
                 let _llvm_tools_span =
                     span!(tracing::Level::TRACE, "installing llvm tools to sysroot", ?libdir_bin)
                         .entered();
-                for tool in LLVM_TOOLS {
+                for tool in dist::LLVM_TOOLS {
                     trace!("installing `{tool}`");
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
