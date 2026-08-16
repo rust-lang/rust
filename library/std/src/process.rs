@@ -333,7 +333,7 @@ impl Write for ChildStdin {
     }
 
     fn is_write_vectored(&self) -> bool {
-        io::Write::is_write_vectored(&&*self)
+        io::Write::is_write_vectored(&self)
     }
 
     #[inline]
