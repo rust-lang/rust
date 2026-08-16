@@ -6,10 +6,10 @@
 use std::path::{Component, Path, PathBuf};
 use std::{env, fs};
 
-use crate::Compiler;
 use crate::core::build_steps::dist;
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::builder::{Builder, CommandLineStep, Kind, RunConfig, ShouldRun};
+use crate::core::compiler::Compiler;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
