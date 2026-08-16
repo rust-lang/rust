@@ -35,6 +35,7 @@ use termcolor::{ColorChoice, StandardStream, WriteColor};
 use tracing::{instrument, span};
 
 use crate::core::build_steps::format::InternalRustfmt;
+use crate::core::build_steps::test::TestTarget;
 use crate::core::build_steps::vendor::VENDOR_DIR;
 use crate::core::builder::{Builder, Kind};
 use crate::core::compiler::Compiler;
@@ -50,24 +51,6 @@ use crate::utils::helpers::{
 pub mod cli_main;
 mod core;
 mod utils;
-
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum TestTarget {
-    /// Run unit, integration and doc tests (default).
-    Default,
-    /// Run unit, integration, doc tests, examples, bins, benchmarks (no doc tests).
-    AllTargets,
-    /// Only run doc tests.
-    DocOnly,
-    /// Only run unit and integration tests.
-    Tests,
-}
-
-impl TestTarget {
-    fn runs_doctests(&self) -> bool {
-        matches!(self, TestTarget::DocOnly | TestTarget::Default)
-    }
-}
 
 pub enum GitRepo {
     Rustc,
