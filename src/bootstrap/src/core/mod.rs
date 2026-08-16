@@ -1,6 +1,7 @@
 pub(crate) mod android;
 pub(crate) mod build_steps;
 pub(crate) mod builder;
+pub(crate) mod compiler;
 pub(crate) mod config;
 pub(crate) mod debuggers;
 pub(crate) mod download;

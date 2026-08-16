@@ -37,6 +37,7 @@ use tracing::{instrument, span};
 use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::vendor::VENDOR_DIR;
 use crate::core::builder::{Builder, Kind};
+use crate::core::compiler::Compiler;
 use crate::core::config::flags::{self, Subcommand};
 use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
@@ -49,34 +50,6 @@ use crate::utils::helpers::{
 pub mod cli_main;
 mod core;
 mod utils;
-
-/// A structure representing a Rust compiler.
-///
-/// Each compiler has a `stage` that it is associated with and a `host` that
-/// corresponds to the platform the compiler runs on. This structure is used as
-/// a parameter to many methods below.
-#[derive(Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-pub struct Compiler {
-    stage: u32,
-    host: TargetSelection,
-    /// Indicates whether the compiler was forced to use a specific stage.
-    /// This field is ignored in `Hash` and `PartialEq` implementations as only the `stage`
-    /// and `host` fields are relevant for those.
-    forced_compiler: bool,
-}
-
-impl std::hash::Hash for Compiler {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.stage.hash(state);
-        self.host.hash(state);
-    }
-}
-
-impl PartialEq for Compiler {
-    fn eq(&self, other: &Self) -> bool {
-        self.stage == other.stage && self.host == other.host
-    }
-}
 
 /// Represents a codegen backend.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -2002,26 +1975,6 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
-
-impl Compiler {
-    pub fn new(stage: u32, host: TargetSelection) -> Self {
-        Self { stage, host, forced_compiler: false }
-    }
-
-    pub fn forced_compiler(&mut self, forced_compiler: bool) {
-        self.forced_compiler = forced_compiler;
-    }
-
-    /// Returns `true` if this is a snapshot compiler for `build`'s configuration
-    pub fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.host_target
-    }
-
-    /// Indicates whether the compiler was forced to use a specific stage.
-    pub fn is_forced_compiler(&self) -> bool {
-        self.forced_compiler
-    }
-}
 
 fn envify(s: &str) -> String {
     // Converting foo-bar to FOO_BAR is a fairly idomatic mapping to an environment variable name.

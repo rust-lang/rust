@@ -7,8 +7,8 @@
 //! one of the target specs already defined in this module, or create new ones by adding a new step
 //! that calls create_synthetic_target.
 
-use crate::Compiler;
 use crate::core::builder::{Builder, Step};
+use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

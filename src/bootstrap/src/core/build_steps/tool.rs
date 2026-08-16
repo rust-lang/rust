@@ -21,10 +21,11 @@ use crate::core::builder::{
     self, Builder, Cargo as CargoCommand, CommandLineStep, Kind, RunConfig, ShouldRun, Step,
     StepMetadata, apply_pgo, cargo_profile_var,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Mode};
+use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {

@@ -5,13 +5,14 @@ use std::path::{Path, PathBuf};
 use super::{Builder, Kind};
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
+use crate::core::compiler::Compiler;
 use crate::core::config::flags::Color;
 use crate::core::config::toml::pgo::PgoConfig;
 use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags, t};
-use crate::{CLang, Compiler, GitRepo, Mode, RemapScheme, envify, prepare_behaviour_dump_dir};
+use crate::{CLang, GitRepo, Mode, RemapScheme, envify, prepare_behaviour_dump_dir};
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))

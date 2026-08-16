@@ -26,6 +26,7 @@ use crate::core::builder::{
     self, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     apply_pgo, crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
@@ -36,9 +37,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{
-    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, Mode, debug, trace,
-};
+use crate::{CLang, CodegenBackendKind, DependencyType, FileType, GitRepo, Mode, debug, trace};
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
