@@ -71,7 +71,7 @@ migrate to the GNU flavor of linker, see the details in the [following issue]
 
 There is no concept of stack unwinding in BPF, therefore BPF programs are
 expected to handle errors in a recoverable manner. Therefore most BPF programs
-written in Rust use the following no-op panic handler implementation:
+written in Rust use the following panic handler implementation:
 
 ```rust,ignore (a panic handler implementation specific to BPF targets)
 #[cfg(not(test))]
