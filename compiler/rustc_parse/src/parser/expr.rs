@@ -2463,8 +2463,6 @@ impl<'a> Parser<'a> {
             let (bound_vars, _) = self.parse_higher_ranked_binder()?;
             let span = lo.to(self.prev_token.span);
 
-            // Pre-expansion gate so `#[cfg(false)]` code is still rejected. The post-expansion
-            // visitor may replace this with a richer diagnostic when the AST is available.
             self.psess.gated_spans.gate(sym::closure_lifetime_binder, span);
 
             ClosureBinder::For { span, generic_params: bound_vars }

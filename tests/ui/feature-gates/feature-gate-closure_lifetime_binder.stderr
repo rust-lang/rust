@@ -1,5 +1,5 @@
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:4:5
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:2:5
    |
 LL |     for<> || -> () {};
    |     ^^^^^
@@ -7,10 +7,10 @@ LL |     for<> || -> () {};
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
    = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
+   = help: consider using a type annotation instead: `let closure: for<...> fn(...) -> ... = /* closure */;`
 
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:6:5
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:4:5
    |
 LL |     for<'a> || -> () {};
    |     ^^^^^^^
@@ -18,10 +18,10 @@ LL |     for<'a> || -> () {};
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
    = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
+   = help: consider using a type annotation instead: `let closure: for<...> fn(...) -> ... = /* closure */;`
 
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:8:5
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:6:5
    |
 LL |     for<'a, 'b> |_: &'a ()| -> () {};
    |     ^^^^^^^^^^^
@@ -29,285 +29,8 @@ LL |     for<'a, 'b> |_: &'a ()| -> () {};
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
    = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
+   = help: consider using a type annotation instead: `let closure: for<...> fn(...) -> ... = /* closure */;`
 
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:12:15
-   |
-LL |     let _cl = for<'a> |x: &'a str| -> (&'a str, &'a str) { x.split_at(0) };
-   |               ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _cl = for<'a> |x: &'a str| -> (&'a str, &'a str) { x.split_at(0) };
-LL +     let _cl: for<'a> fn(&'a str) -> (&'a str, &'a str) = |x| { x.split_at(0) };
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:16:16
-   |
-LL |     let _tmp = for<'a> |x: &'a str| -> usize {
-   |                ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _tmp = for<'a> |x: &'a str| -> usize {
-LL +     let _tmp: for<'a> fn(&'a str) -> usize = |x| {
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:23:21
-   |
-LL |     let _typed: _ = for<'a> |x: &'a str| -> &'a str { x };
-   |                     ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:27:22
-   |
-LL |     let _ret_infer = for<'a> |x: &'a str| -> _ { x };
-   |                      ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:30:25
-   |
-LL |     let _nested_infer = for<'a> |x: &'a _| -> &'a str { x };
-   |                         ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:36:17
-   |
-LL |     let _move = for<'a> move |x: &'a i32| -> i32 { *x + y };
-   |                 ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:41:20
-   |
-LL |     let _capture = for<'a> |x: &'a i32| -> i32 { *x + z };
-   |                    ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _capture = for<'a> |x: &'a i32| -> i32 { *x + z };
-LL +     let _capture: for<'a> fn(&'a i32) -> i32 = |x| { *x + z };
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:44:18
-   |
-LL |     let _upper = for<'a> |x: &'a i32| -> i32 { *x + Y };
-   |                  ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _upper = for<'a> |x: &'a i32| -> i32 { *x + Y };
-LL +     let _upper: for<'a> fn(&'a i32) -> i32 = |x| { *x + Y };
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:49:19
-   |
-LL |     let _if_let = for<'a> |x: &'a i32| -> i32 {
-   |                   ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _if_let = for<'a> |x: &'a i32| -> i32 {
-LL +     let _if_let: for<'a> fn(&'a i32) -> i32 = |x| {
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:60:22
-   |
-LL |     let _while_let = for<'a> |x: &'a i32| -> i32 {
-   |                      ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _while_let = for<'a> |x: &'a i32| -> i32 {
-LL +     let _while_let: for<'a> fn(&'a i32) -> i32 = |x| {
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:71:22
-   |
-LL |     let _let_chain = for<'a> |x: &'a i32| -> i32 {
-   |                      ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _let_chain = for<'a> |x: &'a i32| -> i32 {
-LL +     let _let_chain: for<'a> fn(&'a i32) -> i32 = |x| {
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:84:21
-   |
-LL |     let _let_else = for<'a> |x: &'a i32| -> i32 {
-   |                     ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _let_else = for<'a> |x: &'a i32| -> i32 {
-LL +     let _let_else: for<'a> fn(&'a i32) -> i32 = |x| {
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:94:19
-   |
-LL |     let _freefn = for<'a> |x: &'a i32| -> i32 { add(*x, 1) };
-   |                   ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-help: consider setting the binding type instead
-   |
-LL -     let _freefn = for<'a> |x: &'a i32| -> i32 { add(*x, 1) };
-LL +     let _freefn: for<'a> fn(&'a i32) -> i32 = |x| { add(*x, 1) };
-   |
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:98:23
-   |
-LL |     let ref _ref_cl = for<'a> |x: &'a str| -> &'a str { x };
-   |                       ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:102:22
-   |
-LL |     let _ref_param = for<'a> |ref x: &'a str| -> &'a str { *x };
-   |                      ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:106:18
-   |
-LL |     let _attrs = for<'a> |#[allow(unused)] x: &'a str| -> &'a str { x };
-   |                  ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:110:22
-   |
-LL |     let _ty_binder = for<T> |x: T| -> T { x };
-   |                      ^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error[E0658]: only lifetime parameters can be used in this context
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:110:26
-   |
-LL |     let _ty_binder = for<T> |x: T| -> T { x };
-   |                          ^
-   |
-   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
-   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:115:18
-   |
-LL |     let _bound = for<'a: 'static> |x: &'a str| -> &'a str { x };
-   |                  ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error: bounds cannot be used in this context
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:115:26
-   |
-LL |     let _bound = for<'a: 'static> |x: &'a str| -> &'a str { x };
-   |                          ^^^^^^^
-
-error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:121:16
-   |
-LL |     let _cfg = for<'a> |x: &'a str| -> &'a str { x };
-   |                ^^^^^^^
-   |
-   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
-   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider removing `for<...>`
-
-error: implicit types in closure signatures are forbidden when `for<...>` is present
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:27:46
-   |
-LL |     let _ret_infer = for<'a> |x: &'a str| -> _ { x };
-   |                      -------                 ^
-   |                      |
-   |                      `for<...>` is here
-
-error: implicit types in closure signatures are forbidden when `for<...>` is present
-  --> $DIR/feature-gate-closure_lifetime_binder.rs:30:41
-   |
-LL |     let _nested_infer = for<'a> |x: &'a _| -> &'a str { x };
-   |                         -------         ^
-   |                         |
-   |                         `for<...>` is here
-
-error: aborting due to 26 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

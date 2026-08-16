@@ -1,17 +1,12 @@
 use rustc_ast::visit::{self, AssocCtxt, FnKind, Visitor};
-use rustc_ast::{
-    self as ast, AttrVec, BindingMode, ByRef, GenericBound, GenericParamKind, NodeId, PatKind,
-    attr, token,
-};
-use rustc_ast_pretty::pprust;
+use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::msg;
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::diagnostics::{feature_err, feature_warn};
-use rustc_span::{Ident, Span, Spanned, Symbol, sym};
+use rustc_span::{Span, Spanned, Symbol, sym};
 
 use crate::diagnostics;
 
@@ -52,13 +47,7 @@ macro_rules! gate_multi {
 }
 
 pub fn check_attribute(attr: &ast::Attribute, sess: &Session, features: &Features) {
-    PostExpansionVisitor {
-        sess,
-        features,
-        let_binding: None,
-        handled_closure_lifetime_binders: FxHashSet::default(),
-    }
-    .visit_attribute(attr)
+    PostExpansionVisitor { sess, features }.visit_attribute(attr)
 }
 
 struct PostExpansionVisitor<'a> {
@@ -66,14 +55,6 @@ struct PostExpansionVisitor<'a> {
 
     // `sess` contains a `Features`, but this might not be that one.
     features: &'a Features,
-
-    /// Set while visiting the initializer of a `let` binding whose RHS is directly a closure.
-    /// Used to suggest moving `for<...>` binders onto the binding's type.
-    let_binding: Option<&'a ast::Local>,
-
-    /// Binder spans for which we already emitted the `closure_lifetime_binder` gate while walking
-    /// the live AST. Remaining pre-expansion spans (e.g. under `#[cfg(false)]`) are gated later.
-    handled_closure_lifetime_binders: FxHashSet<Span>,
 }
 
 // -----------------------------------------------------------------------------
@@ -86,34 +67,6 @@ struct PostExpansionVisitor<'a> {
 //            Instead, register a pre-expansion feature gate using `gate_all` in fn `check_crate`.
 
 impl<'a> PostExpansionVisitor<'a> {
-    /// Gate `for<...>` binders on closures, suggesting a `fn` pointer binding type when possible.
-    fn gate_closure_lifetime_binder(&mut self, closure: &ast::Closure, binder_span: Span) {
-        self.handled_closure_lifetime_binders.insert(binder_span);
-
-        if self.features.closure_lifetime_binder()
-            || binder_span.allows_unstable(sym::closure_lifetime_binder)
-        {
-            return;
-        }
-
-        let mut err = feature_err(
-            self.sess,
-            sym::closure_lifetime_binder,
-            binder_span,
-            "`for<...>` binders for closures are experimental",
-        );
-
-        if let Some(sugg) =
-            closure_lifetime_binder_binding_type_sugg(self.sess, self.let_binding, closure)
-        {
-            err.subdiagnostic(sugg);
-        } else {
-            err.help("consider removing `for<...>`");
-        }
-
-        err.emit();
-    }
-
     /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
     fn check_impl_trait(&self, ty: &ast::Ty, in_associated_ty: bool) {
         struct ImplTraitVisitor<'a> {
@@ -353,32 +306,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_generic_args(self, args);
     }
 
-    fn visit_local(&mut self, local: &'a ast::Local) {
-        // Only track direct `let pat = for<'a> |...| ...` inits; parenthesized or otherwise
-        // wrapped closures fall back to the simpler help.
-        if let Some(init) = local.kind.init()
-            && matches!(init.kind, ast::ExprKind::Closure(_))
-        {
-            let prev = self.let_binding.replace(local);
-            visit::walk_local(self, local);
-            self.let_binding = prev;
-        } else {
-            visit::walk_local(self, local);
-        }
-    }
-
     fn visit_expr(&mut self, e: &'a ast::Expr) {
-        match &e.kind {
-            ast::ExprKind::Closure(closure) => {
-                if let ast::ClosureBinder::For { span, .. } = &closure.binder {
-                    self.gate_closure_lifetime_binder(closure, *span);
-                }
-                // Nested expressions inside the closure are not the `let` initializer.
-                let prev = self.let_binding.take();
-                visit::walk_expr(self, e);
-                self.let_binding = prev;
-                return;
-            }
+        match e.kind {
             ast::ExprKind::TryBlock(_, None) => {
                 // `try { ... }` is old and is only gated post-expansion here.
                 gate!(self, try_blocks, e.span, "`try` expression is experimental");
@@ -390,14 +319,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 kind: token::LitKind::Float | token::LitKind::Integer,
                 suffix,
                 ..
-            }) => match *suffix {
+            }) => match suffix {
                 Some(sym::f16) => {
                     gate!(self, f16, e.span, "the type `f16` is unstable")
                 }
                 Some(sym::f128) => {
                     gate!(self, f128, e.span, "the type `f128` is unstable")
                 }
-                _ => {}
+                _ => (),
             },
             _ => {}
         }
@@ -510,12 +439,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_new_solver_banned_features(sess, features);
     check_features_requiring_new_solver(sess, features);
 
-    let mut visitor = PostExpansionVisitor {
-        sess,
-        features,
-        let_binding: None,
-        handled_closure_lifetime_binders: FxHashSet::default(),
-    };
+    let mut visitor = PostExpansionVisitor { sess, features };
 
     // -----------------------------------------------------------------------------
     // PRE-EXPANSION FEATURE GATES FOR UNSTABLE SYNTAX
@@ -578,8 +502,12 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "`async` trait bounds are unstable",
         "use the desugared name of the async trait, such as `AsyncFn`"
     );
-    // `closure_lifetime_binder` is gated in `PostExpansionVisitor` (with a richer suggestion when
-    // possible). Spans not seen there — notably under `#[cfg(false)]` — are handled after the walk.
+    gate_all!(
+        closure_lifetime_binder,
+        "`for<...>` binders for closures are experimental",
+        "consider using a type annotation instead: \
+         `let closure: for<...> fn(...) -> ... = /* closure */;`"
+    );
     gate_all!(
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
@@ -701,301 +629,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     // -----------------------------------------------------------------------------
 
     visit::walk_crate(&mut visitor, krate);
-
-    // Reject `for<...>` closure binders that never reached the AST walk (e.g. `#[cfg(false)]`).
-    if !visitor.features.closure_lifetime_binder() {
-        for &span in spans.get(&sym::closure_lifetime_binder).into_flat_iter() {
-            if span.allows_unstable(sym::closure_lifetime_binder)
-                || visitor.handled_closure_lifetime_binders.contains(&span)
-            {
-                continue;
-            }
-            feature_err(
-                sess,
-                sym::closure_lifetime_binder,
-                span,
-                "`for<...>` binders for closures are experimental",
-            )
-            .with_help("consider removing `for<...>`")
-            .emit();
-        }
-    }
-}
-
-/// Build a suggestion rewriting
-/// `let cl = for<'a> |x: &'a T| -> U { ... }` into
-/// `let cl: for<'a> fn(&'a T) -> U = |x| { ... }` when that is a reasonable alternative.
-fn closure_lifetime_binder_binding_type_sugg(
-    sess: &Session,
-    local: Option<&ast::Local>,
-    closure: &ast::Closure,
-) -> Option<diagnostics::ClosureLifetimeBinderBindingTypeSugg> {
-    let local = local?;
-    if local.ty.is_some() {
-        return None;
-    }
-    // Only by-value `let ident = ...` / `let mut ident = ...` bindings.
-    if !matches!(&local.pat.kind, PatKind::Ident(BindingMode(ByRef::No, _), _, None)) {
-        return None;
-    }
-
-    // Explicit `move`/`use`/`async`/`const`/`static` closures are not `fn` pointers.
-    if !matches!(closure.capture_clause, ast::CaptureBy::Ref)
-        || closure.coroutine_kind.is_some()
-        || matches!(closure.constness, ast::Const::Yes(_))
-        || matches!(closure.movability, ast::Movability::Static)
-    {
-        return None;
-    }
-
-    let ast::ClosureBinder::For { span: binder_span, generic_params } = &closure.binder else {
-        return None;
-    };
-
-    // `for<T>` / `for<'a: 'static>` are not valid on `fn` pointer types.
-    if !generic_params
-        .iter()
-        .all(|param| matches!(param.kind, GenericParamKind::Lifetime) && param.bounds.is_empty())
-    {
-        return None;
-    }
-
-    // Need fully explicit parameter and return types to form a useful `fn` type. A top-level or
-    // nested `_` (e.g. `-> _`, `&'a _`) must not be copied into a MachineApplicable suggestion.
-    let ast::FnRetTy::Ty(ret_ty) = &closure.fn_decl.output else {
-        return None;
-    };
-    if ty_contains_infer(ret_ty)
-        || closure.fn_decl.inputs.iter().any(|param| ty_contains_infer(&param.ty))
-    {
-        return None;
-    }
-
-    // Only by-value binding patterns (and `_`) can be rewritten safely.
-    if !closure.fn_decl.inputs.iter().all(|param| {
-        matches!(
-            &param.pat.kind,
-            PatKind::Wild | PatKind::Ident(BindingMode(ByRef::No, _), _, None)
-        )
-    }) {
-        return None;
-    }
-
-    // `pprust::pat_to_string` drops parameter attributes; don't emit a lossy rewrite.
-    if closure.fn_decl.inputs.iter().any(|param| !param.attrs.is_empty()) {
-        return None;
-    }
-
-    // Don't rewrite macro-expanded closures; hygiene makes capture analysis unreliable and the
-    // suggestion would point into the macro definition.
-    if binder_span.from_expansion() || closure.fn_decl_span.from_expansion() {
-        return None;
-    }
-
-    let binder = sess.source_map().span_to_snippet(*binder_span).ok()?;
-    let inputs: String = closure
-        .fn_decl
-        .inputs
-        .iter()
-        .map(|param| pprust::ty_to_string(&param.ty))
-        .intersperse(", ".to_string())
-        .collect();
-    let ty = format!("{binder} fn({inputs}) -> {}", pprust::ty_to_string(ret_ty));
-
-    let closure_pats: String = closure
-        .fn_decl
-        .inputs
-        .iter()
-        .map(|param| pprust::pat_to_string(&param.pat))
-        .intersperse(", ".to_string())
-        .collect();
-
-    let binding = local.pat.span.shrink_to_hi();
-    let closure_header = binder_span.to(closure.fn_decl_span);
-    let closure_code = format!("|{closure_pats}|");
-
-    // `CaptureBy::Ref` only means no `move`/`use`. Without name resolution, any other simple
-    // path may be an env capture (including uppercase locals) or a free item. Offer the rewrite
-    // only as maybe-incorrect in that case so rustfix won't auto-apply a breaking change.
-    // Paths bound locally in the body (e.g. `let n = ...; n`) are fine for `fn` pointers.
-    if closure_body_has_free_simple_path(closure) {
-        Some(diagnostics::ClosureLifetimeBinderBindingTypeSugg::MaybeIncorrect {
-            binding,
-            ty,
-            closure_header,
-            closure: closure_code,
-        })
-    } else {
-        Some(diagnostics::ClosureLifetimeBinderBindingTypeSugg::MachineApplicable {
-            binding,
-            ty,
-            closure_header,
-            closure: closure_code,
-        })
-    }
-}
-
-/// Returns true if `ty` contains any `_` inference placeholder, including nested forms like
-/// `&'a _` or `(_, u8)`.
-fn ty_contains_infer(ty: &ast::Ty) -> bool {
-    struct InferVisitor {
-        found: bool,
-    }
-
-    impl<'a> Visitor<'a> for InferVisitor {
-        fn visit_ty(&mut self, ty: &'a ast::Ty) {
-            if self.found {
-                return;
-            }
-            if matches!(ty.kind, ast::TyKind::Infer) {
-                self.found = true;
-                return;
-            }
-            visit::walk_ty(self, ty);
-        }
-    }
-
-    let mut visitor = InferVisitor { found: false };
-    visitor.visit_ty(ty);
-    visitor.found
-}
-
-/// Returns true if the closure body contains a single-segment value path that is neither a
-/// parameter nor a name bound inside the body.
-///
-/// Locals are tracked as hygiene-aware [`Ident`]s (name + `SyntaxContext`) so a macro parameter
-/// `$x` is not confused with a closure parameter `x` that happens to share a spelling.
-///
-/// This is intentionally AST-only and conservative: free functions and constructors look the same
-/// as captures here. Callers should downgrade suggestion applicability when this is true.
-fn closure_body_has_free_simple_path(closure: &ast::Closure) -> bool {
-    let mut known_locals = FxHashSet::default();
-    for param in &closure.fn_decl.inputs {
-        if let PatKind::Ident(_, ident, _) = param.pat.kind {
-            known_locals.insert(ident);
-        }
-    }
-
-    struct FreePathVisitor {
-        known_locals: FxHashSet<Ident>,
-        has_free_path: bool,
-    }
-
-    impl FreePathVisitor {
-        fn bind_pat(&mut self, pat: &ast::Pat) {
-            match &pat.kind {
-                PatKind::Ident(_, ident, sub) => {
-                    self.known_locals.insert(*ident);
-                    if let Some(sub) = sub {
-                        self.bind_pat(sub);
-                    }
-                }
-                PatKind::Tuple(pats)
-                | PatKind::TupleStruct(_, _, pats)
-                | PatKind::Slice(pats)
-                | PatKind::Or(pats) => {
-                    for pat in pats {
-                        self.bind_pat(pat);
-                    }
-                }
-                PatKind::Struct(_, _, fields, _) => {
-                    for field in fields {
-                        self.bind_pat(&field.pat);
-                    }
-                }
-                PatKind::Box(pat)
-                | PatKind::Deref(pat)
-                | PatKind::Ref(pat, ..)
-                | PatKind::Paren(pat) => self.bind_pat(pat),
-                _ => {}
-            }
-        }
-    }
-
-    impl<'a> Visitor<'a> for FreePathVisitor {
-        fn visit_ty(&mut self, _: &'a ast::Ty) {
-            // Paths in types are not value captures.
-        }
-
-        fn visit_block(&mut self, block: &'a ast::Block) {
-            let old = self.known_locals.clone();
-            visit::walk_block(self, block);
-            self.known_locals = old;
-        }
-
-        fn visit_local(&mut self, local: &'a ast::Local) {
-            // Visit the initializer (and `else` block) before binding names from the pattern.
-            // Bindings are not in scope in the `else` block.
-            if let Some((init, els)) = local.kind.init_else_opt() {
-                self.visit_expr(init);
-                if let Some(els) = els {
-                    // Must go through `visit_block` so locals declared in the `else` block do not
-                    // leak into `known_locals` for code after the `let else`.
-                    self.visit_block(els);
-                }
-            }
-            self.bind_pat(&local.pat);
-        }
-
-        fn visit_arm(&mut self, arm: &'a ast::Arm) {
-            let old = self.known_locals.clone();
-            self.bind_pat(&arm.pat);
-            visit::walk_arm(self, arm);
-            self.known_locals = old;
-        }
-
-        fn visit_expr(&mut self, expr: &'a ast::Expr) {
-            if self.has_free_path {
-                return;
-            }
-            if let ast::ExprKind::Path(None, path) = &expr.kind
-                && let [seg] = path.segments.as_slice()
-                && seg.args.is_none()
-                && !self.known_locals.contains(&seg.ident)
-            {
-                self.has_free_path = true;
-                return;
-            }
-            match &expr.kind {
-                // `let` bindings from let-chains / `if let` / `while let` conditions. The enclosing
-                // `If` / `While` arms restore `known_locals` so these do not escape that scope.
-                ast::ExprKind::Let(pat, scrutinee, _, _) => {
-                    self.visit_expr(scrutinee);
-                    self.bind_pat(pat);
-                }
-                // `if`/`if let`/`if` let-chains: condition bindings are in scope for the then
-                // branch only, not the else branch or anything after the `if`.
-                ast::ExprKind::If(cond, then_block, else_opt) => {
-                    let old = self.known_locals.clone();
-                    self.visit_expr(cond);
-                    self.visit_block(then_block);
-                    self.known_locals = old;
-                    if let Some(els) = else_opt {
-                        self.visit_expr(els);
-                    }
-                }
-                // `while`/`while let`: condition bindings are in scope for the loop body only.
-                ast::ExprKind::While(cond, body, _) => {
-                    let old = self.known_locals.clone();
-                    self.visit_expr(cond);
-                    self.visit_block(body);
-                    self.known_locals = old;
-                }
-                ast::ExprKind::ForLoop(for_loop) => {
-                    self.visit_expr(&for_loop.iter);
-                    let old = self.known_locals.clone();
-                    self.bind_pat(&for_loop.pat);
-                    self.visit_block(&for_loop.body);
-                    self.known_locals = old;
-                }
-                _ => visit::walk_expr(self, expr),
-            }
-        }
-    }
-
-    let mut visitor = FreePathVisitor { known_locals, has_free_path: false };
-    visitor.visit_expr(&closure.body);
-    visitor.has_free_path
 }
 
 fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate) {
