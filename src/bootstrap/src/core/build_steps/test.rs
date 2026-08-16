@@ -1224,6 +1224,9 @@ impl CommandLineStep for IntrinsicTest {
     }
 }
 
+/// Runs stdarch's gen-checks (arm, loongarch, hexagon) to
+/// verify the committed `core_arch` files are up to date with their specs.
+/// With `--bless`, regenerates and writes them back instead.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StdarchGenCheck {
     host: TargetSelection,
