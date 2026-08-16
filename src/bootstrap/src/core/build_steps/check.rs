@@ -3,6 +3,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::Mode;
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
     std_crates_for_make_run,
@@ -21,7 +23,6 @@ use crate::core::config::TargetSelection;
 use crate::core::config::flags::Subcommand;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::helpers::t;
-use crate::{CodegenBackendKind, Mode};
 
 /// Allows individual check-step instances to keep track of whether they
 /// represent `cargo check` or `cargo fix`, independently of [`Builder::kind`].

@@ -15,6 +15,7 @@ use std::{env, fs, iter};
 
 use build_helper::git::get_closest_upstream_commit;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::format::InternalRustfmt;
@@ -46,7 +47,7 @@ use crate::utils::helpers::{
     up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, TestTarget, envify};
+use crate::{CLang, GitRepo, Mode, TestTarget, envify};
 
 mod compiletest;
 pub mod failed_tests;

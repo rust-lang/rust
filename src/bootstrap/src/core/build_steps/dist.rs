@@ -19,6 +19,7 @@ use object::read::archive::ArchiveFile;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
     get_codegen_backend_file, libgccjit_path_relative_to_cg_dir, normalize_codegen_backend_name,
 };
@@ -41,7 +42,7 @@ use crate::utils::helpers::{
     exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
-use crate::{CodegenBackendKind, DependencyType, FileType, Mode, trace};
+use crate::{DependencyType, FileType, Mode, trace};
 
 pub(crate) const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
