@@ -238,33 +238,10 @@ impl ExternalCrate {
 
     fn mapped_root_anon_consts<T>(
         &self,
-        tcx: TyCtxt<'_>,
-        f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
+        _tcx: TyCtxt<'_>,
+        _f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
     ) -> impl Iterator<Item = (DefId, T)> {
-        let root = self.def_id();
-
-        if root.is_local() {
-            Either::Left(
-                tcx.hir_root_module()
-                    .item_ids
-                    .iter()
-                    .filter(move |&&id| matches!(tcx.hir_item(id).kind, hir::ItemKind::Const(..)))
-                    .filter_map(move |&id| f(id.owner_id.into(), tcx)),
-            )
-        } else {
-            Either::Right(
-                tcx.module_children(root)
-                    .iter()
-                    .filter_map(|item| {
-                        if let Res::Def(DefKind::Const { is_type_const: false }, did) = item.res {
-                            Some(did)
-                        } else {
-                            None
-                        }
-                    })
-                    .filter_map(move |did| f(did, tcx)),
-            )
-        }
+        [].into_iter()
     }
 
     pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
@@ -306,7 +283,7 @@ impl ExternalCrate {
         // `#[rustc_doc_primitive]` feature is explicitly designed to only allow the
         // primitive tags to show up as the top level items in a crate.
         //
-        // Also note that this does not attempt to deal with modules tagged
+        // Also note that this does not attempt to deal with consts tagged
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
         fn as_primitive(def_id: DefId, tcx: TyCtxt<'_>) -> Option<(DefId, PrimitiveType)> {
