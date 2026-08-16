@@ -55,7 +55,11 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         );
     };
 
-    let mut p = Parser::new_ext(dox, main_body_opts()).into_offset_iter();
+    let mut p = Parser::new_ext(
+        dox,
+        main_body_opts(cx.tcx.doc_attribute_syntax(item.item_id.expect_def_id())),
+    )
+    .into_offset_iter();
 
     while let Some((event, range)) = p.next() {
         match event {

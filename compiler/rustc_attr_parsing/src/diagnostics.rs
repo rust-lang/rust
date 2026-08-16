@@ -324,6 +324,18 @@ pub(crate) struct UnknownCrateTypesSuggestion {
 pub(crate) struct MalformedDoc;
 
 #[derive(Diagnostic)]
+#[diag("malformed `doc(syntax)` attribute input")]
+pub(crate) struct MalformedDocSyntax;
+
+#[derive(Diagnostic)]
+#[diag("malformed `doc(syntax)` attribute input")]
+#[note("the doc syntax was specified more than once on the same item")]
+pub(crate) struct DocConflictingSyntax {
+    #[label("also specified here")]
+    pub other_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("didn't expect any arguments here")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"

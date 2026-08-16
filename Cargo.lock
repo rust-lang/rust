@@ -221,7 +221,7 @@ dependencies = [
  "memchr",
  "proc-macro2",
  "quote",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "serde",
  "serde_derive",
  "syn 2.0.117",
@@ -242,7 +242,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7db09fde9143e7ac4513358fb32ee32847125b63b18ea715afd487956da715da"
 dependencies = [
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "serde",
  "serde_derive",
  "unicode-ident",
@@ -308,9 +308,9 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "2.10.0"
+version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
+checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
 name = "blake3"
@@ -670,7 +670,7 @@ dependencies = [
  "color-print",
  "declare_clippy_lint",
  "itertools",
- "pulldown-cmark",
+ "pulldown-cmark 0.11.3",
  "regex",
  "rustc_tools_util 0.4.2",
  "serde",
@@ -1290,6 +1290,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8975ffdaa0ef3661bfe02dbdcc06c9f829dfafe6a3c474de366a8d5e44276921"
 
 [[package]]
+name = "dtoa"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c3cf4824e2d5f025c7b531afcb2325364084a16806f6d47fbc1f5fbd9960590"
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1462,7 +1468,7 @@ dependencies = [
  "fluent-syntax",
  "intl-memoizer",
  "intl_pluralrules",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "self_cell",
  "smallvec",
  "unic-langid",
@@ -2072,7 +2078,7 @@ dependencies = [
  "mio",
  "postcard",
  "rand 0.9.3",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "serde_core",
  "tempfile",
  "thiserror 2.0.17",
@@ -2232,7 +2238,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -2470,6 +2476,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "math-core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a33a5935fae660a9700751535d702f7e35a867c4bb3195dff139d4b8c7fa5f1"
+dependencies = [
+ "math-core-renderer-internal",
+ "memchr",
+ "phf 0.13.1",
+ "rustc-hash 2.1.3",
+ "static_assertions",
+ "strum",
+ "strum_macros",
+]
+
+[[package]]
+name = "math-core-renderer-internal"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99fd44a34022e7bcdfde2f4aeef1cc8bad969f3f0f8bcaff96bd7797c45d3dfb"
+dependencies = [
+ "bitflags",
+ "dtoa",
+ "stable-arena",
+ "static_assertions",
+ "strum",
+ "strum_macros",
+]
+
+[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2495,9 +2530,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.8.0"
+version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "memmap2"
@@ -3008,6 +3043,7 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1562dc717473dbaa4c1f85a36410e03c047b2e7df7f45ee938fbef64ae7fadf"
 dependencies = [
+ "phf_macros",
  "phf_shared 0.13.1",
  "serde",
 ]
@@ -3030,6 +3066,19 @@ checksum = "135ace3a761e564ec88c03a77317a7c6b80bb7f7135ef2544dbe054243b89737"
 dependencies = [
  "fastrand",
  "phf_shared 0.13.1",
+]
+
+[[package]]
+name = "phf_macros"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "812f032b54b1e759ccd5f8b6677695d5268c588701effba24601f6932f8269ef"
+dependencies = [
+ "phf_generator",
+ "phf_shared 0.13.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -3221,6 +3270,18 @@ name = "pulldown-cmark"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "679341d22c78c6c649893cbd6c3278dcbe9fc4faa62fea3a9296ae2b50c14625"
+dependencies = [
+ "bitflags",
+ "memchr",
+ "pulldown-cmark-escape",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9f068eba8e7071c5f9511831b44f32c740d5adf574e990f946ddb53db2f314e"
 dependencies = [
  "bitflags",
  "memchr",
@@ -3543,9 +3604,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-hash"
-version = "2.1.1"
+version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
+checksum = "6b1e7f9a428571be2dc5bc0505c13fb6bf936822b894ec87abf8a08a4e51742d"
 
 [[package]]
 name = "rustc-literal-escaper"
@@ -3935,7 +3996,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "rustc-stable-hash",
  "rustc_arena",
  "rustc_graphviz",
@@ -4618,7 +4679,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
@@ -4711,7 +4772,7 @@ version = "0.0.0"
 dependencies = [
  "indexmap",
  "itertools",
- "pulldown-cmark",
+ "pulldown-cmark 0.13.4",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -4958,7 +5019,7 @@ dependencies = [
  "derive-where",
  "ena",
  "indexmap",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "rustc_abi",
  "rustc_ast_ir",
  "rustc_data_structures",
@@ -5010,6 +5071,7 @@ dependencies = [
  "expect-test",
  "indexmap",
  "itertools",
+ "math-core",
  "minifier",
  "proc-macro2",
  "pulldown-cmark-escape",
@@ -5044,7 +5106,7 @@ version = "0.1.0"
 dependencies = [
  "postcard",
  "rkyv",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "serde",
  "serde_derive",
  "serde_json",
@@ -5426,6 +5488,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "stable-arena"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a6572b16faf73db61fab0b1d848ce108e20d026dc20dcb043a3f83c73ad1c09"
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5488,6 +5556,24 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "strum"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
+
+[[package]]
+name = "strum_macros"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
 
 [[package]]
 name = "syn"
@@ -5710,7 +5796,7 @@ dependencies = [
  "ignore",
  "miropt-test-tools",
  "regex",
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "semver",
  "serde",
  "similar",
@@ -6008,7 +6094,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb30dbbd9036155e74adad6812e9898d03ec374946234fbcebd5dfc7b9187b90"
 dependencies = [
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
 ]
 
 [[package]]
@@ -6166,7 +6252,7 @@ checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
 name = "unicode-table-generator"
 version = "0.1.0"
 dependencies = [
- "rustc-hash 2.1.1",
+ "rustc-hash 2.1.3",
  "ucd-parse",
 ]
 

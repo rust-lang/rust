@@ -84,7 +84,7 @@ fn check_redundant_explicit_link<'md>(
     let mut broken_line_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
     let mut offset_iter = Parser::new_with_broken_link_callback(
         doc,
-        main_body_opts(),
+        main_body_opts(cx.tcx.doc_attribute_syntax(item.item_id.expect_def_id())),
         Some(&mut broken_line_callback),
     )
     .into_offset_iter();

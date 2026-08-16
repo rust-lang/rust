@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::{fs, str};
 
@@ -43,6 +44,8 @@ impl ExternalHtml {
                 content: &m_bc,
                 links: &[],
                 ids: id_map,
+                contains_mathml: &Cell::new(false),
+                doc_syntax: None,
                 error_codes: codes,
                 edition,
                 playground,
@@ -59,6 +62,8 @@ impl ExternalHtml {
                 content: &m_ac,
                 links: &[],
                 ids: id_map,
+                contains_mathml: &Cell::new(false),
+                doc_syntax: None,
                 error_codes: codes,
                 edition,
                 playground,

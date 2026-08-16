@@ -40,6 +40,7 @@ mod type_layout;
 mod write_shared;
 
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display as _, Write};
@@ -53,7 +54,9 @@ use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, RustcVersion};
+use rustc_hir::attrs::{
+    AttributeKind, DeprecatedSince, Deprecation, DocAttributeSyntax, RustcVersion,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, StabilityLevel, StableSince};
@@ -680,6 +683,8 @@ fn scrape_examples_help() -> String {
             content: &content,
             links: &[],
             ids: &mut IdMap::default(),
+            contains_mathml: &Cell::new(false),
+            doc_syntax: None,
             // code snippets come from Rust itself, not the crate
             error_codes: crate::html::markdown::ErrorCodes::No,
             edition: rustc_span::edition::LATEST_STABLE_EDITION,
@@ -716,6 +721,7 @@ fn render_markdown(
     md_text: &str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
+    doc_syntax: Option<&DocAttributeSyntax>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         f.write_str("<div class=\"docblock\">")?;
@@ -723,6 +729,8 @@ fn render_markdown(
             content: md_text,
             links: &links,
             ids: &mut cx.id_map.borrow_mut(),
+            contains_mathml: &cx.contains_mathml,
+            doc_syntax,
             error_codes: cx.shared.codes,
             edition: cx.shared.edition(),
             playground: &cx.shared.playground,
@@ -749,8 +757,13 @@ fn document_short(
         }
         let s = item.doc_value();
         if !s.is_empty() {
-            let (mut summary_html, has_more_content) =
-                MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
+            let (mut summary_html, has_more_content) = MarkdownSummaryLine {
+                md: &s,
+                links: &item.links(cx),
+                doc_syntax: cx.tcx().doc_attribute_syntax(item.item_id.expect_def_id()),
+                contains_mathml: &cx.contains_mathml,
+            }
+            .into_string_with_has_more_content();
 
             let link = if has_more_content {
                 let link = fmt::from_fn(|f| {
@@ -810,10 +823,26 @@ fn document_full_inner(
                      <summary class=\"hideme\">\
                         <span>Expand description</span>\
                      </summary>{}</details>",
-                    render_markdown(cx, &s, item.links(cx), heading_offset)
+                    render_markdown(
+                        cx,
+                        &s,
+                        item.links(cx),
+                        heading_offset,
+                        cx.tcx().doc_attribute_syntax(item.item_id.expect_def_id())
+                    )
                 )?;
             } else {
-                write!(f, "{}", render_markdown(cx, &s, item.links(cx), heading_offset))?;
+                write!(
+                    f,
+                    "{}",
+                    render_markdown(
+                        cx,
+                        &s,
+                        item.links(cx),
+                        heading_offset,
+                        cx.tcx().doc_attribute_syntax(item.item_id.expect_def_id())
+                    )
+                )?;
             }
         }
 
@@ -913,7 +942,13 @@ fn short_item_info(
             let note = note.as_str();
             let mut id_map = cx.id_map.borrow_mut();
             let links = item.links(cx);
-            let html = MarkdownItemInfo::new(note, &links, &mut id_map);
+            let html = MarkdownItemInfo::new(
+                note,
+                &links,
+                &mut id_map,
+                &cx.contains_mathml,
+                cx.tcx().doc_attribute_syntax(item.item_id.expect_def_id()),
+            );
             message.push_str(": ");
             html.write_into(&mut message).unwrap();
         }
@@ -2284,6 +2319,10 @@ fn render_impl(
                         content: &dox,
                         links: &i.impl_item.links(cx),
                         ids: &mut cx.id_map.borrow_mut(),
+                        contains_mathml: &cx.contains_mathml,
+                        doc_syntax: cx
+                            .tcx()
+                            .doc_attribute_syntax(i.impl_item.item_id.expect_def_id()),
                         error_codes: cx.shared.codes,
                         edition: cx.shared.edition(),
                         playground: &cx.shared.playground,

@@ -153,6 +153,17 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
+    /// The `invalid_math` lint detects invalid LaTeX math syntax. This is a
+    /// `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_math
+    INVALID_MATH,
+    Warn,
+    "detects invalid LaTeX math syntax in doc comments",
+    @feature_gate = rustdoc_texmath;
+}
+
+declare_rustdoc_lint! {
     /// The `bare_urls` lint detects when a URL is not a hyperlink.
     /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
     ///
@@ -219,6 +230,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_CODEBLOCK_ATTRIBUTES,
         INVALID_RUST_CODEBLOCKS,
         INVALID_HTML_TAGS,
+        INVALID_MATH,
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
