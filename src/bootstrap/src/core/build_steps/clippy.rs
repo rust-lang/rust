@@ -590,6 +590,10 @@ impl CommandLineStep for CI {
                 "clippy::ptr_offset_with_cast".into(),
                 "clippy::let_and_return".into(),
                 "clippy::needless_return".into(),
+                "clippy::needless_borrow".into(),
+                "clippy::op_ref".into(),
+                "clippy::borrow_deref_ref".into(),
+                "clippy::explicit_auto_deref".into(),
             ],
             forbid: vec![],
         };
