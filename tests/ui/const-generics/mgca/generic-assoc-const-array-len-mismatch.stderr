@@ -1,0 +1,26 @@
+error: the constant `*b"\x01\x02\x03"` is not of type `[u8; <T as Trait>::LEN]`
+  --> $DIR/generic-assoc-const-array-len-mismatch.rs:30:11
+   |
+LL |     foo::<T, { [1, 2, 3] }>()
+   |           ^ expected `[u8; <T as Trait>::LEN]`, found `[u8; 3]`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/generic-assoc-const-array-len-mismatch.rs:24:18
+   |
+LL | fn foo<T: Trait, const A: [u8; <T as Trait>::LEN]>() -> [u8; <T as Trait>::LEN] {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+
+error: the constant `*b""` is not of type `[u8; <T as Trait>::LEN]`
+  --> $DIR/generic-assoc-const-array-len-mismatch.rs:36:11
+   |
+LL |     foo::<T, { [] }>()
+   |           ^ expected `[u8; <T as Trait>::LEN]`, found `[u8; 0]`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/generic-assoc-const-array-len-mismatch.rs:24:18
+   |
+LL | fn foo<T: Trait, const A: [u8; <T as Trait>::LEN]>() -> [u8; <T as Trait>::LEN] {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+
+error: aborting due to 2 previous errors
+

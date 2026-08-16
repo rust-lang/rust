@@ -2516,9 +2516,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Const::new_error(tcx, e);
         }
 
+        let actual_ty = Ty::new_array(tcx, *elem_ty, elems.len() as u64);
         let valtree = ty::ValTree::from_branches(tcx, elems);
 
-        ty::Const::new_value(tcx, valtree, ty)
+        ty::Const::new_value(tcx, valtree, actual_ty)
     }
 
     fn lower_const_arg_tuple_call(
