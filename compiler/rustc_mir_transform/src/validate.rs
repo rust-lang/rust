@@ -1460,6 +1460,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
+
+            Rvalue::BtfFieldInfo { path, .. } => {
+                if path.is_empty() {
+                    self.fail(location, "BTF field info path must not be empty");
+                }
+            }
         }
         self.super_rvalue(rvalue, location);
     }

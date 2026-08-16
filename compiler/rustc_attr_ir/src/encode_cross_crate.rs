@@ -21,6 +21,7 @@ impl AttributeKind {
             AllowInternalUnsafe(..) => Yes,
             AllowInternalUnstable(..) => Yes,
             AutomaticallyDerived => Yes,
+            BtfRelocatable(..) => Yes,
             CfgAttrTrace(..) => Yes,
             CfgTrace(..) => Yes,
             CfiEncoding { .. } => Yes,

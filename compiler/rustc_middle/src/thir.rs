@@ -14,7 +14,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
-use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
+use rustc_ast::{AsmMacro, BtfFieldInfoKind, InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
@@ -562,6 +562,12 @@ pub enum ExprKind<'tcx> {
         source: ExprId,
         mutability: Mutability,
         target: Ty<'tcx>,
+    },
+    /// A BTF field metadata query.
+    BtfFieldInfo {
+        kind: BtfFieldInfoKind,
+        base_ty: Ty<'tcx>,
+        path: Box<[mir::BtfFieldStep<'tcx>]>,
     },
 }
 

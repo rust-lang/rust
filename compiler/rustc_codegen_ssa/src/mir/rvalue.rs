@@ -852,6 +852,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: operand.val, layout, move_annotation: None }
             }
 
+            mir::Rvalue::BtfFieldInfo { base_ty, ref path, kind } => {
+                let base_ty = self.monomorphize(base_ty);
+                debug_assert_eq!(path.first().map(|step| step.container_ty), Some(base_ty));
+                let path = path.iter().map(|step| mir::BtfFieldStep {
+                    container_ty: self.monomorphize(step.container_ty),
+                    variant: step.variant,
+                    field: step.field,
+                });
+                let base = bx.const_null(bx.type_ptr());
+                let llval = bx.btf_field_info(base, path, kind);
+                let (val, ty) = match kind {
+                    mir::BtfFieldInfoKind::ByteOffset | mir::BtfFieldInfoKind::ByteSize => {
+                        (bx.zext(llval, bx.type_isize()), bx.tcx().types.usize)
+                    }
+                    mir::BtfFieldInfoKind::Exists => {
+                        (bx.icmp(IntPredicate::IntNE, llval, bx.const_u32(0)), bx.tcx().types.bool)
+                    }
+                };
+                OperandRef {
+                    val: OperandValue::Immediate(val),
+                    layout: bx.cx().layout_of(ty),
+                    move_annotation: None,
+                }
+            }
+
             mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
         }
     }

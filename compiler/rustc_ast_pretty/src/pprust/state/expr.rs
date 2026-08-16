@@ -888,6 +888,24 @@ impl<'a> State<'a> {
                 self.print_expr(expr, FixupContext::default());
                 self.pclose()
             }
+            ast::ExprKind::BtfFieldInfo(kind, container, fields) => {
+                self.word("builtin # ");
+                self.word(kind.as_str());
+                self.popen();
+                let ib = self.ibox(0);
+                self.print_type(container);
+                self.word(",");
+                self.space();
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+                self.end(ib);
+                self.pclose();
+            }
         }
 
         self.ann.post(self, AnnNode::Expr(expr));

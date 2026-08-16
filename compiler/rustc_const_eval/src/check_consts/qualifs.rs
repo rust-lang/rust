@@ -275,6 +275,8 @@ where
             // Otherwise, proceed structurally...
             operands.iter().any(|o| in_operand::<Q, _>(cx, in_local, o))
         }
+
+        Rvalue::BtfFieldInfo { .. } => false,
     }
 }
 

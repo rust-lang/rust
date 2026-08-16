@@ -1582,7 +1582,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            Rvalue::ThreadLocalRef(_) => {}
+            Rvalue::ThreadLocalRef(_) | Rvalue::BtfFieldInfo { .. } => {}
 
             Rvalue::Use(operand, _)
             | Rvalue::Repeat(operand, _)

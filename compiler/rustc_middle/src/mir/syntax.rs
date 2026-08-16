@@ -1464,6 +1464,9 @@ pub enum Rvalue<'tcx> {
     ///
     /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
     Reborrow(Ty<'tcx>, Mutability, Place<'tcx>),
+
+    /// Queries BTF metadata for a statically resolved field path.
+    BtfFieldInfo { base_ty: Ty<'tcx>, path: Box<[BtfFieldStep<'tcx>]>, kind: BtfFieldInfoKind },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, StableHash)]
@@ -1729,6 +1732,64 @@ impl From<AssignOp> for BinOp {
             AssignOp::BitOrAssign => BinOp::BitOr,
             AssignOp::ShlAssign => BinOp::Shl,
             AssignOp::ShrAssign => BinOp::Shr,
+        }
+    }
+}
+
+// The step in BTF field path traversal.
+#[derive(
+    Clone,
+    Debug,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    PartialEq,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub struct BtfFieldStep<'tcx> {
+    pub container_ty: Ty<'tcx>,
+    pub variant: VariantIdx,
+    pub field: FieldIdx,
+}
+
+/// The kind of BTF field metadata query.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    PartialEq,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum BtfFieldInfoKind {
+    /// Offset of the field.
+    ByteOffset,
+    /// Size of the field.
+    ByteSize,
+    /// Whether the field exists.
+    Exists,
+}
+
+impl BtfFieldInfoKind {
+    pub fn as_u64(&self) -> u64 {
+        match self {
+            Self::ByteOffset => 0,
+            Self::ByteSize => 1,
+            Self::Exists => 2,
+        }
+    }
+}
+
+impl From<rustc_ast::BtfFieldInfoKind> for BtfFieldInfoKind {
+    fn from(kind: rustc_ast::BtfFieldInfoKind) -> Self {
+        match kind {
+            rustc_ast::BtfFieldInfoKind::ByteOffset => Self::ByteOffset,
+            rustc_ast::BtfFieldInfoKind::ByteSize => Self::ByteSize,
+            rustc_ast::BtfFieldInfoKind::Exists => Self::Exists,
         }
     }
 }

@@ -13,9 +13,9 @@ use rustc_ast::util::parser::{AssocOp, ExprPrecedence, Fixity, prec_let_scrutine
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
-    BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind,
-    Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    BlockCheckMode, BtfFieldInfoKind, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField,
+    ExprKind, FnDecl, FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param,
+    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -2050,6 +2050,21 @@ impl<'a> Parser<'a> {
                 sym::unwrap_binder => {
                     Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
                 }
+                sym::btf_field_byte_offset => Some(this.parse_expr_btf_field_info(
+                    lo,
+                    ident.as_str(),
+                    BtfFieldInfoKind::ByteOffset,
+                )?),
+                sym::btf_field_byte_size => Some(this.parse_expr_btf_field_info(
+                    lo,
+                    ident.as_str(),
+                    BtfFieldInfoKind::ByteSize,
+                )?),
+                sym::btf_field_exists => Some(this.parse_expr_btf_field_info(
+                    lo,
+                    ident.as_str(),
+                    BtfFieldInfoKind::Exists,
+                )?),
                 _ => None,
             })
         })
@@ -2133,6 +2148,37 @@ impl<'a> Parser<'a> {
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
+    }
+
+    pub(crate) fn parse_expr_btf_field_info(
+        &mut self,
+        lo: Span,
+        name: &str,
+        kind: BtfFieldInfoKind,
+    ) -> PResult<'a, Box<Expr>> {
+        let container = self.parse_ty()?;
+        self.expect(exp!(Comma))?;
+
+        let fields = self.parse_floating_field_access()?;
+        let trailing_comma = self.eat_noexpect(&TokenKind::Comma);
+
+        if let Err(mut e) = self.expect_one_of(&[], &[exp!(CloseParen)]) {
+            if trailing_comma {
+                e.note(format!("unexpected third argument to {name}"));
+            } else {
+                e.note(format!("{name} expects dot-separated field names"));
+            }
+        }
+
+        // Eat tokens until the macro call ends.
+        if self.may_recover() {
+            while !self.token.kind.is_close_delim_or_eof() {
+                self.bump();
+            }
+        }
+
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::BtfFieldInfo(kind, container, fields)))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -4539,6 +4585,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::FormatArgs(_)
             | ExprKind::Err(_)
             | ExprKind::DirectConstArg(_)
+            | ExprKind::BtfFieldInfo(..)
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }

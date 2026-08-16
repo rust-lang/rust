@@ -1301,6 +1301,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             WrapUnsafeBinder(ref op, ty) => {
                 with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
             }
+
+            BtfFieldInfo { ref base_ty, ref path, kind } => {
+                write!(fmt, "btf_field_info({base_ty:?}, {path:?}, {kind:?})")
+            }
         }
     }
 }

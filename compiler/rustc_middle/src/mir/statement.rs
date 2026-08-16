@@ -796,7 +796,8 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
-            | Rvalue::WrapUnsafeBinder(_, _) => true,
+            | Rvalue::WrapUnsafeBinder(_, _)
+            | Rvalue::BtfFieldInfo { .. } => true,
         }
     }
 
@@ -853,6 +854,10 @@ impl<'tcx> Rvalue<'tcx> {
             },
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
             Rvalue::WrapUnsafeBinder(_, ty) => ty,
+            Rvalue::BtfFieldInfo { kind, .. } => match kind {
+                BtfFieldInfoKind::ByteOffset | BtfFieldInfoKind::ByteSize => tcx.types.usize,
+                BtfFieldInfoKind::Exists => tcx.types.bool,
+            },
         }
     }
 }

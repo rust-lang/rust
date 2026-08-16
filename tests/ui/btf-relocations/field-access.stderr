@@ -1,0 +1,38 @@
+error: cannot access fields of a `btf_relocatable` type directly
+  --> $DIR/field-access.rs:25:5
+   |
+LL |     inner.value
+   |     ^^^^^^-----
+   |           |
+   |           direct field access is forbidden for BTF-relocatable types
+
+error: cannot access fields of a `btf_relocatable` type directly
+  --> $DIR/field-access.rs:30:5
+   |
+LL |     outer.inner.value
+   |     ^^^^^^-----
+   |           |
+   |           direct field access is forbidden for BTF-relocatable types
+
+error: cannot use `offset_of!` with a `btf_relocatable` type
+  --> $DIR/field-access.rs:35:5
+   |
+LL |     mem::offset_of!(Inner, value)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^-----^
+   |                            |
+   |                            this field requires BTF relocation
+   |
+   = note: this error originates in the macro `mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot use `offset_of!` with a `btf_relocatable` type
+  --> $DIR/field-access.rs:40:5
+   |
+LL |     mem::offset_of!(Outer, inner.value)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^-----^^^^^^^
+   |                            |
+   |                            this field requires BTF relocation
+   |
+   = note: this error originates in the macro `mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+

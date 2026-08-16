@@ -441,7 +441,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             Rvalue::Ref(..)
             | Rvalue::Reborrow(..)
             | Rvalue::RawPtr(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::BtfFieldInfo { .. } => {}
         }
     }
 

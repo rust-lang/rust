@@ -587,7 +587,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // the rvalue in a temporary instead of treating the reborrow
             // expression itself as an assignable place.
             | ExprKind::Reborrow { .. }
-            | ExprKind::WrapUnsafeBinder { .. } => {
+            | ExprKind::WrapUnsafeBinder { .. }
+            | ExprKind::BtfFieldInfo { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
                 let temp_lifetime = this.region_scope_tree.temporary_scope(expr.temp_scope_id);

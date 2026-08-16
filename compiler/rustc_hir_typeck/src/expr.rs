@@ -5,8 +5,9 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_ast as ast;
+use rustc_ast::BtfFieldInfoKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -29,10 +30,12 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::DebugInfo;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{Ident, Span, Spanned, Symbol, kw, sym};
+use rustc_target::spec::Arch;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -398,6 +401,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Yield(value, _) => self.check_expr_yield(value, expr),
             ExprKind::UnsafeBinderCast(kind, inner_expr, ty) => {
                 self.check_expr_unsafe_binder_cast(expr.span, kind, inner_expr, ty, expected)
+            }
+            ExprKind::BtfFieldInfo(kind, container, fields) => {
+                self.check_expr_btf_field_info(kind, container, fields, expr)
             }
             ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
@@ -2781,6 +2787,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
+                        if find_attr!(self.tcx, base_def.did(), BtfRelocatable(..)) {
+                            let mut err = self.dcx().struct_span_err(
+                                expr.span,
+                                "cannot access fields of a `btf_relocatable` type directly",
+                            );
+                            err.span_label(
+                                ident.span,
+                                "direct field access is forbidden for BTF-relocatable types",
+                            );
+                            return Ty::new_error(self.tcx, err.emit());
+                        }
+
                         self.write_field_index(expr.hir_id, idx);
 
                         let adjustments = self.adjust_steps(&autoderef);
@@ -3804,6 +3822,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[Ident],
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
+        let field_indices = self.resolve_field_path(container, fields, false, expr);
+        self.typeck_results.borrow_mut().offset_of_data_mut().insert(expr.hir_id, field_indices);
+        self.tcx.types.usize
+    }
+
+    fn check_expr_btf_field_info(
+        &self,
+        kind: BtfFieldInfoKind,
+        container: &'tcx hir::Ty<'tcx>,
+        fields: &[Ident],
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        if self.tcx.sess.target.arch != Arch::Bpf {
+            self.dcx()
+                .struct_span_err(
+                    expr.span,
+                    "BTF field relocation queries are only supported for BPF targets",
+                )
+                .emit();
+        } else if self.tcx.sess.opts.debuginfo == DebugInfo::None {
+            let mut err = self
+                .dcx()
+                .struct_span_err(expr.span, "BTF field relocation queries require debug info");
+            err.help("compile with `-C debuginfo=2`");
+            err.emit();
+        }
+        let field_indices = self.resolve_field_path(container, fields, true, expr);
+        self.typeck_results
+            .borrow_mut()
+            .btf_field_info_data_mut()
+            .insert(expr.hir_id, field_indices);
+        match kind {
+            BtfFieldInfoKind::Exists => self.tcx.types.bool,
+            BtfFieldInfoKind::ByteOffset | BtfFieldInfoKind::ByteSize => self.tcx.types.usize,
+        }
+    }
+
+    fn resolve_field_path(
+        &self,
+        container: &'tcx hir::Ty<'tcx>,
+        fields: &[Ident],
+        allow_btf_relocatable: bool,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Vec<(Ty<'tcx>, VariantIdx, FieldIdx)> {
         let mut current_container = self.lower_ty(container).normalized;
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut fields = fields.into_iter();
@@ -3900,6 +3962,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
                 ty::Adt(container_def, args) => {
+                    if find_attr!(self.tcx, container_def.did(), BtfRelocatable(..))
+                        && !allow_btf_relocatable
+                    {
+                        let mut err = self.dcx().struct_span_err(
+                            expr.span,
+                            "cannot use `offset_of!` with a `btf_relocatable` type",
+                        );
+                        err.span_label(field.span, "this field requires BTF relocation");
+                        err.emit();
+                        break;
+                    }
+
                     let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                         field,
                         container_def.did(),
@@ -3967,8 +4041,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             break;
         }
 
-        self.typeck_results.borrow_mut().offset_of_data_mut().insert(expr.hir_id, field_indices);
-
-        self.tcx.types.usize
+        field_indices
     }
 }

@@ -361,7 +361,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | VarRef { .. }
             | ZstLiteral { .. }
             | Yield { .. }
-            | Reborrow { .. } => true,
+            | Reborrow { .. }
+            | BtfFieldInfo { .. } => true,
         }
     }
 
