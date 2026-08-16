@@ -4,6 +4,8 @@ set -eux
 
 source shared.sh
 
+# We have to build our own binutils for the GCC build, because the default CentOS 7 binutils are
+# too old, and they do not support `SHF_GNU_RETAIN`.
 BINUTILS="2.47"
 curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
 mkdir binutils-build
