@@ -312,7 +312,7 @@ auto:
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
-  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
+  - <<: [*job-dist-x86_64-linux, *job-linux-32c-ec2]
 
   - name: dist-x86_64-linux-alt
     env:
