@@ -12,10 +12,11 @@ use std::path::Path;
 use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
-use crate::{Build, Compiler, Mode};
+use crate::{Build, Mode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}

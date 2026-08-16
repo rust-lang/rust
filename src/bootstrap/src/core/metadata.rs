@@ -5,14 +5,29 @@
 //! source, dependencies, targets, and available features. The collected metadata is then
 //! used to update the `Build` structure, ensuring proper dependency resolution and
 //! compilation flow.
-use std::collections::BTreeMap;
+
+use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
 
 use serde_derive::Deserialize;
 
+use crate::Build;
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
-use crate::{Build, Crate};
+
+#[derive(Debug, Clone)]
+pub(crate) struct Crate {
+    pub(crate) name: String,
+    pub(crate) deps: HashSet<String>,
+    pub(crate) path: PathBuf,
+    pub(crate) features: Vec<String>,
+}
+
+impl Crate {
+    pub(crate) fn local_path(&self, build: &Build) -> PathBuf {
+        self.path.strip_prefix(&build.config.src).unwrap().into()
+    }
+}
 
 /// For more information, see the output of
 /// <https://doc.rust-lang.org/nightly/cargo/commands/cargo-metadata.html>
