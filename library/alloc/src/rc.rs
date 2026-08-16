@@ -3858,14 +3858,14 @@ impl<'a> RcInnerPtr for WeakInner<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for Rc<T, A> {
     fn borrow(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
     fn as_ref(&self) -> &T {
-        &**self
+        self
     }
 }
 
@@ -3990,28 +3990,28 @@ impl<T: ?Sized, A: Allocator> fmt::Pointer for UniqueRc<T, A> {
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for UniqueRc<T, A> {
     fn borrow(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for UniqueRc<T, A> {
     fn borrow_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueRc<T, A> {
     fn as_ref(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
     fn as_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
