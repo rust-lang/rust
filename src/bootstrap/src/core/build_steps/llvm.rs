@@ -412,11 +412,11 @@ impl CommandLineStep for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        if builder.llvm_link_shared() {
-            cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
-            // Keep the pre-LLVM23 behavior for now.
-            cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
-        }
+        let llvm_link_shared = if builder.llvm_link_shared() { "ON" } else { "OFF" };
+        cfg.define("LLVM_LINK_LLVM_DYLIB", llvm_link_shared);
+        cfg.define("LLVM_BUILD_LLVM_DYLIB", llvm_link_shared);
+        // Keep the pre-LLVM23 behavior for now.
+        cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
 
         if (target.starts_with("csky")
             || target.starts_with("riscv")
