@@ -13,9 +13,9 @@ use emmy_dap_types::prelude::types::{
     StoppedEventReason, Thread, Variable,
 };
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
-use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug, interp_ok};
+use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug};
 
-use crate::debugger::{LocalDesc, PrirodaContext, StepResult};
+use crate::debugger::{ExecutionResult, LocalDesc, PrirodaContext, StepResult};
 
 // Priroda still exposes one interpreted thread and one selected frame to DAP.
 // Keep the ids stable so editor follow-up requests can address the stopped state.
@@ -77,7 +77,7 @@ impl Dap {
             eprintln!("priroda dap error: {err:?}");
         }
 
-        interp_ok(())
+        session.finish_session()
     }
 }
 
@@ -650,9 +650,10 @@ impl<R: Read, W: Write> DapSession<R, W> {
         Ok(())
     }
 
-    fn execution_outcome<'tcx>(result: InterpResult<'tcx, StepResult>) -> ExecutionOutcome {
+    fn execution_outcome<'tcx>(result: InterpResult<'tcx, ExecutionResult>) -> ExecutionOutcome {
         match result.report_err() {
-            Ok(step) => ExecutionOutcome::Stopped(step),
+            Ok(ExecutionResult::Stopped(step)) => ExecutionOutcome::Stopped(step),
+            Ok(ExecutionResult::ProgramExited { code }) => ExecutionOutcome::Terminated { code },
             Err(err) => Self::interp_error_outcome(err),
         }
     }

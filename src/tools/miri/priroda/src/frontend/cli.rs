@@ -6,7 +6,8 @@ use miri::{InterpResult, interp_ok};
 use rustc_middle::mir::interpret::AllocId;
 
 use crate::debugger::{
-    BreakpointSetResult, CommandResult, DebuggerCommand, PrirodaContext, StepResult,
+    BreakpointSetResult, CommandResult, DebuggerCommand, ExecutionResult, PrirodaContext,
+    StepResult,
 };
 
 pub(crate) struct Cli;
@@ -46,12 +47,20 @@ impl Cli {
         session: &PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         match command_res {
-            CommandResult::ExecutionStopped(result) => {
-                if matches!(result, StepResult::Breakpoint) {
-                    println!("Hit breakpoint");
-                }
-                Self::print_location(session);
-            }
+            CommandResult::Execution(result) =>
+                match result {
+                    ExecutionResult::Stopped(step) =>
+                        match step {
+                            StepResult::Step => Self::print_location(session),
+                            StepResult::Breakpoint => {
+                                println!("Hit breakpoint");
+                                Self::print_location(session);
+                            }
+                        },
+                    ExecutionResult::ProgramExited { code } => {
+                        println!("program finished with exit code {code}");
+                    }
+                },
             CommandResult::BreakpointResult(res) =>
                 match res {
                     BreakpointSetResult::Added(path, line) => {
