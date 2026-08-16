@@ -199,11 +199,11 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         // Process interpreter result.
         if let Err(return_code) = res {
             tcx.dcx().abort_if_errors();
-            exit(return_code.get());
+            exit(return_code.get())
         } else {
             // We want to continue here so rustc can do its usual shutdown and finalize the
             // incremental session. Our custom codegen backend ensures nothing actually happens.
-            return Compilation::Continue;
+            Compilation::Continue
         }
     }
 }
