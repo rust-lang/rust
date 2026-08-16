@@ -182,6 +182,9 @@ expression: test --skip=coverage
 [Test] test::StdarchVerify
     targets: [x86_64-unknown-linux-gnu]
     - Set({library/stdarch/crates/stdarch-verify})
+[Test] test::StdarchGenCheck
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({stdarch-gen-check})
 [Test] test::RustdocJSStd
     targets: [x86_64-unknown-linux-gnu]
     - Suite(tests/rustdoc-js-std)

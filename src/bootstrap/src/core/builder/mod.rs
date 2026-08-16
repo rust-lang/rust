@@ -892,6 +892,7 @@ impl<'a> Builder<'a> {
                 test::Clippy,
                 test::CompiletestTest,
                 test::StdarchVerify,
+                test::StdarchGenCheck,
                 test::CrateRunMakeSupport,
                 test::CrateBuildHelper,
                 test::RustdocJSStd,
