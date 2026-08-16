@@ -1,0 +1,53 @@
+# Dockerfile.enclave
+
+# Stage 1: Hardened Build Environment
+FROM rust:1.75.0-slim-bookworm AS compiler
+
+# Update packages and install essential compiler utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    musl-tools \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/nexus_recon_engine
+
+# Copy configuration matrices first to leverage build caching optimizations
+COPY Cargo.toml build.rs ./
+COPY .cargo ./.cargo
+
+# Create a temporary dummy main file to compile and cache backend dependencies
+RUN mkdir src && echo 'fn main() {}' > src/main.rs
+RUN cargo build --release
+
+# Clear out the temporary workspace layer
+RUN rm -f src/main.rs target/release/deps/nexus_recon_engine*
+
+# Copy the proprietary core source engine code
+COPY src ./src
+
+# Compile the final uninspectable, stripped production machine-code binary
+RUN cargo build --release
+
+# Stage 2: Minimalist, Locked-Down Runtime Sandbox
+FROM debian:bookworm-slim
+
+# Enforce a strict non-root user execution context for compliance
+RUN groupadd -g 10001 recongroup && \
+    useradd -u 10001 -g recongroup -m -s /bin/false reconuser
+
+WORKDIR /app
+
+# Pull only the completely stripped release binary from the compiler stage
+COPY --from=compiler /usr/src/nexus_recon_engine/target/release/nexus_recon_engine .
+
+# Adjust explicit file ownership permissions to block runtime mutations
+RUN chown -R reconuser:recongroup /app && \
+    chmod 500 /app/nexus_recon_engine
+
+USER reconuser
+
+# Expose the high-throughput network edge ingestion API gateway port
+EXPOSE 8080
+
+# Launch the micro-kernel background worker loop process
+ENTRYPOINT ["./nexus_recon_engine"]
