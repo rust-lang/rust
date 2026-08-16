@@ -2,7 +2,7 @@
 use std::panic;
 
 use build_helper::stage0_parser::parse_stage0_file;
-use llvm::prebuilt_llvm_config;
+use llvm::get_llvm_build_status;
 
 use super::*;
 use crate::core::config::Config;
@@ -110,33 +110,6 @@ fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -
         ])
         .no_override_download_ci_llvm()
         .create_config()
-}
-
-mod dist {
-    use super::{Config, TEST_TRIPLE_1, TEST_TRIPLE_2};
-    use crate::core::builder::tests::host_target;
-    use crate::core::builder::*;
-
-    fn configure(host: &[&str], target: &[&str]) -> Config {
-        Config { stage: 2, ..super::configure("dist", host, target) }
-    }
-
-    #[test]
-    fn llvm_out_behaviour() {
-        let mut config = configure(&[], &[TEST_TRIPLE_2]);
-        config.llvm_from_ci = true;
-        let build = Build::new(config.clone());
-
-        let target = TargetSelection::from_user(&host_target());
-        assert!(build.llvm_out(target).ends_with("ci-llvm"));
-        let target = TargetSelection::from_user(TEST_TRIPLE_2);
-        assert!(build.llvm_out(target).ends_with("llvm"));
-
-        config.llvm_from_ci = false;
-        let build = Build::new(config.clone());
-        let target = TargetSelection::from_user(TEST_TRIPLE_1);
-        assert!(build.llvm_out(target).ends_with("llvm"));
-    }
 }
 
 mod sysroot_target_dirs {
@@ -274,19 +247,16 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     let expected = PathBuf::from("/some/path/to/llvm-config");
 
-    let actual = prebuilt_llvm_config(
-        &builder,
-        TargetSelection::from_user("arm-unknown-linux-gnueabihf"),
-        false,
-    )
-    .llvm_result()
-    .host_llvm_config
-    .clone();
+    let actual =
+        get_llvm_build_status(&builder, TargetSelection::from_user("arm-unknown-linux-gnueabihf"))
+            .llvm_output()
+            .host_llvm_config
+            .clone();
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
-        .llvm_result()
+    let actual = get_llvm_build_status(&builder, builder.config.host_target)
+        .llvm_output()
         .host_llvm_config
         .clone();
     let actual = drop_win_disk_prefix_if_present(actual);
@@ -303,8 +273,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let build = Build::new(config.clone());
     let builder = Builder::new(&build);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
-        .llvm_result()
+    let actual = get_llvm_build_status(&builder, builder.config.host_target)
+        .llvm_output()
         .host_llvm_config
         .clone();
     let expected = builder
@@ -322,12 +292,12 @@ fn test_prebuilt_llvm_config_path_resolution() {
     );
 
     // CI-LLVM isn't always available; check if it's enabled before testing.
-    if config.llvm_from_ci {
+    if config.llvm_ci_mode.download_from_ci() {
         let build = Build::new(config.clone());
         let builder = Builder::new(&build);
 
-        let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
-            .llvm_result()
+        let actual = get_llvm_build_status(&builder, builder.config.host_target)
+            .llvm_output()
             .host_llvm_config
             .clone();
         let expected = builder

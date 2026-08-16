@@ -368,6 +368,26 @@ pub enum GccCiMode {
     DownloadFromCi,
 }
 
+/// Determines how will LLVM be provided.
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum LlvmCiMode {
+    /// Build LLVM from the local `src/llvm-project` submodule.
+    BuildLocally,
+    /// Try to download LLVM from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    #[default]
+    DownloadFromCi,
+}
+
+impl LlvmCiMode {
+    pub fn download_from_ci(&self) -> bool {
+        match self {
+            LlvmCiMode::BuildLocally => false,
+            LlvmCiMode::DownloadFromCi => true,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum DebuggerPath {
     /// Use a debugger at this path

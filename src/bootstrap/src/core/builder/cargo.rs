@@ -3,6 +3,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 use super::{Builder, Kind};
+use crate::core::build_steps::llvm::prebuilt_llvm_output;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::config::flags::Color;
@@ -700,9 +701,7 @@ impl Builder<'_> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target, false)
-                .should_build()
-            {
+            if prebuilt_llvm_output(self, target).is_none() {
                 cargo.env("RUST_CHECK", "1");
             }
         }

@@ -2734,11 +2734,10 @@ Please disable assertions with `rust.debug-assertions = false`.
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(test_compiler.host) {
-            let llvm::LlvmOutput { host_llvm_config, .. } =
-                builder.ensure(llvm::Llvm { target: builder.config.host_target });
+            let llvm_output = builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_version = get_llvm_version(builder, &host_llvm_config);
-                let llvm_components = command(&host_llvm_config)
+                let llvm_version = get_llvm_version(builder, &llvm_output.host_llvm_config);
+                let llvm_components = command(&llvm_output.host_llvm_config)
                     .cached()
                     .arg("--components")
                     .run_capture_stdout(builder)
@@ -2750,7 +2749,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                     .arg(llvm_components.trim());
                 llvm_components_passed = true;
             }
-            if !builder.config.is_rust_llvm(target) {
+            if !builder.config.is_rust_llvm(&llvm_output, target) {
                 cmd.arg("--system-llvm");
             }
 
@@ -2759,7 +2758,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             // separate compilations. We can add LLVM's library path to the
             // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
-                let llvm_libdir = command(&host_llvm_config)
+                let llvm_libdir = command(&llvm_output.host_llvm_config)
                     .cached()
                     .arg("--libdir")
                     .run_capture_stdout(builder)
@@ -2779,7 +2778,8 @@ Please disable assertions with `rust.debug-assertions = false`.
                 // tools. Pass the path to run-make tests so they can use them.
                 // (The coverage-run tests also need these tools to process
                 // coverage reports.)
-                let llvm_bin_path = host_llvm_config
+                let llvm_bin_path = llvm_output
+                    .host_llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
                 assert!(llvm_bin_path.is_dir());

@@ -412,7 +412,6 @@ forward! {
     create(path: &Path, s: &str),
     remove(f: &Path),
     tempdir() -> PathBuf,
-    llvm_link_shared() -> bool,
     download_rustc() -> bool,
 }
 
@@ -963,18 +962,6 @@ impl Build {
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, build_compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
         self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir(mode))
-    }
-
-    /// Root output directory of LLVM for `target`
-    ///
-    /// Note that if LLVM is configured externally then the directory returned
-    /// will likely be empty.
-    fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_from_ci && self.config.is_host_target(target) {
-            self.config.ci_llvm_root()
-        } else {
-            self.out.join(target).join("llvm")
-        }
     }
 
     /// Output directory for all documentation for a target
