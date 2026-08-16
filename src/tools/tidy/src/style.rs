@@ -437,8 +437,8 @@ fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, con
         };
 
         if !is_this_file
-            && trimmed.contains("dbg!")
             && !trimmed.starts_with("//")
+            && trimmed.contains("dbg!")
             && !file.ancestors().any(|a| {
                 (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
                     || a.ends_with("library/alloctests")
@@ -453,8 +453,8 @@ fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, con
         }
 
         if !is_this_file
-            && trimmed.contains("todo!")
             && !trimmed.starts_with("//")
+            && trimmed.contains("todo!")
             && !file.ancestors().any(|a| {
                 (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
                     || a.ends_with("library/alloctests")
@@ -516,10 +516,11 @@ fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, con
                     || Directives::parse(LineNumber::WholeFile, line)
                         .iter()
                         .any(|directive| directive.is_ignore_and_defuse()));
-            let has_alphabetical_directive =
-                line.contains("tidy-alphabetical-start") || line.contains("tidy-alphabetical-end");
+            let has_alphabetical_directive = contains_potential_directive
+                && (line.contains("tidy-alphabetical-start")
+                    || line.contains("tidy-alphabetical-end"));
             let has_other_tidy_ignore_directive =
-                line.contains("ignore-tidy-target-specific-tests");
+                contains_potential_directive && line.contains("ignore-tidy-target-specific-tests");
             let has_recognized_directive = has_recognized_ignore_directive
                 || has_alphabetical_directive
                 || has_other_tidy_ignore_directive;
