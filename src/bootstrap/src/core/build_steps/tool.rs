@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use crate::core::build_steps::compile::{CargoMessage, is_lto_stage};
+use crate::core::build_steps::dist::LLD_FILE_NAMES;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{
@@ -978,7 +979,7 @@ pub(crate) fn copy_lld_artifacts(
     let self_contained_lld_dir = libdir_bin.join("gcc-ld");
     t!(fs::create_dir_all(&self_contained_lld_dir));
 
-    for name in crate::LLD_FILE_NAMES {
+    for name in LLD_FILE_NAMES {
         builder.copy_link(
             &lld_wrapper.tool.tool_path,
             &self_contained_lld_dir.join(exe(name, target)),

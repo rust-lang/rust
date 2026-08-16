@@ -37,8 +37,7 @@ use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
 use crate::{
-    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, trace,
+    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, Mode, debug, trace,
 };
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
@@ -2179,7 +2178,7 @@ impl CommandLineStep for Assemble {
                 let _llvm_tools_span =
                     span!(tracing::Level::TRACE, "installing llvm tools to sysroot", ?libdir_bin)
                         .entered();
-                for tool in LLVM_TOOLS {
+                for tool in dist::LLVM_TOOLS {
                     trace!("installing `{tool}`");
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
