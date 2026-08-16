@@ -11,8 +11,8 @@ use crate::core::config::toml::pgo::PgoConfig;
 use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags, t};
-use crate::{CLang, GitRepo, Mode, RemapScheme, envify, prepare_behaviour_dump_dir};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
+use crate::{CLang, GitRepo, Mode, RemapScheme, prepare_behaviour_dump_dir};
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
@@ -56,7 +56,7 @@ impl Rustflags {
         self.env(prefix);
 
         // ... and also handle target-specific env RUSTFLAGS if they're configured.
-        let target_specific = format!("CARGO_TARGET_{}_{}", crate::envify(&self.1.triple), prefix);
+        let target_specific = format!("CARGO_TARGET_{}_{}", envify(&self.1.triple), prefix);
         self.env(&target_specific);
     }
 

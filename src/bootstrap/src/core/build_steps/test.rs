@@ -43,11 +43,11 @@ use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, LldThreads, TestFilterCategory, add_dylib_path, add_rustdoc_cargo_linker_args,
-    dylib_path, dylib_path_var, linker_args, linker_flags, t, target_supports_cranelift_backend,
-    up_to_date,
+    dylib_path, dylib_path_var, envify, linker_args, linker_flags, t,
+    target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, GitRepo, Mode, envify};
+use crate::{CLang, GitRepo, Mode};
 
 mod compiletest;
 pub mod failed_tests;

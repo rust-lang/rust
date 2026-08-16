@@ -1892,18 +1892,6 @@ fn chmod(path: &Path, perms: u32) {
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
 
-fn envify(s: &str) -> String {
-    // Converting foo-bar to FOO_BAR is a fairly idomatic mapping to an environment variable name.
-    // We also convert '.' to '_' to fix https://github.com/rust-lang/rust/issues/158090
-    s.chars()
-        .map(|c| match c {
-            '-' | '.' => '_',
-            c => c,
-        })
-        .flat_map(|c| c.to_uppercase())
-        .collect()
-}
-
 /// Ensures that the behavior dump directory is properly initialized.
 pub fn prepare_behaviour_dump_dir(build: &Build) {
     static INITIALIZED: OnceLock<bool> = OnceLock::new();
