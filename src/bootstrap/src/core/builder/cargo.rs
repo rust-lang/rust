@@ -1,6 +1,7 @@
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::{env, fs};
 
 use super::{Builder, Kind};
 use crate::core::build_steps::test;
@@ -12,7 +13,7 @@ use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, Tar
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
-use crate::{CLang, GitRepo, Mode, RemapScheme, prepare_behaviour_dump_dir};
+use crate::{CLang, GitRepo, Mode, RemapScheme};
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
@@ -1220,7 +1221,7 @@ impl Builder<'_> {
         }
 
         if self.config.dump_bootstrap_shims {
-            prepare_behaviour_dump_dir(self.build);
+            prepare_shims_dump_dir(self);
 
             cargo
                 .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
@@ -1586,5 +1587,24 @@ pub fn apply_pgo(
             "-Cllvm-args=-static-func-strip-dirname-prefix={}",
             builder.config.src.components().count()
         ));
+    }
+}
+
+/// Ensures that the behavior dump directory is properly initialized.
+fn prepare_shims_dump_dir(builder: &Builder<'_>) {
+    static INITIALIZED: OnceLock<bool> = OnceLock::new();
+
+    let dump_path = builder.out.join("bootstrap-shims-dump");
+
+    let initialized = INITIALIZED.get().unwrap_or(&false);
+    if !initialized {
+        // clear old dumps
+        if dump_path.exists() {
+            t!(fs::remove_dir_all(&dump_path));
+        }
+
+        t!(fs::create_dir_all(&dump_path));
+
+        t!(INITIALIZED.set(true));
     }
 }

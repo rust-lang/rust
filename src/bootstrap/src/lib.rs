@@ -1891,22 +1891,3 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
-
-/// Ensures that the behavior dump directory is properly initialized.
-pub fn prepare_behaviour_dump_dir(build: &Build) {
-    static INITIALIZED: OnceLock<bool> = OnceLock::new();
-
-    let dump_path = build.out.join("bootstrap-shims-dump");
-
-    let initialized = INITIALIZED.get().unwrap_or(&false);
-    if !initialized {
-        // clear old dumps
-        if dump_path.exists() {
-            t!(fs::remove_dir_all(&dump_path));
-        }
-
-        t!(fs::create_dir_all(&dump_path));
-
-        t!(INITIALIZED.set(true));
-    }
-}
