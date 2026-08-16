@@ -14,16 +14,18 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use crate::core::build_steps::compile::{CargoMessage, is_lto_stage};
+use crate::core::build_steps::dist::LLD_FILE_NAMES;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{
     self, Builder, Cargo as CargoCommand, CommandLineStep, Kind, RunConfig, ShouldRun, Step,
     StepMetadata, apply_pgo, cargo_profile_var,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Mode};
+use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -978,7 +980,7 @@ pub(crate) fn copy_lld_artifacts(
     let self_contained_lld_dir = libdir_bin.join("gcc-ld");
     t!(fs::create_dir_all(&self_contained_lld_dir));
 
-    for name in crate::LLD_FILE_NAMES {
+    for name in LLD_FILE_NAMES {
         builder.copy_link(
             &lld_wrapper.tool.tool_path,
             &self_contained_lld_dir.join(exe(name, target)),

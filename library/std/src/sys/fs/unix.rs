@@ -2415,7 +2415,7 @@ mod remove_dir_impl {
 
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &path) {
+        let fd = match openat_nofollow_dironly(parent_fd, path) {
             Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                 // not a directory - don't traverse further
                 // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
@@ -2485,7 +2485,7 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             super::unlink(p)
         } else {
-            remove_dir_all_recursive(None, &p)
+            remove_dir_all_recursive(None, p)
         }
     }
 

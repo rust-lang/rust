@@ -25,7 +25,7 @@ impl PartialOrd for ByteStr {
 impl PartialEq<ByteStr> for ByteStr {
     #[inline]
     fn eq(&self, other: &ByteStr) -> bool {
-        &self.0 == &other.0
+        self.0 == other.0
     }
 }
 

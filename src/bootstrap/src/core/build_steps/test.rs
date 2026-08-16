@@ -15,6 +15,7 @@ use std::{env, fs, iter};
 
 use build_helper::git::get_closest_upstream_commit;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::format::InternalRustfmt;
@@ -34,6 +35,7 @@ use crate::core::builder::{
     self, Alias, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
 use crate::core::{android, debuggers};
@@ -41,14 +43,32 @@ use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, LldThreads, TestFilterCategory, add_dylib_path, add_rustdoc_cargo_linker_args,
-    dylib_path, dylib_path_var, linker_args, linker_flags, t, target_supports_cranelift_backend,
-    up_to_date,
+    dylib_path, dylib_path_var, envify, linker_args, linker_flags, t,
+    target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, Compiler, GitRepo, Mode, TestTarget, envify};
+use crate::{CLang, GitRepo, Mode};
 
 mod compiletest;
 pub mod failed_tests;
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum TestTarget {
+    /// Run unit, integration and doc tests (default).
+    Default,
+    /// Run unit, integration, doc tests, examples, bins, benchmarks (no doc tests).
+    AllTargets,
+    /// Only run doc tests.
+    DocOnly,
+    /// Only run unit and integration tests.
+    Tests,
+}
+
+impl TestTarget {
+    pub(crate) fn runs_doctests(&self) -> bool {
+        matches!(self, TestTarget::DocOnly | TestTarget::Default)
+    }
+}
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

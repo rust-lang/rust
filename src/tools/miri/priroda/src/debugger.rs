@@ -505,17 +505,14 @@ impl<'tcx> PrirodaContext<'tcx> {
                 // view before fields can be projected. Structs use their sole
                 // variant directly. Keep the display name tied to the same choice.
                 let (variant_idx, down, name) = if def.is_enum() {
-                    let Some(variant_idx) =
-                        self.ecx.read_discriminant(&op).discard_err()
-                    else {
+                    let Some(variant_idx) = self.ecx.read_discriminant(&op).discard_err() else {
                         // FIXME: expose this as an explicit render error when
                         // Priroda grows structured value states. Falling back to
                         // bytes keeps today's UI usable but hides why the enum
                         // could not be source-shaped.
                         return self.render_op(op);
                     };
-                    let Some(down) =
-                        self.ecx.project_downcast(&op, variant_idx).discard_err()
+                    let Some(down) = self.ecx.project_downcast(&op, variant_idx).discard_err()
                     else {
                         // FIXME: distinguish invalid/uninitialized discriminants
                         // from projection bugs in the rendered output once locals
@@ -541,8 +538,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     let field_idx = FieldIdx::from_usize(i);
                     // `project_field` avoids manual offset math and works for both
                     // immediate and memory-backed operands through `Projectable`.
-                    let Some(field_op) =
-                        self.ecx.project_field(&down, field_idx).discard_err()
+                    let Some(field_op) = self.ecx.project_field(&down, field_idx).discard_err()
                     else {
                         // FIXME: preserve the successfully rendered fields and
                         // mark only this field as unavailable once the value model

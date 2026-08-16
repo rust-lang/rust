@@ -245,14 +245,14 @@ impl<'a> Context<'a> {
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn waker(&self) -> &'a Waker {
-        &self.waker
+        self.waker
     }
 
     /// Returns a reference to the [`LocalWaker`] for the current task.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn local_waker(&self) -> &'a LocalWaker {
-        &self.local_waker
+        self.local_waker
     }
 
     /// Returns a reference to the extension data for the current task.

@@ -4,6 +4,27 @@ set -eux
 
 source shared.sh
 
+# We have to build our own binutils for the GCC build, because the default CentOS 7 binutils are
+# too old, and they do not support `SHF_GNU_RETAIN`.
+BINUTILS="2.47"
+curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
+mkdir binutils-build
+cd binutils-build
+hide_output ../binutils-$BINUTILS/configure --prefix=/rustroot
+hide_output make -j$(nproc)
+hide_output make install
+
+cd ..
+rm -rf binutils-build binutils-$BINUTILS
+
+if echo '.section .test,"awR",@progbits' | as - -o /dev/null 2>/dev/null; then
+    echo "binutils assembler supports SHF_GNU_RETAIN"
+else
+    echo "binutils assembler DOES NOT support SHF_GNU_RETAIN"
+    exit 1
+fi
+
+
 # Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
 # This version is specified in the Dockerfile
 GCC=$GCC_VERSION
@@ -36,6 +57,7 @@ sed -i'' 's|ftp://gcc\.gnu\.org/pub/gcc/infrastructure|https://ci-mirrors.rust-l
 mkdir ../gcc-build
 cd ../gcc-build
 
+export PATH=/rustroot/bin:$PATH
 # '-fno-reorder-blocks-and-partition' is required to
 # enable BOLT optimization of the C++ standard library,
 # which is included in librustc_driver.so
