@@ -5,6 +5,10 @@ LL |     pub fn bar() { foo::baz(); }
    |                    ^^^ use of unresolved module or unlinked crate `foo`
    |
    = help: you might be missing a crate named `foo`
+help: consider importing this module
+   |
+LL +     use crate::foo;
+   |
 
 error: aborting due to 1 previous error
 
