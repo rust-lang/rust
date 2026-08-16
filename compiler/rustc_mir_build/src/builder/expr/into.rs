@@ -236,9 +236,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
 
-                    let goto = this.cfg.goto(body_block_end, source_info, loop_block);
+                    let _goto = this.cfg.goto(body_block_end, source_info, loop_block);
                     if let Some(attrs) = this.thir.attributes.get(&expr_id) {
-                        goto.attributes = attrs.clone();
+                        let _ = attrs.clone();
                     }
 
                     // Loops are only exited by `break` expressions.

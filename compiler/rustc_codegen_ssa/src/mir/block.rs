@@ -1645,7 +1645,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, bx, target, mergeable_succ(), &terminator.attributes)
+                helper.funclet_br(self, bx, target, mergeable_succ(), &[])
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {

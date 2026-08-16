@@ -63,7 +63,6 @@ use drop::{
 pub(super) use layout::mir_coroutine_witnesses;
 use layout::{CoroutineSavedLocals, compute_layout, locals_live_across_suspend_points};
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
@@ -253,11 +252,7 @@ impl<'tcx> TransformVisitor<'tcx> {
 
         body.basic_blocks_mut().push(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
-            }),
+            Some(Terminator { source_info, kind: TerminatorKind::Return }),
             false,
         ));
 
@@ -740,19 +735,13 @@ fn insert_switch<'tcx>(
     }
 
     let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
-    body.basic_blocks_mut()[START_BLOCK].terminator = Some(Terminator {
-        source_info: SourceInfo::outermost(body.span),
-        kind: switch,
-        attributes: ThinVec::new(),
-    });
+    body.basic_blocks_mut()[START_BLOCK].terminator =
+        Some(Terminator { source_info: SourceInfo::outermost(body.span), kind: switch });
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData::new(
-        Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
-        false,
-    ))
+    body.basic_blocks_mut().push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
 }
 
 fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
@@ -775,7 +764,7 @@ fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ba
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     ))
 }
@@ -830,12 +819,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     let poison_block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         vec![transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info)],
-        Some(Terminator {
-            source_info,
-            kind: TerminatorKind::UnwindResume,
-
-            attributes: ThinVec::new(),
-        }),
+        Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
         true,
     ));
 
@@ -846,12 +830,8 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
             // An existing `Resume` terminator is redirected to jump to our dedicated
             // "poisoning block" above.
             if idx != poison_block {
-                *block.terminator_mut() = Terminator {
-                    source_info,
-                    kind: TerminatorKind::Goto { target: poison_block },
-
-                    attributes: ThinVec::new(),
-                };
+                *block.terminator_mut() =
+                    Terminator { source_info, kind: TerminatorKind::Goto { target: poison_block } };
             }
         } else if !block.is_cleanup
             // Any terminators that *can* unwind but don't have an unwind target set are also
@@ -1014,12 +994,7 @@ fn create_cases<'tcx>(
                 // Then jump to the real target
                 let block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
                     statements,
-                    Some(Terminator {
-                        source_info,
-                        kind: TerminatorKind::Goto { target },
-
-                        attributes: ThinVec::new(),
-                    }),
+                    Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
                     false,
                 ));
 
