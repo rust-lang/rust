@@ -1,20 +1,34 @@
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::{env, fs};
 
 use super::{Builder, Kind};
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
+use crate::core::compiler::Compiler;
 use crate::core::config::flags::Color;
 use crate::core::config::toml::pgo::PgoConfig;
 use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags, t};
-use crate::{
-    CLang, Compiler, EXTRA_CHECK_CFGS, GitRepo, Mode, RemapScheme, envify,
-    prepare_behaviour_dump_dir,
-};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
+use crate::{CLang, GitRepo, Mode, RemapScheme};
+
+/// Extra `--check-cfg` to add when building the compiler or tools
+/// (Mode restriction, config name, config values (if any))
+#[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
+const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
+    (Some(Mode::Rustc), "bootstrap", None),
+    (Some(Mode::Codegen), "bootstrap", None),
+    (Some(Mode::ToolRustcPrivate), "bootstrap", None),
+    (Some(Mode::ToolStd), "bootstrap", None),
+    (Some(Mode::ToolRustcPrivate), "rust_analyzer", None),
+    (Some(Mode::ToolStd), "rust_analyzer", None),
+    // Any library specific cfgs like `target_os`, `target_arch` should be put in
+    // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
+    // in the appropriate `library/{std,alloc,core}/Cargo.toml`
+];
 
 /// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.
 ///
@@ -43,7 +57,7 @@ impl Rustflags {
         self.env(prefix);
 
         // ... and also handle target-specific env RUSTFLAGS if they're configured.
-        let target_specific = format!("CARGO_TARGET_{}_{}", crate::envify(&self.1.triple), prefix);
+        let target_specific = format!("CARGO_TARGET_{}_{}", envify(&self.1.triple), prefix);
         self.env(&target_specific);
     }
 
@@ -1207,7 +1221,7 @@ impl Builder<'_> {
         }
 
         if self.config.dump_bootstrap_shims {
-            prepare_behaviour_dump_dir(self.build);
+            prepare_shims_dump_dir(self);
 
             cargo
                 .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
@@ -1573,5 +1587,24 @@ pub fn apply_pgo(
             "-Cllvm-args=-static-func-strip-dirname-prefix={}",
             builder.config.src.components().count()
         ));
+    }
+}
+
+/// Ensures that the behavior dump directory is properly initialized.
+fn prepare_shims_dump_dir(builder: &Builder<'_>) {
+    static INITIALIZED: OnceLock<bool> = OnceLock::new();
+
+    let dump_path = builder.out.join("bootstrap-shims-dump");
+
+    let initialized = INITIALIZED.get().unwrap_or(&false);
+    if !initialized {
+        // clear old dumps
+        if dump_path.exists() {
+            t!(fs::remove_dir_all(&dump_path));
+        }
+
+        t!(fs::create_dir_all(&dump_path));
+
+        t!(INITIALIZED.set(true));
     }
 }
