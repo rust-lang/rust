@@ -1,0 +1,114 @@
+#![feature(prelude_import)]
+//@ edition: 2024
+//@ check-pass
+//@ compile-flags: -Zunpretty=expanded
+
+#![crate_type = "rlib"]
+#![feature(rustc_private)]
+extern crate std;
+#[prelude_import]
+use std::prelude::rust_2024::*;
+
+extern crate rustc_macros;
+extern crate rustc_serialize;
+extern crate rustc_span;
+
+use rustc_macros::Encodable;
+
+struct UnitStruct;
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for UnitStruct {
+            fn encode(&self, __encoder: &mut __E) {
+                match *self { UnitStruct => {} }
+            }
+        }
+    };
+
+struct EmptyStruct {}
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for EmptyStruct {
+            fn encode(&self, __encoder: &mut __E) {
+                match *self { EmptyStruct {} => {} }
+            }
+        }
+    };
+
+enum EmptyEnum {}
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for EmptyEnum {
+            fn encode(&self, __encoder: &mut __E) { match *self {} }
+        }
+    };
+
+enum SingleFieldlessEnum { A, }
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for SingleFieldlessEnum {
+            fn encode(&self, __encoder: &mut __E) {
+                match *self { SingleFieldlessEnum::A => {} }
+            }
+        }
+    };
+
+enum SingleEnum { A(u32), }
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for SingleEnum {
+            fn encode(&self, __encoder: &mut __E) {
+                match *self {
+                    SingleEnum::A(ref __binding_0) => {
+                        ::rustc_serialize::Encodable::<__E>::encode(__binding_0,
+                            __encoder);
+                    }
+                }
+            }
+        }
+    };
+
+enum FieldlessEnum { A, B, }
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for FieldlessEnum {
+            fn encode(&self, __encoder: &mut __E) {
+                let disc =
+                    match *self {
+                        FieldlessEnum::A => { 0usize }
+                        FieldlessEnum::B => { 1usize }
+                    };
+                ::rustc_serialize::Encoder::emit_u8(__encoder, disc as u8);
+                match *self { FieldlessEnum::A => {} FieldlessEnum::B => {} }
+            }
+        }
+    };
+
+enum PartlyFieldlessEnum { A, B(u32), }
+const _: () =
+    {
+        impl<__E: ::rustc_span::SpanEncoder> ::rustc_serialize::Encodable<__E>
+            for PartlyFieldlessEnum {
+            fn encode(&self, __encoder: &mut __E) {
+                let disc =
+                    match *self {
+                        PartlyFieldlessEnum::A => { 0usize }
+                        PartlyFieldlessEnum::B(ref __binding_0) => { 1usize }
+                    };
+                ::rustc_serialize::Encoder::emit_u8(__encoder, disc as u8);
+                match *self {
+                    PartlyFieldlessEnum::A => {}
+                    PartlyFieldlessEnum::B(ref __binding_0) => {
+                        ::rustc_serialize::Encodable::<__E>::encode(__binding_0,
+                            __encoder);
+                    }
+                }
+            }
+        }
+    };
