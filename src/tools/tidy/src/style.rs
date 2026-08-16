@@ -426,7 +426,7 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
             lines += 1;
         }
 
-        let mut err = |msg: &str| {
+        let err = |msg: &str| {
             check.error(format!("{}:{}: {msg}", file.display(), line_number));
         };
 
@@ -614,7 +614,7 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
             } else if let Some((start_line, backtick_count, directive)) = comment_block.take()
                 && backtick_count % 2 == 1
             {
-                let mut err = |msg: &str| {
+                let err = |msg: &str| {
                     check.error(format!("{}:{start_line}: {msg}", file.display()));
                 };
                 let block_len = line_number - start_line;
@@ -641,12 +641,12 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
         ignore.check_usage(check, file);
     }
     if leading_new_lines {
-        let mut err = |_| {
+        let err = |_| {
             check.error(format!("{}: leading newline", file.display()));
         };
         suppressible_tidy_err!(err, file_ignore.leading_newlines, "missing leading newline");
     }
-    let mut err = |msg: &str| {
+    let err = |msg: &str| {
         check.error(format!("{}: {}", file.display(), msg));
     };
     match trailing_new_lines {
@@ -659,7 +659,7 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
         ),
     };
     if lines > LINES {
-        let mut err = |_| {
+        let err = |_| {
             check.error(format!(
                 "{}: too many lines ({lines}) (add `// \
                      ignore-tidy-file-filelength` to the file to suppress this error)",
