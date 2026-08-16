@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Rust Compiler Coverage Report</title>
+    <link rel="stylesheet" href="{{ css_file }}">
+  </head>
+  <body>
+    <div class="header">
+      <h1>Rust Compiler Coverage Report</h1>
+      <div class="overall">{{ overall_pct }}% ({{ covered_lines_total }}/{{ tracked_lines_total }} lines)</div>
+      <div class="overall-sub">Pick a category below to browse functions in the compiler.</div>
+    </div>
+    <ul class="category-list">
+      <li>
+        <a class="uncovered" href="{{ uncovered_path }}">
+          Fully Uncovered <span class="pct">{{ uncovered_count }} functions</span>
+        </a>
+      </li>
+      <li>
+        <a class="partial" href="{{ partial_path }}">
+          Partially Covered <span class="pct">{{ partial_count }} functions</span>
+        </a>
+      </li>
+      <li>
+        <a class="fully" href="{{ fully_path }}">
+          Fully Covered <span class="pct">{{ fully_count }} functions</span>
+        </a>
+      </li>
+    </ul>
+  </body>
+</html>

@@ -1294,6 +1294,13 @@ pub fn rustc_cargo(
 
     apply_pgo(builder, cargo, *build_compiler, &builder.config.rust_pgo);
 
+    // Only the compiler that actually runs the tests needs instrumenting, and
+    // that is the top stage one. `build_compiler` builds the stage above it.
+    if builder.config.rust_coverage && build_compiler.stage + 1 == builder.top_stage {
+        cargo.rustflag("-Cinstrument-coverage");
+        cargo.rustflag("-Zcoverage-options=branch");
+    }
+
     // The stage0 compiler changes infrequently and does not directly depend on code
     // in the current working directory. Therefore, caching it with sccache should be
     // useful.

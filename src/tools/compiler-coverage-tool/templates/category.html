@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{{ label }} - Rust Compiler Coverage Report</title>
+    <link rel="stylesheet" href="{{ css_file }}">
+  </head>
+  <body>
+    <div class="header">
+      <h1><a href="{{ index_path }}">Rust Compiler Coverage Report</a></h1>
+      <div class="overall">{{ label }}: {{ this_count }} functions</div>
+    </div>
+
+    <div class="filter-bar">
+      <span>Other categories:</span>
+      <a class="btn-uncovered{% if uncovered_active %} active{% endif %}" href="{{ uncovered_path }}">Fully Uncovered</a>
+      <a class="btn-partial{% if partial_active %} active{% endif %}" href="{{ partial_path }}">Partially Covered</a>
+      <a class="btn-fully{% if fully_active %} active{% endif %}" href="{{ fully_path }}">Fully Covered</a>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" placeholder="Search functions or file paths..." oninput="onSearch(this.value)" />
+      <span class="search-count" id="search-count"></span>
+    </div>
+
+    <script>
+      var SHARD_COUNT = {{ shard_count }};
+      var SHARD_DIR = '{{ shard_dir_name }}';
+    </script>
+    <script src="{{ search_js_file }}"></script>
+    <script src="{{ source_loader_js_file }}"></script>
+
+    {% for krate in crates %}
+      <details class="crate-group">
+        <summary class="crate-header">
+          {{ krate.krate }} <span class="crate-count">({{ krate.count }})</span>
+        </summary>
+
+        {% for file in krate.files %}
+          <details class="file-group">
+            <summary class="file-header">
+              {{ file.file }} <span class="crate-count">({{ file.count }})</span>
+            </summary>
+            <div class="fn-list">
+
+              {% for f in file.fns %}
+                <div class="fn-block cat-{{ cat_class }}">
+                  <details data-fn-id="{{ f.fn_id }}" ontoggle="loadSource(this)">
+                    <summary>
+                      <span class="fn-name">{{ f.fn_name }}</span>
+                      <span class="fn-badge {{ f.badge_class }}">{{ f.badge_text }}</span>
+                    </summary>
+                    <div class="fn-file">{{ f.file_line }}</div>
+                    <div class="source-view">
+                      <table class="src">
+                        <tbody class="src-body">
+                          <tr><td class="code src-loading">loading...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </div>
+              {% endfor %}
+
+            </div>
+          </details>
+        {% endfor %}
+
+      </details>
+    {% endfor %}
+  </body>
+</html>

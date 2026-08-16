@@ -527,6 +527,7 @@ bootstrap_tool!(
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
+    CompilerCoverage, "src/tools/compiler-coverage-tool", "compiler-coverage-tool";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];

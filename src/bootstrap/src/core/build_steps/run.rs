@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
-use crate::Mode;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
@@ -18,6 +17,7 @@ use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
+use crate::{Compiler, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
@@ -552,5 +552,173 @@ impl CommandLineStep for GenerateHelp {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(GenerateHelp)
+    }
+}
+
+/// Everything `./x run compiler-coverage` reads and writes, all under
+/// `build/coverage/`. Kept in one place so both the collection step and the
+/// tool that builds the report agree on where things live.
+pub(crate) struct CoveragePaths {
+    pub(crate) profraw_dir: PathBuf,
+    pub(crate) profdata_path: PathBuf,
+    pub(crate) coverage_json_path: PathBuf,
+    pub(crate) html_dir: PathBuf,
+}
+
+impl CoveragePaths {
+    pub(crate) fn new(builder: &Builder<'_>) -> Self {
+        let dir = builder.out.join("coverage");
+        CoveragePaths {
+            profraw_dir: dir.join("profraws"),
+            profdata_path: dir.join("combined.profdata"),
+            coverage_json_path: dir.join("coverage.json"),
+            html_dir: dir,
+        }
+    }
+}
+
+/// Collect coverage of the compiler itself by running the test suites against
+/// an instrumented rustc (`./x run compiler-coverage`).
+///
+/// The instrumenting happens when the compiler is built, see `rust_coverage`
+/// in `compile.rs`. This step runs the tests, merges what comes out and builds
+/// the report.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CompilerCoverage {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl CommandLineStep for CompilerCoverage {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("compiler-coverage")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(CompilerCoverage { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        let paths = CoveragePaths::new(builder);
+        if !builder.config.dry_run() {
+            // Left over files would otherwise be merged in, or mistaken for
+            // real output, as though this run had produced them.
+            if paths.profraw_dir.exists() {
+                t!(std::fs::remove_dir_all(&paths.profraw_dir));
+            }
+            t!(std::fs::create_dir_all(&paths.profraw_dir));
+            if paths.profdata_path.exists() {
+                t!(std::fs::remove_file(&paths.profdata_path));
+            }
+        }
+
+        test::collect_coverage_suites(builder, compiler, target);
+
+        // Individual suites can legitimately merge nothing (e.g. `crashes`,
+        // where every test is expected to fail, so none of them ever reach
+        // the point of writing coverage). Only the whole run producing
+        // nothing at all means instrumentation itself never worked. Skip
+        // this during the dry-run validation pass, since nothing real has
+        // happened yet at that point either way.
+        if !builder.config.dry_run() && !paths.profdata_path.exists() {
+            eprintln!(
+                "coverage: no profraw files were produced across the whole run; \
+                 the instrumented rustc likely never ran"
+            );
+            helpers::exit_process(1);
+        }
+
+        builder.info(&format!("Coverage profdata written to {}", paths.profdata_path.display()));
+
+        // Turn the merged profile into JSON that the report tool can read.
+        let llvm_cov = builder.llvm_out(builder.config.host_target).join("bin").join("llvm-cov");
+
+        // `builder.rustc()` is a small wrapper binary. Nearly all of the
+        // compiler lives in librustc_driver, so without passing that too,
+        // llvm-cov only ever sees the wrapper's own main().
+        let rustc_libdir = builder.rustc_libdir(compiler);
+        let driver_lib = std::fs::read_dir(&rustc_libdir).ok().and_then(|entries| {
+            entries.filter_map(|e| e.ok()).map(|e| e.path()).find(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with("librustc_driver-") && n.ends_with(".so"))
+                    .unwrap_or(false)
+            })
+        });
+
+        builder.info("Exporting coverage to JSON");
+        let mut export_cmd = std::process::Command::new(&llvm_cov);
+        export_cmd
+            .arg("export")
+            .arg("--format=text")
+            .arg(format!("--instr-profile={}", paths.profdata_path.display()))
+            .arg(builder.rustc(compiler));
+        if let Some(driver_lib) = &driver_lib {
+            export_cmd.arg("--object").arg(driver_lib);
+        } else {
+            builder.info(&format!(
+                "coverage: could not find librustc_driver in {}, \
+                 report will be missing most compiler functions",
+                rustc_libdir.display()
+            ));
+        }
+        match export_cmd.output() {
+            Ok(out) if out.status.success() => {
+                if let Err(e) = std::fs::write(&paths.coverage_json_path, &out.stdout) {
+                    builder.info(&format!(
+                        "coverage: failed to write {}: {e}",
+                        paths.coverage_json_path.display()
+                    ));
+                }
+            }
+            Ok(out) => {
+                builder.info(&format!(
+                    "coverage: llvm-cov export failed:\n{}",
+                    String::from_utf8_lossy(&out.stderr)
+                ));
+                return;
+            }
+            Err(e) => {
+                builder.info(&format!("coverage: failed to run llvm-cov: {e}"));
+                return;
+            }
+        }
+
+        if builder.config.args().contains(&"--no-html-gen") {
+            return;
+        }
+
+        builder.info("Building HTML coverage report");
+        let tool_path = builder.tool_exe(Tool::CompilerCoverage);
+        let report = std::process::Command::new(&tool_path)
+            .arg("run")
+            .arg(&paths.coverage_json_path)
+            .arg(&builder.src)
+            .arg(&paths.html_dir)
+            .output();
+        match report {
+            Ok(out) if out.status.success() => {
+                builder.info(&format!(
+                    "Coverage report written to {}",
+                    paths.html_dir.join("report.html").display()
+                ));
+            }
+            Ok(out) => {
+                builder.info(&format!(
+                    "coverage: compiler-coverage-tool failed:\n{}",
+                    String::from_utf8_lossy(&out.stderr)
+                ));
+            }
+            Err(e) => {
+                builder.info(&format!("coverage: failed to run compiler-coverage-tool: {e}"));
+            }
+        }
     }
 }
