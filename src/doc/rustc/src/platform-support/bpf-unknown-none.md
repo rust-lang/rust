@@ -22,6 +22,14 @@ They don't support std and alloc and are meant for a `no_std` environment.
 
 Produced binaries use the ELF format.
 
+BPF virtual machines provide a [JIT compiler][jit] that compiles the BPF
+bytecode into the native host architecture.
+
+Running BPF programs on most host architectures requires Linux kernel 4.18,
+[that introduced BTF][linux-commit-btf], or newer. On RISC-V hosts that
+requirement goes up to [5.7][linux-commit-riscv], on PowerPC32 - to [5.13]
+[linux-commit-ppc32], and on LoongArch - to [6.1][linux-commit-loongarch].
+
 ## Building the target
 
 You can build Rust with support for BPF targets by adding them to the `target`
@@ -143,6 +151,11 @@ println!("cargo:rustc-link-lib=link-arg={out_dir}/my_module.bpf.o");
 [ebpf]: https://ebpf.io/
 [bpf-linker]: https://github.com/aya-rs/bpf-linker
 [bpf-abi]: https://www.kernel.org/doc/html/v6.13-rc5/bpf/standardization/abi.html
+[jit]: https://www.kernel.org/doc/html/latest/networking/filter.html#jit-compiler
+[linux-commit-btf]: https://github.com/torvalds/linux/commit/69b693f0a
+[linux-commit-riscv]: https://github.com/torvalds/linux/commit/5f316b65e
+[linux-commit-ppc32]: https://github.com/torvalds/linux/commit/51c66ad84
+[linux-commit-loongarch]: https://github.com/torvalds/linux/commit/5dc615520
 [btf]: https://www.kernel.org/doc/html/latest/bpf/btf.html
 [rbpf]: https://github.com/qmonnet/rbpf
 [kprobe]: https://www.kernel.org/doc/html/latest/trace/kprobes.html
