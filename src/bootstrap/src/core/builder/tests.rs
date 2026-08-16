@@ -389,10 +389,10 @@ fn any_debug() {
 /// These tests use insta for snapshot testing.
 /// See bootstrap's README on how to bless the snapshots.
 mod snapshot {
-    use crate::Compiler;
     use crate::core::build_steps::test;
     use crate::core::builder::tests::{RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, host_target};
     use crate::core::builder::{Kind, StepMetadata};
+    use crate::core::compiler::Compiler;
     use crate::core::config::TargetSelection;
     use crate::core::config::toml::target::{
         DefaultLinuxLinkerOverride, with_default_linux_linker_overrides,

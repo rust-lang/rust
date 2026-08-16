@@ -28,7 +28,7 @@ use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
-use crate::CodegenBackendKind;
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
