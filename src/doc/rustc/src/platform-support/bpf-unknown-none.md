@@ -63,7 +63,9 @@ cargo +nightly build -Z build-std=core --target bpfel-unknown-none
 
 BPF has its own debug info format called [BTF][btf].
 
-BPF targets use [bpf-linker], an LLVM bitcode linker.
+BPF targets use [bpf-linker], an LLVM bitcode linker. In future, they may
+migrate to the GNU flavor of linker, see the details in the [following issue]
+[bpf-object-linking].
 
 ## Error handling
 
@@ -157,6 +159,7 @@ println!("cargo:rustc-link-lib=link-arg={out_dir}/my_module.bpf.o");
 [linux-commit-ppc32]: https://github.com/torvalds/linux/commit/51c66ad84
 [linux-commit-loongarch]: https://github.com/torvalds/linux/commit/5dc615520
 [btf]: https://www.kernel.org/doc/html/latest/bpf/btf.html
+[bpf-object-linking]: https://github.com/rust-lang/rust/issues/135175
 [rbpf]: https://github.com/qmonnet/rbpf
 [kprobe]: https://www.kernel.org/doc/html/latest/trace/kprobes.html
 [fprobe]: https://www.kernel.org/doc/html/latest/trace/fprobe.html
