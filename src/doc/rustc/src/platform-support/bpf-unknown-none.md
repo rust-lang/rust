@@ -152,18 +152,18 @@ println!("cargo:rustc-link-lib=link-arg={out_dir}/my_module.bpf.o");
 
 [ebpf]: https://ebpf.io/
 [bpf-linker]: https://github.com/aya-rs/bpf-linker
-[bpf-abi]: https://www.kernel.org/doc/html/latest/bpf/standardization/abi.html
-[jit]: https://www.kernel.org/doc/html/latest/networking/filter.html#jit-compiler
+[bpf-abi]: https://www.kernel.org/doc/html/v6.13/bpf/standardization/abi.html
+[jit]: https://www.kernel.org/doc/html/v6.13/networking/filter.html#jit-compiler
 [linux-commit-btf]: https://github.com/torvalds/linux/commit/69b693f0a
 [linux-commit-riscv]: https://github.com/torvalds/linux/commit/5f316b65e
 [linux-commit-ppc32]: https://github.com/torvalds/linux/commit/51c66ad84
 [linux-commit-loongarch]: https://github.com/torvalds/linux/commit/5dc615520
-[btf]: https://www.kernel.org/doc/html/latest/bpf/btf.html
+[btf]: https://www.kernel.org/doc/html/v6.13/bpf/btf.html
 [bpf-object-linking]: https://github.com/rust-lang/rust/issues/135175
 [rbpf]: https://github.com/qmonnet/rbpf
-[kprobe]: https://www.kernel.org/doc/html/latest/trace/kprobes.html
-[fprobe]: https://www.kernel.org/doc/html/latest/trace/fprobe.html
-[uprobe]: https://www.kernel.org/doc/html/latest/trace/uprobetracer.html
+[kprobe]: https://www.kernel.org/doc/html/v6.13/trace/kprobes.html
+[fprobe]: https://www.kernel.org/doc/html/v6.13/trace/fprobe.html
+[uprobe]: https://www.kernel.org/doc/html/v6.13/trace/uprobetracer.html
 [pt-regs]: https://elixir.bootlin.com/linux/v6.12.6/source/arch/x86/include/uapi/asm/ptrace.h#L44
 [aya]: https://aya-rs.dev
 [aya-ebpf-cty]: https://github.com/aya-rs/aya/tree/main/ebpf/aya-ebpf-cty
