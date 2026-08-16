@@ -671,7 +671,16 @@ fn set_get_permissions_nofollows_symlink() {
     let result = fs::set_permissions_nofollow(&symlink_name, permission_bits);
 
     cfg_select! {
-        any(windows, target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly") => {
+        any(
+            windows,
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "openbsd",
+            target_os = "netbsd",
+            target_os = "dragonfly",
+            target_os = "nto",
+            target_os = "qnx"
+        ) => {
             assert_eq!(result.unwrap(), ());
             let metadata0 = check!(fs::symlink_metadata(&symlink_name));
             // On these systems, it's confirmed the symlink itself is marked readonly
