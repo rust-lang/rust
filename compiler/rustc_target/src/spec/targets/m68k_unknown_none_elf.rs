@@ -1,8 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{
-    Arch, CodeModel, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
-};
+use crate::spec::{Arch, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let options = TargetOptions {
