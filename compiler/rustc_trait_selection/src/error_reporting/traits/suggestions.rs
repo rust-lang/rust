@@ -7,16 +7,15 @@ use std::{debug_assert_matches, iter};
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
     expr_needs_parens,
@@ -822,7 +821,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs)
             && let trait_pred = predicate.unwrap_or(trait_pred)
             // Only run this code on binary operators
-            && hir::lang_items::BINARY_OPERATORS
+            && lang_items::BINARY_OPERATORS
                 .iter()
                 .filter_map(|&op| self.tcx.lang_items().get(op))
                 .any(|op| {
@@ -4247,30 +4246,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 let parent_predicate = parent_trait_ref;
                 if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
-                    // #74711: avoid a stack overflow
-                    ensure_sufficient_stack(|| {
-                        self.note_obligation_cause_code(
-                            body_def_id,
-                            err,
-                            parent_predicate,
-                            param_env,
-                            &data.parent_code,
-                            obligated_types,
-                            seen_requirements,
-                        )
-                    });
+                    self.note_obligation_cause_code(
+                        body_def_id,
+                        err,
+                        parent_predicate,
+                        param_env,
+                        &data.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    );
                 } else {
-                    ensure_sufficient_stack(|| {
-                        self.note_obligation_cause_code(
-                            body_def_id,
-                            err,
-                            parent_predicate,
-                            param_env,
-                            cause_code.peel_derives(),
-                            obligated_types,
-                            seen_requirements,
-                        )
-                    });
+                    self.note_obligation_cause_code(
+                        body_def_id,
+                        err,
+                        parent_predicate,
+                        param_env,
+                        cause_code.peel_derives(),
+                        obligated_types,
+                        seen_requirements,
+                    );
                 }
             }
             ObligationCauseCode::ImplDerived(ref data) => {
@@ -4290,17 +4284,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.resolve_vars_if_possible(data.derived.parent_trait_pred);
 
                     // Skip PinDerefMutHelper in suggestions, but still show downstream suggestions.
-                    ensure_sufficient_stack(|| {
-                        self.note_obligation_cause_code(
-                            body_def_id,
-                            err,
-                            parent_predicate,
-                            param_env,
-                            &data.derived.parent_code,
-                            obligated_types,
-                            seen_requirements,
-                        )
-                    });
+
+                    self.note_obligation_cause_code(
+                        body_def_id,
+                        err,
+                        parent_predicate,
+                        param_env,
+                        &data.derived.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    );
                     return;
                 }
                 let self_ty_str =
@@ -4445,34 +4438,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                     err.note(format!("required for `{self_ty}` to implement `{trait_path}`"));
                 }
-                // #74711: avoid a stack overflow
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        parent_predicate,
-                        param_env,
-                        &data.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    parent_predicate,
+                    param_env,
+                    &data.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                )
             }
             ObligationCauseCode::ImplDerivedHost(ref data) => {
                 let self_ty = tcx.short_string(
-                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty()),
+                    self.resolve_vars_if_possible(data.derived.parent_host_clause.self_ty()),
                     err.long_ty_path(),
                 );
                 let trait_path = tcx.short_string(
                     data.derived
-                        .parent_host_pred
-                        .map_bound(|pred| pred.trait_ref)
+                        .parent_host_clause
+                        .map_bound(|clause| clause.trait_ref)
                         .print_only_trait_path(),
                     err.long_ty_path(),
                 );
                 let msg = format!(
                     "required for `{self_ty}` to implement `{} {trait_path}`",
-                    data.derived.parent_host_pred.skip_binder().constness,
+                    data.derived.parent_host_clause.skip_binder().constness,
                 );
                 match tcx.hir_get_if_local(data.impl_def_id) {
                     Some(Node::Item(hir::Item {
@@ -4489,60 +4479,52 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.note(msg);
                     }
                 }
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        data.derived.parent_host_pred,
-                        param_env,
-                        &data.derived.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    data.derived.parent_host_clause,
+                    param_env,
+                    &data.derived.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             ObligationCauseCode::BuiltinDerivedHost(ref data) => {
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        data.parent_host_pred,
-                        param_env,
-                        &data.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    data.parent_host_clause,
+                    param_env,
+                    &data.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             ObligationCauseCode::WellFormedDerived(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
-                // #74711: avoid a stack overflow
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        parent_predicate,
-                        param_env,
-                        &data.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    parent_predicate,
+                    param_env,
+                    &data.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             ObligationCauseCode::TypeAlias(ref nested, span, def_id) => {
-                // #74711: avoid a stack overflow
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        predicate,
-                        param_env,
-                        nested,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    predicate,
+                    param_env,
+                    nested,
+                    obligated_types,
+                    seen_requirements,
+                );
                 let mut multispan = MultiSpan::from(span);
                 multispan.push_span_label(span, "required by this bound");
                 err.span_note(
@@ -4562,17 +4544,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     predicate,
                     call_hir_id,
                 );
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        predicate,
-                        param_env,
-                        parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    predicate,
+                    param_env,
+                    parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             // Suppress `compare_type_clause_entailment` errors for RPITITs, since they
             // should be implied by the parent method.

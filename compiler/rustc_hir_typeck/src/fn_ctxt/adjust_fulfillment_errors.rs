@@ -85,8 +85,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::ClauseKind::Trait(pred) => {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
                 }
-                ty::ClauseKind::HostEffect(pred) => {
-                    (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
+                ty::ClauseKind::HostEffect(clause) => {
+                    (clause.trait_ref.args.to_vec(), Some(clause.self_ty().into()))
                 }
                 ty::ClauseKind::Projection(pred) => (pred.projection_term.args.to_vec(), None),
                 ty::ClauseKind::ConstArgHasType(arg, ty) => (vec![ty.into(), arg.into()], None),

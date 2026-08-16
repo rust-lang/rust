@@ -37,7 +37,6 @@ where
     /// Called after the "early" effect of the given statement is applied to `state`.
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -47,7 +46,6 @@ where
     /// Called after the "primary" effect of the given statement is applied to `state`.
     fn visit_after_primary_statement_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -57,7 +55,6 @@ where
     /// Called after the "early" effect of the given terminator is applied to `state`.
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -69,7 +66,6 @@ where
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
     fn visit_after_primary_terminator_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,

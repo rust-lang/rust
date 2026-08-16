@@ -59,8 +59,7 @@ pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
-        PlaceContext::MutatingUse(MutatingUseContext::Retag) => Some(DefUse::Use),
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => Some(DefUse::Use),
 
         ///////////////////////////////////////////////////////////////////////////
         // DROP USES

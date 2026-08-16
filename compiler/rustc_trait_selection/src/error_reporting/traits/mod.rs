@@ -7,10 +7,11 @@ pub mod suggestions;
 
 use std::{fmt, iter};
 
+use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
@@ -21,7 +22,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use thin_vec::ThinVec;
 use tracing::{info, instrument};
@@ -76,20 +77,18 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        ensure_sufficient_stack(|| {
-            if self.span == ex.span {
+        if self.span == ex.span {
+            self.result = Some(ex);
+        } else {
+            if let hir::ExprKind::Closure(..) = ex.kind
+                && self.include_closures
+                && let closure_header_sp = self.span.with_hi(ex.span.hi())
+                && closure_header_sp == ex.span
+            {
                 self.result = Some(ex);
-            } else {
-                if let hir::ExprKind::Closure(..) = ex.kind
-                    && self.include_closures
-                    && let closure_header_sp = self.span.with_hi(ex.span.hi())
-                    && closure_header_sp == ex.span
-                {
-                    self.result = Some(ex);
-                }
-                hir::intravisit::walk_expr(self, ex);
             }
-        });
+            hir::intravisit::walk_expr(self, ex);
+        }
     }
 
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
@@ -253,12 +252,99 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        // Ambiguity errors blaming the same inference variable describe a single problem:
+        // annotating that one variable has to satisfy all of them at once. Reporting them
+        // separately loses all but the first, as the rest get canceled as duplicates once
+        // the `infcx` is tainted (see `maybe_report_ambiguity`), hiding their requirements
+        // from the user. Instead, report the first one (the sort above placed the most
+        // informative obligation first) and mention the requirements of the others in it.
+        //
+        // Type variables that are only related through a pending `Coerce` or `Subtype`
+        // obligation still concern the same annotation, so compare their sub-unification
+        // roots, like `need_type_info` does when looking for the annotation source.
+        let ambiguity_infer_var = |error: &FulfillmentError<'tcx>| match error.code {
+            FulfillmentErrorCode::Ambiguity { overflow: None } => self
+                .ambiguity_term(self.resolve_vars_if_possible(error.obligation.predicate))
+                .and_then(|term| {
+                    ty::GenericArg::from(term)
+                        .walk()
+                        .find_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
+                })
+                .map(|var| match var {
+                    TyOrConstInferVar::Ty(vid) => {
+                        TyOrConstInferVar::Ty(self.sub_unification_table_root_var(vid))
+                    }
+                    other => other,
+                }),
+            _ => None,
+        };
+        let infer_vars: Vec<_> = errors.iter().map(ambiguity_infer_var).collect();
+
         let mut reported = None;
+        let mut merged = vec![None; errors.len()];
+        let mut reported_as_primary = vec![false; errors.len()];
         for from_expansion in [false, true] {
-            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
+            for (index, (error, suppressed)) in iter::zip(&errors, &is_suppressed).enumerate() {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     if !error.references_error() {
-                        let guar = self.report_fulfillment_error(error);
+                        let guar = if let Some(guar) = merged[index] {
+                            guar
+                        } else {
+                            let group: Vec<usize> = match infer_vars[index] {
+                                Some(var) => (0..errors.len())
+                                    .filter(|&other| {
+                                        other != index && infer_vars[other] == Some(var)
+                                    })
+                                    .collect(),
+                                None => vec![],
+                            };
+                            // Only merge errors that a note on this diagnostic can fully
+                            // represent. An error blaming a different expression labels that
+                            // expression and suggests how to annotate it, and one whose
+                            // predicate we can't phrase as a note (e.g. const evaluatability)
+                            // says nothing here, so both keep their own error.
+                            let merges = |other: usize| {
+                                errors[other].obligation.cause.span == error.obligation.cause.span
+                                    && match errors[other].obligation.predicate.kind().skip_binder()
+                                    {
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                                            !matches!(
+                                                self.tcx.as_lang_item(data.def_id()),
+                                                Some(
+                                                    LangItem::Sized
+                                                        | LangItem::MetaSized
+                                                        | LangItem::PointeeSized
+                                                )
+                                            )
+                                        }
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                            _,
+                                        )) => true,
+                                        _ => false,
+                                    }
+                            };
+                            let related: Vec<_> = group
+                                .iter()
+                                .filter(|&&other| {
+                                    // Exclude already-reported primaries: they were their own
+                                    // canonical error and adding them as notes here would
+                                    // produce duplicate information.
+                                    merges(other)
+                                        && !is_suppressed[other]
+                                        && !errors[other].references_error()
+                                        && !reported_as_primary[other]
+                                })
+                                .map(|&other| &errors[other])
+                                .collect();
+                            let guar = self.report_fulfillment_error(error, &related);
+                            for &other in &group {
+                                if merges(other) {
+                                    merged[other] = Some(guar);
+                                }
+                            }
+                            reported_as_primary[index] = true;
+                            guar
+                        };
                         self.infcx.set_tainted_by_errors(guar);
                         reported = Some(guar);
                         // We want to ignore desugarings here: spans are equivalent even
@@ -289,7 +375,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
+    fn report_fulfillment_error(
+        &self,
+        error: &FulfillmentError<'tcx>,
+        related: &[&FulfillmentError<'tcx>],
+    ) -> ErrorGuaranteed {
         let mut error = FulfillmentError {
             obligation: error.obligation.clone(),
             code: error.code.clone(),
@@ -314,7 +404,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.report_projection_error(&error.obligation, e)
             }
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
-                self.maybe_report_ambiguity(&error.obligation)
+                self.maybe_report_ambiguity(&error.obligation, related)
             }
             FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
                 self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)

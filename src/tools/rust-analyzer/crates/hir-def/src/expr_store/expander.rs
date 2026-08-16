@@ -24,9 +24,9 @@ pub(super) struct Expander<'db> {
     span_map: SpanMap<'db>,
     current_file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
-    /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
-    recursion_depth: u32,
-    recursion_limit: usize,
+    /// `recursion_depth == u32::MAX` indicates that the recursion limit has been reached.
+    macro_depth: u32,
+    recursion_limit: u32,
 }
 
 impl<'db> Expander<'db> {
@@ -35,7 +35,7 @@ impl<'db> Expander<'db> {
         current_file_id: HirFileId,
         def_map: &'db DefMap,
     ) -> Expander<'db> {
-        let recursion_limit = def_map.recursion_limit() as usize;
+        let recursion_limit = def_map.recursion_limit();
         let recursion_limit = if cfg!(test) {
             // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
             std::cmp::min(32, recursion_limit)
@@ -44,7 +44,7 @@ impl<'db> Expander<'db> {
         };
         Expander {
             current_file_id,
-            recursion_depth: 0,
+            macro_depth: current_file_id.macro_expansion_depth(db),
             recursion_limit,
             span_map: current_file_id.span_map(db),
             ast_id_map: current_file_id.ast_id_map(db),
@@ -111,6 +111,7 @@ impl<'db> Expander<'db> {
                 call_site.ctx,
                 expands_to,
                 krate,
+                this.macro_depth,
                 |path| resolver(path).map(|it| it.definition(db)),
                 eager_callback,
             ) {
@@ -137,14 +138,14 @@ impl<'db> Expander<'db> {
         self.span_map = span_map;
         self.current_file_id = file_id;
         self.ast_id_map = ast_id_map;
-        if self.recursion_depth == u32::MAX {
+        if self.macro_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
             // depth only when we get out of the tree.
             if !self.current_file_id.is_macro() {
-                self.recursion_depth = 0;
+                self.macro_depth = 0;
             }
         } else {
-            self.recursion_depth -= 1;
+            self.macro_depth -= 1;
         }
         bomb.defuse();
     }
@@ -165,7 +166,7 @@ impl<'db> Expander<'db> {
     where
         F: FnOnce(&mut Self) -> ExpandResult<Option<MacroCallId>>,
     {
-        if self.recursion_depth == u32::MAX {
+        if self.macro_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. We should
             // stop expanding other macro calls in this tree, or else this may result in
             // exponential number of macro expansions, leading to a hang.
@@ -180,8 +181,8 @@ impl<'db> Expander<'db> {
         let Some(call_id) = value else {
             return ExpandResult { value: None, err };
         };
-        if self.recursion_depth as usize > self.recursion_limit {
-            self.recursion_depth = u32::MAX;
+        if self.macro_depth > self.recursion_limit {
+            self.macro_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(
                 call_id.macro_arg_considering_derives(db, &call_id.lookup(db).kind).2,
@@ -196,7 +197,7 @@ impl<'db> Expander<'db> {
             value: {
                 let parse = res.value.0.clone().cast::<T>();
 
-                self.recursion_depth += 1;
+                self.macro_depth += 1;
                 let old_file_id = std::mem::replace(&mut self.current_file_id, call_id.into());
                 let old_span_map =
                     std::mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(&res.value.1));

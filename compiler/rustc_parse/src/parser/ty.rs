@@ -6,7 +6,6 @@ use rustc_ast::{
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
 };
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -114,16 +113,14 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_ty(span, kind));
         }
         // Make sure deeply nested types don't overflow the stack.
-        ensure_sufficient_stack(|| {
-            self.parse_ty_common(
-                AllowPlus::Yes,
-                AllowCVariadic::No,
-                RecoverQPath::Yes,
-                RecoverReturnSign::Yes,
-                None,
-                RecoverQuestionMark::Yes,
-            )
-        })
+        self.parse_ty_common(
+            AllowPlus::Yes,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            None,
+            RecoverQuestionMark::Yes,
+        )
     }
 
     pub(super) fn parse_ty_with_generics_recovery(
@@ -1454,7 +1451,7 @@ impl<'a> Parser<'a> {
                         args: Some(Box::new(ast::GenericArgs::Parenthesized(
                             ast::ParenthesizedArgs {
                                 span: args_lo.to(self.prev_token.span),
-                                inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
+                                inputs: decl.inputs.iter().map(|a| a.clone()).collect(),
                                 inputs_span: args_lo.until(decl.output.span()),
                                 output: decl.output.clone(),
                             }
@@ -1541,7 +1538,7 @@ impl<'a> Parser<'a> {
         let inputs_lo = self.token.span;
         let mode =
             FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
-        let params = match self.parse_fn_params(&mode) {
+        let inputs = match self.parse_fn_params(&mode) {
             Ok(params) => params,
             Err(err) => {
                 if let Some(snapshot) = snapshot {
@@ -1553,7 +1550,6 @@ impl<'a> Parser<'a> {
                 }
             }
         };
-        let inputs: ThinVec<_> = params.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
         let output = match self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)
         {

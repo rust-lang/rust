@@ -6,11 +6,7 @@
 //! executables, libraries, documentation, and other files will be placed
 //! during the `install` stage of the build.
 
-use serde::{Deserialize, Deserializer};
-
-use crate::core::config::Merge;
-use crate::core::config::toml::ReplaceOpt;
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::core::config::macros::define_config;
 
 define_config! {
     /// TOML representation of various global install decisions.

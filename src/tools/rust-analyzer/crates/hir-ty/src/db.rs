@@ -10,13 +10,13 @@ use hir_def::{
     StaticId, TraitId, TypeAliasId, VariantId,
     builtin_derive::BuiltinDeriveImplMethod,
     expr_store::ExpressionStore,
-    hir::{ClosureKind, ExprId, generics::LocalTypeOrConstParamId},
+    hir::{ClosureKind, ExprId},
     layout::TargetDataLayout,
     resolver::{HasResolver, Resolver},
     signatures::{ConstSignature, StaticSignature},
 };
 use la_arena::ArenaMap;
-use salsa::Update;
+use salsa::SalsaValue;
 use span::Edition;
 use stdx::impl_from;
 use triomphe::Arc;
@@ -27,7 +27,10 @@ use crate::{
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
-    lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds, WithDefinedOpaques},
+    lower::{
+        ConstParamTypes, FieldTypes, GenericDefaults, TrackedStructToken, TypeAliasBounds,
+        WithDefinedOpaques,
+    },
     mir::{MirBody, MirLowerError},
     next_solver::{
         Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
@@ -226,12 +229,12 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn const_param_types_with_diagnostics<'db>(
         &'db self,
         def: GenericDefId,
-    ) -> &'db TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
+    ) -> &'db TyLoweringResult<'db, ConstParamTypes> {
         let db = self.as_dyn();
         crate::lower::const_param_types_with_diagnostics(db, def)
     }
 
-    fn const_param_types(&self, def: GenericDefId) -> &ArenaMap<LocalTypeOrConstParamId, StoredTy> {
+    fn const_param_types(&self, def: GenericDefId) -> &ConstParamTypes {
         let db = self.as_dyn();
         crate::lower::const_param_types(db, def)
     }
@@ -257,7 +260,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn field_types_with_diagnostics<'db>(
         &'db self,
         var: VariantId,
-    ) -> &'db TyLoweringResult<'db, ArenaMap<LocalFieldId, FieldType>> {
+    ) -> &'db TyLoweringResult<'db, FieldTypes> {
         let db = self.as_dyn();
         crate::lower::field_types_with_diagnostics(db, var)
     }
@@ -349,10 +352,11 @@ fn hir_database_is_dyn_compatible() {
 #[salsa::interned(debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedOpaqueTyId {
+    #[returns(copy)]
     pub loc: ImplTraitId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct InternedClosure<'db> {
     pub owner: InferBodyId<'db>,
     pub expr: ExprId,
@@ -362,6 +366,7 @@ pub struct InternedClosure<'db> {
 #[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedClosureId<'db> {
+    #[returns(copy)]
     pub loc: InternedClosure<'db>,
 }
 
@@ -390,6 +395,7 @@ impl<'db> InternedClosureId<'db> {
 #[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineId<'db> {
+    #[returns(copy)]
     pub loc: InternedClosure<'db>,
 }
 
@@ -419,6 +425,7 @@ impl<'db> InternedCoroutineId<'db> {
 #[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineClosureId<'db> {
+    #[returns(copy)]
     pub loc: InternedClosure<'db>,
 }
 

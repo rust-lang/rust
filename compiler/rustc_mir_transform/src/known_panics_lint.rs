@@ -975,7 +975,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // whether they'd be fine right now.
             MutatingUse(MutatingUseContext::Yield)
             | MutatingUse(MutatingUseContext::Drop)
-            | MutatingUse(MutatingUseContext::Retag)
             // These can't ever be propagated under any scheme, as we can't reason about indirect
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)

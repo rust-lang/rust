@@ -17,10 +17,10 @@ use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, StringPart, listify, pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::CustomDiagnostic;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr, is_range_literal,
 };
@@ -3812,8 +3812,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let is_inclusive = match lang_item {
-            hir::LangItem::RangeTo => false,
-            hir::LangItem::RangeToInclusive | hir::LangItem::RangeInclusiveCopy => true,
+            LangItem::RangeTo => false,
+            LangItem::RangeToInclusive | LangItem::RangeInclusiveCopy => true,
             _ => return,
         };
 

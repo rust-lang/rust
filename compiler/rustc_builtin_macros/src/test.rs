@@ -5,11 +5,10 @@ use std::{assert_matches, iter};
 
 use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::{ErrorGuaranteed, Ident, RemapPathScopeComponents, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;

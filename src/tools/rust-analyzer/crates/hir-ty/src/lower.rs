@@ -8,7 +8,7 @@
 pub(crate) mod diagnostics;
 pub(crate) mod path;
 
-use std::{cell::OnceCell, iter, mem, sync::OnceLock};
+use std::{cell::OnceCell, iter, mem, ops::Deref, sync::OnceLock};
 
 use either::Either;
 use hir_def::{
@@ -50,7 +50,7 @@ use rustc_type_ir::{
     UpcastFrom, elaborate,
     inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use thin_vec::ThinVec;
@@ -78,7 +78,7 @@ use crate::{
 
 pub(crate) struct PathDiagnosticCallbackData(pub(crate) TypeRefId);
 
-#[derive(PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub struct WithDefinedOpaques<T> {
     value: T,
     impl_traits: Option<Box<Arena<ImplTrait>>>,
@@ -1370,14 +1370,13 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Update)]
+#[derive(Clone, PartialEq, Eq, SalsaValue)]
 pub struct TyLoweringResult<'db, T> {
-    #[update(fallback)]
     pub value: T,
     info: Option<Box<TyLoweringResultInfo<'db>>>,
 }
 
-#[derive(Clone, PartialEq, Eq, Update)]
+#[derive(Clone, PartialEq, Eq, SalsaValue)]
 struct TyLoweringResultInfo<'db> {
     diagnostics: ThinVec<TyLoweringDiagnostic>,
     anon_consts: ThinVec<AnonConstId<'db>>,
@@ -1849,10 +1848,23 @@ pub(crate) fn const_param_ty<'db>(db: &'db dyn HirDatabase, def: ConstParamId) -
     }
 }
 
-pub(crate) fn const_param_types(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> &ArenaMap<LocalTypeOrConstParamId, StoredTy> {
+/// Wrapper struct around `ArenaMap` which implements [`SalsaValue`].
+///
+/// Required to make the `SalsaValue` derive for [`TyLoweringResult`] work.
+#[derive(Default, PartialEq, Eq, SalsaValue)]
+pub struct ConstParamTypes {
+    map: ArenaMap<LocalTypeOrConstParamId, StoredTy>,
+}
+
+impl Deref for ConstParamTypes {
+    type Target = ArenaMap<LocalTypeOrConstParamId, StoredTy>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
+pub(crate) fn const_param_types(db: &dyn HirDatabase, def: GenericDefId) -> &ConstParamTypes {
     &const_param_types_with_diagnostics(db, def).value
 }
 
@@ -1860,7 +1872,7 @@ pub(crate) fn const_param_types(
 pub(crate) fn const_param_types_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     def: GenericDefId,
-) -> TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
+) -> TyLoweringResult<'db, ConstParamTypes> {
     let mut result = ArenaMap::new();
     let (data, store) = GenericParams::with_store(db, def);
     let resolver = def.resolver(db);
@@ -1882,21 +1894,34 @@ pub(crate) fn const_param_types_with_diagnostics<'db>(
         }
     }
     result.shrink_to_fit();
-    TyLoweringResult::from_ctx(result, ctx)
+    TyLoweringResult::from_ctx(ConstParamTypes { map: result }, ctx)
 }
 
 fn const_param_types_with_diagnostics_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
-) -> TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
-    TyLoweringResult::empty(ArenaMap::default())
+) -> TyLoweringResult<'db, ConstParamTypes> {
+    TyLoweringResult::empty(ConstParamTypes::default())
 }
 
-pub(crate) fn field_types_query(
-    db: &dyn HirDatabase,
-    variant_id: VariantId,
-) -> &ArenaMap<LocalFieldId, FieldType> {
+/// Wrapper struct around `ArenaMap` which implements [`SalsaValue`].
+///
+/// Required to make the `SalsaValue` derive for [`TyLoweringResult`] work.
+#[derive(Default, PartialEq, Eq, SalsaValue)]
+pub struct FieldTypes {
+    map: ArenaMap<LocalFieldId, FieldType>,
+}
+
+impl Deref for FieldTypes {
+    type Target = ArenaMap<LocalFieldId, FieldType>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
+pub(crate) fn field_types_query(db: &dyn HirDatabase, variant_id: VariantId) -> &FieldTypes {
     &field_types_with_diagnostics(db, variant_id).value
 }
 
@@ -1923,11 +1948,11 @@ impl FieldType {
 pub(crate) fn field_types_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     variant_id: VariantId,
-) -> TyLoweringResult<'db, ArenaMap<LocalFieldId, FieldType>> {
+) -> TyLoweringResult<'db, FieldTypes> {
     let var_data = variant_id.fields(db);
     let fields = var_data.fields();
     if fields.is_empty() {
-        return TyLoweringResult::empty(ArenaMap::default());
+        return TyLoweringResult::empty(FieldTypes::default());
     }
 
     let (resolver, generic_def): (_, GenericDefId) = match variant_id {
@@ -1958,7 +1983,7 @@ pub(crate) fn field_types_with_diagnostics<'db>(
             },
         );
     }
-    TyLoweringResult::from_ctx(res, ctx)
+    TyLoweringResult::from_ctx(FieldTypes { map: res }, ctx)
 }
 
 #[derive(Debug, PartialEq, Eq, Default)]
@@ -2241,7 +2266,7 @@ pub(crate) fn type_alias_self_bounds<'db>(
     predicates.get().map_bound(|it| &it.as_slice()[..*assoc_ty_bounds_start as usize])
 }
 
-#[derive(PartialEq, Eq, Debug, Hash)]
+#[derive(PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub struct TypeAliasBounds<T> {
     predicates: T,
     assoc_ty_bounds_start: u32,
@@ -2307,7 +2332,7 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
     )
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct GenericPredicates {
     // The order is the following:
     //
@@ -2672,7 +2697,7 @@ fn push_const_arg_has_type_predicates<'db>(
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct GenericDefaults(ThinVec<Option<StoredEarlyBinder<StoredGenericArg>>>);
 
 impl GenericDefaults {

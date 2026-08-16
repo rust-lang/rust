@@ -9,6 +9,7 @@ use clippy_utils::ty::{
     make_normalized_projection_with_regions, normalize_with_regions,
 };
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -128,8 +129,7 @@ fn is_ref_iterable<'tcx>(
         let self_ty = typeck.expr_ty(self_arg);
         let self_is_copy = is_copy(cx, self_ty);
 
-        if self_ty.peel_refs().is_lang_item(cx, rustc_hir::LangItem::OwnedBox) && !msrv.meets(cx, msrvs::BOX_INTO_ITER)
-        {
+        if self_ty.peel_refs().is_lang_item(cx, LangItem::OwnedBox) && !msrv.meets(cx, msrvs::BOX_INTO_ITER) {
             return None;
         }
 

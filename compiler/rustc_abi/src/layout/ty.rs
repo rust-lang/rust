@@ -120,6 +120,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_complex_number(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
@@ -227,6 +228,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_transparent(self)
     }
 
+    pub fn is_complex_number<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        Ty::is_complex_number(self.peel_transparent_wrappers(cx), cx)
+    }
+
     pub fn is_scalable_vector<C>(self) -> bool
     where
         Ty: TyAbiInterface<'a, C>,
@@ -289,6 +297,26 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             found = Some((FieldIdx::from_usize(field_idx), field));
         }
         found
+    }
+
+    pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if !Ty::is_complex_number(*self, cx) {
+            return None;
+        }
+
+        let BackendRepr::ScalarPair { a, b, .. } = self.backend_repr else {
+            return None;
+        };
+
+        debug_assert_eq!(a, b);
+
+        match a.primitive() {
+            Primitive::Float(f) => Some(f),
+            _ => None,
+        }
     }
 
     /// Whether this type/layout has any padding that is dependent on a variant, i.e. has bytes that

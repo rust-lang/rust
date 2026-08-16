@@ -15,6 +15,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     OptimizeAttr, ReprAttr,
@@ -43,7 +44,7 @@ use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::{ObligationCtxt, TraitErrors};
@@ -1023,18 +1024,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         };
-        match item_kind {
-            Some(ItemKind::Mod(_, module)) => {
-                if !module.item_ids.is_empty() {
-                    self.dcx()
-                        .emit_err(diagnostics::DocKeywordAttributeEmptyMod { span, attr_name });
-                    return;
-                }
-            }
-            _ => {
-                self.dcx().emit_err(diagnostics::DocKeywordAttributeNotMod { span, attr_name });
-                return;
-            }
+        if let Some(ItemKind::Const(ident, _gen, _ty, _rhs)) = item_kind
+            && ident.name == kw::Underscore
+        {
+        } else {
+            self.dcx().emit_err(diagnostics::DocKeywordAttributeNotAnonConst { span, attr_name });
         }
     }
 
@@ -1130,7 +1124,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let hir::ItemKind::Impl(impl_) = item.kind
             && let Some(of_trait) = impl_.of_trait
             && let Some(def_id) = of_trait.trait_ref.trait_def_id()
-            && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
+            && self.tcx.is_lang_item(def_id, LangItem::Drop)
         {
             return;
         }

@@ -336,7 +336,7 @@ fn detail_full(ctx: &CompletionContext<'_, '_>, func: hir::Function) -> String {
     let mut detail = String::with_capacity(signature.len());
 
     for segment in signature.split_whitespace() {
-        if !detail.is_empty() {
+        if !detail.is_empty() && !detail.ends_with('(') && !segment.starts_with(')') {
             detail.push(' ');
         }
 

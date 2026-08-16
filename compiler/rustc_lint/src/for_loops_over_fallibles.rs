@@ -1,5 +1,6 @@
 use hir::{Expr, Pat};
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty;

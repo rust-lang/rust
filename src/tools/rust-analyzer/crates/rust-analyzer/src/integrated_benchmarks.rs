@@ -281,7 +281,6 @@ fn integrated_diagnostics_benchmark() {
         prefer_prelude: false,
         prefer_absolute: false,
         term_search_fuel: 400,
-        term_search_borrowck: true,
         show_rename_conflicts: true,
     };
     host.analysis()

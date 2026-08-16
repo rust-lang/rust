@@ -5,7 +5,6 @@ use build_helper::stage0_parser::parse_stage0_file;
 use llvm::prebuilt_llvm_config;
 
 use super::*;
-use crate::core::builder::cli_paths::PATH_REMAP;
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
@@ -48,43 +47,6 @@ fn test_valid() {
 fn test_invalid() {
     // make sure that invalid paths are caught, even when combined with valid paths
     check_cli(["test", "library/std", "x"]);
-}
-
-#[test]
-fn validate_path_remap() {
-    let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-    PATH_REMAP
-        .iter()
-        .flat_map(|(_, paths)| paths.iter())
-        .map(|path| build.src.join(path))
-        .for_each(|path| {
-            assert!(path.exists(), "{} should exist.", path.display());
-        });
-}
-
-#[test]
-fn check_missing_paths_for_x_test_tests() {
-    let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-    let (_, tests_remap_paths) =
-        PATH_REMAP.iter().find(|(target_path, _)| *target_path == "tests").unwrap();
-
-    let tests_dir = fs::read_dir(build.src.join("tests")).unwrap();
-    for dir in tests_dir {
-        let path = dir.unwrap().path();
-
-        // Skip if not a test directory.
-        if path.ends_with("tests/auxiliary") || !path.is_dir() {
-            continue;
-        }
-
-        assert!(
-            tests_remap_paths.iter().any(|item| path.ends_with(*item)),
-            "{} is missing in PATH_REMAP tests list.",
-            path.display()
-        );
-    }
 }
 
 #[test]
@@ -1729,7 +1691,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
     }
 
     #[test]
@@ -1755,7 +1717,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
     }
 
     #[test]
@@ -1769,7 +1731,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (75 crates)
+        [check] rustc 1 <host> -> rustc 2 <host> (76 crates)
         ");
     }
 
@@ -1785,7 +1747,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (75 crates)
+        [check] rustc 1 <host> -> rustc 2 <target1> (76 crates)
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1793,6 +1755,7 @@ mod snapshot {
         [check] rustc 1 <host> -> Clippy 2 <target1>
         [check] rustc 1 <host> -> Miri 2 <target1>
         [check] rustc 1 <host> -> CargoMiri 2 <target1>
+        [check] rustc 1 <host> -> Priroda 2 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
         [check] rustc 1 <host> -> RustAnalyzer 2 <target1>
         [check] rustc 1 <host> -> TestFloatParse 2 <target1>
@@ -1881,7 +1844,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
     }
 
     #[test]
@@ -2156,11 +2119,11 @@ mod snapshot {
         [test] compiletest-run-make 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 1 <host>
+        [build] rustc 2 <target1> -> std 2 <target1>
+        [build] rustdoc 2 <target1>
         [build] rustc 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <target1>
         [test] compiletest-incremental 2 <target1>
-        [build] rustc 2 <target1> -> std 2 <target1>
-        [build] rustdoc 2 <target1>
         ");
     }
 
@@ -2425,12 +2388,12 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .path("run-make")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         ");
@@ -2442,12 +2405,12 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .path("run-make-cargo")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
@@ -3092,7 +3055,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @r"
         [build] llvm <host>
-        [fix] rustc 0 <host> -> rustc 1 <host> (75 crates)
+        [fix] rustc 0 <host> -> rustc 1 <host> (76 crates)
         ");
     }
 }

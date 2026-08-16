@@ -9,7 +9,7 @@ use crate::data_structures::DelayedMap;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::VisibleForLeakCheck;
+use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
     self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
@@ -407,6 +407,7 @@ pub trait InferCtxtLike: Sized {
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
+    fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
     fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
@@ -421,7 +422,7 @@ pub trait InferCtxtLike: Sized {
     ) -> <Self::Interner as Interner>::Const;
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
-    fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;

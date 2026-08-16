@@ -220,15 +220,26 @@ impl<'db> InferenceContext<'db> {
         result
     }
 
-    fn is_syntactic_place_expr(&self, expr: ExprId) -> bool {
+    fn is_syntactic_place_expr(&mut self, expr: ExprId) -> bool {
         match &self.store[expr] {
             // Lang item paths cannot currently be local variables or statics.
             Expr::Path(Path::LangItem(_, _)) => false,
             Expr::Path(Path::Normal(path)) => path.type_anchor.is_none(),
-            Expr::Path(path) => self
-                .resolver
-                .resolve_path_in_value_ns_fully(self.db, path, self.store.expr_path_hygiene(expr))
-                .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
+            Expr::Path(path) => {
+                let guard = self.resolver.update_to_inner_scope(self.db, self.store_owner, expr);
+                let is_place = self
+                    .resolver
+                    .resolve_path_in_value_ns_fully(
+                        self.db,
+                        path,
+                        self.store.expr_path_hygiene(expr),
+                    )
+                    .is_none_or(|res| {
+                        matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))
+                    });
+                self.resolver.reset_to_guard(guard);
+                is_place
+            }
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
             Expr::Field { .. } | Expr::Index { .. } => true,
@@ -266,7 +277,7 @@ impl<'db> InferenceContext<'db> {
         }
     }
 
-    pub(crate) fn check_lhs_assignable(&self, lhs: ExprId) {
+    pub(crate) fn check_lhs_assignable(&mut self, lhs: ExprId) {
         if self.is_syntactic_place_expr(lhs) {
             return;
         }
@@ -374,13 +385,12 @@ impl<'db> InferenceContext<'db> {
                 coerce.complete(self)
             }
             &Expr::Let { pat, expr } => {
-                let child_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
-                    ExprIsRead::Yes
-                } else {
-                    ExprIsRead::No
-                };
-                let input_ty = self.infer_expr(expr, &Expectation::none(), child_is_read);
-                self.infer_top_pat(pat, input_ty, PatOrigin::LetExpr);
+                self.infer_let(
+                    self.table.next_ty_var(tgt_expr.into()),
+                    Some(expr),
+                    pat,
+                    PatOrigin::LetExpr,
+                );
                 self.types.types.bool
             }
             Expr::Block { statements, tail, label, id: _ } => {
@@ -647,13 +657,15 @@ impl<'db> InferenceContext<'db> {
                     self.write_pat_ty(target, lhs_ty);
                     self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::Yes);
                 } else {
-                    let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
-                    let resolver_guard =
-                        self.resolver.update_to_inner_scope(self.db, self.store_owner, tgt_expr);
-                    self.inside_assignment = true;
+                    // Let the target pattern constrain the RHS coercion target. In particular,
+                    // this allows a diverging RHS to coerce to the pattern's type.
+                    let expected_ty = self.table.next_ty_var(target.into());
+                    let rhs_ty = self.infer_expr_coerce(
+                        value,
+                        &Expectation::has_type(expected_ty),
+                        ExprIsRead::Yes,
+                    );
                     self.infer_top_pat(target, rhs_ty, PatOrigin::DestructuringAssignment);
-                    self.inside_assignment = false;
-                    self.resolver.reset_to_guard(resolver_guard);
                 }
                 if is_destructuring_assignment && self.diverges.is_always() {
                     // Ordinary assignments always return `()`, even when they diverge.
@@ -1505,36 +1517,10 @@ impl<'db> InferenceContext<'db> {
                                 .map(|&tr| this.make_body_ty(tr))
                                 .unwrap_or_else(|| this.table.next_ty_var((*pat).into()));
 
-                            let ty = if let Some(expr) = initializer {
-                                // If we have a subpattern that performs a read, we want to consider this
-                                // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
-                                let target_is_read =
-                                    if this.pat_guaranteed_to_constitute_read_for_never(*pat) {
-                                        ExprIsRead::Yes
-                                    } else {
-                                        ExprIsRead::No
-                                    };
-                                let ty = if this.contains_explicit_ref_binding(*pat) {
-                                    this.infer_expr(
-                                        *expr,
-                                        &Expectation::has_type(decl_ty),
-                                        target_is_read,
-                                    )
-                                } else {
-                                    this.infer_expr_coerce(
-                                        *expr,
-                                        &Expectation::has_type(decl_ty),
-                                        target_is_read,
-                                    )
-                                };
-                                if type_ref.is_some() { decl_ty } else { ty }
-                            } else {
-                                decl_ty
-                            };
-
-                            this.infer_top_pat(
+                            this.infer_let(
+                                decl_ty,
+                                *initializer,
                                 *pat,
-                                ty,
                                 PatOrigin::LetStmt { has_else: else_branch.is_some() },
                             );
                             if let Some(expr) = else_branch {
@@ -1611,6 +1597,31 @@ impl<'db> InferenceContext<'db> {
         self.resolver.reset_to_guard(g);
 
         coerce.complete(self)
+    }
+
+    fn infer_let(
+        &mut self,
+        decl_ty: Ty<'db>,
+        initializer: Option<ExprId>,
+        pat: PatId,
+        pat_origin: PatOrigin,
+    ) {
+        if let Some(expr) = initializer {
+            // If we have a subpattern that performs a read, we want to consider this
+            // to diverge for compatibility to support something like `let x: () = *never_ptr;`.
+            let target_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
+                ExprIsRead::Yes
+            } else {
+                ExprIsRead::No
+            };
+            if self.contains_explicit_ref_binding(pat) {
+                self.infer_expr(expr, &Expectation::has_type(decl_ty), target_is_read)
+            } else {
+                self.infer_expr_coerce(expr, &Expectation::has_type(decl_ty), target_is_read)
+            };
+        };
+
+        self.infer_top_pat(pat, decl_ty, pat_origin);
     }
 
     fn lookup_field(
@@ -1887,7 +1898,12 @@ impl<'db> InferenceContext<'db> {
                     )),
                     None => field_with_same_name_exists.and_then(|field_ty| {
                         let callable_sig = field_ty.callable_sig(self.interner())?;
-                        Some((field_ty, callable_sig.skip_binder(), false))
+                        let callable_sig = self.infcx().instantiate_binder_with_fresh_vars(
+                            tgt_expr.into(),
+                            BoundRegionConversionTime::FnCall,
+                            callable_sig,
+                        );
+                        Some((field_ty, callable_sig, false))
                     }),
                 };
                 match recovered {

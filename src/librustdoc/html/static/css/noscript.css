@@ -48,7 +48,7 @@ nav.sub {
 	--sidebar-background-color: #f5f5f5;
 	--sidebar-background-color-hover: #e0e0e0;
 	--sidebar-border-color: #ddd;
-	--code-block-background-color: #f5f5f5;
+	--code-block-background-color: #eaeaea;
 	--scrollbar-track-background-color: #dcdcdc;
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
 	--scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
@@ -244,7 +244,7 @@ nav.sub {
 		--crate-search-hover-border: #2196f3;
 		--src-sidebar-background-selected: #333;
 		--src-sidebar-background-hover: #444;
-		--table-alt-row-background-color: #2a2a2a;
+		--table-alt-row-background-color: #1d1d1d;
 		--codeblock-link-background: #333;
 		--scrape-example-toggle-line-background: #999;
 		--scrape-example-toggle-line-hover-background: #c5c5c5;

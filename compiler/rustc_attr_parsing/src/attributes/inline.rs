@@ -1,6 +1,5 @@
+use rustc_attr_ir::{AttributeKind, InlineAttr, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
-use rustc_hir::find_attr;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;

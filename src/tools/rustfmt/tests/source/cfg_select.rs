@@ -1,3 +1,4 @@
+// rustfmt-unstable: true
 // rustfmt-style_edition: 2024
 // rustfmt-skip_children: true
 

@@ -674,11 +674,15 @@ pub(crate) fn link_tooltip(
             fqp
         };
         if let &Some(UrlFragment::Item(id)) = fragment {
-            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            let tcx = cx.tcx();
+            write!(f, "{} ", tcx.def_descr(id))?;
             for component in fqp {
                 write!(f, "{component}::")?;
             }
-            write!(f, "{}", cx.tcx().item_name(id))?;
+            if *shortty == ItemType::Enum && tcx.def_kind(id) == DefKind::Field {
+                write!(f, "{}::", tcx.item_name(tcx.parent(id)))?;
+            }
+            write!(f, "{}", tcx.item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
             write!(f, "{}", join_path_syms(fqp))?;
@@ -1251,7 +1255,9 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
             .iter()
             .map(|param| {
                 fmt::from_fn(|f| {
-                    if let Some(name) = param.name {
+                    if param.is_splat {
+                        write!(f, "…: ")?;
+                    } else if let Some(name) = param.name {
                         write!(f, "{name}: ")?;
                     }
                     print_type(&param.type_, cx).fmt(f)
@@ -1305,7 +1311,9 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
             if parameter.is_const {
                 write!(f, "const ")?;
             }
-            if let Some(name) = parameter.name {
+            if parameter.is_splat {
+                write!(f, "…: ")?;
+            } else if let Some(name) = parameter.name {
                 write!(f, "{name}: ")?;
             }
             print_type(&parameter.type_, cx).fmt(f)

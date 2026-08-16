@@ -135,9 +135,21 @@ declare_tests!(
     (x_build_compiletest, "build compiletest"),
     (x_build_library, "build library"),
     (x_build_llvm, "build llvm"),
+    (x_build_proc_macro_srv_cli, "build proc-macro-srv-cli"),
+    (x_build_rust_analyzer, "build rust-analyzer"),
+    (x_build_rust_analyzer_proc_macro_srv, "build rust-analyzer-proc-macro-srv"),
+    (
+        x_build_rust_analyzer_proc_macro_srv_plus_full_path,
+        "build rust-analyzer-proc-macro-srv src/tools/rust-analyzer/crates/proc-macro-srv-cli"
+    ),
     (x_build_rustc, "build rustc"),
     (x_build_rustc_llvm, "build rustc_llvm"),
     (x_build_rustdoc, "build rustdoc"),
+    (x_build_src_tools_rust_analyzer, "build src/tools/rust-analyzer"),
+    (
+        x_build_src_tools_rust_analyzer_crates_proc_macro_srv_cli,
+        "build src/tools/rust-analyzer/crates/proc-macro-srv-cli"
+    ),
     (x_build_sysroot, "build sysroot"),
     (x_check, "check"),
     (x_check_bootstrap, "check bootstrap"),
@@ -185,8 +197,14 @@ declare_tests!(
     (x_test_src_tools_miri, "test src/tools/miri"),
     (x_test_src_tools_miri_and_cargo_miri, "test src/tools/miri src/tools/miri/cargo-miri"),
     (x_test_tests, "test tests"),
+    (x_test_tests_coverage_trivial_rs, "test tests/coverage/trivial.rs"),
+    (
+        x_test_tests_coverage_trivial_rs_and_attr_impl_rs,
+        "test tests/coverage/trivial.rs tests/coverage/attr/impl.rs"
+    ),
     (x_test_tests_skip_coverage, "test tests --skip=coverage"),
     (x_test_tests_ui, "test tests/ui"),
+    (x_test_tests_ui_dot_prefix, "test ./tests/ui"),
     (x_test_tidy, "test tidy"),
     (x_test_tidyselftest, "test tidyselftest"),
     (x_test_ui, "test ui"),

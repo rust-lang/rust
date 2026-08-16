@@ -41,11 +41,11 @@ pub enum ClauseKind<I: Interner> {
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(I::Const),
 
-    /// Enforces the constness of the predicate we're calling. Like a projection
+    /// Enforces the constness of the clause we're calling. Like a projection
     /// goal from a where clause, it's always going to be paired with a
     /// corresponding trait clause; this just enforces the *constness* of that
     /// implementation.
-    HostEffect(ty::HostEffectPredicate<I>),
+    HostEffect(ty::HostEffectClause<I>),
 
     /// Support marking impl as unstable.
     UnstableFeature(

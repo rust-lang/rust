@@ -81,7 +81,6 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
-pub use diagnostics::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;

@@ -8,7 +8,8 @@
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::{LangItem, RangeEnd};
+use rustc_hir::RangeEnd;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;

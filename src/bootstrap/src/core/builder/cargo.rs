@@ -7,12 +7,13 @@ use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::config::flags::Color;
 use crate::core::config::toml::pgo::PgoConfig;
-use crate::core::config::{CompressDebuginfo, SplitDebuginfo};
+use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
-use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags};
+use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags, t};
 use crate::{
-    BootstrapCommand, CLang, Compiler, Config, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
-    RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
+    CLang, Compiler, EXTRA_CHECK_CFGS, GitRepo, Mode, RemapScheme, envify,
+    prepare_behaviour_dump_dir,
 };
 
 /// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.
@@ -349,7 +350,7 @@ impl Cargo {
         // any fingerprint difference between host==target versus cross-compiled targets
         // when it comes to those host build artifacts.
         if let Some(host_linker) = builder.linker(compiler.host) {
-            let host = crate::envify(&compiler.host.triple);
+            let host = envify(&compiler.host.triple);
             self.command.env(format!("CARGO_TARGET_{host}_LINKER"), host_linker);
         }
         for arg in linker_flags(builder, compiler.host, LldThreads::Yes) {
@@ -357,7 +358,7 @@ impl Cargo {
         }
 
         if let Some(target_linker) = builder.linker(target) {
-            let target = crate::envify(&target.triple);
+            let target = envify(&target.triple);
             self.command.env(format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not

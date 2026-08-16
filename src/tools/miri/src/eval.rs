@@ -510,8 +510,8 @@ fn call_main<'tcx>(
 }
 
 /// Evaluates the entry function specified by `entry_id`.
-/// Returns `Some(return_code)` if program execution completed.
-/// Returns `None` if an evaluation error occurred.
+/// Returns `Ok(())` if program execution completed with exit code 0.
+/// Returns `Err(code)` if an evaluation error occurred or the program returned a non-0 exit code.
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,

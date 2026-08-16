@@ -544,7 +544,7 @@ impl f64 {
     /// The concrete bit pattern may change across Rust versions and target platforms.
     #[rustc_diagnostic_item = "f64_nan"]
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    #[allow(clippy::eq_op)]
+    #[allow(clippy::eq_op, clippy::zero_divided_by_zero)]
     pub const NAN: f64 = 0.0_f64 / 0.0_f64;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]

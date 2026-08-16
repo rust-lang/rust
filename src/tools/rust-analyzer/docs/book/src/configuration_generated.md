@@ -19,14 +19,6 @@ Default: `false`
 Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
 
 
-## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
-
-Default: `true`
-
-Enable borrow checking for term search code assists. If set to false, also there will be
-more suggestions, but some of them may not borrow-check.
-
-
 ## rust-analyzer.assist.termSearch.fuel {#assist.termSearch.fuel}
 
 Default: `1800`

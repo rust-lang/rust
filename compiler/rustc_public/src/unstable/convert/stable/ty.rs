@@ -1047,7 +1047,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
+impl<'tcx> Stable<'tcx> for rustc_crate_store::ForeignModule {
     type T = crate::ty::ForeignModule;
 
     fn stable<'cx>(

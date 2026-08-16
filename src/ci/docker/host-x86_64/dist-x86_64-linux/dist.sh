@@ -10,6 +10,7 @@ python3 ../x.py build --set rust.debug=true opt-dist
     build-manifest \
     bootstrap \
     enzyme \
+    offload \
     rustc_codegen_gcc
 
 # Use GCC for building GCC components, as it seems to behave badly when built with Clang

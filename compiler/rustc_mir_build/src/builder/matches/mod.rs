@@ -12,8 +12,8 @@ use std::{debug_assert_matches, mem};
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
@@ -1746,9 +1746,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'tcx>],
     ) -> BasicBlock {
-        ensure_sufficient_stack(|| {
-            self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
-        })
+        self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
     }
 
     /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`

@@ -1,8 +1,8 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
 use rustc_middle::ty::relate::solver_relating::RelateExt;

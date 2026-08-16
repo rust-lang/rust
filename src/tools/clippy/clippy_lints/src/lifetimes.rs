@@ -7,6 +7,7 @@ use rustc_ast::visit::{try_visit, walk_list};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
+use rustc_hir::attrs::lang_items;
 use rustc_hir::intravisit::{
     IgnoreNested, NestedFilter, Visitor, VisitorExt as _, walk_fn_decl, walk_generic_args, walk_generic_param,
     walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
@@ -16,7 +17,7 @@ use rustc_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
-    WherePredicate, WherePredicateKind, lang_items,
+    WherePredicate, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::hir::nested_filter as middle_nested_filter;

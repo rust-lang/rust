@@ -65,7 +65,7 @@ use rustc_type_ir::{
     AliasTyKind, TypeFoldable, TypeVisitableExt,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
@@ -757,7 +757,7 @@ pub enum PatAdjust {
 /// When you add a field that stores types (including `Substitution` and the like), don't forget
 /// `resolve_completely()`'ing  them in `InferenceContext::resolve_all()`. Inference variables must
 /// not appear in the final inference result.
-#[derive(Clone, PartialEq, Eq, Debug, Update)]
+#[derive(Clone, PartialEq, Eq, Debug, SalsaValue)]
 pub struct InferenceResult<'db> {
     /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, (FunctionId, StoredGenericArgs)>,
@@ -1368,9 +1368,6 @@ pub(crate) struct InferenceContext<'db> {
     breakables: Vec<BreakableContext<'db>>,
     types: &'db crate::next_solver::DefaultAny<'db>,
 
-    /// Whether we are inside the pattern of a destructuring assignment.
-    inside_assignment: bool,
-
     deferred_cast_checks: Vec<CastCheck<'db>>,
 
     /// The key is an expression defining a closure or a coroutine closure.
@@ -1465,7 +1462,6 @@ impl<'db> InferenceContext<'db> {
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
             deferred_cast_checks: Vec::new(),
-            inside_assignment: false,
             diagnostics: Diagnostics::default(),
             vars_emitted_type_must_be_known_for: FxHashSet::default(),
             deferred_call_resolutions: FxHashMap::default(),

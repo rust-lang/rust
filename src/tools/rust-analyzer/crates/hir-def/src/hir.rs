@@ -74,7 +74,7 @@ impl ExprOrPatId {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, salsa::Update)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, salsa::SalsaValue)]
 pub struct ExprOrPatIdPacked(u32);
 
 const _: () = assert!(mem::size_of::<ExprOrPatIdPacked>() == mem::size_of::<u32>());

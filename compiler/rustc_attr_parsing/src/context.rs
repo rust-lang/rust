@@ -9,11 +9,11 @@ use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrPath, Attribute};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
@@ -775,7 +775,7 @@ pub struct SharedContext<'p, 'sess> {
     pub(crate) cx: &'p mut AttributeParser<'sess>,
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
-    pub(crate) target: rustc_hir::Target,
+    pub(crate) target: Target,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 

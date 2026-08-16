@@ -196,12 +196,20 @@ pub enum CoverageLevel {
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
-    /// Entry point for `std::offload`, enables kernel compilation for a gpu device
-    Device,
-    /// Second step in the offload pipeline, generates the host code to call kernels.
+    /// Second step in the offload pipeline, enables kernel compilation for a gpu device
+    /// Reads a manifest of required generic kernel instantiations
+    /// produced by a previous `HostMetadata` pass. An empty manifest
+    /// means there are no generic kernels at all, or that generic kernels are only
+    /// called from non-generic device entry points and never from the host, so we
+    /// don't need to track their instantiations.
+    Device(String),
+    /// Third step in the offload pipeline, generates the host code to call kernels.
     Host(String),
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,
+    /// First step in the offload pipeline: compile for the host but only emit a manifest of
+    /// kernel instantiations required by the host code.
+    HostMetadata(String),
 }
 
 /// The different settings that the `-Z codegen-emit-retag` flag can have.
@@ -1571,7 +1579,7 @@ pub enum EntryFnType {
     },
 }
 
-pub use rustc_hir::attrs::CrateType;
+pub use rustc_attr_ir::CrateType;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq, Encodable, Decodable)]
 pub enum Passes {
@@ -3310,12 +3318,12 @@ pub(crate) mod dep_tracking {
 
     use rustc_abi::Align;
     use rustc_ast::attr::version::RustcVersion;
+    use rustc_attr_ir::CollapseMacroDebuginfo;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
-    use rustc_hir::attrs::CollapseMacroDebuginfo;
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{

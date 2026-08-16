@@ -387,7 +387,7 @@ fn get_doc_links(
 
     let (mut web_url, mut local_url) = get_doc_base_urls(db, target, target_dir, sysroot);
 
-    let append_mod = !matches!(def, Definition::Macro(m) if m.is_macro_export(db));
+    let append_mod = !matches!(def, Definition::Macro(m) if m.attrs(db).is_macro_export());
     if append_mod && let Some(path) = mod_path_of_def(db, target) {
         web_url = join_url(web_url, &path);
         local_url = join_url(local_url, &path);

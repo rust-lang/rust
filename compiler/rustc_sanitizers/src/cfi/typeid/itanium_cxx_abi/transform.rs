@@ -6,7 +6,8 @@
 
 use std::iter;
 
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,

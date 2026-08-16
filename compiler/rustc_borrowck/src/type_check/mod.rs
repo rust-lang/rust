@@ -8,9 +8,9 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -479,8 +479,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |ty| self.normalize(ty, locations),
-                |()| None,
+                |ty, variant_index, field_index, ()| {
+                    self.normalize(
+                        PlaceTy::field_ty(tcx, ty, variant_index, field_index),
+                        locations,
+                    )
+                },
                 |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;

@@ -10,7 +10,7 @@ use rustc_type_ir_macros::{
 };
 use thin_vec::ThinVec;
 
-use crate::data_structures::HashMap;
+use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
 use crate::{self as ty, Interner, Region, TypingModeEqWrapper, UniverseIndex};
 
@@ -377,4 +377,38 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
     pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
+}
+
+/// State used and modified by a canonicalizer during canonicalization. To avoid many allocations,
+/// this state is reused by many canonicalizers from a single `InferCtxt`.
+#[derive_where(Default; I: Interner)]
+pub struct CanonicalizerState<I: Interner> {
+    pub variables: ThinVec<I::GenericArg>,
+    pub var_kinds: Vec<CanonicalVarKind<I>>,
+    pub variable_lookup_table: HashMap<I::GenericArg, usize>,
+
+    /// Maps each `sub_unification_table_root_var` to the index of the first
+    /// variable which used it.
+    ///
+    /// This means in case two type variables have the same sub relations root,
+    /// we set the `sub_root` of the second variable to the position of the first.
+    /// Otherwise the `sub_root` of each type variable is just its own position.
+    pub sub_root_lookup_table: HashMap<ty::TyVid, usize>,
+
+    /// We can simply cache based on the ty itself, because we use
+    /// `ty::BoundVarIndexKind::Canonical`.
+    pub cache: DelayedMap<I::Ty, I::Ty>,
+}
+
+impl<I: Interner> CanonicalizerState<I> {
+    pub fn clear(&mut self) {
+        // Deconstruct to ensure no fields are missed.
+        let Self { variables, var_kinds, variable_lookup_table, sub_root_lookup_table, cache } =
+            self;
+        variables.clear();
+        var_kinds.clear();
+        variable_lookup_table.clear();
+        sub_root_lookup_table.clear();
+        cache.clear();
+    }
 }

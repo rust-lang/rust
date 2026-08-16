@@ -1,12 +1,12 @@
 #![allow(non_camel_case_types)]
 
-use rustc_hir::LangItem;
+use rustc_crate_store::{DllCallingConvention, DllImport, DllImportSymbolType};
 use rustc_hir::attrs::PeImportNameType;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, ScalarInt, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::cstore::{DllCallingConvention, DllImport, DllImportSymbolType};
 use rustc_span::Span;
 use rustc_target::spec::{CfgAbi, Env, Os, Target};
 

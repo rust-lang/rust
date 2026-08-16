@@ -107,7 +107,7 @@ fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
     match (l, r) {
         (AngleBracketed(l), AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
         (Parenthesized(l), Parenthesized(r)) => {
-            over(&l.inputs, &r.inputs, |l, r| eq_ty(l, r)) && eq_fn_ret_ty(&l.output, &r.output)
+            over(&l.inputs, &r.inputs, eq_param) && eq_fn_ret_ty(&l.output, &r.output)
         },
         _ => false,
     }
@@ -855,12 +855,14 @@ fn eq_restriction_kind(l: &RestrictionKind, r: &RestrictionKind) -> bool {
 
 fn eq_fn_decl(l: &FnDecl, r: &FnDecl) -> bool {
     eq_fn_ret_ty(&l.output, &r.output)
-        && over(&l.inputs, &r.inputs, |l, r| {
-            l.is_placeholder == r.is_placeholder
-                && eq_pat(&l.pat, &r.pat)
-                && eq_ty(&l.ty, &r.ty)
-                && over(&l.attrs, &r.attrs, eq_attr)
-        })
+        && over(&l.inputs, &r.inputs, eq_param)
+}
+
+fn eq_param(l: &Param, r: &Param) -> bool {
+    l.is_placeholder == r.is_placeholder
+        && eq_pat(&l.pat, &r.pat)
+        && eq_ty(&l.ty, &r.ty)
+        && over(&l.attrs, &r.attrs, eq_attr)
 }
 
 fn eq_closure_binder(l: &ClosureBinder, r: &ClosureBinder) -> bool {

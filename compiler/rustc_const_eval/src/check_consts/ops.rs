@@ -1,9 +1,10 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use hir::{ConstContext, LangItem};
+use hir::ConstContext;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, msg};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};

@@ -6,14 +6,14 @@
 use std::path::{Component, Path, PathBuf};
 use std::{env, fs};
 
+use crate::Compiler;
 use crate::core::build_steps::dist;
 use crate::core::build_steps::tool::RustcPrivateCompilers;
-use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
+use crate::core::builder::{Builder, CommandLineStep, Kind, RunConfig, ShouldRun};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
-use crate::{Compiler, Kind};
 
 #[cfg(target_os = "illumos")]
 const SHELL: &str = "bash";

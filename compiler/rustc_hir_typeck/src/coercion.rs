@@ -39,9 +39,10 @@ use std::ops::{ControlFlow, Deref};
 
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
@@ -832,7 +833,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> PredicateObligation<'tcx> {
         let pred = ty::TraitRef::new(
             self.tcx,
-            self.tcx.require_lang_item(hir::LangItem::Unpin, self.cause.span),
+            self.tcx.require_lang_item(LangItem::Unpin, self.cause.span),
             [ty],
         );
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
@@ -2103,7 +2104,7 @@ impl<'tcx> CoerceMany<'tcx> {
                 fcx.param_env,
                 ty::TraitRef::new(
                     fcx.tcx,
-                    fcx.tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP),
+                    fcx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP),
                     [sig.output()],
                 ),
             ))

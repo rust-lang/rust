@@ -117,6 +117,7 @@ def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str
                         + str(res.GetError())
                     )
     else:
+        print(res.GetOutput())
         print(res.GetError())
 
 

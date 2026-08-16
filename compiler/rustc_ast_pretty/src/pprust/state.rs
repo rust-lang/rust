@@ -1212,7 +1212,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
             ast::GenericArgs::Parenthesized(data) => {
                 self.word("(");
-                self.commasep(Inconsistent, &data.inputs, |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, &data.inputs, |s, param| s.print_param(param, false));
                 self.word(")");
                 self.print_fn_ret_ty(&data.output);
             }

@@ -69,11 +69,12 @@
       "enabled": false
     },
     {
-      // Update yarn.lock in a dedicated PR.
-      "matchManagers": ["npm"],
+      // Do not update npm/yarn lockfile, we only use it for internal tests.
+      "matchManagers": [
+        "npm"
+      ],
       "matchUpdateTypes": ["lockFileMaintenance"],
-      "groupName": "Yarn lock file maintenance",
-      "commitMessageAction": "Yarn lock file update"
+      "enabled": false,
     }
   ],
   "ignorePaths": [

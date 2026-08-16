@@ -21,6 +21,7 @@ expression: fix
     - Set({compiler/rustc_codegen_llvm})
     - Set({compiler/rustc_codegen_ssa})
     - Set({compiler/rustc_const_eval})
+    - Set({compiler/rustc_crate_store})
     - Set({compiler/rustc_data_structures})
     - Set({compiler/rustc_driver})
     - Set({compiler/rustc_driver_impl})
@@ -100,6 +101,9 @@ expression: fix
 [Fix] check::CargoMiri
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/miri/cargo-miri})
+[Fix] check::Priroda
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({src/tools/miri/priroda})
 [Fix] check::MiroptTestTools
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/miropt-test-tools})

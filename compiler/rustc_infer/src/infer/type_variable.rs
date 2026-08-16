@@ -157,6 +157,10 @@ impl<'tcx> TypeVariableStorage<'tcx> {
         debug_assert!(self.values.len() >= self.eq_relations.len());
         self.values.truncate(self.eq_relations.len());
     }
+
+    pub(crate) fn sub_unification_table_ref(&self) -> &ut::UnificationTableStorage<TyVidSubKey> {
+        &self.sub_unification_table
+    }
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
