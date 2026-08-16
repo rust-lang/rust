@@ -324,7 +324,7 @@ fn extend_err_with_const_context(
         {
             // `foo<N>()`, point at the const parameter in the definition of `foo`.
             if let Some(i) =
-                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
+                path.segments.last().and_then(|segment| segment.args).and_then(|args| {
                     args.args.iter().position(|arg| {
                         matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
                     })
