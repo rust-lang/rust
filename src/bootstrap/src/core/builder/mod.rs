@@ -24,12 +24,13 @@ pub use crate::core::builder::step_stack::StepStack;
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
+use crate::core::metadata::Crate;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::utils::tracing::format_location;
-use crate::{Build, Crate, trace};
+use crate::{Build, trace};
 
 mod cargo;
 mod cli_paths;

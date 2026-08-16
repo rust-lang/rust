@@ -41,6 +41,7 @@ use crate::core::builder::{Builder, Kind};
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::{self, Subcommand};
 use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
+use crate::core::metadata::Crate;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
@@ -125,20 +126,6 @@ pub struct Build {
 
     #[cfg(feature = "tracing")]
     step_graph: std::cell::RefCell<crate::utils::step_graph::StepGraph>,
-}
-
-#[derive(Debug, Clone)]
-struct Crate {
-    name: String,
-    deps: HashSet<String>,
-    path: PathBuf,
-    features: Vec<String>,
-}
-
-impl Crate {
-    fn local_path(&self, build: &Build) -> PathBuf {
-        self.path.strip_prefix(&build.config.src).unwrap().into()
-    }
 }
 
 /// When building Rust various objects are handled differently.
