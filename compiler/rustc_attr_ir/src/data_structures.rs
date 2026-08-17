@@ -16,8 +16,7 @@ use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
-use rustc_structures::Limit;
-pub use rustc_target::spec::SanitizerSet;
+use rustc_structures::{Limit, SanitizerSet};
 use thin_vec::ThinVec;
 
 pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};

@@ -3665,7 +3665,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_structures",
- "rustc_target",
  "smallvec",
  "thin-vec",
  "tracing",
@@ -3787,6 +3786,7 @@ dependencies = [
  "rustc_sanitizers",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_symbol_mangling",
  "rustc_target",
  "smallvec",
@@ -4786,9 +4786,12 @@ dependencies = [
 name = "rustc_structures"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "rustc_data_structures",
  "rustc_macros",
  "rustc_serialize",
+ "schemars",
+ "serde",
 ]
 
 [[package]]
@@ -4821,6 +4824,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_structures",
  "schemars",
  "serde",
  "serde_derive",
