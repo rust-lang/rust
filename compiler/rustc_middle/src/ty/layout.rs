@@ -1213,18 +1213,10 @@ where
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
     }
 
-    /// Does this type have a layout compatible with C `_Complex`?
-    ///
-    /// The value must be of type `core::num::Complex<T>` where `T` is numeric.
-    fn is_complex_number(this: TyAndLayout<'tcx>, cx: &C) -> bool {
-        let ty::Adt(def, generic_args) = this.ty.kind() else { return false };
-
-        if !cx.tcx().is_lang_item(def.did(), LangItem::Complex) {
-            return false;
-        }
-
-        // Only Complex<{ float }> and Complex<{ integer }> have special layout.
-        generic_args.type_at(0).is_numeric()
+    /// Is this type `core::num::Complex<T>`?
+    fn is_complex_number_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
+        let Some(def) = this.ty.ty_adt_def() else { return false };
+        cx.tcx().is_lang_item(def.did(), LangItem::Complex)
     }
 
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {
