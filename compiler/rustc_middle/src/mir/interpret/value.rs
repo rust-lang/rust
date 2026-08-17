@@ -7,8 +7,7 @@ use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 
 use super::{
-    AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance,
-    ScalarSizeMismatch, interp_ok,
+    AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance, interp_ok,
 };
 use crate::ty::ScalarInt;
 
@@ -237,25 +236,20 @@ impl<Prov> Scalar<Prov> {
     /// This throws UB (instead of ICEing) on a size mismatch since size mismatches can arise in
     /// Miri when someone declares a function that we shim (such as `malloc`) with a wrong type.
     #[inline]
-    pub fn to_bits_or_ptr_internal(
-        self,
-        target_size: Size,
-    ) -> Result<Either<u128, Pointer<Prov>>, ScalarSizeMismatch> {
+    pub fn to_bits_or_ptr_internal(self, target_size: Size) -> Either<u128, Pointer<Prov>> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        Ok(match self {
-            Scalar::Int(int) => Left(int.try_to_bits(target_size).map_err(|size| {
-                ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
-            })?),
+        match self {
+            Scalar::Int(int) => Left(int.to_bits(target_size)),
             Scalar::Ptr(ptr, sz) => {
-                if target_size.bytes() != u64::from(sz) {
-                    return Err(ScalarSizeMismatch {
-                        target_size: target_size.bytes(),
-                        data_size: sz.into(),
-                    });
-                }
+                assert_eq!(
+                    target_size.bytes(),
+                    u64::from(sz),
+                    "Scalar is a pointer but expected size {}",
+                    target_size.bytes()
+                );
                 Right(ptr)
             }
-        })
+        }
     }
 
     #[inline]
@@ -269,10 +263,7 @@ impl<Prov> Scalar<Prov> {
 
 impl<'tcx, Prov: Provenance> Scalar<Prov> {
     pub fn to_pointer(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, Pointer<Option<Prov>>> {
-        match self
-            .to_bits_or_ptr_internal(cx.pointer_size())
-            .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
-        {
+        match self.to_bits_or_ptr_internal(cx.pointer_size()) {
             Right(ptr) => interp_ok(ptr.into()),
             Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
@@ -330,15 +321,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.to_scalar_int()?
-            .try_to_bits(target_size)
-            .map_err(|size| {
-                err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
-                    target_size: target_size.bytes(),
-                    data_size: size.bytes(),
-                }))
-            })
-            .into()
+        interp_ok(self.to_scalar_int()?.to_bits(target_size))
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
