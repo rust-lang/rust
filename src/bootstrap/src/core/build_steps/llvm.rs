@@ -44,9 +44,7 @@ pub enum LlvmKind {
 /// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
 pub struct LlvmOutput {
-    /// Path to llvm-config binary.
-    /// NB: This is always the host llvm-config!
-    pub host_llvm_config: PathBuf,
+    llvm_config: PathBuf,
     link_shared: bool,
     llvm_root_dir: PathBuf,
     kind: LlvmKind,
@@ -72,6 +70,14 @@ impl LlvmOutput {
     /// How was the LLVM produced?
     pub fn kind(&self) -> LlvmKind {
         self.kind
+    }
+
+    /// Path to the `llvm-config` binary.
+    ///
+    /// Note that this binary might not be executable on the current host, if LLVM was built for a
+    /// different target.
+    pub fn llvm_config(&self) -> &Path {
+        &self.llvm_config
     }
 }
 
@@ -155,13 +161,13 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
         && let Some(ref s) = config.llvm_config
     {
         check_llvm_version(builder, s);
-        let host_llvm_config = s.to_path_buf();
-        let mut llvm_root_dir = host_llvm_config.clone();
+        let llvm_config = s.to_path_buf();
+        let mut llvm_root_dir = llvm_config.clone();
         llvm_root_dir.pop();
         llvm_root_dir.pop();
 
         return Some(LlvmOutput {
-            host_llvm_config,
+            llvm_config,
             link_shared: llvm_link_shared(&builder.config),
             llvm_root_dir,
             kind: LlvmKind::External,
@@ -187,21 +193,8 @@ pub fn get_llvm_build_status(builder: &Builder<'_>, target: TargetSelection) -> 
 
     let out_dir = llvm_output_dir(builder, target);
 
-    let build_llvm_config = if let Some(build_llvm_config) = builder
-        .config
-        .target_config
-        .get(&builder.config.host_target)
-        .and_then(|config| config.llvm_config.clone())
-    {
-        build_llvm_config
-    } else {
-        let mut llvm_config_ret_dir = llvm_output_dir(builder, builder.config.host_target);
-        llvm_config_ret_dir.push("bin");
-        llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
-    };
-
     let res = LlvmOutput {
-        host_llvm_config: build_llvm_config,
+        llvm_config: out_dir.join("bin").join(exe("llvm-config", target)),
         link_shared: llvm_link_shared(&builder.config),
         llvm_root_dir: out_dir.clone(),
         kind: LlvmKind::BuiltLocally,
@@ -275,7 +268,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
 
     Some(DownloadedLlvm {
         output: LlvmOutput {
-            host_llvm_config: ci_llvm.join("bin").join("llvm-config"),
+            llvm_config: ci_llvm.join("bin").join("llvm-config"),
             link_shared,
             llvm_root_dir: ci_llvm,
             kind: LlvmKind::DownloadedFromCi,
@@ -396,7 +389,7 @@ impl Step for LlvmFromCi {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let llvm_ci = try_download_ci_llvm(builder, self.target)?;
         // Sanity check
-        check_llvm_version(builder, &llvm_ci.output.host_llvm_config);
+        check_llvm_version(builder, llvm_ci.output.llvm_config());
         Some(llvm_ci)
     }
 }
@@ -641,10 +634,9 @@ impl CommandLineStep for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
-            let LlvmOutput { host_llvm_config, .. } =
-                builder.ensure(Llvm { target: builder.config.host_target });
+            let llvm_output = builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_bindir = command(&host_llvm_config)
+                let llvm_bindir = command(llvm_output.llvm_config())
                     .arg("--bindir")
                     .cached()
                     .run_capture_stdout(builder)
@@ -657,10 +649,9 @@ impl CommandLineStep for Llvm {
                 // LLVM_NM is required for cross compiling using MSVC
                 cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             }
-            cfg.define("LLVM_CONFIG_PATH", host_llvm_config);
+            cfg.define("LLVM_CONFIG_PATH", llvm_output.llvm_config());
             if builder.config.llvm_clang {
-                let build_bin =
-                    llvm_output_dir(builder, builder.config.host_target).join("build").join("bin");
+                let build_bin = llvm_output.root_dir().join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
                 if !builder.config.dry_run() && !clang_tblgen.exists() {
                     panic!("unable to find {}", clang_tblgen.display());
@@ -699,7 +690,13 @@ impl CommandLineStep for Llvm {
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let major = get_llvm_version_major(builder, &output.host_llvm_config);
+            let llvm_config = if target == builder.host_target {
+                output.llvm_config().to_path_buf()
+            } else {
+                builder.ensure(Llvm { target: builder.host_target }).llvm_config().to_path_buf()
+            };
+
+            let major = get_llvm_version_major(builder, &llvm_config);
             match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
@@ -749,6 +746,7 @@ impl CommandLineStep for Llvm {
     }
 }
 
+/// This has to be called with the **host** llvm-config!
 pub fn get_llvm_version(builder: &Builder<'_>, llvm_config: &Path) -> String {
     command(llvm_config)
         .arg("--version")
@@ -759,6 +757,7 @@ pub fn get_llvm_version(builder: &Builder<'_>, llvm_config: &Path) -> String {
         .to_owned()
 }
 
+/// This has to be called with the **host** llvm-config!
 pub fn get_llvm_version_major(builder: &Builder<'_>, llvm_config: &Path) -> u8 {
     let version = get_llvm_version(builder, llvm_config);
     let major_str = version.split_once('.').expect("Failed to parse LLVM version").0;
@@ -1125,8 +1124,7 @@ impl CommandLineStep for RustOffload {
 
         let out_dir = builder.out.join(self.target.triple).join("rust-offload");
 
-        let llvm_version_major =
-            llvm::get_llvm_version_major(builder, &llvm_output.host_llvm_config);
+        let llvm_version_major = get_llvm_version_major(builder, &builder.host_llvm_config());
         let lib_ext = std::env::consts::DLL_EXTENSION;
         let lib_rust_offload = format!("libRustOffload-{llvm_version_major}");
         let build_dir = out_dir.join(libdir(target));
@@ -1149,7 +1147,7 @@ impl CommandLineStep for RustOffload {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
+            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
             .define("LLVM_DIR", llvm_output.cmake_dir());
 
         cfg.build();
@@ -1233,7 +1231,7 @@ impl CommandLineStep for OmpOffload {
         }
         let target = self.target;
 
-        let llvm_output = builder.ensure(Llvm { target: self.target });
+        let llvm_output = builder.ensure(Llvm { target });
 
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own folder, instead of
@@ -1330,7 +1328,7 @@ impl CommandLineStep for OmpOffload {
             // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
             let mut cflags = CcFlags::default();
             if !builder.config.llvm_clang {
-                let base = llvm_output_dir(builder, target).join("include");
+                let base = llvm_output.root_dir().join("include");
                 let inc_dir = base.display();
                 cflags.push_all(format!(" -I {inc_dir}"));
             }
@@ -1354,11 +1352,11 @@ impl CommandLineStep for OmpOffload {
             // runtime to simplify our build. So far, these are still under development.
             cfg.out_dir(&out_dir)
                 .profile(profile)
-                .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
+                .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
                 .define("LLVM_ENABLE_ASSERTIONS", "ON")
                 .define("LLVM_INCLUDE_TESTS", "OFF")
                 .define("OFFLOAD_INCLUDE_TESTS", "OFF")
-                .define("LLVM_ROOT", llvm_output_dir(builder, target).join("build"))
+                .define("LLVM_ROOT", llvm_output.root_dir().join("build"))
                 .define("LLVM_DIR", llvm_output.cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
             if let Some(p) = clang_dir.clone() {
@@ -1462,8 +1460,7 @@ impl CommandLineStep for Enzyme {
         let out_dir = builder.out.join(self.target.triple).join("enzyme");
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
-        let llvm_version_major =
-            llvm::get_llvm_version_major(builder, &llvm_output.host_llvm_config);
+        let llvm_version_major = llvm::get_llvm_version_major(builder, &builder.host_llvm_config());
         let lib_ext = std::env::consts::DLL_EXTENSION;
         let libenzyme = format!("libEnzyme-{llvm_version_major}");
         let build_dir = out_dir.join(libdir(target));
@@ -1524,7 +1521,7 @@ impl CommandLineStep for Enzyme {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
+            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
@@ -1577,13 +1574,13 @@ impl CommandLineStep for Lld {
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
         // subfolder. We check if that's the case, and if LLD's binary already exists there next to
         // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
-        let ci_llvm_bin = llvm_output.host_llvm_config.parent().unwrap();
-        if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
-            let lld_path = ci_llvm_bin.join(exe("lld", target));
+        if matches!(llvm_output.kind, LlvmKind::DownloadedFromCi) {
+            let bin_dir = llvm_output.root_dir().join("bin");
+            let lld_path = bin_dir.join(exe("lld", target));
             if lld_path.exists() {
                 // The following steps copying `lld` as `rust-lld` to the sysroot, expect it in the
                 // `bin` subfolder of this step's out dir.
-                return ci_llvm_bin.parent().unwrap().to_path_buf();
+                return bin_dir.parent().unwrap().to_path_buf();
             }
         }
 
@@ -1657,7 +1654,7 @@ impl CommandLineStep for Lld {
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
                 llvm_output
-                    .host_llvm_config
+                    .llvm_config()
                     .with_file_name("llvm-tblgen")
                     .with_extension(EXE_EXTENSION),
             );
@@ -1700,8 +1697,7 @@ impl CommandLineStep for Sanitizers {
             return runtimes;
         }
 
-        let LlvmOutput { host_llvm_config, .. } =
-            builder.ensure(Llvm { target: builder.config.host_target });
+        let llvm_host = builder.ensure(Llvm { target: builder.config.host_target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -1740,7 +1736,7 @@ impl CommandLineStep for Sanitizers {
         cfg.define("COMPILER_RT_BUILD_XRAY", "OFF");
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
-        cfg.define("LLVM_CONFIG_PATH", &host_llvm_config);
+        cfg.define("LLVM_CONFIG_PATH", llvm_host.llvm_config());
 
         if self.target.contains("ohos") {
             cfg.define("COMPILER_RT_USE_BUILTINS_LIBRARY", "ON");

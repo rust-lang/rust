@@ -2543,8 +2543,8 @@ fn maybe_install_llvm(
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, FileType::NativeLibrary);
 
-            if install_symlink && let Some(llvm_config_path) = &builder.llvm_config(target) {
-                let major = llvm::get_llvm_version_major(builder, llvm_config_path);
+            if install_symlink {
+                let major = llvm::get_llvm_version_major(builder, &builder.host_llvm_config());
                 let versioned_name = match &builder.config.llvm_version_suffix {
                     Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.dylib"),
                     None => {
@@ -2563,18 +2563,17 @@ fn maybe_install_llvm(
             }
         }
         !builder.config.dry_run()
-    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmOutput {
-        host_llvm_config, ..
-    }) = llvm
-    {
+    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm_output) = llvm {
         trace!("LLVM already built, installing LLVM files");
-        let mut cmd = command(host_llvm_config);
+
+        let host_llvm = builder.ensure(llvm::Llvm { target: builder.host_target });
+        let mut cmd = command(host_llvm.llvm_config());
         cmd.cached();
         cmd.arg("--libfiles");
         builder.do_if_verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
-        let build_llvm_out = &builder.llvm_out(builder.config.host_target);
-        let target_llvm_out = llvm.llvm_output().root_dir();
+        let build_llvm_out = host_llvm.root_dir();
+        let target_llvm_out = llvm_output.root_dir();
         for file in files.trim_end().split(' ') {
             // If we're not using a custom LLVM, make sure we package for the target.
             let file = if let Ok(relative_path) = Path::new(file).strip_prefix(build_llvm_out) {
