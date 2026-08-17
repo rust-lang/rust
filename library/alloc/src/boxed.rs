@@ -218,7 +218,7 @@ mod iter;
 /// [`ThinBox`] implementation.
 mod thin;
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 pub use iter::BoxedArrayIntoIter;
 #[unstable(feature = "thin_box", issue = "92791")]
 pub use thin::ThinBox;
@@ -1374,7 +1374,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     /// [considerations for unsafe code]: self#considerations-for-unsafe-code
-    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
@@ -1490,7 +1490,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[inline]
     pub fn into_non_null(b: Self) -> NonNull<T> {
         // As of August 2026, we cannot utilize `Box::leak`

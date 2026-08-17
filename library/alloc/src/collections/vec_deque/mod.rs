@@ -1485,7 +1485,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.as_slices(), (&[5][..], &[][..]));
     /// ```
     #[doc(alias = "truncate_front")]
-    #[stable(feature = "vec_deque_truncate_front", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_deque_truncate_front", since = "1.99.0")]
     pub fn retain_back(&mut self, len: usize) {
         unsafe {
             if len >= self.len {
