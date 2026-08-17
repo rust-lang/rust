@@ -1,8 +1,7 @@
 ARG IMAGE=ubuntu:26.04
 FROM $IMAGE
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     gcc \
     gcc-mips64el-linux-gnuabi64 \

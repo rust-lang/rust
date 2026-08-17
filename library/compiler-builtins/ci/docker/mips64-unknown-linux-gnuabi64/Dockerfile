@@ -1,15 +1,14 @@
 ARG IMAGE=ubuntu:26.04
 FROM $IMAGE
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     gcc \
     gcc-mips64-linux-gnuabi64 \
     libc6-dev \
     libc6-dev-mips64-cross \
-    qemu-user \
     qemu-system-mips
+    qemu-user \
 
 ENV TOOLCHAIN_PREFIX=mips64-linux-gnuabi64-
 ENV CARGO_TARGET_MIPS64_UNKNOWN_LINUX_GNUABI64_LINKER="$TOOLCHAIN_PREFIX"gcc \

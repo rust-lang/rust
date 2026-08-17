@@ -1,11 +1,14 @@
 ARG IMAGE=ubuntu:26.04
 FROM $IMAGE
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    gcc libc6-dev ca-certificates \
-    gcc-mipsel-linux-gnu libc6-dev-mipsel-cross \
-    binfmt-support qemu-user
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binfmt-support \
+    ca-certificates \
+    gcc \
+    gcc-mipsel-linux-gnu \
+    libc6-dev \
+    libc6-dev-mipsel-cross \
+    qemu-user
 
 ENV TOOLCHAIN_PREFIX=mipsel-linux-gnu-
 ENV CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_LINKER="$TOOLCHAIN_PREFIX"gcc \
