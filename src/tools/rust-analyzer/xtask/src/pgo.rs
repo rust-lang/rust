@@ -96,14 +96,6 @@ fn download_crate_for_training(sh: &Shell, pgo_dir: &Path, repo: &str) -> anyhow
     Ok(target_path)
 }
 
-/// Helper function to create a build command for rust-analyzer
-pub(crate) fn build_command<'a>(sh: &'a Shell, target_name: &str, features: &[&str]) -> Cmd<'a> {
-    cmd!(
-        sh,
-        "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release"
-    )
-}
-
 pub(crate) fn apply_pgo_to_cmd<'a>(cmd: Cmd<'a>, profile_path: &Path) -> Cmd<'a> {
     cmd.env("RUSTFLAGS", format!("-Cprofile-use={}", profile_path.to_str().unwrap()))
 }
