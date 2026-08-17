@@ -315,7 +315,7 @@ $ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
 $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ```
 
-Graphviz also comes with a preprocessor program, 
+Graphviz also comes with a preprocessor program,
 [`unflatten`](https://graphviz.org/docs/cli/unflatten/), that
 sometimes helps making the outputs look less oddly spread out. It reads
 a dot file and outputs another dot file, so you can use it in a pipe,
@@ -325,7 +325,11 @@ $ unflatten mir_dump/*.foo.-------.nll.0.regioncx.all.dot | dot -Tpdf  -o foo-ou
 ```
 
 This is particularly useful for complicated region outlives graphs from 
-[the borrow checker](borrow_check/debugging.md).
+[the borrow checker](borrow-check/debugging.md).
+
+[An online Graphviz editor and visualiser is
+also available](https://dreampuf.github.io/GraphvizOnline).
+
 
 ## Narrowing (Bisecting) Regressions
 
@@ -388,6 +392,9 @@ error: aborting due to previous error
 
 [`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_public/abi/struct.Layout.html
 
+## Debugging borrowcheck
+
+Debugging the borrow checker has [its own chapter](borrow-check/debugging.md).
 
 ## Configuring CodeLLDB for debugging `rustc`
 
