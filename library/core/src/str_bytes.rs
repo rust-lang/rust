@@ -1716,8 +1716,10 @@ impl TwoWaySearcher {
             };
 
             if old_pos != self.position {
-                if let Some(ret) = R::rejecting(old_pos, self.position) {
-                    return ret;
+                if R::HAS_REJECTS {
+                    if let Some(ret) = R::rejecting(old_pos, self.position) {
+                        return ret;
+                    }
                 }
             }
 
@@ -1832,8 +1834,10 @@ impl TwoWaySearcher {
             };
 
             if old_end != self.end {
-                if let Some(ret) = R::rejecting(self.end, old_end) {
-                    return ret;
+                if R::HAS_REJECTS {
+                    if let Some(ret) = R::rejecting(self.end, old_end) {
+                        return ret;
+                    }
                 }
             }
 
