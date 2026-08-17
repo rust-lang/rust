@@ -170,6 +170,9 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(all(target_arch = "aarch64", target_feature = "sve"))]
+mod sve_retain;
+
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 ///
 /// # Examples
@@ -2513,6 +2516,22 @@ impl<T, A: Allocator> Vec<T, A> {
         if original_len == 0 {
             // Empty case: explicit return allows better optimization, vs letting compiler infer it
             return;
+        }
+
+        #[cfg(all(target_arch = "aarch64", target_feature = "sve"))]
+        {
+            let long_enough = match mem::size_of::<T>() {
+                1 => original_len >= sve_retain::MIN_SVE_SIZE_1,
+                2 => original_len >= sve_retain::MIN_SVE_SIZE_2,
+                4 => original_len >= sve_retain::MIN_SVE_SIZE_4,
+                8 => original_len >= sve_retain::MIN_SVE_SIZE_8,
+                _ => false,
+            };
+            if long_enough && !mem::needs_drop::<T>() {
+                // SAFETY: size_of::<T>() is 1, 2, 4 or 8, matching
+                // the kernel lane widths.
+                return unsafe { sve_retain::chunked_retain(self, f) };
+            }
         }
 
         // Vec: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]

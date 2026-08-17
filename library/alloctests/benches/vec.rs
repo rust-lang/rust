@@ -857,6 +857,141 @@ fn bench_retain_whole_100000(b: &mut Bencher) {
     b.iter(|| v.retain(|x| *x == 826u32));
 }
 
+macro_rules! no_sve_types {
+    ($($name:ident($ty:ty);)*) => {
+        $(
+            struct $name($ty);
+
+            impl Drop for $name {
+                fn drop(&mut self) {}
+            }
+        )*
+    };
+}
+
+no_sve_types! {
+    NoSve8(u8);
+    NoSve16(u16);
+    NoSve32(u32);
+    NoSve64(u64);
+}
+
+macro_rules! retain_type_benches {
+    (
+        len = $len:literal,
+        suffix = $suffix:literal,
+        type = $ty:ident,
+        no_sve = $no_sve:ident,
+        values = $values:expr,
+        no_sve_values = $no_sve_values:expr,
+        whole = $whole:expr
+    ) => {
+        #[bench]
+        fn ${concat(bench_retain_, $ty, _, $suffix)}(b: &mut Bencher) {
+            let mut v: Vec<$ty> = Vec::with_capacity($len);
+            b.iter(|| {
+                v.clear();
+                v.extend(black_box($values));
+                v.retain(|x| *x & 1 == 0)
+            });
+        }
+
+        #[bench]
+        fn ${concat(bench_retain_nosve_, $ty, _, $suffix)}(b: &mut Bencher) {
+            let mut v: Vec<$no_sve> = Vec::with_capacity($len);
+            b.iter(|| {
+                v.clear();
+                v.extend($no_sve_values);
+                v.retain(|x| x.0 & 1 == 0)
+            });
+        }
+
+        #[bench]
+        fn ${concat(bench_retain_whole_, $ty, _, $suffix)}(b: &mut Bencher) {
+            let mut v = black_box(vec![$whole; $len]);
+            b.iter(|| v.retain(|x| *x == $whole));
+        }
+
+        #[bench]
+        fn ${concat(bench_retain_whole_nosve_, $ty, _, $suffix)}(b: &mut Bencher) {
+            let mut v: Vec<$no_sve> =
+                black_box((0..$len).map(|_| $no_sve($whole)).collect());
+            b.iter(|| v.retain(|x| x.0 == $whole));
+        }
+    };
+}
+
+macro_rules! retain_matrix_benches {
+    ($($len:literal => $suffix:literal;)*) => {
+        $(
+            retain_type_benches! {
+                len = $len,
+                suffix = $suffix,
+                type = u8,
+                no_sve = NoSve8,
+                values = (0..$len).map(|x| x as u8),
+                no_sve_values = black_box((0..$len).map(|x| NoSve8(x as u8))),
+                whole = 82u8
+            }
+
+            retain_type_benches! {
+                len = $len,
+                suffix = $suffix,
+                type = u16,
+                no_sve = NoSve16,
+                values = (0..$len).map(|x| x as u16),
+                no_sve_values = black_box((0..$len).map(|x| NoSve16(x as u16))),
+                whole = 826u16
+            }
+
+            retain_type_benches! {
+                len = $len,
+                suffix = $suffix,
+                type = u32,
+                no_sve = NoSve32,
+                values = 1..=$len as u32,
+                no_sve_values = black_box(1..=$len as u32).map(NoSve32),
+                whole = 826u32
+            }
+
+            retain_type_benches! {
+                len = $len,
+                suffix = $suffix,
+                type = u64,
+                no_sve = NoSve64,
+                values = 1..=$len as u64,
+                no_sve_values = black_box(1..=$len as u64).map(NoSve64),
+                whole = 826u64
+            }
+
+            #[bench]
+            fn ${concat(bench_retain_iter_u32_, $suffix)}(b: &mut Bencher) {
+                let mut v: Vec<u32> = Vec::with_capacity($len);
+                b.iter(|| {
+                    let mut tmp = std::mem::take(&mut v);
+                    tmp.clear();
+                    tmp.extend(black_box(1..=$len as u32));
+                    v = tmp.into_iter().filter(|x| x & 1 == 0).collect();
+                });
+            }
+        )*
+    };
+}
+
+retain_matrix_benches! {
+    4 => "000004";
+    8 => "000008";
+    16 => "000016";
+    32 => "000032";
+    64 => "000064";
+    128 => "000128";
+    256 => "000256";
+    512 => "000512";
+    1000 => "001000";
+    10000 => "010000";
+    100000 => "100000";
+}
+
 #[bench]
 fn bench_next_chunk(b: &mut Bencher) {
     let v = vec![13u8; 2048];
