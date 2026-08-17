@@ -431,31 +431,29 @@ impl Target {
                 )
             }
             Arch::AArch64 => {
-                check_matches!(
-                    self.llvm_abiname,
-                    LlvmAbi::Unspecified | LlvmAbi::Pauthtest,
-                    "invalid llvm ABI for aarch64"
-                );
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on aarch64");
                 // FIXME: Ensure that target_abi = "ilp32" correlates with actually using that ABI.
                 // Do any of the others need a similar check?
                 check_matches!(
-                    (&self.rustc_abi, &self.cfg_abi),
-                    (Some(RustcAbi::Softfloat), CfgAbi::SoftFloat)
+                    (&self.llvm_abiname, &self.rustc_abi, &self.cfg_abi),
+                    (LlvmAbi::Pauthtest, None, CfgAbi::Pauthtest)
+                        | (LlvmAbi::Unspecified, Some(RustcAbi::Softfloat), CfgAbi::SoftFloat)
                         | (
+                            LlvmAbi::Unspecified,
                             None,
                             CfgAbi::Ilp32
                                 | CfgAbi::Llvm
                                 | CfgAbi::MacAbi
-                                | CfgAbi::Pauthtest
                                 | CfgAbi::Sim
                                 | CfgAbi::Uwp
                                 | CfgAbi::Unspecified
                                 | CfgAbi::Other(_)
                         ),
-                    "invalid aarch64 Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    "invalid aarch64 ABI combination:\n\
+                    LLVM ABI: {}\n\
                     Rust-specific ABI: {:?}\n\
                     cfg(target_abi): {}",
+                    self.llvm_abiname,
                     self.rustc_abi,
                     self.cfg_abi,
                 );
