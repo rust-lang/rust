@@ -4024,17 +4024,27 @@ dependencies = [
  "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
- "rustc_middle",
  "rustc_parse",
  "rustc_proc_macro",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_structures",
- "scoped-tls",
  "smallvec",
  "thin-vec",
  "tracing",
+]
+
+[[package]]
+name = "rustc_expand_queries"
+version = "0.0.0"
+dependencies = [
+ "rustc_ast",
+ "rustc_expand",
+ "rustc_middle",
+ "rustc_proc_macro",
+ "rustc_span",
+ "scoped-tls",
 ]
 
 [[package]]
@@ -4239,6 +4249,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
+ "rustc_expand_queries",
  "rustc_feature",
  "rustc_fs_util",
  "rustc_hir",
