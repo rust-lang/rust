@@ -1436,6 +1436,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
+    /// Represents `#[rustc_dump_clauses]`
+    RustcDumpClauses,
+
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
@@ -1459,9 +1462,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dump_object_lifetime_defaults]`.
     RustcDumpObjectLifetimeDefaults,
-
-    /// Represents `#[rustc_dump_predicates]`
-    RustcDumpPredicates,
 
     /// Represents `#[rustc_dump_symbol_name]`
     RustcDumpSymbolName(Span),
