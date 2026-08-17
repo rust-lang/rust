@@ -202,7 +202,7 @@ fn get_locally_built_llvm_build_status(
     builder: &Builder<'_>,
     target: TargetSelection,
 ) -> LlvmBuildStatus {
-    let out_dir = builder.llvm_out(target);
+    let out_dir = llvm_output_dir(builder, target);
 
     let build_llvm_config = if let Some(build_llvm_config) = builder
         .config
@@ -212,7 +212,7 @@ fn get_locally_built_llvm_build_status(
     {
         build_llvm_config
     } else {
-        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.host_target);
+        let mut llvm_config_ret_dir = llvm_output_dir(builder, builder.config.host_target);
         llvm_config_ret_dir.push("bin");
         llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
     };
@@ -250,6 +250,13 @@ fn get_locally_built_llvm_build_status(
     }
 
     LlvmBuildStatus::ShouldBuild(LlvmBuildInfo { stamp, output: res })
+}
+
+/// Output directory of *locally built* LLVM for the given `target`.
+/// Should only be used within this module, when building LLVM (or related tools).
+/// Otherwise, you should ensure the `Llvm` step and read its root directory.
+fn llvm_output_dir(builder: &Builder<'_>, target: TargetSelection) -> PathBuf {
+    builder.config.out.join(target).join("llvm")
 }
 
 fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Option<DownloadedLlvm> {
@@ -667,7 +674,7 @@ impl CommandLineStep for Llvm {
             cfg.define("LLVM_CONFIG_PATH", host_llvm_config);
             if builder.config.llvm_clang {
                 let build_bin =
-                    builder.llvm_out(builder.config.host_target).join("build").join("bin");
+                    llvm_output_dir(builder, builder.config.host_target).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
                 if !builder.config.dry_run() && !clang_tblgen.exists() {
                     panic!("unable to find {}", clang_tblgen.display());
@@ -1383,7 +1390,7 @@ impl CommandLineStep for OmpOffload {
             // `src/llvm-project` submodule instead.
             let mut cflags = CcFlags::default();
             if !builder.config.llvm_clang {
-                let base = builder.llvm_out(target).join("include");
+                let base = llvm_output_dir(builder, target).join("include");
                 let inc_dir = base.display();
                 cflags.push_all(format!(" -I {inc_dir}"));
             }
@@ -1420,7 +1427,7 @@ impl CommandLineStep for OmpOffload {
                 .define("LLVM_ENABLE_ASSERTIONS", "ON")
                 .define("LLVM_INCLUDE_TESTS", "OFF")
                 .define("OFFLOAD_INCLUDE_TESTS", "OFF")
-                .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
+                .define("LLVM_ROOT", llvm_output_dir(builder, target).join("build"))
                 .define("LLVM_DIR", llvm_output.cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
             if let Some(p) = offload_clang_dir.clone() {
