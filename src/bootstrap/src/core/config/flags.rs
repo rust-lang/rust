@@ -321,7 +321,12 @@ pub enum Subcommand {
         and/or artifacts to run `cargo fix` against. For example:
             ./x.py fix library/core
             ./x.py fix library/core library/proc_macro")]
-    Fix {},
+    Fix {
+        /// Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the
+        /// current git checkout has uncommitted changes.
+        #[arg(long)]
+        allow_dirty: bool,
+    },
 
     /// Run rustfmt
     #[command(
