@@ -2538,7 +2538,7 @@ fn maybe_install_llvm(
     // paths and we don't want those in the sysroot (as we're expecting
     // unversioned paths).
     if target.contains("apple-darwin") && llvm.llvm_output().link_shared() {
-        let src_libdir = builder.llvm_out(target).join("lib");
+        let src_libdir = llvm.llvm_output().root_dir().join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, FileType::NativeLibrary);
@@ -2574,7 +2574,7 @@ fn maybe_install_llvm(
         builder.do_if_verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.host_target);
-        let target_llvm_out = &builder.llvm_out(target);
+        let target_llvm_out = llvm.llvm_output().root_dir();
         for file in files.trim_end().split(' ') {
             // If we're not using a custom LLVM, make sure we package for the target.
             let file = if let Ok(relative_path) = Path::new(file).strip_prefix(build_llvm_out) {

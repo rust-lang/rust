@@ -2670,7 +2670,8 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         if helpers::forcing_clang_based_tests() {
-            let clang_exe = builder.llvm_out(target).join("bin").join("clang");
+            let llvm = builder.ensure(llvm::Llvm { target });
+            let clang_exe = llvm.root_dir().join("bin").join("clang");
             cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
         }
 
