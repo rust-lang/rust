@@ -47,7 +47,7 @@ use hir_def::{
     TupleFieldId, TupleId, VariantId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
-    hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId},
+    hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId, UnaryOp},
     lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -432,6 +432,13 @@ pub enum InferenceDiagnostic {
     CannotBeDereferenced {
         #[type_visitable(ignore)]
         expr: ExprId,
+        found: StoredTy,
+    },
+    UnaryOperatorCannotBeApplied {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+        #[type_visitable(ignore)]
+        op: UnaryOp,
         found: StoredTy,
     },
     MutRefInImmRefPat {

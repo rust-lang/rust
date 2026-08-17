@@ -105,6 +105,7 @@ diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     CannotBeDereferenced<'db>,
+    UnaryOperatorCannotBeApplied<'db>,
     CannotImplicitlyDerefTraitObject<'db>,
     CannotIndexInto<'db>,
     CastToUnsized<'db>,
@@ -335,6 +336,13 @@ pub struct ExpectedFunction<'db> {
 #[derive(Debug)]
 pub struct CannotBeDereferenced<'db> {
     pub expr: InFile<ExprOrPatPtr>,
+    pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct UnaryOperatorCannotBeApplied<'db> {
+    pub expr: InFile<ExprOrPatPtr>,
+    pub op: ast::UnaryOp,
     pub found: Type<'db>,
 }
 
@@ -984,6 +992,10 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::CannotBeDereferenced { expr, found } => {
                 let expr = expr_syntax(*expr)?;
                 CannotBeDereferenced { expr, found: new_ty(found.as_ref()) }.into()
+            }
+            InferenceDiagnostic::UnaryOperatorCannotBeApplied { expr, op, found } => {
+                let expr = expr_syntax(*expr)?;
+                UnaryOperatorCannotBeApplied { expr, op: *op, found: new_ty(found.as_ref()) }.into()
             }
             InferenceDiagnostic::MutRefInImmRefPat { pat } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
