@@ -3976,7 +3976,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "rustc_structures",
  "unic-langid",
 ]
 
@@ -4788,6 +4787,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "rustc_data_structures",
+ "rustc_error_messages",
  "rustc_macros",
  "rustc_serialize",
  "schemars",
