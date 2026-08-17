@@ -997,6 +997,14 @@ where
             goal.param_env,
             ty::Unnormalized::new_wip(goal.predicate),
         )?;
+        self.add_goal_after_normalization(source, goal)
+    }
+
+    fn add_goal_after_normalization(
+        &mut self,
+        source: GoalSource,
+        goal: Goal<I, I::Predicate>,
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
 
         if let Some(GoalEvaluation { goal, certainty, has_changed: _, stalled_on }) =
@@ -1379,7 +1387,48 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::AliasWellFormed, goals)?;
+
+        let cx = self.cx();
+        let source = GoalSource::AliasWellFormed;
+        let normalization_source = GoalSource::NormalizeGoal(self.step_kind_for_source(source));
+
+        // Preserve recursive references to the opaque whose item bounds we are
+        // currently proving. Normalizing such a reference here would replace it
+        // with an inference variable and may recursively normalize the same opaque
+        // while proving its own bounds.
+        //
+        // Continue normalizing unrelated aliases, including other instantiations
+        // of the same generic opaque.
+        for mut goal in goals {
+            goal.predicate = self.normalize_with(
+                normalization_source,
+                goal.param_env,
+                ty::Unnormalized::new_wip(goal.predicate),
+                |alias_term| {
+                    let ty::AliasTermKind::FreeTy { def_id } = alias_term.kind else {
+                        return true;
+                    };
+
+                    let underlying =
+                        cx.type_of(def_id.into()).instantiate(cx, alias_term.args).skip_norm_wip();
+
+                    let ty::Alias(_, underlying_alias) = underlying.kind() else {
+                        return true;
+                    };
+                    let underlying_alias: ty::AliasTerm<I> = underlying_alias.into();
+
+                    !matches!(
+                        underlying_alias.kind,
+                        ty::AliasTermKind::OpaqueTy { def_id }
+                            if def_id == opaque_def_id
+                                && underlying_alias.args == opaque_args
+                    )
+                },
+            )?;
+
+            self.add_goal_after_normalization(source, goal)?;
+        }
+
         Ok(())
     }
 
@@ -1674,6 +1723,16 @@ where
         param_env: I::ParamEnv,
         value: ty::Unnormalized<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
+        self.normalize_with(source, param_env, value, |_| true)
+    }
+
+    fn normalize_with<T: TypeFoldable<I>>(
+        &mut self,
+        source: GoalSource,
+        param_env: I::ParamEnv,
+        value: ty::Unnormalized<I, T>,
+        mut should_normalize: impl FnMut(ty::AliasTerm<I>) -> bool,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
         let value = self.delegate.resolve_vars_if_possible(value.skip_normalization());
 
         if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
@@ -1683,6 +1742,13 @@ where
         // To drop the mutable borrow of self early.
         let infcx = self.delegate.deref();
         let mut folder = NormalizationFolder::new(infcx, vec![], |alias_term| {
+            if !should_normalize(alias_term) {
+                return Ok((
+                    alias_term.to_term(self.cx(), ty::IsRigid::No),
+                    NormalizationWasAmbiguous::No,
+                ));
+            }
+
             let infer_term = self.next_term_infer_of_alias_kind(alias_term);
             let pred = ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
             let goal = Goal::new(self.cx(), param_env, pred);
