@@ -47,10 +47,11 @@ user-relevant source location after `configurationDone`, reports one current
 stack frame, exposes one flat Locals scope, and maps `list_locals()` into DAP
 variables with no child expansion.
 
-DAP supports `stepIn` and `next`. `stepIn` stops at the next displayed source
-location and can enter calls, while `next` steps over calls by tracking the
-starting stack depth. This is still single-threaded and source-position based,
-not the full future thread/frame model. DAP `stepOut` remains unsupported.
+DAP supports `stepIn`, `next`, and `stepOut`. `stepIn` stops at the next
+displayed source location and can enter calls. `next` steps over calls by
+tracking the starting stack depth, and `stepOut` runs until execution reaches a
+shallower stack frame. This is still single-threaded and source-position based,
+not the full future thread/frame model.
 
 ### VS Code
 

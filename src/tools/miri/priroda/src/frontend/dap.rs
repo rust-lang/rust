@@ -60,6 +60,7 @@ enum ExecutionOutcome {
 enum StepKind {
     In,
     Over,
+    Out,
 }
 
 /// Debug Adapter Protocol frontend.
@@ -202,6 +203,8 @@ impl<R: Read, W: Write> DapSession<R, W> {
                 self.handle_step(ResponseBody::Next, args.thread_id, session, StepKind::Over),
             Command::StepIn(args) =>
                 self.handle_step(ResponseBody::StepIn, args.thread_id, session, StepKind::In),
+            Command::StepOut(args) =>
+                self.handle_step(ResponseBody::StepOut, args.thread_id, session, StepKind::Out),
             Command::Disconnect(_) => self.handle_disconnect(),
             Command::BreakpointLocations(_)
             | Command::Cancel(_)
@@ -228,7 +231,6 @@ impl<R: Read, W: Write> DapSession<R, W> {
             | Command::Source(_)
             | Command::StepBack(_)
             | Command::StepInTargets(_)
-            | Command::StepOut(_)
             | Command::Terminate(_)
             | Command::TerminateThreads(_)
             | Command::WriteMemory(_) => self.handle_unsupported_request(&request.command),
@@ -481,6 +483,7 @@ impl<R: Read, W: Write> DapSession<R, W> {
         let result = match step {
             StepKind::In => session.step_in_source(),
             StepKind::Over => session.step_over_source(),
+            StepKind::Out => session.step_out_source(),
         };
 
         match Self::execution_outcome(result) {

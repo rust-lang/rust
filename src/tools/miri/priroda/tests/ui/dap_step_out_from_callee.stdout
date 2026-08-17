@@ -14,6 +14,8 @@ Content-Length: {CONTENT_LENGTH}
 
 {"seq":7,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
 
-{"seq":8,"type":"response","request_seq":5,"success":false,"message":"unsupported request in Priroda DAP demo mode: stepOut","command":"stepOut","error":null}Content-Length: {CONTENT_LENGTH}
+{"seq":8,"type":"response","request_seq":5,"success":true,"command":"stepOut","error":null}Content-Length: {CONTENT_LENGTH}
 
-{"seq":9,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"callee","source":{"name":"dap_step_out_from_callee.rs","path":"{MANIFEST_DIR}/tests/ui/dap_step_out_from_callee.rs","sourceReference":0},"line":4,"column":9}],"totalFrames":1},"error":null}
+{"seq":9,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":10,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_step_out_from_callee.rs","path":"{MANIFEST_DIR}/tests/ui/dap_step_out_from_callee.rs","sourceReference":0},"line":9,"column":13}],"totalFrames":1},"error":null}
