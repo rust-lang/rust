@@ -1595,7 +1595,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 } // `use _` is never valid
 
                                 let resolution = resolution.borrow(self);
-                                if let Some(name_binding) = resolution.best_decl() {
+                                if let Some(name_binding) = resolution.best_decl_redir(ident.span) {
                                     match name_binding.kind {
                                         DeclKind::Import { source_decl, .. } => {
                                             match source_decl.kind {
@@ -1906,7 +1906,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|(key, resolution)| {
                     let res = resolution.borrow_checked(self);
-                    let decl = res.determined_decl_redir(res.orig_ident_span)?;
+                    let decl = res.determined_decl_redir(import.span)?;
                     let mut key = *key;
                     let scope = match key.ident.ctxt.update_unchecked(|ctxt| {
                         ctxt.reverse_glob_adjust(module.expansion, import.span)
