@@ -96,7 +96,7 @@ impl JobInfoResolver {
             self.get_job_data(metadata, job_name).and_then(|job| {
                 let start = job.started_at?;
                 let end = job.completed_at?;
-                let duration = Duration::try_from(end - start).ok()?;
+                let duration = Duration::try_from(end - start).unwrap_or(Duration::ZERO);
                 Some(duration)
             })
         })
