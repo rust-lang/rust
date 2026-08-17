@@ -2249,28 +2249,34 @@ impl<'hs> core::pattern::Haystack for &'hs OsStr {
 impl<'hs> core::pattern::Pattern<&'hs OsStr> for char {
     type Searcher = CharSearcher<'hs>;
 
+    #[inline]
     fn into_searcher(self, haystack: &'hs OsStr) -> Self::Searcher {
         Self::Searcher::new(haystack, self)
     }
 
+    #[inline]
     fn is_contained_in(self, haystack: &'hs OsStr) -> bool {
         self.is_contained_in(core::str_bytes::Bytes::from(haystack))
     }
 
+    #[inline]
     fn is_prefix_of(self, haystack: &'hs OsStr) -> bool {
         self.is_prefix_of(core::str_bytes::Bytes::from(haystack))
     }
 
+    #[inline]
     fn is_suffix_of(self, haystack: &'hs OsStr) -> bool {
         self.is_suffix_of(core::str_bytes::Bytes::from(haystack))
     }
 
     /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
     fn strip_prefix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr> {
         self.strip_prefix_of(core::str_bytes::Bytes::from(haystack)).map(|bytes| bytes.into())
     }
 
     /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
     fn strip_suffix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr>
     where
         Self::Searcher: ReverseSearcher<&'hs OsStr>,
@@ -2285,6 +2291,7 @@ impl<'hs> core::pattern::Pattern<&'hs OsStr> for char {
 pub struct CharSearcher<'hs>(core::str_bytes::CharSearcher<'hs, BytesFlavour>);
 
 impl<'hs> CharSearcher<'hs> {
+    #[inline]
     fn new(haystack: &'hs OsStr, needle: char) -> CharSearcher<'hs> {
         Self(core::str_bytes::CharSearcher::new(haystack.into(), needle))
     }
@@ -2344,23 +2351,28 @@ impl<'hs, F: FnMut(char) -> bool> core::pattern::Pattern<&'hs OsStr>
 {
     type Searcher = PredicateSearcher<'hs, F>;
 
+    #[inline]
     fn into_searcher(self, haystack: &'hs OsStr) -> Self::Searcher {
         Self::Searcher::new(haystack, self.into_fn())
     }
 
+    #[inline]
     fn is_contained_in(self, haystack: &'hs OsStr) -> bool {
         self.into_fn().is_contained_in(core::str_bytes::Bytes::from(haystack))
     }
 
+    #[inline]
     fn is_prefix_of(self, haystack: &'hs OsStr) -> bool {
         self.into_fn().is_prefix_of(core::str_bytes::Bytes::from(haystack))
     }
 
+    #[inline]
     fn is_suffix_of(self, haystack: &'hs OsStr) -> bool {
         self.into_fn().is_suffix_of(core::str_bytes::Bytes::from(haystack))
     }
 
     /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
     fn strip_prefix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr> {
         self.into_fn()
             .strip_prefix_of(core::str_bytes::Bytes::from(haystack))
@@ -2368,6 +2380,7 @@ impl<'hs, F: FnMut(char) -> bool> core::pattern::Pattern<&'hs OsStr>
     }
 
     /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
     fn strip_suffix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr>
     where
         Self::Searcher: ReverseSearcher<&'hs OsStr>,
@@ -2385,6 +2398,7 @@ impl<'hs, F: FnMut(char) -> bool> core::pattern::Pattern<&'hs OsStr>
 pub struct PredicateSearcher<'hs, P>(core::str_bytes::PredicateSearcher<'hs, BytesFlavour, P>);
 
 impl<'hs, P> PredicateSearcher<'hs, P> {
+    #[inline]
     fn new(haystack: &'hs OsStr, pred: P) -> PredicateSearcher<'hs, P> {
         Self(core::str_bytes::PredicateSearcher::new(haystack.into(), pred))
     }
@@ -2434,28 +2448,34 @@ impl<'hs, P: FnMut(char) -> bool> DoubleEndedSearcher<&'hs OsStr> for PredicateS
 impl<'hs, 'p> core::pattern::Pattern<&'hs OsStr> for &'p str {
     type Searcher = StrSearcher<'hs, 'p>;
 
+    #[inline]
     fn into_searcher(self, haystack: &'hs OsStr) -> Self::Searcher {
         Self::Searcher::new(haystack, self)
     }
 
+    #[inline]
     fn is_contained_in(self, haystack: &'hs OsStr) -> bool {
         self.is_contained_in(core::str_bytes::Bytes::from(haystack))
     }
 
+    #[inline]
     fn is_prefix_of(self, haystack: &'hs OsStr) -> bool {
         self.is_prefix_of(core::str_bytes::Bytes::from(haystack))
     }
 
+    #[inline]
     fn is_suffix_of(self, haystack: &'hs OsStr) -> bool {
         self.is_suffix_of(core::str_bytes::Bytes::from(haystack))
     }
 
     /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
     fn strip_prefix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr> {
         self.strip_prefix_of(core::str_bytes::Bytes::from(haystack)).map(|bytes| bytes.into())
     }
 
     /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
     fn strip_suffix_of(self, haystack: &'hs OsStr) -> Option<&'hs OsStr>
     where
         Self::Searcher: ReverseSearcher<&'hs OsStr>,
@@ -2470,6 +2490,7 @@ impl<'hs, 'p> core::pattern::Pattern<&'hs OsStr> for &'p str {
 pub struct StrSearcher<'hs, 'p>(core::str_bytes::StrSearcher<'hs, 'p, BytesFlavour>);
 
 impl<'hs, 'p> StrSearcher<'hs, 'p> {
+    #[inline]
     fn new(haystack: &'hs OsStr, needle: &'p str) -> StrSearcher<'hs, 'p> {
         let haystack = core::str_bytes::Bytes::from(haystack);
         Self(core::str_bytes::StrSearcher::new(haystack, needle))

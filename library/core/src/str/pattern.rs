@@ -92,6 +92,7 @@ impl<'a> Haystack for &'a str {
 pub struct CharSearcher<'a>(str_bytes::CharSearcher<'a, str_bytes::Utf8>);
 
 impl<'a> CharSearcher<'a> {
+    #[inline]
     fn new(haystack: &'a str, chr: char) -> Self {
         Self(str_bytes::CharSearcher::new(str_bytes::Bytes::from_str(haystack), chr))
     }
@@ -617,6 +618,7 @@ impl<'a, 'b> Pattern<&'a str> for &'b str {
 pub struct StrSearcher<'a, 'b>(crate::str_bytes::StrSearcher<'a, 'b, crate::str_bytes::Utf8>);
 
 impl<'a, 'b> StrSearcher<'a, 'b> {
+    #[inline]
     fn new(haystack: &'a str, needle: &'b str) -> StrSearcher<'a, 'b> {
         let haystack = crate::str_bytes::Bytes::from_str(haystack);
         Self(crate::str_bytes::StrSearcher::new(haystack, needle))
@@ -639,6 +641,7 @@ unsafe impl<'a, 'b> Searcher<&'a str> for StrSearcher<'a, 'b> {
         self.0.next_match()
     }
 
+    #[inline]
     fn next_reject(&mut self) -> Option<(usize, usize)> {
         self.0.next_reject()
     }
@@ -655,6 +658,7 @@ unsafe impl<'a, 'b> ReverseSearcher<&'a str> for StrSearcher<'a, 'b> {
         self.0.next_match_back()
     }
 
+    #[inline]
     fn next_reject_back(&mut self) -> Option<(usize, usize)> {
         self.0.next_reject_back()
     }
