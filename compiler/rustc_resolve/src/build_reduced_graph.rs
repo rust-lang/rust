@@ -1254,7 +1254,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         if let Some(span) = import_all {
             let import = macro_use_import(self, span, false);
             self.r.potentially_unused_imports.push(import);
-            module.for_each_child_mut(self, |this, ident, _, ns, binding| {
+            module.for_each_child_redir_mut(self, span, |this, ident, _, ns, binding| {
                 if ns == MacroNS {
                     let import =
                         if this.r.is_accessible_from(binding.vis(), this.parent_scope.module) {
