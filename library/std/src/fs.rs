@@ -455,7 +455,7 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "fs_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimens")]
 #[doc(alias = "utimes")]
 #[doc(alias = "utime")]
@@ -495,7 +495,7 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "fs_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimensat")]
 #[doc(alias = "lutimens")]
 #[doc(alias = "lutimes")]
