@@ -1,1 +1,1 @@
-beta
+stable
