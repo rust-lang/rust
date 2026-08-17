@@ -17,18 +17,11 @@ fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
 }
 
 /// Determine which float operation on which type this is.
-fn is_host_unary_float_op(intrinsic_name: &str) -> Option<(FloatTy, HostUnaryFloatOp)> {
-    let (op, ty) = intrinsic_name.rsplit_once('f')?;
-
-    let float_ty = match ty {
-        "16" => FloatTy::F16,
-        "32" => FloatTy::F32,
-        "64" => FloatTy::F64,
-        "128" => FloatTy::F128,
-        _ => return None,
-    };
-
-    let host_float_op = match op {
+fn is_host_unary_float_op(
+    intrinsic_name: &str,
+    generic_args: ty::GenericArgsRef<'_>,
+) -> Option<(FloatTy, HostUnaryFloatOp)> {
+    let host_float_op = match intrinsic_name {
         "sin" => HostUnaryFloatOp::Sin,
         "cos" => HostUnaryFloatOp::Cos,
         "exp" => HostUnaryFloatOp::Exp,
@@ -39,6 +32,9 @@ fn is_host_unary_float_op(intrinsic_name: &str) -> Option<(FloatTy, HostUnaryFlo
         _ => return None,
     };
 
+    let ty::Float(float_ty) = *generic_args.type_at(0).kind() else {
+        bug!("`{intrinsic_name}` intrinsic called on non-float type");
+    };
     Some((float_ty, host_float_op))
 }
 
@@ -96,7 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_math_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        _generic_args: ty::GenericArgsRef<'tcx>,
+        generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -179,7 +175,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Operations that need host floats.
-            _ if let Some((float_ty, op)) = is_host_unary_float_op(intrinsic_name) => {
+            _ if let Some((float_ty, op)) =
+                is_host_unary_float_op(intrinsic_name, generic_args) =>
+            {
                 let [f] = check_intrinsic_arg_count(args)?;
                 match float_ty {
                     FloatTy::F16 => host_unary_float_op::<HalfS>(this, f, op, dest)?,
