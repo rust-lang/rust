@@ -1,0 +1,13 @@
+error: expected one of `.`, `?`, `]`, or an operator, found `,`
+  --> $DIR/do-not-suggest-semicolon-before-index.rs:4:15
+   |
+LL |         .baz(),
+   |               ^ expected one of `.`, `?`, `]`, or an operator
+   |
+help: you might have meant to call a macro
+   |
+LL |     (foo![
+   |         +
+
+error: aborting due to 1 previous error
+
