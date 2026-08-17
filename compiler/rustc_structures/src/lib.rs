@@ -1,3 +1,5 @@
+#![deny(unstable_features)]
+
 mod limit;
 mod sanitizer_set;
 

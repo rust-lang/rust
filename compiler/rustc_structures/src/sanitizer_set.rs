@@ -1,19 +1,11 @@
 use core::fmt;
 use std::str::FromStr;
 
+#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
-#[derive(
-    Default,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    Encodable_NoContext,
-    Decodable_NoContext,
-    StableHash
-)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub struct SanitizerSet(u16);
 bitflags::bitflags! {
     impl SanitizerSet: u16 {
@@ -33,6 +25,8 @@ bitflags::bitflags! {
         const REALTIME = 1 << 13;
     }
 }
+
+#[cfg(feature = "nightly")]
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {

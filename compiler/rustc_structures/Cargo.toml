@@ -6,9 +6,19 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_macros = { path = "../rustc_macros" }
-rustc_serialize = { path = "../rustc_serialize" }
+rustc_data_structures = { path = "../rustc_data_structures", optional = true  }
+rustc_macros = { path = "../rustc_macros", optional = true  }
+rustc_serialize = { path = "../rustc_serialize", optional = true  }
 schemars = "1.0.4"
 serde = "1.0.219"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["nightly"]
+nightly = [
+    "dep:rustc_data_structures",
+    "dep:rustc_macros",
+    "dep:rustc_serialize",
+]
 # tidy-alphabetical-end

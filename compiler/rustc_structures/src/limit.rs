@@ -1,11 +1,13 @@
 use std::fmt;
 use std::ops::{Div, Mul};
 
+#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 /// New-type wrapper around `usize` for representing limits. Ensures that comparisons against
 /// limits are consistent throughout the compiler.
-#[derive(Clone, Copy, Debug, StableHash, Encodable_NoContext, Decodable_NoContext)]
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "nightly", derive(StableHash, Encodable_NoContext, Decodable_NoContext))]
 pub struct Limit(pub usize);
 
 impl Limit {
