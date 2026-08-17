@@ -641,7 +641,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// X.update(|x| x + 1);
     /// assert_eq!(X.get(), 6);
     /// ```
-    #[stable(feature = "local_key_cell_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "local_key_cell_update", since = "1.99.0")]
     pub fn update(&'static self, f: impl FnOnce(T) -> T)
     where
         T: Copy,
