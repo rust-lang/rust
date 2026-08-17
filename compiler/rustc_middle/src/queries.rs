@@ -422,7 +422,7 @@ rustc_queries! {
     ///
     /// This is almost always *the* predicates/clauses query that you want.
     ///
-    /// **Tip**: You can use `#[rustc_dump_predicates]` on an item to basically print
+    /// **Tip**: You can use `#[rustc_dump_clauses]` on an item to basically print
     /// the result of this query for use in UI tests or for debugging purposes.
     query clauses_of(key: DefId) -> ty::GenericClauses<'tcx> {
         desc { "computing clauses of `{}`", tcx.def_path_str(key) }
