@@ -181,12 +181,14 @@ pub mod rust_future {
     #[doc(no_inline)]
     pub use super::v1::*;
 
+    #[allow(unused_attributes)] // FIXME(#161153)
     #[unstable(feature = "prelude_next", issue = "none")]
     #[doc(no_inline)]
     pub use core::prelude::rust_future::*;
 
     // There are two different panic macros, one in `core` and one in `std`. They are slightly
     // different. For `std` we explicitly want the one defined in `std`.
+    #[allow(unused_attributes)] // FIXME(#161153)
     #[unstable(feature = "prelude_next", issue = "none")]
     pub use super::v1::panic;
 }

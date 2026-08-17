@@ -1,5 +1,6 @@
 //@ aux-build:lint-stability.rs
 //@ check-pass
+//@ normalize-stderr: "(\n)\n$" -> "$1"
 
 #![crate_type = "lib"]
 #![feature(staged_api)]

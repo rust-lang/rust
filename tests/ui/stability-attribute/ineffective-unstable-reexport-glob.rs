@@ -1,6 +1,7 @@
 //@ aux-build:lint-stability.rs
 //@ aux-build:stable-glob-source.rs
 //@ check-pass
+//@ normalize-stderr: "(\n)\n$" -> "$1"
 
 #![crate_type = "lib"]
 #![feature(staged_api)]

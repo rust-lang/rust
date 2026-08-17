@@ -1,5 +1,5 @@
 warning: `#[unstable]` does not make this re-exported path unstable
-  --> $DIR/ineffective-unstable-reexport.rs:12:1
+  --> $DIR/ineffective-unstable-reexport.rs:13:1
    |
 LL | #[unstable(feature = "reexport_test_unstable", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
