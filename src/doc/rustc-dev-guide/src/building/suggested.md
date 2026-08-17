@@ -163,6 +163,8 @@ Steps for this can be [found here][r-a nvim lsp].
 2. Run `./x setup editor`, and select `vscode` to create a `.vscode/settings.json` file.
    `neoconf` is able to read and update
    rust-analyzer settings automatically when the project is opened when this file is detected.
+   Neovim does not expand VS Code's `${workspaceFolder}` variable, so replace each occurrence
+   in the generated file with the absolute path to your rust repository.
 
 #### coc.nvim
 
