@@ -1,16 +1,31 @@
 error[E0308]: mismatched types
-  --> $DIR/inherent-impls-receiver-mapping.rs:56:18
-   |
-LL |         W(X).add(W(X));
-   |              --- ^^^^ expected `X`, found `W`
-   |              |
-   |              arguments to this method are incorrect
-   |
-note: method defined here
   --> $DIR/inherent-impls-receiver-mapping.rs:52:18
    |
 LL |         reuse X::add { self.0 }
    |                  ^^^
+   |                  |
+   |                  expected `X`, found `W`
+   |                  arguments to this function are incorrect
+   |
+note: method defined here
+  --> $DIR/inherent-impls-receiver-mapping.rs:45:12
+   |
+LL |         fn add(self, other: Self) -> Self {
+   |            ^^^       -----------
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-receiver-mapping.rs:52:18
+   |
+LL |         reuse X::add { self.0 }
+   |                  ^^^
+   |                  |
+   |                  expected `W`, found `X`
+   |                  expected `W` because of return type
+   |
+help: try wrapping the expression in `self_type_mapping::W`
+   |
+LL |         reuse X::self_type_mapping::W(add) { self.0 }
+   |                  +++++++++++++++++++++   +
 
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
   --> $DIR/inherent-impls-receiver-mapping.rs:23:9
@@ -69,7 +84,7 @@ LL |     struct Y;
 LL |         y.by_value();
    |         - you could clone this value
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0308, E0507, E0596.
 For more information about an error, try `rustc --explain E0308`.
