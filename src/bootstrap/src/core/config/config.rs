@@ -89,7 +89,7 @@ pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
 /// on each field, see the corresponding fields in
 /// `bootstrap.example.toml`.
 #[derive(Clone)]
-pub struct Config {
+pub(crate) struct Config {
     pub change_id: Option<ChangeId>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,

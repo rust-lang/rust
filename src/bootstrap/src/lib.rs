@@ -293,7 +293,7 @@ impl Build {
     /// line and the filesystem `config`.
     ///
     /// By default all build output will be placed in the current directory.
-    pub fn new(mut config: Config) -> Build {
+    pub(crate) fn new(mut config: Config) -> Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
@@ -576,7 +576,7 @@ impl Build {
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(config: &Config, submodule: &str) {
+    pub(crate) fn update_existing_submodule(config: &Config, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
         if !config.submodules() {
             return;
