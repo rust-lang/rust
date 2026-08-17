@@ -2796,10 +2796,48 @@ where
 fn extern_fns_cannot_have_param_patterns() {
     check_no_mismatches(
         r#"
-pub(crate) struct Builder<'a>(&'a ());
+macro_rules! m {
+    () => { Builder };
+}
 
-unsafe extern "C"  {
-    pub(crate) fn foo<'a>(Builder: &Builder<'a>);
+pub(crate) struct Builder;
+
+unsafe extern "C" {
+    pub(crate) fn foo(Builder: (), m!(): ());
+}
+    "#,
+    );
+}
+
+#[test]
+fn trait_assoc_fns_cannot_have_param_patterns() {
+    check_no_mismatches(
+        r#"
+macro_rules! m {
+    () => { Builder };
+}
+
+pub(crate) struct Builder;
+
+trait Trait {
+    fn foo(Builder: (), m!(): ());
+}
+    "#,
+    );
+    // But assoc fns with bodies do have patterns:
+    check(
+        r#"
+macro_rules! m {
+    () => { Builder };
+}
+
+pub(crate) struct Builder;
+
+trait Trait {
+    fn foo(Builder: (),
+        // ^^^^^^^ expected (), got Builder
+        m!(): ()) {}
+     // ^^ expected (), got Builder
 }
     "#,
     );
