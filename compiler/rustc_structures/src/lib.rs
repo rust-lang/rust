@@ -1,4 +1,6 @@
-#![deny(unstable_features)]
+//! Basic structs that end up being used in attributes for one reason or another,
+//! but are not used exclusively in or around attributes.
+#![deny(unstable_features, reason = "ends up in dependencies of rust-analyzer")]
 
 mod collapse_macro_debug_info;
 mod crate_type;
