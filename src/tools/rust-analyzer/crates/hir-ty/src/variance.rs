@@ -513,7 +513,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
 }
 "#,
             expect![[r#"
-                Foo[T: invariant]
+                Foo[T: bivariant]
             "#]],
         );
     }

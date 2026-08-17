@@ -75,4 +75,39 @@ fn f(s: &S) {
 "#,
         );
     }
+
+    #[test]
+    fn regression_23175() {
+        check_diagnostics(
+            r#"
+//- minicore: sized
+trait Iterator {
+    type Item;
+
+    fn foo(self)
+    where
+        Self: Sized,
+    {
+    }
+}
+impl<T: ?Sized + Iterator> Iterator for &mut T {
+    type Item = T::Item;
+}
+
+trait Helper:
+    Iterator<
+    Item = [(); {
+               {}
+               4
+           }],
+>
+{
+}
+
+fn x(w: &mut dyn Helper) {
+    w.foo();
+}
+        "#,
+        );
+    }
 }

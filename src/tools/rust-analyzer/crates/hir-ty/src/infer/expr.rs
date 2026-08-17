@@ -1310,7 +1310,7 @@ impl<'db> InferenceContext<'db> {
         expr: ExprId,
     ) -> Ty<'db> {
         let interner = self.interner();
-        let count_ct = self.create_anon_const(count, self.types.types.usize, true);
+        let count_ct = self.create_anon_const(count, self.types.types.usize);
         let count = self.table.try_structurally_resolve_const(count.into(), count_ct);
 
         let uty = match expected {

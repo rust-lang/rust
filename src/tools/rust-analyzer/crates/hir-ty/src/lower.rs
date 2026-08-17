@@ -450,14 +450,20 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self.lower_ty_ext(type_ref).0
     }
 
-    pub(crate) fn lower_const(&mut self, const_ref: ConstRef, const_type: Ty<'db>) -> Const<'db> {
-        self.lower_expr_as_const(const_ref.expr, const_type)
+    pub(crate) fn lower_const(
+        &mut self,
+        const_ref: ConstRef,
+        const_type: Ty<'db>,
+        allow_anon_const_using_generic_params: bool,
+    ) -> Const<'db> {
+        self.lower_expr_as_const(const_ref.expr, const_type, allow_anon_const_using_generic_params)
     }
 
     pub(crate) fn lower_expr_as_const(
         &mut self,
         expr_id: ExprId,
         const_type: Ty<'db>,
+        allow_anon_const_using_generic_params: bool,
     ) -> Const<'db> {
         #[expect(clippy::manual_map, reason = "a `map()` here generates a borrowck error")]
         let create_var = match &mut self.infer_vars {
@@ -477,6 +483,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             create_var,
             self.interning_mode,
             self.forbid_params_after,
+            allow_anon_const_using_generic_params,
         );
 
         if let Ok(konst) = konst
@@ -603,7 +610,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
             TypeRef::Array(array) => {
                 let inner_ty = self.lower_ty(array.ty);
-                let const_len = self.lower_const(array.len, self.types.types.usize);
+                let const_len = self.lower_const(array.len, self.types.types.usize, false);
                 Ty::new_array_with_const_len(interner, inner_ty, const_len)
             }
             &TypeRef::Slice(inner) => {
@@ -729,9 +736,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     fn lower_pattern_type(&mut self, pat: PatId, ty: Ty<'db>) -> Option<Pattern<'db>> {
         let pat_kind = match self.store[pat] {
             hir_def::hir::Pat::Range { start: Some(start), end: Some(end), range_type: _ } => {
+                // rustc allows using generic params in pattern types.
+                // In practice this does not matter since this feature is internal and I didn't find a way to actually use generic params,
+                // but it doesn't matter so...
                 rustc_type_ir::PatternKind::Range {
-                    start: self.lower_expr_as_const(start, ty),
-                    end: self.lower_expr_as_const(end, ty),
+                    start: self.lower_expr_as_const(start, ty, true),
+                    end: self.lower_expr_as_const(end, ty, true),
                 }
             }
             hir_def::hir::Pat::NotNull => rustc_type_ir::PatternKind::NotNull,
@@ -1979,7 +1989,7 @@ pub(crate) fn field_types_with_diagnostics<'db>(
     );
     for (field_id, field_data) in var_data.fields().iter() {
         let ty = ctx.lower_ty(field_data.type_ref);
-        let default = field_data.default_value.map(|default| ctx.lower_const(default, ty));
+        let default = field_data.default_value.map(|default| ctx.lower_const(default, ty, true));
         res.insert(
             field_id,
             FieldType {
@@ -2784,7 +2794,7 @@ pub(crate) fn generic_defaults_with_diagnostics<'db>(
             GenericParamDataRef::ConstParamData(p) => {
                 let val = p.default.map(|c| {
                     let param_ty = ctx.lower_ty(p.ty);
-                    let c = ctx.lower_const(c, param_ty);
+                    let c = ctx.lower_const(c, param_ty, false);
                     GenericArg::from(c).store()
                 });
                 val.map(StoredEarlyBinder::bind)

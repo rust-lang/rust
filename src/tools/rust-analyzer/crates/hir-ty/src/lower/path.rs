@@ -746,7 +746,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         };
                         self.ctx
                             .ctx
-                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id))
+                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id), false)
                             .into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),

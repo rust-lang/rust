@@ -1969,12 +1969,7 @@ impl<'db> InferenceContext<'db> {
         })
     }
 
-    pub(crate) fn create_anon_const(
-        &mut self,
-        expr: ExprId,
-        expected_ty: Ty<'db>,
-        allow_using_generic_params: bool,
-    ) -> Const<'db> {
+    pub(crate) fn create_anon_const(&mut self, expr: ExprId, expected_ty: Ty<'db>) -> Const<'db> {
         never!(expected_ty.has_infer(), "cannot have infer vars in an anon const's ty");
         let konst = create_anon_const(
             self.interner(),
@@ -1986,7 +1981,11 @@ impl<'db> InferenceContext<'db> {
             &|| self.generics(),
             Some(&mut |span| self.table.next_const_var(span)),
             self.lowering_mode,
-            (!(allow_using_generic_params && self.allow_using_generic_params)).then_some(0),
+            (!self.allow_using_generic_params).then_some(0),
+            // The situation around body anon consts using generic params is complicated.
+            // rustc disallows them all, except for array repeat expressions. However in another place even repeat exprs
+            // are disallowed, so in practice they cause an error.
+            false,
         );
 
         if let Ok(konst) = konst
