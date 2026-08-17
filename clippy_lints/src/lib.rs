@@ -5,6 +5,7 @@
 #![feature(f16)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
+#![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(never_type)]
 #![feature(rustc_private)]
