@@ -509,11 +509,6 @@ impl CommandOutput {
     }
 
     #[must_use]
-    pub fn stdout_if_present(&self) -> Option<String> {
-        self.stdout.as_ref().and_then(|s| String::from_utf8(s.clone()).ok())
-    }
-
-    #[must_use]
     pub fn stdout_if_ok(&self) -> Option<String> {
         if self.is_success() { Some(self.stdout()) } else { None }
     }
@@ -524,11 +519,6 @@ impl CommandOutput {
             self.stderr.clone().expect("Accessing stderr of a command that did not capture stderr"),
         )
         .expect("Cannot parse process stderr as UTF-8")
-    }
-
-    #[must_use]
-    pub fn stderr_if_present(&self) -> Option<String> {
-        self.stderr.as_ref().and_then(|s| String::from_utf8(s.clone()).ok())
     }
 }
 
@@ -546,7 +536,7 @@ impl Default for CommandOutput {
 pub struct ExecutionContext {
     dry_run: DryRun,
     pub verbosity: u8,
-    pub fail_fast: bool,
+    fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
     command_cache: Arc<CommandCache>,
     profiler: Arc<CommandProfiler>,
@@ -627,20 +617,12 @@ impl ExecutionContext {
         self.verbosity > 0
     }
 
-    pub fn fail_fast(&self) -> bool {
-        self.fail_fast
-    }
-
     pub fn set_dry_run(&mut self, value: DryRun) {
         self.dry_run = value;
     }
 
     pub fn set_verbosity(&mut self, value: u8) {
         self.verbosity = value;
-    }
-
-    pub fn set_fail_fast(&mut self, value: bool) {
-        self.fail_fast = value;
     }
 
     pub fn add_to_delay_failure(&self, message: String) {

@@ -1851,10 +1851,6 @@ to download LLVM rather than building it.
         result
     }
 
-    pub fn exec_ctx(&self) -> &ExecutionContext {
-        &self.config.exec_ctx
-    }
-
     pub fn report_summary(&self, path: &Path, start_time: Instant) {
         self.config.exec_ctx.profiler().report_summary(path, start_time);
     }
