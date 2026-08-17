@@ -70,6 +70,18 @@ LL - fn issue_161062() -> A(impl Sized) {}
 LL + fn issue_161062() -> A<impl Sized> {}
    |
 
-error: aborting due to 11 previous errors
+error: parenthesized generic arguments cannot be used in associated type constraints
+  --> $DIR/parenthesized-type-params-in-paths.rs:52:58
+   |
+LL | fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc(impl Sized) = usize> {
+   |                                                          ^^^^^^^^^^^^^^^^^
+   |
+help: use angle brackets instead
+   |
+LL - fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc(impl Sized) = usize> {
+LL + fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc<impl Sized> = usize> {
+   |
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0214`.

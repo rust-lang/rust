@@ -1321,11 +1321,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             span: data.span,
                         }
                     } else {
-                        self.emit_bad_parenthesized_trait_in_assoc_ty(data);
+                        let guar = self.emit_bad_parenthesized_trait_in_assoc_ty(data);
                         self.lower_angle_bracketed_parameter_data(
                             &data.as_angle_bracketed_args(),
                             ParamMode::Explicit,
-                            itctx,
+                            ImplTraitContext::AlreadyErrored(guar),
                         )
                         .0
                     }
@@ -1394,7 +1394,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn emit_bad_parenthesized_trait_in_assoc_ty(&self, data: &ParenthesizedArgs) {
+    fn emit_bad_parenthesized_trait_in_assoc_ty(
+        &self,
+        data: &ParenthesizedArgs,
+    ) -> ErrorGuaranteed {
         // Suggest removing empty parentheses: "Trait()" -> "Trait"
         let sub = if data.inputs.is_empty() {
             let parentheses_span =
@@ -1415,7 +1418,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 data.inputs.last().unwrap().span.shrink_to_hi().to(data.inputs_span.shrink_to_hi());
             AssocTyParenthesesSub::NotEmpty { open_param, close_param }
         };
-        self.dcx().emit_err(AssocTyParentheses { span: data.span, sub });
+        self.dcx().emit_err(AssocTyParentheses { span: data.span, sub })
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1738,7 +1741,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         });
                         hir::TyKind::Err(guar)
                     }
-                    ImplTraitContext::AlreadyErrored(guar) => hir::TyKind::Err(guar),
+                    ImplTraitContext::AlreadyErrored(guar) => {
+                        // `GenericArgs::Parenthesized` stores its inputs as `Param`s, so the def
+                        // collector visits `impl Trait` in a universal context and creates a
+                        // `DefKind::TyParam`. During recovery we reinterpret these arguments as
+                        // angle-bracketed, where lowering may otherwise expect an opaque type.
+                        // The parenthesized syntax has already been rejected, so avoid lowering
+                        // this `impl Trait` with the inconsistent `DefKind`.
+                        hir::TyKind::Err(guar)
+                    }
                 }
             }
             TyKind::Pat(ty, pat) => {

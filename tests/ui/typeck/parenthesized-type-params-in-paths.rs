@@ -44,3 +44,12 @@ struct A<T>(T);
 
 fn issue_161062() -> A(impl Sized) {}
 //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
+
+trait Trait {
+    type Assoc<T>;
+}
+
+fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc(impl Sized) = usize> {
+    //~^ ERROR parenthesized generic arguments cannot be used in associated type constraints
+    loop {}
+}
