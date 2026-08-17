@@ -786,6 +786,9 @@ impl Step for DebuggerScripts {
 
         cp_debugger_script("lldb_lookup.py");
         cp_debugger_script("lldb_providers.py");
+        if builder.build.unstable_features() {
+            cp_debugger_script("lldb_trim_paths.py");
+        }
     }
 }
 
