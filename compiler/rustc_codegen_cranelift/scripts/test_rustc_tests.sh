@@ -53,7 +53,7 @@ rm tests/ui/c-variadic/roundtrip.rs
 
 # inline assembly features
 rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
-rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
+rm tests/ui/asm/naked-functions/mono-sym-fn.rs # same
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/asm/label-operand.rs # same
 rm tests/ui/asm/may_unwind.rs # asm unwinding not supported
@@ -87,6 +87,7 @@ rm -r tests/run-make/reachable-extern-fn-available-lto
 rm -r tests/run-make/no-builtins-linker-plugin-lto
 rm -r tests/run-make/fat-then-thin-lto
 rm -r tests/run-make/cross-lang-lto-upstream-rlibs
+rm -r tests/run-make/fat-lto-module-summary
 
 # coverage instrumentation
 rm tests/ui/consts/precise-drop-with-coverage.rs
@@ -115,6 +116,7 @@ rm tests/ui/codegen/remark-flag-functionality.rs # same
 rm -r tests/run-make/print-to-output # requires --print relocation-models
 rm tests/ui/abi/rust-preserve-none-cc.rs # extern "rust-preserve-none" is LLVM specific
 rm tests/ui/abi/rust-tail-cc.rs # extern "rust-tail" is LLVM specific
+rm tests/ui/target-feature/missing-plusminus-llvm.rs # error implemented in cg_llvm
 
 # requires asm, llvm-ir and/or llvm-bc emit support
 # =============================================

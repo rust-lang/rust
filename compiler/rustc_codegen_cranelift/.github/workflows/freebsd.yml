@@ -1,0 +1,41 @@
+name: FreeBSD
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  freebsd:
+    name: freebsd
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Test in FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          cache-after-prepare: true
+          prepare: |
+            pkg install -y curl git-tiny binutils
+            curl https://sh.rustup.rs -sSf --output rustup.sh
+            sh rustup.sh --default-toolchain none -y --profile=minimal
+          run: |
+            set -e
+            . $HOME/.cargo/env
+
+            ./y.sh prepare
+
+            # Disabling incr comp reduces cache size and incr comp doesn't save
+            # as much on CI anyway.
+            export CARGO_BUILD_INCREMENTAL=false
+            # FIXME(rust-lang/rust#134863) necessary to avoid error when
+            # dlopening proc macros during compilation of cg_clif.
+            export LD_STATIC_TLS_EXTRA=4096
+            # Skip rand as it fails on FreeBSD due to rust-random/rand#1355
+            ./y.sh test --skip-test test.rust-random/rand

@@ -98,15 +98,13 @@ pub(crate) fn get_function_sig<'tcx>(
     )
 }
 
-/// Instance must be monomorphized
-pub(crate) fn import_function<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn declare_import_function(
+    tcx: TyCtxt<'_>,
     module: &mut dyn Module,
-    inst: Instance<'tcx>,
+    name: &str,
+    sig: &Signature,
 ) -> FuncId {
-    let name = tcx.symbol_name(inst).name;
-    let sig = get_function_sig(tcx, module.target_config().default_call_conv, inst);
-    match module.declare_function(name, Linkage::Import, &sig) {
+    match module.declare_function(name, Linkage::Import, sig) {
         Ok(func_id) => func_id,
         Err(ModuleError::IncompatibleDeclaration(_)) => tcx.dcx().fatal(format!(
             "attempt to declare `{name}` as function, but it was already declared as static"
@@ -117,6 +115,17 @@ pub(crate) fn import_function<'tcx>(
         )),
         Err(err) => Err::<_, _>(err).unwrap(),
     }
+}
+
+/// Instance must be monomorphized
+pub(crate) fn import_function<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    module: &mut dyn Module,
+    inst: Instance<'tcx>,
+) -> FuncId {
+    let name = tcx.symbol_name(inst).name;
+    let sig = get_function_sig(tcx, module.target_config().default_call_conv, inst);
+    declare_import_function(tcx, module, name, &sig)
 }
 
 impl<'tcx> FunctionCx<'_, '_, 'tcx> {
@@ -206,7 +215,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         args: &[Value],
     ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
-        let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
+        let func_id = declare_import_function(self.tcx, self.module, name, &sig);
         let func_ref = self.module.declare_func_in_func(func_id, self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
