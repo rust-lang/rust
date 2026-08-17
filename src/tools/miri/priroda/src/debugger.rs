@@ -113,6 +113,9 @@ enum ResumeMode {
     /// inside a call made from the stepped-over line), and stops once it is back
     /// at that depth or shallower and the displayed source position has changed.
     StepOver { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
+    /// Step out of the current frame, stopping once execution returns to a
+    /// shallower stack depth.
+    StepOut { start_stack_depth: usize },
     /// Stop at the first mapped source location from a user-relevant frame.
     ///
     /// This is the DAP entry-stop primitive: it skips over interpreter startup
@@ -222,6 +225,18 @@ impl<'tcx> PrirodaContext<'tcx> {
     /// Number of frames on the active thread's stack.
     fn active_thread_stack_depth(&self) -> usize {
         self.ecx.active_thread_stack().len()
+    }
+
+    /// Step out of the current stack frame.
+    ///
+    /// Records the current stack depth and runs until execution reaches a source
+    /// location in a shallower frame.
+    pub(super) fn step_out_source(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
+        let start_stack_depth = self.active_thread_stack_depth();
+        self.resume(ResumeMode::StepOut { start_stack_depth })
     }
 
     /// Run until the initial editor-visible stop point.
@@ -360,6 +375,13 @@ impl<'tcx> PrirodaContext<'tcx> {
                     }
                 }
 
+                ResumeMode::StepOut { start_stack_depth }
+                    if self.active_thread_stack_depth() < start_stack_depth
+                        && self.current_location.is_some() =>
+                {
+                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
+                }
+
                 ResumeMode::FirstUserSourceLocation
                     if self.current_location.is_some() && self.has_user_relevant_frame() =>
                 {
@@ -368,6 +390,7 @@ impl<'tcx> PrirodaContext<'tcx> {
 
                 ResumeMode::MirInstruction
                 | ResumeMode::FirstUserSourceLocation
+                | ResumeMode::StepOut { .. }
                 | ResumeMode::Continue => {}
             }
         }
@@ -457,6 +480,7 @@ impl<'tcx> PrirodaContext<'tcx> {
             DebuggerCommand::StepI => self.stepi().map(CommandResult::Execution),
             DebuggerCommand::Step => self.step().map(CommandResult::Execution),
             DebuggerCommand::Next => self.step_over_source().map(CommandResult::Execution),
+            DebuggerCommand::StepOut => self.step_out_source().map(CommandResult::Execution),
             DebuggerCommand::Continue => self.continue_execution().map(CommandResult::Execution),
             DebuggerCommand::Breakpoint(path, line) =>
                 interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
@@ -955,6 +979,7 @@ pub(super) enum DebuggerCommand {
     StepI,
     Step,
     Next,
+    StepOut,
     TerminateSession,
     Continue,
     Breakpoint(PathBuf, usize),

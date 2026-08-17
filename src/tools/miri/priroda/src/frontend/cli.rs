@@ -138,6 +138,7 @@ impl Cli {
             "" | "si" | "stepi" => Some(DebuggerCommand::StepI),
             "s" | "step" => Some(DebuggerCommand::Step),
             "n" | "next" => Some(DebuggerCommand::Next),
+            "out" | "stepout" => Some(DebuggerCommand::StepOut),
             "q" | "quit" => Some(DebuggerCommand::TerminateSession),
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
