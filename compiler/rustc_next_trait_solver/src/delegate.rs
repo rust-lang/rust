@@ -127,7 +127,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn emit_next_solver_overflow_fcw(
         &self,
-        predicate: <Self::Interner as Interner>::Predicate,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
     );
 }

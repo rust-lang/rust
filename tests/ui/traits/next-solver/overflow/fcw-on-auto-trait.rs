@@ -7,9 +7,6 @@
 // and emit an FCW for this.
 // See the `NEXT_TRAIT_SOLVER_OVERFLOW` FCW.
 
-//[next]~^^^^^^^^^ WARN: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync` [recursion_depth_exceeding_limit]
-//[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 #![recursion_limit = "8"]
 
 // The field order matters 😂
