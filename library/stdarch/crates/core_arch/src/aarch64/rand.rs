@@ -5,7 +5,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.aarch64.rndr"]
     fn rndr_() -> Tuple;
 

@@ -56,7 +56,7 @@ pub enum ExternAbi {
 
     /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
-    Unadjusted,
+    LlvmIntrinsic,
 
     /// An ABI that rustc does not know how to call or define. Functions with this ABI can
     /// only be created using `#[naked]` functions or `extern "custom"` blocks, and can only
@@ -196,6 +196,7 @@ abi_impls! {
             Fastcall { unwind: false } =><= "fastcall",
             Fastcall { unwind: true } =><= "fastcall-unwind",
             GpuKernel =><= "gpu-kernel",
+            LlvmIntrinsic =><= "llvm-intrinsic",
             Msp430Interrupt =><= "msp430-interrupt",
             PtxKernel =><= "ptx-kernel",
             RiscvInterruptM =><= "riscv-interrupt-m",
@@ -213,7 +214,6 @@ abi_impls! {
             RustTail =><= "tail",
             Thiscall { unwind: false } =><= "thiscall",
             Thiscall { unwind: true } =><= "thiscall-unwind",
-            Unadjusted =><= "unadjusted",
             Vectorcall { unwind: false } =><= "vectorcall",
             Vectorcall { unwind: true } =><= "vectorcall-unwind",
             Win64 { unwind: false } =><= "win64",
@@ -355,7 +355,7 @@ impl ExternAbi {
             | Self::Rust
             | Self::RustCold
             | Self::RustInvalid
-            | Self::Unadjusted
+            | Self::LlvmIntrinsic
             | Self::EfiApi
             | Self::Aapcs { .. }
             | Self::Cdecl { .. }

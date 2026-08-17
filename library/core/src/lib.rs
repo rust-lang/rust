@@ -105,7 +105,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]

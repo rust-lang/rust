@@ -107,7 +107,7 @@ struct PackedTuple<T, U> {
 
 #[allow(improper_ctypes)]
 #[rustfmt::skip]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.nearbyint.v4f32"] fn nearbyint_v4f32(a: vector_float) -> vector_float;
     #[link_name = "llvm.nearbyint.v2f64"] fn nearbyint_v2f64(a: vector_double) -> vector_double;
 

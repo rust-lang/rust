@@ -25,7 +25,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [a, b, c, imm8] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b, c, imm8] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 assert_eq!(dest.layout, a.layout);
                 assert_eq!(dest.layout, b.layout);
@@ -80,7 +80,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "psad.bw.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 psadbw(this, left, right, dest)?
             }
@@ -88,19 +88,19 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pmaddw.d.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 pmaddwd(this, left, right, dest)?;
             }
             // Used to implement the _mm512_maddubs_epi16 function.
             "pmaddubs.w.512" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 pmaddbw(this, left, right, dest)?;
             }
             // Used to implement the _mm512_permutexvar_epi32/_mm512_permutexvar_epi64 functions.
             "permvar.si.512" | "permvar.di.512" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 permute(this, left, right, dest)?;
             }
@@ -110,13 +110,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 permute(this, left, right, dest)?;
             }
             // Used to implement the _mm512_permutex2var_epi64 intrinsic.
             "vpermi2var.q.512" => {
-                let [left, indices, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 permute2(this, left, indices, right, dest)?;
             }
@@ -124,13 +124,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "vpermi2var.qi.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
 
-                let [left, indices, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 permute2(this, left, indices, right, dest)?;
             }
             // Used to implement the _mm512_shuffle_epi8 intrinsic.
             "pshuf.b.512" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 pshufb(this, left, right, dest)?;
             }
@@ -142,7 +142,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
                 }
 
-                let [src, a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [src, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 vpdpbusd(this, src, a, b, dest)?;
             }
@@ -150,7 +150,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "packsswb.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 packsswb(this, a, b, dest)?;
             }
@@ -158,7 +158,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "packuswb.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 packuswb(this, a, b, dest)?;
             }
@@ -166,7 +166,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "packssdw.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 packssdw(this, a, b, dest)?;
             }
@@ -174,7 +174,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "packusdw.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
 
-                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 packusdw(this, a, b, dest)?;
             }

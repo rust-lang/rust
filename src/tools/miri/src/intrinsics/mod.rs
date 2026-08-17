@@ -168,7 +168,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             match link_name.as_str() {
                 // LLVM intrinsics
                 "llvm.prefetch.p0" => {
-                    let [p, rw, loc, ty] = this.check_shim_sig_unadjusted(link_name, args)?;
+                    let [p, rw, loc, ty] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                     let _ = this.read_pointer(p)?;
                     let rw = this.read_scalar(rw)?.to_i32()?;
@@ -198,7 +198,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 name if name.starts_with("llvm.ctpop.v")
                     && this.tcx.sess.target.endian == Endian::Little =>
                 {
-                    let [op] = this.check_shim_sig_unadjusted(link_name, args)?;
+                    let [op] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                     let (op, op_len) = this.project_to_simd(op)?;
                     let (dest, dest_len) = this.project_to_simd(&dest)?;

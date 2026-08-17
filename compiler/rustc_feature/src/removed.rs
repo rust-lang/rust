@@ -55,6 +55,7 @@ declare_features! (
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None, 120495),
     (removed, abi_c_cmse_nonsecure_call, "1.90.0", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
+    (removed, abi_unadjusted, "CURRENT_RUSTC_VERSION", None, Some("merged into link_llvm_intrinsics"), 161398),
     (removed, advanced_slice_patterns, "1.42.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`"), 67712),
     (removed, allocator, "1.0.0", None, None),
