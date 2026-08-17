@@ -385,7 +385,7 @@ declare_clippy_lint! {
     /// let (chunks, remainder) = slice.as_chunks::<2>();
     /// for chunk in chunks {}
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.98.0"]
     pub CHUNKS_EXACT_TO_AS_CHUNKS,
     style,
     "using `chunks_exact` with constant when `as_chunks` is more ergonomic"
