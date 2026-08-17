@@ -13,18 +13,19 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use crate::core::build_steps::compile::is_lto_stage;
+use crate::core::build_steps::compile::{CargoMessage, is_lto_stage};
+use crate::core::build_steps::dist::LLD_FILE_NAMES;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo as CargoCommand, CommandLineStep, RunConfig, ShouldRun, Step, StepMetadata,
-    apply_pgo, cargo_profile_var,
+    self, Builder, Cargo as CargoCommand, CommandLineStep, Kind, RunConfig, ShouldRun, Step,
+    StepMetadata, apply_pgo, cargo_profile_var,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Kind, Mode};
+use crate::utils::helpers::{self, add_dylib_path, exe, t};
+use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -64,6 +65,8 @@ pub struct ToolBuildResult {
     pub tool_path: PathBuf,
     /// Compiler used to build the tool.
     pub build_compiler: Compiler,
+    /// All Cargo artifacts produced during the compilation of this tool
+    pub artifacts: Vec<PathBuf>,
 }
 
 impl Step for ToolBuild {
@@ -153,7 +156,14 @@ impl Step for ToolBuild {
             builder.msg(Kind::Build, self.tool, self.mode, self.build_compiler, self.target);
 
         // we check this below
-        let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
+        let mut artifacts = vec![];
+        let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |msg| match msg {
+            CargoMessage::CompilerArtifact { filenames, .. } => {
+                artifacts.extend(filenames.into_iter().map(|p| PathBuf::from(p.as_ref())));
+            }
+            CargoMessage::BuildScriptExecuted => {}
+            CargoMessage::BuildFinished => {}
+        });
 
         builder.save_toolstate(
             tool,
@@ -161,7 +171,7 @@ impl Step for ToolBuild {
         );
 
         if !build_success {
-            crate::exit!(1);
+            helpers::exit_process(1);
         } else {
             // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
             // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
@@ -178,7 +188,7 @@ impl Step for ToolBuild {
                     .join(format!("lib{tool}.rlib")),
             };
 
-            ToolBuildResult { tool_path, build_compiler: self.build_compiler }
+            ToolBuildResult { tool_path, build_compiler: self.build_compiler, artifacts }
         }
     }
 }
@@ -410,12 +420,19 @@ macro_rules! bootstrap_tool {
             ///
             /// The actual building, if any, will be handled via [`ToolBuild`].
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+                self.tool(tool).tool_path
+            }
+
+            /// Ensure a tool is built, then return its build output.
+            ///
+            /// The actual building, if any, will be handled via [`ToolBuild`].
+            pub fn tool(&self, tool: Tool) -> ToolBuildResult {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
                             compiler: self.compiler(0, self.config.host_target),
                             target: self.config.host_target,
-                        }).tool_path,
+                        }),
                     )+
                 }
             }
@@ -963,7 +980,7 @@ pub(crate) fn copy_lld_artifacts(
     let self_contained_lld_dir = libdir_bin.join("gcc-ld");
     t!(fs::create_dir_all(&self_contained_lld_dir));
 
-    for name in crate::LLD_FILE_NAMES {
+    for name in LLD_FILE_NAMES {
         builder.copy_link(
             &lld_wrapper.tool.tool_path,
             &self_contained_lld_dir.join(exe(name, target)),
@@ -1525,7 +1542,7 @@ fn build_extended_rustc_tool(
 ) -> ToolBuildResult {
     let target = compilers.target();
     let build_compiler = compilers.build_compiler;
-    let ToolBuildResult { tool_path, .. } = builder.ensure(ToolBuild {
+    let ToolBuildResult { tool_path, artifacts, .. } = builder.ensure(ToolBuild {
         build_compiler,
         target,
         tool: tool_name,
@@ -1552,9 +1569,9 @@ fn build_extended_rustc_tool(
 
         // Return a path into the bin dir.
         let path = bindir.join(exe(tool_name, target_compiler.host));
-        ToolBuildResult { tool_path: path, build_compiler }
+        ToolBuildResult { tool_path: path, build_compiler, artifacts }
     } else {
-        ToolBuildResult { tool_path, build_compiler }
+        ToolBuildResult { tool_path, build_compiler, artifacts }
     }
 }
 

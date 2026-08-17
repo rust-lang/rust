@@ -53,6 +53,9 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_crate_store::{
+    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -70,9 +73,6 @@ use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
-use rustc_session::cstore::{
-    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
-};
 use rustc_session::lint::StableLintExpectationId;
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
@@ -103,8 +103,8 @@ use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, DropckConstraint,
-    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
-    OutlivesBound,
+    DropckOutlivesResult, MethodAutoderefStepsResult, MirBorrowckImpliedOutlivesBounds, NoSolution,
+    NormalizationResult, OutlivesBound,
 };
 use crate::traits::{
     CodegenObligationError, DynCompatibilityViolation, EvaluationResult, ImplSource,
@@ -2027,10 +2027,10 @@ rustc_queries! {
     // The hash should not be calculated before the `analysis` pass is complete, specifically
     // until `tcx.untracked().definitions.freeze()` has been called, otherwise if incremental
     // compilation is enabled calculating this hash can freeze this structure too early in
-    // compilation and cause subsequent crashes when attempting to write to `definitions`
+    // compilation and cause subsequent crashes when attempting to write to `definitions`.
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
-        desc { "looking up the hash a crate" }
+        desc { "looking up the hash of a crate" }
         separate_provide_extern
     }
 
@@ -2530,6 +2530,15 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "computing implied outlives bounds for `{}` (hack disabled = {:?})", key.0.canonical.value.value.ty, key.1 }
+    }
+
+    query mir_borrowck_implied_outlives_bounds(
+        mir_def: LocalDefId
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, MirBorrowckImpliedOutlivesBounds<'tcx> >>,
+        NoSolution,
+    > {
+        desc { "computing implied outlives bounds for borrowck for `{}`", tcx.def_path_str(mir_def) }
     }
 
     /// Do not call this query directly:

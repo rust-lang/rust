@@ -36,7 +36,7 @@ fn function2<T: Trait<'static, Assoc = usize>>() {
     // does not use the leak check when trying the where-bound, causing us
     // to prefer it over the impl, resulting in a placeholder error.
     projection_bound::<T>();
-    //[next]~^ ERROR higher-ranked subtype error
+    //[next]~^ ERROR higher-ranked lifetime error
     //[current]~^^ ERROR mismatched types
 }
 
@@ -50,8 +50,8 @@ fn function3<T: Trait<'static, Assoc = usize>>() {
     // leak check during candidate selection for normalization, this
     // case would still not compile.
     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
-    //[next]~^ ERROR higher-ranked subtype error
-    //[next]~| ERROR higher-ranked subtype error
+    //[next]~^ ERROR higher-ranked lifetime error
+    //[next]~| ERROR higher-ranked lifetime error
     //[current]~^^^ ERROR mismatched types
     //[current]~| ERROR mismatched types
 }

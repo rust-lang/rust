@@ -16,7 +16,7 @@ use std::sync::OnceLock;
 use build_helper::git::PathFreshness;
 
 use crate::core::builder::{Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun};
-use crate::core::config::TargetSelection;
+use crate::core::config::{Config, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -366,12 +366,12 @@ pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
 }
 
 /// The absolute path to the downloaded GCC artifacts.
-fn ci_gcc_root(config: &crate::Config, target: TargetSelection) -> PathBuf {
+fn ci_gcc_root(config: &Config, target: TargetSelection) -> PathBuf {
     config.out.join(target).join("ci-gcc")
 }
 
 /// Detect whether GCC sources have been modified locally or not.
-fn detect_gcc_freshness(config: &crate::Config, is_git: bool) -> build_helper::git::PathFreshness {
+fn detect_gcc_freshness(config: &Config, is_git: bool) -> build_helper::git::PathFreshness {
     assert!(cfg!(not(test)), "unit tests shouldn't care about GCC freshness");
 
     if is_git {

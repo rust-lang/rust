@@ -95,7 +95,7 @@ impl EnableGuard {
             return false;
         }
 
-        return true;
+        true
     }
 }
 

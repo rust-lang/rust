@@ -268,7 +268,7 @@ use core::{borrow, fmt, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
@@ -898,7 +898,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // otherwise.
         let data = data_fn(&weak);
 
-        let strong = unsafe {
+        unsafe {
             let inner = init_ptr.as_ptr();
             ptr::write(&raw mut (*inner).value, data);
 
@@ -913,9 +913,7 @@ impl<T, A: Allocator> Rc<T, A> {
             let alloc = weak.into_raw_with_allocator().1;
 
             Rc::from_inner_in(init_ptr, alloc)
-        };
-
-        strong
+        }
     }
 
     /// Constructs a new `Rc<T>` in the provided allocator, returning an error if the allocation
@@ -1366,14 +1364,12 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
         let mut in_progress: UniqueRcUninit<T, A> = UniqueRcUninit::new(value, alloc);
 
         // Initialize with clone of value.
-        let initialized_clone = unsafe {
+        unsafe {
             // Clone. If the clone panics, `in_progress` will be dropped and clean up.
             value.clone_to_uninit(in_progress.data_ptr().cast());
             // Cast type of pointer, now that it is initialized.
             in_progress.into_rc()
-        };
-
-        initialized_clone
+        }
     }
 
     /// Constructs a new `Rc<T>` with a clone of `value` in the provided allocator, returning an error if allocation fails
@@ -1775,7 +1771,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         this.inner().inc_weak();
         // Make sure we do not create a dangling Weak
@@ -1856,7 +1852,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn increment_strong_count_in(ptr: *const T, alloc: A)
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         // Retain Rc, but don't touch refcount by wrapping in ManuallyDrop
         let rc = unsafe { mem::ManuallyDrop::new(Rc::<T, A>::from_raw_in(ptr, alloc)) };
@@ -2032,7 +2028,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
+impl<T: ?Sized + CloneToUninit, A: AllocatorClone> Rc<T, A> {
     /// Makes a mutable reference into the given `Rc`.
     ///
     /// If there are other `Rc` pointers to the same allocation, then `make_mut` will
@@ -2313,7 +2309,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 
             // Free the allocation without dropping its contents
             let (bptr, alloc) = Box::into_raw_with_allocator(src);
-            let src = Box::from_raw_in(bptr as *mut mem::ManuallyDrop<T>, alloc.by_ref());
+            let src = Box::from_raw_in(bptr as *mut mem::ManuallyDrop<T>, &alloc);
             drop(src);
 
             Self::from_ptr_in(ptr, alloc)
@@ -2509,7 +2505,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
+impl<T: ?Sized, A: AllocatorClone> Clone for Rc<T, A> {
     /// Makes a clone of the `Rc` pointer.
     ///
     /// This creates another pointer to the same allocation, increasing the
@@ -2534,10 +2530,10 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
 }
 
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
-impl<T: ?Sized, A: Allocator + Clone> UseCloned for Rc<T, A> {}
+impl<T: ?Sized, A: AllocatorClone> UseCloned for Rc<T, A> {}
 
 #[unstable(feature = "share_trait", issue = "156756")]
-impl<T: ?Sized, A: Allocator + Clone> Share for Rc<T, A> {}
+impl<T: ?Sized, A: AllocatorClone> Share for Rc<T, A> {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3558,7 +3554,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Rc<T, A>>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let inner = self.inner()?;
 
@@ -3703,7 +3699,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
-impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
+impl<T: ?Sized, A: AllocatorClone> Clone for Weak<T, A> {
     /// Makes a clone of the `Weak` pointer that points to the same allocation.
     ///
     /// # Examples
@@ -3725,7 +3721,7 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
 }
 
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
-impl<T: ?Sized, A: Allocator + Clone> UseCloned for Weak<T, A> {}
+impl<T: ?Sized, A: AllocatorClone> UseCloned for Weak<T, A> {}
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
@@ -3862,14 +3858,14 @@ impl<'a> RcInnerPtr for WeakInner<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for Rc<T, A> {
     fn borrow(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
     fn as_ref(&self) -> &T {
-        &**self
+        self
     }
 }
 
@@ -3994,28 +3990,28 @@ impl<T: ?Sized, A: Allocator> fmt::Pointer for UniqueRc<T, A> {
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for UniqueRc<T, A> {
     fn borrow(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for UniqueRc<T, A> {
     fn borrow_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueRc<T, A> {
     fn as_ref(&self) -> &T {
-        &**self
+        self
     }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
     fn as_mut(&mut self) -> &mut T {
-        &mut **self
+        self
     }
 }
 
@@ -4425,7 +4421,7 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
     }
 }
 
-impl<T: ?Sized, A: Allocator + Clone> UniqueRc<T, A> {
+impl<T: ?Sized, A: AllocatorClone> UniqueRc<T, A> {
     /// Creates a new weak reference to the `UniqueRc`.
     ///
     /// Attempting to upgrade this weak reference will fail before the `UniqueRc` has been converted
@@ -4614,3 +4610,6 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}

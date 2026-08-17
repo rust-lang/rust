@@ -3,8 +3,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::utils::helpers::{
-    check_cfg_arg, extract_beta_rev, hex_encode, make, set_file_times, submodule_path_of_paths,
-    symlink_dir,
+    check_cfg_arg, envify, extract_beta_rev, hex_encode, make, set_file_times,
+    submodule_path_of_paths, symlink_dir,
 };
 use crate::utils::tests::TestCtx;
 
@@ -118,4 +118,22 @@ fn test_submodule_path_of() {
     );
     // Make sure paths that only share a string prefix with a submodule are not matched.
     assert_eq!(submodule_path_of_paths(&submodules, "src/tools/cargo-vendor"), None);
+}
+
+#[test]
+fn test_envify() {
+    struct Case {
+        input: &'static str,
+        expected: &'static str,
+    }
+    let cases = &[
+        Case { input: "x86_64-unknown-linux-gnu", expected: "X86_64_UNKNOWN_LINUX_GNU" },
+        // Arbitrary target containing `.` from the tier-3 target list.
+        Case { input: "thumbv8m.base-none-eabi", expected: "THUMBV8M_BASE_NONE_EABI" },
+    ];
+
+    for &Case { input, expected } in cases {
+        let actual = envify(input);
+        assert_eq!(actual, expected, "input = {input:?}");
+    }
 }

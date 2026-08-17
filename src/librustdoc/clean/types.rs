@@ -236,7 +236,7 @@ impl ExternalCrate {
             .unwrap_or(Unknown) // Well, at least we tried.
     }
 
-    fn mapped_root_modules<T>(
+    fn mapped_root_anon_consts<T>(
         &self,
         tcx: TyCtxt<'_>,
         f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
@@ -248,7 +248,7 @@ impl ExternalCrate {
                 tcx.hir_root_module()
                     .item_ids
                     .iter()
-                    .filter(move |&&id| matches!(tcx.hir_item(id).kind, hir::ItemKind::Mod(..)))
+                    .filter(move |&&id| matches!(tcx.hir_item(id).kind, hir::ItemKind::Const(..)))
                     .filter_map(move |&id| f(id.owner_id.into(), tcx)),
             )
         } else {
@@ -256,7 +256,11 @@ impl ExternalCrate {
                 tcx.module_children(root)
                     .iter()
                     .filter_map(|item| {
-                        if let Res::Def(DefKind::Mod, did) = item.res { Some(did) } else { None }
+                        if let Res::Def(DefKind::Const { is_type_const: false }, did) = item.res {
+                            Some(did)
+                        } else {
+                            None
+                        }
                     })
                     .filter_map(move |did| f(did, tcx)),
             )
@@ -281,7 +285,7 @@ impl ExternalCrate {
         let as_target = move |did: DefId, tcx: TyCtxt<'_>| -> Option<(DefId, Symbol)> {
             find_attr!(tcx, did, Doc(d) => callback(d)).flatten().map(|value| (did, value))
         };
-        self.mapped_root_modules(tcx, as_target)
+        self.mapped_root_anon_consts(tcx, as_target)
     }
 
     pub(crate) fn primitives(
@@ -316,7 +320,7 @@ impl ExternalCrate {
             Some((def_id, prim))
         }
 
-        self.mapped_root_modules(tcx, as_primitive)
+        self.mapped_root_anon_consts(tcx, as_primitive)
     }
 }
 
@@ -984,10 +988,10 @@ pub(crate) enum ItemKind {
     AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    /// This item represents a module with a `#[doc(keyword = "...")]` attribute which is used
+    /// This item represents an anonymous constant with a `#[doc(keyword = "...")]` attribute which is used
     /// to generate documentation for Rust keywords.
     KeywordItem,
-    /// This item represents a module with a `#[doc(attribute = "...")]` attribute which is used
+    /// This item represents an anonymous constant with a `#[doc(attribute = "...")]` attribute which is used
     /// to generate documentation for Rust builtin attributes.
     AttributeItem,
 }
@@ -1345,6 +1349,9 @@ pub(crate) struct Parameter {
     /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
     /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
     pub(crate) is_const: bool,
+    /// Flags whether this parameter is actually a splat (e.g., `#[rustc_splat]`).
+    /// Refer to <github.com/rust-lang/rust/issues/153629>
+    pub(crate) is_splat: bool,
 }
 
 impl Parameter {

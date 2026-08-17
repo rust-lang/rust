@@ -17,14 +17,29 @@ use std::{env, fs};
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
-use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun, Step, StepMetadata};
-use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
+use crate::core::builder::{
+    Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+};
+use crate::core::config::{Config, LlvmCiMode, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, exit, trace};
+use crate::{CLang, GitRepo, trace};
+
+/// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
+pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
+
+#[derive(Copy, Clone)]
+pub enum LlvmKind {
+    /// The LLVM was built from in-tree sources
+    BuiltLocally,
+    /// The LLVM was downloaded from the `rust-dev` CI artifact.
+    DownloadedFromCi,
+    /// The LLVM was provided externally through a `llvm-config` file.
+    External,
+}
 
 /// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
@@ -32,7 +47,9 @@ pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
+    link_shared: bool,
     llvm_root_dir: PathBuf,
+    kind: LlvmKind,
 }
 
 impl LlvmOutput {
@@ -45,6 +62,16 @@ impl LlvmOutput {
     /// Path to LLVM cmake directory.
     pub fn cmake_dir(&self) -> PathBuf {
         self.llvm_root_dir.join("lib").join("cmake").join("llvm")
+    }
+
+    /// Should we link dynamically to the built LLVM?
+    pub fn link_shared(&self) -> bool {
+        self.link_shared
+    }
+
+    /// How was the LLVM produced?
+    pub fn kind(&self) -> LlvmKind {
+        self.kind
     }
 }
 
@@ -59,15 +86,7 @@ pub enum LlvmBuildStatus {
 }
 
 impl LlvmBuildStatus {
-    pub fn should_build(&self) -> bool {
-        match self {
-            LlvmBuildStatus::AlreadyBuilt(_) => false,
-            LlvmBuildStatus::ShouldBuild(_) => true,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn llvm_result(&self) -> &LlvmOutput {
+    pub fn llvm_output(&self) -> &LlvmOutput {
         match self {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
             LlvmBuildStatus::ShouldBuild(meta) => &meta.output,
@@ -117,25 +136,21 @@ impl LdFlags {
     }
 }
 
-/// This returns whether we've already previously built LLVM.
+/// Attempt to return prebuilt LLVM output information, either downloaded from CI or through an
+/// externally provided LLVM.
 ///
-/// It's used to avoid busting caches during x.py check -- if we've already built
+/// It's used e.g. to avoid busting caches during x.py check -- if we've already built
 /// LLVM, it's fine for us to not try to avoid doing so.
 ///
-/// This will return the llvm-config if it can get it (but it will not build it
-/// if not).
-pub fn prebuilt_llvm_config(
-    builder: &Builder<'_>,
-    target: TargetSelection,
-    // Certain commands (like `x test mir-opt --bless`) may call this function with different targets,
-    // which could bypass the CI LLVM early-return even if `builder.config.llvm_from_ci` is true.
-    // This flag should be `true` only if the caller needs the LLVM sources (e.g., if it will build LLVM).
-    handle_submodule_when_needed: bool,
-) -> LlvmBuildStatus {
-    builder.config.maybe_download_ci_llvm();
+/// Calling this function should never attempt to checkout the LLVM submodule.
+pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> Option<LlvmOutput> {
+    // Try to download LLVM from CI, if possible
+    let llvm_ci = builder.ensure(LlvmFromCi { target });
+    if let Some(llvm) = llvm_ci {
+        return Some(llvm.output);
+    }
 
-    // If we're using a custom LLVM bail out here, but we can only use a
-    // custom LLVM for the build triple.
+    // If it is not available, use an externally provided LLVM
     if let Some(config) = builder.config.target_config.get(&target)
         && let Some(ref s) = config.llvm_config
     {
@@ -144,13 +159,31 @@ pub fn prebuilt_llvm_config(
         let mut llvm_root_dir = host_llvm_config.clone();
         llvm_root_dir.pop();
         llvm_root_dir.pop();
-        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput { host_llvm_config, llvm_root_dir });
+
+        return Some(LlvmOutput {
+            host_llvm_config,
+            link_shared: llvm_link_shared(&builder.config),
+            llvm_root_dir,
+            kind: LlvmKind::External,
+        });
+    }
+    None
+}
+
+/// This returns whether we've already previously built LLVM.
+///
+/// This will return the llvm-config if it can get it (but it will not build it
+/// if not).
+///
+/// Note that calling this function *might* checkout the LLVM submodule!
+pub fn get_llvm_build_status(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
+    if let Some(prebuilt_output) = prebuilt_llvm_output(builder, target) {
+        return LlvmBuildStatus::AlreadyBuilt(prebuilt_output);
     }
 
-    if handle_submodule_when_needed {
-        // If submodules are disabled, this does nothing.
-        builder.config.update_submodule("src/llvm-project");
-    }
+    // In remaining cases, build it locally
+    // If submodules are disabled, this does nothing.
+    builder.config.update_submodule("src/llvm-project");
 
     let out_dir = builder.llvm_out(target);
 
@@ -167,7 +200,12 @@ pub fn prebuilt_llvm_config(
         llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
     };
 
-    let res = LlvmOutput { host_llvm_config: build_llvm_config, llvm_root_dir: out_dir.clone() };
+    let res = LlvmOutput {
+        host_llvm_config: build_llvm_config,
+        link_shared: llvm_link_shared(&builder.config),
+        llvm_root_dir: out_dir.clone(),
+        kind: LlvmKind::BuiltLocally,
+    };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -195,6 +233,59 @@ pub fn prebuilt_llvm_config(
     }
 
     LlvmBuildStatus::ShouldBuild(LlvmBuildInfo { stamp, output: res })
+}
+
+fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Option<DownloadedLlvm> {
+    match builder.config.llvm_ci_mode {
+        LlvmCiMode::BuildLocally => return None,
+        LlvmCiMode::DownloadFromCi => {}
+    }
+
+    // FIXME: this should eventually be relaxed
+    if target != builder.host_target {
+        crate::debug!("LLVM not available on CI for non-host target {target}");
+        return None;
+    }
+
+    if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
+        crate::debug!(
+            "LLVM not available on CI for target={target} and assertions={}",
+            builder.config.llvm_assertions
+        );
+        return None;
+    }
+
+    let ci_llvm = builder.config.maybe_download_host_ci_llvm()?;
+    let link_shared = if !builder.config.dry_run() {
+        let link_type = t!(
+            std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
+            format!("LLVM downloaded from CI is missing the following file: {}", ci_llvm.display())
+        );
+        link_type == "dynamic"
+    } else {
+        false
+    };
+
+    Some(DownloadedLlvm {
+        output: LlvmOutput {
+            host_llvm_config: ci_llvm.join("bin").join("llvm-config"),
+            link_shared,
+            llvm_root_dir: ci_llvm,
+            kind: LlvmKind::DownloadedFromCi,
+        },
+    })
+}
+
+/// Determine whether llvm should be linked dynamically.
+/// **NOTE**: This only contains the value from the config.
+/// If you need to figure out the correct value for a specific LLVM instance, use
+/// `prebuilt_llvm_config` instead.
+///
+/// This function is not a method on Config to discourage calling it from outside this module.
+fn llvm_link_shared(config: &Config) -> bool {
+    // unclear how thought-through this default is, but it maintains compatibility with
+    // previous behavior
+    config.llvm_link_shared.unwrap_or(false)
 }
 
 /// Paths whose changes invalidate LLVM downloads.
@@ -273,6 +364,36 @@ pub(crate) fn is_ci_llvm_available_for_target(
     true
 }
 
+#[derive(Clone)]
+pub struct DownloadedLlvm {
+    pub output: LlvmOutput,
+}
+
+/// This step explicitly represents the output of *downloaded* LLVM.
+/// The step will provide an output only if all the following is true:
+/// - `llvm.download-ci-llvm` is `true` or `if-unchanged`
+/// - If the previous value is `if-unchanged`, the local LLVM inputs are not modified
+/// - Artifacts for LLVM for the given target (and debug assertions) are available on CI
+///
+/// There are some places in bootstrap that explicitly want to do something special about the
+/// downloaded LLVM, this step serves for them to do it in an explicit way.
+/// For all other use-cases, the normal `Llvm` step should be used.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LlvmFromCi {
+    pub target: TargetSelection,
+}
+
+impl Step for LlvmFromCi {
+    type Output = Option<DownloadedLlvm>;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let llvm_ci = try_download_ci_llvm(builder, self.target)?;
+        // Sanity check
+        check_llvm_version(builder, &llvm_ci.output.host_llvm_config);
+        Some(llvm_ci)
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
@@ -309,12 +430,14 @@ impl CommandLineStep for Llvm {
         };
 
         // If LLVM has already been built or been downloaded through download-ci-llvm, we avoid building it again.
-        let LlvmBuildInfo { stamp, output } = match prebuilt_llvm_config(builder, target, true) {
+        let LlvmBuildInfo { stamp, output } = match get_llvm_build_status(builder, target) {
             LlvmBuildStatus::AlreadyBuilt(p) => return p,
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        if builder.llvm_link_shared() && target.is_windows() && !target.is_windows_gnullvm() {
+        let link_shared = llvm_link_shared(&builder.config);
+
+        if link_shared && target.is_windows() && !target.is_windows_gnullvm() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -410,7 +533,7 @@ impl CommandLineStep for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        if builder.llvm_link_shared() {
+        if link_shared {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
             // Keep the pre-LLVM23 behavior for now.
             cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
@@ -580,7 +703,7 @@ impl CommandLineStep for Llvm {
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
         // link to make llvm-config happy.
-        if builder.llvm_link_shared() && target.contains("apple-darwin") {
+        if link_shared && target.contains("apple-darwin") {
             let lib_name = find_llvm_lib_name("dylib");
             let lib_llvm = output.root_dir().join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
@@ -591,10 +714,7 @@ impl CommandLineStep for Llvm {
         // When building LLVM as a shared library on linux, it can contain unexpected debuginfo:
         // some can come from the C++ standard library. Unless we're explicitly requesting LLVM to
         // be built with debuginfo, strip it away after the fact, to make dist artifacts smaller.
-        if builder.llvm_link_shared()
-            && builder.config.llvm_optimize
-            && !builder.config.llvm_release_debuginfo
-        {
+        if link_shared && builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
             // Find the name of the LLVM shared library that we just built.
             let lib_name = find_llvm_lib_name("so");
 
@@ -1032,7 +1152,7 @@ impl CommandLineStep for RustOffload {
                 "`{lib_rust_offload}` not found in `{}`. Either the build has failed or RustOffload was built with a wrong version of LLVM",
                 build_dir.display()
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         BuiltRustOffload { offload: dylib }
@@ -1264,7 +1384,7 @@ impl CommandLineStep for OmpOffload {
                     "`{p:?}` not found in `{}`. Either the build has failed or Offload was built with a wrong version of LLVM",
                     out_dir.display()
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
         BuiltOmpOffload { offload: files }
@@ -1412,7 +1532,7 @@ impl CommandLineStep for Enzyme {
                 "`{libenzyme}` not found in `{}`. Either the build has failed or Enzyme was built with a wrong version of LLVM",
                 build_dir.display()
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         t!(stamp.write());
@@ -1501,7 +1621,7 @@ impl CommandLineStep for Lld {
         //
         if builder.config.rpath_enabled(target)
             && helpers::use_host_linker(target)
-            && builder.config.llvm_link_shared()
+            && llvm_output.link_shared()
             && target.contains("linux")
         {
             // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the

@@ -28,6 +28,11 @@ LL |       if let () = ()
    |  ________^
 LL | |         && () == ();
    | |___________________^
+help: remove this semicolon
+   |
+LL -         && () == ();
+LL +         && () == ()
+   |
 
 error: expected `{`, found `;`
   --> $DIR/semi-in-let-chain.rs:22:20

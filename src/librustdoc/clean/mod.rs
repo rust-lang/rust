@@ -1110,9 +1110,10 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
     for (pos, (index, _)) in indexes.iter().enumerate() {
         let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
         if let GenericParamDefKind::Const { ty, .. } = kind {
-            func.decl
-                .inputs
-                .insert(*index, Parameter { name: Some(name), type_: *ty, is_const: true });
+            func.decl.inputs.insert(
+                *index,
+                Parameter { name: Some(name), type_: *ty, is_const: true, is_splat: false },
+            );
         } else {
             panic!("unexpected non const in position {pos}");
         }
@@ -1145,9 +1146,9 @@ fn clean_function<'tcx>(
             clean_poly_fn_sig(cx, Some(def_id), sig)
         } else {
             let params = match params {
-                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
+                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl, body_id),
                 // Let's not perpetuate anon params from Rust 2015; use `_` for them.
-                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
+                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl, idents, |ident| {
                     Some(ident.map_or(kw::Underscore, |ident| ident.name))
                 }),
             };
@@ -1160,33 +1161,36 @@ fn clean_function<'tcx>(
 
 fn clean_params<'tcx>(
     cx: &mut DocContext<'tcx>,
-    types: &[hir::Ty<'tcx>],
+    decl: &hir::FnDecl<'tcx>,
     idents: &[Option<Ident>],
     postprocess: impl Fn(Option<Ident>) -> Option<Symbol>,
 ) -> Vec<Parameter> {
-    types
+    decl.inputs
         .iter()
         .enumerate()
         .map(|(i, ty)| Parameter {
             name: postprocess(idents[i]),
             type_: clean_ty(ty, cx),
             is_const: false,
+            is_splat: decl.splatted().is_some_and(|j| j as usize == i),
         })
         .collect()
 }
 
 fn clean_params_via_body<'tcx>(
     cx: &mut DocContext<'tcx>,
-    types: &[hir::Ty<'tcx>],
+    decl: &hir::FnDecl<'tcx>,
     body_id: hir::BodyId,
 ) -> Vec<Parameter> {
-    types
+    decl.inputs
         .iter()
         .zip(cx.tcx.hir_body(body_id).params)
-        .map(|(ty, param)| Parameter {
+        .enumerate()
+        .map(|(i, (ty, param))| Parameter {
             name: Some(name_from_pat(param.pat)),
             type_: clean_ty(ty, cx),
             is_const: false,
+            is_splat: decl.splatted().is_some_and(|j| j as usize == i),
         })
         .collect()
 }
@@ -1237,10 +1241,12 @@ fn clean_poly_fn_sig<'tcx>(
     let params = sig
         .inputs()
         .iter()
-        .map(|ty| Parameter {
+        .enumerate()
+        .map(|(i, ty)| Parameter {
             name: idents.next().flatten().map(|ident| ident.name).or(fallback),
             type_: clean_middle_ty(ty.map_bound(|ty| *ty), cx, None, None),
             is_const: false,
+            is_splat: sig.splatted().is_some_and(|j| j as usize == i),
         })
         .collect();
 
@@ -2719,7 +2725,7 @@ fn clean_bare_fn_ty<'tcx>(
         };
         let fallback =
             bare_fn.param_idents.iter().copied().find_map(filter).map(|_| kw::Underscore);
-        let params = clean_params(cx, bare_fn.decl.inputs, bare_fn.param_idents, |ident| {
+        let params = clean_params(cx, bare_fn.decl, bare_fn.param_idents, |ident| {
             filter(ident).or(fallback)
         });
         let decl = clean_fn_decl_with_params(cx, bare_fn.decl, None, params);

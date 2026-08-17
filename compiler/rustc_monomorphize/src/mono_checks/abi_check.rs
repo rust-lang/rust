@@ -222,6 +222,10 @@ fn check_call_site_abi<'tcx>(
                 args.no_bound_vars().unwrap(),
                 DUMMY_SP,
             );
+            if let InstanceKind::LlvmIntrinsic(..) = instance.def {
+                // LLVM intrinsics don't have an ABI, so there is nothing to check.
+                return;
+            }
             tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
         }
         _ => {

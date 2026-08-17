@@ -4323,7 +4323,7 @@ mod tests {
             let vec = i64x2_load_extend_i32x2(arr.as_ptr());
             compare_bytes(vec, i64x2(-1, 1));
             let vec = i64x2_load_extend_u32x2(arr.as_ptr() as *const u32);
-            compare_bytes(vec, i64x2(u32::max_value().into(), 1));
+            compare_bytes(vec, i64x2(u32::MAX.into(), 1));
         }
     }
 

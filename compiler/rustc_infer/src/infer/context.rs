@@ -6,6 +6,7 @@ use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_type_ir::solve::TyOrConstInferVar;
 use rustc_type_ir::{TypeSuperFoldable, TypeVisitableExt};
 
 use super::type_variable::TypeVariableValue;
@@ -148,49 +149,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
-    fn is_changed_arg(&self, arg: ty::GenericArg<'tcx>) -> bool {
-        match arg.kind() {
-            ty::GenericArgKind::Lifetime(_) => {
-                // Lifetimes should not change affect trait selection.
-                false
-            }
-            ty::GenericArgKind::Type(ty) => {
-                if let ty::Infer(infer_ty) = *ty.kind() {
-                    match infer_ty {
-                        ty::InferTy::TyVar(vid) => !matches!(
-                            self.inner.borrow().try_type_variables_probe_ref(vid),
-                            Some(TypeVariableValue::Unknown { .. })
-                        ),
-                        ty::InferTy::IntVar(vid) => !matches!(
-                            self.inner.borrow().int_unification_storage.try_probe_value(vid),
-                            Some(ty::IntVarValue::Unknown)
-                        ),
-                        ty::InferTy::FloatVar(vid) => !matches!(
-                            self.inner.borrow().float_unification_storage.try_probe_value(vid),
-                            Some(ty::FloatVarValue::Unknown)
-                        ),
-                        ty::InferTy::FreshTy(_)
-                        | ty::InferTy::FreshIntTy(_)
-                        | ty::InferTy::FreshFloatTy(_) => true,
-                    }
-                } else {
-                    true
-                }
-            }
-            ty::GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Infer(infer_ct) = ct.kind() {
-                    match infer_ct {
-                        ty::InferConst::Var(vid) => !matches!(
-                            self.inner.borrow().const_unification_storage.try_probe_value(vid),
-                            Some(ConstVariableValue::Unknown { .. })
-                        ),
-                        ty::InferConst::Fresh(_) => true,
-                    }
-                } else {
-                    true
-                }
-            }
-        }
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool {
+        self.ty_or_const_infer_var_changed(var)
     }
 
     fn next_region_infer(&self) -> ty::Region<'tcx> {
@@ -386,6 +346,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;
+    #[inline]
     fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
         self.inner.borrow_mut().opaque_types().num_entries()
     }

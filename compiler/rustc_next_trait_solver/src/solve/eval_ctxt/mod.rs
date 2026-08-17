@@ -12,7 +12,7 @@ use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, Path
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -32,7 +32,8 @@ use crate::delegate::SolverDelegate;
 use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::solve::eval_ctxt::fast_path::{
-    RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
+    RerunStalled, compute_goal_fast_path, inlined_rerunning_stalled_goal_may_make_progress,
+    rerunning_stalled_goal_may_make_progress,
 };
 use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
@@ -181,8 +182,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
 
     /// Checks whether a stalled goal would remain stalled if re-evaluated, without consuming
     /// `stalled_on`.
-    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>)
-    -> Option<Certainty>;
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool;
 
     /// Checks whether evaluating `goal` may hold while treating not-yet-defined
     /// opaque types as being kind of rigid.
@@ -231,12 +231,12 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+        if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
-                certainty: stalled_certainty,
+                certainty: Certainty::Maybe(stalled_maybe_info),
                 has_changed: HasChanged::No,
                 stalled_on,
             });
@@ -265,13 +265,12 @@ where
         }
     }
 
-    fn goal_remains_stalled(
-        &self,
-        stalled_on: &GoalStalledOn<Self::Interner>,
-    ) -> Option<Certainty> {
-        match rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
-            RerunStalled::WontMakeProgress(certainty) => Some(certainty),
-            RerunStalled::MayMakeProgress => None,
+    // This function is very hot and has a single call site.
+    #[inline(always)]
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
+        match inlined_rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
+            RerunStalled::WontMakeProgress(_) => true,
+            RerunStalled::MayMakeProgress => false,
         }
     }
 
@@ -608,12 +607,12 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+        if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
-                certainty: stalled_certainty,
+                certainty: Certainty::Maybe(stalled_maybe_info),
                 has_changed: HasChanged::No,
                 stalled_on,
             });
@@ -814,7 +813,7 @@ where
 
         let stalled_on = match certainty {
             Certainty::Yes => None,
-            Certainty::Maybe { .. } => match has_changed {
+            Certainty::Maybe(maybe_info) => match has_changed {
                 // FIXME: We could recompute a *new* set of stalled variables by walking
                 // through the orig values, resolving, and computing the root vars of anything
                 // that is not resolved. Only when *these* have changed is it meaningful
@@ -822,7 +821,7 @@ where
                 HasChanged::Yes => None,
                 HasChanged::No => Some(self.build_stalled_on(
                     canonical_goal,
-                    certainty,
+                    maybe_info,
                     orig_values,
                     succeeded_in_erased,
                 )),
@@ -838,35 +837,41 @@ where
     fn build_stalled_on(
         &self,
         canonical_goal: CanonicalInput<I>,
-        certainty: Certainty,
-        mut stalled_vars: ThinVec<I::GenericArg>,
+        maybe_info: MaybeInfo,
+        stalled_vars: ThinVec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.
         let mut sub_roots = ThinVec::new();
-        stalled_vars.retain(|arg| match arg.kind() {
-            // Lifetimes can never stall goals.
-            ty::GenericArgKind::Lifetime(_) => false,
-            ty::GenericArgKind::Type(ty) => match ty.kind() {
-                ty::Infer(ty::TyVar(vid)) => {
-                    sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
-                    true
-                }
-                ty::Infer(_) => true,
-                ty::Param(_) | ty::Placeholder(_) => false,
-                _ => unreachable!("unexpected orig_value: {ty:?}"),
-            },
-            ty::GenericArgKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Infer(_) => true,
-                ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
-                _ => unreachable!("unexpected orig_value: {ct:?}"),
-            },
-        });
+        let stalled_vars = stalled_vars
+            .into_iter()
+            .filter_map(|arg| match arg.kind() {
+                // Lifetimes can never stall goals.
+                ty::GenericArgKind::Lifetime(_) => None,
+                ty::GenericArgKind::Type(ty) => match ty.kind() {
+                    ty::Infer(ty::TyVar(vid)) => {
+                        sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
+                        Some(TyOrConstInferVar::Ty(vid))
+                    }
+                    ty::Infer(ty::IntVar(vid)) => Some(TyOrConstInferVar::TyInt(vid)),
+                    ty::Infer(ty::FloatVar(vid)) => Some(TyOrConstInferVar::TyFloat(vid)),
+                    ty::Param(_) | ty::Placeholder(_) => None,
+                    _ => unreachable!("unexpected orig_value: {ty:?}"),
+                },
+                ty::GenericArgKind::Const(ct) => match ct.kind() {
+                    ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
+                        Some(TyOrConstInferVar::Const(v))
+                    }
+                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => None,
+                    _ => unreachable!("unexpected orig_value: {ct:?}"),
+                },
+            })
+            .collect();
 
         GoalStalledOn {
             stalled_vars,
             sub_roots,
-            stalled_certainty: certainty,
+            stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: canonical_goal
                     .canonical

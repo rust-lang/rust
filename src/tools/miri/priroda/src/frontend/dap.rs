@@ -1,4 +1,5 @@
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::net::{TcpListener, TcpStream};
 
 use emmy_dap_types::errors::ServerError;
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
@@ -56,15 +57,23 @@ enum ExecutionOutcome {
 }
 
 /// Debug Adapter Protocol frontend.
-pub(crate) struct Dap;
+pub(crate) struct Dap {
+    pub(crate) port: Option<u16>,
+}
 
 impl Dap {
-    /// Serve DAP requests on stdin/stdout.
+    /// Serve DAP requests on stdin/stdout, or on a TCP socket if `port` is set.
     pub(crate) fn run_dap_loop<'tcx>(
         &self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
-        if let Err(err) = DapSession::stdio().run_requests(session) {
+        let result = if let Some(port) = self.port {
+            DapSession::tcp(port).run_requests(session)
+        } else {
+            DapSession::stdio().run_requests(session)
+        };
+
+        if let Err(err) = result {
             eprintln!("priroda dap error: {err:?}");
         }
 
@@ -72,15 +81,13 @@ impl Dap {
     }
 }
 
-type DapServer = Server<io::StdinLock<'static>, io::StdoutLock<'static>>;
-
-/// Owns the DAP stdio transport and dispatches requests into Priroda handlers.
-struct DapSession {
-    server: DapServer,
+/// Owns a DAP transport and dispatches requests into Priroda handlers.
+struct DapSession<R: Read, W: Write> {
+    server: Server<R, W>,
     state: DapState,
 }
 
-impl DapSession {
+impl DapSession<io::StdinLock<'static>, io::StdoutLock<'static>> {
     fn stdio() -> Self {
         Self {
             server: Server::new(
@@ -90,7 +97,37 @@ impl DapSession {
             state: DapState::Fresh,
         }
     }
+}
 
+impl DapSession<TcpStream, TcpStream> {
+    fn tcp(port: u16) -> Self {
+        let listener = match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(listener) => listener,
+            Err(err) => fatal(&format!("failed to listen on DAP TCP socket: {err}")),
+        };
+        eprintln!("priroda dap listening on 127.0.0.1:{port}");
+        let (stream, _) = match listener.accept() {
+            Ok(conn) => conn,
+            Err(err) => fatal(&format!("failed to accept DAP TCP connection: {err}")),
+        };
+        let reader = match stream.try_clone() {
+            Ok(clone) => clone,
+            Err(err) => fatal(&format!("failed to clone DAP TCP stream: {err}")),
+        };
+
+        Self {
+            server: Server::new(BufReader::new(reader), BufWriter::new(stream)),
+            state: DapState::Fresh,
+        }
+    }
+}
+
+fn fatal(message: &str) -> ! {
+    eprintln!("priroda dap: {message}");
+    std::process::exit(1);
+}
+
+impl<R: Read, W: Write> DapSession<R, W> {
     fn run_requests<'tcx>(
         &mut self,
         session: &mut PrirodaContext<'tcx>,
@@ -99,6 +136,15 @@ impl DapSession {
             let request = match self.server.poll_request() {
                 Ok(Some(request)) => request,
                 Ok(None) => return Ok(()),
+                // The message body has already been consumed. js-debug can send
+                // commands like `enableNetworking`, which `emmy_dap_types` reports
+                // as parse errors because it has no unknown-command variant.
+                // FIXME: send a DAP error response once unknown commands are
+                // representable.
+                Err(ServerError::ParseError(_)) => {
+                    eprintln!("priroda dap: skipping request that could not be deserialized");
+                    continue;
+                }
                 Err(err) => return Err(err),
             };
 
@@ -138,6 +184,7 @@ impl DapSession {
         match &request.command {
             Command::Initialize(_) => self.handle_initialize(),
             Command::Launch(_) => self.handle_launch(),
+            Command::Attach(_) => self.handle_attach(),
             Command::ConfigurationDone => self.handle_configuration_done(session),
             Command::Threads => self.handle_threads(),
             Command::StackTrace(args) => self.handle_stack_trace(args.thread_id, session),
@@ -149,8 +196,7 @@ impl DapSession {
             Command::StepIn(args) =>
                 self.handle_step(ResponseBody::StepIn, args.thread_id, session),
             Command::Disconnect(_) => self.handle_disconnect(),
-            Command::Attach(_)
-            | Command::BreakpointLocations(_)
+            Command::BreakpointLocations(_)
             | Command::Cancel(_)
             | Command::Completions(_)
             | Command::DataBreakpointInfo(_)
@@ -188,6 +234,19 @@ impl DapSession {
 
         Ok(HandlerSuccess {
             response: HandlerResponse::Success(ResponseBody::Launch),
+            state: Some(DapState::Launched),
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
+    }
+
+    fn handle_attach(&self) -> Result<HandlerSuccess, &'static str> {
+        self.require_state(DapState::Initialized)?;
+
+        // VS Code's extension-free `debugServer` template uses `attach`.
+        // Priroda still starts the same single interpreted session as `launch`.
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Attach),
             state: Some(DapState::Launched),
             events: Vec::new(),
             outcome: HandlerOutcome::Continue,
@@ -555,8 +614,8 @@ impl DapSession {
     fn require_state(&self, expected: DapState) -> Result<(), &'static str> {
         if self.state != expected {
             return Err(match expected {
-                DapState::Initialized => "launch requires initialize",
-                DapState::Launched => "configurationDone requires launch",
+                DapState::Initialized => "launch or attach requires initialize",
+                DapState::Launched => "configurationDone requires launch or attach",
                 _ => "invalid session state for request",
             });
         }

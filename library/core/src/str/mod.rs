@@ -151,6 +151,7 @@ impl str {
     #[rustc_no_implicit_autorefs]
     #[must_use]
     #[inline]
+    #[allow(clippy::needless_as_bytes)]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
     }

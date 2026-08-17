@@ -3,8 +3,7 @@
 #![feature(rustc_attrs)]
 
 #[rustc_doc_primitive = "usize"]
-mod usize {}
-
+const _: () = ();
 //@ set local_crate_id = "$.index[?(@.name=='use_primitive')].crate_id"
 
 //@ has "$.index[?(@.name=='ilog10')]"

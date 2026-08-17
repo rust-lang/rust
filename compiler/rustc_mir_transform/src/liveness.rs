@@ -1548,8 +1548,7 @@ impl DefUse {
             PlaceContext::MutatingUse(
                 MutatingUseContext::RawBorrow
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::Drop
-                | MutatingUseContext::Retag,
+                | MutatingUseContext::Drop,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::RawBorrow

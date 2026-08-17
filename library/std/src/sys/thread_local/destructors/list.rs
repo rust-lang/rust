@@ -11,6 +11,11 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
         rtabort!("the System allocator may not use TLS with destructors")
     };
     guard::enable();
+
+    // Avoid calling the alloc error hook
+    if dtors.capacity() == dtors.len() {
+        dtors.try_reserve(1).unwrap_or_else(|_| rtabort!("Failed to grow TLS destructor list"))
+    }
     dtors.push((t, dtor));
 }
 

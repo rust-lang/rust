@@ -582,7 +582,12 @@ impl CStr {
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
-        unsafe { &*((&raw const self.inner) as *const [u8]) }
+        let bytes = unsafe { &*((&raw const self.inner) as *const [u8]) };
+
+        // SAFETY: A valid `CStr` always contains at least its trailing nul byte.
+        unsafe { crate::hint::assert_unchecked(!bytes.is_empty()) };
+
+        bytes
     }
 
     /// Iterates over the bytes in this C string.
@@ -682,7 +687,7 @@ impl PartialEq<&Self> for CStr {
 impl PartialOrd for CStr {
     #[inline]
     fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
+        self.to_bytes().partial_cmp(other.to_bytes())
     }
 }
 
@@ -690,7 +695,7 @@ impl PartialOrd for CStr {
 impl Ord for CStr {
     #[inline]
     fn cmp(&self, other: &CStr) -> Ordering {
-        self.to_bytes().cmp(&other.to_bytes())
+        self.to_bytes().cmp(other.to_bytes())
     }
 }
 

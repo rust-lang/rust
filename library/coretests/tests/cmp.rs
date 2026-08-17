@@ -280,3 +280,12 @@ mod const_cmp {
     const _: () = assert!(S(0) < S(1));
     const _: () = assert!(S(1) > S(0));
 }
+
+mod const_splat {
+    use super::*;
+
+    const _: () = assert!(cmp::smallest(1, 2, 3, 4) == 1);
+    const _: () = assert!(cmp::smallest(4, 3, 2, 1) == 1);
+    const _: () = assert!(cmp::largest(1, 2, 3, 4) == 4);
+    const _: () = assert!(cmp::largest(4, 3, 2, 1) == 4);
+}

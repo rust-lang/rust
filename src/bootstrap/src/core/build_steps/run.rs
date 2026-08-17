@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
+use crate::Mode;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
@@ -16,7 +17,7 @@ use crate::core::builder::{Builder, CommandLineStep, Kind, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
 use crate::utils::exec::command;
-use crate::{Mode, exit, t};
+use crate::utils::helpers::{self, t};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
@@ -137,7 +138,7 @@ impl CommandLineStep for Miri {
 
         if stage == 0 {
             eprintln!("ERROR: miri cannot be run at stage 0");
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         // Miri always runs on the host, because it can interpret code for any target

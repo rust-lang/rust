@@ -2241,7 +2241,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 continue;
             }
 
-            if attr.doc_str_and_fragment_kind().is_some() {
+            if match &attr.kind {
+                AttrKind::Normal(normal) => normal.item.name() == Some(sym::doc),
+                AttrKind::DocComment(..) => true,
+                _ => false,
+            } {
                 self.cx.sess.psess.buffer_lint(
                     UNUSED_DOC_COMMENTS,
                     current_span,

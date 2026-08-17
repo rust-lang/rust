@@ -2942,7 +2942,7 @@ impl Debug for str {
         // the loop here first skips over runs of printable ASCII as a fast path.
         // other chars (unicode, or ASCII that needs escaping) are then handled per-`char`.
         let mut rest = self;
-        while rest.len() > 0 {
+        while !rest.is_empty() {
             let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
             else {
                 printable_range.end += rest.len();
@@ -3189,7 +3189,7 @@ impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Debug::fmt(&*(self.deref()), f)
+        Debug::fmt(self.deref(), f)
     }
 }
 

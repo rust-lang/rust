@@ -152,14 +152,14 @@ pub fn format(
     if build.kind == Kind::Format && build.top_stage != 0 {
         eprintln!("ERROR: `x fmt` only supports stage 0.");
         eprintln!("HELP: Use `x run rustfmt` to run in-tree rustfmt.");
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     if !paths.is_empty() {
         eprintln!(
             "fmt error: path arguments are no longer accepted; use `--all` to format everything"
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     };
     if build.config.dry_run() {
         return;
@@ -193,7 +193,7 @@ pub fn format(
             // explicit whitelisted entries and traversal of unmentioned files, but for now just
             // forbid such entries.
             eprintln!("fmt error: `!`-prefixed entries are not supported in rustfmt.toml, sorry");
-            crate::exit!(1);
+            helpers::exit_process(1);
         } else {
             override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
@@ -362,7 +362,7 @@ pub fn format(
     let result = thread.join().unwrap();
 
     if result.is_err() {
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     // Update `build/.rustfmt-stamp`, allowing this code to ignore files which have not been changed
