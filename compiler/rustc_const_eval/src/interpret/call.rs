@@ -848,7 +848,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert!(receiver_place.layout.is_unsized());
 
                 // Get the required information from the vtable.
-                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
+                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self);
                 let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
                 let adjusted_recv = receiver_place.ptr();
 

@@ -739,7 +739,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         let this = self.eval_context_ref();
         let (ptr, len) = slice.to_scalar_pair();
-        let ptr = ptr.to_pointer(this)?;
+        let ptr = ptr.to_pointer(this);
         let len = len.to_target_usize(this)?;
         let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         interp_ok(bytes)

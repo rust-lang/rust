@@ -262,12 +262,12 @@ impl<Prov> Scalar<Prov> {
 }
 
 impl<'tcx, Prov: Provenance> Scalar<Prov> {
-    pub fn to_pointer(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, Pointer<Option<Prov>>> {
+    pub fn to_pointer(self, cx: &impl HasDataLayout) -> Pointer<Option<Prov>> {
         match self.to_bits_or_ptr_internal(cx.pointer_size()) {
-            Right(ptr) => interp_ok(ptr.into()),
+            Right(ptr) => ptr.into(),
             Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                interp_ok(Pointer::without_provenance(addr))
+                Pointer::without_provenance(addr)
             }
         }
     }
