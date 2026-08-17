@@ -43,8 +43,6 @@ hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
     --enable-languages=c,c++ \
     --disable-gnu-unique-object \
-    --with-as="$BINUTILS_PATH/as" \
-    --with-ld="$BINUTILS_PATH/ld" \
     --enable-cxx-flags='-fno-reorder-blocks-and-partition'
 hide_output make -j$(nproc)
 hide_output make install
