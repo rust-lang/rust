@@ -616,6 +616,19 @@ impl Target {
                     "invalid `target_abi` for wasm"
                 );
             }
+            Arch::Xtensa => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on Xtensa"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on Xtensa");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on Xtensa");
+                check_matches!(
+                    self.cfg_abi,
+                    CfgAbi::Unspecified | CfgAbi::Other(_),
+                    "invalid `target_abi` for Xtensa"
+                );
+            }
             ref arch => {
                 check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on {arch}");
                 // Ensure consistency among built-in targets, but give JSON targets the opportunity
