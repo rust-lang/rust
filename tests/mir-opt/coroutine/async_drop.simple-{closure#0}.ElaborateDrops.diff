@@ -1,7 +1,7 @@
 - // MIR for `simple::{closure#0}` before ElaborateDrops
 + // MIR for `simple::{closure#0}` after ElaborateDrops
   
-  fn simple::{closure#0}(_1: {async fn body of simple()}, _2: std::future::ResumeTy) -> ()
+  fn simple::{closure#0}(_1: {static coroutine body of simple()}, _2: std::future::ResumeTy) -> ()
   yields ()
    {
       debug _task_context => _2;

@@ -1,5 +1,6 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
+use rustc_hir::CoroutineKind;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
@@ -98,11 +99,12 @@ pub(crate) enum FnMutReturnTypeErr {
         span: Span,
     },
     #[label(
-        "returns an `async` block that contains a reference to a captured variable, which then escapes the closure body"
+        "returns {$coroutine_kind} that contains a reference to a captured variable, which then escapes the closure body"
     )]
     ReturnAsyncBlock {
         #[primary_span]
         span: Span,
+        coroutine_kind: CoroutineKind,
     },
     #[label("returns a reference to a captured variable which escapes the closure body")]
     ReturnRef {

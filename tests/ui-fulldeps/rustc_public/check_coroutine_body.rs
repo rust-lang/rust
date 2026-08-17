@@ -19,7 +19,7 @@ use std::io::Write;
 use std::ops::ControlFlow;
 
 use rustc_public::mir::Body;
-use rustc_public::ty::{RigidTy, TyKind};
+use rustc_public::ty::{GenericArgKind, RigidTy, TyKind};
 
 const CRATE_NAME: &str = "crate_coroutine_body";
 
@@ -50,16 +50,34 @@ fn check_coroutine_body(body: Body) {
         panic!("Expected RigidTy::Adt, got: {:#?}", ret_ty);
     };
 
-    assert_eq!("std::task::Poll", def.0.name());
+    assert_eq!("std::ops::CoroutineState", def.0.name());
 
-    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &local_3.kind() else {
-        panic!("Expected RigidTy::Coroutine, got: {:#?}", local_3);
+    let TyKind::RigidTy(RigidTy::Adt(def, args)) = &local_3.kind() else {
+        panic!("Expected RigidTy::Adt, got: {:#?}", local_3);
+    };
+
+    assert_eq!("std::ops::coroutine::adapters::CoroutineFuture", def.0.name());
+
+    let [GenericArgKind::Type(arg0)] = &args.0[..] else {
+        panic!("Expected a single generic argument, got: {:#?}", args);
+    };
+    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &arg0.kind() else {
+        panic!("Expected RigidTy::Adt, got: {:#?}", local_3);
     };
 
     assert_eq!("crate_coroutine_body::gbc::{closure#0}::{closure#0}", def.0.name());
 
-    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &local_4.kind() else {
-        panic!("Expected RigidTy::Coroutine, got: {:#?}", local_4);
+    let TyKind::RigidTy(RigidTy::Adt(def, args)) = &local_4.kind() else {
+        panic!("Expected RigidTy::Adt, got: {:#?}", local_4);
+    };
+
+    assert_eq!("std::ops::coroutine::adapters::CoroutineFuture", def.0.name());
+
+    let [GenericArgKind::Type(arg0)] = &args.0[..] else {
+        panic!("Expected a single generic argument, got: {:#?}", args);
+    };
+    let TyKind::RigidTy(RigidTy::Coroutine(def, ..)) = &arg0.kind() else {
+        panic!("Expected RigidTy::Adt, got: {:#?}", local_3);
     };
 
     assert_eq!("crate_coroutine_body::gbc::{closure#0}::{closure#0}", def.0.name());

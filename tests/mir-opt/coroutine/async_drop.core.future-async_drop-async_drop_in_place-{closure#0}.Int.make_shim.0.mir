@@ -1,0 +1,15 @@
+// MIR for `std::future::async_drop_in_place::{closure#0}` 0 make_shim
+
+fn async_drop_in_place::{closure#0}(_1: {static coroutine body of async_drop_in_place<Int>()}, _2: std::future::ResumeTy) -> ()
+yields ()
+ {
+    let mut _0: ();
+
+    bb0: {
+        goto -> bb1;
+    }
+
+    bb1: {
+        return;
+    }
+}
