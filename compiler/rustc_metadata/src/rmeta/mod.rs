@@ -324,6 +324,11 @@ pub(crate) struct CrateRoot {
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct CrateRootUnhashed {
     extra_filename: String,
+
+    /// The `-C extra-filename` of each dependency, indexed by the `CrateNum` they had in *this*
+    /// crate's encoding. The `LOCAL_CRATE` slot is unused filler so that dependency `CrateNum`s
+    /// can index this directly; this crate's own value is `extra_filename` above.
+    dep_extra_filenames: IndexVec<CrateNum, String>,
 }
 
 /// On-disk representation of `DefId`.
@@ -350,13 +355,16 @@ impl RawDefId {
     }
 }
 
+/// A dependency record, as stored in the hashed [`CrateRoot`].
+///
+/// Note the absence of the dependency's `-C extra-filename`: it lives in
+/// [`CrateRootUnhashed::dep_extra_filenames`] instead, deliberately outside the hash.
 #[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
     pub kind: CrateDepKind,
-    pub extra_filename: String,
     pub is_private: bool,
 }
 

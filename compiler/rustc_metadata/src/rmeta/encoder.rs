@@ -20,6 +20,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
+use rustc_index::IndexVec;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::hir::map::compute_hir_hash;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -806,8 +807,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         tcx.untracked().local_crate_hash.set(hash).expect("local_crate_hash set twice");
 
         let unhashed = stat!("final", || {
+            // Indexed by dependency `CrateNum`, matching the numbering `encode_crate_deps` uses.
+            // Slot 0 (`LOCAL_CRATE`) is filler; this crate's own value is `extra_filename`.
+            let mut dep_extra_filenames = IndexVec::from_elem_n(String::new(), 1);
+            if !self.is_proc_macro {
+                for &cnum in self.tcx.crates(()).iter() {
+                    let idx = dep_extra_filenames.push(self.tcx.extra_filename(cnum).clone());
+                    assert_eq!(idx, cnum, "dep_extra_filenames must be indexed by CrateNum");
+                }
+            }
+
             self.lazy(CrateRootUnhashed {
                 extra_filename: self.tcx.sess.opts.cg.extra_filename.clone(),
+                dep_extra_filenames,
             })
         });
 
@@ -2121,7 +2133,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.crate_dep_kind(cnum),
-                    extra_filename: self.tcx.extra_filename(cnum).clone(),
                     is_private: self.tcx.is_private_dep(cnum),
                 };
                 (cnum, dep)

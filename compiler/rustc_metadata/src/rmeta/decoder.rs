@@ -754,6 +754,10 @@ impl MetadataBlob {
         LazyValue::<CrateRootUnhashed>::from_position(pos).decode(self)
     }
 
+    pub(crate) fn get_dep_extra_filenames(&self) -> IndexVec<CrateNum, String> {
+        self.get_root_unhashed().dep_extra_filenames
+    }
+
     pub(crate) fn get_crate_hash(&self) -> Svh {
         let bytes: [u8; CRATE_HASH_LEN] =
             self[CRATE_HASH_OFFSET..][..CRATE_HASH_LEN].try_into().unwrap();
@@ -819,10 +823,15 @@ impl MetadataBlob {
                     writeln!(out, "=External Dependencies=")?;
                     let dylib_dependency_formats =
                         root.dylib_dependency_formats.decode(self).collect::<Vec<_>>();
+                    // `extra_filename` is stored outside the hashed root; see
+                    // `CrateRootUnhashed::dep_extra_filenames`.
+                    let dep_extra_filenames = self.get_dep_extra_filenames();
                     for (i, dep) in root.crate_deps.decode(self).enumerate() {
-                        let CrateDep { name, extra_filename, hash, host_hash, kind, is_private } =
-                            dep;
+                        let CrateDep { name, hash, host_hash, kind, is_private } = dep;
                         let number = i + 1;
+                        let extra_filename = dep_extra_filenames
+                            .get(CrateNum::new(number))
+                            .map_or("", |name| name.as_str());
 
                         writeln!(
                             out,
