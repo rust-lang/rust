@@ -91,5 +91,8 @@ fn date_iso(sh: &Shell) -> anyhow::Result<String> {
 }
 
 fn is_release_tag(tag: &str) -> bool {
-    tag.len() == "2020-02-24".len() && tag.starts_with(|c: char| c.is_ascii_digit())
+    tag.len() >= 10
+        && tag.starts_with(|c: char| c.is_ascii_digit())
+        && tag.as_bytes()[4] == b'-'
+        && tag.as_bytes()[7] == b'-'
 }

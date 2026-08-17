@@ -347,6 +347,14 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
         return true;
     }
 
+    let interner = DbInterner::new_with(db, local_crate);
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    let param_env = db.trait_environment(impl_.into());
+    let trait_ref = infcx
+        .at(&ObligationCause::dummy(), param_env)
+        .deeply_normalize(trait_ref)
+        .unwrap_or(trait_ref);
+
     let unwrap_fundamental = |mut ty: Ty<'db>| {
         // Unwrap all layers of fundamental types with a loop.
         loop {
