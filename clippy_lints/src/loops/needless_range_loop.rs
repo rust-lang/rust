@@ -167,7 +167,7 @@ pub(super) fn check<'tcx>(
                     diag.span_note(indexed_span, "for this index operation");
                     if visitor.nonindex {
                         diag.multipart_suggestion(
-                            "consider using an iterator and enumerate()",
+                            "consider using an iterator and `.enumerate()`",
                             vec![
                                 (pat.span, format!("({}, <item>)", ident.name)),
                                 (

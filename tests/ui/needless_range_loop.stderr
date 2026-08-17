@@ -79,7 +79,7 @@ note: for this index operation
    |
 LL |         println!("{} {}", vec[i], i);
    |                           ^^^^^^
-help: consider using an iterator and enumerate()
+help: consider using an iterator and `.enumerate()`
    |
 LL -     for i in 0..vec.len() {
 LL +     for (i, <item>) in vec.iter().enumerate() {
@@ -198,7 +198,7 @@ note: for this index operation
    |
 LL |         println!("{} {}", vec[i], i);
    |                           ^^^^^^
-help: consider using an iterator and enumerate()
+help: consider using an iterator and `.enumerate()`
    |
 LL -     for i in 5..vec.len() {
 LL +     for (i, <item>) in vec.iter().enumerate().skip(5) {
@@ -215,7 +215,7 @@ note: for this index operation
    |
 LL |         println!("{} {}", vec[i], i);
    |                           ^^^^^^
-help: consider using an iterator and enumerate()
+help: consider using an iterator and `.enumerate()`
    |
 LL -     for i in 5..10 {
 LL +     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
@@ -232,7 +232,7 @@ note: for this index operation
    |
 LL |         vec[i] = Some(1).unwrap_or_else(|| panic!("error on {}", i));
    |         ^^^^^^
-help: consider using an iterator and enumerate()
+help: consider using an iterator and `.enumerate()`
    |
 LL -     for i in 0..vec.len() {
 LL +     for (i, <item>) in vec.iter_mut().enumerate() {
@@ -249,7 +249,7 @@ note: for this index operation
    |
 LL |         let _ = a[i][i];
    |                 ^^^^
-help: consider using an iterator and enumerate()
+help: consider using an iterator and `.enumerate()`
    |
 LL -     for i in 0..MAX_LEN {
 LL +     for (i, <item>) in a.iter().enumerate().take(MAX_LEN) {
@@ -283,7 +283,7 @@ note: for this index operation
    |
 LL |         matrix[i][i] = true;
    |         ^^^^^^^^^
-help: consider using an iterator and enumerate()
+help: consider using an iterator and `.enumerate()`
    |
 LL -     for i in 0..=2 {
 LL +     for (i, <item>) in matrix.iter_mut().enumerate().take(2 + 1) {
