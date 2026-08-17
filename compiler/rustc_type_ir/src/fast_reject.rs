@@ -470,7 +470,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::UnsafeBinder(lhs_ty) => match rhs.kind() {
                 ty::UnsafeBinder(rhs_ty) => {
-                    self.types_may_unify(lhs_ty.skip_binder(), rhs_ty.skip_binder())
+                    self.types_may_unify_inner(lhs_ty.skip_binder(), rhs_ty.skip_binder(), depth)
                 }
                 _ => false,
             },
