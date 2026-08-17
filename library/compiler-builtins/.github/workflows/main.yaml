@@ -335,7 +335,7 @@ jobs:
   msrv:
     name: Check libm MSRV
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
@@ -348,7 +348,7 @@ jobs:
         rustup update "$msrv" --no-self-update && rustup default "$msrv"
     - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
     - run: |
-        # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
+        # FIXME(msrv): Remove the workspace Cargo.toml so MSRV cargo doesn't see
         # `edition = "2024"` and get spooked.
         rm Cargo.toml
         cargo build --manifest-path libm/Cargo.toml
