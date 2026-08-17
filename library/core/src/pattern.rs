@@ -261,6 +261,12 @@ pub trait SearchResult: Sized + sealed::Sealed {
     /// guaranteed to return `Some`.
     const USE_EARLY_REJECT: bool;
 
+    /// Whether [`rejecting()`][Self::rejecting] can ever return `Some`.
+    ///
+    /// This allows searches to skip emitting reject ranges entirely when the
+    /// result type can't carry them (e.g. [`MatchOnly`]).
+    const HAS_REJECTS: bool;
+
     /// Returns value describing a match or `None` if this implementation
     /// doesn't care about matches.
     fn matching(start: usize, end: usize) -> Option<Self>;
@@ -283,6 +289,7 @@ pub struct RejectOnly(pub Option<(usize, usize)>);
 impl SearchResult for SearchStep {
     const DONE: Self = SearchStep::Done;
     const USE_EARLY_REJECT: bool = false;
+    const HAS_REJECTS: bool = true;
 
     #[inline(always)]
     fn matching(s: usize, e: usize) -> Option<Self> {
@@ -298,6 +305,7 @@ impl SearchResult for SearchStep {
 impl SearchResult for MatchOnly {
     const DONE: Self = Self(None);
     const USE_EARLY_REJECT: bool = false;
+    const HAS_REJECTS: bool = false;
 
     #[inline(always)]
     fn matching(s: usize, e: usize) -> Option<Self> {
@@ -313,6 +321,7 @@ impl SearchResult for MatchOnly {
 impl SearchResult for RejectOnly {
     const DONE: Self = Self(None);
     const USE_EARLY_REJECT: bool = true;
+    const HAS_REJECTS: bool = true;
 
     #[inline(always)]
     fn matching(_s: usize, _e: usize) -> Option<Self> {
