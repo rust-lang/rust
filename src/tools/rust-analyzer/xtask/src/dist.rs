@@ -115,13 +115,9 @@ fn dist_server(
 
     let features = allocator.to_features();
 
+    let cmd = build_command(sh, &target.name, features, dev_rel);
     let pgo_profile = if let Some(train_crate) = pgo {
-        Some(crate::pgo::gather_pgo_profile(
-            sh,
-            crate::pgo::build_command(sh, &target.name, features),
-            &target.name,
-            train_crate,
-        )?)
+        Some(crate::pgo::gather_pgo_profile(sh, cmd, &target.name, train_crate)?)
     } else {
         None
     };
