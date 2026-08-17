@@ -315,7 +315,19 @@ $ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
 $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ```
 
-### Debugging type layouts
+Graphviz also comes with a preprocessor program, 
+[`unflatten`](https://graphviz.org/docs/cli/unflatten/), that
+sometimes helps making the outputs look less oddly spread out. It reads
+a dot file and outputs another dot file, so you can use it in a pipe,
+e.g:
+```
+$ unflatten mir_dump/*.foo.-------.nll.0.regioncx.all.dot | dot -Tpdf  -o foo-outlives.pdf
+```
+
+This is particularly useful for complicated region outlives graphs from 
+[the borrow checker](borrow_check/debugging.md).
+
+## Narrowing (Bisecting) Regressions
 
 The internal attribute `#[rustc_dump_layout(...)]` can be used to dump the
 [`Layout`] of the type it is attached to.
