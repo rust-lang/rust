@@ -22,7 +22,7 @@ use rustc_crate_store::{self as cstore, CrateSource};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
+use rustc_hir::attrs::{CfgEntry, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
 use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};
@@ -39,7 +39,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_span::{Span, Symbol};
-use rustc_structures::CrateType;
+use rustc_structures::{CrateType, NativeLibKind};
 
 pub mod assert_module_sources;
 pub mod back;
