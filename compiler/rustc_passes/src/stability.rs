@@ -9,7 +9,7 @@ use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature, UNSTABLE_LANG_FEATURES};
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, AmbigArg, ConstStability, Constness, DefaultBodyStability, FieldDef, HirId, Item,
@@ -789,90 +789,102 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
             if item_is_allowed {
                 // The item itself is allowed; check whether the path there is also allowed.
-                let is_allowed_through_unstable_modules: Option<(Symbol, Symbol)> =
-                    self.tcx.lookup_stability(def_id).and_then(|stab| match stab.level {
-                        StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
-                            allowed_through_unstable_modules
-                        }
-                        _ => None,
-                    });
+                self.check_path_segments(path, id, method_span, def_id);
+            }
+        }
 
-                // Check parent modules stability as well if the item the path refers to is itself
-                // stable. We only emit errors for unstable path segments if the item is stable
-                // or allowed because stability is often inherited, so the most common case is that
-                // both the segments and the item are unstable behind the same feature flag.
-                //
-                // We check here rather than in `visit_path_segment` to prevent visiting the last
-                // path segment twice
-                //
-                // We include special cases via #[rustc_allowed_through_unstable_modules] for items
-                // that were accidentally stabilized through unstable paths before this check was
-                // added, such as `core::intrinsics::transmute`
-                let parents = path.segments.iter().rev().skip(1);
-                for path_segment in parents {
-                    if let Some(def_id) = path_segment.res.opt_def_id() {
-                        match is_allowed_through_unstable_modules {
-                            None => {
-                                // Emit a hard stability error if this path is not stable.
+        intravisit::walk_path(self, path)
+    }
+}
 
-                                // use `None` for id to prevent deprecation check
-                                self.tcx.check_stability_allow_unstable(
-                                    def_id,
-                                    None,
-                                    path_segment.ident.span,
-                                    None,
-                                    if is_unstable_reexport(self.tcx, id) {
-                                        AllowUnstable::Yes
-                                    } else {
-                                        AllowUnstable::No
-                                    },
-                                );
-                            }
-                            Some((message, suggestion)) => {
-                                // Call the stability check directly so that we can control which
-                                // diagnostic is emitted.
-                                let eval_result = self.tcx.eval_stability_allow_unstable(
-                                    def_id,
-                                    None,
+impl<'tcx> Checker<'tcx> {
+    /// Check parent modules stability as well if the item the path refers to is itself
+    /// stable. We only emit errors for unstable path segments if the item is stable
+    /// or allowed because stability is often inherited, so the most common case is that
+    /// both the segments and the item are unstable behind the same feature flag.
+    ///
+    /// We check here rather than in `visit_path_segment` to prevent visiting the last
+    /// path segment twice
+    ///
+    /// We include special cases via #[rustc_allowed_through_unstable_modules] for items
+    /// that were accidentally stabilized through unstable paths before this check was
+    /// added, such as `core::intrinsics::transmute`
+    fn check_path_segments(
+        &mut self,
+        path: &Path<'tcx>,
+        id: HirId,
+        method_span: Option<Span>,
+        def_id: DefId,
+    ) {
+        let is_allowed_through_unstable_modules: Option<(Symbol, Symbol)> =
+            self.tcx.lookup_stability(def_id).and_then(|stab| match stab.level {
+                StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
+                    allowed_through_unstable_modules
+                }
+                _ => None,
+            });
+
+        let parents = path.segments.iter().rev().skip(1);
+        for path_segment in parents {
+            if let Some(def_id) = path_segment.res.opt_def_id() {
+                match is_allowed_through_unstable_modules {
+                    None => {
+                        // Emit a hard stability error if this path is not stable.
+
+                        // use `None` for id to prevent deprecation check
+                        self.tcx.check_stability_allow_unstable(
+                            def_id,
+                            None,
+                            path_segment.ident.span,
+                            None,
+                            if is_unstable_reexport(self.tcx, id) {
+                                AllowUnstable::Yes
+                            } else {
+                                AllowUnstable::No
+                            },
+                        );
+                    }
+                    Some((message, suggestion)) => {
+                        // Call the stability check directly so that we can control which
+                        // diagnostic is emitted.
+                        let eval_result = self.tcx.eval_stability_allow_unstable(
+                            def_id,
+                            None,
+                            path.span,
+                            None,
+                            if is_unstable_reexport(self.tcx, id) {
+                                AllowUnstable::Yes
+                            } else {
+                                AllowUnstable::No
+                            },
+                        );
+                        let is_allowed = matches!(eval_result, EvalResult::Allow);
+                        if !is_allowed {
+                            // Show a deprecation message.
+                            let [.., intrinsics_module, _intrinsic] = path.segments else {
+                                span_bug!(
                                     path.span,
-                                    None,
-                                    if is_unstable_reexport(self.tcx, id) {
-                                        AllowUnstable::Yes
-                                    } else {
-                                        AllowUnstable::No
-                                    },
-                                );
-                                let is_allowed = matches!(eval_result, EvalResult::Allow);
-                                if !is_allowed {
-                                    // Show a deprecation message.
-                                    let [.., intrinsics_module, _intrinsic] = path.segments else {
-                                        span_bug!(
-                                            path.span,
-                                            "no module for `is_allowed_through_unstable_modules` intrinsic {path:?}"
-                                        )
-                                    };
-                                    let diag = diagnostics::RustcAtumSuggestion {
-                                        message,
-                                        import_span: path.span,
-                                        unstable_mod_span: { intrinsics_module.ident.span },
-                                        module: intrinsics_module.ident,
-                                        suggestion,
-                                    };
-                                    self.tcx.emit_node_span_lint(
-                                        DEPRECATED,
-                                        id,
-                                        method_span.unwrap_or(path.span),
-                                        diag,
-                                    );
-                                }
-                            }
+                                    "no module for `is_allowed_through_unstable_modules` intrinsic {path:?}"
+                                )
+                            };
+                            let diag = diagnostics::RustcAtumSuggestion {
+                                message,
+                                import_span: path.span,
+                                unstable_mod_span: { intrinsics_module.ident.span },
+                                module: intrinsics_module.ident,
+                                suggestion,
+                            };
+                            self.tcx.emit_node_span_lint(
+                                DEPRECATED,
+                                id,
+                                method_span.unwrap_or(path.span),
+                                diag,
+                            );
                         }
                     }
                 }
             }
         }
-
-        intravisit::walk_path(self, path)
     }
 }
 
