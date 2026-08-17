@@ -14,7 +14,7 @@ env:
   CARGO_TERM_VERBOSE: true
   LIBM_BUILD_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
-  RUSTFLAGS: -Dwarnings
+  RUSTFLAGS: -Dwarnings -Dlinker_messages
   RUST_BACKTRACE: full
   BENCHMARK_RUSTC: nightly-2026-08-05 # Pin the toolchain for reproducable results
 
