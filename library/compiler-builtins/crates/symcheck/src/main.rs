@@ -4,17 +4,22 @@
 //! Note that symcheck is a "hostprog", i.e. is built and run on the host target even when the
 //! actual target is cross compiled.
 
+#![allow(clippy::enum_variant_names)]
+
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio, exit};
 use std::sync::LazyLock;
-use std::{env, fs};
+use std::{env, fmt, fs};
 
+use object::elf::{ProgramFlags, ProgramType};
 use object::read::archive::ArchiveFile;
+use object::read::pe::ImageOptionalHeader;
 use object::{
     Architecture, BinaryFormat, Endianness, File as ObjFile, FileFlags, Object, ObjectSection,
-    ObjectSymbol, Result as ObjResult, SectionFlags, Symbol, SymbolKind, SymbolScope, U32, elf,
+    ObjectSymbol, Result as ObjResult, SectionFlags, SubArchitecture, Symbol, SymbolKind,
+    SymbolScope, U32, elf, macho, pe, read,
 };
 use regex::Regex;
 use serde_json::Value;
@@ -25,8 +30,8 @@ const GNU_STACK: &str = ".note.GNU-stack";
 
 const USAGE: &str = "Usage:
 
-    symbol-check --build-and-check [--target TARGET] [--no-os] -- CARGO_BUILD_ARGS ...
-    symbol-check --check PATHS ...\
+    symcheck --build-and-check [--target TARGET] [--no-os] -- CARGO_BUILD_ARGS ...
+    symcheck --check [--target TARGET] PATHS ...\
 ";
 
 fn main() {
@@ -43,7 +48,10 @@ fn main() {
     opts.optopt(
         "",
         "target",
-        "Set the target for build-and-check. Falls back to the host target otherwise.",
+        // We could add a `--no-target-checks` flag to skip checks that need a target specified,
+        // if that winds up being useful at some point.
+        "Set the target when building, and the expected target for tests. Falls back to the host \
+        target if not specified.",
         "TARGET",
     );
     opts.optflag(
@@ -80,25 +88,32 @@ fn main() {
     for arg in &free_args {
         assert!(
             !arg.contains("--target"),
-            "target must be passed to symbol-check"
+            "target must be passed to symcheck"
         );
     }
 
+    let target = m.opt_str("target").unwrap_or(env!("HOST").to_string());
+    let target = Target::from_rustc(&target);
+
     if m.opt_present("build-and-check") {
-        let target = m.opt_str("target").unwrap_or(env!("HOST").to_string());
-        let paths = exec_cargo_with_args(&target, &free_args);
-        check_paths(&paths, no_os_target, check_visibility);
+        let paths = exec_cargo_with_args(&target.name, &free_args);
+        check_paths(&target, &paths, no_os_target, check_visibility);
     } else if m.opt_present("check") {
         if free_args.is_empty() {
             print_usage_and_exit(1);
         }
-        check_paths(&free_args, no_os_target, check_visibility);
+        check_paths(&target, &free_args, no_os_target, check_visibility);
     } else {
         print_usage_and_exit(1);
     }
 }
 
-fn check_paths<P: AsRef<Path>>(paths: &[P], no_os_target: bool, check_visibility: bool) {
+fn check_paths<P: AsRef<Path>>(
+    target: &Target,
+    paths: &[P],
+    no_os_target: bool,
+    check_visibility: bool,
+) {
     for path in paths {
         let path = path.as_ref();
         println!("Checking {}", path.display());
@@ -106,11 +121,237 @@ fn check_paths<P: AsRef<Path>>(paths: &[P], no_os_target: bool, check_visibility
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
+        verify_expected_target(target, &archive);
         verify_no_exec_stack(&archive, no_os_target);
         if check_visibility {
             verify_hidden_visibility(&archive);
         }
     }
+}
+
+#[derive(Debug)]
+struct Target {
+    name: String,
+    arch: Architecture,
+    subarch: Option<SubArchitecture>,
+    endian: Endianness,
+    pointer_width: PointerWidth,
+    os: Os,
+    env: Option<String>,
+    abi: Option<String>,
+    families: Vec<String>,
+    vendors: Vec<String>,
+}
+
+impl Target {
+    /// Use `rustc` to query target information rather than parsing it ourselves.
+    fn from_rustc(target: &str) -> Self {
+        let mut cmd = Command::new("rustc");
+        cmd.args(["--target", target, "--print=cfg"])
+            .stdout(Stdio::piped());
+        println!("running: {cmd:?}");
+        let out = cmd.output().expect("failed to launch rustc");
+
+        let check_empty = |s: &str| {
+            if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            }
+        };
+
+        let mut t = Target {
+            name: target.to_string(),
+            arch: Architecture::Unknown,
+            subarch: None,
+            endian: Endianness::Little,
+            pointer_width: PointerWidth::P64,
+            os: Os::Unknown,
+            env: None,
+            abi: None,
+            families: Vec::new(),
+            vendors: Vec::new(),
+        };
+
+        for line in out.stdout.lines() {
+            let line = line.expect("failed to read line");
+            let Some((k, v)) = line.split_once('=') else {
+                continue;
+            };
+            let v = v.trim_matches('"');
+
+            match k {
+                "target_os" => {
+                    t.os = match v {
+                        "aix" => Os::Aix,
+                        "amdhsa" => Os::Amdhsa,
+                        "android" => Os::Android,
+                        "cuda" => Os::Cuda,
+                        "cygwin" => Os::Cygwin,
+                        "dragonfly" => Os::Dragonfly,
+                        "emscripten" => Os::Emscripten,
+                        "espidf" => Os::EspIdf,
+                        "freebsd" => Os::FreeBsd,
+                        "fuchsia" => Os::Fuchsia,
+                        "haiku" => Os::Haiku,
+                        "helenos" => Os::HelenOs,
+                        "hermit" => Os::Hermit,
+                        "horizon" => Os::Horizon,
+                        "hurd" => Os::Hurd,
+                        "illumos" => Os::Illumos,
+                        "ios" => Os::IOs,
+                        "l4re" => Os::L4re,
+                        "linux" => Os::Linux,
+                        "lynxos178" => Os::LynxOs178,
+                        "macos" => Os::MacOs,
+                        "managarm" => Os::Managarm,
+                        "motor" => Os::Motor,
+                        "netbsd" => Os::NetBsd,
+                        "nto" => Os::Nto,
+                        "nuttx" => Os::Nuttx,
+                        "openbsd" => Os::OpenBsd,
+                        "psp" => Os::Psp,
+                        "psx" => Os::Psx,
+                        "qurt" => Os::Qurt,
+                        "redox" => Os::Redox,
+                        "rtems" => Os::Rtems,
+                        "solaris" => Os::Solaris,
+                        "solid_asp3" => Os::SolidAsp3,
+                        "teeos" => Os::Teeos,
+                        "trusty" => Os::Trusty,
+                        "tvos" => Os::TvOs,
+                        "uefi" => Os::Uefi,
+                        "vexos" => Os::Vexos,
+                        "visionos" => Os::VisionOs,
+                        "vita" => Os::Vita,
+                        "vxworks" => Os::VxXorks,
+                        "wasi" => Os::Wasi,
+                        "watchos" => Os::WatchOs,
+                        "windows" => Os::Windows,
+                        "xous" => Os::Xous,
+                        "zkvm" => Os::Zkvm,
+                        "unknown" | "none" => Os::Unknown,
+                        _ => panic!("unrecognized OS `{v}`"),
+                    }
+                }
+                "target_arch" => {
+                    t.arch = match v {
+                        "aarch64" => Architecture::Aarch64,
+                        "arm64ec" => {
+                            t.subarch = Some(SubArchitecture::Arm64EC);
+                            Architecture::Aarch64
+                        }
+                        "arm" => Architecture::Arm,
+                        "avr" => Architecture::Avr,
+                        "bpf" => Architecture::Bpf,
+                        "csky" => Architecture::Csky,
+                        "hexagon" => Architecture::Hexagon,
+                        "loongarch32" => Architecture::LoongArch32,
+                        "loongarch64" => Architecture::LoongArch64,
+                        "m68k" => Architecture::M68k,
+                        "mips" | "mips32r6" => Architecture::Mips,
+                        "mips64" | "mips64r6" => Architecture::Mips64,
+                        "msp430" => Architecture::Msp430,
+                        "powerpc" => Architecture::PowerPc,
+                        "powerpc64" => Architecture::PowerPc64,
+                        "riscv32" => Architecture::Riscv32,
+                        "riscv64" => Architecture::Riscv64,
+                        "s390x" => Architecture::S390x,
+                        "sparc" => Architecture::Sparc,
+                        "sparc64" => Architecture::Sparc64,
+                        "wasm32" => Architecture::Wasm32,
+                        "wasm64" => Architecture::Wasm64,
+                        "x86" => Architecture::I386,
+                        "x86_64" => Architecture::X86_64,
+                        "xtensa" => Architecture::Xtensa,
+                        _ => panic!("unrecognized arch {v}"),
+                    }
+                }
+                "target_abi" => t.abi = check_empty(v),
+                "target_env" => t.env = check_empty(v),
+                "target_family" if let Some(fam) = check_empty(v) => t.families.push(fam),
+                "target_vendor" if let Some(ven) = check_empty(v) => t.vendors.push(ven),
+                "target_endian" => {
+                    t.endian = match v {
+                        "little" => Endianness::Little,
+                        "big" => Endianness::Big,
+                        _ => panic!("unknown endian {v}"),
+                    }
+                }
+                "target_pointer_width" => {
+                    t.pointer_width = match v {
+                        "16" => PointerWidth::P16,
+                        "32" => PointerWidth::P32,
+                        "64" => PointerWidth::P64,
+                        _ => panic!("unknown pointer width {v}"),
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        assert_ne!(t.arch, Architecture::Unknown, "arch not found");
+        t
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Os {
+    Aix,
+    Amdhsa,
+    Android,
+    Cuda,
+    Cygwin,
+    Dragonfly,
+    Emscripten,
+    EspIdf,
+    FreeBsd,
+    Fuchsia,
+    Haiku,
+    HelenOs,
+    Hermit,
+    Horizon,
+    Hurd,
+    Illumos,
+    IOs,
+    L4re,
+    Linux,
+    LynxOs178,
+    MacOs,
+    Managarm,
+    Motor,
+    NetBsd,
+    Nto,
+    Nuttx,
+    OpenBsd,
+    Psp,
+    Psx,
+    Qurt,
+    Redox,
+    Rtems,
+    Solaris,
+    SolidAsp3,
+    Teeos,
+    Trusty,
+    TvOs,
+    Uefi,
+    Unknown,
+    Vexos,
+    VisionOs,
+    Vita,
+    VxXorks,
+    Wasi,
+    WatchOs,
+    Windows,
+    Xous,
+    Zkvm,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PointerWidth {
+    P16,
+    P32,
+    P64,
 }
 
 /// Run `cargo build` with the provided additional arguments, collecting the list of created
@@ -366,6 +607,123 @@ fn verify_hidden_visibility(archive: &BinFile) {
     println!("    success: no visible symbols found");
 }
 
+/// Check that all object files are actually for the target architecture and, if provided,
+/// for the target operating system.
+fn verify_expected_target(target: &Target, archive: &BinFile) {
+    let mut mismatched = Vec::new();
+
+    archive.for_each_object(|obj, obj_path| {
+        let mut mismatch = |field: &str, a: &dyn fmt::Debug, b: &dyn fmt::Debug| {
+            let msg = format!("mismatched {field} {a:?} != {b:?}");
+            mismatched.push((obj_path.to_owned(), msg));
+        };
+
+        if obj.architecture() != target.arch {
+            mismatch("arch", &obj.architecture(), &target.arch);
+        }
+        if obj.sub_architecture() != target.subarch {
+            mismatch("subarch", &obj.sub_architecture(), &target.subarch);
+        }
+        if obj.endianness() != target.endian {
+            mismatch("endian", &obj.sub_architecture(), &target.endian);
+        }
+
+        let obj_os = match &obj {
+            ObjFile::Elf32(f) => elf_os(f),
+            ObjFile::Elf64(f) => elf_os(f),
+
+            ObjFile::MachO32(f) => mach_os(f),
+            ObjFile::MachO64(f) => mach_os(f),
+
+            // The non-executable header doesn't store OS
+            ObjFile::Coff(_) => Os::Windows,
+            ObjFile::CoffBig(_) => Os::Windows,
+            ObjFile::Pe32(f) => pe_os(f),
+            ObjFile::Pe64(f) => pe_os(f),
+
+            // Wasm files don't seem to have metadata (at least in `object`)
+            ObjFile::Wasm(_) => Os::Unknown,
+
+            // Out of supported platforms, this is only used by AIX
+            ObjFile::Xcoff32(_) => Os::Aix,
+            ObjFile::Xcoff64(_) => Os::Aix,
+
+            _ => {
+                unimplemented!(
+                    "os check for binary format {:?} is not yet supported",
+                    obj.format()
+                )
+            }
+        };
+
+        if !(obj_os == target.os
+            || obj_os == Os::Unknown
+            // Cygwin and Windows object files look the same
+            || (obj_os == Os::Windows && target.os == Os::Cygwin))
+        {
+            mismatch("OS", &obj_os, &target.os);
+        }
+    });
+
+    for (file, msg) in &mismatched {
+        eprintln!("in `{file}`: {msg}");
+    }
+
+    assert!(
+        mismatched.is_empty(),
+        "some object files do not match the intended target"
+    );
+    println!("    success: object files match target");
+}
+
+/* Note that we only match OS tags that have been tested. There are others for other platforms
+ * that Rust supports but aren't as easy to test, they can be added as needed. */
+
+/// Get the OS from an elf file, or `Unknown` if not specified.
+fn elf_os<Elf: read::elf::FileHeader>(f: &read::elf::ElfFile<Elf>) -> Os {
+    let os_abi = f.elf_header().e_ident().os_abi;
+    match os_abi {
+        elf::ELFOSABI_NONE => Os::Unknown,
+        elf::ELFOSABI_FREEBSD => Os::FreeBsd,
+        elf::ELFOSABI_SOLARIS => Os::Solaris,
+        // In practice, these seem not to be specified and instead match ELFOSABI_NONE.
+        elf::ELFOSABI_HURD => Os::Hurd,
+        elf::ELFOSABI_LINUX => Os::Linux,
+        elf::ELFOSABI_NETBSD => Os::NetBsd,
+        elf::ELFOSABI_OPENBSD => Os::OpenBsd,
+        _ => panic!("unrecognized ELF os_abi {os_abi}"),
+    }
+}
+
+/// Get the OS from a mach file, or `Unknown` if not specified.
+fn mach_os<Mach: read::macho::MachHeader>(f: &read::macho::MachOFile<Mach>) -> Os {
+    // Note that this only returns something on `.rmeta` objects, not `.o`s.
+    let Ok(Some((build_cmd, build_tool))) = f.build_version() else {
+        return Os::Unknown;
+    };
+    let platform = build_cmd.platform.get(f.endian());
+
+    match platform {
+        macho::PLATFORM_UNKNOWN => Os::Unknown,
+        macho::PLATFORM_MACOS => Os::MacOs,
+        macho::PLATFORM_IOS | macho::PLATFORM_IOSSIMULATOR | macho::PLATFORM_MACCATALYST => Os::IOs,
+        macho::PLATFORM_TVOS | macho::PLATFORM_TVOSSIMULATOR => Os::TvOs,
+        macho::PLATFORM_VISIONOS | macho::PLATFORM_VISIONOSSIMULATOR => Os::VisionOs,
+        macho::PLATFORM_WATCHOS | macho::PLATFORM_WATCHOSSIMULATOR => Os::WatchOs,
+        _ => panic!("unrecognized Mach-O platform {platform} ({build_cmd:?} {build_tool:?})"),
+    }
+}
+
+/// Get the OS from a PE file, or `Unknown` if not specified.
+fn pe_os<Pe: read::pe::ImageNtHeaders>(f: &read::pe::PeFile<Pe>) -> Os {
+    let opt_hdr = f.nt_headers().optional_header();
+    let sub = opt_hdr.subsystem();
+    match sub {
+        pe::IMAGE_SUBSYSTEM_WINDOWS_CUI | pe::IMAGE_SUBSYSTEM_WINDOWS_GUI => Os::Windows,
+        _ => panic!("unrecognized PE subsystem {sub}, {opt_hdr:?}"),
+    }
+}
+
 /// Reasons a binary is considered to have an executable stack.
 enum ExeStack {
     MissingGnuStackSec,
@@ -451,7 +809,8 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
     // Check for PT_GNU_STACK marked executable
     let mut is_obj_exe = false;
     let mut found_gnu_stack = false;
-    let mut check_ph = |p_type: U32<Endianness>, p_flags: U32<Endianness>| {
+    let mut check_ph = |p_type: U32<Endianness, ProgramType>,
+                        p_flags: U32<Endianness, ProgramFlags>| {
         let ty = p_type.get(end);
         let flags = p_flags.get(end);
 
@@ -464,7 +823,7 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
         if ty == elf::PT_GNU_STACK {
             assert!(!found_gnu_stack, "multiple PT_GNU_STACK sections");
             found_gnu_stack = true;
-            if flags & elf::PF_X != 0 {
+            if flags.contains(elf::PF_X) {
                 return Err(ExeStack::ExePtGnuStack);
             }
         }
@@ -495,11 +854,15 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
     let mut gnu_stack_exe = None;
     let mut has_exe_sections = false;
     for sec in obj.sections() {
-        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+        let SectionFlags::Elf {
+            sh_type: _,
+            sh_flags,
+        } = sec.flags()
+        else {
             unreachable!("only elf files are being checked");
         };
 
-        let is_sec_exe = sh_flags & u64::from(elf::SHF_EXECINSTR) != 0;
+        let is_sec_exe = sh_flags.contains(elf::SHF_EXECINSTR);
 
         // If the magic section is present, its exe bit tells us whether or not the object
         // file requires an executable stack.
@@ -534,7 +897,7 @@ fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
     match obj.architecture() {
         // PPC64 doesn't set `.note.GNU-stack` since GNU nested functions don't need a trampoline,
         // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=21098>. This only applies to ELFv1.
-        Architecture::PowerPc64 if e_flags & elf::EF_PPC64_ABI != 2 => Ok(()),
+        Architecture::PowerPc64 if e_flags.0 & elf::EF_PPC64_ABI != 2 => Ok(()),
 
         _ => Err(ExeStack::MissingGnuStackSec),
     }

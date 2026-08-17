@@ -6,7 +6,7 @@ use libm::support::{Float, Int, MinInt};
 use crate::domain::get_domain;
 use crate::generate::{product2, product3};
 use crate::num::full_range;
-use crate::run_cfg::{int_range, iteration_count};
+use crate::run_cfg::{arg_max_iterations, int_range};
 use crate::{Arg0, Arg1, Arg2, CheckCtx, MathOp, linear_ints, logspace};
 
 /// Generate a sequence of inputs that eiher cover the domain in completeness (for smaller float
@@ -101,7 +101,7 @@ macro_rules! impl_spaced_input {
             Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps0 = arg_max_iterations(ctx, 0);
 
                 // Unary tests: `f16` and `f32` may be exhaustive.
                 if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
@@ -125,8 +125,8 @@ macro_rules! impl_spaced_input {
             Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, 0);
-                let max_steps1 = iteration_count(ctx, 1);
+                let max_steps0 = arg_max_iterations(ctx, 0);
+                let max_steps1 = arg_max_iterations(ctx, 1);
 
                 // Binary test: `f16` may be exhaustive.
                 if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
@@ -159,9 +159,9 @@ macro_rules! impl_spaced_input {
             Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, 0);
-                let max_steps1 = iteration_count(ctx, 1);
-                let max_steps2 = iteration_count(ctx, 2);
+                let max_steps0 = arg_max_iterations(ctx, 0);
+                let max_steps1 = arg_max_iterations(ctx, 1);
+                let max_steps2 = arg_max_iterations(ctx, 2);
 
                 // Ternary test: `f16` may be exhaustive tested if `LIBM_EXTENSIVE_TESTS`
                 // is incresed.
@@ -200,8 +200,8 @@ macro_rules! impl_spaced_input {
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range0 = int_range(ctx, 0).unwrap_or(full_range());
-                let max_steps0 = iteration_count(ctx, 0);
-                let max_steps1 = iteration_count(ctx, 1);
+                let max_steps0 = arg_max_iterations(ctx, 0);
+                let max_steps1 = arg_max_iterations(ctx, 1);
 
                 if let Some(exhaustive_steps0) = total_value_count_int::<Arg0<Op>>()
                     && exhaustive_steps0 <= max_steps0
@@ -232,9 +232,9 @@ macro_rules! impl_spaced_input {
             Op: MathOp<RustArgs = Self>,
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps0 = arg_max_iterations(ctx, 0);
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
-                let max_steps1 = iteration_count(ctx, 1);
+                let max_steps1 = arg_max_iterations(ctx, 1);
 
                 if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
                     && exhaustive_steps0 <= max_steps0
@@ -275,7 +275,7 @@ macro_rules! impl_spaced_input_int {
         {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range = int_range(ctx, 0).unwrap_or(full_range());
-                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps0 = arg_max_iterations(ctx, 0);
 
                 if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
                     && steps0 <= max_steps0
@@ -297,8 +297,8 @@ macro_rules! impl_spaced_input_int {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range0 = int_range(ctx, 0).unwrap_or(full_range());
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
-                let max_steps0 = iteration_count(ctx, 0);
-                let max_steps1 = iteration_count(ctx, 0);
+                let max_steps0 = arg_max_iterations(ctx, 0);
+                let max_steps1 = arg_max_iterations(ctx, 0);
 
                 if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
                     && steps0 <= max_steps0
@@ -331,8 +331,8 @@ macro_rules! impl_spaced_input_int {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let range0 = int_range(ctx, 0).unwrap_or(full_range());
                 let range1 = int_range(ctx, 1).unwrap_or(full_range());
-                let max_steps0 = iteration_count(ctx, 0);
-                let max_steps1 = iteration_count(ctx, 0);
+                let max_steps0 = arg_max_iterations(ctx, 0);
+                let max_steps1 = arg_max_iterations(ctx, 0);
 
                 if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
                     && steps0 <= max_steps0

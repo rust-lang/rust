@@ -1,5 +1,8 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
-#![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
+#![no_builtins]
+#![no_std]
+//
+#![feature(abi_custom)]
 #![feature(abi_unadjusted)]
 #![feature(asm_experimental_arch)]
 #![feature(cfg_target_has_atomic)]
@@ -11,8 +14,8 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
-#![no_builtins]
-#![no_std]
+#![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
+//
 #![allow(unstable_name_collisions)] // FIXME(float_bits_const): remove when stable
 #![allow(unused_features)]
 #![allow(internal_features)]
@@ -20,9 +23,6 @@
 #![allow(clippy::manual_swap)]
 // Support compiling on both stage0 and stage1 which may differ in supported stable features.
 #![allow(stable_features)]
-// By default, disallow this as it is forbidden in edition 2024. There is a lot of unsafe code to
-// be migrated, however, so exceptions exist.
-#![warn(unsafe_op_in_unsafe_fn)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.

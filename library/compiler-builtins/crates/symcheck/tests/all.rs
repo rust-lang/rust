@@ -1,7 +1,7 @@
-use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::{env, str};
 
 use assert_cmd::assert::Assert;
 use assert_cmd::cargo::cargo_bin_cmd;
@@ -89,6 +89,43 @@ fn test_visible_symbols() {
     assert.failure().stderr_contains("found 1 visible symbols"); // good is visible.
 }
 
+#[test]
+fn test_target_mismatch() {
+    // Build with the target we know we have a toolchain for, but check against something else.
+    let t_build = TestTarget::from_env();
+    let t_check = if t_build.triple.starts_with("x86_64") {
+        TestTarget {
+            triple: "aarch64-unknown-linux-gnu".to_string(),
+        }
+    } else {
+        TestTarget {
+            triple: "x86_64-unknown-linux-gnu".to_string(),
+        }
+    };
+
+    let dir = tempdir().unwrap();
+    let lib_out = dir.path().join("libfoo.rlib");
+    t_build.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
+
+    let assert = t_check.symcheck_exe().arg(&lib_out).assert();
+    assert
+        .failure()
+        .stderr_contains("some object files do not match the intended target");
+
+    // Try with C as well since some checks rely on rmeta archive members (Mach-O `build_version`).
+    let objs = t_build
+        .cc_build()
+        .file(input_dir().join("good_lib.c"))
+        .out_dir(&dir)
+        .compile_intermediates();
+    let [c_obj] = objs.as_slice() else { panic!() };
+
+    let assert = t_check.symcheck_exe().arg(c_obj).assert();
+    assert
+        .failure()
+        .stderr_contains("some object files do not match the intended target");
+}
+
 mod exe_stack {
     use super::*;
 
@@ -111,10 +148,7 @@ mod exe_stack {
 
         let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
-        if (t.is_ppc64be() && t.is_glibc())
-            || t.no_os()
-            || t.binary_obj_format() != BinaryFormat::Elf
-        {
+        if t.is_ppc64_elfv1() || t.no_os() || t.binary_obj_format() != BinaryFormat::Elf {
             // Ppc64be ELFv1 doesn't emit `.note.GNU-stack`, not relevant without an OS, and non-elf
             // targets don't use `.note.GNU-stack`.
             assert.success();
@@ -146,7 +180,7 @@ mod exe_stack {
 
         let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
-        if (t.is_ppc64be() && t.is_glibc()) || t.no_os() {
+        if t.is_ppc64_elfv1() || t.no_os() {
             // Ppc64be ELFv1 doesn't emit `.note.GNU-stack`, not relevant without an OS.
             assert.success();
             return;
@@ -270,7 +304,7 @@ impl TestTarget {
 
     fn symcheck_exe(&self) -> assert_cmd::Command {
         let mut cmd = cargo_bin_cmd!();
-        cmd.arg("--check");
+        cmd.arg("--check").arg("--target").arg(&self.triple);
         if self.no_os() {
             cmd.arg("--no-os");
         }
@@ -315,12 +349,16 @@ impl TestTarget {
         self.triple.contains("-windows-msvc")
     }
 
-    fn is_ppc64be(&self) -> bool {
-        self.triple.starts_with("powerpc64-")
-    }
-
-    fn is_glibc(&self) -> bool {
-        self.triple.contains("-linux-gnu")
+    fn is_ppc64_elfv1(&self) -> bool {
+        let output = Command::new("rustc")
+            .arg("--target")
+            .arg(&self.triple)
+            .arg("--print=cfg")
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let stdout = str::from_utf8(&output.stdout).unwrap();
+        self.triple.starts_with("powerpc64") && stdout.contains(r#"target_abi="elfv1""#)
     }
 
     /// True if the target needs `--no-os` passed to symcheck.
