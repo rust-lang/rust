@@ -1189,8 +1189,7 @@ impl Config {
         let download_rustc = download_rustc_commit.is_some();
 
         let stage = match flags_cmd {
-            Subcommand::Check { .. } => flags_stage.or(build_check_stage).unwrap_or(1),
-            Subcommand::Clippy { .. } | Subcommand::Fix => {
+            Subcommand::Check { .. } | Subcommand::Clippy { .. } | Subcommand::Fix { .. } => {
                 flags_stage.or(build_check_stage).unwrap_or(1)
             }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
@@ -1263,7 +1262,7 @@ impl Config {
             helpers::exit_process(1);
         }
 
-        if matches!(flags_cmd, Subcommand::Fix) {
+        if matches!(flags_cmd, Subcommand::Fix { .. }) {
             eprintln!(
                 "WARNING: `x fix` is provided on a best-effort basis and does not support all `cargo fix` options correctly."
             );
@@ -1289,7 +1288,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 Subcommand::Clean { .. }
                 | Subcommand::Check { .. }
                 | Subcommand::Clippy { .. }
-                | Subcommand::Fix
+                | Subcommand::Fix { .. }
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
