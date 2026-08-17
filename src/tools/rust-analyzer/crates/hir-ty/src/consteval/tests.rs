@@ -13,7 +13,7 @@ use crate::{
     consteval::allocation_as_usize,
     db::HirDatabase,
     display::DisplayTarget,
-    mir::pad16,
+    mir::{IsSigned, pad16},
     next_solver::{Allocation, DbInterner, GenericArgs},
     setup_tracing,
     test_db::TestDB,
@@ -60,7 +60,7 @@ fn check_number(#[rust_analyzer::rust_fixture] ra_fixture: &str, answer: i128) {
             b,
             &answer.to_le_bytes()[0..b.len()],
             "Bytes differ. In decimal form: actual = {}, expected = {answer}",
-            i128::from_le_bytes(pad16(b, true))
+            i128::from_le_bytes(pad16(b, IsSigned::Yes))
         );
     });
 }
@@ -178,28 +178,28 @@ fn floating_point() {
     );
     check_number(
         r#"const GOAL: f64 = 2.0 + 3.0 * 5.5 - 8.;"#,
-        i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), true)),
+        i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), IsSigned::Yes)),
     );
     check_number(
         r#"const GOAL: f32 = 2.0 + 3.0 * 5.5 - 8.;"#,
-        i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), true)),
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), IsSigned::Yes)),
     );
     check_number(
         r#"const GOAL: f32 = -90.0 + 36.0;"#,
-        i128::from_le_bytes(pad16(&f32::to_le_bytes(-54.0), true)),
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(-54.0), IsSigned::Yes)),
     );
     check_number(
         r#"const GOAL: f16 = 2.0 + 3.0 * 5.5 - 8.;"#,
         i128::from_le_bytes(pad16(
             &u16::try_from("10.5".parse::<f16>().unwrap().to_bits()).unwrap().to_le_bytes(),
-            true,
+            IsSigned::Yes,
         )),
     );
     check_number(
         r#"const GOAL: f16 = -90.0 + 36.0;"#,
         i128::from_le_bytes(pad16(
             &u16::try_from("-54.0".parse::<f16>().unwrap().to_bits()).unwrap().to_le_bytes(),
-            true,
+            IsSigned::Yes,
         )),
     );
 }
