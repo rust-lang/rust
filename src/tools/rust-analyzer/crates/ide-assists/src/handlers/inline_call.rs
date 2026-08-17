@@ -346,20 +346,11 @@ fn inline<'db>(
 ) -> ast::Expr {
     let make = file_editor.make();
     let file_id = sema.hir_file_for(fn_body.syntax());
-    let body_to_clone = if let Some(macro_file) = file_id.macro_file() {
-        cov_mark::hit!(inline_call_defined_in_macro);
-        let span_map = macro_file.expansion_span_map(sema.db);
-        let body_prettified =
-            prettify_macro_expansion(sema.db, fn_body.syntax().clone(), span_map, *krate);
-        if let Some(body) = ast::BlockExpr::cast(body_prettified) { body } else { fn_body.clone() }
-    } else {
-        fn_body.clone()
-    };
 
     // Capture before `with_ast_node` re-roots and loses the source-relative position.
-    let mut original_body_indent = IndentLevel::from_node(body_to_clone.syntax());
-    let body_offset = body_to_clone.syntax().text_range().start();
-    let (editor, body) = SyntaxEditor::with_ast_node(&body_to_clone);
+    let mut original_body_indent = IndentLevel::from_node(fn_body.syntax());
+    let body_offset = fn_body.syntax().text_range().start();
+    let (editor, body) = SyntaxEditor::with_ast_node(fn_body);
 
     let usages_for_locals = |local| {
         Definition::Local(local)
@@ -380,10 +371,10 @@ fn inline<'db>(
             // not only the local if it is a simple binding
             match param.as_local(sema.db) {
                 Some(l) => usages_for_locals(l)
-                    .map(|FileReference { name, range, .. }| match name {
-                        FileReferenceNode::NameRef(_) => body
+                    .map(|FileReference { name, .. }| match name {
+                        FileReferenceNode::NameRef(it) => body
                             .syntax()
-                            .covering_element(range - body_offset)
+                            .covering_element(it.syntax().text_range() - body_offset)
                             .ancestors()
                             .nth(3)
                             .and_then(ast::PathExpr::cast),
@@ -407,10 +398,10 @@ fn inline<'db>(
             .as_local(sema.db)
             .map(|self_local| {
                 usages_for_locals(self_local)
-                    .filter_map(|FileReference { name, range, .. }| match name {
-                        FileReferenceNode::NameRef(_) => {
-                            Some(body.syntax().covering_element(range - body_offset))
-                        }
+                    .filter_map(|FileReference { name, .. }| match name {
+                        FileReferenceNode::NameRef(it) => Some(
+                            body.syntax().covering_element(it.syntax().text_range() - body_offset),
+                        ),
                         _ => None,
                     })
                     .collect()
@@ -611,6 +602,13 @@ fn inline<'db>(
         )
     {
         body = new_body;
+    }
+    if let Some(macro_file) = file_id.macro_file() {
+        cov_mark::hit!(inline_call_defined_in_macro);
+        let span_map = macro_file.expansion_span_map(sema.db);
+        let body_prettified =
+            prettify_macro_expansion(sema.db, body.syntax().clone(), span_map, *krate);
+        body = ast::BlockExpr::cast(body_prettified).unwrap();
     }
 
     let is_async_fn = function.is_async(sema.db);
@@ -1455,6 +1453,38 @@ fn bar() -> u32 {
     {
         let x = 0;
         x
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_define_passed_in_macro() {
+        cov_mark::check!(inline_call_defined_in_macro);
+        check_assist(
+            inline_call,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    fn htons(hostshort: u16) {
+        let _ = hostshort;
+    }
+}
+fn foo() {
+    htons$0(123)
+}
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    fn htons(hostshort: u16) {
+        let _ = hostshort;
+    }
+}
+fn foo() {
+    {
+        let _ = 123;
     }
 }
 "#,
