@@ -130,6 +130,7 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
 impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
     type Kind = GenericArgKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }
