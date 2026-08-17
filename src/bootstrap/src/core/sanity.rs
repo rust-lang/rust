@@ -14,11 +14,11 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::Build;
 use crate::core::build_steps::tool;
 use crate::core::builder::Builder;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
+use crate::core::session::Build;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
 

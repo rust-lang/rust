@@ -14,9 +14,9 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
+use crate::core::session::{Build, Mode};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
-use crate::{Build, Mode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}

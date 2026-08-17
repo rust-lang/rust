@@ -7,11 +7,11 @@ use std::{fs, io};
 
 use sha2::digest::Digest;
 
-use crate::Mode;
 use crate::core::backend::CodegenBackendKind;
 use crate::core::builder::Builder;
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
+use crate::core::session::Mode;
 use crate::utils::helpers::{self, hex_encode, mtime, t};
 
 #[cfg(test)]

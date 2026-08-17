@@ -14,7 +14,6 @@
 //! (as usual) a massive undertaking/refactoring.
 
 use super::tool::{SourceType, prepare_tool_cargo};
-use crate::Mode;
 use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
@@ -26,6 +25,7 @@ use crate::core::builder::{
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::Subcommand;
+use crate::core::session::Mode;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::helpers;
 
