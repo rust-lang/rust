@@ -3,52 +3,19 @@
 Thank you for your interest in contributing to Rust!
 There are many ways to contribute, and we appreciate all of them.
 
-If this is your first time contributing, the [walkthrough] chapter can give you a good example of
-how a typical contribution would go.
+For general information about how to contribute to Rust,
+see [Forge](https://forge.rust-lang.org/how-to-start-contributing.html).
+The rest of this section is about how to contribute to the compiler specifically.
 
 This documentation is _not_ intended to be comprehensive;
 it is meant to be a quick guide for the most useful things.
 For more information,
 see [How to build and run the compiler](building/how-to-build-and-run.md).
 
-[internals]: https://internals.rust-lang.org
-[rust-zulip]: https://rust-lang.zulipchat.com
-[coc]: https://www.rust-lang.org/policies/code-of-conduct
-[walkthrough]: ./walkthrough.md
-[Getting Started]: ./getting-started.md
+## Finding help
 
-## Asking Questions
-
-If you have questions, please make a post on the [Rust Zulip server][rust-zulip] or
-[internals.rust-lang.org][internals].
-See the [list of teams and working groups][governance] and [the Community page][community] on the
-official website for more resources.
-
-[governance]: https://www.rust-lang.org/governance
-[community]: https://www.rust-lang.org/community
-
-As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
-
-The compiler team (or `t-compiler`) usually hangs out in Zulip in
-[the #t-compiler channel][z-t-compiler];
-questions about how the compiler works can go in [#t-compiler/help][z-help].
-
-[z-t-compiler]: https://rust-lang.zulipchat.com/#narrow/channel/131828-t-compiler
-[z-help]: https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp
-
-**Please ask questions!** A lot of people report feeling that they are "wasting
-expert's time", but nobody on `t-compiler` feels this way.
-Contributors are important to us.
-
-Also, if you feel comfortable, prefer public topics, as this means others can
-see the questions and answers, and perhaps even integrate them back into this guide :)
-
-**Tip**: If you're not a native English speaker and feel unsure about writing, try using a translator to help.
-But avoid using LLM tools that generate long, complex words.
-In daily teamwork, **simple and clear words** are best for easy understanding.
-Even small typos or grammar mistakes can make you seem more human, and people connect better with humans.
-
-See also [our LLM policy](https://forge.rust-lang.org/policies/llm-usage.html).
+See also ["Asking
+Questions"](https://forge.rust-lang.org/how-to-start-contributing.html#asking-questions).
 
 ### Experts
 
@@ -68,18 +35,10 @@ more information about these commits).
 
 [map]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
 
-### Etiquette
-
-We do ask that you be mindful to include as much useful information as you can
-in your question, but we recognize this can be hard if you are unfamiliar with contributing to Rust.
-
-Just pinging someone without providing any context can be a bit annoying and
-just create noise, so we ask that you be mindful of the fact that the
-`t-compiler` folks get a lot of pings in a day.
 
 ## What should I work on?
 
-The Rust project is quite large and it can be difficult to know which parts of the project need
+The `rust` monorepo is quite large and it can be difficult to know which parts need
 help, or are a good starting place for beginners.
 Here are some suggested starting places.
 
@@ -91,7 +50,6 @@ See the [Triage] for an explanation of these labels.
 You can also try filtering the search to areas you're interested in.
 For example:
 
-- `repo:rust-lang/rust-clippy` will only show clippy issues
 - `label:T-compiler` will only show issues related to the compiler
 - `label:A-diagnostics` will only show diagnostic issues
 
@@ -111,17 +69,6 @@ it's easy to pick up work without a large time commitment:
 - *Add recurring work items here.*
 
 If you find more recurring work, please feel free to add it here!
-
-### Clippy issues
-
-The [Clippy] project has spent a long time making its contribution process as friendly to newcomers
-as possible.
-Consider working on it first to get familiar with the process and the compiler internals.
-
-See [the Clippy contribution guide][clippy-contributing] for instructions on getting started.
-
-[Clippy]: https://doc.rust-lang.org/clippy/
-[clippy-contributing]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md
 
 ### Diagnostic issues
 
@@ -161,40 +108,9 @@ You can see a list of needs test issues [here][needs-test-issues].
 
 See [std-dev-guide](https://std-dev-guide.rust-lang.org/).
 
-### Contributing code to other Rust projects
-
-There are a bunch of other projects that you can contribute to outside of the
-`rust-lang/rust` repo, including `cargo`, `miri`, `rustup`, and many others.
-
-These repos might have their own contributing guidelines and procedures.
-Many of them are owned by working groups.
-For more info, see the documentation in those repos' READMEs.
-
 ### Other ways to contribute
 
-There are a bunch of other ways you can contribute, especially if you don't
-feel comfortable jumping straight into the large `rust-lang/rust` codebase.
-
-The following tasks are doable without much background knowledge but are incredibly helpful:
-
-- [Writing documentation][wd]: if you are feeling a bit more intrepid, you could try
-  to read a part of the code and write doc comments for it.
-  This will help you to learn some part of the compiler while also producing a useful artifact!
-- [Triaging issues][triage]: categorizing, replicating, and minimizing issues is very helpful to the Rust maintainers.
-- [Working areas][wa]: there are a bunch of working areas on a wide variety
-  of rust-related things.
-- Answer questions on [users.rust-lang.org][users], or on [Stack Overflow][so].
-- Participate in the [RFC process](https://github.com/rust-lang/rfcs).
-- Find a [requested community library][community-library], build it, and publish
-  it to [Crates.io](https://crates.io).
-  Easier said than done, but very, very valuable!
-
-[users]: https://users.rust-lang.org/
-[so]: http://stackoverflow.com/questions/tagged/rust
-[community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
-[wd]: ./contributing.md#writing-documentation
-[wa]: https://forge.rust-lang.org/compiler/working-areas.html
-[triage]: ./contributing.md#issue-triage
+See [Forge](https://forge.rust-lang.org/how-to-start-contributing.html#how-to-start-contributing-1).
 
 ## Cloning and Building
 

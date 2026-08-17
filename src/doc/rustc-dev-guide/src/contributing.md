@@ -71,20 +71,13 @@ Breaking changes have a [dedicated section][Breaking Changes] in the dev-guide.
 
 ### Major changes
 
-The compiler team has a special process for large changes, whether or not they cause breakage.
-This process is called a Major Change Proposal (MCP).
-MCP is a relatively lightweight mechanism for getting feedback on large changes to the
-compiler (as opposed to a full RFC or a design meeting with the team).
-
-Example of things that might require MCPs include major refactorings, changes
-to important types, or important changes to how the compiler does something, or
-smaller user-facing changes.
+See ["What proposal approval do I need?"](https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#what-proposalapproval-do-i-need)
+For a definition of the terms there, see
+["Proposals"](https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#proposals).
 
 **When in doubt, ask [on Zulip].
-It would be a shame to put a lot of work
-into a PR that ends up not getting merged!** [See this document][mcpinfo] for more info on MCPs.
+It would be a shame to put a lot of work into a PR that ends up not getting merged!**
 
-[mcpinfo]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#how-do-i-submit-an-mcp
 [on Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ### Performance
@@ -175,29 +168,9 @@ After rebasing, it's recommended to [run the relevant tests locally](tests/intro
 
 ### r?
 
-All pull requests are reviewed by another person.
-We have a bot, [@rustbot], that will automatically assign a random person
-to review your request based on which files you changed.
-
-If you want to request that a specific person reviews your pull request, you
-can add an `r?` to the pull request description or in a comment.
-For example, if you want to ask a review by @awesome-reviewer,
-add the following to the end of the pull request description:
-
-    r? @awesome-reviewer
-
-[@rustbot] will then assign the PR to that reviewer instead of a random person.
-This is entirely optional.
-
-You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
-As an example, if you were making a diagnostics change,
-you could get a reviewer from the diagnostics team by adding:
-
-    r? rust-lang/diagnostics
-
-For a full list of possible `groupname`s,
-check the `adhoc_groups` section at the [triagebot.toml config file],
-or the list of teams in the [rust-lang teams database].
+Your PR will be automatically assigned a reviewer.
+You can override the reviewer using `r? @username`.
+See [PR assignment](https://forge.rust-lang.org/triagebot/pr-assignment.html#usage) for details.
 
 ### Waiting for reviews
 
@@ -350,18 +323,10 @@ leave a comment on the original PR asking the reviewer to close it for you.
 
 ### Reverting a PR
 
-When a PR leads to miscompile, significant performance regressions, or other critical issues, we may
-want to revert that PR with a regression test case.
-You can also check out the [revert policy] on
-Forge docs (which is mainly targeted for reviewers, but contains useful info for PR authors too).
+See ["Reverts"](https://forge.rust-lang.org/compiler/reviews.html#reverts) on Forge.
 
-If the PR contains huge changes, it can be challenging to revert, making it harder to review
-incremental fixes in subsequent updates.
-Or if certain code in that PR is heavily depended upon by
-subsequent PRs, reverting it can become difficult.
-
-In such cases, we can identify the problematic code and disable it for some input, as shown in [#128271][#128271].
-
+If a PR is large enough that it's hard to revert, it's ok to simply disable the trigger for the
+problematic code, as shown in [#128271][#128271].
 For MIR optimizations, we can also use the `-Zunsound-mir-opt` option to gate the mir-opt, as shown
 in [#132356][#132356].
 
@@ -482,52 +447,11 @@ Just a few things to keep in mind:
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
 see [the rustc-dev-guide team documentation].
 
+[the rustc-dev-guide team documentation]: https://forge.rust-lang.org/rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
+
 ## Issue triage
 
 Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
-
-[stable-]: https://github.com/rust-lang/rust/labels?q=stable
-[beta-]: https://github.com/rust-lang/rust/labels?q=beta
-[I-\*-nominated]: https://github.com/rust-lang/rust/labels?q=nominated
-[I-prioritize]: https://github.com/rust-lang/rust/labels/I-prioritize
-[tracking issues]: https://github.com/rust-lang/rust/labels/C-tracking-issue
-[beta-backport]: https://forge.rust-lang.org/release/backporting.html#beta-backporting-in-rust-langrust
-[stable-backport]: https://forge.rust-lang.org/release/backporting.html#stable-backporting-in-rust-langrust
-[metabug]: https://github.com/rust-lang/rust/labels/metabug
-[regression-]: https://github.com/rust-lang/rust/labels?q=regression
-[relnotes]: https://github.com/rust-lang/rust/labels/relnotes
-[S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
-[the rustc-dev-guide team documentation]: https://forge.rust-lang.org/rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
-
-### rfcbot labels
-
-[rfcbot] uses its own labels for tracking the process of coordinating
-asynchronous decisions, such as approving or rejecting a change.
-This is used for [RFCs], issues, and pull requests.
-
-| Labels | Color | Description |
-|--------|-------|-------------|
-| [proposed-final-comment-period] | <span class="label-color" style="background-color:#ededed;">&#x2003;</span>&nbsp;Gray | Currently awaiting signoff of all team members in order to enter the final comment period. |
-| [disposition-merge] | <span class="label-color" style="background-color:#008800;">&#x2003;</span>&nbsp;Green | Indicates the intent is to merge the change. |
-| [disposition-close] | <span class="label-color" style="background-color:#dd0000;">&#x2003;</span>&nbsp;Red | Indicates the intent is to not accept the change and close it. |
-| [disposition-postpone] | <span class="label-color" style="background-color:#ededed;">&#x2003;</span>&nbsp;Gray | Indicates the intent is to not accept the change at this time and postpone it to a later date. |
-| [final-comment-period] | <span class="label-color" style="background-color:#1e76d9;">&#x2003;</span>&nbsp;Blue | Currently soliciting final comments before merging or closing. |
-| [finished-final-comment-period] | <span class="label-color" style="background-color:#f9e189;">&#x2003;</span>&nbsp;Light Yellow | The final comment period has concluded, and the issue will be merged or closed. |
-| [postponed] | <span class="label-color" style="background-color:#fbca04;">&#x2003;</span>&nbsp;Yellow | The issue has been postponed. |
-| [closed] | <span class="label-color" style="background-color:#dd0000;">&#x2003;</span>&nbsp;Red | The issue has been rejected. |
-| [to-announce] | <span class="label-color" style="background-color:#ededed;">&#x2003;</span>&nbsp;Gray | Issues that have finished their final-comment-period and should be publicly announced. Note: the rust-lang/rust repository uses this label differently, to announce issues at the triage meetings. |
-
-[disposition-merge]: https://github.com/rust-lang/rust/labels/disposition-merge
-[disposition-close]: https://github.com/rust-lang/rust/labels/disposition-close
-[disposition-postpone]: https://github.com/rust-lang/rust/labels/disposition-postpone
-[proposed-final-comment-period]: https://github.com/rust-lang/rust/labels/proposed-final-comment-period
-[final-comment-period]: https://github.com/rust-lang/rust/labels/final-comment-period
-[finished-final-comment-period]: https://github.com/rust-lang/rust/labels/finished-final-comment-period
-[postponed]: https://github.com/rust-lang/rfcs/labels/postponed
-[closed]: https://github.com/rust-lang/rfcs/labels/closed
-[to-announce]: https://github.com/rust-lang/rfcs/labels/to-announce
-[rfcbot]: https://github.com/anp/rfcbot-rs/
-[RFCs]: https://github.com/rust-lang/rfcs
 
 ## LLM policy
 
