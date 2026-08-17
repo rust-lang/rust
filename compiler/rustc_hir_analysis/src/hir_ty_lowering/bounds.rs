@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -22,6 +23,77 @@ use crate::hir_ty_lowering::{
     AssocItemQSelf, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
     OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
 };
+
+pub(crate) fn trait_defines_assoc_item(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+    assoc_tag: ty::AssocTag,
+    assoc_ident: Ident,
+) -> bool {
+    tcx.associated_items(trait_def_id)
+        .find_by_ident_and_kind(tcx, assoc_ident, assoc_tag, trait_def_id)
+        .is_some()
+}
+
+pub(crate) fn collapse_assoc_item_candidates_to_subtrait_pick<T: Copy>(
+    tcx: TyCtxt<'_>,
+    matching_candidates: &[T],
+    trait_def_id: impl Fn(T) -> DefId,
+) -> Option<T> {
+    if !tcx.features().supertrait_item_shadowing() {
+        return None;
+    }
+
+    let mut child_trait = matching_candidates[0];
+    let mut supertraits: SsoHashSet<_> =
+        traits::supertrait_def_ids(tcx, trait_def_id(child_trait)).collect();
+
+    let mut remaining_candidates: Vec<_> = matching_candidates[1..].to_vec();
+    while !remaining_candidates.is_empty() {
+        let mut made_progress = false;
+        let mut next_round = vec![];
+
+        for remaining_trait in remaining_candidates {
+            if supertraits.contains(&trait_def_id(remaining_trait)) {
+                made_progress = true;
+                continue;
+            }
+
+            // This candidate is not a supertrait of the `child_trait`.
+            // Check if it's a subtrait of the `child_trait`, instead.
+            // If it is, then it must have been a subtrait of every
+            // other pick we've eliminated at this point. It will
+            // take over at this point.
+            let remaining_trait_supertraits: SsoHashSet<_> =
+                traits::supertrait_def_ids(tcx, trait_def_id(remaining_trait)).collect();
+            if remaining_trait_supertraits.contains(&trait_def_id(child_trait)) {
+                child_trait = remaining_trait;
+                supertraits = remaining_trait_supertraits;
+                made_progress = true;
+                continue;
+            }
+
+            // Neither `child_trait` or the current candidate are
+            // supertraits of each other.
+            // Don't bail here, since we may be comparing two supertraits
+            // of a common subtrait. These two supertraits won't be related
+            // at all, but we will pick them up next round when we find their
+            // child as we continue iterating in this round.
+            next_round.push(remaining_trait);
+        }
+
+        if made_progress {
+            // If we've made progress, iterate again.
+            remaining_candidates = next_round;
+        } else {
+            // Otherwise, we must have at least two candidates which
+            // are not related to each other at all.
+            return None;
+        }
+    }
+
+    Some(child_trait)
+}
 
 #[derive(Debug, Default)]
 struct CollectedBound {

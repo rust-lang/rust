@@ -76,10 +76,12 @@ pub fn is_const_evaluatable<'tcx>(
                             "Missing value for constant, but no error reported?",
                         )))
                     }
-                    Err(
-                        EvaluateConstErr::EvaluationFailure(e)
-                        | EvaluateConstErr::InvalidConstParamTy(e),
-                    ) => Err(NotConstEvaluatable::Error(e)),
+                    Err(EvaluateConstErr::EvaluationFailure(e)) => {
+                        Err(NotConstEvaluatable::Error(e))
+                    }
+                    Err(EvaluateConstErr::NonValTree(_)) => {
+                        Err(NotConstEvaluatable::Error(super::non_valtree_error(infcx.tcx)))
+                    }
                     Ok(_) => Ok(()),
                 }
             }
@@ -146,9 +148,10 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             }
-            Err(
-                EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e),
-            ) => Err(NotConstEvaluatable::Error(e)),
+            Err(EvaluateConstErr::EvaluationFailure(e)) => Err(NotConstEvaluatable::Error(e)),
+            Err(EvaluateConstErr::NonValTree(_)) => {
+                Err(NotConstEvaluatable::Error(super::non_valtree_error(infcx.tcx)))
+            }
             Ok(_) => Ok(()),
         }
     }

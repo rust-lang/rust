@@ -948,8 +948,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             Err(_) => Ok(EvaluatedToErr),
                         }
                     }
-                    (Err(EvaluateConstErr::InvalidConstParamTy(..)), _)
-                    | (_, Err(EvaluateConstErr::InvalidConstParamTy(..))) => Ok(EvaluatedToErr),
+                    (Err(EvaluateConstErr::NonValTree(..)), _)
+                    | (_, Err(EvaluateConstErr::NonValTree(..))) => Ok(EvaluatedToErr),
                     (Err(EvaluateConstErr::EvaluationFailure(..)), _)
                     | (_, Err(EvaluateConstErr::EvaluationFailure(..))) => Ok(EvaluatedToErr),
                     (Err(EvaluateConstErr::HasGenericsOrInfers), _)

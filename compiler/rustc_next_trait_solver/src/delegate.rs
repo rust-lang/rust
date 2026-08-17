@@ -7,6 +7,12 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{self as ty, CanonicalizerState, InferCtxtLike, Interner, TypeFoldable};
 
+pub enum EvaluateConstResult<I: Interner> {
+    Evaluated(I::Const),
+    TooGeneric,
+    NonValTree(I::Ty),
+}
+
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     type Infcx: InferCtxtLike<Interner = Self::Interner>;
     type Interner: Interner;
@@ -37,9 +43,6 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     // FIXME: Uplift the leak check into this crate.
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution>;
 
-    /// Evaluate a const, normalizing the type of the resulting value with `normalize_ty`.
-    /// Returns `Ok(None)` if the const is too generic, and `Err(_)` only if `normalize_ty`
-    /// failed.
     fn evaluate_const<E: Debug>(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
@@ -47,7 +50,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         normalize_ty: impl FnOnce(
             ty::Unnormalized<Self::Interner, <Self::Interner as Interner>::Ty>,
         ) -> Result<<Self::Interner as Interner>::Ty, E>,
-    ) -> Result<Option<<Self::Interner as Interner>::Const>, E>;
+    ) -> Result<EvaluateConstResult<Self::Interner>, E>;
 
     // FIXME: This only is here because `wf::obligations` is in `rustc_trait_selection`!
     fn well_formed_goals(

@@ -1,0 +1,10 @@
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-supertrait-item-shadowing.rs:17:26
+   |
+LL | fn take(_: impl Leaf<F = { || {} }>) {}
+   |                          ^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: aborting due to 1 previous error
+

@@ -775,7 +775,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 }
                                 e @ Err(
                                     EvaluateConstErr::EvaluationFailure(_)
-                                    | EvaluateConstErr::InvalidConstParamTy(_),
+                                    | EvaluateConstErr::NonValTree(_),
                                 ) => e,
                             }
                         } else {
@@ -804,8 +804,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 }
                             }
                         }
-                        (Err(EvaluateConstErr::InvalidConstParamTy(e)), _)
-                        | (_, Err(EvaluateConstErr::InvalidConstParamTy(e))) => {
+                        (Err(EvaluateConstErr::NonValTree(_)), _)
+                        | (_, Err(EvaluateConstErr::NonValTree(_))) => {
+                            let e = super::non_valtree_error(tcx);
                             ProcessResult::Error(FulfillmentErrorCode::Select(
                                 SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(e)),
                             ))

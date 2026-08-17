@@ -8,7 +8,7 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, M
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
@@ -753,6 +753,93 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         } {
             tcx.dcx().emit_err(diagnostics::LinkageType { span: tcx.def_span(def_id) });
         }
+    }
+}
+
+pub(crate) fn check_assoc_const_equality(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
+    if !tcx.features().generic_const_args() {
+        return Ok(());
+    }
+
+    let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id) else {
+        return Ok(());
+    };
+    let hir::Node::ConstArg(const_arg) = tcx.parent_hir_node(anon.hir_id) else {
+        return Ok(());
+    };
+    let hir::Node::AssocItemConstraint(constraint) = tcx.parent_hir_node(const_arg.hir_id) else {
+        return Ok(());
+    };
+    let hir::Node::TraitRef(trait_ref) = tcx.parent_hir_node(constraint.hir_id) else {
+        return Ok(());
+    };
+    let Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_def_id) = trait_ref.path.res else {
+        return Ok(());
+    };
+
+    let candidate_trait = if crate::hir_ty_lowering::trait_defines_assoc_item(
+        tcx,
+        trait_def_id,
+        ty::AssocTag::Const,
+        constraint.ident,
+    ) {
+        trait_def_id
+    } else {
+        let candidates: Vec<_> = traits::supertrait_def_ids(tcx, trait_def_id)
+            .filter(|&candidate| {
+                crate::hir_ty_lowering::trait_defines_assoc_item(
+                    tcx,
+                    candidate,
+                    ty::AssocTag::Const,
+                    constraint.ident,
+                )
+            })
+            .collect();
+        match candidates.as_slice() {
+            [] => return Ok(()),
+            [candidate] => *candidate,
+            _ => {
+                let Some(candidate) =
+                    crate::hir_ty_lowering::collapse_assoc_item_candidates_to_subtrait_pick(
+                        tcx,
+                        &candidates,
+                        |candidate| candidate,
+                    )
+                else {
+                    return Ok(());
+                };
+                candidate
+            }
+        }
+    };
+    let Some(assoc_item) = tcx.associated_items(candidate_trait).find_by_ident_and_kind(
+        tcx,
+        constraint.ident,
+        ty::AssocTag::Const,
+        candidate_trait,
+    ) else {
+        return Ok(());
+    };
+    if tcx.is_type_const(assoc_item.def_id) {
+        return Ok(());
+    }
+    let alias_const = ty::AliasConst::new(
+        tcx,
+        ty::AliasConstKind::Anon { def_id: anon.def_id.to_def_id() },
+        ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
+    );
+    let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, alias_const);
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let result = traits::try_evaluate_const(&infcx, ct, ty::ParamEnv::empty(), |ty| {
+        Ok::<_, !>(ty.skip_norm_wip())
+    });
+    if let Err(traits::EvaluateConstErr::NonValTree(bad_ty)) = result {
+        Err(traits::report_non_valtree_const(tcx, alias_const, bad_ty))
+    } else {
+        Ok(())
     }
 }
 

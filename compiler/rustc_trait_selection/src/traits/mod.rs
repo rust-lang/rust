@@ -573,15 +573,12 @@ pub fn normalize_param_env_or_error<'tcx>(
 }
 
 #[derive(Debug)]
-pub enum EvaluateConstErr<E> {
+pub enum EvaluateConstErr<'tcx, E> {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
     /// some alias const with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
-    /// The type this constant evaluated to is not valid for use in const generics. This should
-    /// always result in an error when checking the constant is correctly typed for the parameter
-    /// it is an argument to, so a bug is delayed when encountering this.
-    InvalidConstParamTy(ErrorGuaranteed),
+    NonValTree(Ty<'tcx>),
     /// CTFE failed to evaluate the constant in some unrecoverable way (e.g. encountered a `panic!`).
     /// This is also used when the constant was already tainted by error.
     EvaluationFailure(ErrorGuaranteed),
@@ -604,8 +601,9 @@ pub fn evaluate_const<'tcx>(
 ) -> ty::Const<'tcx> {
     match try_evaluate_const(infcx, ct, param_env, |v| Ok::<_, !>(v.skip_norm_wip())) {
         Ok(ct) => ct,
-        Err(EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e)) => {
-            ty::Const::new_error(infcx.tcx, e)
+        Err(EvaluateConstErr::EvaluationFailure(e)) => ty::Const::new_error(infcx.tcx, e),
+        Err(EvaluateConstErr::NonValTree(_)) => {
+            ty::Const::new_error(infcx.tcx, non_valtree_error(infcx.tcx))
         }
         Err(EvaluateConstErr::HasGenericsOrInfers) => ct,
     }
@@ -625,7 +623,7 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
-) -> Result<ty::Const<'tcx>, EvaluateConstErr<E>> {
+) -> Result<ty::Const<'tcx>, EvaluateConstErr<'tcx, E>> {
     let tcx = infcx.tcx;
     let ct = infcx.resolve_vars_if_possible(ct);
     debug!(?ct);
@@ -768,18 +766,35 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                         .map_err(EvaluateConstErr::FailedNormalization)?;
                     Ok(ty::Const::new_value(tcx, val, ty))
                 }
-                Ok(Err(_)) => {
-                    let e = tcx.dcx().delayed_bug(
-                        "Type system constant with non valtree'able type evaluated but no error emitted",
-                    );
-                    Err(EvaluateConstErr::InvalidConstParamTy(e))
-                }
+                Ok(Err(bad_ty)) => Err(EvaluateConstErr::NonValTree(bad_ty)),
                 Err(ErrorHandled::Reported(info, _)) => {
                     Err(EvaluateConstErr::EvaluationFailure(info.into()))
                 }
                 Err(ErrorHandled::TooGeneric(_)) => Err(EvaluateConstErr::HasGenericsOrInfers),
             }
         }
+    }
+}
+
+pub(crate) fn non_valtree_error(tcx: TyCtxt<'_>) -> ErrorGuaranteed {
+    tcx.dcx().delayed_bug(
+        "Type system constant with non valtree'able type evaluated but no error emitted",
+    )
+}
+
+pub fn report_non_valtree_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alias_const: ty::AliasConst<'tcx>,
+    bad_ty: Ty<'tcx>,
+) -> ErrorGuaranteed {
+    let span = alias_const.kind.def_span(tcx);
+    match bad_ty.kind() {
+        ty::FnPtr(..) | ty::RawPtr(..) => {
+            tcx.dcx().emit_err(crate::diagnostics::RawPtrComparisonErr { span })
+        }
+        _ => tcx
+            .dcx()
+            .emit_err(crate::diagnostics::UnableToConstructConstantValue { span, alias_const }),
     }
 }
 

@@ -1,0 +1,50 @@
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-const-param-issue-161100.rs:10:27
+   |
+LL | fn take(_: impl Trait<F = { || {} }>) {}
+   |                           ^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-const-param-issue-161100.rs:13:34
+   |
+LL | type TraitObject = dyn Trait<F = { || {} }>;
+   |                                  ^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-const-param-issue-161100.rs:16:40
+   |
+LL | fn take_trait_object(_: &dyn Trait<F = { || {} }>) {}
+   |                                        ^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-const-param-issue-161100.rs:20:27
+   |
+LL |     let _: &dyn Trait<F = { || {} }>;
+   |                           ^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-const-param-issue-161100.rs:33:27
+   |
+LL |     let _: &dyn Trait<F = { || {} }> = value;
+   |                           ^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/fn-ptr-const-param-issue-161100.rs:48:40
+   |
+LL | fn take_function(_: impl EnumTrait<F = { Foo::Function(|| {}) }>) {}
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: aborting due to 6 previous errors
+

@@ -860,7 +860,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 |ty| Ok::<_, !>(ty.skip_norm_wip()),
                             );
 
-                            if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
+                            if let Err(EvaluateConstErr::NonValTree(_)) = ct {
                                 let span = alias_const.kind.def_span(self.tcx);
                                 self.tcx
                                     .dcx()
