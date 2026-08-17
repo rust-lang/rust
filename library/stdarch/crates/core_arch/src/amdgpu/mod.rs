@@ -7,7 +7,7 @@
 //! [LLVM implementation]: https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/IntrinsicsAMDGPU.td
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.amdgcn.workitem.id.x"]
     safe fn llvm_workitem_id_x() -> u32;
     #[link_name = "llvm.amdgcn.workitem.id.y"]

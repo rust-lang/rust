@@ -456,7 +456,7 @@ fn generate_extern_block(intrinsics: &[ScalarIntrinsic]) -> String {
 
     output.push_str("// LLVM intrinsic declarations for Hexagon scalar operations\n");
     output.push_str("#[allow(improper_ctypes)]\n");
-    output.push_str("unsafe extern \"unadjusted\" {\n");
+    output.push_str("unsafe extern \"llvm-intrinsic\" {\n");
 
     for info in intrinsics {
         let link_name = info.llvm_link_name();

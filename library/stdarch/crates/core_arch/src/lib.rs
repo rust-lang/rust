@@ -25,7 +25,6 @@
     loongarch_target_feature,
     hexagon_target_feature,
     wasm_target_feature,
-    abi_unadjusted,
     rtm_target_feature,
     allow_internal_unstable,
     decl_macro,

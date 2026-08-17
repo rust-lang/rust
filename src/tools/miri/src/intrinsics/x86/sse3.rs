@@ -22,7 +22,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the data crosses a cache line, but for Miri this is just a regular
             // unaligned read.
             "ldu.dq" => {
-                let [src_ptr] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [src_ptr] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let src_ptr = this.read_pointer(src_ptr)?;
                 let dest = dest.force_mplace(this)?;
 
