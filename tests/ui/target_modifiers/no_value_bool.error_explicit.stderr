@@ -1,8 +1,4 @@
 error: mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`
-  --> $DIR/no_value_bool.rs:17:1
-   |
-LL | #![feature(no_core)]
-   | ^
    |
    = help: the `-Zreg-struct-return` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
    = note: `-Zreg-struct-return` is unset in this crate which is incompatible with `-Zreg-struct-return=true` in dependency `enabled_reg_struct_return`
