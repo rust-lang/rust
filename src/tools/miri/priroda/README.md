@@ -47,9 +47,10 @@ user-relevant source location after `configurationDone`, reports one current
 stack frame, exposes one flat Locals scope, and maps `list_locals()` into DAP
 variables with no child expansion.
 
-The `next` and `stepIn` requests are wired to Priroda's existing source-line
-step so VS Code can drive one visible step. They are not true DAP step-over or
-step-in semantics yet.
+DAP supports `stepIn` and `next`. `stepIn` stops at the next displayed source
+location and can enter calls, while `next` steps over calls by tracking the
+starting stack depth. This is still single-threaded and source-position based,
+not the full future thread/frame model. DAP `stepOut` remains unsupported.
 
 ### VS Code
 

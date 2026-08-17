@@ -14,4 +14,4 @@ Content-Length: {CONTENT_LENGTH}
 
 {"seq":7,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
 
-{"seq":8,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"callee","source":{"name":"dap_next_at_call.rs","path":"{MANIFEST_DIR}/tests/ui/dap_next_at_call.rs","sourceReference":0},"line":4,"column":9}],"totalFrames":1},"error":null}
+{"seq":8,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_next_at_call.rs","path":"{MANIFEST_DIR}/tests/ui/dap_next_at_call.rs","sourceReference":0},"line":10,"column":9}],"totalFrames":1},"error":null}

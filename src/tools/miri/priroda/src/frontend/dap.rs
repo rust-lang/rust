@@ -56,6 +56,12 @@ enum ExecutionOutcome {
     Failed(String),
 }
 
+#[derive(Clone, Copy)]
+enum StepKind {
+    In,
+    Over,
+}
+
 /// Debug Adapter Protocol frontend.
 pub(crate) struct Dap {
     pub(crate) port: Option<u16>,
@@ -192,9 +198,10 @@ impl<R: Read, W: Write> DapSession<R, W> {
             Command::Variables(args) => self.handle_variables(args.variables_reference, session),
             Command::Continue(args) => self.handle_continue(args.thread_id, session),
             Command::SetBreakpoints(args) => self.handle_set_breakpoints(args, session),
-            Command::Next(args) => self.handle_step(ResponseBody::Next, args.thread_id, session),
+            Command::Next(args) =>
+                self.handle_step(ResponseBody::Next, args.thread_id, session, StepKind::Over),
             Command::StepIn(args) =>
-                self.handle_step(ResponseBody::StepIn, args.thread_id, session),
+                self.handle_step(ResponseBody::StepIn, args.thread_id, session, StepKind::In),
             Command::Disconnect(_) => self.handle_disconnect(),
             Command::BreakpointLocations(_)
             | Command::Cancel(_)
@@ -461,17 +468,22 @@ impl<R: Read, W: Write> DapSession<R, W> {
         })
     }
 
-    /// FIXME: distinguish step-over from step-in once Priroda has call-aware stepping.
     fn handle_step<'tcx>(
         &self,
         body: ResponseBody,
         thread_id: i64,
         session: &mut PrirodaContext<'tcx>,
+        step: StepKind,
     ) -> Result<HandlerSuccess, &'static str> {
         self.require_stopped()?;
         Self::require_thread_id(thread_id)?;
 
-        match Self::execution_outcome(session.step()) {
+        let result = match step {
+            StepKind::In => session.step_in_source(),
+            StepKind::Over => session.step_over_source(),
+        };
+
+        match Self::execution_outcome(result) {
             ExecutionOutcome::Stopped(result) =>
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(body),
