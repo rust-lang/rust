@@ -7,6 +7,7 @@
 #![feature(asm_experimental_arch)]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
+#![feature(complex_numbers)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(repr_simd)]
