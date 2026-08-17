@@ -161,7 +161,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
-        let mut span = self.lower_span(e.span);
         match &e.kind {
             // Parenthesis expression does not have a HirId and is handled specially.
             ExprKind::Paren(ex) => {
@@ -194,11 +193,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 return self.lower_expr_for(e, pat, iter, body, *label, *kind);
             }
             ExprKind::Closure(closure) => return self.lower_expr_closure_expr(e, closure),
+            ExprKind::If(cond, then, else_opt) => {
+                return self.lower_expr_if(e, cond, then, else_opt.as_deref());
+            }
             _ => (),
         }
 
-        let expr_hir_id = self.lower_node_id(e.id);
-        self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
+        let (mut span, expr_hir_id) = self.hir_span_and_id(e);
 
         let kind = match &e.kind {
             ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -272,9 +273,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     init: self.lower_expr(scrutinee),
                     recovered: *recovered,
                 }))
-            }
-            ExprKind::If(cond, then, else_opt) => {
-                self.lower_expr_if(cond, then, else_opt.as_deref())
             }
             ExprKind::While(cond, body, opt_label) => self.with_loop_scope(expr_hir_id, |this| {
                 let span = this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
@@ -473,7 +471,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-            ExprKind::Paren(_) | ExprKind::ForLoop { .. } | ExprKind::Closure(..) => {
+            ExprKind::Paren(_)
+            | ExprKind::ForLoop { .. }
+            | ExprKind::Closure(..)
+            | ExprKind::If(..) => {
                 unreachable!("already handled")
             }
 
@@ -603,22 +604,53 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Call(f, self.lower_exprs(&real_args))
     }
 
+    fn hir_span_and_id(&mut self, e: &Expr) -> (Span, hir::HirId) {
+        let span = self.lower_span(e.span);
+        let expr_hir_id = self.lower_node_id(e.id);
+        self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
+        (span, expr_hir_id)
+    }
+
     fn lower_expr_if(
         &mut self,
+        e: &Expr,
         cond: &Expr,
         then: &Block,
         else_opt: Option<&Expr>,
-    ) -> hir::ExprKind<'hir> {
+    ) -> hir::Expr<'hir> {
+        let mut stack = smallvec::SmallVec::<[&Expr; 4]>::new();
+        let mut cursor = else_opt;
+        // Find the final else in an if/else chain.
+        while let Some(rslt) = cursor
+            && let ExprKind::If(_, _, else_opt) = &rslt.kind
+        {
+            stack.push(rslt);
+            cursor = else_opt.as_deref();
+        }
+        let mut last = cursor.map(|c| self.lower_expr(c));
+        for expr in stack.into_iter().rev() {
+            if let ExprKind::If(cond, then, _) = &expr.kind {
+                let (span, expr_hir_id) = self.hir_span_and_id(expr);
+                let lowered_cond = self.lower_expr(cond);
+                let then_expr = self.arena.alloc(self.lower_block_expr(then));
+                let else_expr = last;
+                last = Some(self.arena.alloc(hir::Expr {
+                    hir_id: expr_hir_id,
+                    kind: hir::ExprKind::If(lowered_cond, then_expr, else_expr),
+                    span,
+                }));
+            } else {
+                unreachable!();
+            }
+        }
+        let (span, expr_hir_id) = self.hir_span_and_id(e);
         let lowered_cond = self.lower_expr(cond);
-        let then_expr = self.lower_block_expr(then);
-        if let Some(rslt) = else_opt {
-            hir::ExprKind::If(
-                lowered_cond,
-                self.arena.alloc(then_expr),
-                Some(self.lower_expr(rslt)),
-            )
-        } else {
-            hir::ExprKind::If(lowered_cond, self.arena.alloc(then_expr), None)
+        let then_expr = self.arena.alloc(self.lower_block_expr(then));
+        let else_expr = last;
+        hir::Expr {
+            hir_id: expr_hir_id,
+            kind: hir::ExprKind::If(lowered_cond, then_expr, else_expr),
+            span,
         }
     }
 
