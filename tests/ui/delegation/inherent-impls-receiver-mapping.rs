@@ -50,11 +50,12 @@ mod self_type_mapping {
     struct W(X);
     impl W {
         reuse X::add { self.0 }
+        //~^ ERROR: mismatched types
+        //~| ERROR: mismatched types
     }
 
     fn check() {
         W(X).add(W(X));
-        //~^ ERROR: mismatched types
     }
 }
 
