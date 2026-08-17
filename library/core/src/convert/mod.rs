@@ -878,6 +878,20 @@ const impl AsMut<str> for str {
     }
 }
 
+#[unstable(feature = "never_type", issue = "35121")]
+impl<T: ?Sized> AsRef<T> for ! {
+    fn as_ref(&self) -> &T {
+        match *self {}
+    }
+}
+
+#[unstable(feature = "never_type", issue = "35121")]
+impl<T: ?Sized> AsMut<T> for ! {
+    fn as_mut(&mut self) -> &mut T {
+        match *self {}
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
