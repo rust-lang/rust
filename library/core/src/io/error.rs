@@ -29,7 +29,8 @@ mod os_functions;
 
 use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
 use self::repr::Repr;
-use crate::{error, fmt, result};
+use crate::ptr::NonNull;
+use crate::{error, fmt, mem, result};
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -45,6 +46,7 @@ use crate::{error, fmt, result};
 /// will generally use `io::Result` instead of shadowing the [prelude]'s import
 /// of [`core::result::Result`][`Result`].
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [`std::io`]: ../../std/io/index.html
 /// [`io::Error`]: Error
 /// [`Result`]: crate::result::Result
@@ -76,9 +78,10 @@ pub type Result<T> = result::Result<T, Error>;
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [Read]: ../../std/io/trait.Read.html
-/// [Write]: ../../std/io/trait.Write.html
-/// [Seek]: ../../std/io/trait.Seek.html
+/// [Write]: crate::io::Write
+/// [Seek]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_has_incoherent_inherent_impls]
 pub struct Error {
@@ -171,6 +174,7 @@ pub struct SimpleMessage {
 /// Contrary to [`Error::new`][new], this macro does not allocate and can be used in
 /// `const` contexts.
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `alloc` for incoherent method
 /// [new]: ../../alloc/io/struct.Error.html#method.new
 ///
 /// # Example
@@ -286,6 +290,7 @@ impl Error {
     /// [`from_raw_os_error`][from_raw_os_error], then this function will return [`Some`], otherwise
     /// it will return [`None`].
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `std` for incoherent method
     /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
     /// [from_raw_os_error]: ../../std/io/struct.Error.html#method.from_raw_os_error
     ///
@@ -366,6 +371,7 @@ impl Error {
     /// If this [`Error`] was constructed via [`new`][new] then this function will
     /// return [`Some`], otherwise it will return [`None`].
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `std`
     /// [new]: ../../alloc/io/struct.Error.html#method.new
     ///
     /// # Examples
@@ -441,6 +447,7 @@ impl Error {
     /// it will be a value inferred from the system's error encoding.
     /// See [`last_os_error`][last_os_error] for more details.
     ///
+    // FIXME(#74481): Hard-links required to link from `core` to `std`
     /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
     ///
     /// # Examples
@@ -569,6 +576,7 @@ impl OsFunctions {
     };
 }
 
+/// A user-created allocated error.
 // As with `SimpleMessage`: `#[repr(align(4))]` here is just because
 // repr_bitpacked's encoding requires it. In practice it almost certainly be
 // already be this high or higher.
@@ -577,9 +585,14 @@ impl OsFunctions {
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub struct Custom {
     kind: ErrorKind,
-    error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
-    error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
-    outer_drop: unsafe fn(*mut Self),
+    /// `Box<dyn Error + ...>` without `alloc`.
+    // INVARIANT: `error` must be a valid pointer and it must be safe to call `error_drop`
+    // with it once.
+    error: NonNull<dyn error::Error + Send + Sync>,
+    error_drop: unsafe fn(NonNull<dyn error::Error + Send + Sync>),
+    /// Call to drop a pointer to `Custom`.
+    // INVARIANT: must be safe to call once with a pointer to `Self` in `CustomOwner`.
+    outer_drop: unsafe fn(NonNull<Self>),
 }
 
 // SAFETY: All members of `Custom` are `Send`
@@ -600,9 +613,9 @@ impl fmt::Debug for Custom {
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl Drop for Custom {
     fn drop(&mut self) {
-        // SAFETY: `Custom::from_raw` ensures this call is safe.
+        // SAFETY: by `Custom` invariants, this is a drop call on a valid pointer.
         unsafe {
-            (self.error_drop)(self.error.as_ptr());
+            (self.error_drop)(self.error);
         }
     }
 }
@@ -613,21 +626,23 @@ impl Custom {
     /// * `error` must be valid for up to a static lifetime, and own its pointee.
     /// * `error_drop` must be safe to call for the pointer `error` exactly once.
     /// * `outer_drop` must be safe to call on a pointer to this instance of `Custom`
-    ///   if it were stored within a [`CustomOwner`].
+    ///   (the pointer is likely stored within a [`CustomOwner`]).
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub unsafe fn from_raw(
         kind: ErrorKind,
-        error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
-        error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
-        outer_drop: unsafe fn(*mut Self),
+        error: NonNull<dyn error::Error + Send + Sync>,
+        error_drop: unsafe fn(NonNull<dyn error::Error + Send + Sync>),
+        outer_drop: unsafe fn(NonNull<Self>),
     ) -> Custom {
+        // INVARIANT: function preconditions match type invariants.
         Custom { kind, error, error_drop, outer_drop }
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn into_raw(self) -> crate::ptr::NonNull<dyn error::Error + Send + Sync> {
+    pub fn into_raw(self) -> NonNull<dyn error::Error + Send + Sync> {
         let ptr = self.error;
-        core::mem::forget(self);
+        // Avoid `Custom::drop` which would free the error pointer.
+        mem::forget(self);
         ptr
     }
 
@@ -646,11 +661,13 @@ impl Custom {
     }
 }
 
+/// Effectively a `Box<Custom>` without `alloc`. The `Custom` holds the call to free this pointer.
+// INVARIANT: `self.0.outer_drop` must be safe to call once with `self.0`.
 #[derive(Debug)]
 #[repr(transparent)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 #[doc(hidden)]
-pub struct CustomOwner(crate::ptr::NonNull<Custom>);
+pub struct CustomOwner(NonNull<Custom>);
 
 // SAFETY: Custom is `Send`
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -663,9 +680,9 @@ unsafe impl Sync for CustomOwner {}
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl Drop for CustomOwner {
     fn drop(&mut self) {
-        // SAFETY: `CustomOwner::from_raw` ensures this call is safe.
+        // SAFETY: by `CustomOwner` invariants, this is a drop call on a valid pointer.
         unsafe {
-            (self.0.as_ref().outer_drop)(self.0.as_ptr());
+            (self.0.as_ref().outer_drop)(self.0);
         }
     }
 }
@@ -673,17 +690,20 @@ impl Drop for CustomOwner {
 impl CustomOwner {
     /// # Safety
     ///
-    /// * The `outer_drop` of the provided `custom` must be safe to call exactly once.
+    /// * `custom` must point to valid `Custom`.
+    /// * The `outer_drop` of the provided `custom` must be the drop function for this pointer.
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub unsafe fn from_raw(custom: crate::ptr::NonNull<Custom>) -> CustomOwner {
+    pub unsafe fn from_raw(custom: NonNull<Custom>) -> CustomOwner {
+        // INVARIANT: by the preconditions, `custom.outer_drop` is the drop for `custom`.
         CustomOwner(custom)
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn into_raw(self) -> crate::ptr::NonNull<Custom> {
+    pub fn into_raw(self) -> NonNull<Custom> {
         let ptr = self.0;
-        core::mem::forget(self);
+        // Avoid `CustomOwner::drop`, which would free the pointer.
+        mem::forget(self);
         ptr
     }
 
@@ -708,13 +728,16 @@ impl CustomOwner {
 ///
 /// This is an [`i32`] on all currently supported platforms, but platforms
 /// added in the future (such as UEFI) may use a different primitive type like
-/// [`usize`]. Use `as` or [`into`] conversions where applicable to ensure maximum
-/// portability.
+/// [`usize`] or [`i16`]. Use `as` or [`into`] conversions where applicable to
+/// ensure maximum portability.
 ///
 /// [`into`]: Into::into
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub type RawOsError = cfg_select! {
     target_os = "uefi" => usize,
+    // For 16-bit AVR and MSP430, i16 is equivalent to c_int.
+    // Using i16 to be explicit.
+    target_pointer_width = "16" => i16,
     _ => i32,
 };
 
@@ -847,7 +870,7 @@ pub enum ErrorKind {
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [write]: ../../std/io/trait.Write.html#tymethod.write
+    /// [write]: crate::io::Write::write
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
@@ -945,6 +968,14 @@ pub enum ErrorKind {
     #[unstable(feature = "io_error_too_many_open_files", issue = "158319")]
     TooManyOpenFiles,
 
+    /// A low-level input/output error.
+    ///
+    /// This usually indicates a hardware or device-level failure, such as a bad
+    /// disk sector or a removed device, but the operating system may also report
+    /// it for other low-level I/O conditions.
+    #[unstable(feature = "io_error_input_output_error", issue = "159066")]
+    InputOutputError,
+
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorized` should remain at the end:
@@ -995,6 +1026,7 @@ impl ErrorKind {
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
             HostUnreachable => "host unreachable",
             InProgress => "in progress",
+            InputOutputError => "input/output error",
             Interrupted => "operation interrupted",
             InvalidData => "invalid data",
             InvalidFilename => "invalid filename",
@@ -1087,6 +1119,7 @@ impl ErrorKind {
             OutOfMemory,
             InProgress,
             TooManyOpenFiles,
+            InputOutputError,
             Uncategorized,
         })
     }
@@ -1099,6 +1132,7 @@ impl fmt::Display for ErrorKind {
     /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
     ///
     /// # Examples
+    ///
     /// ```
     /// use core::io::ErrorKind;
     /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());

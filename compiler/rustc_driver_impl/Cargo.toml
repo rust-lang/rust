@@ -16,6 +16,7 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
+rustc_hir = { path = "../rustc_hir" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_index = { path = "../rustc_index" }
@@ -57,8 +58,8 @@ ctrlc = "3.4.4"
 [features]
 # tidy-alphabetical-start
 check_only = ['rustc_interface/check_only']
+jemalloc = []
 llvm = ['rustc_interface/llvm']
-llvm_enzyme = ['rustc_interface/llvm_enzyme']
 llvm_offload = ['rustc_interface/llvm_offload']
 max_level_info = ['rustc_log/max_level_info']
 rustc_randomized_layouts = [

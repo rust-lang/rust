@@ -9597,7 +9597,7 @@ pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9622,7 +9622,7 @@ pub fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) ->
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9647,7 +9647,7 @@ pub fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) 
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9672,7 +9672,7 @@ pub fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t)
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9697,7 +9697,7 @@ pub fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9722,7 +9722,7 @@ pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) 
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9747,7 +9747,7 @@ pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9772,7 +9772,7 @@ pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9797,7 +9797,7 @@ pub fn vdotq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x1
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9827,7 +9827,7 @@ pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9863,7 +9863,7 @@ pub fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9893,7 +9893,7 @@ pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9931,7 +9931,7 @@ pub fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9961,7 +9961,7 @@ pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9997,7 +9997,7 @@ pub fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10027,7 +10027,7 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 )]
 #[cfg_attr(
     not(target_arch = "arm"),
-    stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")
+    stable(feature = "stdarch_neon_dotprod", since = "1.98.0")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -15285,11 +15285,17 @@ pub fn vget_low_f16(a: float16x8_t) -> float16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15307,11 +15313,17 @@ pub fn vget_high_f32(a: float32x4_t) -> float32x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15333,11 +15345,17 @@ pub fn vget_high_f32(a: float32x4_t) -> float32x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15355,11 +15373,17 @@ pub fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15381,11 +15405,17 @@ pub fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15403,11 +15433,17 @@ pub fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15430,11 +15466,17 @@ pub fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15452,11 +15494,17 @@ pub fn vget_high_s16(a: int16x8_t) -> int16x4_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15478,11 +15526,17 @@ pub fn vget_high_s16(a: int16x8_t) -> int16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15500,11 +15554,17 @@ pub fn vget_high_s32(a: int32x4_t) -> int32x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15526,11 +15586,17 @@ pub fn vget_high_s32(a: int32x4_t) -> int32x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15548,11 +15614,17 @@ pub fn vget_high_s8(a: int8x16_t) -> int8x8_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15575,11 +15647,17 @@ pub fn vget_high_s8(a: int8x16_t) -> int8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15597,11 +15675,17 @@ pub fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15623,11 +15707,17 @@ pub fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15645,11 +15735,17 @@ pub fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15671,11 +15767,17 @@ pub fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15693,11 +15795,17 @@ pub fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15720,11 +15828,17 @@ pub fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15742,11 +15856,17 @@ pub fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15767,11 +15887,17 @@ pub fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15789,11 +15915,17 @@ pub fn vget_high_s64(a: int64x2_t) -> int64x1_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15814,11 +15946,17 @@ pub fn vget_high_s64(a: int64x2_t) -> int64x1_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
@@ -15836,11 +15974,17 @@ pub fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(test, target_arch = "aarch64", target_endian = "little", not(windows)),
+    assert_instr(mov)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
     assert_instr(ext)
 )]
+#[cfg_attr(all(test, target_arch = "arm64ec"), assert_instr(dup))]
+#[cfg_attr(all(test, target_arch = "aarch64", windows), assert_instr(dup))]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")

@@ -3,6 +3,7 @@
 #![feature(
     adt_const_params,
     min_generic_const_args,
+    macroless_generic_const_args,
     unsized_const_params
 )]
 fn foo<const X: (bool, i32)>() {}

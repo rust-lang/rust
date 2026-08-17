@@ -1,5 +1,5 @@
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(deprecated)]
+#![expect(deprecated)]
 #![allow(
     clippy::if_same_then_else,
     clippy::match_like_matches_macro,

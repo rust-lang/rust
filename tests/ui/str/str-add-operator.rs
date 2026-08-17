@@ -1,5 +1,5 @@
 //! regression test for issue #47377, #47380
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 fn main() {
  	let b = "hello";
  	let _a = b + ", World!";

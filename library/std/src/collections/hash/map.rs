@@ -239,7 +239,6 @@ use crate::ops::Index;
 /// static RANDOM_MAP: LazyLock<Mutex<HashMap<String, Vec<i32>>>> =
 ///     LazyLock::new(|| Mutex::new(HashMap::new()));
 /// ```
-
 #[cfg_attr(not(test), rustc_diagnostic_item = "HashMap")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]

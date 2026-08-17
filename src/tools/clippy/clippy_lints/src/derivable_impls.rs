@@ -64,7 +64,7 @@ pub struct DerivableImpls {
 
 impl DerivableImpls {
     pub fn new(conf: &'static Conf) -> Self {
-        DerivableImpls { msrv: conf.msrv }
+        DerivableImpls { msrv: conf.msrv.into() }
     }
 }
 

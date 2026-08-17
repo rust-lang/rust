@@ -72,32 +72,46 @@ fn _issue11831() {
 
 fn _issue14897() {
     let x = 1.0;
-    let _ = x * 2.0 + 0.5; // should not suggest mul_add
-    let _ = 0.5 + x * 2.0; // should not suggest mul_add
-    let _ = 0.5 + x * 1.2; // should not suggest mul_add
-    let _ = 1.2 + x * 1.2; // should not suggest mul_add
+    let _ = x * 2.0 + 0.5;
+    //~^ suboptimal_flops
+
+    let x = 1.0;
+    let _ = 0.5 + x * 2.0;
+    //~^ suboptimal_flops
+    let _ = 0.5 + x * 1.2;
+    //~^ suboptimal_flops
+    let _ = 1.2 + x * 1.2;
+    //~^ suboptimal_flops
 
     let x = -1.0;
-    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+    let _ = 0.5 + x * 1.2;
+    //~^ suboptimal_flops
 
     let x = { 4.0 };
-    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+    let _ = 0.5 + x * 1.2;
+    //~^ suboptimal_flops
 
     let x = if 1 > 2 { 1.0 } else { 2.0 };
-    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+    let _ = 0.5 + x * 1.2;
+    //~^ suboptimal_flops
 
     let x = 2.4 + 1.2;
-    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+    let _ = 0.5 + x * 1.2;
+    //~^ suboptimal_flops
 
     let f = || 4.0;
     let x = f();
-    let _ = 0.5 + f() * 1.2; // should not suggest mul_add
-    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+    let _ = 0.5 + f() * 1.2;
+    //~^ suboptimal_flops
+
+    let _ = 0.5 + x * 1.2;
+    //~^ suboptimal_flops
 
     let x = 0.1;
     let y = x;
     let z = y;
-    let _ = 0.5 + z * 1.2; // should not suggest mul_add
+    let _ = 0.5 + z * 1.2;
+    //~^ suboptimal_flops
 
     let _ = 0.5 + 2.0 * x;
     //~^ suboptimal_flops
@@ -123,5 +137,42 @@ fn issue16573() {
     //~^ suboptimal_flops
 
     a -= b * c;
+    //~^ suboptimal_flops
+}
+
+fn issue16954() {
+    let k = 2.0_f32;
+
+    let k3 = k * k * k;
+    let y = k3 + 0.1;
+    let _ = 1.0 - y * 0.3;
+    //~^ suboptimal_flops
+
+    let k3 = k * k * k;
+    let y = k3 + 0.1_f32;
+    let _ = 1.0 - y * 0.3;
+    //~^ suboptimal_flops
+
+    let k3 = k * k * k;
+    let y: f32 = k3 + 0.1;
+    let _ = 1.0 - y * 0.3;
+    //~^ suboptimal_flops
+
+    const OFFSET: f32 = 0.1;
+    let k3 = k * k * k;
+    let y = k3 + OFFSET;
+    let _ = 1.0 - y * 0.3;
+    //~^ suboptimal_flops
+
+    let x = 0.1;
+    let y = 0.2;
+    let z = 0.3;
+    let _ = x + y * z;
+    //~^ suboptimal_flops
+    let _ = y * z + x;
+    //~^ suboptimal_flops
+
+    let a: f32 = 0.1;
+    let _ = y + a * z;
     //~^ suboptimal_flops
 }

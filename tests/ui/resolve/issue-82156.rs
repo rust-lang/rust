@@ -1,3 +1,3 @@
 fn main() {
-    super(); //~ ERROR: too many leading `super` keywords
+    super(); //~ ERROR: too many leading `super` keywords within `crate`
 }

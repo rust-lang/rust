@@ -1,3 +1,4 @@
+//@ min-llvm-version: 23
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::{Coroutine, CoroutineState};

@@ -116,7 +116,7 @@ pub macro unreachable_2021 {
 /// convert unwinds to aborts, so using this function isn't necessary for FFI.
 #[unstable(feature = "abort_unwind", issue = "130338")]
 #[rustc_nounwind]
-pub fn abort_unwind<F: FnOnce() -> R, R>(f: F) -> R {
+pub fn abort_on_unwind<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 

@@ -6,7 +6,7 @@ struct Qux<'a> {
 }
 impl<'a> Qux<'a> {
     type const LEN: usize = 4;
-    fn foo(_: [u8; Qux::LEN]) {}
+    fn foo(_: [u8; core::direct_const_arg!(Qux::LEN)]) {}
 }
 
 fn main() {}

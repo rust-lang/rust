@@ -1,8 +1,9 @@
 use std::fmt::Debug;
 
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 pub use rustc_infer::infer::*;
+use rustc_infer::traits::TraitErrors;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{
@@ -25,7 +26,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
                 return false;
             };
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     }
 
@@ -115,7 +116,7 @@ impl<'tcx> InferCtxt<'tcx> {
         trait_def_id: DefId,
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
+    ) -> Option<TraitErrors<traits::FulfillmentError<'tcx>>> {
         self.probe(|_snapshot| {
             let ocx = ObligationCtxt::new_with_diagnostics(self);
             ocx.register_obligation(Obligation::new(

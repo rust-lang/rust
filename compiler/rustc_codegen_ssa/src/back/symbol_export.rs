@@ -2,7 +2,10 @@ use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_crate_store::CrateDepKind;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
@@ -17,10 +20,11 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
 use rustc_span::Span;
-use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_symbol_mangling::{is_offload_kernel, mangle_internal_symbol};
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
+use crate::SymbolExport;
 use crate::back::symbol_export;
 use crate::base::allocator_shim_contents;
 
@@ -53,6 +57,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         return Default::default();
     }
 
+    reachable_non_generics_helper(tcx)
+}
+
+/// Exposed separately *without* the "should codegen" check so Miri can access it.
+pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportInfo> {
     let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
@@ -81,6 +90,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
 
             // Only consider nodes that actually have exported symbols.
             match tcx.def_kind(def_id) {
+                DefKind::Fn | DefKind::AssocFn
+                    if tcx.constness(def_id) == hir::Constness::Const { always: true } =>
+                {
+                    return None;
+                }
                 DefKind::Fn | DefKind::Static { .. } => {}
                 DefKind::AssocFn if tcx.impl_of_assoc(def_id.to_def_id()).is_some() => {}
                 _ => return None,
@@ -175,6 +189,13 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
         return &[];
     }
 
+    exported_non_generic_symbols_helper(tcx)
+}
+
+/// Exposed separately *without* the "should codegen" check so Miri can access it.
+pub fn exported_non_generic_symbols_helper<'tcx>(
+    tcx: TyCtxt<'tcx>,
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
     let sorted = tcx.with_stable_hashing_context(|mut hcx| {
@@ -224,6 +245,51 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
         ));
     }
 
+    let is_device_offload = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
+    if is_device_offload {
+        let crate_items = tcx.hir_crate_items(());
+        let mut seen: rustc_data_structures::fx::FxHashSet<DefId> = symbols
+            .iter()
+            .filter_map(|(s, _)| match s {
+                ExportedSymbol::NonGeneric(d) => Some(*d),
+                _ => None,
+            })
+            .collect();
+
+        let mut try_emit_offload_kernel = |def_id: DefId, seen: &mut FxHashSet<DefId>| {
+            if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+                return;
+            }
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && is_offload_kernel(tcx.codegen_fn_attrs(def_id))
+                && seen.insert(def_id)
+            {
+                symbols.push((
+                    ExportedSymbol::NonGeneric(def_id),
+                    SymbolExportInfo {
+                        level: SymbolExportLevel::C,
+                        kind: SymbolExportKind::Text,
+                        used: false,
+                        rustc_std_internal_symbol: false,
+                    },
+                ));
+            }
+        };
+
+        for id in crate_items.free_items() {
+            try_emit_offload_kernel(id.owner_id.to_def_id(), &mut seen);
+        }
+        for id in crate_items.impl_items() {
+            try_emit_offload_kernel(id.owner_id.to_def_id(), &mut seen);
+        }
+    }
+
     // Sort so we get a stable incr. comp. hash.
     symbols.sort_by_cached_key(|s| s.0.symbol_name_for_local_instance(tcx));
 
@@ -240,7 +306,16 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
     let mut symbols: Vec<_> = vec![];
 
-    if tcx.local_crate_exports_generics() {
+    let export_generics = tcx.local_crate_exports_generics();
+    let is_device_offload = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
+
+    if export_generics || is_device_offload {
         use rustc_hir::attrs::Linkage;
         use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
@@ -286,6 +361,14 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     })
             };
 
+        let is_offload_instance = |mono_item: &MonoItem<'tcx>| {
+            if let MonoItem::Fn(instance) = mono_item {
+                is_offload_kernel(tcx.codegen_fn_attrs(instance.def_id()))
+            } else {
+                false
+            }
+        };
+
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
@@ -301,7 +384,9 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 continue;
             }
 
-            if !tcx.sess.opts.share_generics() {
+            let item_is_offload = is_offload_instance(mono_item);
+
+            if !item_is_offload && !tcx.sess.opts.share_generics() {
                 if tcx.codegen_fn_attrs(mono_item.def_id()).inline
                     == rustc_hir::attrs::InlineAttr::Never
                 {
@@ -318,15 +403,22 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     let has_generics = args.non_erasable_generics().next().is_some();
 
-                    let should_export =
-                        has_generics && is_instantiable_downstream(Some(def), &args);
+                    let should_export = if item_is_offload {
+                        has_generics
+                    } else {
+                        has_generics && is_instantiable_downstream(Some(def), &args)
+                    };
 
                     if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
                             SymbolExportInfo {
-                                level: SymbolExportLevel::Rust,
+                                level: if item_is_offload {
+                                    SymbolExportLevel::C
+                                } else {
+                                    SymbolExportLevel::Rust
+                                },
                                 kind: SymbolExportKind::Text,
                                 used: false,
                                 rustc_std_internal_symbol: false,
@@ -415,6 +507,14 @@ fn upstream_monomorphizations_provider(
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
+        // It should be possible to compile to build a crate against a conditional dependency then
+        // later link that crate without the conditional dependency, so we cannot use exported
+        // generics from conditional dependencies.
+        // https://github.com/rust-lang/rust/issues/159682
+        if tcx.crate_dep_kind(cnum) == CrateDepKind::Conditional {
+            continue;
+        }
+
         for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),
@@ -721,7 +821,7 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 /// Add it to the symbols list for all kernel functions, so that it is exported in the linked
 /// object.
 pub(crate) fn extend_exported_symbols<'tcx>(
-    symbols: &mut Vec<(String, SymbolExportKind)>,
+    symbols: &mut Vec<SymbolExport>,
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -737,7 +837,7 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     // Add the symbol for the kernel descriptor (with .kd suffix)
     // Per https://llvm.org/docs/AMDGPUUsage.html#symbols these will always be `STT_OBJECT` so
     // export as data.
-    symbols.push((format!("{undecorated}.kd"), SymbolExportKind::Data));
+    symbols.push(SymbolExport::new(format!("{undecorated}.kd"), SymbolExportKind::Data));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

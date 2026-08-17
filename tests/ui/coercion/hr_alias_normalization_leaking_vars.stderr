@@ -16,7 +16,7 @@ error[E0308]: mismatched types
   --> $DIR/hr_alias_normalization_leaking_vars.rs:34:36
    |
 LL |     LendingIterator::for_each(&(), f);
-   |     -------------------------      ^ expected `Box<fn(...)>`, found fn item
+   |     -------------------------      ^ expected `Box<fn(_)>`, found fn item
    |     |
    |     arguments to this function are incorrect
    |

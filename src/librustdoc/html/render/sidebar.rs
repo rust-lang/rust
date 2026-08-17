@@ -346,11 +346,17 @@ fn sidebar_trait<'a>(
     );
     sidebar_assoc_items(cx, it, blocks, deref_id_map);
 
+    // Move the foreign impls block after dyn compatibility note to match the order of the headings
+    // in the main content.
+    let foreign_impls_block = blocks.pop_if(|b| b.heading.href == "foreign-impls");
     if !t.is_dyn_compatible(cx.tcx()) {
         blocks.push(LinkBlock::forced(
             Link::new("dyn-compatibility", "Dyn Compatibility"),
             "dyn-compatibility-note",
         ));
+    }
+    if let Some(foreign_impls_block) = foreign_impls_block {
+        blocks.push(foreign_impls_block);
     }
 
     blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors"), "impl"));

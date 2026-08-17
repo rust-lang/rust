@@ -17,11 +17,11 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::{MachineInfo, MachineSize};
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, Asyncness, ClosureDef, ClosureKind, Constness, CoroutineDef,
-    Discr, FieldDef, FnDef, ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef,
-    GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst,
-    PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst, TyConstId, TyKind,
-    UintTy, VariantDef, VariantIdx, VtblEntry,
+    AdtDef, AdtKind, Allocation, AssocItem, Asyncness, ClosureDef, ClosureKind, Constness,
+    CoroutineDef, Discr, FieldDef, FloatTy, FnDef, ForeignDef, ForeignItemKind, ForeignModule,
+    ForeignModuleDef, GenericArgs, GenericClauses, Generics, ImplDef, ImplTrait, IntrinsicDef,
+    LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst,
+    TyConstId, TyKind, UintTy, VariantDef, VariantIdx, VtblEntry,
 };
 use crate::unstable::{RustcInternal, Stable, new_item_kind};
 use crate::{
@@ -210,13 +210,21 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
-    pub(crate) fn predicates_of(&self, def_id: DefId) -> GenericPredicates {
+    /// Retrieve the inherent implementations for this ADT.
+    pub(crate) fn inherent_impls(&self, adt: AdtDef) -> Vec<ImplDef> {
+        self.with_cx(|tables, cx| {
+            let def_id = tables[adt.0];
+            cx.inherent_impls(def_id).iter().map(|&did| tables.impl_def(did)).collect()
+        })
+    }
+
+    pub(crate) fn clauses_of(&self, def_id: DefId) -> GenericClauses {
         self.with_cx(|tables, cx| {
             let did = tables[def_id];
-            let (parent, kinds) = cx.predicates_of(did);
-            crate::ty::GenericPredicates {
+            let (parent, kinds) = cx.clauses_of(did);
+            crate::ty::GenericClauses {
                 parent: parent.map(|did| tables.trait_def(did)),
-                predicates: kinds
+                clauses: kinds
                     .iter()
                     .map(|(kind, span)| (kind.stable(tables, cx), span.stable(tables, cx)))
                     .collect(),
@@ -224,13 +232,13 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
-    pub(crate) fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates {
+    pub(crate) fn explicit_clauses_of(&self, def_id: DefId) -> GenericClauses {
         self.with_cx(|tables, cx| {
             let did = tables[def_id];
-            let (parent, kinds) = cx.explicit_predicates_of(did);
-            crate::ty::GenericPredicates {
+            let (parent, kinds) = cx.explicit_clauses_of(did);
+            crate::ty::GenericClauses {
                 parent: parent.map(|did| tables.trait_def(did)),
-                predicates: kinds
+                clauses: kinds
                     .iter()
                     .map(|(kind, span)| (kind.stable(tables, cx), span.stable(tables, cx)))
                     .collect(),
@@ -496,6 +504,14 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
+    /// Create a caller location constant from a span.
+    pub(crate) fn span_as_caller_location(&self, span: Span) -> MirConst {
+        self.with_cx(|tables, cx| {
+            let sp = tables.spans[span];
+            cx.span_as_caller_location(sp).stable(tables, cx)
+        })
+    }
+
     /// Create a new constant that represents the given string value.
     pub(crate) fn new_const_str(&self, value: &str) -> MirConst {
         self.with_cx(|tables, cx| cx.new_const_str(value).stable(tables, cx))
@@ -506,7 +522,7 @@ impl<'tcx> CompilerInterface<'tcx> {
         self.with_cx(|tables, cx| cx.new_const_bool(value).stable(tables, cx))
     }
 
-    /// Create a new constant that represents the given value.
+    /// Create a new integer constant that represents the given value.
     pub(crate) fn try_new_const_uint(
         &self,
         value: u128,
@@ -516,6 +532,22 @@ impl<'tcx> CompilerInterface<'tcx> {
             let ty = cx.ty_new_uint(uint_ty.internal(tables, cx.tcx));
             cx.try_new_const_uint(value, ty).map(|cnst| cnst.stable(tables, cx))
         })
+    }
+
+    /// Create a new float constant that represents the given value.
+    /// The value is the binary representation of the float constant.
+    /// Example: `try_new_const_float(2.5_f32.to_bits() as u128, FloatTy::F32)`.
+    pub(crate) fn try_new_const_float(
+        &self,
+        value: u128,
+        float_ty: FloatTy,
+    ) -> Result<MirConst, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let ty = cx.new_rigid_ty(RigidTy::Float(float_ty).internal(&mut *tables, cx.tcx));
+        // We use `try_new_const_uint` here since it is capable of constructing all scalars in the mir
+        // that are not pointer.
+        cx.try_new_const_uint(value, ty).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
     pub(crate) fn try_new_ty_const_uint(
@@ -634,6 +666,14 @@ impl<'tcx> CompilerInterface<'tcx> {
         self.with_cx(|tables, cx| {
             let instance = tables.instances[instance];
             cx.instance_mangled_name(instance)
+        })
+    }
+
+    /// Check if this instance requires a caller location argument.
+    pub(crate) fn instance_requires_caller_location(&self, def: InstanceDef) -> bool {
+        self.with_cx(|tables, cx| {
+            let instance = tables.instances[def];
+            cx.instance_requires_caller_location(instance)
         })
     }
 
@@ -818,6 +858,14 @@ impl<'tcx> CompilerInterface<'tcx> {
             let un_op = un_op.internal(tables, cx.tcx);
             let arg = arg.internal(tables, cx.tcx);
             cx.unop_ty(un_op, arg).stable(tables, cx)
+        })
+    }
+
+    /// Get the associated item of a definition if it is one.
+    pub(crate) fn associated_item(&self, def_id: DefId) -> Option<AssocItem> {
+        self.with_cx(|tables, cx| {
+            let did = tables[def_id];
+            cx.associated_item(did).map(|assoc| assoc.stable(tables, cx))
         })
     }
 

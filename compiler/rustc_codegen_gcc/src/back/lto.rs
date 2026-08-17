@@ -35,7 +35,7 @@ use rustc_log::tracing::info;
 use tempfile::{TempDir, tempdir};
 
 use crate::back::write::{codegen, save_temp_bitcode};
-use crate::errors::LtoBitcodeFromRlib;
+use crate::diagnostics::LtoBitcodeFromRlib;
 use crate::{GccCodegenBackend, GccContext, LtoMode, to_gcc_opt_level};
 
 struct LtoData {

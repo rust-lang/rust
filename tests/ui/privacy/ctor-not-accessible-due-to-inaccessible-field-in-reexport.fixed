@@ -11,8 +11,10 @@ mod my_mod {
         fn my_func() {
             let crate::my_mod::Foo(x) = crate::my_mod::Foo(42);
             //~^ ERROR cannot initialize a tuple struct which contains private fields
+            //~| NOTE a struct named `crate::Foo` exists in another namespace
             //~| HELP the type can be constructed directly, because its fields are available from the current scope
             //~| ERROR cannot match against a tuple struct which contains private fields
+            //~| NOTE a struct named `crate::Foo` exists in another namespace
             //~| HELP the type can be constructed directly, because its fields are available from the current scope
         }
     }

@@ -21,6 +21,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 
+use crate::PassPolicy;
+
 pub(super) struct CleanupPostBorrowck;
 
 impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
@@ -85,7 +87,8 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Removes administrative MIR instructions that later passes must never see.
+        PassPolicy::Required
     }
 }

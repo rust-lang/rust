@@ -14,7 +14,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Interner, MayBeErased, TypeFlags, TypeFoldable, TypeFolder,
+    self as ty, AliasTy, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode, Unnormalized, Upcast, elaborate,
 };
@@ -23,6 +23,7 @@ use tracing::{debug, instrument};
 use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
+use crate::solve::assembly::structural_traits::AmbiguousOrRerunNonErased;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
@@ -116,9 +117,10 @@ where
                     ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
-                Err(_) => {
+                Err(AmbiguousOrRerunNonErased::Ambiguous) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
+                Err(AmbiguousOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun.into()),
             }
         })
     }
@@ -209,9 +211,13 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I>;
 
+    /// Note: `goal_trait_ref` is derived from `goal`. Nonetheless, because
+    /// `consider_impl_candidate` is always called in a loop, we precompute `goal_trait_ref` once
+    /// and pass it in next to `goal` because the computation is expensive and loop-invariant.
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
@@ -365,6 +371,11 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+
     /// Consider (possibly several) candidates to upcast or unsize a type to another
     /// type, excluding the coercion of a sized type into a `dyn Trait`.
     ///
@@ -483,6 +494,7 @@ where
                     TypingMode::Coherence => true,
                     TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::Reflection
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::Codegen
@@ -539,28 +551,30 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
-        cx.for_each_relevant_impl(
-            goal.predicate.trait_def_id(cx),
-            goal.predicate.self_ty(),
-            |impl_def_id| -> Result<_, _> {
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if cx.impl_is_default(impl_def_id) {
-                    return Ok(());
+        let goal_trait_ref = goal.predicate.trait_ref(cx);
+        cx.for_each_relevant_impl(goal_trait_ref, |impl_def_id| -> Result<_, _> {
+            match G::consider_impl_candidate(
+                self,
+                goal,
+                goal_trait_ref,
+                impl_def_id,
+                |ecx, certainty| ecx.evaluate_added_goals_and_make_canonical_response(certainty),
+            )
+            .map_err_to_rerun()?
+            {
+                Ok(candidate) => {
+                    // For every `default impl`, there's always a non-default `impl`
+                    // that will *also* apply. There's no reason to register a candidate
+                    // for this impl, since it is *not* proof that the trait goal holds.
+                    if !cx.impl_is_default(impl_def_id) {
+                        candidates.push(candidate);
+                    }
                 }
-                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
-                    ecx.evaluate_added_goals_and_make_canonical_response(certainty)
-                })
-                .map_err_to_rerun()?
-                {
-                    Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => {}
-                }
+                Err(NoSolution) => {}
+            }
 
-                Ok(())
-            },
-        )
+            Ok(())
+        })
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -571,6 +585,14 @@ where
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         let trait_def_id = goal.predicate.trait_def_id(cx);
+
+        // Builtin impls regularly are not `is_fully_generic_for_reflection`, so instead
+        // of trying to handle these manually, we just reject all builtin impls in reflection
+        // mode. We can probably lift this restriction for specific cases, but this is safer.
+        // See `try_as_dyn_builtin_impl` for how just allowing all builtin impls is unsound.
+        if self.typing_mode().is_reflection() {
+            return Ok(());
+        }
 
         // N.B. When assembling built-in candidates for lang items that are also
         // `auto` traits, then the auto trait candidate that is assembled in
@@ -663,6 +685,9 @@ where
                 }
                 Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
+                }
+                Some(SolverTraitLangItem::TryAsDyn) => {
+                    G::consider_builtin_try_as_dyn_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::Field) => G::consider_builtin_field_candidate(self, goal),
                 _ => Err(NoSolution.into()),
@@ -876,6 +901,14 @@ where
             return;
         }
 
+        // Builtin impls regularly are not `is_fully_generic_for_reflection`, so instead
+        // of trying to handle these manually, we just reject all builtin impls in reflection
+        // mode. We can probably lift this restriction for specific cases, but this is safer.
+        // See `try_as_dyn_builtin_impl` for how just allowing all builtin impls is unsound.
+        if self.typing_mode().is_reflection() {
+            return;
+        }
+
         let self_ty = goal.predicate.self_ty();
         let bounds = match self_ty.kind() {
             ty::Bool
@@ -1070,6 +1103,7 @@ where
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
+            | TypingMode::Reflection
             | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 self.opaque_accesses
@@ -1099,8 +1133,8 @@ where
                     if let ty::Alias(is_rigid, alias_ty) = ty.kind()
                         && let Some(opaque_ty) = alias_ty.try_to_opaque()
                     {
-                        debug_assert_eq!(is_rigid, ty::IsRigid::No);
                         if opaque_ty == self.opaque_ty {
+                            debug_assert_eq!(is_rigid, ty::IsRigid::No);
                             return self.self_ty;
                         }
                     }
@@ -1143,6 +1177,7 @@ where
         // See tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs for an example.
         if assemble_from.should_assemble_impl_candidates() {
             let cx = self.cx();
+            let goal_trait_ref = goal.predicate.trait_ref(cx);
             cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
                 // For every `default impl`, there's always a non-default `impl`
                 // that will *also* apply. There's no reason to register a candidate
@@ -1151,20 +1186,26 @@ where
                     return Ok(());
                 }
 
-                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
-                    if ecx.shallow_resolve(self_ty).is_ty_var() {
-                        // We force the certainty of impl candidates to be `Maybe`.
-                        let certainty = certainty.and(Certainty::AMBIGUOUS);
-                        ecx.evaluate_added_goals_and_make_canonical_response(certainty)
-                    } else {
-                        // We don't want to use impls if they constrain the opaque.
-                        //
-                        // FIXME(trait-system-refactor-initiative#229): This isn't
-                        // perfect yet as it still allows us to incorrectly constrain
-                        // other inference variables.
-                        Err(NoSolution.into())
-                    }
-                })
+                match G::consider_impl_candidate(
+                    self,
+                    goal,
+                    goal_trait_ref,
+                    impl_def_id,
+                    |ecx, certainty| {
+                        if ecx.shallow_resolve(self_ty).is_ty_var() {
+                            // We force the certainty of impl candidates to be `Maybe`.
+                            let certainty = certainty.and(Certainty::AMBIGUOUS);
+                            ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+                        } else {
+                            // We don't want to use impls if they constrain the opaque.
+                            //
+                            // FIXME(trait-system-refactor-initiative#229): This isn't
+                            // perfect yet as it still allows us to incorrectly constrain
+                            // other inference variables.
+                            Err(NoSolution.into())
+                        }
+                    },
+                )
                 .map_err_to_rerun()?
                 {
                     Ok(candidate) => candidates.push(candidate),
@@ -1436,7 +1477,7 @@ where
         }
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match self.ecx.eager_resolve_region(r).kind() {
             ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
             ty::RePlaceholder(p) => {

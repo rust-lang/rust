@@ -1,7 +1,7 @@
 //@ revisions: ascii unicode
 //@ compile-flags: --diagnostic-width=145
 //@[unicode] compile-flags: -Zunstable-options --error-format=human-unicode
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 fn main() {
     let unicode_is_fun = "؁‱ஹ௸௵꧄.ဪ꧅⸻𒈙𒐫﷽𒌄𒈟𒍼𒁎𒀱𒌧𒅃 𒈓𒍙𒊎𒄡𒅌𒁏𒀰𒐪𒐩𒈙𒐫𪚥";

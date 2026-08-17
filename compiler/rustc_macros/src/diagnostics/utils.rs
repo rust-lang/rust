@@ -1,8 +1,9 @@
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 use std::str::FromStr;
 
+use indexmap::IndexMap;
 use proc_macro::Span;
 use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, format_ident, quote};
@@ -260,7 +261,7 @@ impl<T> SetOnce<T> for SpannedOption<T> {
     }
 }
 
-pub(super) type FieldMap = HashMap<String, (syn::Ident, TokenStream)>;
+pub(super) type FieldMap = IndexMap<String, (syn::Ident, TokenStream)>;
 
 /// In the strings in the attributes supplied to this macro, we want callers to be able to
 /// reference fields in the format string. For example:

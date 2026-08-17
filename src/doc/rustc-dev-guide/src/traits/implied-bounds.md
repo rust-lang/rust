@@ -3,33 +3,36 @@
 We currently add implied region bounds to avoid explicit annotations. e.g.
 `fn foo<'a, T>(x: &'a T)` can freely assume that `T: 'a` holds without specifying it.
 
-There are two kinds of implied bounds: explicit and implicit. Explicit implied bounds
-get added to the `fn predicates_of` of the relevant item while implicit ones are
-handled... well... implicitly.
+There are two kinds of implied bounds: explicit and implicit.
+Explicit implied bounds get added to the `fn clauses_of` of the relevant item,
+while implicit ones are handled, well... implicitly.
 
 ## explicit implied bounds
 
-The explicit implied bounds are computed in [`fn inferred_outlives_of`]. Only ADTs and
-lazy type aliases have explicit implied bounds which are computed via a fixpoint algorithm
-in the [`fn inferred_outlives_crate`] query.
+The explicit implied bounds are computed in [`fn inferred_outlives_of`].
+Only ADTs and lazy type aliases have explicit implied bounds
+which are computed via a fixpoint algorithm in the [`fn inferred_outlives_crate`] query.
 
-We use [`fn insert_required_predicates_to_be_wf`] on all fields of all ADTs in the crate.
+We use [`fn insert_required_clauses_to_be_wf`] on all fields of all ADTs in the crate.
 This function computes the outlives bounds for each component of the field using a
 separate implementation.
 
-For ADTs, trait objects, and associated types the initially required predicates are
-computed in [`fn check_explicit_predicates`]. This simply uses `fn explicit_predicates_of`
-without elaborating them.
+For ADTs, trait objects, and associated types the initially required clauses are
+computed in [`fn check_explicit_clauses`].
+This simply uses `fn explicit_clauses_of` without elaborating them.
 
-Region predicates are added via [`fn insert_outlives_predicate`]. This function takes
-an outlives predicate, decomposes it and adds the components as explicit predicates only
-if the outlived region is a region parameter. [It does not add `'static` requirements][nostatic].
+Region clauses are added via [`fn insert_outlives_clause`].
+This function takes an outlives clause,
+decomposes it, and adds the components as explicit clauses only
+if the outlived region is a region parameter.
+[It does not add `'static` requirements][nostatic].
 
+<!-- FIXME: update the links to point at the version of the repo with the renamed functions after #160343 lands -->
  [`fn inferred_outlives_of`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/mod.rs#L20
  [`fn inferred_outlives_crate`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/mod.rs#L83
- [`fn insert_required_predicates_to_be_wf`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L89
- [`fn check_explicit_predicates`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L238
- [`fn insert_outlives_predicate`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L15
+ [`fn insert_required_clauses_to_be_wf`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L89
+ [`fn check_explicit_clauses`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L238
+ [`fn insert_outlives_clause`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L15
  [nostatic]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L159-L165
 
 ## implicit implied bounds
@@ -39,8 +42,9 @@ requirements of impls and functions as explicit predicates.
 
 ### using implicit implied bounds as assumptions
 
-These bounds are not added to the `ParamEnv` of the affected item itself. For lexical
-region resolution they are added using [`fn OutlivesEnvironment::from_normalized_bounds`].
+These bounds are not added to the `ParamEnv` of the affected item itself.
+For lexical region resolution,
+they are added using [`fn OutlivesEnvironment::from_normalized_bounds`].
 Similarly, during MIR borrowck we add them using
 [`fn UniversalRegionRelationsBuilder::add_implied_bounds`].
 
@@ -49,8 +53,8 @@ Outside of MIR borrowck we add the outlives requirements for the types returned 
 [`fn assumed_wf_types`] query.
 
 The assumed outlives constraints for implicit bounds are computed using the
-[`fn implied_outlives_bounds`] query. This directly
-[extracts the required outlives bounds from `fn wf::obligations`][boundsfromty].
+[`fn implied_outlives_bounds`] query.
+This directly [extracts the required outlives bounds from `fn wf::obligations`][boundsfromty].
 
 MIR borrowck adds the outlives constraints for both the normalized and unnormalized types,
 lexical region resolution [only uses the unnormalized types][notnorm].
@@ -65,13 +69,15 @@ lexical region resolution [only uses the unnormalized types][notnorm].
 
 ### proving implicit implied bounds
 
-As the implicit implied bounds are not included in `fn predicates_of` we have to
-separately make sure they actually hold. We generally handle this by checking that
-all used types are well formed by emitting `WellFormed` predicates.
+As the implicit implied bounds are not included in `fn clauses_of` we have to
+separately make sure they actually hold.
+We generally handle this by checking that
+all used types are well-formed by emitting `WellFormed` predicates.
 
 We cannot emit `WellFormed` predicates when instantiating impls, as this would result
-in - currently often inductive - trait solver cycles. We also do not emit constraints
-involving higher ranked regions as we're lacking the implied bounds from their binder.
+in - currently often inductive - trait solver cycles.
+We also do not emit constraints involving higher ranked regions
+as we're lacking the implied bounds from their binder.
 
 This results in multiple unsoundnesses:
 - by using subtyping: [#25860]

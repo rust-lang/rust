@@ -19,7 +19,7 @@ impl TestCx<'_> {
                 .arg("--test-file")
                 .arg(self.testpaths.file.with_extension("js"))
                 .arg("--revision")
-                .arg(self.revision.unwrap_or_default());
+                .arg(self.variant.revision().unwrap_or_default());
             let res = self.run_command_to_procres(cmd);
             if !res.status.success() {
                 self.fatal_proc_rec("rustdoc-js test failed!", &res);

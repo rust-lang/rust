@@ -1,20 +1,14 @@
 //! This module contains shared utilities for bootstrap tests.
 
 use std::path::{Path, PathBuf};
-use std::thread;
 
 use tempfile::TempDir;
 
-use crate::core::builder::Builder;
-use crate::core::config::DryRun;
-use crate::utils::helpers::get_host_target;
-use crate::{Build, Config, Flags, t};
+use crate::core::config::Config;
+use crate::core::config::flags::Flags;
 
 pub mod git;
-
-// Note: tests for `shared_helpers` is separate here, as otherwise shim binaries that include the
-// `shared_helpers` via `#[path]` would fail to find it, breaking `./x check bootstrap`.
-mod shared_helpers_tests;
+mod shim_utils_tests;
 
 /// Holds temporary state of a bootstrap test.
 /// Right now it is only used to redirect the build directory of the bootstrap
@@ -69,11 +63,11 @@ impl ConfigBuilder {
         }
     }
 
-    pub fn path(mut self, path: &str) -> Self {
+    pub fn path(self, path: &str) -> Self {
         self.arg(path)
     }
 
-    pub fn paths(mut self, paths: &[&str]) -> Self {
+    pub fn paths(self, paths: &[&str]) -> Self {
         self.args(paths)
     }
 
@@ -90,7 +84,7 @@ impl ConfigBuilder {
     }
 
     /// Set the specified target to be treated as a no_std target.
-    pub fn override_target_no_std(mut self, target: &str) -> Self {
+    pub fn override_target_no_std(self, target: &str) -> Self {
         self.args(&["--set", &format!("target.{target}.no-std=true")])
     }
 

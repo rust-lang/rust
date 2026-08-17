@@ -460,13 +460,13 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             )),
             ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
                 tables.fn_def(*def_id),
-                generic_args.stable(tables, cx),
+                generic_args.no_bound_vars().unwrap().stable(tables, cx),
             )),
             ty::FnPtr(sig_tys, hdr) => {
                 TyKind::RigidTy(RigidTy::FnPtr(sig_tys.with(*hdr).stable(tables, cx)))
             }
             // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(_) => unimplemented!(),
             ty::Dynamic(existential_predicates, region) => TyKind::RigidTy(RigidTy::Dynamic(
                 existential_predicates
                     .iter()
@@ -478,7 +478,9 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables, cx),
             )),
-            ty::CoroutineClosure(..) => todo!("FIXME(async_closures): Lower these to SMIR"),
+            ty::CoroutineClosure(..) => {
+                unimplemented!("FIXME(async_closures): Lower these to SMIR")
+            }
             ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
                 generic_args.stable(tables, cx),
@@ -749,13 +751,6 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             }
             PredicateKind::Ambiguous => crate::ty::PredicateKind::Ambiguous,
             PredicateKind::NormalizesTo(_pred) => unimplemented!(),
-            PredicateKind::AliasRelate(a, b, alias_relation_direction) => {
-                crate::ty::PredicateKind::AliasRelate(
-                    a.kind().stable(tables, cx),
-                    b.kind().stable(tables, cx),
-                    alias_relation_direction.stable(tables, cx),
-                )
-            }
         }
     }
 }
@@ -777,8 +772,8 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 crate::ty::ClauseKind::RegionOutlives(region_outlives.stable(tables, cx))
             }
             ClauseKind::TypeOutlives(type_outlives) => {
-                let ty::OutlivesPredicate::<_, _>(a, b) = type_outlives;
-                crate::ty::ClauseKind::TypeOutlives(crate::ty::OutlivesPredicate(
+                let ty::OutlivesClause::<_, _>(a, b) = type_outlives;
+                crate::ty::ClauseKind::TypeOutlives(crate::ty::OutlivesClause(
                     a.stable(tables, cx),
                     b.stable(tables, cx),
                 ))
@@ -797,10 +792,10 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 crate::ty::ClauseKind::ConstEvaluatable(const_.stable(tables, cx))
             }
             ClauseKind::HostEffect(..) => {
-                todo!()
+                unimplemented!()
             }
             ClauseKind::UnstableFeature(_) => {
-                todo!()
+                unimplemented!()
             }
         }
     }
@@ -845,18 +840,6 @@ impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::AliasRelationDirection {
-    type T = crate::ty::AliasRelationDirection;
-
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::ty::AliasRelationDirection::*;
-        match self {
-            Equate => crate::ty::AliasRelationDirection::Equate,
-            Subtype => crate::ty::AliasRelationDirection::Subtype,
-        }
-    }
-}
-
 impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
     type T = crate::ty::TraitPredicate;
 
@@ -873,19 +856,19 @@ impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx, T> Stable<'tcx> for ty::OutlivesPredicate<'tcx, T>
+impl<'tcx, T> Stable<'tcx> for ty::OutlivesClause<'tcx, T>
 where
     T: Stable<'tcx>,
 {
-    type T = crate::ty::OutlivesPredicate<T::T, Region>;
+    type T = crate::ty::OutlivesClause<T::T, Region>;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::OutlivesPredicate(a, b) = self;
-        crate::ty::OutlivesPredicate(a.stable(tables, cx), b.stable(tables, cx))
+        let ty::OutlivesClause(a, b) = self;
+        crate::ty::OutlivesClause(a.stable(tables, cx), b.stable(tables, cx))
     }
 }
 
@@ -989,6 +972,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
         let kind = match self.def {
             ty::InstanceKind::Item(..) => crate::mir::mono::InstanceKind::Item,
             ty::InstanceKind::Intrinsic(..) => crate::mir::mono::InstanceKind::Intrinsic,
+            ty::InstanceKind::LlvmIntrinsic(..) => crate::mir::mono::InstanceKind::LlvmIntrinsic,
             ty::InstanceKind::Virtual(_def_id, idx) => {
                 crate::mir::mono::InstanceKind::Virtual { idx }
             }
@@ -1063,7 +1047,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
+impl<'tcx> Stable<'tcx> for rustc_crate_store::ForeignModule {
     type T = crate::ty::ForeignModule;
 
     fn stable<'cx>(

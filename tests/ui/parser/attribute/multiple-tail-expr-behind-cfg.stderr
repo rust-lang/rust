@@ -44,11 +44,30 @@ help: alternatively, consider surrounding the expression with a block
 LL |     { [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() }
    |     +                                                             +
 
+error: expected `;`, found `#`
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:19:64
+   |
+LL |     #[cfg(false)]
+   |     ------------- only `;` terminated statements or tail expressions are allowed after this attribute
+LL |     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>()
+   |                                                                ^ expected `;` here
+LL |     #[allow(unused)]
+   |     - unexpected token
+   |
+help: add `;` here
+   |
+LL |     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>();
+   |                                                                +
+help: alternatively, consider surrounding the expression with a block
+   |
+LL |     { [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() }
+   |     +                                                             +
+
 error: cannot find attribute `attr` in this scope
   --> $DIR/multiple-tail-expr-behind-cfg.rs:13:7
    |
 LL |     #[attr]
    |       ^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

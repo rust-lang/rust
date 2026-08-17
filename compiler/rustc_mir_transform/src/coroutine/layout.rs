@@ -26,9 +26,11 @@ use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec};
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, Ty, TyCtxt, TypingMode};
@@ -36,15 +38,13 @@ use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
     always_storage_live_locals,
 };
-use rustc_mir_dataflow::{
-    Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
-};
+use rustc_mir_dataflow::{Analysis, Results, ResultsCursor, ResultsVisitor, visit_results};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::diagnostics::{MustNotSupend, MustNotSuspendReason};
 
@@ -93,12 +93,10 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate the MIR locals that have been previously borrowed (even if they are still active).
     let borrowed_locals = MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
-    let borrowed_locals_cursor1 = ResultsCursor::new_borrowing(body, &borrowed_locals);
-    let mut borrowed_locals_cursor2 = ResultsCursor::new_borrowing(body, &borrowed_locals);
 
     // Calculate the MIR locals that we need to keep storage around for.
     let requires_storage =
-        MaybeRequiresStorage::new(borrowed_locals_cursor1).iterate_to_fixpoint(tcx, body, None);
+        MaybeRequiresStorage::new(body, &borrowed_locals).iterate_to_fixpoint(tcx, body, None);
     let mut requires_storage_cursor = ResultsCursor::new_borrowing(body, &requires_storage);
 
     // Calculate the liveness of MIR locals ignoring borrows.
@@ -109,6 +107,7 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
+    let mut borrowed_locals_cursor = ResultsCursor::new_owning(body, borrowed_locals);
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Yield { .. } = data.terminator().kind else { continue };
@@ -129,8 +128,8 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
             // If a borrow is converted to a raw reference, we must also assume that it lives
             // forever. Note that the final liveness is still bounded by the storage liveness
             // of the local, which happens using the `intersect` operation below.
-            borrowed_locals_cursor2.seek_before_primary_effect(loc);
-            live_locals.union(borrowed_locals_cursor2.get());
+            borrowed_locals_cursor.seek_before_primary_effect(loc);
+            live_locals.union(borrowed_locals_cursor.get());
         }
 
         // Store the storage liveness for later use so we can restore the state
@@ -236,7 +235,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &'mir CoroutineSavedLocals,
     always_live_locals: DenseBitSet<Local>,
-    results: &Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    results: &Results<'tcx, MaybeRequiresStorage>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -250,13 +249,19 @@ fn compute_storage_conflicts<'mir, 'tcx>(
 
     // Compute the storage conflicts for all eligible locals.
     let mut visitor = StorageConflictVisitor {
-        body,
         saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
         eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
-    visit_reachable_results(body, results, &mut visitor);
+    // Filter out:
+    // - unreachable blocks;
+    // - reachable blocks that end in `Unreachable`, because they never complete execution and
+    //   conflicts within them are spurious.
+    let blocks = traversal::reachable(body).filter_map(|(bb, data)| {
+        (!matches!(data.terminator().kind, TerminatorKind::Unreachable)).then_some(bb)
+    });
+    visit_results(body, blocks, results, &mut visitor);
 
     let local_conflicts = visitor.local_conflicts;
 
@@ -284,8 +289,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'a, 'tcx> {
-    body: &'a Body<'tcx>,
+struct StorageConflictVisitor<'a> {
     saved_locals: &'a CoroutineSavedLocals,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for coroutines.
@@ -294,46 +298,33 @@ struct StorageConflictVisitor<'a, 'tcx> {
     eligible_storage_live: DenseBitSet<Local>,
 }
 
-impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
-    for StorageConflictVisitor<'a, 'tcx>
-{
+impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a> {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &MaybeRequiresStorage<'a, 'tcx>,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
-        loc: Location,
+        _loc: Location,
     ) {
-        self.apply_state(state, loc);
+        self.apply_state(state);
     }
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &MaybeRequiresStorage<'a, 'tcx>,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
-        loc: Location,
+        _loc: Location,
     ) {
-        self.apply_state(state, loc);
+        self.apply_state(state);
     }
 }
 
-impl StorageConflictVisitor<'_, '_> {
-    fn apply_state(&mut self, state: &DenseBitSet<Local>, loc: Location) {
-        // Ignore unreachable blocks.
-        if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
-            return;
-        }
-
+impl StorageConflictVisitor<'_> {
+    fn apply_state(&mut self, state: &DenseBitSet<Local>) {
         self.eligible_storage_live.clone_from(state);
         self.eligible_storage_live.intersect(&**self.saved_locals);
 
         for local in self.eligible_storage_live.iter() {
             self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
-        }
-
-        if self.eligible_storage_live.count() > 1 {
-            trace!("at {:?}, eligible_storage_live={:?}", loc, self.eligible_storage_live);
         }
     }
 }
@@ -512,13 +503,13 @@ fn check_field_tys_sized<'tcx>(
             ),
             param_env,
             field_ty.ty,
-            tcx.require_lang_item(hir::LangItem::Sized, field_ty.source_info.span),
+            tcx.require_lang_item(LangItem::Sized, field_ty.source_info.span),
         );
     }
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 }

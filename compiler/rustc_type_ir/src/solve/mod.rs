@@ -10,13 +10,16 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableH
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
+use thin_vec::ThinVec;
 use tracing::debug;
 
+use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
+    self as ty, Canonical, CanonicalVarValues, CantBeErased, ConstVid, FloatVid, GenericArgKind,
+    InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
@@ -78,17 +81,21 @@ impl From<RerunNonErased> for NoSolutionOrRerunNonErased {
     }
 }
 
+/// A small set of up to 3 `Copy` elements, used as an optimization in [`RerunCondition`].
+/// The entire set can be `Copy`ed because of this requirement.
+///
+/// Set properties maintained using [`union`](SmallCopySet::union), which deduplicates values.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub enum SmallCopyList<T: Copy + Debug + Hash + Eq> {
+pub enum SmallCopySet<T: Copy + Debug + Hash + Eq> {
     Empty,
     One([T; 1]),
     Two([T; 2]),
     Three([T; 3]),
 }
 
-impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
+impl<T: Copy + Debug + Hash + Eq> SmallCopySet<T> {
     fn empty() -> Self {
         Self::Empty
     }
@@ -126,7 +133,7 @@ impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
     }
 }
 
-impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
+impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopySet<T> {
     fn as_ref(&self) -> &[T] {
         match self {
             Self::Empty => &[],
@@ -164,12 +171,12 @@ pub enum RerunCondition<I: Interner> {
     /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
     AnyOpaqueHasInferAsHidden,
     /// Note: unconditionally reruns in postanalysis
-    OpaqueInStorage(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorage(SmallCopySet<I::LocalDefId>),
 
     /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
     /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
     /// condition only matters in [`TypingMode::Typeck`]
-    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopySet<I::LocalDefId>),
 
     Always,
 }
@@ -326,7 +333,7 @@ impl<I: Interner> AccessedOpaques<I> {
         debug!("set rerun if post analysis");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::empty()),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::empty()),
         })
     }
 
@@ -338,7 +345,7 @@ impl<I: Interner> AccessedOpaques<I> {
         debug!("set rerun if opaque type {defid:?} in storage");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid.into())),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::new(defid.into())),
         })
     }
 
@@ -848,6 +855,20 @@ impl Certainty {
             stalled_on_coroutines: StalledOnCoroutines::No,
         })
     }
+
+    pub fn is_yes(&self) -> bool {
+        match self {
+            Certainty::Yes => true,
+            Certainty::Maybe(_) => false,
+        }
+    }
+
+    pub fn is_overflow(&self) -> bool {
+        match self {
+            Certainty::Maybe(MaybeInfo { cause: MaybeCause::Overflow { .. }, .. }) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Why we failed to evaluate a goal.
@@ -940,5 +961,119 @@ impl SizedTraitKind {
             SizedTraitKind::Sized => SolverTraitLangItem::Sized,
             SizedTraitKind::MetaSized => SolverTraitLangItem::MetaSized,
         })
+    }
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum SucceededInErased<I: Interner> {
+    /// This goal previously succeeded in erased mode, which based on `accessed_opaques`
+    /// might make us take a fast path slightly more often.
+    Yes {
+        accessed_opaques: AccessedOpaques<I>,
+    },
+    No,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum GoalStalledOnOpaques<I: Interner> {
+    /// This goal got stalled in `compute_goal_fast_path`. Usually this means
+    /// the goal is stalled on not that much, only one or two variables, and
+    /// definitely nothing to do with opaque types. So we don't store that information.
+    No,
+    Yes {
+        num_opaques_in_storage: usize,
+        previously_succeeded_in_erased: SucceededInErased<I>,
+    },
+}
+
+/// The conditions that must change for a goal to warrant
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct GoalStalledOn<I: Interner> {
+    // `ThinVec` is important for performance. See #160005.
+    pub stalled_vars: ThinVec<TyOrConstInferVar>,
+    // `ThinVec` is important for performance. See #160005.
+    pub sub_roots: ThinVec<TyVid>,
+    /// The `MaybeInfo` that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_maybe_info: MaybeInfo,
+    pub opaques: GoalStalledOnOpaques<I>,
+}
+
+/// For some goals we can trivially answer some questions without going through
+/// canonicalization. There are three options:
+#[derive(Clone, Debug)]
+pub enum ComputeGoalFastPathOutcome<I: Interner> {
+    /// Do not attempt the fast path. Compute as normal.
+    NoFastPath,
+    /// The goal trivially holds, immediately produce a result with [`Certainty::Yes`]
+    TriviallyHolds,
+    /// The goal is trivially stalled: we know for sure that it makes no sense to compute it right
+    /// now, but can return information about what its stalled on and when it can be computed for real.
+    TriviallyStalled { stalled_on: GoalStalledOn<I> },
+}
+
+/// Helper for `InferCtxt::ty_or_const_infer_var_changed` (see comment on that), used
+/// for `traits::fulfill`'s list of `stalled_on` inference variables and for merging
+/// ambiguity errors caused by the same inference variable during error reporting.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TyOrConstInferVar {
+    /// Equivalent to `ty::Infer(ty::TyVar(_))`.
+    Ty(TyVid),
+    /// Equivalent to `ty::Infer(ty::IntVar(_))`.
+    TyInt(IntVid),
+    /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
+    TyFloat(FloatVid),
+
+    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
+    Const(ConstVid),
+}
+
+impl TyOrConstInferVar {
+    pub fn as_type<I: Interner>(&self, interner: I) -> Option<I::Ty> {
+        match self {
+            Self::Ty(vid) => Some(I::Ty::new_var(interner, *vid)),
+            Self::TyInt(_) | Self::TyFloat(_) | Self::Const(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_generic_arg<I: Interner>(arg: I::GenericArg) -> Option<Self> {
+        match arg.kind() {
+            GenericArgKind::Type(ty) => Self::maybe_from_ty::<I>(ty),
+            GenericArgKind::Const(ct) => Self::maybe_from_const::<I>(ct),
+            GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_term<I: Interner>(term: I::Term) -> Option<Self> {
+        match term.kind() {
+            TermKind::Ty(ty) => Self::maybe_from_ty::<I>(ty),
+            TermKind::Const(ct) => Self::maybe_from_const::<I>(ct),
+        }
+    }
+
+    /// Tries to extract an inference variable from a type, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
+    fn maybe_from_ty<I: Interner>(ty: I::Ty) -> Option<Self> {
+        match ty.kind() {
+            ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
+            ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
+            ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            _ => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a constant, returns `None`
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    fn maybe_from_const<I: Interner>(ct: I::Const) -> Option<Self> {
+        match ct.kind() {
+            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
+            _ => None,
+        }
     }
 }

@@ -1,4 +1,4 @@
-error[E0423]: expected value, found struct `Z`
+error[E0423]: cannot find value `Z` in this scope
   --> $DIR/privacy-struct-ctor.rs:21:9
    |
 LL |     pub struct S(u8);
@@ -7,19 +7,22 @@ LL |     pub struct S(u8);
 LL |         Z;
    |         ^ constructor is not visible here due to private fields
    |
+   = note: a struct named `Z` exists in another namespace
 help: a tuple struct with a similar name exists
    |
 LL -         Z;
 LL +         S;
    |
 
-error[E0423]: expected value, found struct `S`
+error[E0423]: cannot find value `S` in this scope
   --> $DIR/privacy-struct-ctor.rs:34:5
    |
 LL |     S;
    |     ^ constructor is not visible here due to private fields
+   |
+   = note: a struct named `S` exists in another namespace
 
-error[E0423]: expected value, found struct `S2`
+error[E0423]: cannot find value `S2` in this scope
   --> $DIR/privacy-struct-ctor.rs:39:5
    |
 LL | /     pub struct S2 {
@@ -29,13 +32,18 @@ LL | |     }
 ...
 LL |       S2;
    |       ^^ help: use struct literal syntax instead: `S2 { s: val }`
+   |
+   = note: a struct named `S2` exists in another namespace
 
-error[E0423]: expected value, found struct `xcrate::S`
-  --> $DIR/privacy-struct-ctor.rs:44:5
+error[E0423]: cannot find value `S` in crate `xcrate`
+  --> $DIR/privacy-struct-ctor.rs:44:13
    |
 LL |     xcrate::S;
-   |     ^^^^^^^^^ constructor is not visible here due to private fields
+   |     --------^
+   |     |
+   |     constructor is not visible here due to private fields
    |
+   = note: a struct named `xcrate::S` exists in another namespace
 note: tuple struct `m::S` exists but is inaccessible
   --> $DIR/privacy-struct-ctor.rs:7:5
    |

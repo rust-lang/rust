@@ -1,7 +1,7 @@
 // Test for #78438: ensure underline alignment with many tabs on the left, long line on the right
 //@ compile-flags: --diagnostic-width=145
-// ignore-tidy-linelength
-// ignore-tidy-tab
+// ignore-tidy-file-linelength
+// ignore-tidy-file-tab
 
 					fn main() {
 						let money = 42i32;

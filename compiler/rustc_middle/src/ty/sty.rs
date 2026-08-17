@@ -10,7 +10,7 @@ use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
@@ -172,13 +172,6 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
                 }
             })
         })
-    }
-
-    /// This is the types of the fields of a coroutine which are not stored in a
-    /// variant.
-    #[inline]
-    fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
-        self.upvar_tys()
     }
 }
 
@@ -376,7 +369,6 @@ impl ParamConst {
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
     /// The more specific methods will often optimize their creation.
-    #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
@@ -681,7 +673,6 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::Use
                 | DefKind::ForeignMod
                 | DefKind::AnonConst
-                | DefKind::InlineConst
                 | DefKind::OpaqueTy
                 | DefKind::Field
                 | DefKind::LifetimeParam
@@ -733,17 +724,18 @@ impl<'tcx> Ty<'tcx> {
         T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
     }
 
+    /// Prefer using the [TyCtxt::type_of] query over this, that makes it easier to get all the pieces correct
     #[inline]
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+        args: ty::Binder<'tcx, impl IntoIterator<Item: Into<GenericArg<'tcx>>>>,
     ) -> Ty<'tcx> {
         debug_assert_matches!(
             tcx.def_kind(def_id),
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
-        let args = tcx.check_and_mk_args(def_id, args);
+        let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
         Ty::new(tcx, FnDef(def_id, args))
     }
 
@@ -769,25 +761,22 @@ impl<'tcx> Ty<'tcx> {
                 .projection_bounds()
                 .filter(|item| !tcx.generics_require_sized_self(item.item_def_id()))
                 .count();
-            let expected_count: usize = obj
-                .principal_def_id()
-                .into_iter()
-                .flat_map(|principal_def_id| {
-                    // IMPORTANT: This has to agree with HIR ty lowering of dyn trait!
-                    elaborate::supertraits(
-                        tcx,
-                        ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
-                    )
-                    .map(|principal| {
-                        tcx.associated_items(principal.def_id())
-                            .in_definition_order()
-                            .filter(|item| item.is_type() || item.is_type_const())
-                            .filter(|item| !item.is_impl_trait_in_trait())
-                            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-                            .count()
-                    })
+            let expected_count: usize = obj.principal_def_id().map_or(0, |principal_def_id| {
+                // IMPORTANT: This has to agree with HIR ty lowering of dyn trait!
+                elaborate::supertraits(
+                    tcx,
+                    ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
+                )
+                .map(|principal| {
+                    tcx.associated_items(principal.def_id())
+                        .in_definition_order()
+                        .filter(|item| item.can_have_equality_constraint(tcx))
+                        .filter(|item| !item.is_impl_trait_in_trait())
+                        .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                        .count()
                 })
-                .sum();
+                .sum()
+            });
             assert_eq!(
                 projection_count, expected_count,
                 "expected {obj:?} to have {expected_count} projections, \
@@ -1118,7 +1107,11 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::from_coroutine_closure_kind(interner, kind)
     }
 
-    fn new_fn_def(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
+    fn new_fn_def(
+        interner: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
+    ) -> Self {
         Ty::new_fn_def(interner, def_id, args)
     }
 
@@ -1198,6 +1191,15 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_self_param(self) -> bool {
+        if let Param(param) = self.kind() {
+            param.index == 0 && param.name == kw::SelfUpper
+        } else {
+            false
+        }
+    }
+
+    #[inline]
     pub fn is_ref(self) -> bool {
         matches!(self.kind(), Ref(..))
     }
@@ -1231,6 +1233,11 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_phantom_data(self) -> bool {
         if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
+    }
+
+    #[inline]
+    pub fn is_unsafe_cell(self) -> bool {
+        if let Adt(def, _) = self.kind() { def.is_unsafe_cell() } else { false }
     }
 
     #[inline]
@@ -1630,6 +1637,11 @@ impl<'tcx> Ty<'tcx> {
         self.kind().fn_sig(tcx)
     }
 
+    #[tracing::instrument(level = "trace", skip(tcx))]
+    pub fn unnormalized_fn_sig(self, tcx: TyCtxt<'tcx>) -> ty::Unnormalized<'tcx, PolyFnSig<'tcx>> {
+        self.kind().unnormalized_fn_sig(tcx)
+    }
+
     #[inline]
     pub fn is_fn(self) -> bool {
         matches!(self.kind(), FnDef(..) | FnPtr(..))
@@ -1722,7 +1734,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
-                    tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
+                    tcx.require_lang_item(LangItem::DiscriminantKind, DUMMY_SP),
                 );
                 Ty::new_projection_from_args(
                     tcx,
@@ -1815,7 +1827,7 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)

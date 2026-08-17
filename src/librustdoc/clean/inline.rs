@@ -6,7 +6,7 @@ use std::sync::Arc;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
-use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModId};
 use rustc_hir::{self as hir, Mutability, find_attr};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, sym};
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use super::{Item, extract_cfg_from_attrs};
 use crate::clean::{
@@ -142,7 +142,7 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => return Some(Vec::new()),
         Res::Def(DefKind::Mod, did) => {
             record_extern_fqn(cx, did, ItemType::Module);
-            clean::ModuleItem(build_module(cx, did, visited))
+            clean::ModuleItem(build_module(cx, did, name, visited))
         }
         Res::Def(DefKind::Static { .. }, did) => {
             record_extern_fqn(cx, did, ItemType::Static);
@@ -181,7 +181,7 @@ pub(crate) fn try_inline(
 pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
-    current_mod: LocalModDefId,
+    current_mod: LocalModId,
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     import: &hir::Item<'_>,
@@ -207,6 +207,7 @@ pub(crate) fn try_inline_glob(
             let mut items = build_module_items(
                 cx,
                 did,
+                cx.tcx.item_name(did),
                 visited,
                 inlined_names,
                 Some(&reexports),
@@ -452,6 +453,7 @@ pub(crate) fn merge_attrs(
 }
 
 /// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
+#[instrument(level = "debug", skip(cx, ret))]
 pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     did: DefId,
@@ -665,16 +667,48 @@ pub(crate) fn build_impl(
     ));
 }
 
-fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
-    let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None, None);
+fn build_module(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    name: Symbol,
+    visited: &mut DefIdSet,
+) -> clean::Module {
+    let items = build_module_items(cx, did, name, visited, &mut FxHashSet::default(), None, None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
     clean::Module { items, span }
 }
 
+// We are only interested into `Res::Def`. And in there, we only want "items" which get their own
+//  rustdoc page. So not `DefKind::Ctor` for example (which is returned by `tcx.module_children()`).
+fn should_ignore_res(res: Res) -> bool {
+    !matches!(res, Res::Def(def_kind, _) if !should_ignore_def_kind(def_kind))
+}
+
+fn should_ignore_def_kind(kind: DefKind) -> bool {
+    !matches!(
+        kind,
+        DefKind::Trait
+            | DefKind::TraitAlias
+            | DefKind::Fn
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::TyAlias
+            | DefKind::Enum
+            | DefKind::ForeignTy
+            | DefKind::Variant
+            | DefKind::Mod
+            | DefKind::Static { .. }
+            | DefKind::Const { .. }
+            | DefKind::Macro(_)
+            | DefKind::Use
+    )
+}
+
 fn build_module_items(
     cx: &mut DocContext<'_>,
-    did: DefId,
+    module_def_id: DefId,
+    module_name: Symbol,
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     allowed_def_ids: Option<&DefIdSet>,
@@ -685,61 +719,109 @@ fn build_module_items(
     // If we're re-exporting a re-export it may actually re-export something in
     // two namespaces, so the target may be listed twice. Make sure we only
     // visit each node at most once.
-    for item in cx.tcx.module_children(did).iter() {
-        if item.vis.is_public() {
-            let res = item.res.expect_non_local();
-            if let Some(def_id) = res.opt_def_id()
-                && let Some(allowed_def_ids) = allowed_def_ids
-                && !allowed_def_ids.contains(&def_id)
+    for item in cx.tcx.module_children(module_def_id).iter() {
+        if !item.vis.is_public() {
+            continue;
+        }
+        let res = item.res.expect_non_local();
+        if let Some(def_id) = res.opt_def_id()
+            && let Some(allowed_def_ids) = allowed_def_ids
+            && !allowed_def_ids.contains(&def_id)
+        {
+            continue;
+        }
+        if let Some(def_id) = res.mod_def_id() {
+            // If we're inlining a glob import, it's possible to have
+            // two distinct modules with the same name. We don't want to
+            // inline it, or mark any of its contents as visited.
+            if module_def_id == def_id
+                || inlined_names.contains(&(ItemType::Module, item.ident.name))
+                || !visited.insert(def_id)
             {
                 continue;
             }
-            if let Some(def_id) = res.mod_def_id() {
-                // If we're inlining a glob import, it's possible to have
-                // two distinct modules with the same name. We don't want to
-                // inline it, or mark any of its contents as visited.
-                if did == def_id
-                    || inlined_names.contains(&(ItemType::Module, item.ident.name))
-                    || !visited.insert(def_id)
-                {
-                    continue;
-                }
-            }
-            if let Res::PrimTy(p) = res {
-                // Primitive types can't be inlined so generate an import instead.
-                let prim_ty = clean::PrimitiveType::from(p);
-                items.push(clean::Item {
-                    inner: Box::new(clean::ItemInner {
-                        name: None,
-                        // We can use the item's `DefId` directly since the only information ever
-                        // used from it is `DefId.krate`.
-                        item_id: ItemId::DefId(did),
-                        attrs: Default::default(),
-                        stability: None,
-                        kind: clean::ImportItem(clean::Import::new_simple(
-                            item.ident.name,
-                            clean::ImportSource {
-                                path: clean::Path {
-                                    res,
-                                    segments: thin_vec![clean::PathSegment {
-                                        name: prim_ty.as_sym(),
-                                        args: clean::GenericArgs::AngleBracketed {
-                                            args: Default::default(),
-                                            constraints: ThinVec::new(),
-                                        },
-                                    }],
-                                },
-                                did: None,
+        }
+        if let Res::PrimTy(p) = res {
+            // Primitive types can't be inlined so generate an import instead.
+            let prim_ty = clean::PrimitiveType::from(p);
+            items.push(clean::Item {
+                inner: Box::new(clean::ItemInner {
+                    name: None,
+                    // We can use the item's `DefId` directly since the only information ever
+                    // used from it is `DefId.krate`.
+                    item_id: ItemId::DefId(module_def_id),
+                    attrs: Default::default(),
+                    stability: None,
+                    kind: clean::ImportItem(clean::Import::new_simple(
+                        item.ident.name,
+                        clean::ImportSource {
+                            path: clean::Path {
+                                res,
+                                segments: thin_vec![clean::PathSegment {
+                                    name: prim_ty.as_sym(),
+                                    args: clean::GenericArgs::AngleBracketed {
+                                        args: Default::default(),
+                                        constraints: ThinVec::new(),
+                                    },
+                                }],
                             },
-                            true,
-                        )),
-                        cfg: None,
-                        inline_stmt_id: None,
-                    }),
-                });
-            } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
-                items.extend(i)
+                            did: None,
+                        },
+                        true,
+                    )),
+                    cfg: None,
+                    inline_stmt_id: None,
+                }),
+            });
+        } else if let Some(def_id) = res.opt_def_id()
+            && let Some(reexport) = item.reexport_chain.first()
+            && let Some(reexport_def_id) = reexport.id()
+            && !should_ignore_def_kind(cx.tcx.def_kind(reexport_def_id))
+            && find_attr!(
+                load_attrs(cx.tcx, reexport_def_id),
+                Doc(d)
+                if d.inline.first().is_some_and(|(inline, _)| *inline == hir::attrs::DocInline::NoInline)
+            )
+        {
+            // We don't inline foreign `use`.
+            if should_ignore_res(res) || matches!(res, Res::Def(DefKind::Use, _)) {
+                continue;
             }
+            // This item is reexported as `no_inline` so it shouldn't be inlined.
+            let item = Item::from_def_id_and_parts(
+                module_def_id,
+                None,
+                clean::ImportItem(clean::Import::new_simple(
+                    item.ident.name,
+                    clean::ImportSource {
+                        path: clean::Path {
+                            res,
+                            segments: thin_vec![
+                                clean::PathSegment {
+                                    name: module_name,
+                                    args: clean::GenericArgs::AngleBracketed {
+                                        args: Default::default(),
+                                        constraints: ThinVec::new(),
+                                    },
+                                },
+                                clean::PathSegment {
+                                    name: cx.tcx.item_name(def_id),
+                                    args: clean::GenericArgs::AngleBracketed {
+                                        args: Default::default(),
+                                        constraints: ThinVec::new(),
+                                    },
+                                },
+                            ],
+                        },
+                        did: None,
+                    },
+                    true,
+                )),
+                cx.tcx,
+            );
+            items.push(item);
+        } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
+            items.extend(i)
         }
     }
 

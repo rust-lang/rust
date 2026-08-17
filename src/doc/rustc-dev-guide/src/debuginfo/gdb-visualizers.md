@@ -1,4 +1,4 @@
-# (WIP) GDB - Python Providers
+# GDB - Python Providers
 
 Below are links to relevant parts of the GDB documentation
 

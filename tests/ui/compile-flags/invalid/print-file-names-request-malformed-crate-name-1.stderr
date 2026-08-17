@@ -1,8 +1,8 @@
 error[E0539]: malformed `crate_name` attribute input
-  --> $DIR/print-file-names-request-malformed-crate-name-1.rs:4:1
+  --> $DIR/print-file-names-request-malformed-crate-name-1.rs:4:4
    |
 LL | #![crate_name]
-   | ^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^
    |
 help: must be of the form
    |

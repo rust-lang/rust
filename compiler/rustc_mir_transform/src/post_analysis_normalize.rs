@@ -6,6 +6,8 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+use crate::PassPolicy;
+
 pub(super) struct PostAnalysisNormalize;
 
 impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
@@ -16,8 +18,9 @@ impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
         PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Reveals opaque types and normalizes MIR while transitioning to the runtime dialect.
+        PassPolicy::Required
     }
 }
 

@@ -1,0 +1,14 @@
+error: expected expression, found `direct_const_arg!()` constant
+  --> $DIR/bad-direct-const-arg.rs:6:13
+   |
+LL |     let _ = core::direct_const_arg!(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected type, found `direct_const_arg!()` constant
+  --> $DIR/bad-direct-const-arg.rs:4:12
+   |
+LL | fn main(x: core::direct_const_arg!(2)) {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

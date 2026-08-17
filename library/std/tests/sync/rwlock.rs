@@ -7,7 +7,7 @@ use std::sync::{
     Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
     TryLockError,
 };
-use std::{hint, mem, thread, u32};
+use std::{hint, mem, thread};
 
 use rand::Rng;
 

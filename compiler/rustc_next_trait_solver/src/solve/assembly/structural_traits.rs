@@ -8,14 +8,16 @@ use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
-    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
+    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, Region, TypeFoldable,
     TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
+use crate::solve::{
+    AdtDestructorKind, EvalCtxt, Goal, NoSolution, NoSolutionOrRerunNonErased, RerunNonErased,
+};
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 #[instrument(level = "trace", skip(ecx), ret)]
@@ -291,7 +293,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             let sig = cx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 Ok(Some(
-                    sig.instantiate(cx, args)
+                    sig.instantiate(cx, args.no_bound_vars().unwrap())
                         .skip_norm_wip()
                         .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
                 ))
@@ -442,7 +444,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
     cx: I,
     self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
-    env_region: I::Region,
+    env_region: Region<I>,
 ) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
     match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
@@ -625,7 +627,7 @@ fn fn_item_to_async_callable<I: Interner>(
 fn coroutine_closure_to_certain_coroutine<I: Interner>(
     cx: I,
     goal_kind: ty::ClosureKind,
-    goal_region: I::Region,
+    goal_region: Region<I>,
     def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
@@ -649,7 +651,7 @@ fn coroutine_closure_to_certain_coroutine<I: Interner>(
 fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     cx: I,
     goal_kind: ty::ClosureKind,
-    goal_region: I::Region,
+    goal_region: Region<I>,
     def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
@@ -691,6 +693,9 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
 ) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
+            // FIXME
+            let args = args.no_bound_vars().unwrap();
+
             let sig = cx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible()
                 && !cx.has_target_features(def_id)
@@ -888,7 +893,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: Binder<I, ty::TraitRef<I>>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Vec<Goal<I, I::Predicate>>, Ambiguous>
+) -> Result<Vec<Goal<I, I::Predicate>>, AmbiguousOrRerunNonErased>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -905,7 +910,7 @@ where
     // make impls coinductive always, since they'll always need to prove their supertraits.
     requirements.extend(elaborate::elaborate(
         cx,
-        cx.explicit_super_predicates_of(trait_ref.def_id)
+        cx.explicit_super_clauses_of(trait_ref.def_id)
             .iter_instantiated(cx, trait_ref.args)
             .map(Unnormalized::skip_norm_wip)
             .map(|(pred, _)| pred),
@@ -972,27 +977,33 @@ where
         &mut self,
         source_projection: ty::Binder<I, ty::ProjectionPredicate<I>>,
         target_projection: ty::AliasTerm<I>,
-    ) -> bool {
-        source_projection.item_def_id() == target_projection.expect_projection_def_id()
-            && self
-                .ecx
-                .probe(|_| ProbeKind::ProjectionCompatibility)
-                .enter_without_propagated_nested_goals(|ecx| {
-                    let source_projection = ecx.instantiate_binder_with_infer(source_projection);
-                    ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
-                    ecx.try_evaluate_added_goals()
-                })
-                .is_ok()
+    ) -> Result<bool, RerunNonErased> {
+        if source_projection.item_def_id() != target_projection.expect_projection_def_id() {
+            return Ok(false);
+        }
+        match self
+            .ecx
+            .probe(|_| ProbeKind::ProjectionCompatibility)
+            .enter_without_propagated_nested_goals(|ecx| {
+                let source_projection = ecx.instantiate_binder_with_infer(source_projection);
+                ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
+                ecx.try_evaluate_added_goals()
+            }) {
+            Ok(_) => Ok(true),
+            Err(NoSolutionOrRerunNonErased::NoSolution(_)) => Ok(false),
+            Err(NoSolutionOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun),
+        }
     }
 
     /// Try to replace an alias with the term present in the projection bounds of the self type.
     /// Returns `Ok<None>` if this alias is not eligible to be replaced, or bail with
     /// `Err(Ambiguous)` if it's uncertain which projection bound to replace the term with due
-    /// to multiple bounds applying.
+    /// to multiple bounds applying, or with `Err(RerunNonErased)` if we have to rerun the
+    /// goal in original `TypingMode`.
     fn try_eagerly_replace_alias(
         &mut self,
         alias_term: ty::AliasTerm<I>,
-    ) -> Result<Option<I::Term>, Ambiguous> {
+    ) -> Result<Option<I::Term>, AmbiguousOrRerunNonErased> {
         if alias_term.self_ty() != self.self_ty {
             return Ok(None);
         }
@@ -1004,22 +1015,26 @@ where
         // This is quite similar to the `projection_may_match` we use in unsizing,
         // but here we want to unify a projection predicate against an alias term
         // so we can replace it with the projection predicate's term.
-        let mut matching_projections = replacements
-            .iter()
-            .filter(|source_projection| self.projection_may_match(**source_projection, alias_term));
-        let Some(replacement) = matching_projections.next() else {
+        let mut matching_projection = None;
+        for source_projection in replacements {
+            if self.projection_may_match(*source_projection, alias_term)? {
+                // FIXME: This *may* have issues with duplicated projections.
+                if matching_projection.is_some() {
+                    // If there's more than one projection that we can unify here, then we
+                    // need to stall until inference constrains things so that there's only
+                    // one choice.
+                    return Err(AmbiguousOrRerunNonErased::Ambiguous);
+                }
+                matching_projection = Some(source_projection)
+            }
+        }
+
+        let Some(matching) = matching_projection else {
             // This shouldn't happen.
             panic!("could not replace {alias_term:?} with term from from {:?}", self.self_ty);
         };
-        // FIXME: This *may* have issues with duplicated projections.
-        if matching_projections.next().is_some() {
-            // If there's more than one projection that we can unify here, then we
-            // need to stall until inference constrains things so that there's only
-            // one choice.
-            return Err(Ambiguous);
-        }
 
-        let replacement = self.ecx.instantiate_binder_with_infer(*replacement);
+        let replacement = self.ecx.instantiate_binder_with_infer(*matching);
         self.nested.extend(
             self.ecx
                 .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)
@@ -1030,21 +1045,30 @@ where
     }
 }
 
-/// Marker for bailing with ambiguity.
-pub(crate) struct Ambiguous;
+pub(crate) enum AmbiguousOrRerunNonErased {
+    /// Marker for bailing with ambiguity.
+    Ambiguous,
+    RerunNonErased(RerunNonErased),
+}
+
+impl From<RerunNonErased> for AmbiguousOrRerunNonErased {
+    fn from(rerun: RerunNonErased) -> Self {
+        AmbiguousOrRerunNonErased::RerunNonErased(rerun)
+    }
+}
 
 impl<D, I> FallibleTypeFolder<I> for ReplaceProjectionWith<'_, '_, I, D>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    type Error = Ambiguous;
+    type Error = AmbiguousOrRerunNonErased;
 
     fn cx(&self) -> I {
         self.ecx.cx()
     }
 
-    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
+    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
         if let ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { .. }, .. }) = ty.kind()
             && let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())?
         {

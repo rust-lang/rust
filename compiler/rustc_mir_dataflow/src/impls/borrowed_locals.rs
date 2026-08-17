@@ -1,5 +1,4 @@
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
 use crate::{Analysis, GenKill};
@@ -14,94 +13,35 @@ use crate::{Analysis, GenKill};
 pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
-    pub(super) fn transfer_function<'a, T>(trans: &'a mut T) -> TransferFunction<'a, T> {
-        TransferFunction { trans }
-    }
-}
-
-impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
-    type Domain = DenseBitSet<Local>;
-    const NAME: &'static str = "maybe_borrowed_locals";
-
-    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
-        // bottom = unborrowed
-        DenseBitSet::new_empty(body.local_decls().len())
-    }
-
-    fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
-        // No locals are aliased on function entry
-    }
-
-    fn apply_primary_statement_effect(
-        &self,
-        state: &mut Self::Domain,
-        statement: &Statement<'tcx>,
-        location: Location,
-    ) {
-        Self::transfer_function(state).visit_statement(statement, location);
-    }
-
-    fn apply_primary_terminator_effect<'mir>(
-        &self,
-        state: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        Self::transfer_function(state).visit_terminator(terminator, location);
-        terminator.edges()
-    }
-}
-
-/// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.
-pub(super) struct TransferFunction<'a, T> {
-    trans: &'a mut T,
-}
-
-impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
-where
-    T: GenKill<Local>,
-{
-    fn visit_statement(&mut self, stmt: &Statement<'tcx>, location: Location) {
-        self.super_statement(stmt, location);
-
-        // When we reach a `StorageDead` statement, we can assume that any pointers to this memory
-        // are now invalid.
-        if let StatementKind::StorageDead(local) = stmt.kind {
-            self.trans.kill(local);
-        }
-    }
-
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        self.super_rvalue(rvalue, location);
-
-        match rvalue {
-            // We ignore fake borrows as these get removed after analysis and shouldn't effect
-            // the layout of generators.
-            Rvalue::RawPtr(_, borrowed_place)
-            | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place)
-            | Rvalue::Reborrow(_, _, borrowed_place) => {
-                if !borrowed_place.is_indirect() {
-                    self.trans.gen_(borrowed_place.local);
+    pub(super) fn gen_statement(state: &mut DenseBitSet<Local>, stmt: &Statement<'_>) {
+        if let StatementKind::Assign((_, rvalue)) = &stmt.kind {
+            match rvalue {
+                // We ignore fake borrows as these get removed after analysis and shouldn't effect
+                // the layout of generators.
+                Rvalue::RawPtr(_, borrowed_place)
+                | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place)
+                | Rvalue::Reborrow(_, _, borrowed_place) => {
+                    if !borrowed_place.is_indirect() {
+                        state.insert(borrowed_place.local);
+                    }
                 }
-            }
 
-            Rvalue::Cast(..)
-            | Rvalue::Ref(_, BorrowKind::Fake(_), _)
-            | Rvalue::Use(..)
-            | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Repeat(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Aggregate(..)
-            | Rvalue::CopyForDeref(..)
-            | Rvalue::WrapUnsafeBinder(..) => {}
+                Rvalue::Cast(..)
+                | Rvalue::Ref(_, BorrowKind::Fake(_), _)
+                | Rvalue::Use(..)
+                | Rvalue::ThreadLocalRef(..)
+                | Rvalue::Repeat(..)
+                | Rvalue::BinaryOp(..)
+                | Rvalue::UnaryOp(..)
+                | Rvalue::Discriminant(..)
+                | Rvalue::Aggregate(..)
+                | Rvalue::CopyForDeref(..)
+                | Rvalue::WrapUnsafeBinder(..) => {}
+            }
         }
     }
 
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
-
+    pub(super) fn gen_terminator(state: &mut DenseBitSet<Local>, terminator: &Terminator<'_>) {
         match terminator.kind {
             TerminatorKind::Drop { place: dropped_place, .. } => {
                 // Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut
@@ -113,7 +53,7 @@ where
                 //
                 // [#61069]: https://github.com/rust-lang/rust/pull/61069
                 if !dropped_place.is_indirect() {
-                    self.trans.gen_(dropped_place.local);
+                    state.insert(dropped_place.local);
                 }
             }
 
@@ -135,22 +75,52 @@ where
     }
 }
 
-/// The set of locals that are borrowed at some point in the MIR body.
-pub fn borrowed_locals(body: &Body<'_>) -> DenseBitSet<Local> {
-    struct Borrowed(DenseBitSet<Local>);
+impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
+    type Domain = DenseBitSet<Local>;
+    const NAME: &'static str = "maybe_borrowed_locals";
 
-    impl GenKill<Local> for Borrowed {
-        #[inline]
-        fn gen_(&mut self, elem: Local) {
-            self.0.gen_(elem)
-        }
-        #[inline]
-        fn kill(&mut self, _: Local) {
-            // Ignore borrow invalidation.
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
+        // bottom = unborrowed
+        DenseBitSet::new_empty(body.local_decls().len())
+    }
+
+    fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
+        // No locals are aliased on function entry
+    }
+
+    fn apply_primary_statement_effect(
+        &self,
+        state: &mut Self::Domain,
+        statement: &Statement<'tcx>,
+        _location: Location,
+    ) {
+        Self::gen_statement(state, statement);
+
+        // When we reach a `StorageDead` statement, we can assume that any pointers to this memory
+        // are now invalid.
+        if let StatementKind::StorageDead(local) = statement.kind {
+            state.kill(local);
         }
     }
 
-    let mut borrowed = Borrowed(DenseBitSet::new_empty(body.local_decls.len()));
-    TransferFunction { trans: &mut borrowed }.visit_body(body);
-    borrowed.0
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        terminator: &Terminator<'tcx>,
+        _location: Location,
+    ) {
+        Self::gen_terminator(state, terminator);
+    }
+}
+
+/// The set of locals that are borrowed at some point in the MIR body.
+pub fn borrowed_locals(body: &Body<'_>) -> DenseBitSet<Local> {
+    let mut borrowed = DenseBitSet::new_empty(body.local_decls.len());
+    for bb_data in body.basic_blocks.iter() {
+        for stmt in &bb_data.statements {
+            MaybeBorrowedLocals::gen_statement(&mut borrowed, stmt);
+        }
+        MaybeBorrowedLocals::gen_terminator(&mut borrowed, bb_data.terminator());
+    }
+    borrowed
 }

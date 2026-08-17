@@ -1,4 +1,3 @@
-#![feature(c_variadic)]
 #![allow(anonymous_parameters)]
 
 fn main() {}

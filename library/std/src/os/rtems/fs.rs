@@ -12,7 +12,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -30,7 +31,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -48,7 +50,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -66,7 +69,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -84,7 +88,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -102,7 +107,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -120,7 +126,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -141,7 +148,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -159,7 +167,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -179,7 +188,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -197,7 +207,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -217,7 +228,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -235,7 +247,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -255,7 +268,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -273,7 +287,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;
@@ -291,7 +306,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "rtems", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "rtems"), doc = "```ignore (needs rtems)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::rtems::fs::MetadataExt;

@@ -14,6 +14,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `7e10`
 `a`
 `aclass`
+`acquire-release`
 `addsubiw`
 `adx`
 `aes`
@@ -27,7 +28,6 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-fp8`
 `amx-int8`
 `amx-movrs`
-`amx-tf32`
 `amx-tile`
 `apxf`
 `atomics`
@@ -223,6 +223,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `mul32high`
 `multivalue`
 `mutable-globals`
+`mve`
+`mve.fp`
 `neon`
 `nnp-assist`
 `nontrapping-fptoint`
@@ -366,6 +368,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `v68`
 `v69`
 `v6k`
+`v6m`
 `v6t2`
 `v7`
 `v71`
@@ -374,6 +377,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `v79`
 `v8`
 `v8.1a`
+`v8.1m.main`
 `v8.2a`
 `v8.3a`
 `v8.4a`
@@ -382,6 +386,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `v8.7a`
 `v8.8a`
 `v8.9a`
+`v8m`
+`v8m.main`
 `v8plus`
 `v9`
 `v9.1a`

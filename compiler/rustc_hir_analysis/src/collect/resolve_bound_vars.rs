@@ -1310,12 +1310,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait()
                     {
-                        let mut diag: rustc_errors::Diag<'_> = rustc_session::errors::feature_err(
-                            &self.tcx.sess,
-                            sym::anonymous_lifetime_in_impl_trait,
-                            lifetime_ref.ident.span,
-                            "anonymous lifetimes in `impl Trait` are unstable",
-                        );
+                        let mut diag: rustc_errors::Diag<'_> =
+                            rustc_session::diagnostics::feature_err(
+                                &self.tcx.sess,
+                                sym::anonymous_lifetime_in_impl_trait,
+                                lifetime_ref.ident.span,
+                                "anonymous lifetimes in `impl Trait` are unstable",
+                            );
 
                         if let Some(generics) =
                             self.tcx.hir_get_generics(lifetime_ref.hir_id.owner.def_id)
@@ -1841,13 +1842,26 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             .iter()
                             .map(|param| generic_param_def_as_bound_arg(param)),
                     );
-                    bound_vars.extend(
+                    // `resolve_bound_vars` is computed per HIR owner. `visit_early_late`
+                    // records this associated function's binder before walking its signature,
+                    // so reuse that in-progress binder instead of recursively querying `fn_sig`.
+                    let fn_bound_vars = if assoc_fn.def_id == constraint.hir_id.owner.to_def_id() {
+                        let fn_hir_id =
+                            self.tcx.local_def_id_to_hir_id(assoc_fn.def_id.expect_local());
+                        self.rbv
+                            .late_bound_vars
+                            .get(&fn_hir_id.local_id)
+                            .expect("late-bound vars for the current function were not recorded")
+                            .clone()
+                    } else {
                         self.tcx
                             .fn_sig(assoc_fn.def_id)
                             .instantiate_identity()
                             .skip_norm_wip()
-                            .bound_vars(),
-                    );
+                            .bound_vars()
+                            .to_vec()
+                    };
+                    bound_vars.extend(fn_bound_vars);
                     bound_vars
                 } else {
                     self.tcx
@@ -1956,7 +1970,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             | DefKind::ForeignTy
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::InlineConst
             | DefKind::LifetimeParam
             | DefKind::Macro(_)
             | DefKind::Mod

@@ -26,18 +26,19 @@ help: surround the struct literal with parentheses
 LL |     for _ in (std::ops::Range { start: 0, end: 10 }) {}
    |              +                                     +
 
-error[E0423]: expected value, found struct `T`
+error[E0423]: cannot find value `T` in this scope
   --> $DIR/E0423.rs:14:8
    |
 LL |     if T {} == T {} { println!("Ok"); }
-   |        ^ not a value
+   |        ^ not found in this scope
    |
+   = note: a struct named `T` exists in another namespace
 help: surround the struct literal with parentheses
    |
 LL |     if (T {}) == T {} { println!("Ok"); }
    |        +    +
 
-error[E0423]: expected function, tuple struct or tuple variant, found struct `Foo`
+error[E0423]: cannot find function, tuple struct or tuple variant `Foo` in this scope
   --> $DIR/E0423.rs:4:13
    |
 LL |     struct Foo { a: bool };
@@ -49,6 +50,7 @@ LL |     let f = Foo();
 LL | fn foo() {
    | -------- similarly named function `foo` defined here
    |
+   = note: a struct named `Foo` exists in another namespace
 help: use struct literal syntax instead
    |
 LL -     let f = Foo();

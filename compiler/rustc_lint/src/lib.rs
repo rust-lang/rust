@@ -20,10 +20,9 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
-#![feature(rustc_attrs)]
+#![feature(option_into_flat_iter)]
 #![feature(titlecase)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -32,6 +31,7 @@ mod async_closures;
 mod async_fn_in_trait;
 mod autorefs;
 pub mod builtin;
+mod c_void_returns;
 mod context;
 mod dangling;
 mod default_could_be_derived;
@@ -56,7 +56,6 @@ mod late;
 mod let_underscore;
 mod levels;
 pub mod lifetime_syntax;
-mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod multiple_supertrait_upcastable;
@@ -69,6 +68,7 @@ mod opaque_hidden_inferred_bound;
 mod passes;
 mod precedence;
 mod ptr_nulls;
+mod raw_borrows_via_references;
 mod redundant_semicolon;
 mod reference_casting;
 mod runtime_symbols;
@@ -86,6 +86,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
 use builtin::*;
+use c_void_returns::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
@@ -114,11 +115,12 @@ use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use precedence::*;
 use ptr_nulls::*;
+use raw_borrows_via_references::*;
 use redundant_semicolon::*;
 use reference_casting::*;
 use runtime_symbols::*;
 use rustc_data_structures::unord::UnordSet;
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::LocalModId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
@@ -151,8 +153,8 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedLateLintModPass::new());
+fn lint_mod(tcx: TyCtxt<'_>, mod_id: LocalModId) {
+    late_lint_mod(tcx, mod_id, BuiltinCombinedLateLintModPass::new());
 }
 
 early_lint_methods!(
@@ -160,7 +162,9 @@ early_lint_methods!(
     [
         pub BuiltinCombinedPreExpansionLintPass,
         [
+            // tidy-alphabetical-start
             KeywordIdents: KeywordIdents,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -170,22 +174,24 @@ early_lint_methods!(
     [
         pub BuiltinCombinedEarlyLintPass,
         [
-            UnusedParens: UnusedParens::default(),
-            UnusedBraces: UnusedBraces,
-            UnusedImportBraces: UnusedImportBraces,
-            UnsafeCode: UnsafeCode,
-            SpecialModuleName: SpecialModuleName,
+            // tidy-alphabetical-start
             AnonymousParameters: AnonymousParameters,
-            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
-            NonCamelCaseTypes: NonCamelCaseTypes,
-            WhileTrue: WhileTrue,
-            NonAsciiIdents: NonAsciiIdents,
-            IncompleteInternalFeatures: IncompleteInternalFeatures,
-            RedundantSemicolons: RedundantSemicolons,
-            UnusedDocComment: UnusedDocComment,
-            Expr2024: Expr2024,
-            Precedence: Precedence,
             DoubleNegations: DoubleNegations,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
+            Expr2024: Expr2024,
+            IncompleteInternalFeatures: IncompleteInternalFeatures,
+            NonAsciiIdents: NonAsciiIdents,
+            NonCamelCaseTypes: NonCamelCaseTypes,
+            Precedence: Precedence,
+            RedundantSemicolons: RedundantSemicolons,
+            SpecialModuleName: SpecialModuleName,
+            UnsafeCode: UnsafeCode,
+            UnusedBraces: UnusedBraces,
+            UnusedDocComment: UnusedDocComment,
+            UnusedImportBraces: UnusedImportBraces,
+            UnusedParens: UnusedParens::default(),
+            WhileTrue: WhileTrue,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -195,9 +201,11 @@ early_lint_methods!(
     [
         InternalCombinedEarlyLintPass,
         [
-            LintPassImpl: LintPassImpl,
-            ImplicitSysrootCrateImport: ImplicitSysrootCrateImport,
+            // tidy-alphabetical-start
             BadUseOfFindAttr: BadUseOfFindAttr,
+            ImplicitSysrootCrateImport: ImplicitSysrootCrateImport,
+            LintPassImpl: LintPassImpl,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -207,68 +215,72 @@ late_lint_methods!(
     [
         BuiltinCombinedLateLintModPass,
         [
-            ForLoopsOverFallibles: ForLoopsOverFallibles,
-            DefaultCouldBeDerived: DefaultCouldBeDerived,
-            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
-            DropForgetUseless: DropForgetUseless,
-            ImproperCTypesLint: ImproperCTypesLint,
-            ImproperGpuKernelLint: ImproperGpuKernelLint,
-            InvalidFromUtf8: InvalidFromUtf8,
-            VariantSizeDifferences: VariantSizeDifferences,
-            PathStatements: PathStatements,
-            LetUnderscore: LetUnderscore,
-            InvalidReferenceCasting: InvalidReferenceCasting,
-            ImplicitAutorefs: ImplicitAutorefs,
-            // Depends on referenced function signatures in expressions
-            UnusedResults: UnusedResults,
-            UnitBindings: UnitBindings,
-            NonUpperCaseGlobals: NonUpperCaseGlobals,
-            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
-            UnusedAllocation: UnusedAllocation,
-            // Depends on types used in type definitions
-            MissingCopyImplementations: MissingCopyImplementations,
-            // Depends on referenced function signatures in expressions
-            PtrNullChecks: PtrNullChecks,
-            MutableTransmutes: MutableTransmutes,
-            TypeAliasBounds: TypeAliasBounds,
-            TrivialConstraints: TrivialConstraints,
-            TypeLimits: TypeLimits::new(),
-            NonSnakeCase: NonSnakeCase,
-            InvalidNoMangleItems: InvalidNoMangleItems,
-            // Depends on effective visibilities
-            UnreachablePub: UnreachablePub,
-            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
-            InvalidValue: InvalidValue,
-            DerefNullPtr: DerefNullPtr,
-            UnstableFeatures: UnstableFeatures,
-            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
-            ShadowedIntoIter: ShadowedIntoIter,
-            DropTraitConstraints: DropTraitConstraints,
-            DanglingPointers: DanglingPointers,
-            NonPanicFmt: NonPanicFmt,
-            NoopMethodCall: NoopMethodCall,
-            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
-            InvalidAtomicOrdering: InvalidAtomicOrdering,
+            // tidy-alphabetical-start
             AsmLabels: AsmLabels,
-            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
-            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
-            MapUnitFn: MapUnitFn,
-            MissingDebugImplementations: MissingDebugImplementations,
-            MissingDoc: MissingDoc,
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
-            NonLocalDefinitions: NonLocalDefinitions::default(),
-            InteriorMutableConsts: InteriorMutableConsts,
-            RuntimeSymbols: RuntimeSymbols,
-            ImplTraitOvercaptures: ImplTraitOvercaptures,
-            IfLetRescope: IfLetRescope::default(),
-            StaticMutRefs: StaticMutRefs,
-            UnqualifiedLocalImports: UnqualifiedLocalImports,
-            FunctionCastsAsInteger: FunctionCastsAsInteger,
+            CVoidReturns: CVoidReturns,
             CheckTransmutes: CheckTransmutes,
-            LifetimeSyntax: LifetimeSyntax,
-            InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
+            DanglingPointers: DanglingPointers,
+            DefaultCouldBeDerived: DefaultCouldBeDerived,
+            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
+            DerefNullPtr: DerefNullPtr,
+            DropForgetUseless: DropForgetUseless,
+            DropTraitConstraints: DropTraitConstraints,
+            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
+            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            ForLoopsOverFallibles: ForLoopsOverFallibles,
+            FunctionCastsAsInteger: FunctionCastsAsInteger,
+            IfLetRescope: IfLetRescope::default(),
+            ImplTraitOvercaptures: ImplTraitOvercaptures,
+            ImplicitAutorefs: ImplicitAutorefs,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
+            ImproperCTypesLint: ImproperCTypesLint,
+            ImproperGpuKernelLint: ImproperGpuKernelLint,
+            InteriorMutableConsts: InteriorMutableConsts,
+            InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
+            InvalidAtomicOrdering: InvalidAtomicOrdering,
+            InvalidFromUtf8: InvalidFromUtf8,
+            InvalidNoMangleItems: InvalidNoMangleItems,
+            InvalidReferenceCasting: InvalidReferenceCasting,
+            InvalidValue: InvalidValue,
+            LetUnderscore: LetUnderscore,
+            LifetimeSyntax: LifetimeSyntax,
+            MapUnitFn: MapUnitFn,
+            // Depends on types used in type definitions
+            MissingCopyImplementations: MissingCopyImplementations,
+            MissingDebugImplementations: MissingDebugImplementations,
+            MissingDoc: MissingDoc,
+            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
+            MutableTransmutes: MutableTransmutes,
+            NonLocalDefinitions: NonLocalDefinitions::default(),
+            NonPanicFmt: NonPanicFmt,
+            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+            NonSnakeCase: NonSnakeCase,
+            NonUpperCaseGlobals: NonUpperCaseGlobals,
+            NoopMethodCall: NoopMethodCall,
+            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+            PathStatements: PathStatements,
+            // Depends on referenced function signatures in expressions
+            PtrNullChecks: PtrNullChecks,
+            RawBorrowsViaReferences: RawBorrowsViaReferences,
+            RuntimeSymbols: RuntimeSymbols,
+            ShadowedIntoIter: ShadowedIntoIter,
+            StaticMutRefs: StaticMutRefs,
+            TrivialConstraints: TrivialConstraints,
+            TypeAliasBounds: TypeAliasBounds,
+            TypeLimits: TypeLimits::new(),
+            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
+            UnitBindings: UnitBindings,
+            UnqualifiedLocalImports: UnqualifiedLocalImports,
+            // Depends on effective visibilities
+            UnreachablePub: UnreachablePub,
+            UnstableFeatures: UnstableFeatures,
+            UnusedAllocation: UnusedAllocation,
+            // Depends on referenced function signatures in expressions
+            UnusedResults: UnusedResults,
+            VariantSizeDifferences: VariantSizeDifferences,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -278,15 +290,17 @@ late_lint_methods!(
     [
         InternalCombinedLateLintModPass,
         [
-            DefaultHashTypes: DefaultHashTypes,
-            QueryStability: QueryStability,
-            TyTyKind: TyTyKind,
-            TypeIr: TypeIr,
+            // tidy-alphabetical-start
             BadOptAccess: BadOptAccess,
+            DefaultHashTypes: DefaultHashTypes,
             DisallowedPassByRef: DisallowedPassByRef,
+            QueryStability: QueryStability,
+            RustcMustMatchExhaustively: RustcMustMatchExhaustively,
             SpanUseEqCtxt: SpanUseEqCtxt,
             SymbolInternStringLiteral: SymbolInternStringLiteral,
-            RustcMustMatchExhaustively: RustcMustMatchExhaustively,
+            TyTyKind: TyTyKind,
+            TypeIr: TypeIr,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -333,9 +347,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
         UNUSED_MUT,
-        // FIXME: add this lint when it becomes stable,
-        // see https://github.com/rust-lang/rust/issues/115585.
-        // UNREACHABLE_CFG_SELECT_PREDICATES,
+        UNREACHABLE_CFG_SELECT_PREDICATES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNUSED_MUST_USE,
@@ -692,6 +704,11 @@ fn register_builtins(store: &mut LintStore) {
         "repr_transparent_non_zst_fields",
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/78586> for more information",
+    );
+    store.register_removed(
+        "no_mangle_generic_items",
+        "converted into hard error, \
+         generic items must always be mangled",
     );
 }
 

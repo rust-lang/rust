@@ -4,4 +4,4 @@ expression: test coverage
 ---
 [Test] test::Coverage
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/coverage)
+    - Suite(tests/coverage)

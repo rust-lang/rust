@@ -1,10 +1,5 @@
 #![warn(clippy::needless_range_loop)]
-#![allow(
-    clippy::uninlined_format_args,
-    clippy::unnecessary_literal_unwrap,
-    clippy::useless_vec,
-    clippy::manual_slice_fill
-)]
+#![expect(clippy::unnecessary_literal_unwrap, clippy::useless_vec)]
 //@no-rustfix
 static STATIC: [usize; 4] = [0, 1, 8, 16];
 const CONST: [usize; 4] = [0, 1, 8, 16];

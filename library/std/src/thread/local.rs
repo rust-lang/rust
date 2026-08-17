@@ -346,6 +346,7 @@ pub macro thread_local_process_attrs {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! thread_local {
     () => {};
 
@@ -434,7 +435,7 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This will lazily initialize the value if this thread has not referenced
     /// this key yet. If the key has been destroyed (which may happen if this is called
-    /// in a destructor), this function will return an [`AccessError`].
+    /// in a destructor), this function may return an [`AccessError`].
     ///
     /// # Panics
     ///
@@ -620,10 +621,17 @@ impl<T: 'static> LocalKey<Cell<T>> {
 
     /// Updates the contained value using a function.
     ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_update)]
     /// use std::cell::Cell;
     ///
     /// thread_local! {
@@ -633,7 +641,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// X.update(|x| x + 1);
     /// assert_eq!(X.get(), 6);
     /// ```
-    #[unstable(feature = "local_key_cell_update", issue = "143989")]
+    #[stable(feature = "local_key_cell_update", since = "CURRENT_RUSTC_VERSION")]
     pub fn update(&'static self, f: impl FnOnce(T) -> T)
     where
         T: Copy,

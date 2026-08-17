@@ -1,8 +1,8 @@
 #![feature(fn_delegation)]
 
 macro_rules! emit_self { () => { self } }
-//~^ ERROR expected value, found module `self`
-//~| ERROR expected value, found module `self`
+//~^ ERROR cannot find value `self` in this scope
+//~| ERROR cannot find value `self` in this scope
 
 struct S;
 impl S {

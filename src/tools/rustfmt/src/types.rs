@@ -16,14 +16,14 @@ use crate::lists::{
 use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
 use crate::pairs::{PairParts, rewrite_pair};
-use crate::patterns::rewrite_range_pat;
+use crate::range::rewrite_range;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
     colon_spaces, extra_offset, first_line_width, format_extern, format_mutability,
-    last_line_extendable, last_line_width, mk_sp, rewrite_ident,
+    format_range_end, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -313,19 +313,14 @@ fn rewrite_segment(
     Ok(result)
 }
 
-fn format_function_type<'a, I>(
-    inputs: I,
+fn format_function_type(
+    inputs: &[ast::Param],
     output: &FnRetTy,
     variadic: bool,
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> RewriteResult
-where
-    I: ExactSizeIterator,
-    <I as Iterator>::Item: Deref,
-    <I::Item as Deref>::Target: Rewrite + Spanned + 'a,
-{
+) -> RewriteResult {
     debug!("format_function_type {:#?}", shape);
 
     let ty_shape = match context.config.indent_style() {
@@ -381,7 +376,7 @@ where
     } else {
         let items = itemize_list(
             context.snippet_provider,
-            inputs,
+            inputs.iter(),
             ")",
             ",",
             |arg| arg.span().lo(),
@@ -563,14 +558,9 @@ fn rewrite_generic_args(
                 overflow::rewrite_with_angle_brackets(context, "", args.iter(), shape, span)
             }
         }
-        ast::GenericArgs::Parenthesized(ref data) => format_function_type(
-            data.inputs.iter().map(|x| &**x),
-            &data.output,
-            false,
-            data.span,
-            context,
-            shape,
-        ),
+        ast::GenericArgs::Parenthesized(ref data) => {
+            format_function_type(&data.inputs, &data.output, false, data.span, context, shape)
+        }
         ast::GenericArgs::ParenthesizedElided(..) => Ok("(..)".to_owned()),
     }
 }
@@ -1014,12 +1004,6 @@ impl Rewrite for ast::Ty {
                 })
             }
             ast::TyKind::CVarArgs => Ok("...".to_owned()),
-            ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
-            ast::TyKind::Pat(ref ty, ref pat) => {
-                let ty = ty.rewrite_result(context, shape)?;
-                let pat = pat.rewrite_result(context, shape)?;
-                Ok(format!("{ty} is {pat}"))
-            }
             ast::TyKind::FieldOf(ref ty, ref variant, ref field) => {
                 let ty = ty.rewrite_result(context, shape)?;
                 if let Some(variant) = variant {
@@ -1054,6 +1038,14 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
+            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::DirectConstArg(..) => {
+                // These don't normally occur in the AST because macros aren't expanded. However,
+                // rustfmt tries to parse macro arguments when formatting macros, so it's not
+                // totally impossible for rustfmt to come across these nodes when formatting a file.
+                // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
+                Err(RewriteError::Unknown)
+            }
+            ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
         }
     }
 }
@@ -1065,9 +1057,13 @@ impl Rewrite for ast::TyPat {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         match self.kind {
-            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
-            }
+            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => rewrite_range(
+                context,
+                shape,
+                lhs.as_deref().map(|x| x.value.as_ref()),
+                rhs.as_deref().map(|x| x.value.as_ref()),
+                format_range_end(end_kind.node),
+            ),
             ast::TyPatKind::Or(ref variants) => {
                 let mut first = true;
                 let mut s = String::new();
@@ -1123,7 +1119,7 @@ fn rewrite_fn_ptr(
     };
 
     let rewrite = format_function_type(
-        fn_ptr.decl.inputs.iter(),
+        &fn_ptr.decl.inputs,
         &fn_ptr.decl.output,
         fn_ptr.decl.c_variadic(),
         span,

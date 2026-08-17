@@ -1,15 +1,15 @@
 error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:7:4
+   |
+LL | #![unstable()]
+   |    ^^^^^^^^
+
+error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:7:1
    |
 LL | #![unstable()]
    | ^^^^^^^^^^^^^^
 
-error[E0546]: missing 'feature'
-  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
-   |
-LL | #![unstable()]
-   | ^^^^^^^^^^^^^^
-
 error[E0547]: missing 'issue'
   --> $DIR/issue-43106-gating-of-unstable.rs:7:1
    |
@@ -17,17 +17,17 @@ LL | #![unstable()]
    | ^^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:12:3
+   |
+LL | #[unstable()]
+   |   ^^^^^^^^
+
+error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:12:1
    |
 LL | #[unstable()]
    | ^^^^^^^^^^^^^
 
-error[E0546]: missing 'feature'
-  --> $DIR/issue-43106-gating-of-unstable.rs:12:1
-   |
-LL | #[unstable()]
-   | ^^^^^^^^^^^^^
-
 error[E0547]: missing 'issue'
   --> $DIR/issue-43106-gating-of-unstable.rs:12:1
    |
@@ -35,17 +35,17 @@ LL | #[unstable()]
    | ^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:18:12
+   |
+LL |         #![unstable()]
+   |            ^^^^^^^^
+
+error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:18:9
    |
 LL |         #![unstable()]
    |         ^^^^^^^^^^^^^^
 
-error[E0546]: missing 'feature'
-  --> $DIR/issue-43106-gating-of-unstable.rs:18:9
-   |
-LL |         #![unstable()]
-   |         ^^^^^^^^^^^^^^
-
 error[E0547]: missing 'issue'
   --> $DIR/issue-43106-gating-of-unstable.rs:18:9
    |
@@ -53,10 +53,10 @@ LL |         #![unstable()]
    |         ^^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:24:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:24:7
    |
 LL |     #[unstable()]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:24:5
@@ -71,10 +71,10 @@ LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:30:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:30:7
    |
 LL |     #[unstable()]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:30:5
@@ -89,10 +89,10 @@ LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:36:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:36:7
    |
 LL |     #[unstable()]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:36:5
@@ -107,10 +107,10 @@ LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-unstable.rs:42:5
+  --> $DIR/issue-43106-gating-of-unstable.rs:42:7
    |
 LL |     #[unstable()]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:42:5

@@ -1,11 +1,9 @@
 #![warn(clippy::similar_names)]
-#![allow(
-    unused,
-    clippy::println_empty_string,
+#![expect(
+    clippy::diverging_sub_expression,
     clippy::empty_loop,
     clippy::never_loop,
-    clippy::diverging_sub_expression,
-    clippy::let_unit_value
+    clippy::println_empty_string
 )]
 
 struct Foo {

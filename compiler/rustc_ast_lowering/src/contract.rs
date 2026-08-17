@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rustc_hir::attrs::lang_items::LangItem;
 use thin_vec::thin_vec;
 
 use crate::LoweringContext;
@@ -146,7 +147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
         let precond = self.expr_call_lang_item_fn_mut(
             req_span,
-            rustc_hir::LangItem::ContractCheckRequires,
+            LangItem::ContractCheckRequires,
             &*arena_vec![self; lowered_req],
         );
         self.stmt_expr(req.span, precond)
@@ -165,7 +166,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let lowered_ens = self.lower_expr_mut(&ens);
         self.expr_call_lang_item_fn(
             ens_span,
-            rustc_hir::LangItem::ContractBuildCheckEnsures,
+            LangItem::ContractBuildCheckEnsures,
             &*arena_vec![self; lowered_ens],
         )
     }
@@ -208,7 +209,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let postcond_checker = self.arena.alloc(self.expr_enum_variant_lang_item(
             postcond_checker.span,
-            rustc_hir::lang_items::LangItem::OptionSome,
+            rustc_hir::attrs::lang_items::LangItem::OptionSome,
             &*arena_vec![self; *postcond_checker],
         ));
         let then_block_stmts = self.block_all(span, stmts, Some(postcond_checker));
@@ -216,7 +217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let none_expr = self.arena.alloc(self.expr_enum_variant_lang_item(
             postcond_checker.span,
-            rustc_hir::lang_items::LangItem::OptionNone,
+            rustc_hir::attrs::lang_items::LangItem::OptionNone,
             Default::default(),
         ));
         let else_block = self.block_expr(none_expr);
@@ -326,7 +327,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let cond_fn = self.expr_ident(span, cond_ident, cond_hir_id);
         let contract_check = self.expr_call_lang_item_fn_mut(
             span,
-            rustc_hir::LangItem::ContractCheckEnsures,
+            LangItem::ContractCheckEnsures,
             arena_vec![self; *cond_fn, *ret],
         );
         let contract_check = self.arena.alloc(contract_check);

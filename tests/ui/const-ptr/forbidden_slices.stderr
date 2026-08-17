@@ -28,7 +28,7 @@ LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered uninitialized memory, but expected an integer
@@ -39,7 +39,7 @@ LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered a pointer, but expected an integer
@@ -52,7 +52,7 @@ LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[bool]: at .<deref>[0], encountered 0x11, but expected a boolean
@@ -63,7 +63,7 @@ LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4)
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u16]: at .<deref>[1], encountered uninitialized memory, but expected an integer
@@ -74,7 +74,7 @@ LL | pub static S7: &[u16] = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u64]: encountered a dangling reference (going beyond the bounds of its allocation)
@@ -85,7 +85,7 @@ LL | pub static S8: &[u64] = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u32]: encountered a null reference
@@ -105,7 +105,7 @@ error[E0080]: evaluation panicked: assertion failed: 0 < pointee_size && pointee
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `R1` failed here
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC10 which is only 4 bytes from the end of the allocation
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC$ID which is only 4 bytes from the end of the allocation
   --> $DIR/forbidden_slices.rs:54:25
    |
 LL |     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
@@ -119,7 +119,7 @@ LL | pub static R4: &[u8] = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered a pointer, but expected an integer
@@ -132,7 +132,7 @@ LL | pub static R5: &[u8] = unsafe {
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[bool]: at .<deref>[0], encountered 0x11, but expected a boolean
@@ -143,7 +143,7 @@ LL | pub static R6: &[bool] = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
 error[E0080]: constructing invalid value of type &[u16]: encountered an unaligned reference (required 2 byte alignment but found 1)
@@ -154,10 +154,10 @@ LL | pub static R7: &[u16] = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ HEX_DUMP
            }
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC11+0x1 which is only 7 bytes from the end of the allocation
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC$ID+0x1 which is only 7 bytes from the end of the allocation
   --> $DIR/forbidden_slices.rs:79:25
    |
 LL |     from_ptr_range(ptr..ptr.add(1))

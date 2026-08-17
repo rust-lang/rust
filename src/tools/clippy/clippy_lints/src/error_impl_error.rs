@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
 /// which aren't reexported
 fn is_visible_outside_module(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     !matches!(
-        cx.tcx.visibility(def_id),
-        Visibility::Restricted(mod_def_id) if cx.tcx.parent_module_from_def_id(def_id).to_def_id() == mod_def_id
+        cx.tcx.local_visibility(def_id),
+        Visibility::Restricted(mod_def_id) if cx.tcx.parent_module_from_def_id(def_id) == mod_def_id
     )
 }

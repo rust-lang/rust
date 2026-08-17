@@ -1,5 +1,4 @@
 #![warn(clippy::pub_use)]
-#![allow(unused_imports)]
 #![no_main]
 
 pub mod outer {

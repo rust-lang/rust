@@ -12,7 +12,7 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, RegionExt, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
@@ -111,7 +111,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
 ///
 /// This may result in errors being reported.
 pub(crate) fn compute_regions<'tcx>(
-    root_cx: &BorrowCheckRootCtxt<'tcx>,
+    root_cx: &BorrowCheckRootCtxt<'_, 'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     location_table: &PoloniusLocationTable,
@@ -154,6 +154,7 @@ pub(crate) fn compute_regions<'tcx>(
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.
     if let Some(polonius_context) = polonius_context.as_mut() {
+        let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
         polonius_context.compute_loan_liveness(&mut regioncx, body, borrow_set)
     }
 
@@ -287,8 +288,8 @@ pub(crate) fn emit_nll_mir<'tcx>(
     Ok(())
 }
 
-pub(super) fn dump_annotation<'tcx, 'infcx>(
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+pub(super) fn dump_annotation<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,

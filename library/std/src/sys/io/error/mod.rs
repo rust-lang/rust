@@ -15,21 +15,13 @@ cfg_select! {
         mod solid;
         pub use solid::*;
     }
-    target_os = "teeos" => {
-        mod teeos;
-        pub use teeos::*;
-    }
     target_os = "uefi" => {
         mod uefi;
         pub use uefi::*;
     }
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "wasi", target_os = "teeos") => {
         mod unix;
         pub use unix::*;
-    }
-    target_os = "wasi" => {
-        mod wasi;
-        pub use wasi::*;
     }
     target_os = "windows" => {
         mod windows;

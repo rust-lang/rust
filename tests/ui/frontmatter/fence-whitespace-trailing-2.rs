@@ -2,7 +2,7 @@
 ---
 
 //@ check-pass
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 // A frontmatter infostring can have leading whitespace.
 
 #![feature(frontmatter)]

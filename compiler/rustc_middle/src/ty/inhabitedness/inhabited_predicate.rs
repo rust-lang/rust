@@ -1,8 +1,9 @@
 use rustc_macros::StableHash;
+use rustc_span::def_id::{LocalModId, ModId};
 use smallvec::SmallVec;
 use tracing::instrument;
 
-use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized};
+use crate::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct
@@ -20,7 +21,7 @@ pub enum InhabitedPredicate<'tcx> {
     ConstIsZero(ty::Const<'tcx>),
     /// Uninhabited if within a certain module. This occurs when an uninhabited
     /// type has restricted visibility.
-    NotInModule(DefId),
+    NotInModule(ModId),
     /// Inhabited if some generic type is inhabited.
     /// These are replaced by calling [`Self::instantiate`].
     GenericType(Ty<'tcx>),
@@ -38,7 +39,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
-        module_def_id: DefId,
+        module_def_id: LocalModId,
     ) -> bool {
         self.apply_revealing_opaque(tcx, typing_env, module_def_id, &|_| None)
     }
@@ -49,7 +50,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
-        module_def_id: DefId,
+        module_def_id: LocalModId,
         reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
     ) -> bool {
         let Ok(result) = self.apply_inner::<!>(
@@ -83,7 +84,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
         eval_stack: &mut SmallVec<[Ty<'tcx>; 1]>, // for cycle detection
-        in_module: &impl Fn(DefId) -> Result<bool, E>,
+        in_module: &impl Fn(ModId) -> Result<bool, E>,
         reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
     ) -> Result<bool, E> {
         match self {

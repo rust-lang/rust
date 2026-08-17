@@ -18,11 +18,12 @@ use std::{fmt, fs, io};
 use serde_derive::{Deserialize, Serialize};
 use sha2::Digest;
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::build_steps::format;
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
+use crate::core::config::Config;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, hex_encode};
-use crate::{Config, t};
+use crate::utils::helpers::{self, hex_encode, t};
 
 #[cfg(test)]
 mod tests;
@@ -104,12 +105,15 @@ impl fmt::Display for Profile {
     }
 }
 
-impl Step for Profile {
+impl CommandLineStep for Profile {
     type Output = ();
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         for choice in Profile::all() {
-            run = run.alias(choice.as_str());
+            // Some of the profile names happen to coincide with actual directory names
+            // ("compiler" and "library"), so avoid the usual assertion that aliases
+            // don't exist on disk.
+            run = run.alias_without_assert(choice.as_str());
         }
         run
     }
@@ -139,7 +143,7 @@ impl Step for Profile {
                 }
                 _ => {
                     println!("Exiting.");
-                    crate::exit!(1);
+                    helpers::exit_process(1);
                 }
             }
         }
@@ -235,7 +239,7 @@ fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
 /// Creates a toolchain link for stage1 using `rustup`
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Link;
-impl Step for Link {
+impl CommandLineStep for Link {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -411,7 +415,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         io::stdin().read_line(&mut input)?;
         if input.is_empty() {
             eprintln!("EOF on stdin, when expecting answer to question.  Giving up.");
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
@@ -457,7 +461,7 @@ fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Hook;
 
-impl Step for Hook {
+impl CommandLineStep for Hook {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -645,7 +649,7 @@ Select which editor you would like to set up [default: None]: ";
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Editor;
 
-impl Step for Editor {
+impl CommandLineStep for Editor {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -676,6 +680,10 @@ impl Step for Editor {
             Ok(editor_kind) => {
                 if let Some(editor_kind) = editor_kind {
                     while !t!(create_editor_settings_maybe(config, &editor_kind)) {}
+
+                    // Also pre-download stage 0 rustfmt, so that the IDE configs which point to
+                    // `build/host/rustfmt` have an available binary to work with.
+                    builder.ensure(format::InternalRustfmt);
                 } else {
                     println!("Ok, skipping editor setup!");
                 }

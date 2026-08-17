@@ -122,11 +122,12 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             let &(inner_most_trait_ref, _, _) = stack.last().unwrap();
 
             let mut direct_super_traits_iter = tcx
-                .explicit_super_predicates_of(inner_most_trait_ref.def_id)
+                .explicit_super_clauses_of(inner_most_trait_ref.def_id)
                 .iter_identity_copied()
                 .map(Unnormalized::skip_norm_wip)
-                .filter_map(move |(pred, _)| {
-                    pred.instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
+                .filter_map(move |(clause, _)| {
+                    clause
+                        .instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
                         .as_trait_clause()
                 })
                 .map(move |pred| {
@@ -188,8 +189,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
 /// Turns option of iterator into an iterator (this is just flatten)
 fn maybe_iter<I: Iterator>(i: Option<I>) -> impl Iterator<Item = I::Item> {
-    // Flatten is bad perf-vise, we could probably implement a special case here that is better
-    i.into_iter().flatten()
+    i.into_flat_iter()
 }
 
 fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
@@ -276,8 +276,8 @@ fn vtable_entries<'tcx>(
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    if tcx.instantiate_and_check_impossible_predicates((def_id, args)) {
-                        debug!("vtable_entries: predicates do not hold");
+                    if tcx.instantiate_and_check_impossible_clauses((def_id, args)) {
+                        debug!("vtable_entries: clauses do not hold");
                         return VtblEntry::Vacant;
                     }
 
@@ -322,10 +322,9 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
     );
 
     // We're monomorphizing a call to a dyn trait object that can never be constructed.
-    if tcx.instantiate_and_check_impossible_predicates((
-        source_principal.def_id,
-        source_principal.args,
-    )) {
+    if tcx
+        .instantiate_and_check_impossible_clauses((source_principal.def_id, source_principal.args))
+    {
         return 0;
     }
 
@@ -391,10 +390,9 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     );
 
     // We're monomorphizing a dyn trait object upcast that can never be constructed.
-    if tcx.instantiate_and_check_impossible_predicates((
-        source_principal.def_id,
-        source_principal.args,
-    )) {
+    if tcx
+        .instantiate_and_check_impossible_clauses((source_principal.def_id, source_principal.args))
+    {
         return None;
     }
 

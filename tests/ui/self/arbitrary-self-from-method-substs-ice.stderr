@@ -15,6 +15,11 @@ LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
 ...
 LL |     }
    |     - value is dropped here
+   |
+help: consider further restricting type parameter `R` with unstable trait `Destruct`
+   |
+LL |     const fn get<R: Deref<Target = Self> + [const] Destruct>(self: R) -> u32 {
+   |                                          ++++++++++++++++++
 
 error[E0801]: invalid generic `self` parameter type: `R`
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:49

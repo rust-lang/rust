@@ -128,6 +128,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Ord
 #[diagnostic::on_unmatched_args(
     note = "this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`"
 )]
+#[diagnostic::opaque]
 // NOTE: when stabilizing this macro, we can never add new trait impls for `FieldRepresentingType`,
 // since it is `#[fundamental]` and thus could break users of this macro, since the compiler expands
 // it to `FieldRepresentingType<...>`. Thus stabilizing this requires careful thought about the

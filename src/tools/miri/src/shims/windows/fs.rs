@@ -213,7 +213,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(Handle::Invalid);
                     }
                 };
-                #[cfg(not(bootstrap))]
                 if !dir.metadata().unwrap().is_dir() {
                     // This changed from a directory to a file. Retry.
                     continue;
@@ -224,7 +223,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
                 }
 
-                let fd_num = this.machine.fds.insert_new(DirHandle { dir, path: file_name });
+                let fd_num = this.machine.fds.insert_new(DirHandle { dir });
                 return interp_ok(Handle::File(fd_num));
             } else {
                 // Per the documentation:

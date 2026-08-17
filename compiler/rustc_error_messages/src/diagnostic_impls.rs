@@ -5,6 +5,7 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_data_structures::Limit;
 use rustc_span::edition::Edition;
 
 use crate::{DiagArgValue, IntoDiagArg};
@@ -154,5 +155,11 @@ impl IntoDiagArg for rustc_data_structures::small_c_str::SmallCStr {
 impl IntoDiagArg for Backtrace {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagArg for Limit {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.0.into_diag_arg(&mut None)
     }
 }

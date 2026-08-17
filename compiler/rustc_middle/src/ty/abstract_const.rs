@@ -44,7 +44,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                if ty.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS) {
                     ty.super_fold_with(self)
                 } else {
                     ty

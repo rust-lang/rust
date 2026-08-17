@@ -94,6 +94,46 @@ fn test_iterator_step_by_nth_overflow() {
 }
 
 #[test]
+#[allow(non_local_definitions)]
+fn test_iterator_step_by_nth_overflow_on_none() {
+    #[cfg(target_pointer_width = "16")]
+    type Bigger = u32;
+    #[cfg(target_pointer_width = "32")]
+    type Bigger = u64;
+    #[cfg(target_pointer_width = "64")]
+    type Bigger = u128;
+
+    #[derive(Clone)]
+    struct Test(Bigger);
+    impl Iterator for &mut Test {
+        type Item = i32;
+        fn next(&mut self) -> Option<Self::Item> {
+            None
+        }
+        fn nth(&mut self, n: usize) -> Option<Self::Item> {
+            self.0 += n as Bigger + 1;
+            None
+        }
+    }
+
+    // usize::MAX * usize::MAX overflow
+    let mut it = Test(0);
+    let mut step_by = (&mut it).step_by(usize::MAX);
+    // first next() call sets StepBy's first_take to false
+    assert_eq!(step_by.next(), None);
+    assert_eq!(step_by.nth(usize::MAX), None);
+    assert_eq!(it.0, usize::MAX as Bigger + 1);
+
+    // usize::MAX * (usize::MAX - 1) overflow
+    let mut it = Test(0);
+    let mut step_by = (&mut it).step_by(usize::MAX);
+    // first next() call sets StepBy's first_take to false
+    assert_eq!(step_by.next(), None);
+    assert_eq!(step_by.nth(usize::MAX - 1), None);
+    assert_eq!(it.0, usize::MAX as Bigger + 1);
+}
+
+#[test]
 fn test_iterator_step_by_nth_try_fold() {
     let mut it = (0..).step_by(10);
     assert_eq!(it.try_fold(0, i8::checked_add), None);
@@ -298,4 +338,96 @@ fn test_step_by_fold_range_specialization() {
         assert_eq!(r.next(), Some(usize::MAX - 6));
         assert_eq!(r.sum::<usize>(), usize::MAX - 1);
     });
+}
+
+#[test]
+fn test_step_by_new_range_iter() {
+    use core::range::Range as NewRange;
+
+    // forward iteration
+    let v: Vec<u32> = NewRange::from(0_u32..10).into_iter().step_by(3).collect();
+    assert_eq!(v, [0, 3, 6, 9]);
+
+    // size_hint
+    assert_eq!(NewRange::from(0_u32..10).into_iter().step_by(3).size_hint(), (4, Some(4)));
+    assert_eq!(NewRange::from(0_u32..9).into_iter().step_by(3).size_hint(), (3, Some(3)));
+
+    // nth
+    assert_eq!(NewRange::from(0_u32..20).into_iter().step_by(5).nth(2), Some(10));
+
+    // empty range
+    assert_eq!(NewRange::from(5_u32..5).into_iter().step_by(1).next(), None);
+
+    // step larger than range
+    assert_eq!(NewRange::from(0_u32..3).into_iter().step_by(10).collect::<Vec<_>>(), [0]);
+
+    // backward iteration (usize has ExactSizeIterator)
+    let mut it = NewRange::from(0_usize..11).into_iter().step_by(3);
+    assert_eq!(it.next_back(), Some(9));
+    assert_eq!(it.next_back(), Some(6));
+    assert_eq!(it.next_back(), Some(3));
+    assert_eq!(it.next_back(), Some(0));
+    assert_eq!(it.next_back(), None);
+
+    // interleaved forward and backward
+    let mut it = NewRange::from(0_usize..16).into_iter().step_by(5);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(15));
+    assert_eq!(it.next(), Some(5));
+    assert_eq!(it.next_back(), Some(10));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_step_by_nth_non_fused() {
+    struct StepByNthOne {
+        exhausted: bool,
+    }
+    impl Iterator for StepByNthOne {
+        type Item = i32;
+        fn next(&mut self) -> Option<i32> {
+            if self.exhausted {
+                Some(0)
+            } else {
+                self.exhausted = true;
+                None
+            }
+        }
+    }
+
+    let mut iter = StepByNthOne { exhausted: false }.step_by(1);
+    assert_eq!(iter.nth(1), None)
+}
+
+#[test]
+fn test_step_by_nth_non_fused_on_non_first_take() {
+    struct StepByOneNthMax(i32);
+    impl Iterator for StepByOneNthMax {
+        type Item = i32;
+        fn next(&mut self) -> Option<i32> {
+            let prev = self.0;
+            self.0 += 1;
+            if prev == 1 { None } else { Some(prev) }
+        }
+    }
+
+    let mut iter = StepByOneNthMax(0).step_by(1);
+    // sets StepBy iterator first_take field to false
+    assert_eq!(iter.next(), Some(0));
+    // Our underlying iterator should be pointing at a `None` item
+    // so we should expect `StepBy::nth` to return `None`
+    assert_eq!(iter.nth(usize::MAX), None)
+}
+
+#[test]
+fn test_step_by_fused() {
+    // `StepBy` is fused whenever the underlying iterator is fused.
+    fn assert_fused<I: FusedIterator>(_: I) {}
+    assert_fused((0..10).step_by(3));
+
+    // Once the underlying fused iterator is exhausted, `StepBy` keeps yielding `None`.
+    let mut it = (0..3).step_by(5);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next(), None);
+    assert_eq!(it.next(), None);
 }

@@ -10,29 +10,29 @@ LL -     x: usize8,
 LL +     x: usize,
    |
 
-error: `#[rustc_align]` attribute cannot be used on struct fields
-  --> $DIR/align-on-fields-143987.rs:10:5
+error: the `rustc_align` attribute cannot be used on struct fields
+  --> $DIR/align-on-fields-143987.rs:10:7
    |
 LL |     #[rustc_align(8)]
-   |     ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
-error: `#[rustc_align]` attribute cannot be used on struct fields
-  --> $DIR/align-on-fields-143987.rs:16:5
+error: the `rustc_align` attribute cannot be used on struct fields
+  --> $DIR/align-on-fields-143987.rs:16:7
    |
 LL |     #[rustc_align(8)]
-   |     ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
-error: `#[rustc_align]` attribute cannot be used on struct fields
-  --> $DIR/align-on-fields-143987.rs:22:5
+error: the `rustc_align` attribute cannot be used on struct fields
+  --> $DIR/align-on-fields-143987.rs:22:7
    |
 LL |     #[rustc_align(32)]
-   |     ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
 error: aborting due to 4 previous errors
 

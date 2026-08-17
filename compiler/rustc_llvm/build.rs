@@ -160,6 +160,12 @@ impl<'a> IntoIterator for &'a LlvmConfigOutput {
     }
 }
 
+fn is_libstdcxx_cxx11_abi_flag(flag: &str) -> bool {
+    flag == "-D_GLIBCXX_USE_CXX11_ABI"
+        || flag.starts_with("-D_GLIBCXX_USE_CXX11_ABI=")
+        || flag == "-U_GLIBCXX_USE_CXX11_ABI"
+}
+
 fn main() {
     if cfg!(feature = "check_only") {
         return;
@@ -245,13 +251,24 @@ fn main() {
     // for this platform. See https://github.com/rust-lang/rust/pull/145031#issuecomment-3162677202.
     // Moreover, LLVM generally guarantees warning-freedom only when building with Clang, as other
     // compilers have too many false positives. This is typically the case for MSVC, which throws
-    // many false-positive warnings. We keep it excluded, for these reasons.
-    if std::env::var_os("CI").is_some() && !target.contains("msvc") {
+    // many false-positive warnings, and also GCC. We keep these excluded, for these reasons.
+    let is_msvc = target.contains("msvc");
+    let compiler_is_gcc =
+        tracked_env_var_os("LLVM_COMPILER_IS_GNU_LIKE").as_deref() == Some(OsStr::new("1"));
+    if std::env::var_os("CI").is_some() && !is_msvc && !compiler_is_gcc {
         cfg.warnings_into_errors(true);
     }
     for flag in &cxxflags {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
+            continue;
+        }
+
+        // This is a libstdc++ implementation detail for the C++ library that
+        // built the runnable llvm-config. When cross-compiling, target LLVM may
+        // have been built against a target libstdc++ with a different default.
+        // Let the target compiler/toolchain select its ABI instead.
+        if is_crossed && is_libstdcxx_cxx11_abi_flag(flag.as_ref()) {
             continue;
         }
 

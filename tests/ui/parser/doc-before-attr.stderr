@@ -4,7 +4,7 @@ error: expected item after attributes
 LL | /// hi
    | ------ other attributes here
 LL | #[derive(Debug)]
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^ expected an item after this
 
 error: aborting due to 1 previous error
 

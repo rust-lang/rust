@@ -3,12 +3,12 @@ use std::{mem, slice};
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId, attr};
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::AttributeKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
-use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
@@ -99,8 +99,8 @@ impl<'a> CollectProcMacros<'a> {
         function_ident: Ident,
         attr: &'a ast::Attribute,
     ) {
-        let Some(rustc_hir::Attribute::Parsed(AttributeKind::ProcMacroDerive { .. })) =
-            AttributeParser::parse_limited(
+        let Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::ProcMacroDerive { .. })) =
+            AttributeParser::parse_limited_sym(
                 self.session,
                 slice::from_ref(attr),
                 &[sym::proc_macro_derive],
@@ -230,9 +230,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         }
 
         if !self.is_proc_macro_crate {
+            let path = &attr.get_normal_item().path;
             self.dcx
                 .create_err(diagnostics::AttributeOnlyUsableWithCrateType {
-                    span: attr.span,
+                    span: path.span,
                     path: &pprust::path_to_string(&attr.get_normal_item().path),
                 })
                 .emit();
@@ -361,15 +362,16 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
         cx.attr_nested_word(sym::allow, sym::deprecated, span),
     ]);
 
-    let block = ast::ConstItemRhsKind::new_body(cx.expr_block(
+    let block = cx.expr_block(
         cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
-    ));
+    );
 
     let anon_constant = cx.item_const(
         span,
         Ident::new(kw::Underscore, span),
         cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
-        block,
+        Some(block),
+        ast::ConstItemKind::Body,
     );
 
     // Integrate the new item into existing module structures.

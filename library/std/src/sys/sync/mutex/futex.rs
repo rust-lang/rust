@@ -1,5 +1,5 @@
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sys::futex::{self, futex_wait, futex_wake};
+use crate::sys::sync::futex::{self, futex_wait, futex_wake};
 
 type Futex = futex::SmallFutex;
 type State = futex::SmallPrimitive;

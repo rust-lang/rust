@@ -1,3 +1,4 @@
+//@ reference: lang-types.copy.constraint
 #[derive(Clone)]
 union U {
     a: u8

@@ -14,9 +14,9 @@ neon-stable: &neon-stable
 neon-stable-fp16: &neon-stable-fp16
   FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "1.94.0"']]
 
-# #[stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION")]
+# #[stable(feature = "stdarch_neon_dotprod", since = "1.98.0")]
 neon-stable-dotprod: &neon-stable-dotprod
-  FnCall: [stable, ['feature = "stdarch_neon_dotprod"', 'since = "CURRENT_RUSTC_VERSION"']]
+  FnCall: [stable, ['feature = "stdarch_neon_dotprod"', 'since = "1.98.0"']]
 
 # #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 neon-cfg-arm-unstable: &neon-cfg-arm-unstable
@@ -55,6 +55,18 @@ not-arm: &not-arm
 neon-target-aarch64-arm64ec: &neon-target-aarch64-arm64ec
   FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]
 
+neon-target-aarch64-le: &neon-target-aarch64-le
+  FnCall: [all, [test, 'target_arch = "aarch64"', 'target_endian = "little"', {FnCall: [not, [windows]]}]]
+
+neon-target-aarch64-be: &neon-target-aarch64-be
+  FnCall: [all, [test, 'target_arch = "aarch64"', 'target_endian = "big"']]
+
+neon-target-arm64ec: &neon-target-arm64ec
+  FnCall: [all, [test, 'target_arch = "arm64ec"']]
+
+neon-target-aarch64-windows: &neon-target-aarch64-windows
+  FnCall: [all, [test, 'target_arch = "aarch64"', windows]]
+
 # #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 neon-not-arm-stable: &neon-not-arm-stable
   FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]}]]
@@ -63,9 +75,9 @@ neon-not-arm-stable: &neon-not-arm-stable
 neon-not-arm-stable-fp16: &neon-not-arm-stable-fp16
   FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "1.94.0"']]}]]
 
-# #[cfg_attr(not(target_arch = "arm"), stable(feature = "stdarch_neon_dotprod", since = "CURRENT_RUSTC_VERSION"))]
+# #[cfg_attr(not(target_arch = "arm"), stable(feature = "stdarch_neon_dotprod", since = "1.98.0"))]
 neon-not-arm-stable-dotprod: &neon-not-arm-stable-dotprod
-  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "stdarch_neon_dotprod"', 'since = "CURRENT_RUSTC_VERSION"']]}]]
+  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "stdarch_neon_dotprod"', 'since = "1.98.0"']]}]]
 
 # #[cfg_attr(all(test, not(target_env = "msvc"))]
 msvc-disabled: &msvc-disabled
@@ -15076,18 +15088,21 @@ intrinsics:
     return_type: "{neon_type[2]}"
     attr:
       - *neon-v7
-      - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['"{type[3]}"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}']]}]]
+      - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['vmov']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-le, {FnCall: [assert_instr, ['mov']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-be, {FnCall: [assert_instr, ['ext']]}]]
+      - FnCall: [cfg_attr, [*neon-target-arm64ec, {FnCall: [assert_instr, ['dup']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-windows, {FnCall: [assert_instr, ['dup']]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
     big_endian_inverse: true
     types:
-      - ['vget_high_s64', 'int64x2_t',   'int64x1_t',   'vmov', 'ext',  'int64x1_t([simd_extract!(a, 1)])']
-      - ['vget_high_u64', 'uint64x2_t',  'uint64x1_t',  'vmov', 'ext',  'uint64x1_t([simd_extract!(a, 1)])']
-      - ['vget_high_p64', 'poly64x2_t',  'poly64x1_t',  'vmov', 'ext',  'transmute(u64x1::new(simd_extract!(a, 1)))']
+      - ['vget_high_s64', 'int64x2_t',   'int64x1_t', 'int64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_u64', 'uint64x2_t',  'uint64x1_t', 'uint64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_p64', 'poly64x2_t',  'poly64x1_t', 'transmute(u64x1::new(simd_extract!(a, 1)))']
     compose:
-      - Identifier: ['{type[5]}', UnsafeSymbol]
+      - Identifier: ['{type[3]}', UnsafeSymbol]
 
   - name: "{type[0]}"
     doc: "Duplicate vector element to vector or scalar"
@@ -15113,24 +15128,27 @@ intrinsics:
     return_type: "{neon_type[2]}"
     attr:
       - *neon-v7
-      - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['"{type[3]}"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}']]}]]
+      - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['vmov']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-le, {FnCall: [assert_instr, ['mov']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-be, {FnCall: [assert_instr, ['ext']]}]]
+      - FnCall: [cfg_attr, [*neon-target-arm64ec, {FnCall: [assert_instr, ['dup']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-windows, {FnCall: [assert_instr, ['dup']]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
     big_endian_inverse: true
     types:
-      - ['vget_high_s8', 'int8x16_t', 'int8x8_t', 'vmov', 'ext', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vget_high_u8', 'uint8x16_t', 'uint8x8_t', 'vmov', 'ext', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vget_high_p8', 'poly8x16_t', 'poly8x8_t', 'vmov', 'ext', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vget_high_s16', 'int16x8_t', 'int16x4_t', 'vmov', 'ext', '[4, 5, 6, 7]']
-      - ['vget_high_u16', 'uint16x8_t', 'uint16x4_t', 'vmov', 'ext', '[4, 5, 6, 7]']
-      - ['vget_high_p16', 'poly16x8_t', 'poly16x4_t', 'vmov', 'ext', '[4, 5, 6, 7]']
-      - ['vget_high_s32', 'int32x4_t', 'int32x2_t', 'vmov', 'ext', '[2, 3]']
-      - ['vget_high_u32', 'uint32x4_t', 'uint32x2_t', 'vmov', 'ext', '[2, 3]']
-      - ['vget_high_f32', 'float32x4_t', 'float32x2_t', 'vmov', 'ext', '[2, 3]']
+      - ['vget_high_s8', 'int8x16_t', 'int8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
+      - ['vget_high_u8', 'uint8x16_t', 'uint8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
+      - ['vget_high_p8', 'poly8x16_t', 'poly8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
+      - ['vget_high_s16', 'int16x8_t', 'int16x4_t', '[4, 5, 6, 7]']
+      - ['vget_high_u16', 'uint16x8_t', 'uint16x4_t', '[4, 5, 6, 7]']
+      - ['vget_high_p16', 'poly16x8_t', 'poly16x4_t', '[4, 5, 6, 7]']
+      - ['vget_high_s32', 'int32x4_t', 'int32x2_t', '[2, 3]']
+      - ['vget_high_u32', 'uint32x4_t', 'uint32x2_t', '[2, 3]']
+      - ['vget_high_f32', 'float32x4_t', 'float32x2_t', '[2, 3]']
     compose:
-      - FnCall: ['simd_shuffle!', [a, a, '{type[5]}']]
+      - FnCall: ['simd_shuffle!', [a, a, '{type[3]}']]
 
   - name: "{type[0]}"
     doc: "Duplicate vector element to vector or scalar"

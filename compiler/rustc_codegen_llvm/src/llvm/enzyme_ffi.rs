@@ -66,6 +66,7 @@ unsafe extern "C" {
         NameLen: libc::size_t,
     ) -> Option<&Value>;
 
+    pub(crate) safe fn LLVMRustIsCall(V: &Value) -> bool;
 }
 
 unsafe extern "C" {
@@ -290,6 +291,11 @@ pub(crate) mod Enzyme_AD {
 
         pub(crate) fn tree_to_string(&self, tree: *mut EnzymeTypeTree) -> *const c_char {
             unsafe { (self.EnzymeTypeTreeToString)(tree) }
+        }
+
+        pub(crate) fn tree_to_cstr(&self, tree: *mut EnzymeTypeTree) -> &std::ffi::CStr {
+            let c_str = self.tree_to_string(tree);
+            unsafe { std::ffi::CStr::from_ptr(c_str) }
         }
 
         pub(crate) fn tree_to_string_free(&self, ch: *const c_char) {

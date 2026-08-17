@@ -3,20 +3,20 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use rustc_abi::Endian;
+use rustc_crate_store::{DllImport, DllImportSymbolType};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash128;
 use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
-use rustc_session::cstore::{DllImport, DllImportSymbolType};
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;
 
 use crate::back::archive::ImportLibraryItem;
 use crate::back::link::ArchiveBuilderBuilder;
-use crate::errors::ErrorCreatingImportLibrary;
-use crate::{NativeLib, common, errors};
+use crate::diagnostics::ErrorCreatingImportLibrary;
+use crate::{NativeLib, common, diagnostics};
 
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.
 ///
@@ -41,7 +41,7 @@ fn collate_raw_dylibs_windows<'a>(
                     // FIXME: when we add support for ordinals, figure out if we need to do anything
                     // if we have two DllImport values with the same name but different ordinals.
                     if import.calling_convention != old_import.calling_convention {
-                        sess.dcx().emit_err(errors::MultipleExternalFuncDecl {
+                        sess.dcx().emit_err(diagnostics::MultipleExternalFuncDecl {
                             span: import.span,
                             function: import.name,
                             library_name: &name,
@@ -229,7 +229,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // It is important that the order of reservation matches the order of writing.
     // The object crate contains many debug asserts that fire if you get this wrong.
 
-    let Some((arch, sub_arch)) = sess.target.object_architecture(&sess.unstable_target_features)
+    let Some((arch, sub_arch)) = sess.target.object_architecture(&sess.internal_target_features)
     else {
         sess.dcx().fatal(format!(
             "raw-dylib is not supported for the architecture `{}`",
@@ -477,13 +477,13 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // the DT_SONAME will be used by the linker to populate DT_NEEDED
     // which the loader uses to find the library.
     stub.write_align_dynamic();
-    stub.write_dynamic_string(elf::DT_SONAME, soname);
+    stub.write_dynamic_string(elf::DT_SONAME, soname).unwrap();
     // LSB section "2.7. Symbol Versioning" requires `DT_VERDEFNUM` to be reliable.
     if verdef_count > 1 {
-        stub.write_dynamic(elf::DT_VERDEFNUM, verdef_count as u64);
+        stub.write_dynamic(elf::DT_VERDEFNUM, verdef_count as u64).unwrap();
     }
     // DT_NULL terminates the .dynamic table.
-    stub.write_dynamic(elf::DT_NULL, 0);
+    stub.write_dynamic(elf::DT_NULL, 0).unwrap();
 
     stub_buf
 }

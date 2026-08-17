@@ -1,7 +1,8 @@
 //! Performs various peephole optimizations.
 
 use rustc_abi::{ExternAbi, Integer};
-use rustc_hir::{LangItem, find_attr};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::MutVisitor;
@@ -10,6 +11,7 @@ use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::{Symbol, sym};
 
+use crate::PassPolicy;
 use crate::simplify::simplify_duplicate_switch_targets;
 
 pub(super) enum InstSimplify {
@@ -25,8 +27,8 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         }
     }
 
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -61,10 +63,6 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
             ctx.simplify_nounwind_call(terminator);
             simplify_duplicate_switch_targets(terminator);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -446,7 +444,7 @@ fn resolve_rust_intrinsic<'tcx>(
 ) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
     let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
     let intrinsic = tcx.intrinsic(def_id)?;
-    Some((intrinsic.name, args))
+    Some((intrinsic.name, args.no_bound_vars().unwrap()))
 }
 
 struct SimplifyUbCheck<'tcx> {

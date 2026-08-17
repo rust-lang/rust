@@ -7,6 +7,7 @@ use std::thread;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+use libc_utils::{errno_check, errno_result, read_exact_array, write_all};
 
 // Test the behaviour of a thread being blocked on write, get unblocked, then blocked again.
 
@@ -18,29 +19,27 @@ mod libc_utils;
 // 5. Thread 2's `write` can never complete -> deadlocked.
 fn main() {
     let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let arr1: [u8; 212992] = [1; 212992];
     // Exhaust the space in the buffer so the subsequent write will block.
-    libc_utils::write_all(fds[0], &arr1).unwrap();
+    write_all(fds[0], &arr1).unwrap();
     let thread1 = thread::spawn(move || {
-        let data = "a".as_bytes();
         // The write below will be blocked because the buffer is already full.
-        let res = unsafe { libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len()) };
-        assert_eq!(res, data.len().cast_signed());
+        write_all(fds[0], b"a").unwrap();
     });
     let thread2 = thread::spawn(move || {
         let data = "a".as_bytes();
         // The write below will be blocked because the buffer is already full.
-        let res = unsafe { libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len()) };
-        //~^ERROR: deadlock
+        let res = errno_result(unsafe {
+            libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len())
+            //~^ERROR: deadlock
+        })
+        .unwrap();
         assert_eq!(res, data.len().cast_signed());
     });
     let thread3 = thread::spawn(move || {
         // Unblock thread1 by freeing up some space.
-        let mut buf: [u8; 1] = [0; 1];
-        let res = unsafe { libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-        assert_eq!(res, buf.len().cast_signed());
+        let buf = read_exact_array::<1>(fds[1]).unwrap();
         assert_eq!(buf, [1]);
     });
     thread1.join().unwrap();

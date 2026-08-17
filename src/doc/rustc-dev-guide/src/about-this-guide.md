@@ -1,5 +1,7 @@
 # About this guide
 
+<!-- date-check: Jul 2026 -->
+
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
@@ -14,18 +16,18 @@ There are several parts to this guide:
 1. [Bootstrapping][p3]:
    Describes how the Rust compiler builds itself using previous versions, including
    an introduction to the bootstrap process and debugging methods.
-1. [High-level Compiler Architecture][p4]:
+1. [High-level compiler architecture][p4]:
    Discusses the high-level architecture of the compiler and stages of the compile process.
-1. [Source Code Representation][p5]:
+1. [Source code representation][p5]:
    Describes the process of taking raw source code from the user
    and transforming it into various forms that the compiler can work with easily.
-1. [Supporting Infrastructure][p6]:
+1. [Supporting infrastructure][p6]:
    Covers command-line argument conventions, compiler entry points like rustc_driver and
    rustc_interface, and the design and implementation of errors and lints.
 1. [Analysis][p7]:
    Discusses the analyses that the compiler uses to check various properties of the code
    and inform later stages of the compile process (e.g., type checking).
-1. [MIR to Binaries][p8]: How linked executable machine code is generated.
+1. [Mir to binaries][p8]: How linked executable machine code is generated.
 1. [Appendices][p9] at the end with useful reference information.
    There are a few of these with different information, including a glossary.
 
@@ -72,6 +74,7 @@ You might also find the following sites useful:
 
 - [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
+- [`rust-lang/rust`]'s [LLM policy]
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
@@ -93,7 +96,7 @@ You might also find the following sites useful:
   For example, searching for `* -> vec` should find all functions that return a `Vec<T>`.
   _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
 
-
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
 [rustc dev guide]: about-this-guide.md
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
@@ -113,3 +116,4 @@ You might also find the following sites useful:
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
 [rust-analyzer book]: https://rust-analyzer.github.io/book/
 [z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[`rust-lang/rust`]: https://github.com/rust-lang/rust/

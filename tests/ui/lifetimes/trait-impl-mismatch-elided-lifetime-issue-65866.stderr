@@ -2,10 +2,10 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/trait-impl-mismatch-elided-lifetime-issue-65866.rs:17:9
    |
 LL |         fn bar(&self, r: &mut Re);
-   |         -------------------------- expected `fn(&'1 plain::Foo, &'2 mut plain::Re<'3>)`
+   |         -------------------------- expected `fn(&'1 Foo, &'2 mut Re<'3>)`
 ...
 LL |         fn bar<'a, 'b>(&'a self, _r: &'b mut Re<'a>) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 plain::Foo, &'2 mut plain::Re<'1>)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Foo, &'2 mut Re<'1>)`
    |
    = note: expected signature `fn(&'1 plain::Foo, &'2 mut plain::Re<'3>)`
               found signature `fn(&'1 plain::Foo, &'2 mut plain::Re<'1>)`
@@ -21,10 +21,10 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/trait-impl-mismatch-elided-lifetime-issue-65866.rs:40:9
    |
 LL |         fn bar(&self, r: &mut Re<u8>);
-   |         ------------------------------ expected `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'3, u8>)`
+   |         ------------------------------ expected `fn(&'1 Foo, &'2 mut Re<'3, u8>)`
 ...
 LL |         fn bar<'a, 'b>(&'a self, _r: &'b mut Re<'a, u8>) {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'1, u8>)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Foo, &'2 mut Re<'1, u8>)`
    |
    = note: expected signature `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'3, u8>)`
               found signature `fn(&'1 with_type_args::Foo, &'2 mut with_type_args::Re<'1, u8>)`

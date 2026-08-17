@@ -1,6 +1,5 @@
 //@no-rustfix
-#![allow(clippy::useless_vec)]
-#[warn(clippy::range_zip_with_len)]
+#![warn(clippy::range_zip_with_len)]
 fn main() {
     let v1: Vec<u64> = vec![1, 2, 3];
     let v2: Vec<u64> = vec![4, 5];

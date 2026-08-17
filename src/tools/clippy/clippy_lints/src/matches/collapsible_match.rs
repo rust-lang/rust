@@ -1,15 +1,16 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::{If, IfLetOrMatch};
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{IntoSpan, SpanExt, snippet};
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};
+use clippy_utils::{
+    SpanlessEq, get_ref_operators, is_none_pattern, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators,
+};
 use rustc_ast::BorrowKind;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdSet, Pat, PatExpr, PatExprKind, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdSet, Pat, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
@@ -216,18 +217,7 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     if arm.guard.is_some() {
         return false;
     }
-    match arm.pat.kind {
-        PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Expr(PatExpr {
-            kind: PatExprKind::Path(qpath),
-            hir_id,
-            ..
-        }) => cx
-            .qpath_res(qpath, *hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, OptionNone),
-        _ => false,
-    }
+    matches!(arm.pat.kind, PatKind::Binding(..) | PatKind::Wild) || is_none_pattern(cx, arm.pat)
 }
 
 fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: HirId) -> (Option<(Ident, Span)>, bool) {

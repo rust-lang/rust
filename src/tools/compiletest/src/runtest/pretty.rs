@@ -20,7 +20,10 @@ impl TestCx<'_> {
 
         let mut round = 0;
         while round < rounds {
-            self.logv(format_args!("pretty-printing round {round} revision {:?}", self.revision));
+            self.logv(format_args!(
+                "pretty-printing round {round} revision {:?}",
+                self.variant.revision
+            ));
             let read_from =
                 if round == 0 { ReadFrom::Path } else { ReadFrom::Stdin(srcs[round].to_owned()) };
 
@@ -29,7 +32,7 @@ impl TestCx<'_> {
                 self.fatal_proc_rec(
                     &format!(
                         "pretty-printing failed in round {} revision {:?}",
-                        round, self.revision
+                        round, self.variant.revision
                     ),
                     &proc_res,
                 );

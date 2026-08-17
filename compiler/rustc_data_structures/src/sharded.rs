@@ -201,7 +201,7 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
                 Entry::Vacant(e) => {
                     e.insert((key, value));
                 }
-            }
+            },
             _ => {
                 shard.insert_unique(hash, (key, value), |(k, _)| make_hash(k));
             }

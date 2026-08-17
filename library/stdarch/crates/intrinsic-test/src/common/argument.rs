@@ -4,9 +4,9 @@ use crate::common::SupportedArchitecture;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::test_values_array_name;
 
-use super::PASSES;
 use super::constraint::Constraint;
 use super::intrinsic_helpers::TypeDefinition;
+use super::{PASSES, PREDICATE_LOCAL};
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
@@ -19,18 +19,27 @@ pub struct Argument<A: SupportedArchitecture> {
     pub ty: A::Type,
     /// Any constraints that are on this argument
     pub constraint: Option<Constraint>,
+    /// Is the argument a predicate for a scalable intrinsic?
+    pub is_predicate: bool,
 }
 
 impl<A> Argument<A>
 where
     A: SupportedArchitecture,
 {
-    pub fn new(pos: usize, name: String, ty: A::Type, constraint: Option<Constraint>) -> Self {
+    pub fn new(
+        pos: usize,
+        name: String,
+        ty: A::Type,
+        constraint: Option<Constraint>,
+        is_predicate: bool,
+    ) -> Self {
         Argument {
             pos,
             name,
             ty,
             constraint,
+            is_predicate,
         }
     }
 
@@ -38,8 +47,14 @@ where
         self.ty.c_type()
     }
 
+    /// Generates local variable name for the value passed to this argument
     pub fn generate_name(&self) -> String {
-        format!("{}_val", self.name)
+        // The same predicate is used for scalable intrinsic invocations
+        if self.is_predicate {
+            format!("{PREDICATE_LOCAL}")
+        } else {
+            format!("{}_val", self.name)
+        }
     }
 
     pub fn is_simd(&self) -> bool {
@@ -176,15 +191,11 @@ where
     pub fn load_values_rust(&self) -> String {
         self.iter()
             .filter(|&arg| !arg.has_constraint())
+            .filter(|&arg| !arg.is_predicate)
             .enumerate()
             .map(|(idx, arg)| {
                 if arg.is_simd() {
-                    format!(
-                        "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);",
-                        name = arg.generate_name(),
-                        vals_name = test_values_array_name(&arg.ty),
-                        load = arg.ty.load_function(),
-                    )
+                    A::load_call(arg, idx)
                 } else {
                     format!(
                         "let {name} = {vals_name}[(i+{idx}) % {PASSES}];",

@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 
 // Regression test for an ICE in privacy checking while walking the `T` qself
 // of `T::ASSOC` inside a tuple const argument.

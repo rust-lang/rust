@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `OpaqueType::{opaque#0}: Copy` is not satisfied
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:9:19
+   |
+LL | type OpaqueType = unsafe<> impl OpaqueTrait;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `OpaqueType::{opaque#0}`
+
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `unsafe<> _`
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:14:1
+   |
+LL | impl<T: std::mem::TransmuteFrom<()>> AnotherTrait for T {}
+   | ------------------------------------------------------- first implementation here
+LL | impl AnotherTrait for OpaqueType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `unsafe<> _`
+
+error: unconstrained opaque type
+  --> $DIR/unsafe-binder-opaque-type-layout.rs:9:28
+   |
+LL | type OpaqueType = unsafe<> impl OpaqueTrait;
+   |                            ^^^^^^^^^^^^^^^^
+   |
+   = note: `OpaqueType` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0277.
+For more information about an error, try `rustc --explain E0119`.

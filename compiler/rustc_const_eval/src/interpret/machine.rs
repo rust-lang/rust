@@ -9,16 +9,17 @@ use std::hash::Hash;
 use rustc_abi::{Align, Size};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{AtomicOrdering, Ty};
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
 
 use super::{
-    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
-    CtfeProvenance, EnteredTraceSpan, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
-    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, interp_ok, throw_unsup,
+    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, AtomicRmwOp, CTFE_ALLOC_SALT,
+    ConstAllocation, CtfeProvenance, EnteredTraceSpan, FnArg, Frame, ImmTy, InterpCx, InterpResult,
+    MPlaceTy, MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, RangeSet, Scalar,
+    interp_ok, throw_unsup,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -247,6 +248,16 @@ pub trait Machine<'tcx>: Sized {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
 
+    /// Directly process an LLVM intrinsic without pushing a stack frame. It is the hook's
+    /// responsibility to advance the instruction pointer as appropriate.
+    fn call_llvm_intrinsic(
+        ecx: &mut InterpCx<'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx, Self::Provenance>],
+        destination: &PlaceTy<'tcx, Self::Provenance>,
+        target: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
     /// Check whether the given function may be executed on the current machine, in terms of the
     /// target features is requires.
     fn check_fn_target_features(
@@ -271,8 +282,6 @@ pub trait Machine<'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called for all binary operations where the LHS has pointer type.
-    ///
-    /// Returns a (value, overflowed) pair if the operation succeeded
     fn binary_ptr_op(
         ecx: &InterpCx<'tcx, Self>,
         bin_op: mir::BinOp,
@@ -305,7 +314,46 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Determines whether the `fmuladd` intrinsics fuse the multiply-add or use separate operations.
-    fn float_fuse_mul_add(_ecx: &InterpCx<'tcx, Self>) -> bool;
+    fn float_fuse_mul_add(ecx: &InterpCx<'tcx, Self>) -> bool;
+
+    fn atomic_load(
+        ecx: &InterpCx<'tcx, Self>,
+        place: &MPlaceTy<'tcx, Self::Provenance>,
+        ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx, Scalar<Self::Provenance>>;
+
+    fn atomic_store(
+        ecx: &mut InterpCx<'tcx, Self>,
+        place: &MPlaceTy<'tcx, Self::Provenance>,
+        val: &ImmTy<'tcx, Self::Provenance>,
+        ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx>;
+
+    /// Returns the old value.
+    fn atomic_rmw(
+        ecx: &mut InterpCx<'tcx, Self>,
+        place: &MPlaceTy<'tcx, Self::Provenance>,
+        op: AtomicRmwOp,
+        operand: &ImmTy<'tcx, Self::Provenance>,
+        ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx, Scalar<Self::Provenance>>;
+
+    /// Returns a pair of the old value and a boolean indicating whether the update happened.
+    fn atomic_compare_exchange(
+        ecx: &mut InterpCx<'tcx, Self>,
+        place: &MPlaceTy<'tcx, Self::Provenance>,
+        expected_old: &ImmTy<'tcx, Self::Provenance>,
+        new: &ImmTy<'tcx, Self::Provenance>,
+        can_fail_spuriously: bool,
+        success_ordering: AtomicOrdering,
+        failure_ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx, (Scalar<Self::Provenance>, bool)>;
+
+    fn atomic_fence(
+        ecx: &InterpCx<'tcx, Self>,
+        ordering: AtomicOrdering,
+        singlethread: bool,
+    ) -> InterpResult<'tcx>;
 
     /// Called before a basic block terminator is executed.
     #[inline]
@@ -696,6 +744,70 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     #[inline(always)]
     fn float_fuse_mul_add(_ecx: &InterpCx<$tcx, Self>) -> bool {
         true
+    }
+
+    #[inline(always)]
+    fn atomic_load(
+        ecx: &InterpCx<$tcx, Self>,
+        place: &MPlaceTy<$tcx, Self::Provenance>,
+        _ordering: AtomicOrdering,
+    ) -> InterpResult<$tcx, Scalar<Self::Provenance>> {
+        // Compile-time machines are single-threaded so this is like a regular load.
+        ecx.read_scalar(place)
+    }
+
+    #[inline(always)]
+    fn atomic_store(
+        ecx: &mut InterpCx<$tcx, Self>,
+        place: &MPlaceTy<$tcx, Self::Provenance>,
+        val: &ImmTy<$tcx, Self::Provenance>,
+        _ordering: AtomicOrdering,
+    ) -> InterpResult<$tcx> {
+        // Compile-time machines are single-threaded so this is like a regular store.
+        ecx.write_scalar(val.to_scalar(), place)
+    }
+
+    fn atomic_rmw(
+        ecx: &mut InterpCx<$tcx, Self>,
+        place: &MPlaceTy<$tcx, Self::Provenance>,
+        op: AtomicRmwOp,
+        operand: &ImmTy<$tcx, Self::Provenance>,
+        _ordering: AtomicOrdering,
+    ) -> InterpResult<$tcx, Scalar<Self::Provenance>> {
+        // Compile-time machines are single-threaded so we ignore the ordering.
+        let old_val = ecx.read_immediate(place)?;
+        let new_val = ecx.atomic_rmw_op(op, &old_val, operand)?;
+        ecx.write_immediate(*new_val, place)?;
+        interp_ok(old_val.to_scalar())
+    }
+
+    fn atomic_compare_exchange(
+        ecx: &mut InterpCx<$tcx, Self>,
+        place: &MPlaceTy<$tcx, Self::Provenance>,
+        expected_old: &ImmTy<$tcx, Self::Provenance>,
+        new: &ImmTy<$tcx, Self::Provenance>,
+        _can_fail_spuriously: bool,
+        _success_ordering: AtomicOrdering,
+        _failure_ordering: AtomicOrdering,
+    ) -> InterpResult<$tcx, (Scalar<Self::Provenance>, bool)> {
+        // Compile-time machines are single-threaded so we ignore the ordering.
+        // They are also deterministic so we do not fail spuriously.
+        let actual_old = ecx.read_immediate(place)?;
+        let eq = ecx.binary_op(mir::BinOp::Eq, &actual_old, expected_old)?.to_scalar().to_bool()?;
+        if eq {
+            ecx.write_immediate(**new, place)?;
+        }
+        interp_ok((actual_old.to_scalar(), eq))
+    }
+
+    #[inline(always)]
+    fn atomic_fence(
+        _ecx: &InterpCx<$tcx, Self>,
+        _ordering: AtomicOrdering,
+        _singlethread: bool,
+    ) -> InterpResult<$tcx> {
+        // Compile-time machines are single-threaded so this is a NOP.
+        interp_ok(())
     }
 
     #[inline(always)]

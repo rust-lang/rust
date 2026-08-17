@@ -1,3 +1,5 @@
+#![allow(suspicious_runtime_symbol_definitions)]
+
 #[no_mangle]
 extern "C" fn malloc(_: usize) -> *mut std::ffi::c_void {
     //~^ HELP: the `malloc` symbol is defined here

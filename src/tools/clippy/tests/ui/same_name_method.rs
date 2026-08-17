@@ -1,5 +1,5 @@
 #![warn(clippy::same_name_method)]
-#![allow(dead_code, non_camel_case_types)]
+#![expect(non_camel_case_types)]
 
 trait T1 {
     fn foo() {}

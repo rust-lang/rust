@@ -6,6 +6,7 @@ LL |     SmallVec<{ D * 2 }>:,
    |
    = help: const parameters may only be used as standalone arguments here, i.e. `D`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error[E0747]: constant provided when a type was expected
   --> $DIR/bad-multiply.rs:7:14

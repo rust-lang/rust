@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, sym};
 use rustc_target::asm;
 
@@ -93,7 +93,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 match asm::InlineAsmClobberAbi::parse(
                     asm_arch,
                     &self.tcx.sess.target,
-                    &self.tcx.sess.unstable_target_features,
+                    &self.tcx.sess.internal_target_features,
                     *abi_name,
                 ) {
                     Ok(abi) => {

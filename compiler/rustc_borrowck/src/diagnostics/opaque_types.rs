@@ -21,7 +21,7 @@ use crate::consumers::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
 use crate::type_check::Locations;
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn report_opaque_type_errors(&mut self, errors: Vec<DeferredOpaqueTypeError<'tcx>>) {
         if errors.is_empty() {
             return;

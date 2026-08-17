@@ -5,5 +5,5 @@ struct A {
 
 fn main() {
     A(2, vec![])
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `A`
+    //~^ ERROR cannot find function, tuple struct or tuple variant `A` in this scope
 }

@@ -3,12 +3,12 @@ use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
-use rustc_hir::{HirId, RustcVersion};
+use rustc_hir::attrs::RustcVersion;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{HirId, StabilityLevel, StableSince};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::Symbol;
-use serde::Deserialize;
 use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -24,10 +24,12 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
-    1,97,0 { ISOLATE_LOWEST_ONE }
+    1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
+    1,94,0 { EULER_GAMMA, GOLDEN_RATIO }
     1,93,0 { VEC_DEQUE_POP_BACK_IF, VEC_DEQUE_POP_FRONT_IF }
     1,91,0 { DURATION_FROM_MINUTES_HOURS }
-    1,88,0 { LET_CHAINS, AS_CHUNKS }
+    1,89,0 { NONNULL_FROM_MUT }
+    1,88,0 { LET_CHAINS, AS_CHUNKS, RAW_PTR_DEFAULT }
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST }
     1,86,0 { VEC_POP_IF }
     1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP }
@@ -80,7 +82,7 @@ msrv_aliases! {
     1,29,0 { ITER_FLATTEN }
     1,28,0 { FROM_BOOL, REPEAT_WITH, SLICE_FROM_REF }
     1,27,0 { ITERATOR_TRY_FOLD, DOUBLE_ENDED_ITERATOR_RFIND, DURATION_FROM_NANOS_MICROS }
-    1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS }
+    1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS, BOX_LEAK }
     1,24,0 { IS_ASCII_DIGIT, PTR_NULL }
     1,18,0 { HASH_MAP_RETAIN, HASH_SET_RETAIN }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
@@ -100,15 +102,10 @@ static SEEN_MSRV_ATTR: AtomicBool = AtomicBool::new(false);
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Msrv(Option<RustcVersion>);
 
-impl<'de> Deserialize<'de> for Msrv {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let v = String::deserialize(deserializer)?;
-        parse_version(Symbol::intern(&v))
-            .map(|v| Self(Some(v)))
-            .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
+impl From<Option<RustcVersion>> for Msrv {
+    #[inline]
+    fn from(value: Option<RustcVersion>) -> Self {
+        Self(value)
     }
 }
 
@@ -151,7 +148,6 @@ impl Msrv {
     pub fn meets(self, cx: &LateContext<'_>, required: RustcVersion) -> bool {
         self.current(cx).is_none_or(|msrv| msrv >= required)
     }
-
     /// Checks if a required version from [this module](self) is met at the specified node
     ///
     /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
@@ -160,20 +156,23 @@ impl Msrv {
         self.at(tcx, node).is_none_or(|msrv| msrv >= required)
     }
 
-    pub fn read_cargo(&mut self, sess: &Session) {
-        let cargo_msrv = std::env::var("CARGO_PKG_RUST_VERSION")
-            .ok()
-            .and_then(|v| parse_version(Symbol::intern(&v)));
+    pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        cx.tcx.lookup_stability(def_id).is_none_or(|stability| {
+            if let StabilityLevel::Stable { since, .. } = stability.level {
+                let version = match since {
+                    StableSince::Version(version) => version,
+                    StableSince::Current => RustcVersion::CURRENT,
+                    StableSince::Err(_) => return false,
+                };
 
-        match (self.0, cargo_msrv) {
-            (None, Some(cargo_msrv)) => self.0 = Some(cargo_msrv),
-            (Some(clippy_msrv), Some(cargo_msrv)) if clippy_msrv != cargo_msrv => {
-                sess.dcx().warn(format!(
-                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
-                ));
-            },
-            _ => {},
-        }
+                self.meets(cx, version)
+            } else {
+                // Unstable fn.
+                // FIXME: can we check that the feature is enabled?
+                // Please see https://github.com/rust-lang/rust-clippy/pull/17309#discussion_r3486693263 for false-positive concerns.
+                false
+            }
+        })
     }
 }
 
@@ -184,13 +183,16 @@ pub struct MsrvStack {
     stack: SmallVec<[RustcVersion; 2]>,
 }
 
-impl MsrvStack {
-    pub fn new(initial: Msrv) -> Self {
+impl From<Option<RustcVersion>> for MsrvStack {
+    #[inline]
+    fn from(value: Option<RustcVersion>) -> Self {
         Self {
-            stack: SmallVec::from_iter(initial.0),
+            stack: SmallVec::from_iter(value),
         }
     }
+}
 
+impl MsrvStack {
     pub fn current(&self) -> Option<RustcVersion> {
         self.stack.last().copied()
     }

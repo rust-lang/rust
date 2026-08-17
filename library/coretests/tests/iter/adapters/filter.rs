@@ -63,3 +63,15 @@ fn test_next_chunk_does_not_leak() {
         assert_eq!(Rc::strong_count(w), 1);
     }
 }
+
+#[test]
+fn test_next_chunk_back_does_not_leak() {
+    let drop_witness: [_; 5] = std::array::from_fn(|_| Rc::new(()));
+
+    let v = (0..5).map(|i| drop_witness[i].clone()).collect::<Vec<_>>();
+    let _ = v.into_iter().filter(|_| false).next_chunk_back::<1>();
+
+    for ref w in drop_witness {
+        assert_eq!(Rc::strong_count(w), 1);
+    }
+}

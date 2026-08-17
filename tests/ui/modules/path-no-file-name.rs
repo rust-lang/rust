@@ -1,7 +1,8 @@
-//@ normalize-stderr: "\.`:.*\(" -> ".`: $$ACCESS_DENIED_MSG ("
-//@ normalize-stderr: "os error \d+" -> "os error $$ACCESS_DENIED_CODE"
+//@ revisions: u w
+//@[u] only-unix
+//@[w] only-windows
 
 #[path = "."]
-mod m; //~ ERROR couldn't read
+mod m; //~ ERROR
 
 fn main() {}

@@ -5,7 +5,7 @@
 // The author of the trait object type can't fix this unlike the supertrait bound
 // equivalent where they just need to explicitly specify the assoc const.
 
-#![feature(min_generic_const_args, trait_alias)]
+#![feature(min_generic_const_args, macroless_generic_const_args, trait_alias)]
 #![expect(incomplete_features)]
 
 trait Trait {

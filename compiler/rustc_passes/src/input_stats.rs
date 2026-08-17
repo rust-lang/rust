@@ -411,6 +411,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Infer,
                 Pat,
                 FieldOf,
+                View,
                 Err
             ]
         );
@@ -660,7 +661,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Move, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy
+                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy, DirectConstArg
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -688,8 +689,10 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 ImplicitSelf,
                 MacCall,
                 CVarArgs,
-                Dummy,
                 FieldOf,
+                View,
+                DirectConstArg,
+                Dummy,
                 Err
             ]
         );
@@ -770,7 +773,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         record_variants!(
             (self, attr, attr.kind, None, ast, Attribute, AttrKind),
-            [Normal, DocComment]
+            [Normal, Synthetic, DocComment]
         );
         ast_visit::walk_attribute(self, attr)
     }

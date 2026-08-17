@@ -44,7 +44,7 @@ pub mod hardwired {
             DEPRECATED_WHERE_CLAUSE_LOCATION,
             DUPLICATE_FEATURES,
             DUPLICATE_MACRO_ATTRIBUTES,
-            ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
+            DUPLICATE_TOOLS,
             ELIDED_LIFETIMES_IN_PATHS,
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             EXPORTED_PRIVATE_DEPENDENCIES,
@@ -70,8 +70,10 @@ pub mod hardwired {
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             MACRO_USE_EXTERN_CRATE,
             MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+            MALFORMED_DIAGNOSTIC_FILTERS,
             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
             META_VARIABLE_MISUSE,
+            METHOD_CALL_ON_DIVERGING_INFER_VAR,
             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
             MISSING_ABI,
             MISSING_UNSAFE_ON_EXTERN,
@@ -87,6 +89,7 @@ pub mod hardwired {
             PRIVATE_INTERFACES,
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+            RECURSION_DEPTH_EXCEEDING_LIMIT,
             REDUNDANT_IMPORTS,
             REDUNDANT_LIFETIMES,
             REFINING_IMPL_TRAIT_INTERNAL,
@@ -104,6 +107,7 @@ pub mod hardwired {
             RUST_2024_PRELUDE_COLLISIONS,
             SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
             SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+            SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS,
             SHADOWING_SUPERTRAIT_ITEMS,
             SINGLE_USE_LIFETIMES,
             STABLE_FEATURES,
@@ -2298,10 +2302,12 @@ declare_lint! {
     ///
     /// See [RFC 2093] for more details.
     ///
-    /// > [!WARNING]
-    /// > Implicit lifetime bounds are not semantically equivalent to explicit ones since the latter
-    /// > may affect the implicit lifetime bound of trait object types that are passed as arguments
-    /// > to the overarching struct, enum or union.
+    /// > [!NOTE]
+    /// > This lint intentionally doesn't get emitted for explicit outlives-bounds on type
+    /// > parameters that aren't bounded by `Sized` (unless they're higher-ranked) since unlike
+    /// > implicit outlives-bounds these may affect the implicit lifetime bound of trait object
+    /// > types that are passed as arguments to the overarching struct, enum or union.
+    /// >
     /// > Rephrased, they participate in [trait object lifetime defaulting][TOLD].
     /// >
     /// > Consider the following piece of code where removing bound `T: 'a` would lead to a lifetime
@@ -2319,9 +2325,17 @@ declare_lint! {
     /// > fn render(_: Ref<dyn std::fmt::Display>) {}
     /// > ```
     /// >
-    /// > Consequently, removing explicit outlives-bounds on type parameters of publicly reachable types
-    /// > constitutes a **breaking change** if the lifetime refers to a lifetime parameter and
-    /// > the type parameter is not bounded by `Sized` (thereby admitting trait object types).
+    /// > Due to the explicit outlives-bound the function `render` above is equivalent to:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'r>) {}
+    /// > ```
+    /// >
+    /// > If it wasn't for that explicit bound then the function would mean the following instead:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
+    /// > ```
     ///
     /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
@@ -2883,6 +2897,70 @@ declare_lint! {
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
     Deny,
+    "trailing semicolon in macro body used as expression",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #79813),
+        report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `semicolon_in_expressions_from_non_local_macros` lint detects trailing semicolons in
+    /// macro bodies when the macro is invoked in expression position. This was previously accepted,
+    /// but is being phased out. This is similar to the `semicolon_in_expressions_from_macros` lint,
+    /// but applies to macros expanded from a different crate.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs separate file)
+    /// fn main() {
+    ///     let val = match true {
+    ///         true => false,
+    ///         _ => example_separate_crate::foo!()
+    ///     };
+    /// }
+    /// ```
+    ///
+    /// where the crate `example-separate-crate` contains:
+    ///
+    /// ```rust,ignore (must be compiled as separate crate)
+    /// #[macro_export]
+    /// macro_rules! foo {
+    ///     () => { true; }
+    /// }
+    /// ```
+    ///
+    /// produces:
+    ///
+    /// ```text
+    /// warning: trailing semicolon in macro used in expression position
+    ///  --> src/main.rs:4:14
+    ///   |
+    /// 4 |         _ => example_separate_crate::foo!()
+    ///   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+    ///   = note: `#[warn(semicolon_in_expressions_from_non_local_macros)]` (part of `#[warn(future_incompatible)]`) on by default
+    ///   = note: this warning originates in the macro `example_separate_crate::foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Previous, Rust ignored trailing semicolon in a macro
+    /// body when a macro was invoked in expression position.
+    /// However, this makes the treatment of semicolons in the language
+    /// inconsistent, and could lead to unexpected runtime behavior
+    /// in some circumstances (e.g. if the macro author expects
+    /// a value to be dropped).
+    ///
+    /// This is a [future-incompatible] lint to transition this
+    /// to a hard error in the future. See [issue #79813] for more details.
+    ///
+    /// [issue #79813]: https://github.com/rust-lang/rust/issues/79813
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS,
+    Warn,
     "trailing semicolon in macro body used as expression",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #79813),
@@ -4477,6 +4555,35 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `malformed_diagnostic_filters` lint detects malformed filters in diagnostic
+    /// attributes.
+    ///
+    /// ### Example
+    ///
+    // FIXME(bootstrap): Use a regular Rust doc code block after stage 0 emits
+    // `malformed_diagnostic_filters` instead of E0232 for this example.
+    #[cfg_attr(bootstrap, doc = "```rust,ignore (stage 0 emits E0232)")]
+    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// #![feature(rustc_attrs)]
+    /// #![allow(internal_features)]
+    ///
+    /// #[rustc_on_unimplemented(on(invalid, message = "unused"))]
+    /// trait Trait {}
+    #[doc = "```"]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A `rustc_on_unimplemented` filter must use a supported flag, a name-value predicate,
+    /// or the `all`, `any`, and `not` predicate operators. Invalid filters are ignored.
+    pub MALFORMED_DIAGNOSTIC_FILTERS,
+    Warn,
+    "detects malformed filters in diagnostic attributes",
+    @feature_gate = rustc_attrs;
+}
+
+declare_lint! {
     /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
     /// errors, but previously didn't do that due to rustc bugs.
     ///
@@ -4560,7 +4667,7 @@ declare_lint! {
     Warn,
     "detects uses of ambiguously glob imported traits",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #147992),
+        reason: fcw!(FutureReleaseError #152822),
         report_in_deps: false,
     };
 }
@@ -4760,48 +4867,6 @@ declare_lint! {
     pub REFINING_IMPL_TRAIT_INTERNAL,
     Warn,
     "impl trait in impl method signature does not match trait method signature",
-}
-
-declare_lint! {
-    /// The `elided_lifetimes_in_associated_constant` lint detects elided lifetimes
-    /// in associated constants when there are other lifetimes in scope. This was
-    /// accidentally supported, and this lint was later relaxed to allow eliding
-    /// lifetimes to `'static` when there are no lifetimes in scope.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(elided_lifetimes_in_associated_constant)]
-    ///
-    /// struct Foo<'a>(&'a ());
-    ///
-    /// impl<'a> Foo<'a> {
-    ///     const STR: &str = "hello, world";
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous version of Rust
-    ///
-    /// Implicit static-in-const behavior was decided [against] for associated
-    /// constants because of ambiguity. This, however, regressed and the compiler
-    /// erroneously treats elided lifetimes in associated constants as lifetime
-    /// parameters on the impl.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future.
-    ///
-    /// [against]: https://github.com/rust-lang/rust/issues/38831
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-    Deny,
-    "elided lifetimes cannot be used in associated constants in impls",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #115010),
-    };
 }
 
 declare_lint! {
@@ -5577,4 +5642,130 @@ declare_lint! {
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
     @eval_always = true
+}
+
+declare_lint! {
+    /// The `method_call_on_diverging_infer_var` lint detects situations in which a method is called on a value resulting from a never-to-any coercion,
+    /// without necessary information to infer a type for it.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,compile_fail")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// fn main() {
+    ///     let x = panic!();
+    ///     x.clone();
+    /// }
+    #[doc = "```"]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust does not generally allow calling methods on values which do not have a known type,
+    /// such a result of a never-to-any coercion with no type specified.
+    ///
+    /// To aid with transition of code calling methods on `Infallible` after changing `Infallible` to be an alias for `!`, rustc *temporarily* allows such calls.
+    /// This will (once again) become an error in the future.
+    ///
+    /// Thanks to never-to-any coercion you can replace method calls on `!` with the use of the `!` variable, or an `as` cast to an explicit type:
+    ///
+    /// ```diff
+    /// - x.clone()
+    /// + x
+    /// ```
+    /// ```diff
+    /// - result.map(|x| x.convert_error())?;
+    /// + result.map(|x| x as ErrorType)?;
+    /// ```
+    pub METHOD_CALL_ON_DIVERGING_INFER_VAR,
+    Warn,
+    "detects method calls on a result of never-to-any coercion",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #156047),
+        report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `recursion_depth_exceeding_limit` lint detects cases where the compiler does not
+    /// correctly track the recursion depth in obligation evaluation.
+    ///
+    /// ### Example
+    /// ```text
+    /// rustc -Znext-solver example.rs
+    /// ```
+    ///
+    /// ```rust,ignore (requires next solver)
+    /// #![recursion_limit = "8"]
+    /// struct Foo<T> {
+    ///    t: T,
+    ///    opt_t: Option<T>,
+    /// }
+    /// fn require_sync<T: Sync>() {}
+    /// fn main() {
+    ///     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+    /// }
+    /// ```
+    ///
+    /// This will produces:
+    /// ```text
+    /// error[E0275]: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync`
+    ///  --> example.rs:12:20
+    ///   |
+    ///   |     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+    ///   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   |
+    ///   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate
+    /// note: required by a bound in `require_sync`
+    ///  --> example.rs:9:20
+    ///   |
+    ///   | fn require_sync<T: Sync>() {}
+    ///   |                    ^^^^ required by this bound in `require_sync`
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler uses a recursion limit in obligation evaluation to avoid hangs.
+    ///
+    /// However, the old trait solver sometimes ignores the recursion depth, whereas
+    /// the new solver correctly tracks it. This reveals cases where overflow should
+    /// have occurred previously.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub RECURSION_DEPTH_EXCEEDING_LIMIT,
+    Warn,
+    "detects trait solving overflow that only happens with the next solver",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #159228),
+        report_in_deps: false,
+    };
+}
+
+declare_lint! {
+    /// The `duplicate_tools` lint detects duplicate tools found in crate-level
+    /// [`register_tool` attributes] (including `register_attribute_tool` or `register_lint_tool`).
+    ///
+    /// [`register_tool` attributes]: https://doc.rust-lang.org/nightly/unstable-book/language-features/register-tool.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo)]
+    /// #![register_tool(foo)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Enabling a tool more than once is a no-op.
+    /// To avoid this warning, remove the second `register_tool()` attribute.
+    pub DUPLICATE_TOOLS,
+    Deny,
+    "duplicate tools found in crate-level `#[register_tools]` directives",
+    @feature_gate = register_tool;
 }

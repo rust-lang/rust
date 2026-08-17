@@ -5,13 +5,15 @@ use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
-// Adds type suffixes and parenthesis to method receivers if necessary
+// Adds type suffixes and parenthesis to method receivers if necessary, and returns whether a suffix
+// was added.
 pub(super) fn prepare_receiver_sugg<'a>(
     cx: &LateContext<'_>,
     mut expr: &'a Expr<'a>,
     app: &mut Applicability,
-) -> Sugg<'a> {
+) -> (Sugg<'a>, bool) {
     let mut suggestion = Sugg::hir_with_applicability(cx, expr, "_", app);
+    let mut suffix_was_added = false;
 
     if let ExprKind::Unary(UnOp::Neg, inner_expr) = expr.kind {
         expr = inner_expr;
@@ -36,7 +38,8 @@ pub(super) fn prepare_receiver_sugg<'a>(
             Sugg::MaybeParen(_) | Sugg::UnOp(UnOp::Neg, _) => Sugg::MaybeParen(op),
             _ => Sugg::NonParen(op),
         };
+        suffix_was_added = true;
     }
 
-    suggestion.maybe_paren()
+    (suggestion.maybe_paren(), suffix_was_added)
 }

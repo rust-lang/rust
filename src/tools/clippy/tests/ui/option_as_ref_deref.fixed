@@ -1,5 +1,5 @@
-#![allow(unused, clippy::redundant_clone, clippy::useless_vec)]
 #![warn(clippy::option_as_ref_deref)]
+#![expect(clippy::useless_vec)]
 
 use std::ffi::{CString, OsString};
 use std::ops::{Deref, DerefMut};

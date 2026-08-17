@@ -109,7 +109,7 @@ fn test_accept_nonblock() {
 
         // Ensure that the server is no longer readable because we just
         // attempted to accept without an incoming connection.
-        assert_eq!(current_epoll_readiness::<8>(server_sockfd, EPOLLIN | EPOLLET), 0);
+        assert_eq!(current_epoll_readiness(server_sockfd, EPOLLIN | EPOLLET), 0);
     });
 
     // Yield to server thread such that it actually needs to wait for an
@@ -165,7 +165,7 @@ fn test_connect_nonblock_err() {
     assert!(errno != 0);
 
     // Ensure that error readiness is cleared after reading SO_ERROR.
-    let readiness = current_epoll_readiness::<8>(client_sockfd, EPOLLET | EPOLLOUT | EPOLLERR);
+    let readiness = current_epoll_readiness(client_sockfd, EPOLLET | EPOLLOUT | EPOLLERR);
     assert!(readiness & EPOLLERR == 0);
 }
 
@@ -249,7 +249,7 @@ fn test_recv_nonblock() {
 
     // Ensure that the client is no longer readable because
     // we just got an EWOULDBLOCK from a receive call.
-    assert_eq!(current_epoll_readiness::<8>(client_sockfd, EPOLLIN | EPOLLET), 0);
+    assert_eq!(current_epoll_readiness(client_sockfd, EPOLLIN | EPOLLET), 0);
 
     server_thread.join().unwrap();
 }
@@ -297,7 +297,7 @@ fn test_send_nonblock() {
                 if written as usize == fill_buf.len() {
                     // When we didn't have a short write we should still be able to write more.
                     // Ensure the socket is still writable.
-                    let readiness = current_epoll_readiness::<8>(client_sockfd, EPOLLOUT | EPOLLET);
+                    let readiness = current_epoll_readiness(client_sockfd, EPOLLOUT | EPOLLET);
                     if cfg!(miri) {
                         // With Miri we keep the writable readiness until EWOULDBLOCK is returned.
                         assert_eq!(readiness, EPOLLOUT);
@@ -317,7 +317,7 @@ fn test_send_nonblock() {
 
     // The buffer should be filled up because we received an EWOULDBLOCK.
     // This also means that the client socket should no longer be writable.
-    assert_eq!(current_epoll_readiness::<8>(client_sockfd, EPOLLOUT | EPOLLET), 0);
+    assert_eq!(current_epoll_readiness(client_sockfd, EPOLLOUT | EPOLLET), 0);
 
     let peerfd = server_thread.join().unwrap();
 
@@ -547,7 +547,7 @@ fn test_readiness_after_short_peek() {
     assert_eq!(bytes_read, TEST_BYTES.len());
 
     // Ensure that the readable readiness is still set.
-    assert_eq!(current_epoll_readiness::<8>(client_sockfd, EPOLLIN | EPOLLET), EPOLLIN);
+    assert_eq!(current_epoll_readiness(client_sockfd, EPOLLIN | EPOLLET), EPOLLIN);
 
     // We should be able to read the buffer without blocking indefinitely.
     let bytes_read = unsafe {
@@ -699,7 +699,7 @@ fn test_readable_after_read_shutdown_and_short_read() {
 
     // Ensure that the "readable" and "read closed" readiness flags are still set.
     assert_eq!(
-        current_epoll_readiness::<8>(client_sockfd, EPOLLIN | EPOLLET | EPOLLRDHUP),
+        current_epoll_readiness(client_sockfd, EPOLLIN | EPOLLET | EPOLLRDHUP),
         EPOLLIN | EPOLLRDHUP
     );
 

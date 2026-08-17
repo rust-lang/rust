@@ -1,3 +1,16 @@
+error: `<` is interpreted as a start of generic arguments for `f64`, not a comparison
+  --> $DIR/cast-angle-bracket-precedence.rs:32:17
+   |
+LL |     if 1 as f64 < 0.0 && 1 >= 0 {}
+   |                 ^ ----------- interpreted as generic arguments
+   |                 |
+   |                 not interpreted as comparison
+   |
+help: try comparing the cast value
+   |
+LL |     if (1 as f64) < 0.0 && 1 >= 0 {}
+   |        +        +
+
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/cast-angle-bracket-precedence.rs:8:31
    |
@@ -82,5 +95,5 @@ help: try shifting the cast value
 LL |     println!("{}", (a as usize) << long_name);
    |                    +          +
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

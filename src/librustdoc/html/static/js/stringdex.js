@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 /**
  * @import * as stringdex from "./stringdex.d.ts"
  */

@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor as _;
@@ -13,15 +13,15 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _, Unnormalized};
-use rustc_session::errors::feature_err_unstable_feature_bound;
+use rustc_session::diagnostics::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use crate::error_reporting::traits::{FindExprBySpan, to_pretty_impl_header};
-use crate::traits::ObligationCtxt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{FulfillmentError, ObligationCtxt};
 
 #[derive(Debug)]
 pub enum CandidateSource {
@@ -74,15 +74,15 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 
             if !ignore_predicates_of_impls {
                 let obligations = tcx
-                    .predicates_of(impl_def_id)
+                    .clauses_of(impl_def_id)
                     .instantiate(tcx, impl_args)
                     .into_iter()
-                    .map(|(predicate, _)| {
+                    .map(|(clause, _)| {
                         Obligation::new(
                             tcx,
                             ObligationCause::dummy(),
                             param_env,
-                            predicate.skip_norm_wip(),
+                            clause.skip_norm_wip(),
                         )
                     })
                     // Kinda hacky, but let's just throw away obligations that overflow.
@@ -95,7 +95,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 ocx.register_obligations(obligations);
             }
 
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     };
 
@@ -128,7 +128,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 return false;
             }
 
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     };
 
@@ -144,18 +144,18 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
         },
     );
 
-    // If our `body_id` has been set (and isn't just from a dummy obligation cause),
+    // If our `body_def_id` has been set (and isn't just from a dummy obligation cause),
     // then try to look for a param-env clause that would apply. The way we compute
     // this is somewhat manual, since we need the spans, so we elaborate this directly
-    // from `predicates_of` rather than actually looking at the param-env which
+    // from `clauses_of` rather than actually looking at the param-env which
     // otherwise would be more appropriate.
-    let body_id = obligation.cause.body_id;
-    if body_id != CRATE_DEF_ID {
-        let predicates = tcx.predicates_of(body_id.to_def_id()).instantiate_identity(tcx);
-        for (pred, span) in
-            elaborate(tcx, predicates.into_iter().map(|(c, s)| (c.skip_norm_wip(), s)))
+    let body_def_id = obligation.cause.body_def_id;
+    if body_def_id != CRATE_DEF_ID {
+        let clauses = tcx.clauses_of(body_def_id.to_def_id()).instantiate_identity(tcx);
+        for (clause, span) in
+            elaborate(tcx, clauses.into_iter().map(|(c, s)| (c.skip_norm_wip(), s)))
         {
-            let kind = pred.kind();
+            let kind = clause.kind();
             if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
                 && param_env_candidate_may_apply(kind.rebind(trait_pred))
             {
@@ -174,10 +174,43 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    /// The term of an ambiguous obligation's predicate that gets blamed for the
+    /// missing type annotation: the first one still containing inference variables.
+    ///
+    /// Besides `maybe_report_ambiguity` pointing its diagnostics at this term,
+    /// `report_fulfillment_errors` merges the ambiguity errors whose blamed terms
+    /// share an inference variable into a single diagnostic.
+    pub(super) fn ambiguity_term(&self, predicate: ty::Predicate<'tcx>) -> Option<ty::Term<'tcx>> {
+        match predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => data
+                .trait_ref
+                .args
+                .iter()
+                .filter_map(ty::GenericArg::as_term)
+                .find(|term| term.has_non_region_infer()),
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => data
+                .projection_term
+                .args
+                .iter()
+                .filter_map(ty::GenericArg::as_term)
+                .chain([data.term])
+                .find(|term| term.has_non_region_infer()),
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => Some(term),
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(data)) => {
+                data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => Some(ct.into()),
+            ty::PredicateKind::Subtype(data) => Some(data.a.into()),
+            ty::PredicateKind::NormalizesTo(data) if data.term.is_infer() => Some(data.term),
+            _ => None,
+        }
+    }
+
     #[instrument(skip(self), level = "debug")]
     pub(super) fn maybe_report_ambiguity(
         &self,
         obligation: &PredicateObligation<'tcx>,
+        related: &[&FulfillmentError<'tcx>],
     ) -> ErrorGuaranteed {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
@@ -231,7 +264,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return match self.tainted_by_errors() {
                         None => self
                             .emit_inference_failure_err(
-                                obligation.cause.body_id,
+                                obligation.cause.body_def_id,
                                 span,
                                 trait_pred.self_ty().skip_binder().into(),
                                 TypeAnnotationNeeded::E0282,
@@ -255,12 +288,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Pick the first generic parameter that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let term = data
-                    .trait_ref
-                    .args
-                    .iter()
-                    .filter_map(ty::GenericArg::as_term)
-                    .find(|s| s.has_non_region_infer());
+                let term = self.ambiguity_term(predicate);
 
                 let mut err = if let Some(term) = term {
                     let candidates: Vec<_> = self
@@ -285,7 +313,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         })
                         .collect();
                     self.emit_inference_failure_err_with_type_hint(
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0283,
@@ -306,34 +334,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .with_long_ty_path(long_ty_path)
                 };
 
-                let mut ambiguities = compute_applicable_impls_for_diagnostics(
-                    self.infcx,
-                    &obligation.with(self.tcx, trait_pred),
-                    false,
-                );
-                let has_non_region_infer = trait_pred
-                    .skip_binder()
-                    .trait_ref
-                    .args
-                    .types()
-                    .any(|t| !t.is_ty_or_numeric_infer());
-                // It doesn't make sense to talk about applicable impls if there are more than a
-                // handful of them. If there are a lot of them, but only a few of them have no type
-                // params, we only show those, as they are more likely to be useful/intended.
-                if ambiguities.len() > 5 {
-                    let infcx = self.infcx;
-                    if !ambiguities.iter().all(|option| match option {
-                        CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
-                        CandidateSource::ParamEnv(_) => true,
-                    }) {
-                        // If not all are blanket impls, we filter blanked impls out.
-                        ambiguities.retain(|option| match option {
-                            CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
-                            CandidateSource::ParamEnv(_) => true,
-                        });
-                    }
-                }
-                if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
+                if let Some(ambiguities) = self.applicable_impls_to_mention(obligation, trait_pred)
+                {
                     if let Some(e) = self.tainted_by_errors()
                         && term.is_none()
                     {
@@ -369,7 +371,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             impl_candidates.as_slice(),
                             obligation,
                             trait_pred,
-                            obligation.cause.body_id,
+                            obligation.cause.body_def_id,
                             &mut err,
                             false,
                             obligation.param_env,
@@ -384,7 +386,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
 
                 if term.is_some_and(|term| term.as_type().is_some())
-                    && let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id)
+                    && let Some(body) =
+                        self.tcx.hir_maybe_body_owned_by(obligation.cause.body_def_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                     expr_finder.visit_expr(&body.value);
@@ -546,7 +549,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
 
                 self.emit_inference_failure_err(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     span,
                     term,
                     TypeAnnotationNeeded::E0282,
@@ -565,7 +568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
                 self.emit_inference_failure_err(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     span,
                     a.into(),
                     TypeAnnotationNeeded::E0282,
@@ -589,17 +592,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // other `Foo` impls are incoherent.
                     return guar;
                 }
-                let term = data
-                    .projection_term
-                    .args
-                    .iter()
-                    .filter_map(ty::GenericArg::as_term)
-                    .chain([data.term])
-                    .find(|g| g.has_non_region_infer());
+                let term = self.ambiguity_term(predicate);
                 let predicate = self.tcx.short_string(predicate, &mut long_ty_path);
                 if let Some(term) = term {
                     self.emit_inference_failure_err(
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0284,
@@ -620,18 +617,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(data)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_)) => {
                 if let Err(e) = predicate.error_reported() {
                     return e;
                 }
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                let term =
-                    data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer());
-                if let Some(term) = term {
+                if let Some(term) = self.ambiguity_term(predicate) {
                     self.emit_inference_failure_err(
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0284,
@@ -653,7 +648,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ..)) => self
                 .emit_inference_failure_err(
-                    obligation.cause.body_id,
+                    obligation.cause.body_def_id,
                     span,
                     ct.into(),
                     TypeAnnotationNeeded::E0284,
@@ -712,8 +707,117 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .with_long_ty_path(long_ty_path)
             }
         };
+
+        // The related obligations are ambiguous because of the same inference variable,
+        // so they belong to this diagnostic: annotating the variable has to satisfy all
+        // of them at once. Mention their requirements, except for bookkeeping predicates
+        // (`WellFormed`, sizedness, ...) whose mention wouldn't be actionable.
+        let mut mentioned = vec![predicate];
+        let mut mentioned_strs: Vec<String> = vec![];
+        for &error in related {
+            let related_pred = self.resolve_vars_if_possible(error.obligation.predicate);
+            if mentioned.contains(&related_pred) {
+                continue;
+            }
+            let note = match related_pred.kind().skip_binder() {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data))
+                    if !matches!(
+                        self.tcx.as_lang_item(data.def_id()),
+                        Some(LangItem::Sized | LangItem::MetaSized | LangItem::PointeeSized)
+                    ) =>
+                {
+                    let clause = related_pred.kind().rebind(data);
+                    if let ty::Infer(_) = clause.self_ty().skip_binder().kind() {
+                        let tr = self.tcx.short_string(
+                            clause.print_modifiers_and_trait_path(),
+                            &mut err.long_ty_path(),
+                        );
+                        format!("the type must also implement `{tr}`")
+                    } else {
+                        let pred = self.tcx.short_string(related_pred, &mut err.long_ty_path());
+                        let note = format!("cannot satisfy `{pred}`");
+                        // The self type is known, so the `impl`s that could have applied to it are
+                        // few and worth pointing at, like the blamed bound does. When it is still
+                        // an inference variable the list is every `impl` of the trait, which is
+                        // why the branch above only names the trait.
+                        //
+                        // `tainted_by_errors` is checked because `annotate_source_of_ambiguity`
+                        // downgrades the whole diagnostic once an error was already emitted.
+                        if !mentioned_strs.contains(&note)
+                            && self.tainted_by_errors().is_none()
+                            && let Some(ambiguities) =
+                                self.applicable_impls_to_mention(&error.obligation, clause)
+                        {
+                            self.annotate_source_of_ambiguity(&mut err, &ambiguities, related_pred);
+                            mentioned_strs.push(note);
+                            mentioned.push(related_pred);
+                            continue;
+                        }
+                        note
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
+                    let pred = self.tcx.short_string(related_pred, &mut err.long_ty_path());
+                    format!("cannot satisfy `{pred}`")
+                }
+                _ => {
+                    mentioned.push(related_pred);
+                    continue;
+                }
+            };
+            // Two predicates can print identically (e.g. `From<?0>` and `From<?1>` both show as
+            // `From<_>`); only emit each unique note string once.
+            if !mentioned_strs.contains(&note) {
+                err.note(note.clone());
+                mentioned_strs.push(note);
+            }
+            mentioned.push(related_pred);
+        }
+
         self.note_obligation_cause(&mut err, obligation);
+        // The merged errors are not reported on their own anymore, so the bounds they came from
+        // have to be explained here too. Causes shared with the blamed obligation are already
+        // described by the call above.
+        for &error in related {
+            if error.obligation.cause.code() != obligation.cause.code() {
+                self.note_obligation_cause(&mut err, &error.obligation);
+            }
+        }
         err.emit()
+    }
+
+    /// The `impl`s and `where` clauses that could have satisfied `trait_pred`, when listing them
+    /// is likely to help. `None` means the caller should describe the bound some other way.
+    fn applicable_impls_to_mention(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> Option<Vec<CandidateSource>> {
+        let mut ambiguities = compute_applicable_impls_for_diagnostics(
+            self.infcx,
+            &obligation.with(self.tcx, trait_pred),
+            false,
+        );
+        let has_non_region_infer =
+            trait_pred.skip_binder().trait_ref.args.types().any(|t| !t.is_ty_or_numeric_infer());
+        // It doesn't make sense to talk about applicable impls if there are more than a
+        // handful of them. If there are a lot of them, but only a few of them have no type
+        // params, we only show those, as they are more likely to be useful/intended.
+        if ambiguities.len() > 5 {
+            let infcx = self.infcx;
+            if !ambiguities.iter().all(|option| match option {
+                CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
+                CandidateSource::ParamEnv(_) => true,
+            }) {
+                // If not all are blanket impls, we filter blanked impls out.
+                ambiguities.retain(|option| match option {
+                    CandidateSource::DefId(did) => infcx.tcx.generics_of(*did).count() == 0,
+                    CandidateSource::ParamEnv(_) => true,
+                });
+            }
+        }
+        (ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer)
+            .then_some(ambiguities)
     }
 
     fn annotate_source_of_ambiguity(

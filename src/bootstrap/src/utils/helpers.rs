@@ -10,13 +10,14 @@ use std::thread::panicking;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, io, panic, str};
 
+use build_helper::ci::CiEnv;
 use object::read::archive::ArchiveFile;
+pub(crate) use shim_utils::{dylib_path, dylib_path_var};
 
-use crate::BootstrapOverrideLld;
-use crate::core::builder::Builder;
-use crate::core::config::{Config, TargetSelection};
+pub(crate) use self::macros::t;
+use crate::core::builder::{Builder, StepStack};
+use crate::core::config::{BootstrapOverrideLld, Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
 mod tests;
@@ -38,36 +39,38 @@ impl Drop for PanicTracker<'_> {
     }
 }
 
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-///
-/// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change one day...
-#[macro_export]
-macro_rules! t {
-    ($e:expr) => {{
-        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {}", stringify!($e), e),
-        }
-    }};
-    // it can show extra info in the second parameter
-    ($e:expr, $extra:expr) => {{
-        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
-        }
-    }};
+mod macros {
+    /// A helper macro to `unwrap` a result except also print out details like:
+    ///
+    /// * The file/line of the panic
+    /// * The expression that failed
+    /// * The error itself
+    ///
+    /// This is currently used judiciously throughout the build system rather than
+    /// using a `Result` with `try!`, but this may change one day...
+    macro_rules! t {
+        ($e:expr) => {{
+            let _panic_guard = $crate::utils::helpers::PanicTracker(std::panic::Location::caller());
+            match $e {
+                Ok(e) => e,
+                Err(e) => panic!("{} failed with {}", stringify!($e), e),
+            }
+        }};
+        // it can show extra info in the second parameter
+        ($e:expr, $extra:expr) => {{
+            let _panic_guard = $crate::utils::helpers::PanicTracker(std::panic::Location::caller());
+            match $e {
+                Ok(e) => e,
+                Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
+            }
+        }};
+    }
+
+    pub(crate) use t;
 }
 
-pub use t;
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    crate::utils::shared_helpers::exe(name, &target.triple)
+    shim_utils::exe(name, &target.triple)
 }
 
 /// Returns the path to the split debug info for the specified file if it exists.
@@ -96,7 +99,11 @@ pub fn is_dylib(path: &Path) -> bool {
 
 /// Return the path to the containing submodule if available.
 pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
-    let submodule_paths = builder.submodule_paths();
+    submodule_path_of_paths(builder.submodule_paths(), path)
+}
+
+fn submodule_path_of_paths(submodule_paths: &[String], path: &str) -> Option<String> {
+    let path = Path::new(path);
     submodule_paths.iter().find_map(|submodule_path| {
         if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
     })
@@ -222,7 +229,8 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("fortanix")
         || target.contains("fuchsia")
         || target.contains("bpf")
-        || target.contains("switch"))
+        || target.contains("switch")
+        || target.contains("l4re"))
 }
 
 pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
@@ -561,4 +569,60 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
         fs::File::open(path)?
     };
     f.set_times(times)
+}
+
+/// Converts a target-tuple or other string into
+/// [the form expected by cargo environment variable names][cargo-env].
+///
+/// For example:
+/// - `x86_64-unknown-linux-gnu` => `X86_64_UNKNOWN_LINUX_GNU`.
+///
+/// [cargo-env]: https://doc.rust-lang.org/cargo/reference/config.html#environment-variables
+pub(crate) fn envify(s: &str) -> String {
+    // Converting foo-bar to FOO_BAR is a fairly idomatic mapping to an environment variable name.
+    // We also convert '.' to '_' to fix https://github.com/rust-lang/rust/issues/158090
+    s.chars()
+        .map(|c| match c {
+            '-' | '.' => '_',
+            c => c,
+        })
+        .flat_map(|c| c.to_uppercase())
+        .collect()
+}
+
+/// Exits the process by calling [`std::process::exit`].
+///
+/// In CI, extra information will be printed to make failures easier to investigate.
+///
+/// If `cfg!(test)` is true, this will panic instead of exiting the process.
+/// Doing so avoids disturbing other tests in the process, and allows `#[should_panic]`
+/// to detect expected failures.
+pub(crate) fn exit_process(code: i32) -> ! {
+    // In bootstrap unit tests, panic instead of killing the whole test process.
+    if cfg!(test) {
+        panic!("status code: {code}");
+    } else {
+        // If we're in CI, print the current bootstrap invocation command, to make it easier to
+        // figure out what exactly has failed.
+        if CiEnv::is_ci() {
+            // Skip the first argument, as it will be some absolute path to the bootstrap binary.
+            let bootstrap_args =
+                std::env::args().skip(1).map(|a| a.to_string()).collect::<Vec<_>>().join(" ");
+            eprintln!("Bootstrap failed while executing `{bootstrap_args}`");
+            eprintln!("Currently active steps:");
+            StepStack::with_current(|stack| {
+                for step in stack.get_active_steps() {
+                    eprintln!("{} at {}", step.info, step.location);
+                }
+            });
+        }
+
+        // otherwise, exit with provided status code
+        std::process::exit(code);
+    }
+}
+
+pub fn fail(s: &str) -> ! {
+    eprintln!("\n\n{s}\n\n");
+    exit_process(1);
 }

@@ -343,11 +343,17 @@
 
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
+# Set this to "discover" to automatically discover GDB from the environment.
 #build.gdb = "gdb"
 
 # The path to (or name of) the LLDB executable to use. This is only used for
 # executing the debuginfo test suite.
+# Set this to "discover" to automatically discover LLDB from the environment.
 #build.lldb = "lldb"
+
+# The path to (or name of) the Intel SDE executable, used to run the
+# intrinsic-test suite for x86 target features the host CPU may not support.
+#build.sde = "sde64"
 
 # The node.js executable to use. Note that this is only used for the emscripten
 # target when running tests, otherwise this can be omitted.
@@ -538,6 +544,12 @@
 # For example, exclude = ["tests/ui", "src/tools/tidy"].
 #build.exclude = []
 
+# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
+# This option is only tested on Linux and OSX. It can also be configured per-target in the
+# [target.<tuple>] section.
+# Possible options: "system" (default), "jemalloc"
+#build.allocator = "jemalloc"
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -697,6 +709,14 @@
 # FIXME(#61117): Some tests fail when this option is enabled.
 #rust.debuginfo-level-tests = 0
 
+# Compress debuginfo of Rust and C/C++ code.
+# Currently, this only works on Linux.
+# Valid options:
+# - "off" or false: disable compression
+# - true: compress debuginfo with the default compression method (currently zlib)
+# - "zlib": compress debuginfo with zlib
+#rust.compress-debuginfo = "off"
+
 # Should rustc and the standard library be built with split debuginfo? Default
 # is platform dependent.
 #
@@ -845,9 +865,9 @@
 # Useful for reproducible builds. Generally only set for releases
 #rust.remap-debuginfo = false
 
-# Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
-# This option is only tested on Linux and OSX. It can also be configured per-target in the
-# [target.<tuple>] section.
+# Deprecated alias for `build.allocator`. Setting this to `true` is
+# equivalent to `build.allocator = "jemalloc"`. Both cannot be set in the same section
+# (`rust` or `target.[target]`)
 #rust.jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
@@ -915,6 +935,27 @@
 #
 #rust.parallel-frontend-threads = 1
 
+# Baseline commit SHA for comparing semver breakages in the Rust standard library.
+# The in-tree stdlib API will be evaluated for semver breakages against this commit.
+# Used for the `./x test std-semver-check` command.
+# If unset, the first upstream parent commit will be used.
+#
+# The SHA must point to a merge commit merged into the mainline rust-lang/rust `main` branch,
+# because bootstrap will attempt to download the JSON docs data for this commit from its CI.
+#rust.stdlib-semver-baseline = "<commit-sha>"
+
+# Enables building a wasm proc macro compatible toolchain.
+#
+# This requires building an additional standard library for a different target and adding it
+# to the sysroot before running tests, and so needs special handling in bootstrap. Currently
+# off by default.
+#
+# This currently opts compiletest into running/building proc-macro tests via wasm.
+#
+# The implementation for this has not finished landing, so you probably don't
+# want to enable this right now.
+#rust.wasm-proc-macros = false
+
 # =============================================================================
 # Distribution options
 #
@@ -964,6 +1005,34 @@
 # Whether to vendor dependencies for the dist tarball.
 #dist.vendor = if "is a tarball source" || "is a git repository" { true } else { false }
 
+
+# =============================================================================
+# Profile-guided optimization options
+#
+# Configure the PGO profile to be used for compilation, or a path where the
+# profile will be written by an instrumented binary, for individual components
+# =============================================================================
+
+# Use the following profile to PGO optimize the Rust compiler.
+#pgo.rustc.use = "/tmp/profiles/foo.profraw"
+# Instrument the Rust compiler, so that when executed, it will gather profiles
+# to this path.
+#pgo.rustc.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize rustdoc.
+#pgo.rustdoc.use = "/tmp/profiles/foo.profraw"
+# Instrument rustdoc, so that when executed, it will gather profiles
+# to this path.
+#pgo.rustdoc.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize cargo.
+#pgo.cargo.use = "/tmp/profiles/foo.profraw"
+# Instrument cargo, so that when executed, it will gather profiles
+# to this path.
+#pgo.cargo.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize LLVM.
+#pgo.llvm.use = "/tmp/profiles/foo.profraw"
+# Instrument LLVM, so that when executed, it will gather profiles
+# Note: for LLVM specifically, this should be a directory, not a file path.
+#pgo.llvm.generate = "/tmp/profiles"
 
 # =============================================================================
 # Options for specific targets
@@ -1018,6 +1087,14 @@
 # producing a `.pdb` file. On Windows GNU rustc doesn't support splitting debuginfo,
 # and enabling it causes issues.
 #split-debuginfo = if linux || windows-gnu { off } else if windows-msvc { packed } else if apple { unpacked }
+
+# Compress debuginfo for Rust and C/C++ code of this target.
+# Currently, this only works on Linux.
+# Valid options:
+# - "off" or false: disable compression
+# - true: compress debuginfo with the default compression method (currently zlib)
+# - "zlib": compress debuginfo with zlib
+#compress-debuginfo = "off"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specified we don't compile LLVM at all for this
@@ -1120,8 +1197,11 @@
 # order to run `x check`.
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
-# Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
-# This overrides the global `rust.jemalloc` option. See that option for more info.
+# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
+# This overrides the global `build.allocator` option. See that option for more info.
+#allocator = build.allocator (string)
+
+# Deprecated alias for `allocator`. See `rust.jemalloc` for more info.
 #jemalloc = rust.jemalloc (bool)
 
 # The linker configuration that will *override* the default linker used for Linux

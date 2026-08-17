@@ -3,6 +3,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_session::config::MirStripDebugInfo;
 
+use crate::PassPolicy;
+
 /// Conditionally remove some of the VarDebugInfo in MIR.
 ///
 /// In particular, stripping non-parameter debug info for tiny, primitive-like
@@ -10,8 +12,10 @@ use rustc_session::config::MirStripDebugInfo;
 pub(super) struct StripDebugInfo;
 
 impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.unstable_opts.mir_strip_debuginfo != MirStripDebugInfo::None
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(
+            sess.opts.unstable_opts.mir_strip_debuginfo != MirStripDebugInfo::None,
+        )
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -33,10 +37,6 @@ impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
         });
 
         drop_invalid_debuginfos(body);
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 

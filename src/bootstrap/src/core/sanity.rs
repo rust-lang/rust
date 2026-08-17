@@ -14,14 +14,13 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-#[cfg(not(test))]
-use crate::builder::Builder;
-use crate::builder::Kind;
-#[cfg(not(test))]
+use crate::Build;
 use crate::core::build_steps::tool;
-use crate::core::config::{CompilerBuiltins, Target};
+use crate::core::builder::Builder;
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand};
+use crate::utils::helpers::{self, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -37,12 +36,11 @@ pub struct Finder {
 /// when the newly-bumped stage 0 compiler now knows about the formerly-missing targets.
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
-    "powerpc64-unknown-linux-gnuelfv2",
+    "aarch64-unknown-l4re-uclibc",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
 /// from CI (with`llvm.download-ci-llvm` option).
-#[cfg(not(test))]
 const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
@@ -85,7 +83,7 @@ pub fn check(build: &mut Build) {
     let mut skip_target_sanity =
         env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
 
-    skip_target_sanity |= build.config.cmd.kind() == Kind::Check;
+    skip_target_sanity |= matches!(build.config.cmd, Subcommand::Check { .. });
 
     // Skip target sanity checks when we are doing anything with mir-opt tests or Miri
     let skipped_paths = [OsStr::new("mir-opt"), OsStr::new("miri")];
@@ -110,8 +108,11 @@ pub fn check(build: &mut Build) {
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
-    #[cfg(not(test))]
-    if !build.config.dry_run() && !build.host_target.is_msvc() && build.config.llvm_from_ci {
+    if cfg!(not(test))
+        && !build.config.dry_run()
+        && !build.host_target.is_msvc()
+        && build.config.llvm_ci_mode.download_from_ci()
+    {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.host_target });
 
@@ -138,7 +139,7 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = !build.config.llvm_from_ci
+    let building_llvm = !build.config.llvm_ci_mode.download_from_ci()
         && !build.config.local_rebuild
         && build.hosts.iter().any(|host| {
             build.config.llvm_enabled(*host)
@@ -161,7 +162,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     build.config.python = build
@@ -189,12 +190,10 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("yarn"));
 
-    build.config.gdb = build
-        .config
-        .gdb
-        .take()
-        .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("gdb"));
+    build.config.gdb = build.config.gdb.take().map(|p| match p {
+        DebuggerPath::Discover => DebuggerPath::Discover,
+        DebuggerPath::Path(path) => DebuggerPath::Path(cmd_finder.must_have(path)),
+    });
 
     build.config.reuse = build
         .config
@@ -313,17 +312,6 @@ than building it.
     if !skip_tools_checks {
         for host in &build.hosts {
             cmd_finder.must_have(build.cxx(*host).unwrap());
-
-            if build.config.llvm_enabled(*host) {
-                // Externally configured LLVM requires FileCheck to exist
-                let filecheck = build.llvm_filecheck(build.host_target);
-                if !filecheck.starts_with(&build.out)
-                    && !filecheck.exists()
-                    && build.config.codegen_tests
-                {
-                    panic!("FileCheck executable {filecheck:?} does not exist");
-                }
-            }
         }
     }
 
@@ -411,6 +399,53 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             && !build.tool_enabled("wasm-component-ld")
         {
             cmd_finder.must_have("wasm-component-ld");
+        }
+
+        // aarch64-unknown-linux-pauthtest must use clang
+        if !skip_tools_checks && target.is_pauthtest() {
+            let cc_tool = build.cc_tool(*target);
+            let linker_path = build
+                .linker(*target)
+                .unwrap_or_else(|| panic!("{} requires an explicit clang linker", target.triple));
+
+            if !cc_tool.is_like_clang() {
+                panic!(
+                    "Clang is required to build C code for {} target, got:\n\
+                     cc tool: `{}`,\n\
+                     linker: `{}`\n",
+                    target.triple,
+                    cc_tool.path().display(),
+                    linker_path.display(),
+                );
+            }
+            let cc_canon = t!(fs::canonicalize(cc_tool.path()));
+            let linker_canon = t!(fs::canonicalize(&linker_path));
+            if cc_canon != linker_canon {
+                panic!(
+                    "CC and Linker are expected to be the same for {} target, got:\n\
+                     CC: `{}`,\n\
+                     Linker: `{}`\n",
+                    target.triple,
+                    cc_canon.display(),
+                    linker_canon.display(),
+                );
+            }
+
+            let output =
+                command(cc_tool.path()).arg("-dumpversion").run_capture_stdout(&build).stdout();
+            let version_str = output.trim();
+            let mut parts = version_str.split('.').map(|s| s.parse::<u32>().unwrap_or(0));
+            let major = parts.next().unwrap_or(0);
+            let minor = parts.next().unwrap_or(0);
+            let patch = parts.next().unwrap_or(0);
+            if (major, minor, patch) < (22, 1, 0) {
+                panic!(
+                    "clang version too old: {} ({} target trequires >= 22.1.0), path: {}",
+                    target.triple,
+                    version_str,
+                    cc_tool.path().display()
+                );
+            }
         }
     }
 

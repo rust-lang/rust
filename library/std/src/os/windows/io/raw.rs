@@ -142,7 +142,7 @@ impl<'a> AsRawHandle for io::StderrLock<'a> {
 
 // Translate a handle returned from `GetStdHandle` into a handle to return to
 // the user.
-fn stdio_handle(raw: RawHandle) -> RawHandle {
+pub(super) fn stdio_handle(raw: RawHandle) -> RawHandle {
     // `GetStdHandle` isn't expected to actually fail, so when it returns
     // `INVALID_HANDLE_VALUE`, it means we were launched from a parent which
     // didn't provide us with stdio handles, such as a parent with a detached

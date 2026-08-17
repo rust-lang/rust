@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::{expr_or_init, fn_def_id_with_node_args, sym};
 use rustc_ast::BinOpKind;
 use rustc_data_structures::fx::FxHashMap;

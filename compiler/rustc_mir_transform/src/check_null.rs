@@ -1,17 +1,19 @@
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::Session;
 
+use crate::PassPolicy;
 use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_pointers};
 
 pub(super) struct CheckNull;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckNull {
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.ub_checks()
+    fn policy(&self, sess: &Session) -> PassPolicy {
+        // When UB checks are enabled this is part of their semantics, not an optimization.
+        PassPolicy::optional_non_optimization(sess.ub_checks())
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -22,10 +24,6 @@ impl<'tcx> crate::MirPass<'tcx> for CheckNull {
             insert_null_check,
             BorrowedFieldProjectionMode::NoFollowProjections,
         );
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 
@@ -55,16 +53,19 @@ fn insert_null_check<'tcx>(
         const_: Const::Val(ConstValue::from_target_usize(0, &tcx), tcx.types.usize),
     }));
 
-    let pointee_should_be_checked = match context {
+    let (pointee_should_be_checked, assert_kind) = match context {
         // Borrows pointing to "null" are UB even if the pointee is a ZST.
         PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
         | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
             // Pointer should be checked unconditionally.
-            Operand::Constant(Box::new(ConstOperand {
-                span: source_info.span,
-                user_ty: None,
-                const_: Const::from_bool(tcx, true),
-            }))
+            (
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::from_bool(tcx, true),
+                })),
+                AssertKind::NullReferenceConstructed,
+            )
         }
         // Other usages of null pointers only are UB if the pointee is not a ZST.
         _ => {
@@ -79,7 +80,7 @@ fn insert_null_check<'tcx>(
                 source_info,
                 StatementKind::Assign(Box::new((pointee_should_be_checked, rvalue))),
             ));
-            Operand::Copy(pointee_should_be_checked)
+            (Operand::Copy(pointee_should_be_checked), AssertKind::NullPointerDereference)
         }
     };
 
@@ -119,9 +120,6 @@ fn insert_null_check<'tcx>(
     ));
 
     // Emit a PointerCheck that asserts on the condition and otherwise triggers
-    // a AssertKind::NullPointerDereference.
-    PointerCheck {
-        cond: Operand::Copy(is_ok),
-        assert_kind: Box::new(AssertKind::NullPointerDereference),
-    }
+    // the chosen AssertKind.
+    PointerCheck { cond: Operand::Copy(is_ok), assert_kind: Box::new(assert_kind) }
 }

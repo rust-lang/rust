@@ -4,4 +4,4 @@ expression: vendor
 ---
 [Vendor] vendor::Vendor
     targets: [x86_64-unknown-linux-gnu]
-    - Set({vendor::placeholder})
+    - Set({placeholder})

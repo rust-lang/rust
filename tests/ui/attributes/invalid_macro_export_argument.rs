@@ -11,6 +11,13 @@ macro_rules! a {
     () => ()
 }
 
+#[cfg_attr(true, macro_export(hello, world))]
+//[deny]~^ ERROR valid forms for the attribute are
+//[deny]~| WARN this was previously accepted
+macro_rules! a2 {
+    () => ()
+}
+
 #[macro_export(not_local_inner_macros)]
 //[deny]~^ ERROR valid forms for the attribute are
 //[deny]~| WARN this was previously accepted

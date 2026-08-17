@@ -38,24 +38,24 @@ pub struct OutlivesEnvironment<'tcx> {
     /// everywhere is just enough of a perf regression to matter. This can/should be
     /// optimized in the future, though.
     region_bound_pairs: RegionBoundPairs<'tcx>,
-    known_type_outlives: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+    known_type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
     /// Assumptions that come from the well-formedness of coroutines that we prove
     /// auto trait bounds for during the type checking of this body.
-    higher_ranked_assumptions: FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
+    higher_ranked_assumptions: FxHashSet<ty::ArgOutlivesClause<'tcx>>,
 }
 
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
-pub type RegionBoundPairs<'tcx> = FxIndexSet<ty::OutlivesPredicate<'tcx, GenericKind<'tcx>>>;
+pub type RegionBoundPairs<'tcx> = FxIndexSet<ty::OutlivesClause<'tcx, GenericKind<'tcx>>>;
 
 impl<'tcx> OutlivesEnvironment<'tcx> {
     /// Create a new `OutlivesEnvironment` from normalized outlives bounds.
     pub fn from_normalized_bounds(
         param_env: ty::ParamEnv<'tcx>,
-        known_type_outlives: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+        known_type_outlives: Vec<ty::PolyTypeOutlivesClause<'tcx>>,
         extra_bounds: impl IntoIterator<Item = OutlivesBound<'tcx>>,
-        higher_ranked_assumptions: FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
+        higher_ranked_assumptions: FxHashSet<ty::ArgOutlivesClause<'tcx>>,
     ) -> Self {
         let mut region_relation = TransitiveRelationBuilder::default();
         let mut region_bound_pairs = RegionBoundPairs::default();
@@ -66,12 +66,10 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
+                    region_bound_pairs.insert(ty::OutlivesClause(GenericKind::Param(param_b), r_a));
                 }
                 OutlivesBound::RegionSubAlias(r_a, alias_b) => {
-                    region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
+                    region_bound_pairs.insert(ty::OutlivesClause(GenericKind::Alias(alias_b), r_a));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => match (r_a.kind(), r_b.kind()) {
                     (
@@ -104,11 +102,11 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         &self.region_bound_pairs
     }
 
-    pub fn known_type_outlives(&self) -> &[ty::PolyTypeOutlivesPredicate<'tcx>] {
+    pub fn known_type_outlives(&self) -> &[ty::PolyTypeOutlivesClause<'tcx>] {
         &self.known_type_outlives
     }
 
-    pub fn higher_ranked_assumptions(&self) -> &FxHashSet<ty::ArgOutlivesPredicate<'tcx>> {
+    pub fn higher_ranked_assumptions(&self) -> &FxHashSet<ty::ArgOutlivesClause<'tcx>> {
         &self.higher_ranked_assumptions
     }
 }

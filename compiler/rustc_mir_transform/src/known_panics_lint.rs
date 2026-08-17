@@ -6,23 +6,25 @@ use std::fmt::Debug;
 
 use rustc_abi::{BackendRepr, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
-use rustc_const_eval::interpret::{
-    ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error, interp_ok,
-};
+use rustc_const_eval::interpret::{ImmTy, InterpCx, InterpResult, Projectable, Scalar, interp_ok};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
+use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, ConstInt, GenericArgKind, GenericParamDefKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
+    Unnormalized,
+};
+use rustc_session::lint::builtin::UNCONDITIONAL_PANIC;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
-use crate::diagnostics::{AssertLint, AssertLintKind};
+use crate::diagnostics::{AssertLint, AssertLintKind, ConstNIsZero};
 
 pub(super) struct KnownPanicsLint;
 
@@ -233,7 +235,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         f(self)
-            .map_err_info(|err| {
+            .inspect_err_info(|err| {
                 trace!("InterpCx operation failed: {:?}", err);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
@@ -241,9 +243,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 assert!(
                     !err.kind().formatted_string(),
                     "known panics lint encountered formatting error: {}",
-                    format_interp_error(err),
+                    err.to_string(),
                 );
-                err
             })
             .discard_err()
     }
@@ -563,7 +564,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
                 let val = self.use_ecx(|this| this.ecx.binary_op(bin_op, &left, &right))?;
-                if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
+                if matches!(val.layout.backend_repr, BackendRepr::ScalarPair { .. }) {
                     // FIXME `Value` should properly support pairs in `Immediate`... but currently
                     // it does not.
                     let (val, overflow) = val.to_pair(&self.ecx);
@@ -629,7 +630,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // so bail out if the target is not one.
                     match (value.layout.backend_repr, to.backend_repr) {
                         (BackendRepr::Scalar(..), BackendRepr::Scalar(..)) => {}
-                        (BackendRepr::ScalarPair(..), BackendRepr::ScalarPair(..)) => {}
+                        (BackendRepr::ScalarPair { .. }, BackendRepr::ScalarPair { .. }) => {}
                         _ => return None,
                     }
 
@@ -768,6 +769,38 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 }
                 // We failed to evaluate the discriminant, fallback to visiting all successors.
             }
+            TerminatorKind::Call { func, args: _, .. } => {
+                if let Some((def_id, generic_args)) = func.const_fn_def() {
+                    for (index, arg) in generic_args.iter().enumerate() {
+                        if let GenericArgKind::Const(ct) = arg.kind() {
+                            let generics = self.tcx.generics_of(def_id);
+                            let param_def = generics.param_at(index, self.tcx);
+
+                            if let GenericParamDefKind::Const { .. } = param_def.kind
+                                && find_attr!(self.tcx, param_def.def_id, RustcPanicsWhenZero)
+                                && let Some(0) = ct.try_to_target_usize(self.tcx)
+                            {
+                                // We managed to figure-out that the value of a
+                                // `#[rustc_panics_when_zero]` const-generic parameter is zero.
+                                //
+                                // Let's report it as an unconditional panic.
+                                let source_info = self.body.source_info(location);
+                                if let Some(lint_root) = self.lint_root(*source_info) {
+                                    self.tcx.emit_node_span_lint(
+                                        UNCONDITIONAL_PANIC,
+                                        lint_root,
+                                        source_info.span,
+                                        ConstNIsZero {
+                                            const_param_span: source_info.span,
+                                            const_param_name: param_def.name,
+                                        },
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
@@ -780,7 +813,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. } => {}
         }
 
@@ -943,7 +975,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // whether they'd be fine right now.
             MutatingUse(MutatingUseContext::Yield)
             | MutatingUse(MutatingUseContext::Drop)
-            | MutatingUse(MutatingUseContext::Retag)
             // These can't ever be propagated under any scheme, as we can't reason about indirect
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)

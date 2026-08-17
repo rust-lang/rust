@@ -1771,13 +1771,15 @@ pub(crate) fn build_index(
                 assert!(ty.generics.is_some());
                 return;
             };
-            ty.id = convert_render_type_id(
-                id,
-                cache,
-                serialized_index,
-                used_in_function_signature,
-                tcx,
-            );
+            ty.id = if let RenderTypeId::DefId(def_id) = id
+                && matches!(tcx.def_kind(def_id), rustc_hir::def::DefKind::OpaqueTy)
+            {
+                // We exclude opaque types as they cannot have attributes, so no need to call
+                // `convert_render_type_id`.
+                None
+            } else {
+                convert_render_type_id(id, cache, serialized_index, used_in_function_signature, tcx)
+            };
             use crate::clean::PrimitiveType;
             // These cases are added to the inverted index, but not actually included
             // in the signature. There's a matching set of cases in the

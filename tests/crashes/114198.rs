@@ -1,7 +1,7 @@
 //@ known-bug: #114198
 //@ compile-flags: -Zprint-mono-items -Clink-dead-code
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 
 impl Trait for Struct {}
 trait Trait {

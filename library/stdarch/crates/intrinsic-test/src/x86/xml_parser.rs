@@ -99,8 +99,13 @@ fn xml_to_intrinsic(intr: XMLIntrinsic) -> Result<Intrinsic<X86>, Box<dyn std::e
                 param.imm_width
             };
             let constraint = map_constraints(&name, &param.imm_type, effective_imm_width);
-            let arg = Argument::<X86>::new(i, param.var_name.clone(), ty.unwrap(), constraint);
-            Some(arg)
+            Some(Argument::<X86>::new(
+                i,
+                param.var_name.clone(),
+                ty.unwrap(),
+                constraint,
+                false,
+            ))
         }
     });
 

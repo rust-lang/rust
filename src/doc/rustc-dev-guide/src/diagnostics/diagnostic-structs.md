@@ -135,12 +135,12 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - `code = "..."` (_Optional_)
     - Specifies the error code.
 - `#[note("message")]` (_Optional_)
-  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a note subdiagnostic.
   - Value is the note's message.
   - If applied to a `Span` field, creates a spanned note.
 - `#[help("message")]` (_Optional_)
-  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a help subdiagnostic.
   - Value is the help message.
   - If applied to a `Span` field, creates a spanned help.
@@ -149,7 +149,7 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - Adds a label subdiagnostic.
   - Value is the label's message.
 - `#[warning("message")]` (_Optional_)
-  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a warning subdiagnostic.
   - Value is the warning's message.
 - `#[suggestion{,_hidden,_short,_verbose}("message", code = "...", applicability = "...")]`

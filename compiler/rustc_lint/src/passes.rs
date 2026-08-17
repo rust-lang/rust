@@ -21,7 +21,7 @@ macro_rules! late_lint_methods {
             fn check_stmt(a: &'tcx rustc_hir::Stmt<'tcx>);
             fn check_arm(a: &'tcx rustc_hir::Arm<'tcx>);
             fn check_pat(a: &'tcx rustc_hir::Pat<'tcx>);
-            fn check_lit(hir_id: rustc_hir::HirId, a: rustc_hir::Lit, negated: bool);
+            fn check_lit(hir_id: rustc_hir::HirId, a: rustc_hir::Lit, is_negated_pat: bool);
             fn check_expr(a: &'tcx rustc_hir::Expr<'tcx>);
             fn check_expr_post(a: &'tcx rustc_hir::Expr<'tcx>);
             fn check_ty(a: &'tcx rustc_hir::Ty<'tcx, rustc_hir::AmbigArg>);
@@ -37,7 +37,6 @@ macro_rules! late_lint_methods {
             fn check_trait_item(a: &'tcx rustc_hir::TraitItem<'tcx>);
             fn check_impl_item(a: &'tcx rustc_hir::ImplItem<'tcx>);
             fn check_impl_item_post(a: &'tcx rustc_hir::ImplItem<'tcx>);
-            fn check_struct_def(a: &'tcx rustc_hir::VariantData<'tcx>);
             fn check_field_def(a: &'tcx rustc_hir::FieldDef<'tcx>);
             fn check_variant(a: &'tcx rustc_hir::Variant<'tcx>);
             fn check_path(a: &rustc_hir::Path<'tcx>, b: rustc_hir::HirId);

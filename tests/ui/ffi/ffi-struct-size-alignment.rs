@@ -5,7 +5,6 @@
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.
 
-
 use std::ffi::{c_uint, c_void};
 
 pub struct KEYGEN {
@@ -17,7 +16,7 @@ pub struct KEYGEN {
 
 extern "C" {
     // Bogus signature, just need to test if it compiles.
-    pub fn malloc(data: KEYGEN);
+    pub fn foo(data: KEYGEN);
 }
 
 pub fn main() {}

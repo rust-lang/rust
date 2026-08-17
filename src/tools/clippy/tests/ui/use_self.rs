@@ -1,16 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::use_self)]
-#![allow(dead_code, unreachable_code)]
-#![allow(
-    clippy::should_implement_trait,
-    clippy::upper_case_acronyms,
-    clippy::from_over_into,
-    clippy::self_named_constructors,
-    clippy::needless_lifetimes,
-    clippy::missing_transmute_annotations
-)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features, clippy::from_over_into, clippy::self_named_constructors)]
 #![feature(adt_const_params)]
 #![feature(unsized_const_params)]
 
@@ -160,7 +151,6 @@ mod nesting {
     struct Foo;
     impl Foo {
         fn foo() {
-            #[allow(unused_imports)]
             use self::Foo; // Can't use Self here
             struct Bar {
                 foo: Foo, // Foo != Self
@@ -195,7 +185,6 @@ mod nesting {
     }
     impl Enum {
         fn method() {
-            #[allow(unused_imports)]
             use self::Enum::*; // Issue 3425
             static STATIC: Enum = Enum::A; // Can't use Self as type
         }

@@ -193,7 +193,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         // ascription, or if it's an implicit `self` parameter
                         ObligationCauseCode::SizedArgumentType(
                             if ty_span == ident.span
-                                && self.fcx.tcx.is_closure_like(self.fcx.body_id.into())
+                                && self.fcx.tcx.is_closure_like(self.fcx.body_def_id.into())
                             {
                                 None
                             } else {

@@ -13,8 +13,8 @@ LL | const fn equals_self<T: [const] Foo>(t: &T) -> bool {
    |                         ^^^^^^^^^^^ required by this bound in `equals_self`
 help: make the `impl` of trait `Foo` `const`
    |
-LL | impl const Foo for S {
-   |      +++++
+LL | const impl Foo for S {
+   | +++++
 
 error: aborting due to 1 previous error
 

@@ -1,5 +1,5 @@
 #![warn(clippy::trailing_empty_array)]
-#![allow(clippy::repr_packed_without_abi)]
+#![expect(clippy::repr_packed_without_abi)]
 
 // Do lint:
 

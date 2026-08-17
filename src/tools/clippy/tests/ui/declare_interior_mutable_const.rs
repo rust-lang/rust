@@ -19,11 +19,11 @@ const fn make_ptr() -> *const Cell<u32> {
 }
 const PTR: *const Cell<u32> = make_ptr();
 
-const fn casted_to_cell_ptr() -> *const Cell<u32> {
+const fn cast_to_cell_ptr() -> *const Cell<u32> {
     const VALUE: u32 = 0;
     &VALUE as *const _ as *const Cell<u32>
 }
-const TRANSMUTED_PTR: *const Cell<u32> = casted_to_cell_ptr();
+const TRANSMUTED_PTR: *const Cell<u32> = cast_to_cell_ptr();
 
 const CELL_TUPLE: (bool, Cell<u32>) = (true, Cell::new(0)); //~ declare_interior_mutable_const
 const CELL_ARRAY: [Cell<u32>; 2] = [Cell::new(0), Cell::new(0)]; //~ declare_interior_mutable_const

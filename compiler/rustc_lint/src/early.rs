@@ -6,7 +6,6 @@
 
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{BufferedEarlyLint, LintBuffer};
 use rustc_feature::Features;
 use rustc_middle::ty::RegisteredTools;
@@ -57,7 +56,7 @@ impl<'ecx, T: EarlyLintPass> EarlyContextAndPass<'ecx, T> {
 
         debug!("early context: enter_attrs({:?})", attrs);
         lint_callback!(self, check_attributes, attrs);
-        ensure_sufficient_stack(|| f(self));
+        f(self);
         debug!("early context: exit_attrs({:?})", attrs);
         lint_callback!(self, check_attributes_post, attrs);
         self.context.builder.pop(push);
@@ -314,7 +313,7 @@ pub fn check_ast_node<'a>(
     features: &Features,
     pre_expansion: bool,
     lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
+    registered_lint_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
     check_node: EarlyCheckNode<'a>,
 ) {
@@ -323,7 +322,7 @@ pub fn check_ast_node<'a>(
         features,
         !pre_expansion,
         lint_store,
-        registered_tools,
+        registered_lint_tools,
         lint_buffer.unwrap_or_default(),
     );
 

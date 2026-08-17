@@ -10,6 +10,10 @@ struct EvilSend<T>(pub T);
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
+unsafe fn split_atomic(a: &AtomicU16) -> &[AtomicU8; 2] {
+    unsafe { std::mem::transmute(a) }
+}
+
 fn test_fence_sync() {
     static SYNC: AtomicUsize = AtomicUsize::new(0);
 
@@ -179,13 +183,9 @@ fn test_read_read_race2() {
 }
 
 fn mixed_size_read_read() {
-    fn convert(a: &AtomicU16) -> &[AtomicU8; 2] {
-        unsafe { std::mem::transmute(a) }
-    }
-
     let a = AtomicU16::new(0);
     let a16 = &a;
-    let a8 = convert(a16);
+    let a8 = unsafe { split_atomic(a16) };
 
     // Just two different-sized atomic reads without any writes are fine.
     thread::scope(|s| {

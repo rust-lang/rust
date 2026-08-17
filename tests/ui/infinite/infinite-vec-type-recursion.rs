@@ -1,6 +1,6 @@
 //@ revisions: feature gated
 
-#![cfg_attr(feature, feature(lazy_type_alias))]
+#![cfg_attr(feature, feature(checked_type_aliases))]
 #![allow(incomplete_features)]
 
 type X = Vec<X>;

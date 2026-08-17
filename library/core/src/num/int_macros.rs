@@ -983,8 +983,11 @@ macro_rules! int_impl {
         /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is when one divides `MIN / -1` on a signed type (where
-        /// [`MIN`](Self::MIN) is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
+        /// [`MIN`](Self::MIN) is the negative minimal value for the type); the result of this is `-MIN`, a positive value
         /// that is too large to represent in the type.
+        ///
+        /// Note that this is equivalent to normal division: `MIN / -1` will also panic both in
+        /// debug and release builds.
         ///
         /// # Examples
         ///
@@ -1010,8 +1013,8 @@ macro_rules! int_impl {
         #[inline]
         #[track_caller]
         pub const fn strict_div(self, rhs: Self) -> Self {
-            let (a, b) = self.overflowing_div(rhs);
-            if b { imp::overflow_panic::div() } else { a }
+            // Normal division already checks for "div-by-minus-1".
+            self / rhs
         }
 
         /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
@@ -1050,8 +1053,11 @@ macro_rules! int_impl {
         /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is when one divides `MIN / -1` on a signed type (where
-        /// [`MIN`](Self::MIN) is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
+        /// [`MIN`](Self::MIN) is the negative minimal value for the type); the result of this is `-MIN`, a positive value
         /// that is too large to represent in the type.
+        ///
+        /// Note that this is equivalent to `div_euclid`: `MIN.div_euclid(-1)` will also panic both
+        /// in debug and release builds.
         ///
         /// # Examples
         ///
@@ -1077,8 +1083,8 @@ macro_rules! int_impl {
         #[inline]
         #[track_caller]
         pub const fn strict_div_euclid(self, rhs: Self) -> Self {
-            let (a, b) = self.overflowing_div_euclid(rhs);
-            if b { imp::overflow_panic::div() } else { a }
+            // Normal `div_euclid` already checks for "div-by-minus-1".
+            self.div_euclid(rhs)
         }
 
         /// Checked integer division without remainder. Computes `self / rhs`,
@@ -2386,7 +2392,7 @@ macro_rules! int_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `<<` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shl`] which has nicer behaviour.
@@ -2423,7 +2429,7 @@ macro_rules! int_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `>>` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shr`] which has nicer behaviour.
@@ -3918,7 +3924,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "replaced by the `MIN` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self {
             Self::MIN
@@ -3932,7 +3938,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self {
             Self::MAX

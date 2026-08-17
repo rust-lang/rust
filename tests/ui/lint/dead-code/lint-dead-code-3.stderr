@@ -25,28 +25,28 @@ LL | fn bar() {
    |    ^^^
 
 error: enum `c_void` is never used
-  --> $DIR/lint-dead-code-3.rs:60:6
+  --> $DIR/lint-dead-code-3.rs:62:6
    |
 LL | enum c_void {}
    |      ^^^^^^
 
 error: function `blah` is never used
-  --> $DIR/lint-dead-code-3.rs:77:8
+  --> $DIR/lint-dead-code-3.rs:81:8
    |
 LL |     fn blah() {}
    |        ^^^^
 
 error: function `blah` is never used
-  --> $DIR/lint-dead-code-3.rs:81:12
+  --> $DIR/lint-dead-code-3.rs:85:12
    |
 LL |         fn blah() {}
    |            ^^^^
 
-error: function `free` is never used
-  --> $DIR/lint-dead-code-3.rs:62:8
+error: function `my_free` is never used
+  --> $DIR/lint-dead-code-3.rs:64:8
    |
-LL |     fn free(p: *const c_void);
-   |        ^^^^
+LL |     fn my_free(p: *const c_void);
+   |        ^^^^^^^
 
 error: aborting due to 7 previous errors
 

@@ -27,6 +27,13 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
         "signal" => true,
         // needed at least on macOS to avoid file-based fallback in getrandom
         "getentropy" | "getrandom" => true,
+        // `futimens` is set up as a weak symbol in `init_extern_statics` (on Android), so we
+        // allow it here too (it exists on all our Unix targets).
+        "futimens" => true,
+        // `preadv`/`pwritev` are set up as weak symbols in `init_extern_statics` (on Android,
+        // where std uses them via `weak!` since bionic only gained them in API level 24), so
+        // we allow them here too. They do not exist on Solaris.
+        "preadv" | "pwritev" if !matches!(*target_os, Os::Solaris) => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match *target_os {
@@ -49,28 +56,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let name = this.read_scalar(val)?.to_i32()?;
         // FIXME: Which of these are POSIX, and which are GNU/Linux?
         // At least the names seem to all also exist on macOS.
-        let sysconfs: &[(&str, fn(&MiriInterpCx<'_>) -> Scalar)] = &[
-            ("_SC_PAGESIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
-            ("_SC_PAGE_SIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
-            ("_SC_NPROCESSORS_CONF", |this| {
-                Scalar::from_int(this.machine.num_cpus, this.pointer_size())
-            }),
-            ("_SC_NPROCESSORS_ONLN", |this| {
-                Scalar::from_int(this.machine.num_cpus, this.pointer_size())
-            }),
+        static SYSCONFS: &[(&str, fn(&MiriInterpCx<'_>) -> i64)] = &[
+            ("_SC_PAGESIZE", |this| this.machine.page_size.try_into().unwrap()),
+            ("_SC_PAGE_SIZE", |this| this.machine.page_size.try_into().unwrap()),
+            ("_SC_NPROCESSORS_CONF", |this| this.machine.num_cpus.into()),
+            ("_SC_NPROCESSORS_ONLN", |this| this.machine.num_cpus.into()),
             // 512 seems to be a reasonable default. The value is not critical, in
             // the sense that getpwuid_r takes and checks the buffer length.
-            ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size())),
+            ("_SC_GETPW_R_SIZE_MAX", |_this| 512),
             // Miri doesn't have a fixed limit on FDs, but we may be limited in terms of how
             // many *host* FDs we can open. Just use some arbitrary, pretty big value;
             // this can be adjusted if it causes problems.
             // The spec imposes a minimum of `_POSIX_OPEN_MAX` (20).
-            ("_SC_OPEN_MAX", |this| Scalar::from_int(2_i32.pow(16), this.pointer_size())),
+            ("_SC_OPEN_MAX", |_this| 2_i32.pow(16).into()),
+            // Our hard-coded hostname is just 4 bytes so we don't need anything big here.
+            ("_SC_HOST_NAME_MAX", |_this| 255),
         ];
-        for &(sysconf_name, value) in sysconfs {
+        for &(sysconf_name, value) in SYSCONFS {
             let sysconf_name = this.eval_libc_i32(sysconf_name);
             if sysconf_name == name {
-                return interp_ok(value(this));
+                let value = Scalar::from_target_isize(value(this), this);
+                return interp_ok(value);
             }
         }
         throw_unsup_format!("unimplemented sysconf name: {}", name)
@@ -163,6 +169,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let result = this.getcwd(buf, size)?;
                 this.write_pointer(result, dest)?;
+            }
+            "gethostname" => {
+                let [name, len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, usize) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.gethostname(name, len)?;
+                this.write_scalar(result, dest)?;
             }
             "chdir" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -308,6 +324,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     abi,
                     args,
                 )?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
                 let result = this.close(fd)?;
                 this.write_scalar(result, dest)?;
             }
@@ -545,6 +562,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.fdatasync(fd)?;
                 this.write_scalar(result, dest)?;
             }
+            "futimens" => {
+                let [fd, times] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.futimens(fd, times)?;
+                this.write_scalar(result, dest)?;
+            }
             "readlink" => {
                 let [pathname, buf, bufsize] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*const _, *mut _, usize) -> isize),
@@ -613,6 +640,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let result = this.mkstemp(template)?;
                 this.write_scalar(result, dest)?;
+            }
+
+            // Poll
+            "poll" => {
+                let [fds, nfds, timeout] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, libc::nfds_t, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.poll(fds, nfds, timeout, dest)?;
             }
 
             // Sockets and pipes

@@ -1,0 +1,9 @@
+error[E0057]: this splatted function takes 3 arguments, but 0 were provided
+  --> $DIR/arg-count-ice-issue-158482.rs:12:5
+   |
+LL |     Foo::trait_assoc()
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0057`.

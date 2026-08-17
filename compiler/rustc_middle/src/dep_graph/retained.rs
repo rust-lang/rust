@@ -26,6 +26,8 @@ impl RetainedDepGraph {
         Self { inner, indices }
     }
 
+    /// Adds `node` at its dep-graph index. Indices are allocated to threads in batches, so the
+    /// index space is sparse and the slots skipped over hold no node.
     pub fn push(&mut self, index: DepNodeIndex, node: DepNode, edges: &[DepNodeIndex]) {
         let source = NodeIndex(index.as_usize());
         self.inner.add_node_with_idx(source, node);
@@ -37,7 +39,7 @@ impl RetainedDepGraph {
     }
 
     pub fn nodes(&self) -> Vec<&DepNode> {
-        self.inner.all_nodes().iter().map(|n| n.data.as_ref().unwrap()).collect()
+        self.inner.all_nodes().iter().filter_map(|n| n.data.as_ref()).collect()
     }
 
     pub fn edges(&self) -> Vec<(&DepNode, &DepNode)> {

@@ -424,7 +424,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
     /// ```
     #[unstable(feature = "split_as_slice", issue = "96137")]
     pub fn as_slice(&self) -> &'a [T] {
-        if self.finished { &[] } else { &self.v }
+        if self.finished { &[] } else { self.v }
     }
 }
 
@@ -3048,6 +3048,20 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
+    }
+
+    #[inline]
+    fn count(mut self) -> usize {
+        let Some((mut previous, rest)) = self.slice.split_first() else {
+            return 0;
+        };
+
+        let mut count = 1;
+        for current in rest {
+            count += usize::from(!(self.predicate)(previous, current));
+            previous = current;
+        }
+        count
     }
 
     #[inline]

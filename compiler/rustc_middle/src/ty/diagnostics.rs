@@ -4,12 +4,11 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{
-    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
-};
+use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg, listify, pluralize};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};
+use rustc_hir::{self as hir, AmbigArg, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
@@ -35,10 +34,6 @@ impl IntoDiagArg for Instance<'_> {
             DiagArgValue::Str(std::borrow::Cow::Owned(instance))
         })
     }
-}
-
-into_diag_arg_using_display! {
-    ty::Region<'_>,
 }
 
 impl<'tcx> Ty<'tcx> {
@@ -698,7 +693,10 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             FnDef(def_id, args) if self.placeholder.is_none() => Ty::new_fn_ptr(
                 self.tcx,
-                self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip(),
+                self.tcx
+                    .fn_sig(def_id)
+                    .instantiate(self.tcx, args.no_bound_vars().unwrap())
+                    .skip_norm_wip(),
             ),
 
             Closure(..)

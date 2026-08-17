@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: stack-protector-future stack-protector-future-explicit-deny stack-protector-future-deny-reset-by-mitigation stack-protector-allow-then-deny stack-protector-but-allow-control-flow-guard control-flow-guard-future-allow-reset-by-mitigation stack-protector-future-allow-reset-by-mitigation stack-protector-future-deny-allow-reset-by-mitigation
 //@ check-fail
 //@ ignore-nvptx64 stack protector is not supported

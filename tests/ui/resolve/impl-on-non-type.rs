@@ -4,10 +4,10 @@ static Y: u8 = 1;
 fn foo() {}
 
 impl X {}
-//~^ ERROR expected type, found constant `X`
+//~^ ERROR cannot find type `X` in this scope
 impl Y {}
-//~^ ERROR expected type, found static `Y`
+//~^ ERROR cannot find type `Y` in this scope
 impl foo {}
-//~^ ERROR expected type, found function `foo`
+//~^ ERROR cannot find type `foo` in this scope
 
 fn main() {}

@@ -5,10 +5,10 @@ LL | #![debugger_visualizer(natvis_file = "../foo.random")]
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `debugger_visualizer` attribute input
-  --> $DIR/invalid-debugger-visualizer-option.rs:4:1
+  --> $DIR/invalid-debugger-visualizer-option.rs:4:4
    |
 LL | #![debugger_visualizer(random_file = "../foo.random")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^^^^^^
    |                        |
    |                        valid arguments are `natvis_file` or `gdb_script_file`
    |

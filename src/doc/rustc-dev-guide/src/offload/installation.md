@@ -44,7 +44,7 @@ Run this test script for offload-specific tests:
 ./x test --stage 1 tests/codegen-llvm/gpu_offload
 ```
 
-For testing the CI locally, you may use the commands outlined in [Testing with Docker](https://rustc-dev-guide.rust-lang.org/tests/docker.html):
+For testing the CI locally, you may use the commands outlined in [Testing with Docker](../tests/docker.md):
 ```console
 cargo run --manifest-path src/ci/citool/Cargo.toml run-local dist-x86_64-linux
 ```

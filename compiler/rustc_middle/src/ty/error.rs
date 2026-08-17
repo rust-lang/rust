@@ -4,10 +4,10 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
+use rustc_data_structures::Limit;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
-use rustc_hir::limit::Limit;
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
@@ -129,7 +129,8 @@ impl<'tcx> TypeError<'tcx> {
             }
             TypeError::IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TypeError::TargetFeatureCast(_) => {
-                "cannot coerce functions with `#[target_feature]` to safe function pointers".into()
+                "cannot coerce functions with `#[target_feature(..)]` to safe function pointers"
+                    .into()
             }
         }
     }

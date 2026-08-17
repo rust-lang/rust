@@ -3,7 +3,7 @@ use std::hash::Hash;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::ty::{Binder, EarlyBinder};
+use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
 use rustc_span::Symbol;
 
 use crate::rmeta::{LazyArray, LazyValue};
@@ -48,6 +48,14 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
     type Value<'tcx> = LazyArray<T::Value<'tcx>>;
 }
 
+impl ParameterizedOverTcx for Region<'static> {
+    type Value<'tcx> = Region<'tcx>;
+}
+
+impl ParameterizedOverTcx for GenericArg<'static> {
+    type Value<'tcx> = GenericArg<'tcx>;
+}
+
 macro_rules! trivially_parameterized_over_tcx {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -61,6 +69,7 @@ macro_rules! trivially_parameterized_over_tcx {
 
 trivially_parameterized_over_tcx! {
     bool,
+    u32,
     u64,
     usize,
     std::string::String,
@@ -76,13 +85,15 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::VariantData,
     rustc_abi::ReprOptions,
     rustc_ast::DelimArgs,
+    rustc_crate_store::ForeignModule,
+    rustc_crate_store::LinkagePreference,
+    rustc_crate_store::NativeLib,
     rustc_hir::Attribute,
     rustc_hir::ConstStability,
     rustc_hir::Constness,
     rustc_hir::CoroutineKind,
     rustc_hir::DefaultBodyStability,
     rustc_hir::Defaultness,
-    rustc_hir::LangItem,
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_hir::Safety,
@@ -91,6 +102,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::attrs::EiiDecl,
     rustc_hir::attrs::EiiImpl,
     rustc_hir::attrs::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
+    rustc_hir::attrs::lang_items::LangItem,
     rustc_hir::def::DefKind,
     rustc_hir::def::DocLinkResMap,
     rustc_hir::def_id::DefId,
@@ -115,6 +127,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::Generics,
     rustc_middle::ty::ImplTraitInTraitData,
     rustc_middle::ty::IntrinsicDef,
+    rustc_middle::ty::RestrictionKind,
     rustc_middle::ty::TraitDef,
     rustc_middle::ty::Variance,
     rustc_middle::ty::Visibility<DefIndex>,
@@ -122,9 +135,6 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_session::config::TargetModifier,
     rustc_session::config::mitigation_coverage::DeniedPartialMitigation,
-    rustc_session::cstore::ForeignModule,
-    rustc_session::cstore::LinkagePreference,
-    rustc_session::cstore::NativeLib,
     rustc_span::ExpnData,
     rustc_span::ExpnHash,
     rustc_span::ExpnId,
@@ -159,7 +169,7 @@ parameterized_over_tcx! {
     rustc_middle::ty::Const,
     rustc_middle::ty::ConstConditions,
     rustc_middle::ty::FnSig,
-    rustc_middle::ty::GenericPredicates,
+    rustc_middle::ty::GenericClauses,
     rustc_middle::ty::ImplTraitHeader,
     rustc_middle::ty::TraitRef,
     rustc_middle::ty::Ty,

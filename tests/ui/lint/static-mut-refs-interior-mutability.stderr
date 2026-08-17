@@ -7,7 +7,7 @@ LL |     let _lock = unsafe { STDINOUT_MUTEX.lock().unwrap() };
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: `#[deny(static_mut_refs)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-help: this type already provides "interior mutability", so its binding doesn't need to be declared as mutable
+help: this type already provides "interior mutability", so its binding doesn't need to be declared as mutable when borrowed with a shared reference
    |
 LL - static mut STDINOUT_MUTEX: Mutex<bool> = Mutex::new(false);
 LL + static STDINOUT_MUTEX: Mutex<bool> = Mutex::new(false);

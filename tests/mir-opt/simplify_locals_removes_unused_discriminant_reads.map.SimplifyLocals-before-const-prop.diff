@@ -8,8 +8,6 @@
       let _3: std::boxed::Box<()>;
       let mut _4: std::boxed::Box<()>;
 -     let mut _5: bool;
--     let mut _6: isize;
--     let mut _7: isize;
       scope 1 {
           debug x => _3;
       }
@@ -42,7 +40,6 @@
       }
   
       bb4: {
--         _6 = discriminant(_1);
           return;
       }
   }

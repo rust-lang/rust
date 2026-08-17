@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! Basic smoke tests for behavior of `-C split-debuginfo` and the combined behavior when used in
 //! conjunction with other flags such as:
 //!

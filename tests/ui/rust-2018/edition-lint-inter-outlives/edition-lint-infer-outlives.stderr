@@ -11,11 +11,10 @@ LL | #![deny(explicit_outlives_requirements)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:805:56
+  --> $DIR/edition-lint-infer-outlives.rs:805:48
    |
-LL |   struct InferredWhereBoundWithInlineBound<'a, T: ?Sized>
-   |  ________________________________________________________^
-LL | |
+LL |   struct InferredWhereBoundWithInlineBound<'a, T>
+   |  ________________________________________________^
 LL | |     where T: 'a,
    | |________________^ help: remove this bound
 

@@ -1098,6 +1098,17 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
     pub(crate) safe fn LLVMSetExternallyInitialized(GlobalVar: &Value, IsExtInit: Bool);
 
+    // Operations on global aliases
+    pub(crate) fn LLVMAddAlias2<'ll>(
+        M: &'ll Module,
+        ValueTy: &Type,
+        AddressSpace: c_uint,
+        Aliasee: &Value,
+        Name: *const c_char,
+    ) -> &'ll Value;
+    pub(crate) fn LLVMGetFirstGlobalAlias(M: &Module) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextGlobalAlias(GlobalAlias: &Value) -> Option<&Value>;
+
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(
         C: &Context,
@@ -1700,63 +1711,6 @@ unsafe extern "C" {
         NumBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
-}
-
-#[cfg(feature = "llvm_offload")]
-pub(crate) use self::Offload::*;
-
-#[cfg(feature = "llvm_offload")]
-mod Offload {
-    use super::*;
-    unsafe extern "C" {
-        /// Processes the module and writes it in an offload compatible way into a "device.bin" file.
-        pub(crate) fn LLVMRustBundleImages<'a>(
-            M: &'a Module,
-            TM: &'a TargetMachine,
-            device_bin: *const c_char,
-        ) -> bool;
-        pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
-            _M: &'a Module,
-            _device_bin: *const c_char,
-        ) -> bool;
-        pub(crate) fn LLVMRustOffloadMapper<'a>(
-            OldFn: &'a Value,
-            NewFn: &'a Value,
-            RebuiltArgs: *const &Value,
-        );
-    }
-}
-
-#[cfg(not(feature = "llvm_offload"))]
-pub(crate) use self::Offload_fallback::*;
-
-#[cfg(not(feature = "llvm_offload"))]
-mod Offload_fallback {
-    use super::*;
-    /// Processes the module and writes it in an offload compatible way into a "device.bin" file.
-    /// Marked as unsafe to match the real offload wrapper which is unsafe due to FFI.
-    #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustBundleImages<'a>(
-        _M: &'a Module,
-        _TM: &'a TargetMachine,
-        _device_bin: *const c_char,
-    ) -> bool {
-        unimplemented!("This rustc version was not built with LLVM Offload support!");
-    }
-    pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
-        _M: &'a Module,
-        _device_bin: *const c_char,
-    ) -> bool {
-        unimplemented!("This rustc version was not built with LLVM Offload support!");
-    }
-    #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(
-        _OldFn: &'a Value,
-        _NewFn: &'a Value,
-        _RebuiltArgs: *const &Value,
-    ) {
-        unimplemented!("This rustc version was not built with LLVM Offload support!");
-    }
 }
 
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.
@@ -2492,6 +2446,8 @@ unsafe extern "C" {
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,
+        PostEnzymePasses: *const c_char,
+        PostEnzymePassesLen: size_t,
         ExtraPasses: *const c_char,
         ExtraPassesLen: size_t,
         LLVMPlugins: *const c_char,
@@ -2640,11 +2596,11 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
 
-    pub(crate) fn LLVMAddAlias2<'ll>(
-        M: &'ll Module,
-        ValueTy: &Type,
-        AddressSpace: c_uint,
-        Aliasee: &Value,
-        Name: *const c_char,
-    ) -> &'ll Value;
+    pub(crate) fn LLVMRustConstPtrAuth(
+        ptr: *const Value,
+        key: u32,
+        disc: u64,
+        addr_diversity: *const Value,
+        deactivation_symbol: *const Value,
+    ) -> *const Value;
 }

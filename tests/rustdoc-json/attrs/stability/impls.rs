@@ -33,36 +33,31 @@ pub trait UnstableTraitForImpl {
     fn unstable_trait_method(&self);
 }
 
-//@ is "$.index[?(@.docs=='stable inherent impl')].stability.level" '"stable"'
 //@ is "$.index[?(@.docs=='stable inherent impl')].stability.feature" '"stable_inherent_impl"'
-//@ is "$.index[?(@.docs=='stable inherent impl')].stability.since" '"2.0.0"'
+//@ is "$.index[?(@.docs=='stable inherent impl')].stability.level.stable.since" '"2.0.0"'
 /// stable inherent impl
 #[stable(feature = "stable_inherent_impl", since = "2.0.0")]
 impl StableImplTarget {
-    //@ is "$.index[?(@.name=='stable_inherent_method')].stability.level" '"stable"'
     //@ is "$.index[?(@.name=='stable_inherent_method')].stability.feature" '"stable_inherent_method_feature"'
-    //@ is "$.index[?(@.name=='stable_inherent_method')].stability.since" '"2.1.0"'
+    //@ is "$.index[?(@.name=='stable_inherent_method')].stability.level.stable.since" '"2.1.0"'
     //@ is "$.index[?(@.name=='stable_inherent_method')].attrs" []
     #[stable(feature = "stable_inherent_method_feature", since = "2.1.0")]
     pub fn stable_inherent_method(&self) {}
 
     //@ is "$.index[?(@.name=='UNSTABLE_ASSOC_CONST_IN_IMPL')].stability.level" '"unstable"'
     //@ is "$.index[?(@.name=='UNSTABLE_ASSOC_CONST_IN_IMPL')].stability.feature" '"unstable_assoc_const_in_impl_feature"'
-    //@ !has "$.index[?(@.name=='UNSTABLE_ASSOC_CONST_IN_IMPL')].stability.since"
     #[unstable(feature = "unstable_assoc_const_in_impl_feature", issue = "none")]
     pub const UNSTABLE_ASSOC_CONST_IN_IMPL: usize = 2;
 }
 
 //@ is "$.index[?(@.docs=='unstable inherent impl')].stability.level" '"unstable"'
 //@ is "$.index[?(@.docs=='unstable inherent impl')].stability.feature" '"unstable_inherent_impl"'
-//@ !has "$.index[?(@.docs=='unstable inherent impl')].stability.since"
 /// unstable inherent impl
 #[unstable(feature = "unstable_inherent_impl", issue = "none")]
 impl StableImplTarget {
     // The instability of the inherent `impl` block is inherited by the item.
     //@ is "$.index[?(@.name=='method_inside_unstable_inherent_impl')].stability.level" '"unstable"'
     //@ is "$.index[?(@.name=='method_inside_unstable_inherent_impl')].stability.feature" '"unstable_inherent_impl"'
-    //@ !has "$.index[?(@.name=='method_inside_unstable_inherent_impl')].stability.since"
     pub fn method_inside_unstable_inherent_impl(&self) {}
 }
 
@@ -74,9 +69,8 @@ impl StableImplTarget {
 // stability onto the implemented item. The unstable impl case is different: rustc records the
 // impl block's instability on contained impl items, so JSON exposes that inherited instability.
 
-//@ is "$.index[?(@.docs=='stable trait impl with unstable trait method')].stability.level" '"stable"'
 //@ is "$.index[?(@.docs=='stable trait impl with unstable trait method')].stability.feature" '"stable_trait_impl_with_unstable_trait_method"'
-//@ is "$.index[?(@.docs=='stable trait impl with unstable trait method')].stability.since" '"3.0.0"'
+//@ is "$.index[?(@.docs=='stable trait impl with unstable trait method')].stability.level.stable.since" '"3.0.0"'
 /// stable trait impl with unstable trait method
 #[stable(feature = "stable_trait_impl_with_unstable_trait_method", since = "3.0.0")]
 impl StableTraitWithUnstableMethodForImpl for StableImplTarget {
@@ -86,9 +80,8 @@ impl StableTraitWithUnstableMethodForImpl for StableImplTarget {
     fn unstable_trait_method_for_stable_impl(&self) {}
 }
 
-//@ is "$.index[?(@.docs=='stable trait impl')].stability.level" '"stable"'
 //@ is "$.index[?(@.docs=='stable trait impl')].stability.feature" '"stable_trait_impl"'
-//@ is "$.index[?(@.docs=='stable trait impl')].stability.since" '"3.0.0"'
+//@ is "$.index[?(@.docs=='stable trait impl')].stability.level.stable.since" '"3.0.0"'
 /// stable trait impl
 #[stable(feature = "stable_trait_impl", since = "3.0.0")]
 impl StableTraitForImpl for StableImplTarget {
@@ -110,7 +103,6 @@ impl StableTraitForImpl for StableImplTarget {
 
 //@ is "$.index[?(@.docs=='unstable trait impl')].stability.level" '"unstable"'
 //@ is "$.index[?(@.docs=='unstable trait impl')].stability.feature" '"unstable_trait_impl"'
-//@ !has "$.index[?(@.docs=='unstable trait impl')].stability.since"
 /// unstable trait impl
 #[unstable(feature = "unstable_trait_impl", issue = "none")]
 impl UnstableTraitForImpl for StableImplTarget {
@@ -118,19 +110,16 @@ impl UnstableTraitForImpl for StableImplTarget {
 
     //@ is "$.index[?(@.docs=='assoc type inside unstable trait impl')].stability.level" '"unstable"'
     //@ is "$.index[?(@.docs=='assoc type inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
-    //@ !has "$.index[?(@.docs=='assoc type inside unstable trait impl')].stability.since"
     /// assoc type inside unstable trait impl
     type UnstableOutput = usize;
 
     //@ is "$.index[?(@.docs=='assoc const inside unstable trait impl')].stability.level" '"unstable"'
     //@ is "$.index[?(@.docs=='assoc const inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
-    //@ !has "$.index[?(@.docs=='assoc const inside unstable trait impl')].stability.since"
     /// assoc const inside unstable trait impl
     const UNSTABLE_ASSOC_CONST: usize = 0;
 
     //@ is "$.index[?(@.docs=='method inside unstable trait impl')].stability.level" '"unstable"'
     //@ is "$.index[?(@.docs=='method inside unstable trait impl')].stability.feature" '"unstable_trait_impl"'
-    //@ !has "$.index[?(@.docs=='method inside unstable trait impl')].stability.since"
     /// method inside unstable trait impl
     fn unstable_trait_method(&self) {}
 }

@@ -275,7 +275,7 @@ pub const trait Clone: Sized {
 // lifetime-dependent. Therefore, if `TrivialClone` is implemented for any lifetime,
 // its invariant holds whenever `Clone` is implemented, even if the actual
 // `TrivialClone` bound would not be satisfied because of lifetime bounds.
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 // If `#[derive(Clone, Clone, Copy)]` is written, there will be multiple
 // implementations of `TrivialClone`. To keep it from appearing in error
 // messages, make it a `#[marker]` trait.
@@ -781,7 +781,7 @@ mod impls {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
-            *self
+            self
         }
     }
 

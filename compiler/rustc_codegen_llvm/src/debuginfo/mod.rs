@@ -51,7 +51,6 @@ mod utils;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
-    llmod: &'ll llvm::Module,
     builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
@@ -62,23 +61,8 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub(crate) fn new(llmod: &'ll llvm::Module) -> Self {
+    pub(crate) fn new(llmod: &'ll llvm::Module, sess: &Session) -> Self {
         debug!("CodegenUnitDebugContext::new");
-        let builder = DIBuilderBox::new(llmod);
-        // DIBuilder inherits context from the module, so we'd better use the same one
-        CodegenUnitDebugContext {
-            llmod,
-            builder,
-            created_files: Default::default(),
-            type_map: Default::default(),
-            adt_stack: Default::default(),
-            namespace_map: RefCell::new(Default::default()),
-            recursion_marker_type: OnceCell::new(),
-        }
-    }
-
-    pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
 
         match sess.target.debuginfo_kind {
             DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym => {
@@ -89,7 +73,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 // This can be overridden using --llvm-opts -dwarf-version,N.
                 // Android has the same issue (#22398)
                 llvm::add_module_flag_u32(
-                    self.llmod,
+                    llmod,
                     // In the case where multiple CGUs with different dwarf version
                     // values are being merged together, such as with cross-crate
                     // LTO, then we want to use the highest version of dwarf
@@ -102,7 +86,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             DebuginfoKind::Pdb => {
                 // Indicate that we want CodeView debug information
                 llvm::add_module_flag_u32(
-                    self.llmod,
+                    llmod,
                     llvm::ModuleFlagMergeBehavior::Warning,
                     "CodeView",
                     1,
@@ -112,28 +96,26 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 
         // Prevent bitcode readers from deleting the debug info.
         llvm::add_module_flag_u32(
-            self.llmod,
+            llmod,
             llvm::ModuleFlagMergeBehavior::Warning,
             "Debug Info Version",
             unsafe { llvm::LLVMRustDebugMetadataVersion() },
         );
-    }
-}
 
-/// Creates any deferred debug metadata nodes
-pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
-    if let Some(dbg_cx) = &cx.dbg_cx {
-        debug!("finalize");
-
-        if gdb::needs_gdb_debug_scripts_section(cx) {
-            // Add a .debug_gdb_scripts section to this compile-unit. This will
-            // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-            // which activates the Rust pretty printers for binary this section is
-            // contained in.
-            gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
+        let builder = DIBuilderBox::new(llmod);
+        // DIBuilder inherits context from the module, so we'd better use the same one
+        CodegenUnitDebugContext {
+            builder,
+            created_files: Default::default(),
+            type_map: Default::default(),
+            adt_stack: Default::default(),
+            namespace_map: RefCell::new(Default::default()),
+            recursion_marker_type: OnceCell::new(),
         }
+    }
 
-        dbg_cx.finalize(cx.sess());
+    pub(crate) fn finalize(&self) {
+        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
     }
 }
 
@@ -144,6 +126,359 @@ impl<'ll> Builder<'_, 'll, '_> {
 }
 
 impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
+    fn dbg_scope_fn(
+        &mut self,
+        instance: Instance<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        maybe_definition_llfn: Option<&'ll Value>,
+    ) -> &'ll DIScope {
+        let tcx = self.tcx;
+
+        let def_id = instance.def_id();
+        let (containing_scope, is_method) = get_containing_scope(self, instance);
+        let span = tcx.def_span(def_id);
+        let loc = self.lookup_debug_loc(span.lo());
+        let file_metadata = file_metadata(self, &loc.file);
+
+        let function_type_metadata =
+            create_subroutine_type(self, &get_function_signature(self, fn_abi, span));
+
+        let mut name = String::with_capacity(64);
+        type_names::push_item_name(tcx, def_id, false, &mut name);
+
+        // Find the enclosing function, in case this is a closure.
+        let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
+
+        // We look up the generics of the enclosing function and truncate the args
+        // to their length in order to cut off extra stuff that might be in there for
+        // closures or coroutines.
+        let generics = tcx.generics_of(enclosing_fn_def_id);
+        let args = instance.args.truncate_to(tcx, generics);
+
+        type_names::push_generic_args(
+            tcx,
+            tcx.normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(args)),
+            &mut name,
+        );
+
+        let template_parameters = get_template_parameters(self, generics, args);
+
+        let linkage_name = &mangled_name_of_instance(self, instance).name;
+        // Omit the linkage_name if it is the same as subprogram name.
+        let linkage_name = if &name == linkage_name { "" } else { linkage_name };
+
+        // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
+        let scope_line = loc.line;
+
+        let mut flags = DIFlags::FlagPrototyped;
+
+        if fn_abi.ret.layout.is_uninhabited() {
+            flags |= DIFlags::FlagNoReturn;
+        }
+
+        let mut spflags = DISPFlags::SPFlagDefinition;
+        if is_node_local_to_unit(self, def_id) {
+            spflags |= DISPFlags::SPFlagLocalToUnit;
+        }
+        if self.sess().opts.optimize != config::OptLevel::No {
+            spflags |= DISPFlags::SPFlagOptimized;
+        }
+        if let Some((id, _)) = tcx.entry_fn(()) {
+            if id == def_id {
+                spflags |= DISPFlags::SPFlagMainSubprogram;
+            }
+        }
+
+        // When we're adding a method to a type DIE, we only want a DW_AT_declaration there, because
+        // LLVM LTO can't unify type definitions when a child DIE is a full subprogram definition.
+        // When we use this `decl` below, the subprogram definition gets created at the CU level
+        // with a DW_AT_specification pointing back to the type's declaration.
+        let decl = is_method.then(|| unsafe {
+            llvm::LLVMRustDIBuilderCreateMethod(
+                DIB(self),
+                containing_scope,
+                name.as_c_char_ptr(),
+                name.len(),
+                linkage_name.as_c_char_ptr(),
+                linkage_name.len(),
+                file_metadata,
+                loc.line,
+                function_type_metadata,
+                flags,
+                spflags & !DISPFlags::SPFlagDefinition,
+                template_parameters,
+            )
+        });
+
+        return unsafe {
+            llvm::LLVMRustDIBuilderCreateFunction(
+                DIB(self),
+                containing_scope,
+                name.as_c_char_ptr(),
+                name.len(),
+                linkage_name.as_c_char_ptr(),
+                linkage_name.len(),
+                file_metadata,
+                loc.line,
+                function_type_metadata,
+                scope_line,
+                flags,
+                spflags,
+                maybe_definition_llfn,
+                template_parameters,
+                decl,
+            )
+        };
+
+        fn get_function_signature<'ll, 'tcx>(
+            cx: &CodegenCx<'ll, 'tcx>,
+            fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+            span: Span,
+        ) -> Vec<Option<&'ll llvm::Metadata>> {
+            if cx.sess().opts.debuginfo != DebugInfo::Full {
+                return vec![];
+            }
+
+            let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
+
+            // Return type -- llvm::DIBuilder wants this at index 0
+            signature.push(if fn_abi.ret.is_ignore() {
+                None
+            } else {
+                Some(spanned_type_di_node(cx, fn_abi.ret.layout.ty, span))
+            });
+
+            // Arguments types
+            if cx.sess().target.is_like_msvc {
+                // FIXME(#42800):
+                // There is a bug in MSDIA that leads to a crash when it encounters
+                // a fixed-size array of `u8` or something zero-sized in a
+                // function-type (see #40477).
+                // As a workaround, we replace those fixed-size arrays with a
+                // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
+                // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
+                // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
+                // This transformed type is wrong, but these function types are
+                // already inaccurate due to ABI adjustments (see #42800).
+                signature.extend(fn_abi.args.iter().map(|arg| {
+                    let t = arg.layout.ty;
+                    let t = match t.kind() {
+                        ty::Array(ct, _)
+                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
+                        {
+                            Ty::new_imm_ptr(cx.tcx, *ct)
+                        }
+                        _ => t,
+                    };
+                    Some(spanned_type_di_node(cx, t, span))
+                }));
+            } else {
+                signature.extend(
+                    fn_abi
+                        .args
+                        .iter()
+                        .map(|arg| Some(spanned_type_di_node(cx, arg.layout.ty, span))),
+                );
+            }
+
+            signature
+        }
+
+        fn get_template_parameters<'ll, 'tcx>(
+            cx: &CodegenCx<'ll, 'tcx>,
+            generics: &ty::Generics,
+            args: GenericArgsRef<'tcx>,
+        ) -> &'ll DIArray {
+            if args.types().next().is_none() {
+                return create_DIArray(DIB(cx), &[]);
+            }
+
+            // Again, only create type information if full debuginfo is enabled
+            let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
+                let names = get_parameter_names(cx, generics);
+                iter::zip(args, names)
+                    .filter_map(|(kind, name)| {
+                        kind.as_type().map(|ty| {
+                            let actual_type = cx.tcx.normalize_erasing_regions(
+                                cx.typing_env(),
+                                Unnormalized::new_wip(ty),
+                            );
+                            let actual_type_metadata = type_di_node(cx, actual_type);
+                            Some(cx.create_template_type_parameter(
+                                name.as_str(),
+                                actual_type_metadata,
+                            ))
+                        })
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            create_DIArray(DIB(cx), &template_params)
+        }
+
+        fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
+            let mut names = generics.parent.map_or_else(Vec::new, |def_id| {
+                get_parameter_names(cx, cx.tcx.generics_of(def_id))
+            });
+            names.extend(generics.own_params.iter().map(|param| param.name));
+            names
+        }
+
+        /// Returns a scope, plus `true` if that's a type scope for "class" methods,
+        /// otherwise `false` for plain namespace scopes.
+        fn get_containing_scope<'ll, 'tcx>(
+            cx: &CodegenCx<'ll, 'tcx>,
+            instance: Instance<'tcx>,
+        ) -> (&'ll DIScope, bool) {
+            // First, let's see if this is a method within an inherent impl. Because
+            // if yes, we want to make the result subroutine DIE a child of the
+            // subroutine's self-type.
+            // For trait method impls we still use the "parallel namespace"
+            // strategy
+            if let Some(imp_def_id) = cx.tcx.inherent_impl_of_assoc(instance.def_id()) {
+                let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
+                    instance.args,
+                    cx.typing_env(),
+                    cx.tcx.type_of(imp_def_id),
+                );
+
+                // Only "class" methods are generally understood by LLVM,
+                // so avoid methods on other types (e.g., `<*mut T>::null`).
+                if let ty::Adt(def, ..) = impl_self_ty.kind()
+                    && !def.is_box()
+                {
+                    // Again, only create type information if full debuginfo is enabled
+                    if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param() {
+                        return (type_di_node(cx, impl_self_ty), true);
+                    } else {
+                        return (namespace::item_namespace(cx, def.did()), false);
+                    }
+                }
+            }
+
+            let scope = namespace::item_namespace(
+                cx,
+                DefId {
+                    krate: instance.def_id().krate,
+                    index: cx
+                        .tcx
+                        .def_key(instance.def_id())
+                        .parent
+                        .expect("get_containing_scope: missing parent?"),
+                },
+            );
+            (scope, false)
+        }
+    }
+
+    fn dbg_create_lexical_block(
+        &mut self,
+        pos: BytePos,
+        parent_scope: &'ll DIScope,
+    ) -> &'ll DIScope {
+        let loc = self.lookup_debug_loc(pos);
+        let file_metadata = file_metadata(self, &loc.file);
+        unsafe {
+            llvm::LLVMDIBuilderCreateLexicalBlock(
+                DIB(self),
+                parent_scope,
+                file_metadata,
+                loc.line,
+                loc.col,
+            )
+        }
+    }
+
+    fn dbg_location_clone_with_discriminator(
+        &mut self,
+        loc: &'ll DILocation,
+        discriminator: u32,
+    ) -> Option<&'ll DILocation> {
+        unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, discriminator) }
+    }
+
+    fn dbg_loc(
+        &mut self,
+        scope: &'ll DIScope,
+        inlined_at: Option<&'ll DILocation>,
+        span: Span,
+    ) -> &'ll DILocation {
+        // When emitting debugging information, DWARF (i.e. everything but MSVC)
+        // treats line 0 as a magic value meaning that the code could not be
+        // attributed to any line in the source. That's also exactly what dummy
+        // spans are. Make that equivalence here, rather than passing dummy spans
+        // to lookup_debug_loc, which will return line 1 for them.
+        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
+
+        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
+    }
+
+    fn extend_scope_to_file(
+        &mut self,
+        scope_metadata: &'ll DIScope,
+        file: &rustc_span::SourceFile,
+    ) -> &'ll DILexicalBlock {
+        metadata::extend_scope_to_file(self, scope_metadata, file)
+    }
+
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
+    fn create_dbg_var(
+        &mut self,
+        variable_name: Symbol,
+        variable_type: Ty<'tcx>,
+        scope_metadata: &'ll DIScope,
+        variable_kind: VariableKind,
+        span: Span,
+    ) -> &'ll DIVariable {
+        let loc = self.lookup_debug_loc(span.lo());
+        let file_metadata = file_metadata(self, &loc.file);
+
+        let type_metadata = spanned_type_di_node(self, variable_type, span);
+
+        let align = self.align_of(variable_type);
+
+        let name = variable_name.as_str();
+
+        match variable_kind {
+            ArgumentVariable(arg_index) => unsafe {
+                llvm::LLVMDIBuilderCreateParameterVariable(
+                    DIB(self),
+                    scope_metadata,
+                    name.as_ptr(),
+                    name.len(),
+                    arg_index as c_uint,
+                    file_metadata,
+                    loc.line,
+                    type_metadata,
+                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                    DIFlags::FlagZero,
+                )
+            },
+            LocalVariable => unsafe {
+                llvm::LLVMDIBuilderCreateAutoVariable(
+                    DIB(self),
+                    scope_metadata,
+                    name.as_ptr(),
+                    name.len(),
+                    file_metadata,
+                    loc.line,
+                    type_metadata,
+                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                    DIFlags::FlagZero,
+                    align.bits() as u32,
+                )
+            },
+        }
+    }
+
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
@@ -308,14 +643,14 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             )
             .unwrap();
 
-        let di_scope = self.cx().dbg_scope_fn(instance, fn_abi, None);
+        let di_scope = self.dbg_scope_fn(instance, fn_abi, None);
 
         // Create an inlined debug location:
         // - scope: the compiler_move/compiler_copy function
         // - inlined_at: the current location (where the move/copy actually occurs)
         // - span: use the function's definition span
         let fn_span = self.cx().tcx.def_span(instance.def_id());
-        let inlined_loc = self.cx().dbg_loc(di_scope, saved_loc, fn_span);
+        let inlined_loc = self.dbg_loc(di_scope, saved_loc, fn_span);
 
         // Set the temporary debug location
         self.set_dbg_loc(inlined_loc);
@@ -391,294 +726,26 @@ impl<'ll> CodegenCx<'ll, '_> {
             )
         }
     }
+
+    /// Creates any deferred debug metadata nodes
+    pub(crate) fn debuginfo_finalize(&self) {
+        if let Some(dbg_cx) = &self.dbg_cx {
+            debug!("finalize");
+
+            if gdb::needs_gdb_debug_scripts_section(self) {
+                // Add a .debug_gdb_scripts section to this compile-unit. This will
+                // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+                // which activates the Rust pretty printers for binary this section is
+                // contained in.
+                gdb::get_or_insert_gdb_debug_scripts_section_global(self);
+            }
+
+            dbg_cx.finalize();
+        }
+    }
 }
 
 impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn dbg_create_lexical_block(&self, pos: BytePos, parent_scope: &'ll DIScope) -> &'ll DIScope {
-        let loc = self.lookup_debug_loc(pos);
-        let file_metadata = file_metadata(self, &loc.file);
-        unsafe {
-            llvm::LLVMDIBuilderCreateLexicalBlock(
-                DIB(self),
-                parent_scope,
-                file_metadata,
-                loc.line,
-                loc.col,
-            )
-        }
-    }
-
-    fn dbg_location_clone_with_discriminator(
-        &self,
-        loc: &'ll DILocation,
-        discriminator: u32,
-    ) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, discriminator) }
-    }
-
-    fn dbg_scope_fn(
-        &self,
-        instance: Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        maybe_definition_llfn: Option<&'ll Value>,
-    ) -> &'ll DIScope {
-        let tcx = self.tcx;
-
-        let def_id = instance.def_id();
-        let (containing_scope, is_method) = get_containing_scope(self, instance);
-        let span = tcx.def_span(def_id);
-        let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file);
-
-        let function_type_metadata =
-            create_subroutine_type(self, &get_function_signature(self, fn_abi));
-
-        let mut name = String::with_capacity(64);
-        type_names::push_item_name(tcx, def_id, false, &mut name);
-
-        // Find the enclosing function, in case this is a closure.
-        let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
-
-        // We look up the generics of the enclosing function and truncate the args
-        // to their length in order to cut off extra stuff that might be in there for
-        // closures or coroutines.
-        let generics = tcx.generics_of(enclosing_fn_def_id);
-        let args = instance.args.truncate_to(tcx, generics);
-
-        type_names::push_generic_args(
-            tcx,
-            tcx.normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(args)),
-            &mut name,
-        );
-
-        let template_parameters = get_template_parameters(self, generics, args);
-
-        let linkage_name = &mangled_name_of_instance(self, instance).name;
-        // Omit the linkage_name if it is the same as subprogram name.
-        let linkage_name = if &name == linkage_name { "" } else { linkage_name };
-
-        // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
-        let scope_line = loc.line;
-
-        let mut flags = DIFlags::FlagPrototyped;
-
-        if fn_abi.ret.layout.is_uninhabited() {
-            flags |= DIFlags::FlagNoReturn;
-        }
-
-        let mut spflags = DISPFlags::SPFlagDefinition;
-        if is_node_local_to_unit(self, def_id) {
-            spflags |= DISPFlags::SPFlagLocalToUnit;
-        }
-        if self.sess().opts.optimize != config::OptLevel::No {
-            spflags |= DISPFlags::SPFlagOptimized;
-        }
-        if let Some((id, _)) = tcx.entry_fn(()) {
-            if id == def_id {
-                spflags |= DISPFlags::SPFlagMainSubprogram;
-            }
-        }
-
-        // When we're adding a method to a type DIE, we only want a DW_AT_declaration there, because
-        // LLVM LTO can't unify type definitions when a child DIE is a full subprogram definition.
-        // When we use this `decl` below, the subprogram definition gets created at the CU level
-        // with a DW_AT_specification pointing back to the type's declaration.
-        let decl = is_method.then(|| unsafe {
-            llvm::LLVMRustDIBuilderCreateMethod(
-                DIB(self),
-                containing_scope,
-                name.as_c_char_ptr(),
-                name.len(),
-                linkage_name.as_c_char_ptr(),
-                linkage_name.len(),
-                file_metadata,
-                loc.line,
-                function_type_metadata,
-                flags,
-                spflags & !DISPFlags::SPFlagDefinition,
-                template_parameters,
-            )
-        });
-
-        return unsafe {
-            llvm::LLVMRustDIBuilderCreateFunction(
-                DIB(self),
-                containing_scope,
-                name.as_c_char_ptr(),
-                name.len(),
-                linkage_name.as_c_char_ptr(),
-                linkage_name.len(),
-                file_metadata,
-                loc.line,
-                function_type_metadata,
-                scope_line,
-                flags,
-                spflags,
-                maybe_definition_llfn,
-                template_parameters,
-                decl,
-            )
-        };
-
-        fn get_function_signature<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
-            fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        ) -> Vec<Option<&'ll llvm::Metadata>> {
-            if cx.sess().opts.debuginfo != DebugInfo::Full {
-                return vec![];
-            }
-
-            let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
-
-            // Return type -- llvm::DIBuilder wants this at index 0
-            signature.push(if fn_abi.ret.is_ignore() {
-                None
-            } else {
-                Some(type_di_node(cx, fn_abi.ret.layout.ty))
-            });
-
-            // Arguments types
-            if cx.sess().target.is_like_msvc {
-                // FIXME(#42800):
-                // There is a bug in MSDIA that leads to a crash when it encounters
-                // a fixed-size array of `u8` or something zero-sized in a
-                // function-type (see #40477).
-                // As a workaround, we replace those fixed-size arrays with a
-                // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
-                // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
-                // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
-                // This transformed type is wrong, but these function types are
-                // already inaccurate due to ABI adjustments (see #42800).
-                signature.extend(fn_abi.args.iter().map(|arg| {
-                    let t = arg.layout.ty;
-                    let t = match t.kind() {
-                        ty::Array(ct, _)
-                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
-                        {
-                            Ty::new_imm_ptr(cx.tcx, *ct)
-                        }
-                        _ => t,
-                    };
-                    Some(type_di_node(cx, t))
-                }));
-            } else {
-                signature
-                    .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
-            }
-
-            signature
-        }
-
-        fn get_template_parameters<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
-            generics: &ty::Generics,
-            args: GenericArgsRef<'tcx>,
-        ) -> &'ll DIArray {
-            if args.types().next().is_none() {
-                return create_DIArray(DIB(cx), &[]);
-            }
-
-            // Again, only create type information if full debuginfo is enabled
-            let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
-                let names = get_parameter_names(cx, generics);
-                iter::zip(args, names)
-                    .filter_map(|(kind, name)| {
-                        kind.as_type().map(|ty| {
-                            let actual_type = cx.tcx.normalize_erasing_regions(
-                                cx.typing_env(),
-                                Unnormalized::new_wip(ty),
-                            );
-                            let actual_type_metadata = type_di_node(cx, actual_type);
-                            Some(cx.create_template_type_parameter(
-                                name.as_str(),
-                                actual_type_metadata,
-                            ))
-                        })
-                    })
-                    .collect()
-            } else {
-                vec![]
-            };
-
-            create_DIArray(DIB(cx), &template_params)
-        }
-
-        fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
-            let mut names = generics.parent.map_or_else(Vec::new, |def_id| {
-                get_parameter_names(cx, cx.tcx.generics_of(def_id))
-            });
-            names.extend(generics.own_params.iter().map(|param| param.name));
-            names
-        }
-
-        /// Returns a scope, plus `true` if that's a type scope for "class" methods,
-        /// otherwise `false` for plain namespace scopes.
-        fn get_containing_scope<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
-            instance: Instance<'tcx>,
-        ) -> (&'ll DIScope, bool) {
-            // First, let's see if this is a method within an inherent impl. Because
-            // if yes, we want to make the result subroutine DIE a child of the
-            // subroutine's self-type.
-            // For trait method impls we still use the "parallel namespace"
-            // strategy
-            if let Some(imp_def_id) = cx.tcx.inherent_impl_of_assoc(instance.def_id()) {
-                let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
-                    instance.args,
-                    cx.typing_env(),
-                    cx.tcx.type_of(imp_def_id),
-                );
-
-                // Only "class" methods are generally understood by LLVM,
-                // so avoid methods on other types (e.g., `<*mut T>::null`).
-                if let ty::Adt(def, ..) = impl_self_ty.kind()
-                    && !def.is_box()
-                {
-                    // Again, only create type information if full debuginfo is enabled
-                    if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param() {
-                        return (type_di_node(cx, impl_self_ty), true);
-                    } else {
-                        return (namespace::item_namespace(cx, def.did()), false);
-                    }
-                }
-            }
-
-            let scope = namespace::item_namespace(
-                cx,
-                DefId {
-                    krate: instance.def_id().krate,
-                    index: cx
-                        .tcx
-                        .def_key(instance.def_id())
-                        .parent
-                        .expect("get_containing_scope: missing parent?"),
-                },
-            );
-            (scope, false)
-        }
-    }
-
-    fn dbg_loc(
-        &self,
-        scope: &'ll DIScope,
-        inlined_at: Option<&'ll DILocation>,
-        span: Span,
-    ) -> &'ll DILocation {
-        // When emitting debugging information, DWARF (i.e. everything but MSVC)
-        // treats line 0 as a magic value meaning that the code could not be
-        // attributed to any line in the source. That's also exactly what dummy
-        // spans are. Make that equivalence here, rather than passing dummy spans
-        // to lookup_debug_loc, which will return line 1 for them.
-        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
-            (0, 0)
-        } else {
-            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
-            (line, col)
-        };
-
-        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
-    }
-
     fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,
@@ -686,68 +753,5 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         vtable: Self::Value,
     ) {
         metadata::create_vtable_di_node(self, ty, trait_ref, vtable)
-    }
-
-    fn extend_scope_to_file(
-        &self,
-        scope_metadata: &'ll DIScope,
-        file: &rustc_span::SourceFile,
-    ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(self, scope_metadata, file)
-    }
-
-    fn debuginfo_finalize(&self) {
-        finalize(self)
-    }
-
-    // FIXME(eddyb) find a common convention for all of the debuginfo-related
-    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
-    fn create_dbg_var(
-        &self,
-        variable_name: Symbol,
-        variable_type: Ty<'tcx>,
-        scope_metadata: &'ll DIScope,
-        variable_kind: VariableKind,
-        span: Span,
-    ) -> &'ll DIVariable {
-        let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file);
-
-        let type_metadata = spanned_type_di_node(self, variable_type, span);
-
-        let align = self.align_of(variable_type);
-
-        let name = variable_name.as_str();
-
-        match variable_kind {
-            ArgumentVariable(arg_index) => unsafe {
-                llvm::LLVMDIBuilderCreateParameterVariable(
-                    DIB(self),
-                    scope_metadata,
-                    name.as_ptr(),
-                    name.len(),
-                    arg_index as c_uint,
-                    file_metadata,
-                    loc.line,
-                    type_metadata,
-                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
-                    DIFlags::FlagZero,
-                )
-            },
-            LocalVariable => unsafe {
-                llvm::LLVMDIBuilderCreateAutoVariable(
-                    DIB(self),
-                    scope_metadata,
-                    name.as_ptr(),
-                    name.len(),
-                    file_metadata,
-                    loc.line,
-                    type_metadata,
-                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
-                    DIFlags::FlagZero,
-                    align.bits() as u32,
-                )
-            },
-        }
     }
 }

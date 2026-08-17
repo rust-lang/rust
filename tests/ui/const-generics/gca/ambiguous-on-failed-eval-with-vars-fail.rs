@@ -4,10 +4,13 @@
 // runs on the old solver, just in case someone attempts to implement GCA for the old solver and
 // removes the restriction that -Znext-solver must be enabled)
 
-#![feature(generic_const_items)]
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
+#![feature(
+    min_generic_const_args,
+    macroless_generic_const_args,
+    generic_const_args,
 //[old]~^ ERROR next-solver
+    generic_const_items
+)]
 #![expect(incomplete_features)]
 
 const FREE<const A: usize>: usize = 10;

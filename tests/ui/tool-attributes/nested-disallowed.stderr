@@ -1,8 +1,8 @@
 error[E0565]: malformed `register_tool` attribute input
-  --> $DIR/nested-disallowed.rs:2:1
+  --> $DIR/nested-disallowed.rs:2:4
    |
 LL | #![register_tool(foo::bar)]
-   | ^^^^^^^^^^^^^^^^^--------^^
+   |    ^^^^^^^^^^^^^^--------^
    |                  |
    |                  expected a valid identifier here
    |

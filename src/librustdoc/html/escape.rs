@@ -79,9 +79,12 @@ impl fmt::Display for EscapeBodyTextWithWbr<'_> {
             } else if (s.contains(':') && !next_is_colon())
                 || (s.contains('_') && !next_is_underscore())
             {
-                EscapeBodyText(&text[last..i + 1]).fmt(fmt)?;
+                // `i + s.len()`, not `i + 1`: a cluster containing `_` or `:` can still be
+                // several bytes long, because UAX#29 GB9b joins a `Prepend` character to the
+                // one that follows it.
+                EscapeBodyText(&text[last..i + s.len()]).fmt(fmt)?;
                 fmt.write_str("<wbr>")?;
-                last = i + 1;
+                last = i + s.len();
             }
         }
         if last < text.len() {

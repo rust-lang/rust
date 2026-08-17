@@ -76,6 +76,7 @@ impl Socket {
                 target_os = "openbsd",
                 target_os = "cygwin",
                 target_os = "nto",
+                target_os = "qnx",
                 target_os = "solaris",
             ) => {
                 // On platforms that support it we pass the SOCK_CLOEXEC
@@ -124,6 +125,7 @@ impl Socket {
                     target_os = "openbsd",
                     target_os = "cygwin",
                     target_os = "nto",
+                    target_os = "qnx",
                 ) => {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
@@ -277,7 +279,7 @@ impl Socket {
 
     #[cfg(not(target_os = "wasi"))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
         })?;
@@ -394,10 +396,7 @@ impl Socket {
                 } else {
                     dur.as_secs() as libc::time_t
                 };
-                let mut timeout = libc::timeval {
-                    tv_sec: secs,
-                    tv_usec: dur.subsec_micros() as libc::suseconds_t,
-                };
+                let mut timeout = libc::timeval { tv_sec: secs, tv_usec: dur.subsec_micros() as _ };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;
                 }

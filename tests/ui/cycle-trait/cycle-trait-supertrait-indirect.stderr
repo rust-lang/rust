@@ -1,16 +1,16 @@
-error[E0391]: cycle detected when computing the super predicates of `B`
+error[E0391]: cycle detected when computing the super clauses of `B`
   --> $DIR/cycle-trait-supertrait-indirect.rs:7:10
    |
 LL | trait B: C {
    |          ^
    |
-note: ...which requires computing the super predicates of `C`...
+note: ...which requires computing the super clauses of `C`...
   --> $DIR/cycle-trait-supertrait-indirect.rs:11:10
    |
 LL | trait C: B { }
    |          ^
-   = note: ...which again requires computing the super predicates of `B`, completing the cycle
-note: cycle used when computing the super predicates of `A`
+   = note: ...which again requires computing the super clauses of `B`, completing the cycle
+note: cycle used when computing the super clauses of `A`
   --> $DIR/cycle-trait-supertrait-indirect.rs:4:10
    |
 LL | trait A: B {

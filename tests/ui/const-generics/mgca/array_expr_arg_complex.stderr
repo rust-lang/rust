@@ -1,14 +1,14 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/array_expr_arg_complex.rs:12:25
+  --> $DIR/array_expr_arg_complex.rs:12:49
    |
-LL |     takes_array::<{ [N, N + 1] }>();
-   |                         ^^^^^
+LL |     takes_array::<{ core::direct_const_arg!([N, N + 1]) }>();
+   |                                                 ^^^^^
 
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/array_expr_arg_complex.rs:13:37
+  --> $DIR/array_expr_arg_complex.rs:13:61
    |
-LL |     takes_tuple_with_array::<{ ([N, N + 1], N) }>();
-   |                                     ^^^^^
+LL |     takes_tuple_with_array::<{ core::direct_const_arg!(([N, N + 1], N)) }>();
+   |                                                             ^^^^^
 
 error: aborting due to 2 previous errors
 

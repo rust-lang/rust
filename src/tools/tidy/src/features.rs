@@ -16,6 +16,8 @@ use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
+use regex::Regex;
+
 use crate::diagnostics::{RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 
@@ -23,8 +25,9 @@ use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 mod tests;
 
 mod version;
-use regex::Regex;
-use version::Version;
+// Re-export Version. This means other crates can construct Versions from [u32;3] and from &str.
+// This is useful for filtering for features older/newer than a user-provided value.
+pub use version::Version;
 
 const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
@@ -470,6 +473,104 @@ fn get_and_check_lib_features(
     lib_features
 }
 
+/// `mf` gets the feature or an error if it is invalid, the file path passed as `file`, and the attribute's line number.
+fn extract_lib_features<'c, 'p>(
+    contents: &'c str,
+    file: &'p Path,
+    mf: &mut (dyn Send + Sync + FnMut(Result<(&'c str, Feature), &'static str>, &'p Path, usize)),
+) {
+    let handle_issue_none = |s| match s {
+        "none" => None,
+        issue => {
+            let n = issue.parse().expect("issue number is not a valid integer");
+            assert_ne!(n, 0, "\"none\" should be used when there is no issue, not \"0\"");
+            NonZeroU32::new(n)
+        }
+    };
+    for attr in static_regex!(
+        r"#!?\[\s*(?<attr_name>rustc_const_unstable|unstable|stable)\s*(?<attr_meta>(\((?s).*?)\)|)\]"
+    )
+    .captures_iter(contents)
+    {
+        let match_index = attr.get_match().start();
+        let before_match = &contents[..match_index];
+        let before_match_line = match before_match.rsplit_once('\n') {
+            Some((_, it)) => it,
+            None => before_match,
+        };
+        if static_regex!(r"^\s*//").is_match(before_match_line) {
+            // It starts inside a comment, exclude (this does not handle block comments).
+            // Technically this will mis-handle things like:
+            // ```
+            // // #[stable
+            // #[stable(...)]
+            // ```
+            // Hopefully that's not a problem.
+            continue;
+        }
+
+        let line = before_match.bytes().filter(|b| *b == b'\n').count() + 1;
+
+        macro_rules! err {
+            ($msg:expr) => {{
+                mf(Err($msg), file, line);
+                continue;
+            }};
+        }
+
+        let attr_meta = attr.name("attr_meta").unwrap().as_str();
+        let level = match &attr["attr_name"] {
+            "rustc_const_unstable" => {
+                // `const fn` features are handled specially.
+                let feature_name = match find_attr_val(attr_meta, "feature") {
+                    Some(name) => name,
+                    None => err!("malformed stability attribute: missing `feature` key"),
+                };
+                let feature = Feature {
+                    level: Status::Unstable,
+                    since: None,
+                    has_gate_test: false,
+                    tracking_issue: find_attr_val(attr_meta, "issue").and_then(handle_issue_none),
+                    file: file.to_path_buf(),
+                    line,
+                    description: None,
+                };
+                mf(Ok((feature_name, feature)), file, line);
+                continue;
+            }
+            "unstable" => Status::Unstable,
+            "stable" => Status::Accepted,
+            _ => unreachable!("unexpected attribute name"),
+        };
+        let feature_name = match find_attr_val(attr_meta, "feature") {
+            Some(name) => name,
+            None => err!("malformed stability attribute: missing `feature` key"),
+        };
+        let since = match find_attr_val(attr_meta, "since").map(|x| x.parse()) {
+            Some(Ok(since)) => Some(since),
+            Some(Err(_err)) => {
+                err!("malformed stability attribute: can't parse `since` key");
+            }
+            None if level == Status::Accepted => {
+                err!("malformed stability attribute: missing the `since` key");
+            }
+            None => None,
+        };
+        let tracking_issue = find_attr_val(attr_meta, "issue").and_then(handle_issue_none);
+
+        let feature = Feature {
+            level,
+            since,
+            has_gate_test: false,
+            tracking_issue,
+            file: file.to_path_buf(),
+            line,
+            description: None,
+        };
+        mf(Ok((feature_name, feature)), file, line);
+    }
+}
+
 fn map_lib_features(
     base_src_path: &Path,
     mf: &mut (dyn Send + Sync + FnMut(Result<(&str, Feature), &str>, &Path, usize)),
@@ -488,118 +589,7 @@ fn map_lib_features(
                 return;
             }
 
-            // This is an early exit -- all the attributes we're concerned with must contain this:
-            // * rustc_const_unstable(
-            // * unstable(
-            // * stable(
-            if !contents.contains("stable(") {
-                return;
-            }
-
-            let handle_issue_none = |s| match s {
-                "none" => None,
-                issue => {
-                    let n = issue.parse().expect("issue number is not a valid integer");
-                    assert_ne!(n, 0, "\"none\" should be used when there is no issue, not \"0\"");
-                    NonZeroU32::new(n)
-                }
-            };
-            let mut becoming_feature: Option<(&str, Feature)> = None;
-            let mut iter_lines = contents.lines().enumerate().peekable();
-            while let Some((i, line)) = iter_lines.next() {
-                macro_rules! err {
-                    ($msg:expr) => {{
-                        mf(Err($msg), file, i + 1);
-                        continue;
-                    }};
-                }
-
-                // exclude commented out lines
-                if static_regex!(r"^\s*//").is_match(line) {
-                    continue;
-                }
-
-                if let Some((name, ref mut f)) = becoming_feature {
-                    if f.tracking_issue.is_none() {
-                        f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
-                    }
-                    if line.ends_with(']') {
-                        mf(Ok((name, f.clone())), file, i + 1);
-                    } else if !line.ends_with(',') && !line.ends_with('\\') && !line.ends_with('"')
-                    {
-                        // We need to bail here because we might have missed the
-                        // end of a stability attribute above because the ']'
-                        // might not have been at the end of the line.
-                        // We could then get into the very unfortunate situation that
-                        // we continue parsing the file assuming the current stability
-                        // attribute has not ended, and ignoring possible feature
-                        // attributes in the process.
-                        err!("malformed stability attribute");
-                    } else {
-                        continue;
-                    }
-                }
-                becoming_feature = None;
-                if line.contains("rustc_const_unstable(") {
-                    // `const fn` features are handled specially.
-                    let feature_name = match find_attr_val(line, "feature").or_else(|| {
-                        iter_lines.peek().and_then(|next| find_attr_val(next.1, "feature"))
-                    }) {
-                        Some(name) => name,
-                        None => err!("malformed stability attribute: missing `feature` key"),
-                    };
-                    let feature = Feature {
-                        level: Status::Unstable,
-                        since: None,
-                        has_gate_test: false,
-                        tracking_issue: find_attr_val(line, "issue").and_then(handle_issue_none),
-                        file: file.to_path_buf(),
-                        line: i + 1,
-                        description: None,
-                    };
-                    mf(Ok((feature_name, feature)), file, i + 1);
-                    continue;
-                }
-                let level = if line.contains("[unstable(") {
-                    Status::Unstable
-                } else if line.contains("[stable(") {
-                    Status::Accepted
-                } else {
-                    continue;
-                };
-                let feature_name = match find_attr_val(line, "feature")
-                    .or_else(|| iter_lines.peek().and_then(|next| find_attr_val(next.1, "feature")))
-                {
-                    Some(name) => name,
-                    None => err!("malformed stability attribute: missing `feature` key"),
-                };
-                let since = match find_attr_val(line, "since").map(|x| x.parse()) {
-                    Some(Ok(since)) => Some(since),
-                    Some(Err(_err)) => {
-                        err!("malformed stability attribute: can't parse `since` key");
-                    }
-                    None if level == Status::Accepted => {
-                        err!("malformed stability attribute: missing the `since` key");
-                    }
-                    None => None,
-                };
-                let tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
-
-                let feature = Feature {
-                    level,
-                    since,
-                    has_gate_test: false,
-                    tracking_issue,
-                    file: file.to_path_buf(),
-                    line: i + 1,
-                    description: None,
-                };
-                if line.contains(']') {
-                    mf(Ok((feature_name, feature)), file, i + 1);
-                } else {
-                    becoming_feature = Some((feature_name, feature));
-                }
-            }
+            extract_lib_features(contents, file, mf);
         },
     );
 }

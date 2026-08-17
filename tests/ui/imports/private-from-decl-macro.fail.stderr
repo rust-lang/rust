@@ -17,7 +17,7 @@ LL |     crate::m::mac_glob!();
    |     --------------------- in this macro invocation
    = note: this error originates in the macro `crate::m::mac_glob` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0423]: expected value, found struct `S`
+error[E0423]: cannot find value `S` in this scope
   --> $DIR/private-from-decl-macro.rs:28:17
    |
 LL |     pub struct S {}
@@ -26,6 +26,7 @@ LL |     pub struct S {}
 LL |         let s = S;
    |                 ^
    |
+   = note: a struct named `S` exists in another namespace
 note: constant `m::S` exists but is inaccessible
   --> $DIR/private-from-decl-macro.rs:10:5
    |

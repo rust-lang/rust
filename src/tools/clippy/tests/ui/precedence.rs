@@ -1,12 +1,5 @@
 #![warn(clippy::precedence)]
-#![allow(
-    unused_must_use,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::clone_on_copy,
-    clippy::identity_op,
-    clippy::eq_op
-)]
+#![expect(clippy::clone_on_copy, clippy::eq_op, clippy::identity_op, clippy::no_effect)]
 
 macro_rules! trip {
     ($a:expr) => {

@@ -1,5 +1,5 @@
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{
@@ -37,7 +37,6 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
             &add_call_guards::CriticalCallEdges,
         ],
         None,
-        pm::Optimizations::Allowed,
     );
     body
 }
@@ -204,8 +203,23 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     let ty::Coroutine(coroutine_def_id, impl_args) = impl_ty.kind() else {
         bug!("build_adrop_for_coroutine_shim not for coroutine impl type: ({:?})", shim);
     };
+    let ty::Coroutine(_, id_args) = *tcx.type_of(*coroutine_def_id).skip_binder().kind() else {
+        bug!()
+    };
     let source_info = SourceInfo::outermost(span);
-    let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
+
+    // If the kind tys differ, we must use the by-move body
+    let def_id = if id_args.as_coroutine().kind_ty() == impl_args.as_coroutine().kind_ty() {
+        *coroutine_def_id
+    } else {
+        assert_eq!(
+            impl_args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
+            ty::ClosureKind::FnOnce
+        );
+
+        tcx.coroutine_by_move_body_def_id(*coroutine_def_id)
+    };
+    let body = tcx.optimized_mir(def_id).future_drop_poll().unwrap();
     let mut body: Body<'tcx> =
         EarlyBinder::bind(tcx, body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
     body.source.instance = ty::InstanceKind::Shim(shim);
@@ -371,7 +385,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
         Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, pin_fn, [cor_ref.into()], span),
+                func: Operand::function_handle(tcx, pin_fn, &[cor_ref.into()], span),
                 args: [dummy_spanned(Operand::Move(cor_ref_place))].into(),
                 destination: cor_pin_place,
                 target: Some(call_bb),
@@ -392,7 +406,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
         Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, poll_fn, [impl_ty.into()], span),
+                func: Operand::function_handle(tcx, poll_fn, &[impl_ty.into()], span),
                 args: [
                     dummy_spanned(Operand::Move(cor_pin_place)),
                     dummy_spanned(Operand::Move(resume_ctx)),

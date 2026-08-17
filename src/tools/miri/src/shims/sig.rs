@@ -200,30 +200,29 @@ fn check_shim_abi<'tcx>(
     interp_ok(())
 }
 
-fn check_shim_symbol_clash<'tcx>(
-    this: &mut MiriInterpCx<'tcx>,
-    link_name: Symbol,
-) -> InterpResult<'tcx, ()> {
-    if let Some((body, instance)) = this.lookup_exported_symbol(link_name)? {
-        // If compiler-builtins is providing the symbol, then don't treat it as a clash.
-        // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
-        // performance. Note that this means we won't catch any undefined behavior in
-        // compiler-builtins when running other crates, but Miri can still be run on
-        // compiler-builtins itself (or any crate that uses it as a normal dependency)
-        if this.tcx.is_compiler_builtins(instance.def_id().krate) {
-            return interp_ok(());
-        }
-
-        throw_machine_stop!(TerminationInfo::SymbolShimClashing {
-            link_name,
-            span: body.span.data(),
-        })
-    }
-    interp_ok(())
-}
-
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Ensure the given symbol is not exported by the program.
+    fn check_shim_symbol_clash(&self, link_name: Symbol) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_ref();
+        if let Some(instance) = this.lookup_exported_symbol(link_name)? {
+            // If compiler-builtins is providing the symbol, then don't treat it as a clash.
+            // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
+            // performance. Note that this means we won't catch any undefined behavior in
+            // compiler-builtins when running other crates, but Miri can still be run on
+            // compiler-builtins itself (or any crate that uses it as a normal dependency)
+            if this.tcx.is_compiler_builtins(instance.def_id().krate) {
+                return interp_ok(());
+            }
+
+            throw_machine_stop!(TerminationInfo::SymbolShimClashing {
+                link_name,
+                span: this.tcx.def_span(instance.def_id()).data(),
+            })
+        }
+        interp_ok(())
+    }
+
     fn check_shim_sig_lenient<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
@@ -231,8 +230,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        let this = self.eval_context_mut();
-        check_shim_symbol_clash(this, link_name)?;
+        self.check_shim_symbol_clash(link_name)?;
 
         if abi.conv != exp_abi {
             throw_ub_format!(
@@ -283,7 +281,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Check everything.
         check_shim_abi(this, callee_fn_abi, caller_fn_abi)?;
-        check_shim_symbol_clash(this, link_name)?;
+        this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
         if let Ok(ops) = caller_args.try_into() {
@@ -304,8 +302,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
-        let this = self.eval_context_mut();
-        check_shim_symbol_clash(this, link_name)?;
+        self.check_shim_symbol_clash(link_name)?;
 
         if abi.conv != exp_abi {
             throw_ub_format!(
@@ -329,6 +326,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(args);
         }
         panic!("mismatch between signature and `args` slice");
+    }
+
+    /// Check that the given function has the expected amount of arguments, and then
+    /// return the list of arguments.
+    ///
+    /// This may only be used for `extern "unadjusted"` LLVM intrinsics.
+    fn check_shim_sig_unadjusted<'a, const N: usize>(
+        &mut self,
+        link_name: Symbol,
+        args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+        assert!(link_name.as_str().starts_with("llvm."));
+
+        self.check_shim_symbol_clash(link_name)?;
+
+        if let Ok(ops) = args.try_into() {
+            return interp_ok(ops);
+        }
+        throw_ub_format!(
+            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
+            args.len(),
+            N
+        )
     }
 }
 

@@ -1,11 +1,9 @@
 use std::fmt::Debug;
 
-use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, AliasTerm, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy,
-    Interner, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UniverseIndex,
+    self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, TypeFoldable,
+    TypeSuperFoldable, TypeVisitableExt, UniverseIndex, eager_resolve_vars,
 };
 use tracing::instrument;
 
@@ -37,72 +35,6 @@ pub enum NormalizationWasAmbiguous {
     No,
 }
 
-/// Finds the max universe present in infer vars.
-struct MaxUniverse<'a, Infcx, I>
-where
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
-{
-    infcx: &'a Infcx,
-    max_universe: ty::UniverseIndex,
-}
-
-impl<'a, Infcx, I> MaxUniverse<'a, Infcx, I>
-where
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
-{
-    fn new(infcx: &'a Infcx) -> Self {
-        MaxUniverse { infcx, max_universe: ty::UniverseIndex::ROOT }
-    }
-
-    fn max_universe(self) -> ty::UniverseIndex {
-        self.max_universe
-    }
-}
-
-impl<'a, Infcx, I> TypeVisitor<I> for MaxUniverse<'a, Infcx, I>
-where
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner,
-{
-    type Result = ();
-
-    fn visit_ty(&mut self, t: I::Ty) {
-        if !t.has_infer() {
-            return;
-        }
-
-        if let ty::Infer(InferTy::TyVar(vid)) = t.kind() {
-            // We shallow resolved the infer var before.
-            // So it should be a unresolved infer var with an universe.
-            self.max_universe = self.max_universe.max(self.infcx.universe_of_ty(vid).unwrap());
-        }
-
-        t.super_visit_with(self)
-    }
-
-    fn visit_const(&mut self, c: I::Const) {
-        if !c.has_infer() {
-            return;
-        }
-
-        if let ty::ConstKind::Infer(InferConst::Var(vid)) = c.kind() {
-            // We shallow resolved the infer var before.
-            // So it should be a unresolved infer var with an universe.
-            self.max_universe = self.max_universe.max(self.infcx.universe_of_ct(vid).unwrap());
-        }
-
-        c.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: I::Region) {
-        if let ty::ReVar(vid) = r.kind() {
-            self.max_universe = self.max_universe.max(self.infcx.universe_of_lt(vid).unwrap());
-        }
-    }
-}
-
 impl<'a, Infcx, I, F, E> NormalizationFolder<'a, Infcx, I, F>
 where
     Infcx: InferCtxtLike<Interner = I>,
@@ -130,9 +62,7 @@ where
         if normalization_was_ambiguous == NormalizationWasAmbiguous::Yes
             && has_escaping == HasEscapingBoundVars::Yes
         {
-            let mut visitor = MaxUniverse::new(self.infcx);
-            normalized.visit_with(&mut visitor);
-            let max_universe = visitor.max_universe();
+            let max_universe = ty::max_universe_of_infer_vars(self.infcx, normalized);
             if max_universe.can_name(self.universes.first().unwrap().unwrap()) {
                 return Ok(None);
             }
@@ -187,9 +117,8 @@ where
         let normalized = if ty.has_escaping_bound_vars() {
             let (alias_ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_ty);
-            let Some(result) = ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::Yes)
-            })?
+            let Some(result) =
+                self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::Yes)?
             else {
                 return Ok(ty);
             };
@@ -203,17 +132,15 @@ where
                 result.expect_ty(),
             )
         } else {
-            ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)
-            })?
-            .map(|term| term.expect_ty())
-            .unwrap_or(ty)
+            self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)?
+                .map(|term| term.expect_ty())
+                .unwrap_or(ty)
         };
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = crate::resolve::eager_resolve_vars(infcx, original);
-            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            let original = eager_resolve_vars(infcx, original);
+            let normalized = eager_resolve_vars(infcx, normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
         Ok(normalized)
@@ -241,9 +168,8 @@ where
         let normalized = if ct.has_escaping_bound_vars() {
             let (alias_const, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_const);
-            let Some(result) = ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::Yes)
-            })?
+            let Some(result) =
+                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::Yes)?
             else {
                 return Ok(ct);
             };
@@ -256,17 +182,15 @@ where
                 result.expect_const(),
             )
         } else {
-            ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::No)
-            })?
-            .map(|term| term.expect_const())
-            .unwrap_or(ct)
+            self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::No)?
+                .map(|term| term.expect_const())
+                .unwrap_or(ct)
         };
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = crate::resolve::eager_resolve_vars(infcx, original);
-            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            let original = eager_resolve_vars(infcx, original);
+            let normalized = eager_resolve_vars(infcx, normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
 

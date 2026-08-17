@@ -8,7 +8,7 @@ LL |     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Sel
    |                                                        ----------------------------- expected `Result<<V as Visitor<'de>>::Value, E>` because of return type
 ...
 LL |             Ok(deserializer) => deserializer.deserialize_ignored_any(visitor),
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<<V as Visitor<'_>>::Value, E>`, found `Result<<V as Visitor<'_>>::Value, ...>`
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<<V as Visitor<'_>>::Value, E>`, found `Result<<V as Visitor<'_>>::Value, _>`
    |
    = note: expected enum `Result<_, E>`
               found enum `Result<_, <T as Deserializer<'de>>::Error>`

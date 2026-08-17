@@ -3,6 +3,7 @@ use std::ops::Not;
 use rustc_hir as hir;
 use rustc_hir::{Node, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_session::config::EntryFnType;
@@ -133,7 +134,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         let norm_return_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(return_ty));
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
+        if let TraitErrors::HasErrors(errors) = errors {
             return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
         }
 
@@ -166,15 +167,15 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
     )?;
 
     let main_fn_generics = tcx.generics_of(main_def_id);
-    let main_fn_predicates = tcx.predicates_of(main_def_id);
+    let main_fn_clauses = tcx.clauses_of(main_def_id);
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
         let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
         return Err(tcx.dcx().emit_err(diagnostics::MainFunctionGenericParameters {
             span: generics_param_span.unwrap_or(main_span),
             label_span: generics_param_span,
         }));
-    } else if !main_fn_predicates.predicates.is_empty() {
-        // generics may bring in implicit predicates, so we skip this check if generics is present.
+    } else if !main_fn_clauses.clauses.is_empty() {
+        // Generics may bring in implicit clauses, so we skip this check if generics are present.
         let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
         return Err(tcx.dcx().emit_err(diagnostics::WhereClauseOnMain {
             span: generics_where_clauses_span.unwrap_or(main_span),

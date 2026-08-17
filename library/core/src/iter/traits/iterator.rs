@@ -6,7 +6,7 @@ use super::super::{
 };
 use super::TrustedLen;
 use crate::array;
-use crate::cmp::{self, Ordering};
+use crate::cmp::{self, KeyAndValue, Ordering};
 use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
@@ -1651,14 +1651,7 @@ pub const trait Iterator {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is zero. This check will most probably get changed to a
-    /// compile time error before this method gets stabilized.
-    ///
-    /// ```should_panic
-    /// #![feature(iter_map_windows)]
-    ///
-    /// let iter = std::iter::repeat(0).map_windows(|&[]| ());
-    /// ```
+    /// Panics if `N` is zero.
     ///
     /// # Examples
     ///
@@ -1768,7 +1761,10 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_map_windows", issue = "87155")]
-    fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
+    fn map_windows<F, R, #[rustc_panics_when_zero] const N: usize>(
+        self,
+        f: F,
+    ) -> MapWindows<Self, F, N>
     where
         Self: Sized,
         F: FnMut(&[Self::Item; N]) -> R,
@@ -3252,7 +3248,7 @@ pub const trait Iterator {
         Self: Sized,
         Self::Item: Ord,
     {
-        self.max_by(Ord::cmp)
+        self.reduce(Ord::max)
     }
 
     /// Returns the minimum element of an iterator.
@@ -3289,7 +3285,7 @@ pub const trait Iterator {
         Self: Sized,
         Self::Item: Ord,
     {
-        self.min_by(Ord::cmp)
+        self.reduce(Ord::min)
     }
 
     /// Returns the element that gives the maximum value from the
@@ -3312,18 +3308,17 @@ pub const trait Iterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
-        #[inline]
-        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> (B, T) {
-            move |x| (f(&x), x)
-        }
+        // If we implemented this via `max_by` that would force it to use `B::cmp`.
+        // By using `max` over `KeyAndValue`, it instead ends up calling `B::lt`
+        // (via `KeyAndValue::max`), which is often overridden more efficiently.
 
         #[inline]
-        fn compare<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
-            x_p.cmp(y_p)
+        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> KeyAndValue<B, T> {
+            move |value| KeyAndValue { key: f(&value), value }
         }
 
-        let (_, x) = self.map(key(f)).max_by(compare)?;
-        Some(x)
+        let KeyAndValue { value, .. } = self.map(key(f)).max()?;
+        Some(value)
     }
 
     /// Returns the element that gives the maximum value with respect to the
@@ -3374,18 +3369,17 @@ pub const trait Iterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
-        #[inline]
-        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> (B, T) {
-            move |x| (f(&x), x)
-        }
+        // If we implemented this via `min_by` that would force it to use `B::cmp`.
+        // By using `min` over `KeyAndValue`, it instead ends up calling `B::lt`
+        // (via `KeyAndValue::min`), which is often overridden more efficiently.
 
         #[inline]
-        fn compare<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> Ordering {
-            x_p.cmp(y_p)
+        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> KeyAndValue<B, T> {
+            move |value| KeyAndValue { key: f(&value), value }
         }
 
-        let (_, x) = self.map(key(f)).min_by(compare)?;
-        Some(x)
+        let KeyAndValue { value, .. } = self.map(key(f)).min()?;
+        Some(value)
     }
 
     /// Returns the element that gives the minimum value with respect to the
@@ -3630,7 +3624,7 @@ pub const trait Iterator {
     /// ```
     #[track_caller]
     #[unstable(feature = "iter_array_chunks", issue = "100450")]
-    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    fn array_chunks<#[rustc_panics_when_zero] const N: usize>(self) -> ArrayChunks<Self, N>
     where
         Self: Sized,
     {
@@ -4086,7 +4080,7 @@ pub const trait Iterator {
             mut compare: impl FnMut(&T, &T) -> bool + 'a,
         ) -> impl FnMut(T) -> bool + 'a {
             move |curr| {
-                if !compare(&last, &curr) {
+                if !compare(last, &curr) {
                     return false;
                 }
                 *last = curr;

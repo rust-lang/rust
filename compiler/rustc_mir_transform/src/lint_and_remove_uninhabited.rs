@@ -3,6 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNREACHABLE_CODE;
 
+use crate::PassPolicy;
 use crate::diagnostics::UnreachableDueToUninhabited;
 
 /// Lint unreachable code due to uninhabited values from function calls,
@@ -14,7 +15,7 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id().expect_local();
         tracing::debug!(?def_id);
-        let parent_module = tcx.parent_module_from_def_id(def_id).to_def_id();
+        let parent_module = tcx.parent_module_from_def_id(def_id);
         let typing_env = body.typing_env(tcx);
 
         // check if the function's return type is inhabited
@@ -82,8 +83,10 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Removing visibly uninhabited return edges determines the control flow seen by MIR checks.
+        // Cannot remove UB: removing the return edge would *introduce* UB if the call actually returned.
+        PassPolicy::Required
     }
 }
 

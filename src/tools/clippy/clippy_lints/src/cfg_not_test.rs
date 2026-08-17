@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::attr::data_structures::CfgEntry;
-use rustc_ast::{AttrItemKind, EarlyParsedAttribute};
+use rustc_ast::{AttrKind, SyntheticAttr};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -34,23 +34,20 @@ declare_lint_pass!(CfgNotTest => [CFG_NOT_TEST]);
 
 impl EarlyLintPass for CfgNotTest {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &rustc_ast::Attribute) {
-        if attr.has_name(sym::cfg_trace) {
-            let AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)) = &attr.get_normal_item().args else {
-                unreachable!()
-            };
-
-            if contains_not_test(cfg, false) {
-                span_lint_and_then(
-                    cx,
-                    CFG_NOT_TEST,
-                    attr.span,
-                    "code is excluded from test builds",
-                    |diag| {
-                        diag.help("consider not excluding any code from test builds");
-                        diag.note_once("this could increase code coverage despite not actually being tested");
-                    },
-                );
-            }
+        if let AttrKind::Synthetic(synthetic) = &attr.kind
+            && let SyntheticAttr::CfgTrace(cfg) = &**synthetic
+            && contains_not_test(cfg, false)
+        {
+            span_lint_and_then(
+                cx,
+                CFG_NOT_TEST,
+                attr.span,
+                "code is excluded from test builds",
+                |diag| {
+                    diag.help("consider not excluding any code from test builds");
+                    diag.note_once("this could increase code coverage despite not actually being tested");
+                },
+            );
         }
     }
 }

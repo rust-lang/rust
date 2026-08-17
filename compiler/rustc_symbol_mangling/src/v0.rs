@@ -5,6 +5,7 @@ use std::ops::Range;
 
 use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::ToBaseN;
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::StableHasher;
@@ -87,6 +88,42 @@ pub(super) fn mangle<'tcx>(
     if let Some(instantiating_crate) = instantiating_crate {
         p.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
+    std::mem::take(&mut p.out)
+}
+
+pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Either<u64, &str>) -> String {
+    let prefix = "_R";
+    let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
+        tcx,
+        start_offset: prefix.len(),
+        is_exportable: false,
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
+        binders: vec![],
+        out: String::from(prefix),
+    };
+
+    match cgu_name {
+        Either::Left(cgu_index) => {
+            // If we have a CGU index, we can easily encode this with the shim mechanism.
+            p.path_append_ns(|p| p.print_def_path(krate.as_def_id(), &[]), 'S', cgu_index, "cgu")
+                .unwrap();
+        }
+        Either::Right(name) => {
+            // In incremental compilation we just have a name and no index. Encode this as a str-typed generic argument to cgu shim for now.
+            p.out.push('I');
+            p.path_append_ns(|p| p.print_def_path(krate.as_def_id(), &[]), 'S', 0, "cgu").unwrap();
+            p.push("KRe");
+
+            for byte in name.as_bytes() {
+                let _ = write!(p.out, "{byte:02x}");
+            }
+
+            p.push("_E");
+        }
+    }
+
     std::mem::take(&mut p.out)
 }
 
@@ -545,11 +582,14 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
-            | ty::FnDef(def_id, args)
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => {
                 self.print_def_path(def_id, args)?;
+            }
+
+            ty::FnDef(def_id, args) => {
+                self.print_def_path(def_id, args.no_bound_vars().unwrap())?
             }
 
             // We may still encounter projections here due to the printing
@@ -563,6 +603,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
 
             ty::FnPtr(sig_tys, hdr) => {
+                let splatted_arg_index = hdr.splatted().map(usize::from);
                 let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.wrap_binder(&sig, |p, sig| {
@@ -582,7 +623,15 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                             }
                         }
                     }
-                    for &ty in sig.inputs() {
+                    for (i, &ty) in sig.inputs().iter().enumerate() {
+                        if splatted_arg_index == Some(i) {
+                            // The splat feature is unstable and its mangling is subject to change
+                            // FIXME(splat):
+                            // - for efficiency we might want to use a letter that can't occur in any type, rather than
+                            //   taking an unused letter
+                            // - splat isn't implemented for legacy mangling
+                            p.push("w");
+                        }
                         ty.print(p)?;
                     }
                     if sig.c_variadic() {
@@ -594,7 +643,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
 
             // FIXME(unsafe_binder):
-            ty::UnsafeBinder(..) => todo!(),
+            ty::UnsafeBinder(..) => unimplemented!(),
 
             ty::Dynamic(predicates, r) => {
                 self.push("D");

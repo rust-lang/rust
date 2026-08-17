@@ -149,9 +149,8 @@ impl From<StableLintExpectationId> for LintExpectationId {
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(
-    Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable, StableHash
-)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Encodable, Decodable, StableHash)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,

@@ -162,7 +162,7 @@ endian-sensitive code.
 ### Controlling target features
 
 Controlling target features works similar to regular rustc invocations:
-`RUSTFLAGS="-Ctarget-features=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
+`RUSTFLAGS="-Ctarget-feature=+avx512f" cargo miri test` runs the tests with AVX512 enabled. (Miri
 only supports very few AVX512 intrinsics at the moment.) `-Ctarget-cpu` also works. If target
 features are also relevant for doctests, you have to also set `RUSTDOCFLAGS`.
 
@@ -461,9 +461,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   disables the randomization of the next thread to be picked, instead fixing a round-robin schedule.
   Note however that other aspects of Miri's concurrency behavior are still randomize; use
   `-Zmiri-deterministic-concurrency` to disable them all.
-* `-Zmiri-force-intrinsic-fallback` forces the use of the "fallback" body for all intrinsics that
-  have one. This is useful to test the fallback bodies, but should not be used otherwise. It is
-  **unsound** since the fallback body might not be checking for all UB.
 * `-Zmiri-native-lib=<path to a shared object file or folder>` is an experimental flag for providing
   support for calling native functions from inside the interpreter via FFI. The flag is supported
   only on Unix systems. Functions not provided by that file are still executed via the usual Miri

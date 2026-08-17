@@ -19,7 +19,7 @@ call. You can override the panic hook using [`std::panic::set_hook()`].
 Inside the hook a panic can be accessed as a `&dyn Any + Send`,
 which contains either a `&str` or `String` for regular `panic!()` invocations.
 (Whether a particular invocation contains the payload at type `&str` or `String` is unspecified and can change.)
-To panic with a value of another other type, [`panic_any`] can be used.
+To panic with a value of another type, [`panic_any`] can be used.
 
 See also the macro [`compile_error!`], for raising errors during compilation.
 

@@ -4,12 +4,13 @@
 //@ min-llvm-version: 22
 //@ needs-llvm-components: xtensa
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
+#![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;

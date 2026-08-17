@@ -1,8 +1,9 @@
-use rustc_hir::{self as hir, AmbigArg, LangItem};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::{DropGlue, DropTraitConstraintsDiag};
+use crate::diagnostics::{DropGlue, DropTraitConstraintsDiag};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -89,9 +90,9 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::ClauseKind;
 
-        let predicates = cx.tcx.explicit_predicates_of(item.owner_id);
-        for &(predicate, span) in predicates.predicates {
-            let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
+        let gen_clauses = cx.tcx.explicit_clauses_of(item.owner_id);
+        for &(clause, span) in gen_clauses.clauses {
+            let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder() else {
                 continue;
             };
             let def_id = trait_predicate.trait_ref.def_id;
@@ -104,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 cx.emit_span_lint(
                     DROP_BOUNDS,
                     span,
-                    DropTraitConstraintsDiag { predicate, tcx: cx.tcx, def_id },
+                    DropTraitConstraintsDiag { clause, tcx: cx.tcx, def_id },
                 );
             }
         }

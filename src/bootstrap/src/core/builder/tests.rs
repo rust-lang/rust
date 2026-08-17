@@ -1,14 +1,10 @@
-// ignore-tidy-filelength
-use std::env::VarError;
-use std::{panic, thread};
+// ignore-tidy-file-filelength
+use std::panic;
 
 use build_helper::stage0_parser::parse_stage0_file;
-use llvm::prebuilt_llvm_config;
+use llvm::get_llvm_build_status;
 
 use super::*;
-use crate::Flags;
-use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::builder::cli_paths::PATH_REMAP;
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
@@ -17,7 +13,6 @@ use crate::utils::tests::{ConfigBuilder, TestCtx};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
 static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
-static TEST_TRIPLE_3: &str = "i686-unknown-netbsd";
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     configure_with_args(&[cmd], host, target)
@@ -27,15 +22,10 @@ fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
     TestCtx::new().config(cmd[0]).args(&cmd[1..]).hosts(host).targets(target).create_config()
 }
 
-fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
-    v.into_iter().map(|(a, _)| a).collect::<Vec<_>>()
-}
-
 fn run_build(paths: &[PathBuf], config: Config) -> Cache {
-    let kind = config.cmd.kind();
     let build = Build::new(config);
     let builder = Builder::new(&build);
-    builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(builder.kind), paths);
     builder.cache
 }
 
@@ -44,28 +34,6 @@ fn check_cli<const N: usize>(paths: [&str; N]) {
         &paths.map(PathBuf::from),
         configure_with_args(&paths, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
     );
-}
-
-macro_rules! std {
-    ($host:ident => $target:ident, stage = $stage:literal) => {
-        compile::Std::new(
-            Compiler::new($stage, TargetSelection::from_user($host)),
-            TargetSelection::from_user($target),
-        )
-    };
-}
-
-macro_rules! doc_std {
-    ($host:ident => $target:ident, stage = $stage:literal) => {{ doc::Std::new($stage, TargetSelection::from_user($target), DocumentationFormat::Html) }};
-}
-
-macro_rules! rustc {
-    ($host:ident => $target:ident, stage = $stage:literal) => {
-        compile::Rustc::new(
-            Compiler::new($stage, TargetSelection::from_user($host)),
-            TargetSelection::from_user($target),
-        )
-    };
 }
 
 #[test]
@@ -79,89 +47,6 @@ fn test_valid() {
 fn test_invalid() {
     // make sure that invalid paths are caught, even when combined with valid paths
     check_cli(["test", "library/std", "x"]);
-}
-
-#[test]
-fn test_intersection() {
-    let set = |paths: &[&str]| {
-        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
-    };
-    let library_set = set(&["library/core", "library/alloc", "library/std"]);
-    let mut command_paths = vec![
-        CLIStepPath::from(PathBuf::from("library/core")),
-        CLIStepPath::from(PathBuf::from("library/alloc")),
-        CLIStepPath::from(PathBuf::from("library/stdarch")),
-    ];
-    let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
-    assert_eq!(subset, set(&["library/core", "library/alloc"]),);
-    assert_eq!(
-        command_paths,
-        vec![
-            CLIStepPath::from(PathBuf::from("library/core")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("library/alloc")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("library/stdarch")).will_be_executed(false),
-        ]
-    );
-}
-
-#[test]
-fn test_resolve_parent_and_subpaths() {
-    let set = |paths: &[&str]| {
-        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
-    };
-
-    let mut command_paths = vec![
-        CLIStepPath::from(PathBuf::from("src/tools/miri")),
-        CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")),
-    ];
-
-    let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
-    library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
-
-    assert_eq!(
-        command_paths,
-        vec![
-            CLIStepPath::from(PathBuf::from("src/tools/miri")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")).will_be_executed(true),
-        ]
-    );
-}
-
-#[test]
-fn validate_path_remap() {
-    let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-    PATH_REMAP
-        .iter()
-        .flat_map(|(_, paths)| paths.iter())
-        .map(|path| build.src.join(path))
-        .for_each(|path| {
-            assert!(path.exists(), "{} should exist.", path.display());
-        });
-}
-
-#[test]
-fn check_missing_paths_for_x_test_tests() {
-    let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-
-    let (_, tests_remap_paths) =
-        PATH_REMAP.iter().find(|(target_path, _)| *target_path == "tests").unwrap();
-
-    let tests_dir = fs::read_dir(build.src.join("tests")).unwrap();
-    for dir in tests_dir {
-        let path = dir.unwrap().path();
-
-        // Skip if not a test directory.
-        if path.ends_with("tests/auxiliary") || !path.is_dir() {
-            continue;
-        }
-
-        assert!(
-            tests_remap_paths.iter().any(|item| path.ends_with(*item)),
-            "{} is missing in PATH_REMAP tests list.",
-            path.display()
-        );
-    }
 }
 
 #[test]
@@ -225,36 +110,6 @@ fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -
         ])
         .no_override_download_ci_llvm()
         .create_config()
-}
-
-mod dist {
-    use pretty_assertions::assert_eq;
-
-    use super::{Config, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, first, run_build};
-    use crate::Flags;
-    use crate::core::builder::tests::host_target;
-    use crate::core::builder::*;
-
-    fn configure(host: &[&str], target: &[&str]) -> Config {
-        Config { stage: 2, ..super::configure("dist", host, target) }
-    }
-
-    #[test]
-    fn llvm_out_behaviour() {
-        let mut config = configure(&[], &[TEST_TRIPLE_2]);
-        config.llvm_from_ci = true;
-        let build = Build::new(config.clone());
-
-        let target = TargetSelection::from_user(&host_target());
-        assert!(build.llvm_out(target).ends_with("ci-llvm"));
-        let target = TargetSelection::from_user(TEST_TRIPLE_2);
-        assert!(build.llvm_out(target).ends_with("llvm"));
-
-        config.llvm_from_ci = false;
-        let build = Build::new(config.clone());
-        let target = TargetSelection::from_user(TEST_TRIPLE_1);
-        assert!(build.llvm_out(target).ends_with("llvm"));
-    }
 }
 
 mod sysroot_target_dirs {
@@ -344,7 +199,7 @@ fn test_test_coverage() {
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
         let config = configure_with_args(cmd, &[], &[TEST_TRIPLE_1]);
-        let mut cache = run_build(&config.paths.clone(), config);
+        let cache = run_build(&config.paths.clone(), config);
 
         let modes =
             cache.inspect_all_steps_of_type::<test::Coverage, _>(|step, ()| step.mode.as_str());
@@ -392,19 +247,16 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     let expected = PathBuf::from("/some/path/to/llvm-config");
 
-    let actual = prebuilt_llvm_config(
-        &builder,
-        TargetSelection::from_user("arm-unknown-linux-gnueabihf"),
-        false,
-    )
-    .llvm_result()
-    .host_llvm_config
-    .clone();
+    let actual =
+        get_llvm_build_status(&builder, TargetSelection::from_user("arm-unknown-linux-gnueabihf"))
+            .llvm_output()
+            .host_llvm_config
+            .clone();
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
-        .llvm_result()
+    let actual = get_llvm_build_status(&builder, builder.config.host_target)
+        .llvm_output()
         .host_llvm_config
         .clone();
     let actual = drop_win_disk_prefix_if_present(actual);
@@ -421,8 +273,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let build = Build::new(config.clone());
     let builder = Builder::new(&build);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
-        .llvm_result()
+    let actual = get_llvm_build_status(&builder, builder.config.host_target)
+        .llvm_output()
         .host_llvm_config
         .clone();
     let expected = builder
@@ -440,12 +292,12 @@ fn test_prebuilt_llvm_config_path_resolution() {
     );
 
     // CI-LLVM isn't always available; check if it's enabled before testing.
-    if config.llvm_from_ci {
+    if config.llvm_ci_mode.download_from_ci() {
         let build = Build::new(config.clone());
         let builder = Builder::new(&build);
 
-        let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
-            .llvm_result()
+        let actual = get_llvm_build_status(&builder, builder.config.host_target)
+            .llvm_output()
             .host_llvm_config
             .clone();
         let expected = builder
@@ -507,22 +359,15 @@ fn any_debug() {
 /// These tests use insta for snapshot testing.
 /// See bootstrap's README on how to bless the snapshots.
 mod snapshot {
-    use std::path::PathBuf;
-
-    use crate::core::build_steps::{compile, dist, doc, test, tool};
-    use crate::core::builder::tests::{
-        RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, first, host_target,
-        render_steps, run_build,
-    };
-    use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
+    use crate::core::build_steps::test;
+    use crate::core::builder::tests::{RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, host_target};
+    use crate::core::builder::{Kind, StepMetadata};
+    use crate::core::compiler::Compiler;
     use crate::core::config::TargetSelection;
     use crate::core::config::toml::target::{
         DefaultLinuxLinkerOverride, with_default_linux_linker_overrides,
     };
-    use crate::utils::cache::Cache;
-    use crate::utils::helpers::get_host_target;
     use crate::utils::tests::{ConfigBuilder, TestCtx};
-    use crate::{Build, Compiler, Config, Flags, Subcommand};
 
     #[test]
     fn build_default() {
@@ -1816,7 +1661,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
     }
 
     #[test]
@@ -1842,7 +1687,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
     }
 
     #[test]
@@ -1856,7 +1701,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (73 crates)
+        [check] rustc 1 <host> -> rustc 2 <host> (76 crates)
         ");
     }
 
@@ -1872,7 +1717,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (73 crates)
+        [check] rustc 1 <host> -> rustc 2 <target1> (76 crates)
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1880,6 +1725,7 @@ mod snapshot {
         [check] rustc 1 <host> -> Clippy 2 <target1>
         [check] rustc 1 <host> -> Miri 2 <target1>
         [check] rustc 1 <host> -> CargoMiri 2 <target1>
+        [check] rustc 1 <host> -> Priroda 2 <target1>
         [check] rustc 1 <host> -> Rustfmt 2 <target1>
         [check] rustc 1 <host> -> RustAnalyzer 2 <target1>
         [check] rustc 1 <host> -> TestFloatParse 2 <target1>
@@ -1968,7 +1814,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
     }
 
     #[test]
@@ -2151,6 +1997,7 @@ mod snapshot {
         [test] compiletest-run-make 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
+        [test] intrinsic-test <host>
         ");
     }
 
@@ -2242,11 +2089,11 @@ mod snapshot {
         [test] compiletest-run-make 2 <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 1 <host>
+        [build] rustc 2 <target1> -> std 2 <target1>
+        [build] rustdoc 2 <target1>
         [build] rustc 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <target1>
         [test] compiletest-incremental 2 <target1>
-        [build] rustc 2 <target1> -> std 2 <target1>
-        [build] rustdoc 2 <target1>
         ");
     }
 
@@ -2334,6 +2181,7 @@ mod snapshot {
         [test] compiletest-run-make 2 <host>
         [build] rustc 1 <host> -> cargo 2 <host>
         [test] compiletest-run-make-cargo 2 <host>
+        [test] intrinsic-test <host>
         ");
     }
 
@@ -2424,6 +2272,18 @@ mod snapshot {
     }
 
     #[test]
+    fn test_library_tests_only_does_not_build_rustdoc() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test").args(&["--tests", "library/core"]).render_steps(),
+            @r"
+            [build] llvm <host>
+            [build] rustc 0 <host> -> rustc 1 <host>
+            [build] rustc 1 <host> -> std 1 <host>
+            ");
+    }
+
+    #[test]
     fn test_cargo_stage_1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -2498,12 +2358,12 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .path("run-make")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         ");
@@ -2515,12 +2375,12 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .path("run-make-cargo")
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
@@ -3159,6 +3019,15 @@ mod snapshot {
         [run] rustc 0 <host> -> miri 1 <target1>
         ");
     }
+
+    #[test]
+    fn fix_compiler() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @r"
+        [build] llvm <host>
+        [fix] rustc 0 <host> -> rustc 1 <host> (76 crates)
+        ");
+    }
 }
 
 struct ExecutedSteps {
@@ -3244,7 +3113,7 @@ impl ExecutedSteps {
 }
 
 fn fuzzy_metadata_eq(executed: &StepMetadata, to_match: &StepMetadata) -> bool {
-    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata } = executed;
+    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata: _ } = executed;
     *name == to_match.name && *kind == to_match.kind && *target == to_match.target
 }
 
@@ -3258,10 +3127,10 @@ impl ConfigBuilder {
     fn run(self) -> Cache {
         let config = self.create_config();
 
-        let kind = config.cmd.kind();
         let build = Build::new(config);
         let builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.paths);
+        builder
+            .run_step_descriptions(&Builder::get_step_descriptions(builder.kind), &builder.paths);
         builder.cache
     }
 
@@ -3296,8 +3165,6 @@ fn render_steps(steps: &[ExecutedStep], config: RenderConfig) -> String {
     steps
         .iter()
         .filter_map(|step| {
-            use std::fmt::Write;
-
             let Some(metadata) = &step.metadata else {
                 return None;
             };
@@ -3311,12 +3178,13 @@ fn render_steps(steps: &[ExecutedStep], config: RenderConfig) -> String {
 fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
     let mut record = format!("[{}] ", metadata.kind.as_str());
     if let Some(compiler) = metadata.built_by {
-        write!(record, "{} -> ", render_compiler(compiler, config));
+        write!(record, "{} -> ", render_compiler(compiler, config)).unwrap();
     }
     let stage = metadata.get_stage().map(|stage| format!("{stage} ")).unwrap_or_default();
-    write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target, config));
+    write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target, config))
+        .unwrap();
     if let Some(metadata) = &metadata.metadata {
-        write!(record, " {metadata}");
+        write!(record, " {metadata}").unwrap();
     }
     record
 }
@@ -3335,4 +3203,27 @@ fn render_compiler(compiler: Compiler, config: &RenderConfig) -> String {
 
 fn host_target() -> String {
     get_host_target().to_string()
+}
+
+#[test]
+fn flags_env_prefers_plain_form_without_spaces() {
+    use super::cargo::flags_env;
+
+    // No flag value contains a space, so use the readable, copy-pasteable plain form
+    // rather than the `\x1f`-separated encoded form (rust-lang/rust#158749).
+    assert_eq!(
+        flags_env("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "--cfg=foo\u{1f}-Cdebuginfo=0"),
+        ("RUSTFLAGS", "--cfg=foo -Cdebuginfo=0".to_string()),
+    );
+
+    // A flag value contains a space (e.g. an `-L` path), which the whitespace-split plain
+    // form can't represent, so keep the encoded form.
+    assert_eq!(
+        flags_env(
+            "RUSTFLAGS",
+            "CARGO_ENCODED_RUSTFLAGS",
+            "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo"
+        ),
+        ("CARGO_ENCODED_RUSTFLAGS", "-Clink-arg=-L/opt/my libs\u{1f}--cfg=foo".to_string()),
+    );
 }

@@ -183,7 +183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         let scope = if let Some(only_method) = segment.res.opt_def_id() {
-            ProbeScope::Single(only_method)
+            ProbeScope::Single(only_method, None)
         } else {
             ProbeScope::TraitsInScope
         };
@@ -283,7 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
     ) -> probe::PickResult<'tcx> {
         let pick = self.probe_for_name(
             probe::Mode::MethodCall,
@@ -303,7 +303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
         return_type: Option<Ty<'tcx>>,
     ) -> probe::PickResult<'tcx> {
         let pick = self.probe_for_name(
@@ -440,15 +440,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
+        let bounds = self.tcx.clauses_of(def_id).instantiate(self.tcx, args);
 
         let predicates_cause = obligation.cause.clone();
         let mut normalization_obligations = PredicateObligations::new();
         obligations.extend(traits::predicates_for_generics(
             move |_, _| predicates_cause.clone(),
-            |pred| {
+            |clause| {
                 let InferOk { value: pred, obligations: o } =
-                    self.at(&obligation.cause, self.param_env).normalize(pred);
+                    self.at(&obligation.cause, self.param_env).normalize(clause);
                 normalization_obligations.extend(o);
                 assert!(!pred.has_escaping_bound_vars());
                 pred

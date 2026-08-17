@@ -83,12 +83,11 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             LocalKind::Unused => {
                 let ty = fx.monomorphize(decl.ty);
                 let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-                *kind =
-                    if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
-                        LocalKind::SSA(location)
-                    } else {
-                        LocalKind::Memory
-                    };
+                *kind = if let abi::BackendRepr::Memory { .. } = layout.backend_repr {
+                    LocalKind::Memory
+                } else {
+                    LocalKind::SSA(location)
+                };
             }
             LocalKind::SSA(_) => *kind = LocalKind::Memory,
         }
@@ -157,7 +156,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                 }
             }
             debug_assert!(
-                !self.fx.cx.is_backend_ref(layout),
+                layout.is_ssa_standalone(),
                 "Post-projection {place_ref:?} layout should be non-Ref, but it's {layout:?}",
             );
         }
@@ -212,8 +211,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
             }
 
             PlaceContext::NonUse(_)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention)
-            | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention) => {}
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy
@@ -293,10 +291,14 @@ impl CleanupKind {
 /// MSVC requires unwinding code to be split to a tree of *funclets*, where each funclet can only
 /// branch to itself or to its parent. Luckily, the code we generates matches this pattern.
 /// Recover that structure in an analyze pass.
-pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub(crate) fn cleanup_kinds(
+    mir: &mir::Body<'_>,
+    nop_landing_pads: &DenseBitSet<mir::BasicBlock>,
+) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
         result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,
+        nop_landing_pads: &DenseBitSet<mir::BasicBlock>,
     ) {
         for (bb, data) in mir.basic_blocks.iter_enumerated() {
             match data.terminator().kind {
@@ -315,7 +317,9 @@ pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, Cl
                 | TerminatorKind::InlineAsm { unwind, .. }
                 | TerminatorKind::Assert { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
-                    if let mir::UnwindAction::Cleanup(unwind) = unwind {
+                    if let mir::UnwindAction::Cleanup(unwind) = unwind
+                        && !nop_landing_pads.contains(unwind)
+                    {
                         debug!(
                             "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
                             bb, data, unwind
@@ -396,7 +400,7 @@ pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, Cl
 
     let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, &mir.basic_blocks);
 
-    discover_masters(&mut result, mir);
+    discover_masters(&mut result, mir, &nop_landing_pads);
     propagate(&mut result, mir);
     debug!("cleanup_kinds: result={:?}", result);
     result

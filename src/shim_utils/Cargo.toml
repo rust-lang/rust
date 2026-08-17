@@ -1,0 +1,11 @@
+[package]
+name = "shim_utils"
+version = "0.0.0"
+edition = "2024"
+
+# Every dependency of this crate becomes a transitive dependency of bootstrap
+# (and some other tools), so try to avoid dependencies that are slow to build.
+[dependencies]
+# tidy-alphabetical-start
+tempfile = "3.23.0"
+# tidy-alphabetical-end

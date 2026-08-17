@@ -1,5 +1,5 @@
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:22:5
+  --> tests/ui/zero_repeat_side_effects.rs:24:5
    |
 LL |     let a = [f(); 0];
    |     ^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     let a: [i32; 0] = [];
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:25:5
+  --> tests/ui/zero_repeat_side_effects.rs:27:5
    |
 LL |     b = [f(); 0];
    |     ^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL ~     b = [] as [i32; 0];
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:30:5
+  --> tests/ui/zero_repeat_side_effects.rs:32:5
    |
 LL |     let c = vec![f(); 0];
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let c: std::vec::Vec<i32> = vec![];
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:33:5
+  --> tests/ui/zero_repeat_side_effects.rs:35:5
    |
 LL |     d = vec![f(); 0];
    |     ^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL ~     d = vec![] as std::vec::Vec<i32>;
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:37:5
+  --> tests/ui/zero_repeat_side_effects.rs:39:5
    |
 LL |     let e = [println!("side effect"); 0];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     let e: [(); 0] = [];
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:41:5
+  --> tests/ui/zero_repeat_side_effects.rs:43:5
    |
 LL |     let g = [{ f() }; 0];
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     let g: [i32; 0] = [];
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:45:10
+  --> tests/ui/zero_repeat_side_effects.rs:47:10
    |
 LL |     drop(vec![f(); 0]);
    |          ^^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL ~     });
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:49:5
+  --> tests/ui/zero_repeat_side_effects.rs:51:5
    |
 LL |     vec![f(); 0];
    |     ^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL ~     vec![] as std::vec::Vec<i32>;
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:51:5
+  --> tests/ui/zero_repeat_side_effects.rs:53:5
    |
 LL |     [f(); 0];
    |     ^^^^^^^^
@@ -111,7 +111,7 @@ LL ~     [] as [i32; 0];
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:105:10
+  --> tests/ui/zero_repeat_side_effects.rs:107:10
    |
 LL |     foo(&[Some(f()); 0]);
    |          ^^^^^^^^^^^^^^
@@ -125,7 +125,7 @@ LL ~     });
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:107:10
+  --> tests/ui/zero_repeat_side_effects.rs:109:10
    |
 LL |     foo(&[Some(Some(S::new())); 0]);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL ~     });
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:115:14
+  --> tests/ui/zero_repeat_side_effects.rs:117:14
    |
 LL |         0 => _ = [f(); 0],
    |              ^^^^^^^^^^^^
@@ -153,7 +153,7 @@ LL ~         },
    |
 
 error: expression with side effects as the initial value in a zero-sized array initializer
-  --> tests/ui/zero_repeat_side_effects.rs:122:14
+  --> tests/ui/zero_repeat_side_effects.rs:124:14
    |
 LL |         0 => a = [f(); 0],
    |              ^^^^^^^^^^^^

@@ -1,28 +1,85 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
+    // Use https://github.com/rust-lang/renovate/blob/main/actions.json
+    "github>rust-lang/renovate:actions",
     // Open a PR to migrate the config when Renovate deprecates syntax
     ":configMigration",
-    // Refresh lock files on the first day of each month
-    // (still gated by dashboard approval for now)
-    ":maintainLockFilesMonthly",
-    // Pin GitHub Actions to their commit SHA digests, resolving floating tags
-    // (e.g. `v4`) to the full SemVer version (e.g. `v4.1.2`)
-    "helpers:pinGitHubActionDigestsToSemver"
+    // Refresh lock files weekly
+    ":maintainLockFilesWeekly",
   ],
-  // Require manual approval from the Dependency Dashboard before opening PRs
+  // Cargo manifests in this repository use unstable features.
+  "env": {
+    "RUSTC_BOOTSTRAP": "1"
+  },
+  // The compiler and rustbook workspaces have path dependencies in these
+  // submodules.
+  "cloneSubmodules": true,
+  "cloneSubmodulesFilter": [
+    "src/doc/book",
+    "src/doc/reference"
+  ],
+  // Require manual approval from the Dependency Dashboard before opening PRs,
+  // except for the update types explicitly configured below.
   "dependencyDashboardApproval": true,
+  // No dashboard approval necessary for security updates
+  "vulnerabilityAlerts": {
+    "dependencyDashboardApproval": false
+  },
+  // Renovate shouldn't update a PR if it is in the bors merge queue.
+  "stopUpdatingLabel": "S-waiting-on-bors",
   "packageRules": [
     {
       // No dashboard approval necessary for GitHub Actions updates
       "matchManagers": ["github-actions"],
       "dependencyDashboardApproval": false
+    },
+    {
+      // No dashboard approval necessary for lock file maintenance
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "dependencyDashboardApproval": false
+    },
+    {
+      // Set defaults for all Cargo.lock files.
+      // library/Cargo.lock is grouped into a dedicated PR by the more
+      // specific rule below.
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "groupName": "Cargo lock file maintenance",
+      "commitMessageAction": "Compiler and tools lock file update",
+      // Renovate merges all matching rules, so the lockfiles rules below
+      // also inherits this note and asks Triagebot for a dep-bumps reviewer.
+      "prBodyNotes": ["r? dep-bumps"]
+    },
+    {
+      // Update library/Cargo.lock in a dedicated PR.
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "matchFileNames": ["library/Cargo.lock"],
+      "groupName": "library lock file maintenance",
+      "commitMessageAction": "Library lock file update"
+    },
+    {
+      // These packages don't have a committed Cargo.lock file.
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "matchFileNames": [
+        "library/rustc-std-workspace-*/Cargo.toml",
+      ],
+      "enabled": false
+    },
+    {
+      // Do not update npm/yarn lockfile, we only use it for internal tests.
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "enabled": false,
     }
   ],
-  // Don't manage dependencies inside subtrees. They are updated upstream and
-  // synced in. See `src/doc/rustc-dev-guide/src/external-repos.md` for the list.
   "ignorePaths": [
+    // Don't manage dependencies inside subtrees. They are updated upstream and
+    // synced in. See `src/doc/rustc-dev-guide/src/external-repos.md` for the list.
     "compiler/rustc_codegen_cranelift/**",
     "compiler/rustc_codegen_gcc/**",
     "library/compiler-builtins/**",
@@ -32,6 +89,10 @@
     "src/tools/clippy/**",
     "src/tools/miri/**",
     "src/tools/rust-analyzer/**",
-    "src/tools/rustfmt/**"
+    "src/tools/rustfmt/**",
+
+    // Test manifests are fixtures; their versions and lockfiles may
+    // intentionally be part of the test input.
+    "tests/**",
   ]
 }

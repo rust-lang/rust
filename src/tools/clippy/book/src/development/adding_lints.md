@@ -447,8 +447,8 @@ Sometimes a lint makes suggestions that require a certain version of Rust. For
 example, the `manual_strip` lint suggests using `str::strip_prefix` and
 `str::strip_suffix` which is only available after Rust 1.45. In such cases, you
 need to ensure that the MSRV configured for the project is >= the MSRV of the
-required Rust feature. If multiple features are required, just use the one with
-a lower MSRV.
+required Rust feature. If multiple features are used in a suggestion, choose a
+MSRV that supports them all.
 
 First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`].
 This can be accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
@@ -471,7 +471,7 @@ pub struct ManualStrip {
 
 impl ManualStrip {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 ```
@@ -526,7 +526,7 @@ define_Conf! {
 }
 ```
 
-[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
+[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/msrvs/index.html
 
 Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
 

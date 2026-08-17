@@ -37,12 +37,63 @@ pub fn compare_ignore_zoneid(a: &SocketAddr, b: &SocketAddr) -> bool {
     }
 }
 
+/// A read-only anonymous mapping of `len` zero bytes.
+///
+/// The tests that need a buffer larger than `c_int::MAX` use this instead of a
+/// `Vec`: the pages are demand-zero and never written, so they stay mapped to
+/// the shared zero page and the mapping doesn't actually consume `len` bytes of
+/// physical memory.
+#[cfg(all(target_pointer_width = "64", unix))]
+pub struct ZeroedMmap {
+    ptr: *mut libc::c_void,
+    len: usize,
+}
+
+#[cfg(all(target_pointer_width = "64", unix))]
+impl ZeroedMmap {
+    pub fn new(len: usize) -> ZeroedMmap {
+        let ptr = unsafe {
+            libc::mmap(
+                crate::ptr::null_mut(),
+                len,
+                libc::PROT_READ,
+                libc::MAP_PRIVATE | libc::MAP_ANON,
+                -1,
+                0,
+            )
+        };
+        assert_ne!(ptr, libc::MAP_FAILED, "mmap failed: {}", crate::io::Error::last_os_error());
+        ZeroedMmap { ptr, len }
+    }
+}
+
+#[cfg(all(target_pointer_width = "64", unix))]
+impl crate::ops::Deref for ZeroedMmap {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        // SAFETY: the mapping is live for `self.len` readable bytes until `Drop`.
+        unsafe { crate::slice::from_raw_parts(self.ptr as *const u8, self.len) }
+    }
+}
+
+#[cfg(all(target_pointer_width = "64", unix))]
+impl Drop for ZeroedMmap {
+    fn drop(&mut self) {
+        // SAFETY: `ptr`/`len` come from the `mmap` call above and are unmapped once.
+        unsafe {
+            libc::munmap(self.ptr, self.len);
+        }
+    }
+}
+
 #[test]
 fn hostname_smoketest() {
     // Just a smoke test to ensure it can be called.
     let name = crate::net::hostname();
-    if cfg!(windows) || cfg!(unix) {
+    if cfg!(any(all(windows, not(target_vendor = "win7")), unix)) {
         // At least on Windows and Unix, this should succeed.
+        // The `win7` Windows targets do not support it yet though.
         name.unwrap();
     }
 }

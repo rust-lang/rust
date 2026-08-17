@@ -1,9 +1,10 @@
+// ignore-tidy-file-linelength
+//
 //@ aux-build:make-macro.rs
 //@ proc-macro: meta-macro.rs
 //@ edition:2018
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 //@ check-pass
-// ignore-tidy-linelength
 //@ normalize-stdout: "\d+#" -> "0#"
 //@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
 //@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"

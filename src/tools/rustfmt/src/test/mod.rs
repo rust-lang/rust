@@ -42,8 +42,8 @@ const FILE_SKIP_LIST: &[&str] = &[
     "issue-3253/foo.rs",
     "issue-3253/bar.rs",
     "issue-3253/paths",
-    // This directory is directly tested by format_files_find_new_files_via_cfg_match
-    "cfg_match",
+    // This directory is directly tested by format_files_find_new_files_via_cfg_select
+    "cfg_select",
     // These files and directory are a part of modules defined inside `cfg_attr(..)`.
     "cfg_mod/dir",
     "cfg_mod/bar.rs",
@@ -163,6 +163,58 @@ fn verify_config_test_names() {
             }
         }
     }
+}
+
+// Collects all file and directory paths under `root` (relative to `root`).
+fn collect_paths(root: &Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).expect(&format!("couldn't read {}", dir.display())) {
+            let entry = entry.expect("couldn't get DirEntry");
+            let path = entry.path();
+            paths.push(path.strip_prefix(root).unwrap().to_path_buf());
+            if path.is_dir() {
+                stack.push(path);
+            }
+        }
+    }
+    paths
+}
+
+#[test]
+fn no_case_insensitive_path_collisions() {
+    // Ensure no two paths in test directories differ only by case,
+    // which causes warnings when cloning on case-insensitive filesystems
+    // (e.g. Windows, macOS).
+    let test_dirs = [Path::new("tests/source"), Path::new("tests/target")];
+    let mut collisions = Vec::new();
+
+    for root in &test_dirs {
+        let mut seen: HashMap<String, PathBuf> = HashMap::new();
+        for path in collect_paths(root) {
+            let key = path.to_string_lossy().to_lowercase();
+            if let Some(existing) = seen.get(&key) {
+                if *existing != path {
+                    collisions.push(format!(
+                        "{}/{} collides with {}/{}",
+                        root.display(),
+                        existing.display(),
+                        root.display(),
+                        path.display(),
+                    ));
+                }
+            } else {
+                seen.insert(key, path);
+            }
+        }
+    }
+
+    assert!(
+        collisions.is_empty(),
+        "Case-insensitive path collisions found (these cause warnings on Windows/macOS):\n  {}",
+        collisions.join("\n  ")
+    );
 }
 
 // This writes to the terminal using the same approach (via `term::stdout` or
@@ -471,15 +523,15 @@ fn format_files_find_new_files_via_cfg_if() {
 }
 
 #[test]
-fn format_files_find_new_files_via_cfg_match() {
+fn format_files_find_new_files_via_cfg_select() {
     init_log();
     run_test_with(&TestSetting::default(), || {
-        // We load these two files into the same session to test cfg_match!
+        // We load these two files into the same session to test cfg_select!
         // transparent mod discovery, and to ensure that it does not suffer
         // from a similar issue as cfg_if! support did with issue-4656.
         let files = vec![
-            Path::new("tests/source/cfg_match/lib2.rs"),
-            Path::new("tests/source/cfg_match/lib.rs"),
+            Path::new("tests/source/cfg_select/lib2.rs"),
+            Path::new("tests/source/cfg_select/lib.rs"),
         ];
 
         let config = Config::default();
@@ -702,6 +754,15 @@ fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<Format
             continue;
         }
 
+        if sig_comments.contains_key("stable") && is_nightly_channel!() {
+            debug!(
+                "Skipping '{}' because nightly introduces formatting changes. \
+                 Formatting should be stable on the `stable` channel.",
+                file_name.display()
+            );
+            continue;
+        }
+
         debug!("Testing '{}'...", file_name.display());
 
         match idempotent_check(&file_name, opt_config) {
@@ -772,7 +833,7 @@ fn read_config(filename: &Path) -> Config {
     };
 
     for (key, val) in &sig_comments {
-        if key != "target" && key != "config" && key != "unstable" {
+        if key != "target" && key != "config" && key != "unstable" && key != "stable" {
             config.override_value(key, val);
             if config.is_default(key) {
                 warn!("Default value {} used explicitly for {}", val, key);

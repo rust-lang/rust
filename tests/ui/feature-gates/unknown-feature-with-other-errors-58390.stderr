@@ -1,0 +1,18 @@
+error[E0635]: unknown feature `this_feature_does_not_exist`
+  --> $DIR/unknown-feature-with-other-errors-58390.rs:7:12
+   |
+LL | #![feature(this_feature_does_not_exist)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0119]: conflicting implementations of trait `Bar` for type `Foo`
+  --> $DIR/unknown-feature-with-other-errors-58390.rs:14:1
+   |
+LL | impl Bar for Foo {}
+   | ---------------- first implementation here
+LL | impl Bar for Foo {}
+   | ^^^^^^^^^^^^^^^^ conflicting implementation for `Foo`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0635.
+For more information about an error, try `rustc --explain E0119`.

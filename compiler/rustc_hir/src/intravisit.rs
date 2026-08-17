@@ -66,6 +66,8 @@
 
 use rustc_ast::Label;
 use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
+use rustc_attr_ir::Attribute;
+use rustc_hir_id::HirId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, Symbol};
 
@@ -114,70 +116,64 @@ pub trait HirTyCtxt<'hir> {
     fn hir_foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
-// Used when no tcx is actually available, forcing manual implementation of nested visitors.
+/// Used when no tcx is actually available, forcing manual implementation of nested visitors.
 impl<'hir> HirTyCtxt<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_body(&self, _: BodyId) -> &'hir Body<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_item(&self, _: ItemId) -> &'hir Item<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        unreachable!();
+        *self
     }
 }
 
-pub mod nested_filter {
-    use super::HirTyCtxt;
+/// Specifies what nested things a visitor wants to visit. By "nested
+/// things", we are referring to bits of HIR that are not directly embedded
+/// within one another but rather indirectly, through a table in the crate.
+/// This is done to control dependencies during incremental compilation: the
+/// non-inline bits of HIR can be tracked and hashed separately.
+///
+/// The most common choice is `OnlyBodies`, which will cause the visitor to
+/// visit fn bodies for fns that it encounters, and closure bodies, but
+/// skip over nested item-like things.
+///
+/// See the [module level documentation](self) for more details on the overall
+/// visit strategy.
+pub trait NestedFilter<'hir> {
+    type MaybeTyCtxt: HirTyCtxt<'hir>;
 
-    /// Specifies what nested things a visitor wants to visit. By "nested
-    /// things", we are referring to bits of HIR that are not directly embedded
-    /// within one another but rather indirectly, through a table in the crate.
-    /// This is done to control dependencies during incremental compilation: the
-    /// non-inline bits of HIR can be tracked and hashed separately.
-    ///
-    /// The most common choice is `OnlyBodies`, which will cause the visitor to
-    /// visit fn bodies for fns that it encounters, and closure bodies, but
-    /// skip over nested item-like things.
-    ///
-    /// See the comments at [`rustc_hir::intravisit`] for more details on the overall
-    /// visit strategy.
-    pub trait NestedFilter<'hir> {
-        type MaybeTyCtxt: HirTyCtxt<'hir>;
-
-        /// Whether the visitor visits nested "item-like" things.
-        /// E.g., item, impl-item.
-        const INTER: bool;
-        /// Whether the visitor visits "intra item-like" things.
-        /// E.g., function body, closure, `AnonConst`
-        const INTRA: bool;
-    }
-
-    /// Do not visit any nested things. When you add a new
-    /// "non-nested" thing, you will want to audit such uses to see if
-    /// they remain valid.
-    ///
-    /// Use this if you are only walking some particular kind of tree
-    /// (i.e., a type, or fn signature) and you don't want to thread a
-    /// `tcx` around.
-    pub struct None(());
-    impl NestedFilter<'_> for None {
-        type MaybeTyCtxt = !;
-        const INTER: bool = false;
-        const INTRA: bool = false;
-    }
+    /// Whether the visitor visits nested "item-like" things.
+    /// E.g., item, impl-item.
+    const INTER: bool;
+    /// Whether the visitor visits "intra item-like" things.
+    /// E.g., function body, closure, `AnonConst`
+    const INTRA: bool;
 }
 
-use nested_filter::NestedFilter;
+/// Do not visit any nested things. When you add a new
+/// "non-nested" thing, you will want to audit such uses to see if
+/// they remain valid.
+///
+/// Use this if you are only walking some particular kind of tree
+/// (i.e., a type, or fn signature) and you don't want to thread a
+/// `tcx` around.
+pub struct IgnoreNested(());
+impl NestedFilter<'_> for IgnoreNested {
+    type MaybeTyCtxt = !;
+    const INTER: bool = false;
+    const INTRA: bool = false;
+}
 
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
@@ -215,7 +211,7 @@ pub trait Visitor<'v>: Sized {
     /// `visit_nested_XXX` methods. If a new `visit_nested_XXX` variant is
     /// added in the future, it will cause a panic which can be detected
     /// and fixed appropriately.
-    type NestedFilter: NestedFilter<'v> = nested_filter::None;
+    type NestedFilter: NestedFilter<'v> = IgnoreNested;
 
     /// The result type of the `visit_*` methods. Can be either `()`,
     /// or `ControlFlow<T>`.
@@ -226,16 +222,16 @@ pub trait Visitor<'v>: Sized {
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         panic!(
             "maybe_tcx must be implemented or consider using \
-            `type NestedFilter = nested_filter::None` (the default)"
+            `type NestedFilter = Skip` (the default)"
         );
     }
 
     /// Invoked when a nested item is encountered. By default, when
-    /// `Self::NestedFilter` is `nested_filter::None`, this method does
+    /// `Self::NestedFilter` is `Skip`, this method does
     /// nothing. **You probably don't want to override this method** --
     /// instead, override [`Self::NestedFilter`] or use the "shallow" or
     /// "deep" visit patterns described at
-    /// [`rustc_hir::intravisit`]. The only reason to override
+    /// [`intravisit`](self). The only reason to override
     /// this method is if you want a nested pattern but cannot supply a
     /// `TyCtxt`; see `maybe_tcx` for advice.
     fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
@@ -342,7 +338,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_expr(&mut self, expr: &'v PatExpr<'v>) -> Self::Result {
         walk_pat_expr(self, expr)
     }
-    fn visit_lit(&mut self, _hir_id: HirId, _lit: Lit, _negated: bool) -> Self::Result {
+    fn visit_lit(&mut self, _hir_id: HirId, _lit: Lit, _is_negated_pat: bool) -> Self::Result {
         Self::Result::output()
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
@@ -985,7 +981,7 @@ pub fn walk_generic_arg<'v, V: Visitor<'v>>(
         GenericArg::Type(ty) => visitor.visit_ty(ty),
         GenericArg::Const(ct) => visitor.visit_const_arg(ct),
         GenericArg::Infer(inf) => {
-            let InferArg { hir_id, span } = inf;
+            let InferArg { hir_id, span, kind: _ } = inf;
             visitor.visit_infer(*hir_id, *span, InferKind::Ambig(inf))
         }
     }
@@ -1053,6 +1049,12 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
             visit_opt!(visitor, visit_ident, *variant);
             try_visit!(visitor.visit_ident(*field));
         }
+        TyKind::View(ty, fields) => {
+            try_visit!(visitor.visit_ty_unambig(ty));
+            for field in fields {
+                try_visit!(visitor.visit_ident(*field));
+            }
+        }
     }
     V::Result::output()
 }
@@ -1088,7 +1090,7 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_id(*hir_id));
     match kind {
         ConstArgKind::Tup(exprs) => {
-            walk_list!(visitor, visit_const_arg, *exprs);
+            walk_list!(visitor, visit_const_arg_unambig, *exprs);
             V::Result::output()
         }
         ConstArgKind::Struct(qpath, field_exprs) => {
@@ -1399,8 +1401,21 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
 
 pub fn walk_field_def<'v, V: Visitor<'v>>(
     visitor: &mut V,
-    FieldDef { hir_id, ident, ty, default, span: _, vis_span: _, def_id: _, safety: _ }: &'v FieldDef<'v>,
+    FieldDef {
+        hir_id,
+        ident,
+        ty,
+        default,
+        span: _,
+        vis_span: _,
+        mut_restriction,
+        def_id: _,
+        safety: _,
+    }: &'v FieldDef<'v>,
 ) -> V::Result {
+    if let RestrictionKind::Restricted(path) = mut_restriction.kind {
+        walk_list!(visitor, visit_path_segment, path.segments);
+    }
     try_visit!(visitor.visit_id(*hir_id));
     try_visit!(visitor.visit_ident(*ident));
     visit_opt!(visitor, visit_anon_const, default);
@@ -1431,7 +1446,7 @@ pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) -> V::R
 }
 
 pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) -> V::Result {
-    let InferArg { hir_id, span: _ } = inf;
+    let InferArg { hir_id, span: _, kind: _ } = inf;
     visitor.visit_id(*hir_id)
 }
 
@@ -1468,7 +1483,8 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(
     visitor: &mut V,
     segment: &'v PathSegment<'v>,
 ) -> V::Result {
-    let PathSegment { ident, hir_id, res: _, args, infer_args: _ } = segment;
+    let PathSegment { ident, hir_id, res: _, args, infer_args: _, delegation_child_segment: _ } =
+        segment;
     try_visit!(visitor.visit_ident(*ident));
     try_visit!(visitor.visit_id(*hir_id));
     visit_opt!(visitor, visit_generic_args, *args);

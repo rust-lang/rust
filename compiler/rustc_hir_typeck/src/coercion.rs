@@ -39,9 +39,10 @@ use std::ops::{ControlFlow, Deref};
 
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
@@ -181,7 +182,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
-                    if ocx.try_evaluate_obligations().is_empty() {
+                    if ocx.try_evaluate_obligations().no_errors() {
                         Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
@@ -673,7 +674,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut coercion = self.unify_and(
             coerce_target,
             target,
-            reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
+            reborrow.map(|(deref, autoref)| [deref, autoref]).into_flat_iter(),
             Adjust::Pointer(PointerCoercion::Unsize),
             ForceLeakCheck::No,
         )?;
@@ -736,19 +737,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     self.resolve_vars_if_possible(trait_pred)
-                }
-                // Eagerly process alias-relate obligations in new trait solver,
-                // since these can be emitted in the process of solving trait goals,
-                // but we need to constrain vars before processing goals mentioning
-                // them.
-                Some(ty::PredicateKind::AliasRelate(..)) => {
-                    let ocx = ObligationCtxt::new(self);
-                    ocx.register_obligation(obligation);
-                    if !ocx.try_evaluate_obligations().is_empty() {
-                        return Err(TypeError::Mismatch);
-                    }
-                    coercion.obligations.extend(ocx.into_pending_obligations());
-                    continue;
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -845,7 +833,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> PredicateObligation<'tcx> {
         let pred = ty::TraitRef::new(
             self.tcx,
-            self.tcx.require_lang_item(hir::LangItem::Unpin, self.cause.span),
+            self.tcx.require_lang_item(LangItem::Unpin, self.cause.span),
             [ty],
         );
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
@@ -1015,7 +1003,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligation(obligation);
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
-        if errs.is_empty() {
+        if errs.no_errors() {
             Ok(InferOk {
                 value: (
                     vec![Adjustment {
@@ -1194,7 +1182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             };
             ocx.register_obligations(ok.obligations);
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     }
 
@@ -1271,7 +1259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sig = if fn_attrs.safe_target_features {
             // Allow the coercion if the current function has all the features that would be
             // needed to call the coercee safely.
-            match tcx.adjust_target_feature_sig(def_id, sig, self.body_id.into()) {
+            match tcx.adjust_target_feature_sig(def_id, sig, self.body_def_id.into()) {
                 Some(adjusted_sig) => adjusted_sig,
                 None if matches!(expected_safety, Some(hir::Safety::Safe)) => {
                     return Err(TypeError::TargetFeatureCast(def_id));
@@ -1367,7 +1355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let result = if self.next_trait_solver() {
                         let ocx = ObligationCtxt::new(self);
                         let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                        if ocx.try_evaluate_obligations().is_empty() {
+                        if ocx.try_evaluate_obligations().no_errors() {
                             Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                         } else {
                             Err(TypeError::Mismatch)
@@ -1490,12 +1478,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 pub fn can_coerce<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     ty: Ty<'tcx>,
     output_ty: Ty<'tcx>,
 ) -> bool {
-    let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_id);
-    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_id);
+    let root_ctxt = crate::typeck_root_ctxt::TypeckRootCtxt::new(tcx, body_def_id);
+    let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, body_def_id);
     fn_ctxt.may_coerce(ty, output_ty)
 }
 
@@ -1963,7 +1951,7 @@ impl<'tcx> CoerceMany<'tcx> {
                             ))
                         }),
                 );
-                ocx.try_evaluate_obligations().is_empty()
+                ocx.try_evaluate_obligations().no_errors()
             })
         };
 
@@ -2070,7 +2058,7 @@ impl<'tcx> CoerceMany<'tcx> {
         if due_to_block
             && let Some(expr) = expression
             && let Some(parent_fn_decl) =
-                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
+                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id))
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,
@@ -2079,14 +2067,14 @@ impl<'tcx> CoerceMany<'tcx> {
                 expected,
                 found,
                 block_or_return_id,
-                fcx.body_id,
+                fcx.body_def_id,
             );
         }
 
         let is_return_position = fcx
             .tcx
             .hir_get_fn_id_for_return_block(block_or_return_id)
-            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_id));
+            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id));
 
         if is_return_position
             && let Some(sp) = fcx.ret_coercion_span.get()
@@ -2096,7 +2084,7 @@ impl<'tcx> CoerceMany<'tcx> {
             // may occur at the first return expression we see in the closure
             // (if it conflicts with the declared return type). Skip adding a
             // note in this case, since it would be incorrect.
-            && let Some(fn_sig) = fcx.body_fn_sig()
+            && let Some(fn_sig) = fcx.fn_sig()
             && fn_sig.output().is_ty_var()
         {
             err.span_note(sp, format!("return type inferred to be `{expected}` here"));
@@ -2109,14 +2097,14 @@ impl<'tcx> CoerceMany<'tcx> {
     /// sure we consider `dyn Trait: Sized` where clauses, which are trivially
     /// false but technically valid for typeck.
     fn is_return_ty_definitely_unsized(&self, fcx: &FnCtxt<'_, 'tcx>) -> bool {
-        if let Some(sig) = fcx.body_fn_sig() {
+        if let Some(sig) = fcx.fn_sig() {
             !fcx.predicate_may_hold(&Obligation::new(
                 fcx.tcx,
                 ObligationCause::dummy(),
                 fcx.param_env,
                 ty::TraitRef::new(
                     fcx.tcx,
-                    fcx.tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP),
+                    fcx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP),
                     [sig.output()],
                 ),
             ))

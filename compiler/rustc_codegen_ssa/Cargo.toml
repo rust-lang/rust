@@ -16,6 +16,7 @@ rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
+rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fs_util = { path = "../rustc_fs_util" }
@@ -27,6 +28,7 @@ rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
+rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
@@ -36,9 +38,9 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
-thorin-dwp = "0.9"
+thorin-dwp = "0.11"
 tracing = "0.1"
-wasm-encoder = "0.219"
+wasm-encoder = "0.247"
 # tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
@@ -47,7 +49,7 @@ libc = "0.2.50"
 # tidy-alphabetical-end
 
 [dependencies.object]
-version = "0.37.0"
+version = "0.39.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 

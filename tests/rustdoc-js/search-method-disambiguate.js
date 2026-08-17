@@ -1,6 +1,6 @@
 // exact-check
 // ignore-order
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 const FILTER_CRATE = "search_method_disambiguate";
 

@@ -2,7 +2,11 @@
 //!
 //! # Examples
 //!
-//! ```
+#![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"), doc = "```")]
+#![cfg_attr(
+    not(all(target_vendor = "fortanix", target_env = "sgx")),
+    doc = "```ignore (needs aix)"
+)]
 //! use std::ffi::OsString;
 //! use std::os::fortanix_sgx::ffi::OsStringExt;
 //!
@@ -17,7 +21,11 @@
 //! assert_eq!(bytes, b"foo");
 //! ```
 //!
-//! ```
+#![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"), doc = "```")]
+#![cfg_attr(
+    not(all(target_vendor = "fortanix", target_env = "sgx")),
+    doc = "```ignore (needs aix)"
+)]
 //! use std::ffi::OsStr;
 //! use std::os::fortanix_sgx::ffi::OsStrExt;
 //!

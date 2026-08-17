@@ -32,15 +32,6 @@ use core::any::Any;
 use core::panic::PanicPayload;
 
 cfg_select! {
-    target_os = "hermit" => {
-        #[path = "hermit.rs"]
-        mod imp;
-    }
-    target_os = "l4re" => {
-        // L4Re is unix family but does not yet support unwinding.
-        #[path = "dummy.rs"]
-        mod imp;
-    }
     any(
         all(target_family = "windows", target_env = "gnu"),
         target_os = "psp",
@@ -69,6 +60,7 @@ cfg_select! {
         // - os=none ("bare metal" targets)
         // - os=uefi
         // - os=espidf
+        // - os=hermit
         // - nvptx64-nvidia-cuda
         // - arch=avr
         #[path = "dummy.rs"]

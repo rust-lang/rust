@@ -1,5 +1,5 @@
 #![expect(incomplete_features)]
-#![feature(adt_const_params, min_generic_const_args)]
+#![feature(adt_const_params, min_generic_const_args, macroless_generic_const_args)]
 
 struct ArrWrap<const N: [u8; 1]>;
 

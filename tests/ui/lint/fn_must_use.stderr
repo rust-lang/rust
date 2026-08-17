@@ -1,10 +1,10 @@
-warning: `#[must_use]` attribute cannot be used on trait methods in impl blocks
-  --> $DIR/fn_must_use.rs:41:5
+warning: the `must_use` attribute cannot be used on trait methods in impl blocks
+  --> $DIR/fn_must_use.rs:41:7
    |
 LL |     #[must_use]
-   |     ^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[must_use]` can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, and traits
+   = help: the `must_use` attribute can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 

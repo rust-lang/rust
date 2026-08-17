@@ -1,14 +1,20 @@
-error: error reading Clippy's configuration file: duplicate field `cognitive_complexity_threshold` (provided as `cyclomatic_complexity_threshold`)
+warning: use of a deprecated field
   --> $DIR/tests/ui-toml/duplicated_keys_deprecated/clippy.toml:3:1
    |
 LL | cyclomatic-complexity-threshold = 3
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use new name: `cognitive-complexity-threshold`
 
-warning: error reading Clippy's configuration file: deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead
+error: duplicate key in document root
   --> $DIR/tests/ui-toml/duplicated_keys_deprecated/clippy.toml:3:1
    |
 LL | cyclomatic-complexity-threshold = 3
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: previous definition here
+  --> $DIR/tests/ui-toml/duplicated_keys_deprecated/clippy.toml:1:1
+   |
+LL | cognitive-complexity-threshold = 2
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
 

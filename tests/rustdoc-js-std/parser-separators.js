@@ -1,4 +1,4 @@
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 
 const PARSED = [
     {

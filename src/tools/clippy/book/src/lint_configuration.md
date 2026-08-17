@@ -863,6 +863,16 @@ The maximum number of bounds a trait can have to be linted
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
 
 
+## `min-ident-chars-lint-trait-impl`
+Whether to lint idents that have too few chars even when following trait declaration.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`min_ident_chars`](https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars)
+
+
 ## `min-ident-chars-threshold`
 Minimum chars an ident can have, anything below or equal to this will be linted.
 
@@ -941,6 +951,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`filter_map_next`](https://rust-lang.github.io/rust-clippy/master/index.html#filter_map_next)
 * [`from_over_into`](https://rust-lang.github.io/rust-clippy/master/index.html#from_over_into)
 * [`if_then_some_else_none`](https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none)
+* [`implicit_saturating_sub`](https://rust-lang.github.io/rust-clippy/master/index.html#implicit_saturating_sub)
 * [`index_refutable_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
 * [`inefficient_to_string`](https://rust-lang.github.io/rust-clippy/master/index.html#inefficient_to_string)
 * [`io_other_error`](https://rust-lang.github.io/rust-clippy/master/index.html#io_other_error)
@@ -957,6 +968,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`manual_is_ascii_check`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
 * [`manual_is_power_of_two`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two)
+* [`manual_is_variant_and`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_variant_and)
 * [`manual_isolate_lowest_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_isolate_lowest_one)
 * [`manual_let_else`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
 * [`manual_midpoint`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_midpoint)
@@ -984,6 +996,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`missing_const_for_fn`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn)
 * [`needless_borrow`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow)
 * [`non_std_lazy_statics`](https://rust-lang.github.io/rust-clippy/master/index.html#non_std_lazy_statics)
+* [`nonnull_unchecked_on_box_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#nonnull_unchecked_on_box_ptr)
 * [`option_as_ref_deref`](https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref)
 * [`or_fun_call`](https://rust-lang.github.io/rust-clippy/master/index.html#or_fun_call)
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
@@ -1161,6 +1174,30 @@ The maximum number of lines a function or method can have
 The order of associated items in traits.
 
 **Default Value:** `["const", "type", "fn"]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
+## `trait-impl-item-order`
+The required ordering of associated items in trait impls: purely alphabetical,
+following the trait definition order, or accepting either.
+
+Note that the trait definition order may change between versions of the
+crate defining the trait without being considered a breaking change.
+
+Examples:
+When using trait definition item ordering:
+```toml
+trait-impl-item-order = "trait_item_ordering"
+```
+When using trait definition item ordering and alphabetical for fallbacks:
+```toml
+trait-impl-item-order = "alphabetical_or_trait_item_ordering"
+```
+
+**Default Value:** `"alphabetical"`
 
 ---
 **Affected lints:**

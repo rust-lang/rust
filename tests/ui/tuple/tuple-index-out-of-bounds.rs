@@ -1,3 +1,7 @@
+//@ reference: expr.tuple-index.index-name-operand
+//@ reference: type.struct.tuple
+//@ reference: type.tuple.field-name
+//@ reference: type.tuple.field-number
 struct Point(i32, i32);
 
 fn main() {

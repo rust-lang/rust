@@ -9,11 +9,11 @@ use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
-use rustc_hir::AttrPath;
-use rustc_hir::attrs::AttributeKind;
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
@@ -36,6 +36,7 @@ use crate::attributes::diagnostic::on_type_error::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::diagnostic::on_unknown::*;
 use crate::attributes::diagnostic::on_unmatched_args::*;
+use crate::attributes::diagnostic::opaque::*;
 use crate::attributes::doc::*;
 use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
@@ -65,16 +66,16 @@ use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
+use crate::diagnostics::{
+    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
+    ParsedDescription, UnusedDuplicate,
+};
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
     RefPathParser,
 };
-use crate::session_diagnostics::{
-    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription, UnusedDuplicate,
-};
 use crate::target_checking::AllowedTargets;
-use crate::{AttrSuggestionStyle, AttributeParser, AttributeTemplate, EmitAttribute};
+use crate::{AttributeParser, AttributeTemplate, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
 
@@ -92,8 +93,25 @@ pub(super) struct GroupTypeInnerAccept {
 }
 
 pub(crate) type AcceptFn =
-    Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess>, &ArgParser) + Send + Sync>;
-pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> Option<AttributeKind>;
+    Box<dyn for<'sess> Fn(&mut AcceptContext<'_, 'sess>, &ArgParser) + Send + Sync>;
+
+pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> FinalizeOutput;
+
+/// A cross-attribute check that runs *after* all attributes on an item have been
+/// finalized, so it can inspect the fully parsed attributes via
+/// [`FinalizeCheckContext::parsed_attrs`]. The [`Span`] is the span of the attribute the
+/// check is associated with, used for diagnostics.
+pub(crate) type FinalizeCheckFn = fn(&FinalizeCheckContext<'_, '_>, Span);
+
+/// The result of finalizing a single attribute parser.
+pub(crate) struct FinalizeOutput {
+    /// The attribute the parser produced, if any.
+    pub(crate) attr: Option<AttributeKind>,
+    /// A check to run once *all* attributes on the item have been finalized, together
+    /// with the span it should be reported at. Deferred so that it can inspect the fully
+    /// parsed attributes via [`FinalizeCheckContext::parsed_attrs`].
+    pub(crate) deferred_check: Option<(FinalizeCheckFn, Span)>,
+}
 
 macro_rules! attribute_parsers {
     (
@@ -122,7 +140,11 @@ macro_rules! attribute_parsers {
                                     allowed_targets: <$names as crate::attributes::AttributeParser>::ALLOWED_TARGETS,
                                     finalizer: |cx| {
                                         let state = STATE_OBJECT.take();
-                                        state.finalize(cx)
+                                        // Compute the deferred check (if any) before consuming
+                                        // the state in `finalize`.
+                                        let deferred_check = state.deferred_finalize_check();
+                                        let attr = state.finalize(cx);
+                                        FinalizeOutput { attr, deferred_check }
                                     }
                                 });
                             }
@@ -151,6 +173,8 @@ attribute_parsers!(
         OnUnimplementedParser,
         OnUnknownParser,
         OnUnmatchedArgsParser,
+        OpaqueParser,
+        RegisterToolParser,
         RustcAlignParser,
         RustcAlignStaticParser,
         RustcCguTestAttributeParser,
@@ -165,7 +189,6 @@ attribute_parsers!(
         Combine<FeatureParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
-        Combine<RegisterToolParser>,
         Combine<ReprParser>,
         Combine<RustcAllowConstFnUnstableParser>,
         Combine<RustcCleanParser>,
@@ -272,7 +295,9 @@ attribute_parsers!(
         Single<WithoutArgs<RustcAllocatorParser>>,
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcAllowIncoherentImplParser>>,
+        Single<WithoutArgs<RustcAllowLifetimeDependentSpecializationParser>>,
         Single<WithoutArgs<RustcAsPtrParser>>,
+        Single<WithoutArgs<RustcCanonicalSymbolParser>>,
         Single<WithoutArgs<RustcCaptureAnalysisParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcCoinductiveParser>>,
@@ -316,6 +341,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNonnullOptimizationGuaranteedParser>>,
         Single<WithoutArgs<RustcNounwindParser>>,
         Single<WithoutArgs<RustcOffloadKernelParser>>,
+        Single<WithoutArgs<RustcPanicsWhenZeroParser>>,
         Single<WithoutArgs<RustcParenSugarParser>>,
         Single<WithoutArgs<RustcPassByValueParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
@@ -328,8 +354,8 @@ attribute_parsers!(
         Single<WithoutArgs<RustcSpecializationTraitParser>>,
         Single<WithoutArgs<RustcStdInternalSymbolParser>>,
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
+        Single<WithoutArgs<RustcTestEntrypointMarkerParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
-        Single<WithoutArgs<RustcUnsafeSpecializationMarkerParser>>,
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
@@ -460,7 +486,7 @@ impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
         AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
     }
 
-    /// Asserts that this MetaItem is a list that contains a single element. Emits an error and
+    /// Asserts that this `MetaItem` is a list that contains a single element. Emits an error and
     /// returns `None` if it is not the case.
     ///
     /// Some examples:
@@ -665,11 +691,7 @@ impl ExpectNameValue for MetaItemParser {
             cx.adcx().expected_name_value(self.span(), name);
         }
 
-        let Some((word, arg)) = word.zip(arg) else {
-            return None;
-        };
-
-        Some((word, arg))
+        word.zip(arg)
     }
 }
 
@@ -737,7 +759,7 @@ impl<'f, 'sess> Deref for AcceptContext<'f, 'sess> {
     }
 }
 
-impl<'f, 'sess> DerefMut for AcceptContext<'f, 'sess> {
+impl DerefMut for AcceptContext<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.shared
     }
@@ -753,7 +775,7 @@ pub struct SharedContext<'p, 'sess> {
     pub(crate) cx: &'p mut AttributeParser<'sess>,
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
-    pub(crate) target: rustc_hir::Target,
+    pub(crate) target: Target,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 
@@ -788,6 +810,42 @@ impl<'p, 'sess: 'p> Deref for FinalizeContext<'p, 'sess> {
 }
 
 impl<'p, 'sess: 'p> DerefMut for FinalizeContext<'p, 'sess> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.shared
+    }
+}
+
+/// Context given to deferred cross-attribute checks (`finalize_check`).
+///
+/// These checks run *after* every attribute on an item has been finalized, so unlike
+/// [`FinalizeContext`] this context can also inspect the fully parsed attributes via
+/// [`parsed_attrs`](Self::parsed_attrs).
+pub(crate) struct FinalizeCheckContext<'p, 'sess> {
+    pub(crate) shared: SharedContext<'p, 'sess>,
+
+    /// A list of all attribute on this syntax node.
+    ///
+    /// Useful for compatibility checks with other attributes.
+    ///
+    /// Unlike [`parsed_attrs`](Self::parsed_attrs), this only contains the *paths* of the
+    /// attributes.
+    pub(crate) all_attrs: &'p [RefPathParser<'p>],
+
+    /// All attributes that have been parsed on this syntax node.
+    ///
+    /// Unlike [`all_attrs`](Self::all_attrs), this contains the fully parsed attributes.
+    pub(crate) parsed_attrs: &'p [Attribute],
+}
+
+impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {
+    type Target = SharedContext<'p, 'sess>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.shared
+    }
+}
+
+impl<'p, 'sess: 'p> DerefMut for FinalizeCheckContext<'p, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.shared
     }
@@ -838,7 +896,7 @@ pub enum ShouldEmit {
 }
 
 impl ShouldEmit {
-    pub(crate) fn emit_err(&self, diag: Diag<'_>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
             ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
             ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
@@ -859,19 +917,25 @@ pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess> {
 impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     fn emit_parse_error(
         &mut self,
-        span: Span,
+        mut span: Span,
         reason: AttributeParseErrorReason<'_>,
     ) -> ErrorGuaranteed {
-        let suggestions = if !self.custom_suggestions.is_empty() {
-            AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
+        let suggestions = if self.custom_suggestions.is_empty() {
+            AttributeParseErrorSuggestions::CreatedByTemplate(self.suggestions())
         } else {
-            AttributeParseErrorSuggestions::CreatedByTemplate(self.template_suggestions())
+            AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
         };
+
+        // If the span is the full attribute (including the `#[`/`]` delimiters) shrink it to
+        // exclude those delimiters, because that's what we want in error messages.
+        if span == self.attr_span {
+            span = self.inner_span;
+        }
 
         self.emit_err(AttributeParseError {
             span,
-            attr_span: self.attr_span,
-            template: self.template.clone(),
+            inner_span: self.inner_span,
+            template: *self.template,
             path: self.attr_path.clone(),
             description: self.parsed_description,
             reason,
@@ -884,19 +948,6 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     pub(crate) fn push_suggestion(&mut self, msg: String, span: Span, code: String) -> &mut Self {
         self.custom_suggestions.push(Suggestion { msg, sp: span, code });
         self
-    }
-
-    pub(crate) fn template_suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            // If the outer and inner spans are equal, we are parsing an embedded attribute
-            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
-                AttrSuggestionStyle::EmbeddedAttribute
-            }
-            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
 }
 
@@ -1073,7 +1124,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         help: Option<String>,
     ) {
         let suggestions = self.suggestions();
-        let span = self.attr_span;
+        let span = self.inner_span;
         self.emit_lint(
             lint,
             crate::diagnostics::IllFormedAttributeInput::new(&suggestions, None, help.as_deref()),
@@ -1082,16 +1133,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 
     pub(crate) fn suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            // If the outer and inner spans are equal, we are parsing an embedded attribute
-            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
-                AttrSuggestionStyle::EmbeddedAttribute
-            }
-            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, self.attr_safety, &self.attr_path)
+        self.template.suggestions(self.parsed_description, self.attr_safety, &self.attr_path)
     }
     /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)
@@ -1122,7 +1164,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 }
 
-impl<'a, 'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'a, 'f, 'sess> {
+impl<'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'_, 'f, 'sess> {
     type Target = AcceptContext<'f, 'sess>;
 
     fn deref(&self) -> &Self::Target {
@@ -1130,7 +1172,7 @@ impl<'a, 'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 }
 
-impl<'a, 'f, 'sess: 'f> DerefMut for AttributeDiagnosticContext<'a, 'f, 'sess> {
+impl<'f, 'sess: 'f> DerefMut for AttributeDiagnosticContext<'_, 'f, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.ctx
     }

@@ -20,6 +20,7 @@ use crate::common::{
 };
 use crate::directives::{AuxCrate, TestProps};
 use crate::errors::{Error, ErrorKind, load_errors};
+use crate::executor::TestVariant;
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
@@ -111,7 +112,7 @@ pub(crate) fn run(
     stdout: &dyn ConsoleOut,
     stderr: &dyn ConsoleOut,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) {
     match &*config.target {
         "arm-linux-androideabi"
@@ -122,15 +123,7 @@ pub(crate) fn run(
                 panic!("android device not available");
             }
         }
-
-        _ => {
-            // FIXME: this logic seems strange as well.
-
-            // android has its own gdb handling
-            if config.debugger == Some(Debugger::Gdb) && config.gdb.is_none() {
-                panic!("gdb not available but debuginfo gdb debuginfo test requested");
-            }
-        }
+        _ => {}
     }
 
     if config.verbose {
@@ -138,16 +131,16 @@ pub(crate) fn run(
         write!(stdout, "\n\n");
     }
     debug!("running {}", testpaths.file);
-    let mut props = TestProps::from_file(&testpaths.file, revision, &config);
+    let mut props = TestProps::from_file(&testpaths.file, variant.revision(), &config);
 
     // For non-incremental (i.e. regular UI) tests, the incremental directory
     // takes into account the revision name, since the revisions are independent
     // of each other and can race.
     if props.incremental {
-        props.incremental_dir = Some(incremental_dir(&config, testpaths, revision));
+        props.incremental_dir = Some(incremental_dir(&config, testpaths, variant));
     }
 
-    let cx = TestCx { config: &config, stdout, stderr, props: &props, testpaths, revision };
+    let cx = TestCx { config: &config, stdout, stderr, props: &props, testpaths, variant };
 
     if let Err(e) = create_dir_all(&cx.output_base_dir()) {
         panic!("failed to create output base directory {}: {e}", cx.output_base_dir());
@@ -170,7 +163,10 @@ pub(crate) fn run(
                 stderr,
                 props: &revision_props,
                 testpaths,
-                revision: Some(revision),
+                variant: &TestVariant {
+                    revision: Some(revision.clone()),
+                    debugger: variant.debugger,
+                },
             };
             rev_cx.run_revision();
         }
@@ -181,13 +177,13 @@ pub(crate) fn run(
     cx.create_stamp();
 }
 
-pub(crate) fn compute_stamp_hash(config: &Config) -> String {
+pub(crate) fn compute_stamp_hash(config: &Config, variant: &TestVariant) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
     config.run.hash(&mut hash);
     config.edition.hash(&mut hash);
 
-    match config.debugger {
+    match variant.debugger {
         Some(Debugger::Cdb) => {
             config.cdb.hash(&mut hash);
         }
@@ -223,7 +219,7 @@ struct TestCx<'test> {
     stderr: &'test dyn ConsoleOut,
     props: &'test TestProps,
     testpaths: &'test TestPaths,
-    revision: Option<&'test str>,
+    variant: &'test TestVariant,
 }
 
 enum ReadFrom {
@@ -480,7 +476,7 @@ impl<'test> TestCx<'test> {
         // Otherwise the `--cfg` flag is not valid.
         let normalize_revision = |revision: &str| revision.to_lowercase().replace("-", "_");
 
-        if let Some(revision) = self.revision {
+        if let Some(revision) = self.variant.revision() {
             let normalized_revision = normalize_revision(revision);
             let cfg_arg = ["--cfg", &normalized_revision];
             let arg = format!("--cfg={normalized_revision}");
@@ -660,7 +656,7 @@ impl<'test> TestCx<'test> {
 
     /// Check `//~ KIND message` annotations.
     fn check_expected_errors(&self, proc_res: &ProcRes) {
-        let expected_errors = load_errors(&self.testpaths.file, self.revision);
+        let expected_errors = load_errors(&self.testpaths.file, self.variant.revision());
         debug!(
             "check_expected_errors: expected_errors={:?} proc_res.status={:?}",
             expected_errors, proc_res.status
@@ -822,7 +818,7 @@ impl<'test> TestCx<'test> {
             if !unexpected.is_empty() {
                 writeln!(
                     self.stdout,
-                    "\n{prefix}: {n} diagnostics reported in JSON output but not expected in test file",
+                    "\n{prefix}: {n} diagnostics reported in rustc output but not expected in test file",
                     prefix = self.error_prefix(),
                     n = unexpected.len(),
                 );
@@ -857,7 +853,7 @@ impl<'test> TestCx<'test> {
             if !not_found.is_empty() {
                 writeln!(
                     self.stdout,
-                    "\n{prefix}: {n} diagnostics expected in test file but not reported in JSON output",
+                    "\n{prefix}: {n} diagnostics expected in test file but not reported in rustc output",
                     prefix = self.error_prefix(),
                     n = not_found.len(),
                 );
@@ -988,14 +984,15 @@ impl<'test> TestCx<'test> {
 
             for rel_ab in &self.props.aux.builds {
                 let aux_path = self.resolve_aux_path(rel_ab);
-                let props_for_aux = self.props.from_aux_file(&aux_path, self.revision, self.config);
+                let props_for_aux =
+                    self.props.from_aux_file(&aux_path, self.variant.revision(), self.config);
                 let aux_cx = TestCx {
                     config: self.config,
                     stdout: self.stdout,
                     stderr: self.stderr,
                     props: &props_for_aux,
                     testpaths: self.testpaths,
-                    revision: self.revision,
+                    variant: self.variant,
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -1351,9 +1348,30 @@ impl<'test> TestCx<'test> {
         aux_type: Option<AuxType>,
     ) -> AuxType {
         let aux_path = self.resolve_aux_path(source_path);
-        let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
+        let mut aux_props =
+            self.props.from_aux_file(&aux_path, self.variant.revision(), self.config);
         if aux_type == Some(AuxType::ProcMacro) {
-            aux_props.force_host = true;
+            if self.config.wasm_proc_macros {
+                aux_props.compile_flags.push("--target=wasm32-wasip2".to_owned());
+                // Override any earlier linkers for now, otherwise we fail to build since compiletest
+                // thinks we're building for a different target and passes its linker (if one is
+                // configured).
+                //
+                // wasm32-wasip2 should in principle always be able to link with wasm-component-ld +
+                // wasm-ld. This does mean that rust.lld needs to be enabled to build wasm-ld wrapper
+                // around rust-lld.
+                aux_props.compile_flags.push("-Clinker=wasm-component-ld".to_owned());
+                aux_props.compile_flags.push(format!(
+                    "-Clink-arg=--wasm-ld-path={}",
+                    self.config
+                        .sysroot_base
+                        .join("lib/rustlib")
+                        .join(&self.config.host)
+                        .join("bin/gcc-ld/wasm-ld")
+                ));
+            } else {
+                aux_props.force_host = true;
+            }
         }
         let mut aux_dir = aux_dir.to_path_buf();
         if aux_type == Some(AuxType::Bin) {
@@ -1369,7 +1387,7 @@ impl<'test> TestCx<'test> {
             stderr: self.stderr,
             props: &aux_props,
             testpaths: self.testpaths,
-            revision: self.revision,
+            variant: self.variant,
         };
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -1578,8 +1596,10 @@ impl<'test> TestCx<'test> {
         };
         compiler.arg(input_file);
 
-        // Use a single thread for efficiency and a deterministic error message order
-        compiler.arg("-Zthreads=1");
+        // Enable wasm proc macros.
+        if self.config.wasm_proc_macros {
+            compiler.arg("-Zwasm-proc-macros");
+        }
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.
@@ -2009,7 +2029,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn dump_output(&self, print_output: bool, proc_name: &str, out: &str, err: &str) {
-        let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
+        let revision =
+            if let Some(r) = self.variant.revision() { format!("{}.", r) } else { String::new() };
 
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
@@ -2066,22 +2087,26 @@ impl<'test> TestCx<'test> {
 
     /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
-    fn safe_revision(&self) -> Option<&str> {
-        if self.config.mode == TestMode::Incremental { None } else { self.revision }
+    fn variant_with_safe_revision(&self) -> TestVariant {
+        if self.config.mode == TestMode::Incremental {
+            TestVariant { revision: None, debugger: self.variant.debugger }
+        } else {
+            self.variant.clone()
+        }
     }
 
     /// Gets the absolute path to the directory where all output for the given
     /// test/revision should reside.
     /// E.g., `/path/to/build/host-tuple/test/ui/relative/testname.revision.mode/`.
     fn output_base_dir(&self) -> Utf8PathBuf {
-        output_base_dir(self.config, self.testpaths, self.safe_revision())
+        output_base_dir(self.config, self.testpaths, &self.variant_with_safe_revision())
     }
 
     /// Gets the absolute path to the base filename used as output for the given
     /// test/revision.
     /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> Utf8PathBuf {
-        output_base_name(self.config, self.testpaths, self.safe_revision())
+        output_base_name(self.config, self.testpaths, &self.variant_with_safe_revision())
     }
 
     /// Prints a message to (captured) stdout if `config.verbose` is true.
@@ -2100,7 +2125,7 @@ impl<'test> TestCx<'test> {
     /// includes the revision name for tests that use revisions.
     #[must_use]
     fn error_prefix(&self) -> String {
-        match self.revision {
+        match self.variant.revision() {
             Some(rev) => format!("error in revision `{rev}`"),
             None => format!("error"),
         }
@@ -2177,7 +2202,7 @@ impl<'test> TestCx<'test> {
         // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
 
         // HACK: tests are allowed to use a revision name as a check prefix.
-        if let Some(rev) = self.revision {
+        if let Some(rev) = self.variant.revision() {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
@@ -2580,31 +2605,52 @@ impl<'test> TestCx<'test> {
         // that actually appear in the output.
         // We use uppercase ALLOC to distinguish from the non-normalized version.
         {
-            let mut seen_allocs = indexmap::IndexSet::new();
+            match self.config.mode {
+                // Unfortunately, due to parallel frontend assigning alloc-ids
+                // nondeterministically we resort to dropping ids altogether for now
+                // in ui tests
+                TestMode::Ui => {
+                    // The alloc-id appears in pretty-printed allocations.
+                    normalized = static_regex!(
+                        r"╾─*(a(lloc)?|A(LLOC)?)\d+(\+0x[0-9a-f]+)?(<imm>)?( ?\(\d+ ptr bytes\))?─*╼"
+                    )
+                    .replace_all(&normalized, |_: &Captures<'_>| "╾ALLOC$ID╼".to_string())
+                    .into_owned();
 
-            // The alloc-id appears in pretty-printed allocations.
-            normalized = static_regex!(
-                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
-            )
-            .replace_all(&normalized, |caps: &Captures<'_>| {
-                // Renumber the captured index.
-                let index = caps.get(2).unwrap().as_str().to_string();
-                let (index, _) = seen_allocs.insert_full(index);
-                let offset = caps.get(3).map_or("", |c| c.as_str());
-                let imm = caps.get(4).map_or("", |c| c.as_str());
-                // Do not bother keeping it pretty, just make it deterministic.
-                format!("╾ALLOC{index}{offset}{imm}╼")
-            })
-            .into_owned();
+                    // The alloc-id appears in a sentence.
+                    normalized = static_regex!(r"\b(alloc|ALLOC)\d+\b")
+                        .replace_all(&normalized, |_: &Captures<'_>| "ALLOC$ID".to_string())
+                        .into_owned();
+                }
+                // use consistent `AllocId`s in other test modes, where parallel frontend
+                // should not (theoretically) be an issue
+                _ => {
+                    let mut seen_allocs = indexmap::IndexSet::new();
+                    // The alloc-id appears in pretty-printed allocations.
+                    normalized = static_regex!(
+                        r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
+                    )
+                    .replace_all(&normalized, |caps: &Captures<'_>| {
+                        // Renumber the captured index.
+                        let index = caps.get(2).unwrap().as_str().to_string();
+                        let (index, _) = seen_allocs.insert_full(index);
+                        let offset = caps.get(3).map_or("", |c| c.as_str());
+                        let imm = caps.get(4).map_or("", |c| c.as_str());
+                        // Do not bother keeping it pretty, just make it deterministic.
+                        format!("╾ALLOC{index}{offset}{imm}╼")
+                    })
+                    .into_owned();
 
-            // The alloc-id appears in a sentence.
-            normalized = static_regex!(r"\balloc([0-9]+)\b")
-                .replace_all(&normalized, |caps: &Captures<'_>| {
-                    let index = caps.get(1).unwrap().as_str().to_string();
-                    let (index, _) = seen_allocs.insert_full(index);
-                    format!("ALLOC{index}")
-                })
-                .into_owned();
+                    // The alloc-id appears in a sentence.
+                    normalized = static_regex!(r"\balloc([0-9]+)\b")
+                        .replace_all(&normalized, |caps: &Captures<'_>| {
+                            let index = caps.get(1).unwrap().as_str().to_string();
+                            let (index, _) = seen_allocs.insert_full(index);
+                            format!("ALLOC{index}")
+                        })
+                        .into_owned();
+                }
+            }
         }
 
         // Custom normalization rules
@@ -2642,17 +2688,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn expected_output_path(&self, kind: &str) -> Utf8PathBuf {
-        let mut path =
-            expected_output_path(&self.testpaths, self.revision, &self.config.compare_mode, kind);
+        let mut path = expected_output_path(
+            &self.testpaths,
+            self.variant.revision(),
+            &self.config.compare_mode,
+            kind,
+        );
 
         if !path.exists() {
             if let Some(CompareMode::Polonius) = self.config.compare_mode {
-                path = expected_output_path(&self.testpaths, self.revision, &None, kind);
+                path = expected_output_path(&self.testpaths, self.variant.revision(), &None, kind);
             }
         }
 
         if !path.exists() {
-            path = expected_output_path(&self.testpaths, self.revision, &None, kind);
+            path = expected_output_path(&self.testpaths, self.variant.revision(), &None, kind);
         }
 
         path
@@ -2691,8 +2741,12 @@ impl<'test> TestCx<'test> {
         actual_unnormalized: &str,
         expected: &str,
     ) -> CompareOutcome {
-        let expected_path =
-            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+        let expected_path = expected_output_path(
+            self.testpaths,
+            self.variant.revision(),
+            &self.config.compare_mode,
+            stream,
+        );
 
         if self.config.bless && actual.is_empty() && expected_path.exists() {
             self.delete_file(&expected_path);
@@ -2753,7 +2807,7 @@ impl<'test> TestCx<'test> {
         // Write the actual output to a file in build directory.
         let actual_path = self
             .output_base_name()
-            .with_extra_extension(self.revision.unwrap_or(""))
+            .with_extra_extension(self.variant.revision().unwrap_or(""))
             .with_extra_extension(
                 self.config.compare_mode.as_ref().map(|cm| cm.to_str()).unwrap_or(""),
             )
@@ -2781,7 +2835,7 @@ impl<'test> TestCx<'test> {
         } else {
             // Delete non-revision .stderr/.stdout file if revisions are used.
             // Without this, we'd just generate the new files and leave the old files around.
-            if self.revision.is_some() {
+            if self.variant.revision().is_some() {
                 let old =
                     expected_output_path(self.testpaths, None, &self.config.compare_mode, stream);
                 self.delete_file(&old);
@@ -2896,7 +2950,7 @@ impl<'test> TestCx<'test> {
     ) {
         for kind in UI_EXTENSIONS {
             let canon_comparison_path =
-                expected_output_path(&self.testpaths, self.revision, &None, kind);
+                expected_output_path(&self.testpaths, self.variant.revision(), &None, kind);
 
             let canon = match self.load_expected_output_from_path(&canon_comparison_path) {
                 Ok(canon) => canon,
@@ -2904,8 +2958,12 @@ impl<'test> TestCx<'test> {
             };
             let bless = self.config.bless;
             let check_and_prune_duplicate_outputs = |mode: &CompareMode, require_same: bool| {
-                let examined_path =
-                    expected_output_path(&self.testpaths, self.revision, &Some(mode.clone()), kind);
+                let examined_path = expected_output_path(
+                    &self.testpaths,
+                    self.variant.revision(),
+                    &Some(mode.clone()),
+                    kind,
+                );
 
                 // If there is no output, there is nothing to do
                 let examined_content = match self.load_expected_output_from_path(&examined_path) {
@@ -2941,8 +2999,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.revision);
-        fs::write(&stamp_file_path, compute_stamp_hash(&self.config)).unwrap();
+        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.variant);
+        fs::write(&stamp_file_path, compute_stamp_hash(&self.config, self.variant)).unwrap();
     }
 
     fn init_incremental_test(&self) {

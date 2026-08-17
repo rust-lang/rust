@@ -3,9 +3,9 @@
 //@run-native
 
 use std::io::{ErrorKind, Read, Write};
-use std::net::{Shutdown, TcpListener, TcpStream};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
@@ -13,6 +13,8 @@ fn main() {
     test_create_ipv4_listener();
     test_create_ipv6_listener();
     test_accept_and_connect();
+    test_connect_with_timeout();
+    test_connect_with_timeout_error();
     test_read_write();
     test_peek();
     test_peer_addr();
@@ -40,6 +42,39 @@ fn test_accept_and_connect() {
 
     let _stream = TcpStream::connect(address).unwrap();
     let (_other_stream, _addr) = listener.accept().unwrap();
+}
+
+/// Test connecting a socket with a timeout. The timeout
+/// shouldn't expire because a listener is listening on
+/// the specified address.
+fn test_connect_with_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    // Get local address with randomized port to know where
+    // we need to connect to.
+    let address = listener.local_addr().unwrap();
+
+    let _stream = TcpStream::connect_timeout(&address, Duration::from_millis(50)).unwrap();
+    let (_other_stream, _addr) = listener.accept().unwrap();
+}
+
+/// Test connecting a socket with a timeout which expires
+/// because we attempt to connect to an address where nothing
+/// is listening.
+fn test_connect_with_timeout_error() {
+    // We cannot attempt to connect to a localhost address because
+    // it could be the case that a socket from another test is
+    // currently listening on `localhost:12345` because we bind to
+    // random ports everywhere. For `192.0.2.1` we know that nothing is
+    // listening because it's a blackhole address:
+    // <https://www.rfc-editor.org/rfc/rfc5737>
+    // The port `12345` is just a random non-zero port.
+    let address = "192.0.2.1:12345".parse::<SocketAddr>().unwrap();
+    let timeout = Duration::from_millis(50);
+
+    let before = Instant::now();
+    let err = TcpStream::connect_timeout(&address, timeout).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::TimedOut);
+    assert!(before.elapsed() >= timeout);
 }
 
 /// Test reading and writing into two connected sockets and ensuring

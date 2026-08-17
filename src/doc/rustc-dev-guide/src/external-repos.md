@@ -34,6 +34,9 @@ to these tools should be filed against the tools directly in their respective up
 The exception is that when rustc changes are required to
 implement a new tool feature or test, that should happen in one collective rustc PR.
 
+Similarly, if your rustc changes break the build of some subtree dependency,
+you should include fixes for those in the rustc PR as well.
+
 `subtree` dependencies are currently managed by two distinct approaches:
 
 * Using `git subtree`

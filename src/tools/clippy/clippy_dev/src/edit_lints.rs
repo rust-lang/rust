@@ -8,8 +8,8 @@ use core::mem;
 use rustc_lexer::TokenKind;
 use std::collections::hash_map::Entry;
 use std::ffi::OsString;
-use std::fs;
 use std::path::Path;
+use std::{fs, path};
 
 /// Runs the `deprecate` command
 ///
@@ -103,7 +103,7 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
         eprintln!("error: failed to find lint `{old_name}`");
         return;
     };
-    let Lint::Active(mut prev_lint) = mem::replace(
+    let Lint::Active(prev_lint) = mem::replace(
         lint.get_mut(),
         Lint::Renamed(RenamedLint {
             new_name: LintName::new_clippy(new_name),
@@ -116,26 +116,19 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
 
     let mut rename_mod = false;
     if let Entry::Vacant(e) = data.lints.entry(new_name) {
-        if prev_lint.module.ends_with(old_name)
-            && prev_lint
-                .path
-                .file_stem()
-                .is_some_and(|x| x.as_encoded_bytes() == old_name.as_bytes())
+        if let Some((path, file)) = prev_lint.file.path.get().rsplit_once(path::MAIN_SEPARATOR)
+            && let Some(file) = file.strip_suffix(".rs")
+            && file == old_name
         {
-            let mut new_path = prev_lint.path.with_file_name(new_name).into_os_string();
-            new_path.push(".rs");
-            if try_rename_file(prev_lint.path.as_ref(), new_path.as_ref()) {
+            let new_path = cx
+                .str_buf
+                .alloc_display(cx.arena, format_args!("{path}{}{new_name}.rs", path::MAIN_SEPARATOR));
+            if try_rename_file(prev_lint.file.path.get(), new_path) {
                 rename_mod = true;
+                prev_lint.file.path.set(new_path);
             }
-
-            prev_lint.module = cx.str_buf.with(|buf| {
-                buf.push_str(&prev_lint.module[..prev_lint.module.len() - old_name.len()]);
-                buf.push_str(new_name);
-                cx.arena.alloc_str(buf)
-            });
         }
         e.insert(Lint::Active(prev_lint));
-
         rename_test_files(old_name, new_name, &create_ignored_prefixes(old_name, &data));
     } else {
         println!("Renamed `{old_name}` to `{new_name}`");
@@ -163,14 +156,14 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
 fn remove_lint_declaration(name: &str, lint: &ActiveLint<'_>, data: &LintData<'_>, updater: &mut FileUpdater) -> bool {
     let delete_mod = if data.lints.iter().all(|(_, l)| {
         if let Lint::Active(l) = l {
-            l.module != lint.module
+            l.file != lint.file
         } else {
             true
         }
     }) {
-        delete_file_if_exists(lint.path.as_ref())
+        delete_file_if_exists(lint.file.path.get())
     } else {
-        updater.update_file(&lint.path, &mut |_, src, dst| -> UpdateStatus {
+        updater.update_file(lint.file.path.get(), &mut |_, src, dst| -> UpdateStatus {
             let mut start = &src[..lint.declaration_range.start as usize];
             if start.ends_with("\n\n") {
                 start = &start[..start.len() - 1];
@@ -257,9 +250,9 @@ fn rename_test_files(old_name: &str, new_name: &str, ignored_prefixes: &[&str]) 
         old_buf.push(name);
         new_buf.extend([new_name.as_ref(), name.slice_encoded_bytes(old_name.len()..)]);
         if is_file {
-            try_rename_file(old_buf.as_ref(), new_buf.as_ref());
+            try_rename_file(&old_buf, &new_buf);
         } else {
-            try_rename_dir(old_buf.as_ref(), new_buf.as_ref());
+            try_rename_dir(&old_buf, &new_buf);
         }
         old_buf.truncate("tests/ui/".len());
         new_buf.truncate("tests/ui/".len());
@@ -274,7 +267,7 @@ fn rename_test_files(old_name: &str, new_name: &str, ignored_prefixes: &[&str]) 
     for (name, _) in &tests {
         old_buf.push(name);
         new_buf.extend([new_name.as_ref(), name.slice_encoded_bytes(old_name.len()..)]);
-        try_rename_dir(old_buf.as_ref(), new_buf.as_ref());
+        try_rename_dir(&old_buf, &new_buf);
         old_buf.truncate("tests/ui/".len());
         new_buf.truncate("tests/ui/".len());
     }
@@ -290,9 +283,9 @@ fn delete_test_files(lint: &str, ignored_prefixes: &[&str]) {
     for &(ref name, is_file) in &tests {
         buf.push(name);
         if is_file {
-            delete_file_if_exists(buf.as_ref());
+            delete_file_if_exists(&buf);
         } else {
-            delete_dir_if_exists(buf.as_ref());
+            delete_dir_if_exists(&buf);
         }
         buf.truncate("tests/ui/".len());
     }
@@ -304,7 +297,7 @@ fn delete_test_files(lint: &str, ignored_prefixes: &[&str]) {
     collect_ui_toml_test_names(lint, ignored_prefixes, &mut tests);
     for (name, _) in &tests {
         buf.push(name);
-        delete_dir_if_exists(buf.as_ref());
+        delete_dir_if_exists(&buf);
         buf.truncate("tests/ui/".len());
     }
 }

@@ -11,20 +11,21 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Unnormalized, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, RegionExt, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
+use rustc_trait_selection::solve::NextSolverError;
 use rustc_trait_selection::traits::{
-    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    self, FromSolverError, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use tracing::{debug, instrument};
 
@@ -69,7 +70,7 @@ fn compare_impl_method<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
-    compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
+    compare_method_clause_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
     Ok(())
 }
 
@@ -165,22 +166,22 @@ fn check_method_is_structurally_compatible<'tcx>(
 ///
 /// We do this by creating a parameter environment which contains a
 /// generic parameter corresponding to `impl_to_placeholder_args`. We then build
-/// `trait_to_placeholder_args` and use it to convert the predicates contained
+/// `trait_to_placeholder_args` and use it to convert the clauses contained
 /// in the `trait_m` generics to the placeholder form.
 ///
-/// Finally we register each of these predicates as an obligation and check that
+/// Finally we register each of these clauses as an obligation and check that
 /// they hold.
 #[instrument(level = "debug", skip(tcx, impl_trait_ref))]
-fn compare_method_predicate_entailment<'tcx>(
+fn compare_method_clause_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    // This node-id should be used for the `body_id` field on each
+    // This node-id should be used for the `body_def_id` field on each
     // `ObligationCause` (and the `FnCtxt`).
     //
-    // FIXME(@lcnr): remove that after removing `cause.body_id` from
+    // FIXME(@lcnr): remove that after removing `cause.body_def_id` from
     // obligations.
     let impl_m_def_id = impl_m.def_id.expect_local();
     let impl_m_span = tcx.def_span(impl_m_def_id);
@@ -203,27 +204,26 @@ fn compare_method_predicate_entailment<'tcx>(
     );
     debug!(?trait_to_impl_args);
 
-    let impl_m_predicates = tcx.predicates_of(impl_m.def_id);
-    let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
+    let impl_m_clauses = tcx.clauses_of(impl_m.def_id);
+    let trait_m_clauses = tcx.clauses_of(trait_m.def_id);
 
     // This is the only tricky bit of the new way we check implementation methods
-    // We need to build a set of predicates where only the method-level bounds
+    // We need to build a set of clauses where only the method-level bounds
     // are from the trait and we assume all other bounds from the implementation
     // to be previously satisfied.
     //
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
-    let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
-    hybrid_preds.extend(
-        trait_m_predicates.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
-    );
+    let impl_clauses = tcx.clauses_of(impl_m_clauses.parent.unwrap());
+    let mut hybrid_clauses = impl_clauses.instantiate_identity(tcx).clauses;
+    hybrid_clauses
+        .extend(trait_m_clauses.instantiate_own(tcx, trait_to_impl_args).map(|(clause, _)| clause));
 
     let is_conditionally_const = tcx.is_conditionally_const(impl_m.def_id);
     if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions
         // of the impl header and the trait method.
-        hybrid_preds.extend(
+        hybrid_clauses.extend(
             tcx.const_conditions(impl_def_id)
                 .instantiate_identity(tcx)
                 .into_iter()
@@ -236,42 +236,37 @@ fn compare_method_predicate_entailment<'tcx>(
         );
     }
 
-    let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
+    let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
-    // FIXME(-Zhigher-ranked-assumptions): The `hybrid_preds`
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    // NOTE(-Zhigher-ranked-assumptions): The `hybrid_preds`
     // should be well-formed. However, using them may result in
     // region errors as we currently don't track placeholder
     // assumptions.
     //
-    // To avoid being backwards incompatible with the old solver,
-    // we also eagerly normalize the where-bounds in the new solver
-    // here while ignoring region constraints. This means we can then
-    // use where-bounds whose normalization results in placeholder
-    // errors further down without getting any errors.
+    // We eagerly normalize the where-clauses here while ignoring
+    // region constraints. This means we can then use where-bounds
+    // whose normalization results in placeholder errors further
+    // down without getting any errors.
     //
-    // It should be sound to do so as the only region errors here
+    // This should be sound to do so as the only region errors here
     // should be due to missing implied bounds.
     //
     // cc trait-system-refactor-initiative/issues/166.
-    let param_env = if tcx.next_trait_solver_globally() {
-        traits::deeply_normalize_param_env_ignoring_regions(tcx, param_env, normalize_cause)
-    } else {
-        traits::normalize_param_env_or_error(tcx, param_env, normalize_cause)
-    };
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
-    // Create obligations for each predicate declared by the impl
+    // Create obligations for each clause declared by the impl
     // definition in the context of the hybrid param-env. This makes
     // sure that the impl's method's where clauses are not more
     // restrictive than the trait's method (and the impl itself).
-    let impl_m_own_bounds = impl_m_predicates.instantiate_own_identity();
-    for (predicate, span) in impl_m_own_bounds {
+    let impl_m_own_bounds = impl_m_clauses.instantiate_own_identity();
+    for (clause, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
-        let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
+        let clause = ocx.normalize(&normalize_cause, param_env, clause);
 
         let cause = ObligationCause::new(
             span,
@@ -282,7 +277,7 @@ fn compare_method_predicate_entailment<'tcx>(
                 kind: impl_m.kind,
             },
         );
-        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, clause));
     }
 
     // If we're within a const implementation, we need to make sure that the method
@@ -388,7 +383,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -493,13 +488,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         impl_trait_ref.args,
     );
 
-    let hybrid_preds = tcx
-        .predicates_of(impl_m.container_id(tcx))
+    let hybrid_clauses = tcx
+        .clauses_of(impl_m.container_id(tcx))
         .instantiate_identity(tcx)
         .into_iter()
-        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
+        .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -514,11 +509,11 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // We check these because if the where clauses of the signatures do not match
     // up, then we don't want to give spurious other errors that point at the RPITITs.
     // They're not necessary to check, though, because we already check them in
-    // `compare_method_predicate_entailment`.
-    let impl_m_own_bounds = tcx.predicates_of(impl_m_def_id).instantiate_own_identity();
-    for (predicate, span) in impl_m_own_bounds {
+    // `compare_method_clause_entailment`.
+    let impl_m_own_bounds = tcx.clauses_of(impl_m_def_id).instantiate_own_identity();
+    for (clause, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
-        let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
+        let clause = ocx.normalize(&normalize_cause, param_env, clause);
 
         let cause = ObligationCause::new(
             span,
@@ -529,7 +524,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 kind: impl_m.kind,
             },
         );
-        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, clause));
     }
 
     // Normalize the impl signature with fresh variables for lifetime inference.
@@ -653,13 +648,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // Unify the whole function signature. We need to do this to fully infer
     // the lifetimes of the return type, but do this after unifying just the
     // return types, since we want to avoid duplicating errors from
-    // `compare_method_predicate_entailment`.
+    // `compare_method_clause_entailment`.
     match ocx.eq(&cause, param_env, trait_sig, impl_sig) {
         Ok(()) => {}
         Err(terr) => {
-            // This function gets called during `compare_method_predicate_entailment` when normalizing a
+            // This function gets called during `compare_method_clause_entailment` when normalizing a
             // signature that contains RPITIT. When the method signatures don't match, we have to
-            // emit an error now because `compare_method_predicate_entailment` will not report the error
+            // emit an error now because `compare_method_clause_entailment` will not report the error
             // when normalization fails.
             let emitted = report_trait_method_mismatch(
                 infcx,
@@ -697,7 +692,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // RPITs.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         if let Err(guar) = try_report_async_mismatch(tcx, infcx, &errors, trait_m, impl_m, impl_sig)
         {
             return Err(guar);
@@ -803,26 +798,28 @@ struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    impl_m_id: LocalDefId,
 }
 
 impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E>
 where
-    E: 'tcx,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>
+        + FromSolverError<'tcx, traits::OldSolverError<'tcx>>,
 {
     fn new(
         ocx: &'a ObligationCtxt<'a, 'tcx, E>,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
+        impl_m_id: LocalDefId,
     ) -> Self {
-        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, body_id }
+        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, impl_m_id }
     }
 }
 
 impl<'tcx, E> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx, E>
 where
-    E: 'tcx,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>
+        + FromSolverError<'tcx, traits::OldSolverError<'tcx>>,
 {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx
@@ -852,7 +849,7 @@ where
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
-                    &ObligationCause::misc(self.span, self.body_id),
+                    &ObligationCause::misc(self.span, self.impl_m_id),
                     self.param_env,
                     Unnormalized::new_wip(pred),
                 );
@@ -861,7 +858,7 @@ where
                     self.cx(),
                     ObligationCause::new(
                         self.span,
-                        self.body_id,
+                        self.impl_m_id,
                         ObligationCauseCode::WhereClause(def_id, pred_span),
                     ),
                     self.param_env,
@@ -1283,7 +1280,7 @@ fn check_region_late_boundedness<'tcx>(
     };
 
     let errors = ocx.try_evaluate_obligations();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         return None;
     }
 
@@ -1380,9 +1377,7 @@ fn check_region_late_boundedness<'tcx>(
                     tcx.def_span(trait_param_def_id),
                     format!("`{}` is late-bound", tcx.item_name(trait_param_def_id)),
                 );
-                if let Some(span) =
-                    find_region_in_predicates(tcx, impl_m.def_id, early_bound_region)
-                {
+                if let Some(span) = find_region_in_clauses(tcx, impl_m.def_id, early_bound_region) {
                     multispan.push_span_label(
                         span,
                         format!(
@@ -1420,8 +1415,7 @@ fn check_region_late_boundedness<'tcx>(
                     tcx.def_span(trait_param_def_id),
                     format!("`{}` is early-bound", tcx.item_name(trait_param_def_id)),
                 );
-                if let Some(span) =
-                    find_region_in_predicates(tcx, trait_m.def_id, early_bound_region)
+                if let Some(span) = find_region_in_clauses(tcx, trait_m.def_id, early_bound_region)
                 {
                     multispan.push_span_label(
                         span,
@@ -1445,13 +1439,13 @@ fn check_region_late_boundedness<'tcx>(
     Some(diag.emit())
 }
 
-fn find_region_in_predicates<'tcx>(
+fn find_region_in_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     early_bound_region: ty::Region<'tcx>,
 ) -> Option<Span> {
-    for (pred, span) in tcx.explicit_predicates_of(def_id).instantiate_identity(tcx) {
-        if pred.skip_norm_wip().visit_with(&mut FindRegion(early_bound_region)).is_break() {
+    for (clause, span) in tcx.explicit_clauses_of(def_id).instantiate_identity(tcx) {
+        if clause.skip_norm_wip().visit_with(&mut FindRegion(early_bound_region)).is_break() {
             return Some(span);
         }
     }
@@ -2155,7 +2149,7 @@ fn compare_impl_const<'tcx>(
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
-    compare_const_predicate_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
+    compare_const_clause_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
 }
 
 fn compare_type_const<'tcx>(
@@ -2187,11 +2181,12 @@ fn compare_type_const<'tcx>(
     Ok(())
 }
 
-/// The equivalent of [compare_method_predicate_entailment], but for associated constants
+/// The equivalent of [compare_method_clause_entailment], but for associated constants
 /// instead of associated functions.
-// FIXME(generic_const_items): If possible extract the common parts of `compare_{type,const}_predicate_entailment`.
+// FIXME(generic_const_items): If possible extract the common parts of
+// `compare_{type,const}_clause_entailment`.
 #[instrument(level = "debug", skip(tcx))]
-fn compare_const_predicate_entailment<'tcx>(
+fn compare_const_clause_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ct: ty::AssocItem,
     trait_ct: ty::AssocItem,
@@ -2223,21 +2218,19 @@ fn compare_const_predicate_entailment<'tcx>(
     };
     let mut cause = ObligationCause::new(impl_ct_span, impl_ct_def_id, code.clone());
 
-    let impl_ct_predicates = tcx.predicates_of(impl_ct.def_id);
-    let trait_ct_predicates = tcx.predicates_of(trait_ct.def_id);
+    let impl_ct_clauses = tcx.clauses_of(impl_ct.def_id);
+    let trait_ct_clauses = tcx.clauses_of(trait_ct.def_id);
 
-    // The predicates declared by the impl definition, the trait and the
+    // The clauses declared by the impl definition, the trait and the
     // associated const in the trait are assumed.
-    let impl_predicates = tcx.predicates_of(impl_ct_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
-    hybrid_preds.extend(
-        trait_ct_predicates
-            .instantiate_own(tcx, trait_to_impl_args)
-            .map(|(predicate, _)| predicate),
+    let impl_clauses = tcx.clauses_of(impl_ct_clauses.parent.unwrap());
+    let mut hybrid_clauses = impl_clauses.instantiate_identity(tcx).clauses;
+    hybrid_clauses.extend(
+        trait_ct_clauses.instantiate_own(tcx, trait_to_impl_args).map(|(clause, _)| clause),
     );
-    let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
+    let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -2247,13 +2240,13 @@ fn compare_const_predicate_entailment<'tcx>(
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-    let impl_ct_own_bounds = impl_ct_predicates.instantiate_own_identity();
-    for (predicate, span) in impl_ct_own_bounds {
+    let impl_ct_own_bounds = impl_ct_clauses.instantiate_own_identity();
+    for (clause, span) in impl_ct_own_bounds {
         let cause = ObligationCause::misc(span, impl_ct_def_id);
-        let predicate = ocx.normalize(&cause, param_env, predicate);
+        let clause = ocx.normalize(&cause, param_env, clause);
 
         let cause = ObligationCause::new(span, impl_ct_def_id, code.clone());
-        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, clause));
     }
 
     // There is no "body" here, so just pass dummy id.
@@ -2304,7 +2297,7 @@ fn compare_const_predicate_entailment<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
@@ -2321,14 +2314,14 @@ fn compare_impl_ty<'tcx>(
     compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
     compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
     check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
-    compare_type_predicate_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
+    compare_type_clause_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
     check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)
 }
 
-/// The equivalent of [compare_method_predicate_entailment], but for associated types
+/// The equivalent of [compare_method_clause_entailment], but for associated types
 /// instead of associated functions.
 #[instrument(level = "debug", skip(tcx))]
-fn compare_type_predicate_entailment<'tcx>(
+fn compare_type_clause_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: ty::AssocItem,
     trait_ty: ty::AssocItem,
@@ -2341,32 +2334,30 @@ fn compare_type_predicate_entailment<'tcx>(
         impl_trait_ref.args,
     );
 
-    let impl_ty_predicates = tcx.predicates_of(impl_ty.def_id);
-    let trait_ty_predicates = tcx.predicates_of(trait_ty.def_id);
+    let impl_ty_clauses = tcx.clauses_of(impl_ty.def_id);
+    let trait_ty_clauses = tcx.clauses_of(trait_ty.def_id);
 
-    let impl_ty_own_bounds = impl_ty_predicates.instantiate_own_identity();
+    let impl_ty_own_bounds = impl_ty_clauses.instantiate_own_identity();
     // If there are no bounds, then there are no const conditions, so no need to check that here.
     if impl_ty_own_bounds.len() == 0 {
         // Nothing to check.
         return Ok(());
     }
 
-    // This `DefId` should be used for the `body_id` field on each
+    // This `DefId` should be used for the `body_def_id` field on each
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_def_id = impl_ty.def_id.expect_local();
     debug!(?trait_to_impl_args);
 
-    // The predicates declared by the impl definition, the trait and the
+    // The clauses declared by the impl definition, the trait and the
     // associated type in the trait are assumed.
-    let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
-    hybrid_preds.extend(
-        trait_ty_predicates
-            .instantiate_own(tcx, trait_to_impl_args)
-            .map(|(predicate, _)| predicate),
+    let impl_clauses = tcx.clauses_of(impl_ty_clauses.parent.unwrap());
+    let mut hybrid_clauses = impl_clauses.instantiate_identity(tcx).clauses;
+    hybrid_clauses.extend(
+        trait_ty_clauses.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
     );
-    debug!(?hybrid_preds);
+    debug!(?hybrid_clauses);
 
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = ObligationCause::misc(impl_ty_span, impl_ty_def_id);
@@ -2375,8 +2366,8 @@ fn compare_type_predicate_entailment<'tcx>(
     if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions
         // of the impl header and the trait assoc type.
-        hybrid_preds.extend(
-            tcx.const_conditions(impl_ty_predicates.parent.unwrap())
+        hybrid_clauses.extend(
+            tcx.const_conditions(impl_ty_clauses.parent.unwrap())
                 .instantiate_identity(tcx)
                 .into_iter()
                 .chain(
@@ -2388,17 +2379,17 @@ fn compare_type_predicate_entailment<'tcx>(
         );
     }
 
-    let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
+    let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-    for (predicate, span) in impl_ty_own_bounds {
+    for (clause, span) in impl_ty_own_bounds {
         let cause = ObligationCause::misc(span, impl_ty_def_id);
-        let predicate = ocx.normalize(&cause, param_env, predicate);
+        let clause = ocx.normalize(&cause, param_env, clause);
 
         let cause = ObligationCause::new(
             span,
@@ -2409,7 +2400,7 @@ fn compare_type_predicate_entailment<'tcx>(
                 kind: impl_ty.kind,
             },
         );
-        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, clause));
     }
 
     if is_conditionally_const {
@@ -2441,7 +2432,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -2572,7 +2563,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // version.
     ocx.register_obligations(obligations);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -2636,7 +2627,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut predicates = param_env.caller_bounds().to_vec();
+    let mut clauses = param_env.caller_bounds().to_vec();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
@@ -2733,7 +2724,7 @@ fn param_env_with_gat_bounds<'tcx>(
                 //
                 // impl<T> X for T where T: X { type Y = <T as X>::Y; }
             }
-            _ => predicates.push(
+            _ => clauses.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_term: ty::AliasTerm::new_from_def_id(
@@ -2750,7 +2741,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

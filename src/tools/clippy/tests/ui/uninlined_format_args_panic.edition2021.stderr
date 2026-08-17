@@ -1,5 +1,5 @@
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:12:5
+  --> tests/ui/uninlined_format_args_panic.rs:11:5
    |
 LL |     println!("val='{}'", var);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     println!("val='{var}'");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:16:9
+  --> tests/ui/uninlined_format_args_panic.rs:15:9
    |
 LL |         panic!("p1 {}", var);
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +         panic!("p1 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:21:9
+  --> tests/ui/uninlined_format_args_panic.rs:20:9
    |
 LL |         panic!("p2 {0}", var);
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +         panic!("p2 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:26:9
+  --> tests/ui/uninlined_format_args_panic.rs:25:9
    |
 LL |         panic!("p3 {var}", var = var);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +         panic!("p3 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:38:5
+  --> tests/ui/uninlined_format_args_panic.rs:37:5
    |
 LL |     assert!(var == 1, "p5 {}", var);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     assert!(var == 1, "p5 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:41:5
+  --> tests/ui/uninlined_format_args_panic.rs:40:5
    |
 LL |     debug_assert!(var == 1, "p6 {}", var);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     debug_assert!(var == 1, "p6 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:47:9
+  --> tests/ui/uninlined_format_args_panic.rs:46:9
    |
 LL |         core::panic!("p7 {}", var);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +         core::panic!("p7 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:52:9
+  --> tests/ui/uninlined_format_args_panic.rs:51:9
    |
 LL |         core::panic!("p8 {0}", var);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +         core::panic!("p8 {var}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui/uninlined_format_args_panic.rs:57:9
+  --> tests/ui/uninlined_format_args_panic.rs:56:9
    |
 LL |         core::panic!("p9 {var}", var = var);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -6,11 +6,12 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
+use rustc_data_structures::Limit;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
@@ -68,9 +69,11 @@ impl abi::Integer {
     }
 
     /// Finds the appropriate Integer type and signedness for the given
-    /// signed discriminant range and `#[repr]` attribute.
-    /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
-    /// that shouldn't affect anything, other than maybe debuginfo.
+    /// discriminant range and `#[repr]` attribute.
+    ///
+    /// To represent the way the values were written in the rust source, min and max
+    /// are in different types. It's thus possible to pass in an unrepresentable range,
+    /// and the method will panic in those cases.
     ///
     /// This is the basis for computing the type of the *tag* of an enum (which can be smaller than
     /// the type of the *discriminant*, which is determined by [`ReprOptions::discr_type`]).
@@ -78,15 +81,24 @@ impl abi::Integer {
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         repr: &ReprOptions,
-        min: i128,
-        max: i128,
+        min_negative: i128,
+        max_positive: u128,
     ) -> (abi::Integer, bool) {
+        assert!(
+            min_negative >= 0 || max_positive <= i128::MAX.cast_unsigned(),
+            "No type can represent the full range of {min_negative}..={max_positive}",
+        );
+
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u128
         // which can fit all i128 values, so the result remains unaffected.
-        let unsigned_fit = abi::Integer::fit_unsigned(cmp::max(min as u128, max as u128));
-        let signed_fit = cmp::max(abi::Integer::fit_signed(min), abi::Integer::fit_signed(max));
+        let unsigned_fit =
+            abi::Integer::fit_unsigned(cmp::max(min_negative.cast_unsigned(), max_positive));
+        let signed_fit = cmp::max(
+            abi::Integer::fit_signed(min_negative),
+            abi::Integer::fit_signed(max_positive.cast_signed()),
+        );
 
         if let Some(ity) = repr.int {
             let discr = abi::Integer::from_attr(&tcx, ity);
@@ -184,8 +196,6 @@ pub const WIDE_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const WIDE_PTR_EXTRA: usize = 1;
 
-pub const MAX_SIMD_LANES: u64 = rustc_abi::MAX_SIMD_LANES;
-
 /// Used in `check_validity_requirement` to indicate the kind of initialization
 /// that is checked to be valid
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
@@ -227,7 +237,7 @@ pub enum SimdLayoutError {
     ZeroLength,
     /// The vector has more lanes than supported or permitted by
     /// #\[rustc_simd_monomorphize_lane_limit\].
-    TooManyLanes(u64),
+    TooManyLanes(Limit),
 }
 
 #[derive(Copy, Clone, Debug, StableHash, TyEncodable, TyDecodable)]
@@ -353,14 +363,15 @@ impl<'tcx> SizeSkeleton<'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if depth >= recursion_limit.0 {
             let suggested_limit = match recursion_limit {
-                hir::limit::Limit(0) => hir::limit::Limit(2),
+                Limit(0) => Limit(2),
                 limit => limit * 2,
             };
-            let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
-                span,
-                ty,
-                suggested_limit,
-            });
+            let reported =
+                tcx.dcx().emit_err(crate::diagnostics::RecursionLimitReachedSizeSkeleton {
+                    span,
+                    ty,
+                    suggested_limit,
+                });
             return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
         }
 
@@ -977,9 +988,10 @@ where
                     ),
                     Variants::Multiple { tag, tag_field, .. } => {
                         if FieldIdx::from_usize(i) == tag_field {
-                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                            TyMaybeWithLayout::TyAndLayout(tag_layout(tag))
+                        } else {
+                            TyMaybeWithLayout::Ty(args.as_coroutine().upvar_tys()[i])
                         }
-                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
                     }
                 },
 
@@ -1199,6 +1211,20 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    /// Does this type have a layout compatible with C `_Complex`?
+    ///
+    /// The value must be of type `core::num::Complex<T>` where `T` is numeric.
+    fn is_complex_number(this: TyAndLayout<'tcx>, cx: &C) -> bool {
+        let ty::Adt(def, generic_args) = this.ty.kind() else { return false };
+
+        if !cx.tcx().is_lang_item(def.did(), LangItem::Complex) {
+            return false;
+        }
+
+        // Only Complex<{ float }> and Complex<{ integer }> have special layout.
+        generic_args.type_at(0).is_numeric()
     }
 
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {

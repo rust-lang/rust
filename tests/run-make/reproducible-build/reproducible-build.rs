@@ -18,7 +18,7 @@
 // - Trait object shims
 // - Fn Pointer shims
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![allow(dead_code, warnings)]
 

@@ -42,7 +42,7 @@ mod hostname;
 mod ip_addr;
 mod socket_addr;
 mod tcp;
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "l4re")))]
 pub(crate) mod tests;
 mod udp;
 

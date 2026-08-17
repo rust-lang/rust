@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::sym;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -12,12 +12,6 @@ use std::fmt;
 use super::PTR_OFFSET_BY_LITERAL;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Msrv) {
-    // `pointer::add` and `pointer::wrapping_add` are only stable since 1.26.0. These functions
-    // became const-stable in 1.61.0, the same version that `pointer::offset` became const-stable.
-    if !msrv.meets(cx, msrvs::POINTER_ADD_SUB_METHODS) {
-        return;
-    }
-
     let ExprKind::MethodCall(method_name, recv, [arg_expr], _) = expr.kind else {
         return;
     };
@@ -27,6 +21,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Ms
         sym::wrapping_offset => Method::WrappingOffset,
         _ => return,
     };
+
+    // `pointer::add` and `pointer::wrapping_add` are only stable since 1.26.0. These functions
+    // became const-stable in 1.61.0, the same version that `pointer::offset` became const-stable.
+    if !msrv.meets(cx, msrvs::POINTER_ADD_SUB_METHODS) {
+        return;
+    }
 
     if !cx.typeck_results().expr_ty_adjusted(recv).is_raw_ptr() {
         return;

@@ -34,6 +34,7 @@ ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs \
- --set llvm.libzstd=true"
-ENV SCRIPT="python3 ../x.py --stage 2 test && \
-            python3 ../x.py --stage 2 test library/stdarch/crates/intrinsic-test"
+ --set llvm.libzstd=true \
+ --set build.sde=/intel-sde/sde64"
+ENV SCRIPT="python3 ../x.py --stage 2 test"
+           

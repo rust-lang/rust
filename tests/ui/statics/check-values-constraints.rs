@@ -1,5 +1,6 @@
 // Verifies all possible restrictions for statics values.
 
+#![feature(const_heap)]
 #![allow(warnings)]
 
 use std::marker;
@@ -79,8 +80,6 @@ static STATIC10: UnsafeStruct = UnsafeStruct;
 struct MyOwned;
 
 static STATIC11: Vec<MyOwned> = vec![MyOwned];
-//~^ ERROR cannot call non-const function
-//~| ERROR cannot call non-const
 
 static mut STATIC12: UnsafeStruct = UnsafeStruct;
 
@@ -93,29 +92,25 @@ static mut STATIC14: SafeStruct = SafeStruct {
 };
 
 static STATIC15: &'static [Vec<MyOwned>] = &[
-    vec![MyOwned], //~ ERROR cannot call non-const function
-    //~| ERROR cannot call non-const
-    vec![MyOwned], //~ ERROR cannot call non-const function
-                   //~| ERROR cannot call non-const
+    vec![MyOwned],
+    vec![MyOwned],
 ];
 
 static STATIC16: (&'static Vec<MyOwned>, &'static Vec<MyOwned>) = (
-    &vec![MyOwned], //~ ERROR cannot call non-const function
-    //~| ERROR cannot call non-const
-    &vec![MyOwned], //~ ERROR cannot call non-const function
-                    //~| ERROR cannot call non-const
+    &vec![MyOwned],
+    &vec![MyOwned],
 );
 
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 
 static STATIC19: Vec<isize> = vec![3];
-//~^ ERROR cannot call non-const function
-//~| ERROR cannot call non-const
+//~^ ERROR encountered `const_allocate` pointer in final value that was not made global
+
 
 pub fn main() {
     let y = {
-        static x: Vec<isize> = vec![3]; //~ ERROR cannot call non-const function
-        //~| ERROR cannot call non-const
+        static x: Vec<isize> = vec![3];
+        //~^ ERROR encountered `const_allocate` pointer in final value that was not made global
         x
         //~^ ERROR cannot move out of static
     };

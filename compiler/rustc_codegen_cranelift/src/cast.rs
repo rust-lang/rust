@@ -133,12 +133,12 @@ pub(crate) fn clif_int_or_float_cast(
             let max_val = fx.bcx.ins().iconst(types::I32, max);
 
             let val = if to_signed {
-                let has_underflow = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, val, min);
-                let has_overflow = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThan, val, max);
+                let has_underflow = fx.bcx.ins().icmp_imm_s(IntCC::SignedLessThan, val, min);
+                let has_overflow = fx.bcx.ins().icmp_imm_s(IntCC::SignedGreaterThan, val, max);
                 let bottom_capped = fx.bcx.ins().select(has_underflow, min_val, val);
                 fx.bcx.ins().select(has_overflow, max_val, bottom_capped)
             } else {
-                let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, val, max);
+                let has_overflow = fx.bcx.ins().icmp_imm_u(IntCC::UnsignedGreaterThan, val, max);
                 fx.bcx.ins().select(has_overflow, max_val, val)
             };
             fx.bcx.ins().ireduce(to_ty, val)

@@ -13,7 +13,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-use crate::error;
+use crate::diagnostics;
 use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
@@ -47,7 +47,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.allowed_in_infallible && !span.is_dummy() {
-                    tcx.dcx().emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(diagnostics::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}
@@ -105,6 +105,8 @@ pub enum ValTreeCreationError<'tcx> {
     InvalidConst,
     /// Values of this type, or this particular value, are not supported as valtrees.
     NonSupportedType(Ty<'tcx>),
+    /// Trying to valtree this constant would cause the valtree to have cycles.
+    CyclicConst,
     /// The error has already been handled by const evaluation.
     ErrorHandled(ErrorHandled),
 }
@@ -216,6 +218,17 @@ impl<'tcx> InterpErrorInfo<'tcx> {
     pub fn kind(&self) -> &InterpErrorKind<'tcx> {
         &self.0.kind
     }
+
+    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
+    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+    /// triggered the error.
+    ///
+    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+    /// However, this is useful when error messages appear in ICEs.
+    pub fn to_string(&self) -> String {
+        self.0.backtrace.print_backtrace();
+        self.0.kind.to_string()
+    }
 }
 
 fn print_backtrace(backtrace: &Backtrace) {
@@ -249,7 +262,8 @@ pub enum CheckInAllocMsg {
     /// We are doing pointer arithmetic.
     InboundsPointerArithmetic,
     /// None of the above -- generic/unspecific inbounds test.
-    Dereferenceable,
+    /// The string is the subject of the test, e.g. "pointer".
+    Dereferenceable(&'static str),
 }
 
 impl fmt::Display for CheckInAllocMsg {
@@ -258,7 +272,7 @@ impl fmt::Display for CheckInAllocMsg {
         match self {
             MemoryAccess => write!(f, "memory access failed"),
             InboundsPointerArithmetic => write!(f, "in-bounds pointer arithmetic failed"),
-            Dereferenceable => write!(f, "pointer not dereferenceable"),
+            Dereferenceable(what) => write!(f, "{what} not dereferenceable"),
         }
     }
 }
@@ -389,7 +403,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer-not-to-a-va-list as variable argument list pointer.
     InvalidVaListPointer(Pointer<AllocId>),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
-    InvalidVTablePointer(Pointer<AllocId>),
+    InvalidVTablePointer(Pointer<Option<AllocId>>),
     /// Using a vtable for the wrong trait.
     InvalidVTableTrait {
         /// The vtable that was actually referenced by the wide pointer metadata.
@@ -450,11 +464,11 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
                 CheckInAllocMsg::InboundsPointerArithmetic => {
                     write!(f, "attempting to offset pointer by {inbounds_size_fmt}")
                 }
-                CheckInAllocMsg::Dereferenceable if inbounds_size == 0 => {
-                    write!(f, "pointer must point to some allocation")
+                CheckInAllocMsg::Dereferenceable(what) if inbounds_size == 0 => {
+                    write!(f, "{what} must point to some allocation")
                 }
-                CheckInAllocMsg::Dereferenceable => {
-                    write!(f, "pointer must be dereferenceable for {inbounds_size_fmt}")
+                CheckInAllocMsg::Dereferenceable(what) => {
+                    write!(f, "{what} must be dereferenceable for {inbounds_size_fmt}")
                 }
             }
         }
@@ -1042,14 +1056,6 @@ impl<'tcx, T> InterpResult<'tcx, T> {
     }
 
     #[inline]
-    pub fn map_err_info(
-        self,
-        f: impl FnOnce(InterpErrorInfo<'tcx>) -> InterpErrorInfo<'tcx>,
-    ) -> InterpResult<'tcx, T> {
-        InterpResult::new(self.disarm().map_err(f))
-    }
-
-    #[inline]
     pub fn map_err_kind(
         self,
         f: impl FnOnce(InterpErrorKind<'tcx>) -> InterpErrorKind<'tcx>,
@@ -1061,8 +1067,8 @@ impl<'tcx, T> InterpResult<'tcx, T> {
     }
 
     #[inline]
-    pub fn inspect_err_kind(self, f: impl FnOnce(&InterpErrorKind<'tcx>)) -> InterpResult<'tcx, T> {
-        InterpResult::new(self.disarm().inspect_err(|e| f(&e.0.kind)))
+    pub fn inspect_err_info(self, f: impl FnOnce(&InterpErrorInfo<'tcx>)) -> InterpResult<'tcx, T> {
+        InterpResult::new(self.disarm().inspect_err(f))
     }
 
     #[inline]

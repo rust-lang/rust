@@ -1,16 +1,13 @@
 # Rustdoc search
 
-Rustdoc Search is two programs: `search_index.rs`
-and `search.js`. The first generates a nasty JSON
-file with a full list of items and function signatures
+Rustdoc Search is two programs: `search_index.rs` and `search.js`.
+The first generates a nasty JSON file with a full list of items and function signatures
 in the crates in the doc bundle, and the second reads
-it, turns it into some in-memory structures, and
-scans them linearly to search.
+it, turns it into some in-memory structures, and scans them linearly to search.
 
 ## Search index format
 
-`search.js` calls this Raw, because it turns it into
-a more normal object tree after loading it.
+`search.js` calls this Raw, because it turns it into a more normal object tree after loading it.
 For space savings, it's also written without newlines or spaces.
 
 ```json
@@ -44,8 +41,7 @@ For space savings, it's also written without newlines or spaces.
 ]
 ```
 
-[`src/librustdoc/html/static/js/rustdoc.d.ts`]
-defines an actual schema in a TypeScript `type`.
+[`src/librustdoc/html/static/js/rustdoc.d.ts`] defines an actual schema in a TypeScript `type`.
 
 | Key | Name                 | Description  |
 | --- | -------------------- | ------------ |
@@ -75,10 +71,8 @@ It makes a lot of compromises:
 
 * The `rustdoc` compiler runs on one crate at a time,
   so each crate has an essentially separate search index.
-  It [merges] them by having each crate on one line
-  and looking at the first quoted string.
-* Names in the search index are given
-  in their original case and with underscores.
+  It [merges] them by having each crate on one line and looking at the first quoted string.
+* Names in the search index are given in their original case and with underscores.
   When the search index is loaded,
   `search.js` stores the original names for display,
   but also folds them to lowercase and strips underscores for search.
@@ -156,10 +150,8 @@ for (i, entry) in search_index.iter().enumerate() {
 }
 ```
 
-This is valid because everything has a parent module
-(even if it's just the crate itself),
-and is easy to assemble because the rustdoc generator sorts by path
-before serializing.
+This is valid because everything has a parent module (even if it's just the crate itself),
+and is easy to assemble because the rustdoc generator sorts by path before serializing.
 Doing this allows rustdoc to not only make the search index smaller,
 but reuse the same string representing the parent path across multiple in-memory items.
 
@@ -233,21 +225,21 @@ work through a "sandwich workload" of three steps:
 
 Reducing the amount of data downloaded here will almost always increase latency,
 by delaying the decision of what to download behind other work and/or adding
-data dependencies where something can't be downloaded without first downloading
-something else. In this case, we can't start downloading descriptions until
+data dependencies where something can't be downloaded without first downloading something else.
+In this case, we can't start downloading descriptions until
 after the search is done, because that's what allows it to decide *which*
 descriptions to download (it needs to sort the results then truncate to 200).
 
 To do this, two columns are stored in the search index, building on both
 Roaring Bitmaps and on VLQ Hex.
 
-* `e` is an index of **e**mpty descriptions. It's a [roaring bitmap] of
-  each item (the crate itself is item 0, the rest start at 1).
+* `e` is an index of **e**mpty descriptions.
+  It's a [roaring bitmap] of each item (the crate itself is item 0, the rest start at 1).
 * `D` is a shard list, stored in [VLQ hex] as flat list of integers.
   Each integer gives you the number of descriptions in the shard.
   As the decoder walks the index, it checks if the description is empty.
-  if it's not, then it's in the "current" shard. When all items are
-  exhausted, it goes on to the next shard.
+  if it's not, then it's in the "current" shard.
+  When all items are exhausted, it goes on to the next shard.
 
 Inside each shard is a newline-delimited list of descriptions,
 wrapped in a JSONP-style function call.
@@ -280,8 +272,7 @@ Because of zigzag encoding, `` ` `` is +0, `a` is -0 (which is not used),
 
 ## Searching by name
 
-Searching by name works by looping through the search index
-and running these functions on each:
+Searching by name works by looping through the search index and running these functions on each:
 
 * [`editDistance`] is always used to determine a match
   (unless quotes are specified, which would use simple equality instead).
@@ -295,20 +286,19 @@ and running these functions on each:
   If it returns anything other than -1, the result is added,
   even if `editDistance` exceeds its threshold,
   and the index is stored for ranking.
-* [`checkPath`] is used if, and only if, a parent path is specified
-  in the query. For example, `vec` has no parent path, but `vec::vec` does.
+* [`checkPath`] is used if, and only if, a parent path is specified in the query.
+  For example, `vec` has no parent path, but `vec::vec` does.
   Within checkPath, editDistance and indexOf are used,
   and the path query has its own heuristic threshold, too.
   If it's not within the threshold, the entry is rejected,
   even if the first two pass.
-  If it's within the threshold, the path distance is stored
-  for ranking.
+  If it's within the threshold, the path distance is stored for ranking.
 * [`checkType`] is used only if there's a type filter,
-  like the struct in `struct:vec`. If it fails,
+  like the struct in `struct:vec`.
+  If it fails,
   the entry is rejected.
 
-If all four criteria pass
-(plus the crate filter, which isn't technically part of the query),
+If all four criteria pass (plus the crate filter, which isn't technically part of the query),
 the results are sorted by [`sortResults`].
 
 [`editDistance`]: https://github.com/rust-lang/rust/blob/79b710c13968a1a48d94431d024d2b1677940866/src/librustdoc/html/static/js/search.js#L137
@@ -336,17 +326,18 @@ is going to match the same things `T, u32` matches
 (though rustdoc will detect this particular problem and warn about it).
 
 Then, when actually looping over each item,
-the bloom filter will probably reject entries that don't have every
-type mentioned in the query.
+the bloom filter will probably reject entries that don't have every type mentioned in the query.
 For example, the bloom query allows a query of `i32 -> u32` to match
 a function with the type `i32, u32 -> bool`,
 but unification will reject it later.
 
 The unification filter ensures that:
 
-* Bag semantics are respected. If you query says `i32, i32`,
+* Bag semantics are respected.
+  If your query says `i32, i32`,
   then the function has to mention *two* i32s, not just one.
-* Nesting semantics are respected. If your query says `vec<option>`,
+* Nesting semantics are respected.
+  If your query says `vec<option>`,
   then `vec<option<i32>>` is fine, but `option<vec<i32>>` *is not* a match.
 * The division between return type and parameter is respected.
   `i32 -> u32` and `u32 -> i32` are completely different.
@@ -383,8 +374,7 @@ For example, this sample index has a single struct exported from two paths:
 ```
 
 The important part of this example is the `r` array,
-which indicates that path entry 1 in the `q` array is
-the canonical path for item 0.
+which indicates that path entry 1 in the `q` array is the canonical path for item 0.
 That is, `crate_name::Data` has a canonical path of `crate_name::submodule::Data`.
 
 This might sound like a strange design, since it has the duplicate data.
@@ -426,8 +416,8 @@ so it's never shown to the user, but is used for deduplication.
 ## Testing the search engine
 
 While the generated UI is tested using `rustdoc-gui` tests, the
-primary way the search engine is tested is the `rustdoc-js` and
-`rustdoc-js-std` tests. They run in NodeJS.
+primary way the search engine is tested is the `rustdoc-js` and `rustdoc-js-std` tests.
+They run in NodeJS.
 
 A `rustdoc-js` test has a `.rs` and `.js` file, with the same name.
 The `.rs` file specifies the hypothetical library crate to run
@@ -436,8 +426,8 @@ The `.js` file specifies the actual searches.
 The `rustdoc-js-std` tests are the same, but don't require an `.rs`
 file, since they use the standard library.
 
-The `.js` file is like a module (except the loader takes care of
-`exports` for you). It uses these variables:
+The `.js` file is like a module (except the loader takes care of `exports` for you).
+It uses these variables:
 
 |      Name      |              Type              | Description
 | -------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------
@@ -469,8 +459,8 @@ tests to fail, but standalone tests will use it more often.
 The `ResultsTable` and `ParsedQuery` types are specified in
 [`rustdoc.d.ts`](https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/static/js/rustdoc.d.ts).
 
-For example, imagine we needed to fix a bug where a function named
-`constructor` couldn't be found. To do this, write two files:
+For example, imagine we needed to fix a bug where a function named `constructor` couldn't be found.
+To do this, write two files:
 
 ```rust
 // tests/rustdoc-js/constructor_search.rs

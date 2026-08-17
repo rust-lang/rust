@@ -10,36 +10,39 @@ LL - fn bay_path<T: Trait>() where T::method(..) -> (): Send {}
 LL + fn bay_path<T: Trait>() where T::method(..): Send {}
    |
 
-error[E0575]: expected associated type, found associated function `Trait::method`
-  --> $DIR/bad-inputs-and-output.rs:31:36
+error[E0575]: cannot find associated type `method` in trait `Trait`
+  --> $DIR/bad-inputs-and-output.rs:31:50
    |
 LL | fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+   |                                                  ^^^^^^ not found in `Trait`
    |
+   = note: an associated function named `Trait::method` exists in another namespace
 help: you might have meant to use the return type notation syntax
    |
 LL - fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
 LL + fn foo_qualified<T: Trait>() where T::method(..): Send {}
    |
 
-error[E0575]: expected associated type, found associated function `Trait::method`
-  --> $DIR/bad-inputs-and-output.rs:34:36
+error[E0575]: cannot find associated type `method` in trait `Trait`
+  --> $DIR/bad-inputs-and-output.rs:34:50
    |
 LL | fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+   |                                                  ^^^^^^ not found in `Trait`
    |
+   = note: an associated function named `Trait::method` exists in another namespace
 help: you might have meant to use the return type notation syntax
    |
 LL - fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
 LL + fn bar_qualified<T: Trait>() where T::method(..): Send {}
    |
 
-error[E0575]: expected associated type, found associated function `Trait::method`
-  --> $DIR/bad-inputs-and-output.rs:37:36
+error[E0575]: cannot find associated type `method` in trait `Trait`
+  --> $DIR/bad-inputs-and-output.rs:37:50
    |
 LL | fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^ not a associated type
+   |                                                  ^^^^^^ not found in `Trait`
    |
+   = note: an associated function named `Trait::method` exists in another namespace
 help: you might have meant to use the return type notation syntax
    |
 LL - fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}

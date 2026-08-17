@@ -48,6 +48,8 @@ But avoid using LLM tools that generate long, complex words.
 In daily teamwork, **simple and clear words** are best for easy understanding.
 Even small typos or grammar mistakes can make you seem more human, and people connect better with humans.
 
+See also [our LLM policy](https://forge.rust-lang.org/policies/llm-usage.html).
+
 ### Experts
 
 Not all `t-compiler` members are experts on all parts of `rustc`;

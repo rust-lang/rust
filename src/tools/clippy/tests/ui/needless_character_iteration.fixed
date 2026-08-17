@@ -1,5 +1,6 @@
 #![warn(clippy::needless_character_iteration)]
-#![allow(clippy::map_identity, clippy::unnecessary_operation)]
+#![allow(clippy::unnecessary_operation)]
+#![expect(clippy::map_identity)]
 
 #[derive(Default)]
 struct S {

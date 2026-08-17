@@ -1,28 +1,131 @@
+use crate::de::{
+    Deserialize, DeserializeOrDefault, DiagCtxt, FromDefault, TomlValue, create_value_list_msg, find_closest_match,
+};
 use clippy_utils::paths::{PathNS, find_crates, lookup_path};
-use rustc_data_structures::fx::FxHashMap;
+use core::fmt::{self, Display};
+use itertools::Itertools as _;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::PrimTy;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{Span, Symbol};
-use serde::de::{self, Deserializer, Visitor};
-use serde::{Deserialize, Serialize, ser};
+use rustc_session::Session;
+use rustc_span::{Span, Spanned, Symbol};
 use std::collections::HashMap;
-use std::fmt;
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+macro_rules! concat_expr {
+    ($($e:expr)*) => {
+        concat!($($e),*)
+    }
+}
+
+macro_rules! name_or_lit {
+    ($name:ident) => {
+        stringify!($name)
+    };
+    ($name:ident $lit:literal) => {
+        $lit
+    };
+}
+
+macro_rules! conf_enum {
+    (
+        $(#[$attrs:meta])*
+        $vis:vis $name:ident {$(
+            $(#[$var_attrs:meta])*
+            $var_name:ident $(($var_lit:literal))?,
+        )*}
+    ) => {
+        $(#[$attrs])*
+        #[derive(Clone, Copy)]
+        $vis enum $name {$(
+            $(#[$var_attrs])*
+            $var_name,
+        )*}
+        impl $name {
+            const NAMES: &[&'static str] = &[$(name_or_lit!($var_name $($var_lit)?)),*];
+            #[allow(dead_code)]
+            const COUNT: usize = {
+                enum __ITEMS__ { $($var_name,)* __COUNT__ }
+                __ITEMS__::__COUNT__ as usize
+            };
+
+            pub fn name(self) -> &'static str {
+                Self::NAMES[self as usize]
+            }
+            #[allow(clippy::should_implement_trait)]
+            pub fn from_str(s: &str) -> Option<Self> {
+                match s {
+                    $(name_or_lit!($var_name $($var_lit)?) => Some(Self::$var_name),)*
+                    _ => None,
+                }
+            }
+        }
+        impl FromDefault<$name> for $name {
+            fn from_default(default: $name) -> Self {
+                default
+            }
+            fn display_default(default: $name) -> impl Display {
+                String::display_default(default.name())
+            }
+        }
+        impl Deserialize for $name {
+            fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+                let Some(s) = value.get_ref().as_str() else {
+                    dcx.span_err(value.span(), "expected a string");
+                    return None;
+                };
+                let x = Self::from_str(s);
+                if x.is_none() {
+                    let sp = dcx.make_sp(value.span());
+                    let mut diag = dcx.inner.struct_span_err(
+                        sp,
+                        concat_expr!("expected one of: " $("`" name_or_lit!($var_name $($var_lit)?) "`")", "*),
+                    );
+                    if let Some(sugg) = find_closest_match(s, Self::NAMES) {
+                        diag.span_suggestion(sp, "did you mean", sugg, Applicability::MaybeIncorrect);
+                    }
+                    diag.note(create_value_list_msg(dcx, Self::NAMES));
+                    diag.emit();
+                }
+                x
+            }
+        }
+    };
+}
 pub struct Rename {
     pub path: String,
     pub rename: String,
 }
 
+impl Deserialize for Rename {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        if let Some(table) = value.as_ref().as_table() {
+            deserialize_table!(dcx, table,
+                path("path"): String,
+                rename("rename"): String,
+            );
+            let Some(path) = path else {
+                dcx.span_err(value.span().clone(), "missing required field `path`");
+                return None;
+            };
+            let Some(rename) = rename else {
+                dcx.span_err(value.span().clone(), "missing required field `rename`");
+                return None;
+            };
+            Some(Rename { path, rename })
+        } else {
+            dcx.span_err(value.span(), "expected a table");
+            None
+        }
+    }
+}
+
 pub type DisallowedPathWithoutReplacement = DisallowedPath<false>;
 
-#[derive(Debug, Serialize)]
 pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
-    path: String,
+    path: Spanned<String>,
     reason: Option<String>,
     replacement: Option<String>,
     /// Setting `allow_invalid` to true suppresses a warning if `path` does not refer to an existing
@@ -31,50 +134,11 @@ pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
     /// This could be useful when conditional compilation is used, or when a clippy.toml file is
     /// shared among multiple projects.
     allow_invalid: bool,
-    /// The span of the `DisallowedPath`.
-    ///
-    /// Used for diagnostics.
-    #[serde(skip_serializing)]
-    span: Span,
-}
-
-impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let enum_ = DisallowedPathEnum::deserialize(deserializer)?;
-        if !REPLACEMENT_ALLOWED && enum_.replacement().is_some() {
-            return Err(de::Error::custom("replacement not allowed for this configuration"));
-        }
-        Ok(Self {
-            path: enum_.path().to_owned(),
-            reason: enum_.reason().map(ToOwned::to_owned),
-            replacement: enum_.replacement().map(ToOwned::to_owned),
-            allow_invalid: enum_.allow_invalid(),
-            span: Span::default(),
-        })
-    }
-}
-
-// `DisallowedPathEnum` is an implementation detail to enable the `Deserialize` implementation just
-// above. `DisallowedPathEnum` is not meant to be used outside of this file.
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged, deny_unknown_fields)]
-enum DisallowedPathEnum {
-    Simple(String),
-    WithReason {
-        path: String,
-        reason: Option<String>,
-        replacement: Option<String>,
-        #[serde(rename = "allow-invalid")]
-        allow_invalid: Option<bool>,
-    },
 }
 
 impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
     pub fn path(&self) -> &str {
-        &self.path
+        &self.path.node
     }
 
     pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) {
@@ -91,41 +155,75 @@ impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
             }
         }
     }
+}
 
-    pub fn span(&self) -> Span {
-        self.span
-    }
-
-    pub fn set_span(&mut self, span: Span) {
-        self.span = span;
+impl Deserialize for DisallowedPath<false> {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        if let Some(s) = value.as_ref().as_str() {
+            Some(DisallowedPath {
+                path: Spanned {
+                    node: s.into(),
+                    span: dcx.make_sp(value.span()),
+                },
+                reason: None,
+                replacement: None,
+                allow_invalid: false,
+            })
+        } else if let Some(table) = value.as_ref().as_table() {
+            deserialize_table!(dcx, table,
+                path("path"): Spanned<String>,
+                reason("reason"): String,
+                allow_invalid("allow-invalid"): bool,
+            );
+            let Some(path) = path else {
+                dcx.span_err(value.span(), "missing required field `path`");
+                return None;
+            };
+            Some(DisallowedPath {
+                path,
+                reason,
+                replacement: None,
+                allow_invalid: allow_invalid.unwrap_or(false),
+            })
+        } else {
+            dcx.span_err(value.span(), "expected either a string or an inline table");
+            None
+        }
     }
 }
 
-impl DisallowedPathEnum {
-    pub fn path(&self) -> &str {
-        let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
-
-        path
-    }
-
-    fn reason(&self) -> Option<&str> {
-        match &self {
-            Self::WithReason { reason, .. } => reason.as_deref(),
-            Self::Simple(_) => None,
-        }
-    }
-
-    fn replacement(&self) -> Option<&str> {
-        match &self {
-            Self::WithReason { replacement, .. } => replacement.as_deref(),
-            Self::Simple(_) => None,
-        }
-    }
-
-    fn allow_invalid(&self) -> bool {
-        match &self {
-            Self::WithReason { allow_invalid, .. } => allow_invalid.unwrap_or_default(),
-            Self::Simple(_) => false,
+impl Deserialize for DisallowedPath<true> {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        if let Some(s) = value.as_ref().as_str() {
+            Some(DisallowedPath {
+                path: Spanned {
+                    node: s.into(),
+                    span: dcx.make_sp(value.span()),
+                },
+                reason: None,
+                replacement: None,
+                allow_invalid: false,
+            })
+        } else if let Some(table) = value.as_ref().as_table() {
+            deserialize_table!(dcx, table,
+                path("path"): Spanned<String>,
+                reason("reason"): String,
+                replacement("replacement"): String,
+                allow_invalid("allow-invalid"): bool,
+            );
+            let Some(path) = path else {
+                dcx.span_err(value.span(), "missing required field `path`");
+                return None;
+            };
+            Some(DisallowedPath {
+                path,
+                reason,
+                replacement,
+                allow_invalid: allow_invalid.unwrap_or(false),
+            })
+        } else {
+            dcx.span_err(value.span(), "expected either a string or an inline table");
+            None
         }
     }
 }
@@ -147,7 +245,7 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     let mut prim_tys: FxHashMap<PrimTy, (&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> =
         FxHashMap::default();
     for disallowed_path in disallowed_paths {
-        let path = disallowed_path.path();
+        let path = &*disallowed_path.path.node;
         let sym_path: Vec<Symbol> = path.split("::").map(Symbol::intern).collect();
         let mut resolutions = lookup_path(tcx, ns, &sym_path);
         resolutions.retain(|&def_id| def_kind_predicate(tcx.def_kind(def_id)));
@@ -179,7 +277,7 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
             };
             tcx.sess
                 .dcx()
-                .struct_span_warn(disallowed_path.span(), message)
+                .struct_span_warn(disallowed_path.path.span, message)
                 .with_help("add `allow-invalid = true` to the entry to suppress this warning")
                 .emit();
         }
@@ -195,87 +293,92 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     (def_ids, prim_tys)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum MatchLintBehaviour {
-    AllTypes,
-    WellKnownTypes,
-    Never,
+conf_enum! {
+    #[derive(PartialEq, Eq)]
+    pub MatchLintBehaviour {
+        AllTypes,
+        WellKnownTypes,
+        Never,
+    }
 }
 
-#[derive(Debug)]
+enum BraceKind {
+    Brace,
+    Bracket,
+    Paren,
+}
+
+impl Deserialize for BraceKind {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        let msg = if let Some(s) = value.as_ref().as_str() {
+            match s {
+                "{" | "{}" => return Some(BraceKind::Brace),
+                "[" | "[]" => return Some(BraceKind::Bracket),
+                "(" | "()" => return Some(BraceKind::Paren),
+                _ => "unknown value",
+            }
+        } else {
+            "expected a string"
+        };
+        let mut diag = dcx.inner.struct_span_err(dcx.make_sp(value.span()), msg);
+        diag.note("possible values: `()`, `[]`, `{}`");
+        diag.emit();
+        None
+    }
+}
+
 pub struct MacroMatcher {
     pub name: String,
     pub braces: (char, char),
 }
 
-impl<'de> Deserialize<'de> for MacroMatcher {
-    fn deserialize<D>(deser: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(field_identifier, rename_all = "lowercase")]
-        enum Field {
-            Name,
-            Brace,
+impl Deserialize for MacroMatcher {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        if let Some(table) = value.as_ref().as_table() {
+            deserialize_table!(dcx, table,
+                name("name"): String,
+                brace("brace"): BraceKind,
+            );
+            let Some(name) = name else {
+                dcx.span_err(value.span(), "missing required field `name`");
+                return None;
+            };
+            let Some(brace) = brace else {
+                dcx.span_err(value.span(), "missing required field `brace`");
+                return None;
+            };
+            Some(MacroMatcher {
+                name,
+                braces: match brace {
+                    BraceKind::Brace => ('{', '}'),
+                    BraceKind::Bracket => ('[', ']'),
+                    BraceKind::Paren => ('(', ')'),
+                },
+            })
+        } else {
+            dcx.span_err(value.span(), "expected an inline table");
+            None
         }
-        struct MacVisitor;
-        impl<'de> Visitor<'de> for MacVisitor {
-            type Value = MacroMatcher;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("struct MacroMatcher")
-            }
-
-            fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
-            where
-                V: de::MapAccess<'de>,
-            {
-                let mut name = None;
-                let mut brace: Option<char> = None;
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Name => {
-                            if name.is_some() {
-                                return Err(de::Error::duplicate_field("name"));
-                            }
-                            name = Some(map.next_value()?);
-                        },
-                        Field::Brace => {
-                            if brace.is_some() {
-                                return Err(de::Error::duplicate_field("brace"));
-                            }
-                            brace = Some(map.next_value()?);
-                        },
-                    }
-                }
-                let name = name.ok_or_else(|| de::Error::missing_field("name"))?;
-                let brace = brace.ok_or_else(|| de::Error::missing_field("brace"))?;
-                Ok(MacroMatcher {
-                    name,
-                    braces: [('(', ')'), ('{', '}'), ('[', ']')]
-                        .into_iter()
-                        .find(|b| b.0 == brace)
-                        .map(|(o, c)| (o.to_owned(), c.to_owned()))
-                        .ok_or_else(|| de::Error::custom(format!("expected one of `(`, `{{`, `[` found `{brace}`")))?,
-                })
-            }
-        }
-
-        const FIELDS: &[&str] = &["name", "brace"];
-        deser.deserialize_struct("MacroMatcher", FIELDS, MacVisitor)
     }
 }
 
-/// Represents the item categories that can be ordered by the source ordering lint.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SourceItemOrderingCategory {
-    Enum,
-    Impl,
-    Module,
-    Struct,
-    Trait,
+conf_enum! {
+    pub PubUnderscoreFieldsBehaviour {
+        PubliclyExported,
+        AllPubFields,
+    }
+}
+
+conf_enum! {
+    /// Represents the item categories that can be ordered by the source ordering lint.
+    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub SourceItemOrderingCategory {
+        Enum("enum"),
+        Impl("impl"),
+        Module("module"),
+        Struct("struct"),
+        Trait("trait"),
+    }
 }
 
 /// Represents which item categories are enabled for ordering.
@@ -285,76 +388,78 @@ pub enum SourceItemOrderingCategory {
 pub struct SourceItemOrdering(Vec<SourceItemOrderingCategory>);
 
 impl SourceItemOrdering {
-    pub fn contains(&self, category: &SourceItemOrderingCategory) -> bool {
-        self.0.contains(category)
+    pub fn contains(&self, category: SourceItemOrderingCategory) -> bool {
+        self.0.contains(&category)
     }
 }
 
-impl<T> From<T> for SourceItemOrdering
-where
-    T: Into<Vec<SourceItemOrderingCategory>>,
-{
-    fn from(value: T) -> Self {
-        Self(value.into())
-    }
-}
-
-impl core::fmt::Debug for SourceItemOrdering {
+impl fmt::Debug for SourceItemOrdering {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl<'de> Deserialize<'de> for SourceItemOrdering {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let items = Vec::<SourceItemOrderingCategory>::deserialize(deserializer)?;
-        let mut items_set = std::collections::HashSet::new();
+impl Deserialize for SourceItemOrdering {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        let items = Vec::<SourceItemOrderingCategory>::deserialize(dcx, value)?;
+        let mut items_set = FxHashSet::default();
 
         for item in &items {
             if items_set.contains(item) {
-                return Err(de::Error::custom(format!(
-                    "The category \"{item:?}\" was enabled more than once in the source ordering configuration."
-                )));
+                dcx.span_err(
+                    value.span(),
+                    format!(
+                        "The category \"{}\" was enabled more than once in the source ordering configuration.",
+                        item.name()
+                    ),
+                );
+                return None;
             }
             items_set.insert(item);
         }
-
-        Ok(Self(items))
+        Some(SourceItemOrdering(items))
+    }
+}
+impl FromDefault<()> for SourceItemOrdering {
+    fn from_default((): ()) -> Self {
+        Self(vec![
+            SourceItemOrderingCategory::Enum,
+            SourceItemOrderingCategory::Impl,
+            SourceItemOrderingCategory::Module,
+            SourceItemOrderingCategory::Struct,
+            SourceItemOrderingCategory::Trait,
+        ])
+    }
+    fn display_default((): ()) -> impl Display {
+        r#"["enum", "impl", "module", "struct", "trait"]"#
+    }
+}
+impl DeserializeOrDefault<()> for SourceItemOrdering {
+    fn deserialize_or_default(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>, default: ()) -> Self {
+        Self::deserialize(dcx, value).unwrap_or_else(|| Self::from_default(default))
     }
 }
 
-impl Serialize for SourceItemOrdering {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        self.0.serialize(serializer)
+conf_enum! {
+    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub SourceItemOrderingModuleItemKind {
+        ExternCrate("extern_crate"),
+        Mod("mod"),
+        ForeignMod("foreign_mod"),
+        Use("use"),
+        Macro("macro"),
+        GlobalAsm("global_asm"),
+        Static("static"),
+        Const("const"),
+        TyAlias("ty_alias"),
+        Enum("enum"),
+        Struct("struct"),
+        Union("union"),
+        Trait("trait"),
+        TraitAlias("trait_alias"),
+        Impl("impl"),
+        Fn("fn"),
     }
-}
-
-/// Represents the items that can occur within a module.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SourceItemOrderingModuleItemKind {
-    ExternCrate,
-    Mod,
-    ForeignMod,
-    Use,
-    Macro,
-    GlobalAsm,
-    Static,
-    Const,
-    TyAlias,
-    Enum,
-    Struct,
-    Union,
-    Trait,
-    TraitAlias,
-    Impl,
-    Fn,
 }
 
 impl SourceItemOrderingModuleItemKind {
@@ -393,14 +498,20 @@ pub struct SourceItemOrderingModuleItemGroupings {
     back_lut: HashMap<SourceItemOrderingModuleItemKind, String>,
 }
 
+impl fmt::Debug for SourceItemOrderingModuleItemGroupings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.groups.fmt(f)
+    }
+}
+
 impl SourceItemOrderingModuleItemGroupings {
     fn build_lut(
         groups: &[(String, Vec<SourceItemOrderingModuleItemKind>)],
     ) -> HashMap<SourceItemOrderingModuleItemKind, usize> {
         let mut lut = HashMap::new();
         for (group_index, (_, items)) in groups.iter().enumerate() {
-            for item in items {
-                lut.insert(item.clone(), group_index);
+            for &item in items {
+                lut.insert(item, group_index);
             }
         }
         lut
@@ -411,15 +522,15 @@ impl SourceItemOrderingModuleItemGroupings {
     ) -> HashMap<SourceItemOrderingModuleItemKind, String> {
         let mut lut = HashMap::new();
         for (group_name, items) in groups {
-            for item in items {
-                lut.insert(item.clone(), group_name.clone());
+            for &item in items {
+                lut.insert(item, group_name.clone());
             }
         }
         lut
     }
 
-    pub fn grouping_name_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<&String> {
-        self.back_lut.get(item)
+    pub fn grouping_name_of(&self, item: SourceItemOrderingModuleItemKind) -> Option<&String> {
+        self.back_lut.get(&item)
     }
 
     pub fn grouping_names(&self) -> Vec<String> {
@@ -430,33 +541,32 @@ impl SourceItemOrderingModuleItemGroupings {
         self.groups.iter().any(|(g, _)| g == grouping)
     }
 
-    pub fn module_level_order_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<usize> {
-        self.lut.get(item).copied()
+    pub fn module_level_order_of(&self, item: SourceItemOrderingModuleItemKind) -> Option<usize> {
+        self.lut.get(&item).copied()
     }
 }
 
-impl From<&[(&str, &[SourceItemOrderingModuleItemKind])]> for SourceItemOrderingModuleItemGroupings {
-    fn from(value: &[(&str, &[SourceItemOrderingModuleItemKind])]) -> Self {
-        let groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)> =
-            value.iter().map(|item| (item.0.to_string(), item.1.to_vec())).collect();
-        let lut = Self::build_lut(&groups);
-        let back_lut = Self::build_back_lut(&groups);
-        Self { groups, lut, back_lut }
-    }
-}
+impl Deserialize for SourceItemOrderingModuleItemGroupings {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        let Some(values) = value.as_ref().as_array() else {
+            dcx.span_err(value.span(), "expected an array");
+            return None;
+        };
+        let mut groups = Vec::with_capacity(values.len());
+        for value in values {
+            if let Some(values) = value.as_ref().as_array()
+                && let [value1, value2] = &**values
+            {
+                groups.push((
+                    String::deserialize(dcx, value1)?,
+                    Vec::<SourceItemOrderingModuleItemKind>::deserialize(dcx, value2)?,
+                ));
+            } else {
+                dcx.span_err(value.span(), "expected an array of length two");
+                return None;
+            }
+        }
 
-impl core::fmt::Debug for SourceItemOrderingModuleItemGroupings {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.groups.fmt(f)
-    }
-}
-
-impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let groups = Vec::<(String, Vec<SourceItemOrderingModuleItemKind>)>::deserialize(deserializer)?;
         let items_total: usize = groups.iter().map(|(_, v)| v.len()).sum();
         let lut = Self::build_lut(&groups);
         let back_lut = Self::build_back_lut(&groups);
@@ -469,51 +579,134 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
         let all_items = SourceItemOrderingModuleItemKind::all_variants();
         if expected_items.is_empty() && items_total == all_items.len() {
             let Some(use_group_index) = lut.get(&SourceItemOrderingModuleItemKind::Use) else {
-                return Err(de::Error::custom("Error in internal LUT."));
+                dcx.span_err(value.span(), "Error in internal LUT.");
+                return None;
             };
             let Some((_, use_group_items)) = groups.get(*use_group_index) else {
-                return Err(de::Error::custom("Error in internal LUT."));
+                dcx.span_err(value.span(), "Error in internal LUT.");
+                return None;
             };
             if use_group_items.len() > 1 {
-                return Err(de::Error::custom(
+                dcx.span_err(
+                    value.span(),
                     "The group containing the \"use\" item kind may not contain any other item kinds. \
                     The \"use\" items will (generally) be sorted by rustfmt already. \
                     Therefore it makes no sense to implement linting rules that may conflict with rustfmt.",
-                ));
+                );
+                return None;
             }
-
-            Ok(Self { groups, lut, back_lut })
+            Some(Self { groups, lut, back_lut })
         } else if items_total != all_items.len() {
-            Err(de::Error::custom(format!(
-                "Some module item kinds were configured more than once, or were missing, in the source ordering configuration. \
-                The module item kinds are: {all_items:?}"
-            )))
+            dcx.span_err(value.span(),
+                format!(
+                    "Some module item kinds were configured more than once, or were missing, in the source ordering configuration. \
+                    The module item kinds are: {all_items:?}"
+                )
+            );
+            None
         } else {
-            Err(de::Error::custom(format!(
-                "Not all module item kinds were part of the configured source ordering rule. \
-                All item kinds must be provided in the config, otherwise the required source ordering would remain ambiguous. \
-                The module item kinds are: {all_items:?}"
-            )))
+            dcx.span_err(value.span(),
+                format!(
+                    "Not all module item kinds were part of the configured source ordering rule. \
+                    All item kinds must be provided in the config, otherwise the required source ordering would remain ambiguous. \
+                    The module item kinds are: {all_items:?}"
+                )
+            );
+            None
         }
     }
 }
-
-impl Serialize for SourceItemOrderingModuleItemGroupings {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        self.groups.serialize(serializer)
+impl FromDefault<()> for SourceItemOrderingModuleItemGroupings {
+    fn from_default((): ()) -> Self {
+        Self {
+            groups: vec![
+                (
+                    "modules".into(),
+                    vec![
+                        SourceItemOrderingModuleItemKind::ExternCrate,
+                        SourceItemOrderingModuleItemKind::Mod,
+                        SourceItemOrderingModuleItemKind::ForeignMod,
+                    ],
+                ),
+                ("use".into(), vec![SourceItemOrderingModuleItemKind::Use]),
+                ("macros".into(), vec![SourceItemOrderingModuleItemKind::Macro]),
+                ("global_asm".into(), vec![SourceItemOrderingModuleItemKind::GlobalAsm]),
+                (
+                    "UPPER_SNAKE_CASE".into(),
+                    vec![
+                        SourceItemOrderingModuleItemKind::Static,
+                        SourceItemOrderingModuleItemKind::Const,
+                    ],
+                ),
+                (
+                    "PascalCase".into(),
+                    vec![
+                        SourceItemOrderingModuleItemKind::TyAlias,
+                        SourceItemOrderingModuleItemKind::Enum,
+                        SourceItemOrderingModuleItemKind::Struct,
+                        SourceItemOrderingModuleItemKind::Union,
+                        SourceItemOrderingModuleItemKind::Trait,
+                        SourceItemOrderingModuleItemKind::TraitAlias,
+                        SourceItemOrderingModuleItemKind::Impl,
+                    ],
+                ),
+                ("lower_snake_case".into(), vec![SourceItemOrderingModuleItemKind::Fn]),
+            ],
+            lut: HashMap::from_iter([
+                (SourceItemOrderingModuleItemKind::ExternCrate, 0),
+                (SourceItemOrderingModuleItemKind::Mod, 0),
+                (SourceItemOrderingModuleItemKind::ForeignMod, 0),
+                (SourceItemOrderingModuleItemKind::Use, 1),
+                (SourceItemOrderingModuleItemKind::Macro, 2),
+                (SourceItemOrderingModuleItemKind::GlobalAsm, 3),
+                (SourceItemOrderingModuleItemKind::Static, 4),
+                (SourceItemOrderingModuleItemKind::Const, 4),
+                (SourceItemOrderingModuleItemKind::TyAlias, 5),
+                (SourceItemOrderingModuleItemKind::Enum, 5),
+                (SourceItemOrderingModuleItemKind::Struct, 5),
+                (SourceItemOrderingModuleItemKind::Union, 5),
+                (SourceItemOrderingModuleItemKind::Trait, 5),
+                (SourceItemOrderingModuleItemKind::TraitAlias, 5),
+                (SourceItemOrderingModuleItemKind::Impl, 5),
+                (SourceItemOrderingModuleItemKind::Fn, 6),
+            ]),
+            back_lut: HashMap::from_iter([
+                (SourceItemOrderingModuleItemKind::ExternCrate, "modules".into()),
+                (SourceItemOrderingModuleItemKind::Mod, "modules".into()),
+                (SourceItemOrderingModuleItemKind::ForeignMod, "modules".into()),
+                (SourceItemOrderingModuleItemKind::Use, "use".into()),
+                (SourceItemOrderingModuleItemKind::Macro, "macros".into()),
+                (SourceItemOrderingModuleItemKind::GlobalAsm, "global_asm".into()),
+                (SourceItemOrderingModuleItemKind::Static, "UPPER_SNAKE_CASE".into()),
+                (SourceItemOrderingModuleItemKind::Const, "UPPER_SNAKE_CASE".into()),
+                (SourceItemOrderingModuleItemKind::TyAlias, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::Enum, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::Struct, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::Union, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::Trait, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::TraitAlias, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::Impl, "PascalCase".into()),
+                (SourceItemOrderingModuleItemKind::Fn, "lower_snake_case".into()),
+            ]),
+        }
+    }
+    fn display_default((): ()) -> impl Display {
+        r#"[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]], ["lower_snake_case", ["fn"]]]"#
+    }
+}
+impl DeserializeOrDefault<()> for SourceItemOrderingModuleItemGroupings {
+    fn deserialize_or_default(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>, default: ()) -> Self {
+        Self::deserialize(dcx, value).unwrap_or_else(|| Self::from_default(default))
     }
 }
 
-/// Represents all kinds of trait associated items.
-#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SourceItemOrderingTraitAssocItemKind {
-    Const,
-    Fn,
-    Type,
+conf_enum! {
+    #[derive(Debug, PartialEq)]
+    pub SourceItemOrderingTraitAssocItemKind {
+        Const("const"),
+        Fn("fn"),
+        Type("type"),
+    }
 }
 
 impl SourceItemOrderingTraitAssocItemKind {
@@ -534,33 +727,21 @@ impl SourceItemOrderingTraitAssocItemKind {
 #[derive(Clone)]
 pub struct SourceItemOrderingTraitAssocItemKinds(Vec<SourceItemOrderingTraitAssocItemKind>);
 
-impl SourceItemOrderingTraitAssocItemKinds {
-    pub fn index_of(&self, item: &SourceItemOrderingTraitAssocItemKind) -> Option<usize> {
-        self.0.iter().position(|i| i == item)
-    }
-}
-
-impl<T> From<T> for SourceItemOrderingTraitAssocItemKinds
-where
-    T: Into<Vec<SourceItemOrderingTraitAssocItemKind>>,
-{
-    fn from(value: T) -> Self {
-        Self(value.into())
-    }
-}
-
-impl core::fmt::Debug for SourceItemOrderingTraitAssocItemKinds {
+impl fmt::Debug for SourceItemOrderingTraitAssocItemKinds {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl<'de> Deserialize<'de> for SourceItemOrderingTraitAssocItemKinds {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let items = Vec::<SourceItemOrderingTraitAssocItemKind>::deserialize(deserializer)?;
+impl SourceItemOrderingTraitAssocItemKinds {
+    pub fn index_of(&self, item: SourceItemOrderingTraitAssocItemKind) -> Option<usize> {
+        self.0.iter().position(|&i| i == item)
+    }
+}
+
+impl Deserialize for SourceItemOrderingTraitAssocItemKinds {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        let items = Vec::<SourceItemOrderingTraitAssocItemKind>::deserialize(dcx, value)?;
 
         let mut expected_items = SourceItemOrderingTraitAssocItemKind::all_variants();
         for item in &items {
@@ -569,28 +750,44 @@ impl<'de> Deserialize<'de> for SourceItemOrderingTraitAssocItemKinds {
 
         let all_items = SourceItemOrderingTraitAssocItemKind::all_variants();
         if expected_items.is_empty() && items.len() == all_items.len() {
-            Ok(Self(items))
+            Some(Self(items))
         } else if items.len() != all_items.len() {
-            Err(de::Error::custom(format!(
-                "Some trait associated item kinds were configured more than once, or were missing, in the source ordering configuration. \
-                The trait associated item kinds are: {all_items:?}",
-            )))
+            dcx.span_err(
+                value.span(),
+                format!(
+                    "Some trait associated item kinds were configured more than once, or were missing, in the source ordering configuration. \
+                    The trait associated item kinds are: {all_items:?}",
+                )
+            );
+            None
         } else {
-            Err(de::Error::custom(format!(
-                "Not all trait associated item kinds were part of the configured source ordering rule. \
-                All item kinds must be provided in the config, otherwise the required source ordering would remain ambiguous. \
-                The trait associated item kinds are: {all_items:?}"
-            )))
+            dcx.span_err(
+                value.span(),
+                format!(
+                    "Not all trait associated item kinds were part of the configured source ordering rule. \
+                    All item kinds must be provided in the config, otherwise the required source ordering would remain ambiguous. \
+                    The trait associated item kinds are: {all_items:?}"
+                )
+            );
+            None
         }
     }
 }
-
-impl Serialize for SourceItemOrderingTraitAssocItemKinds {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        self.0.serialize(serializer)
+impl FromDefault<()> for SourceItemOrderingTraitAssocItemKinds {
+    fn from_default((): ()) -> Self {
+        Self(vec![
+            SourceItemOrderingTraitAssocItemKind::Const,
+            SourceItemOrderingTraitAssocItemKind::Type,
+            SourceItemOrderingTraitAssocItemKind::Fn,
+        ])
+    }
+    fn display_default((): ()) -> impl Display {
+        r#"["const", "type", "fn"]"#
+    }
+}
+impl DeserializeOrDefault<()> for SourceItemOrderingTraitAssocItemKinds {
+    fn deserialize_or_default(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>, default: ()) -> Self {
+        Self::deserialize(dcx, value).unwrap_or_else(|| Self::from_default(default))
     }
 }
 
@@ -610,7 +807,7 @@ pub enum SourceItemOrderingWithinModuleItemGroupings {
     None,
 
     /// Only the specified groupings should have their order checked.
-    Custom(Vec<String>),
+    Custom(Vec<Spanned<String>>),
 }
 
 impl SourceItemOrderingWithinModuleItemGroupings {
@@ -618,91 +815,97 @@ impl SourceItemOrderingWithinModuleItemGroupings {
         match self {
             SourceItemOrderingWithinModuleItemGroupings::All => true,
             SourceItemOrderingWithinModuleItemGroupings::None => false,
-            SourceItemOrderingWithinModuleItemGroupings::Custom(groups) => groups.contains(grouping_name),
+            SourceItemOrderingWithinModuleItemGroupings::Custom(groups) => {
+                groups.iter().any(|x| x.node == *grouping_name)
+            },
         }
     }
-}
 
-/// Helper struct for deserializing the [`SourceItemOrderingWithinModuleItemGroupings`].
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum StringOrVecOfString {
-    String(String),
-    Vec(Vec<String>),
-}
-
-impl<'de> Deserialize<'de> for SourceItemOrderingWithinModuleItemGroupings {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let description = "The available options for configuring an ordering within module item groups are: \
-                    \"all\", \"none\", or a list of module item group names \
-                    (as configured with the `module-item-order-groupings` configuration option).";
-
-        match StringOrVecOfString::deserialize(deserializer) {
-            Ok(StringOrVecOfString::String(preset)) if preset == "all" => {
-                Ok(SourceItemOrderingWithinModuleItemGroupings::All)
-            },
-            Ok(StringOrVecOfString::String(preset)) if preset == "none" => {
-                Ok(SourceItemOrderingWithinModuleItemGroupings::None)
-            },
-            Ok(StringOrVecOfString::String(preset)) => Err(de::Error::custom(format!(
-                "Unknown configuration option: {preset}.\n{description}"
-            ))),
-            Ok(StringOrVecOfString::Vec(groupings)) => {
-                Ok(SourceItemOrderingWithinModuleItemGroupings::Custom(groupings))
-            },
-            Err(e) => Err(de::Error::custom(format!("{e}\n{description}"))),
-        }
-    }
-}
-
-impl Serialize for SourceItemOrderingWithinModuleItemGroupings {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        match self {
-            SourceItemOrderingWithinModuleItemGroupings::All => serializer.serialize_str("all"),
-            SourceItemOrderingWithinModuleItemGroupings::None => serializer.serialize_str("none"),
-            SourceItemOrderingWithinModuleItemGroupings::Custom(vec) => vec.serialize(serializer),
-        }
-    }
-}
-
-// these impls are never actually called but are used by the various config options that default to
-// empty lists
-macro_rules! unimplemented_serialize {
-    ($($t:ty,)*) => {
-        $(
-            impl Serialize for $t {
-                fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
-                where
-                    S: ser::Serializer,
-                {
-                    Err(ser::Error::custom("unimplemented"))
+    pub fn check_groupings(&self, sess: &Session, module_item_order_groupings: &SourceItemOrderingModuleItemGroupings) {
+        if let SourceItemOrderingWithinModuleItemGroupings::Custom(groupings) = self {
+            for grouping in groupings {
+                if !module_item_order_groupings.is_grouping(&grouping.node) {
+                    // Since this isn't fixable by rustfix, don't emit a `Suggestion`. This just adds some useful
+                    // info for the user instead.
+                    let names = module_item_order_groupings
+                        .groups
+                        .iter()
+                        .map(|(x, _)| &**x)
+                        .collect::<Vec<_>>();
+                    let suggestion = find_closest_match(&grouping.node, &names)
+                        .map(|s| format!(" perhaps you meant `{s}`?"))
+                        .unwrap_or_default();
+                    let names = names.iter().map(|s| format!("`{s}`")).join(", ");
+                    sess.dcx().span_err(grouping.span, format!(
+                        "unknown ordering group: `{}` was not specified in `module-items-ordered-within-groupings`,{suggestion} expected one of: {names}",
+                        grouping.node,
+                    ));
                 }
             }
-        )*
+        }
     }
 }
 
-unimplemented_serialize! {
-    Rename,
-    MacroMatcher,
+impl Deserialize for SourceItemOrderingWithinModuleItemGroupings {
+    fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
+        match value.as_ref() {
+            toml::de::DeValue::String(str_value) => match &**str_value {
+                "all" => Some(Self::All),
+                "none" => Some(Self::None),
+                _ => {
+                    dcx.span_err(value.span(), "expected: `all`, `none` or a list of category names");
+                    None
+                },
+            },
+            toml::de::DeValue::Array(_) => Vec::deserialize(dcx, value).map(Self::Custom),
+            _ => {
+                dcx.span_err(value.span(), "expected a string or an array of strings");
+                None
+            },
+        }
+    }
+}
+impl FromDefault<()> for SourceItemOrderingWithinModuleItemGroupings {
+    fn from_default((): ()) -> Self {
+        Self::None
+    }
+    fn display_default((): ()) -> impl Display {
+        r#""none""#
+    }
+}
+impl DeserializeOrDefault<()> for SourceItemOrderingWithinModuleItemGroupings {
+    fn deserialize_or_default(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>, default: ()) -> Self {
+        Self::deserialize(dcx, value).unwrap_or_else(|| Self::from_default(default))
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum PubUnderscoreFieldsBehaviour {
-    PubliclyExported,
-    AllPubFields,
+conf_enum! {
+    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub InherentImplLintScope {
+        Crate("crate"),
+        File("file"),
+        Module("module"),
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum InherentImplLintScope {
-    Crate,
-    File,
-    Module,
+conf_enum! {
+    #[derive(Debug, PartialEq, Eq, Hash)]
+    pub TraitImplItemOrder {
+        Alphabetical("alphabetical"),
+        TraitItemOrdering("trait_item_ordering"),
+        AlphabeticalOrTraitItemOrdering("alphabetical_or_trait_item_ordering"),
+    }
+}
+impl FromDefault<()> for TraitImplItemOrder {
+    fn from_default((): ()) -> Self {
+        Self::Alphabetical
+    }
+    fn display_default((): ()) -> impl Display {
+        r#""alphabetical""#
+    }
+}
+impl DeserializeOrDefault<()> for TraitImplItemOrder {
+    fn deserialize_or_default(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>, default: ()) -> Self {
+        Self::deserialize(dcx, value).unwrap_or_else(|| Self::from_default(default))
+    }
 }

@@ -39,7 +39,7 @@ impl<T> SveInto<T> for T {
 macro_rules! impl_sve_type {
     ($(($v:vis, $elem_type:ty, $name:ident, $elt:literal))*) => ($(
         #[doc = concat!("Scalable vector of type ", stringify!($elem_type))]
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Copy)]
         #[rustc_scalable_vector($elt)]
         #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
         $v struct $name($elem_type);
@@ -52,21 +52,21 @@ macro_rules! impl_sve_tuple_type {
     )*);
     (@ ($v:vis, $vec_type:ty, 2, $name:ident)) => (
         #[doc = concat!("Two-element tuple of scalable vectors of type ", stringify!($vec_type))]
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Copy)]
         #[rustc_scalable_vector]
         #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
         $v struct $name($vec_type, $vec_type);
     );
     (@ ($v:vis, $vec_type:ty, 3, $name:ident)) => (
         #[doc = concat!("Three-element tuple of scalable vectors of type ", stringify!($vec_type))]
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Copy)]
         #[rustc_scalable_vector]
         #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
         $v struct $name($vec_type, $vec_type, $vec_type);
     );
     (@ ($v:vis, $vec_type:ty, 4, $name:ident)) => (
         #[doc = concat!("Four-element tuple of scalable vectors of type ", stringify!($vec_type))]
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Copy)]
         #[rustc_scalable_vector]
         #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
         $v struct $name($vec_type, $vec_type, $vec_type, $vec_type);

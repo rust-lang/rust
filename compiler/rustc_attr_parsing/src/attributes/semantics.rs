@@ -1,5 +1,5 @@
+use rustc_attr_ir::target::GenericParamKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::target::GenericParamKind;
 
 use super::prelude::*;
 
@@ -23,6 +23,7 @@ impl NoArgsAttributeParser for ComptimeParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Fn),
+        Allow(Target::Impl { of_trait: false }),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcComptime;

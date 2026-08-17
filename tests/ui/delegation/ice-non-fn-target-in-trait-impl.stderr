@@ -1,14 +1,18 @@
-error[E0423]: expected function, found module `std::path`
-  --> $DIR/ice-non-fn-target-in-trait-impl.rs:13:11
+error[E0423]: cannot find function `path` in crate `std`
+  --> $DIR/ice-non-fn-target-in-trait-impl.rs:13:16
    |
 LL |     reuse std::path::<> as bar;
-   |           ^^^^^^^^^^^^^ not a function
+   |                ^^^^ not found in `std`
+   |
+   = note: a module named `std::path` exists in another namespace
 
-error[E0423]: expected function, found crate `core`
+error[E0423]: cannot find function `core` in this scope
   --> $DIR/ice-non-fn-target-in-trait-impl.rs:15:11
    |
 LL |     reuse core::<> as bar2;
-   |           ^^^^^^^^ not a function
+   |           ^^^^ not found in this scope
+   |
+   = note: a crate named `core` exists in another namespace
 
 error: aborting due to 2 previous errors
 

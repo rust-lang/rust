@@ -1,7 +1,8 @@
 use rustc_infer::infer::at::At;
-use rustc_infer::traits::TraitEngine;
+use rustc_infer::traits::{TraitEngine, TraitErrors};
 use rustc_macros::extension;
 use rustc_middle::ty::{self, Ty, Unnormalized};
+use thin_vec::ThinVec;
 
 use crate::traits::{NormalizeExt, Obligation};
 
@@ -11,7 +12,7 @@ impl<'tcx> At<'_, 'tcx> {
         &self,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<Ty<'tcx>, Vec<E>> {
+    ) -> Result<Ty<'tcx>, ThinVec<E>> {
         self.structurally_normalize_term(ty.map(Into::into), fulfill_cx)
             .map(|term| term.expect_type())
     }
@@ -20,7 +21,7 @@ impl<'tcx> At<'_, 'tcx> {
         &self,
         ct: Unnormalized<'tcx, ty::Const<'tcx>>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<ty::Const<'tcx>, Vec<E>> {
+    ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
         if self.infcx.tcx.features().generic_const_exprs() {
             return Ok(super::evaluate_const(&self.infcx, ct.skip_normalization(), self.param_env));
         }
@@ -33,7 +34,7 @@ impl<'tcx> At<'_, 'tcx> {
         &self,
         term: Unnormalized<'tcx, ty::Term<'tcx>>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<ty::Term<'tcx>, Vec<E>> {
+    ) -> Result<ty::Term<'tcx>, ThinVec<E>> {
         assert!(
             !term.as_ref().skip_normalization().is_infer(),
             "should have resolved vars before calling"
@@ -64,7 +65,7 @@ impl<'tcx> At<'_, 'tcx> {
 
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);
             let errors = fulfill_cx.try_evaluate_obligations(self.infcx);
-            if !errors.is_empty() {
+            if let TraitErrors::HasErrors(errors) = errors {
                 return Err(errors);
             }
 

@@ -1,8 +1,8 @@
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:4:1
+  --> $DIR/doc-cfg.rs:4:3
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
-   | ^^^^^^^^^--^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^--^^^^^^^^^^^^^^^^
    |          |
    |          expected an argument here
    |
@@ -12,10 +12,10 @@ LL | #[doc(cfg(false), cfg(foo, bar))]
    |           +++++
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:4:1
+  --> $DIR/doc-cfg.rs:4:3
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
-   | ^^^^^^^^^^^^^^^^----------^^
+   |   ^^^^^^^^^^^^^^----------^
    |                 |
    |                 expected a single argument here
    |
@@ -31,10 +31,10 @@ LL + #[doc(cfg(), cfg(any(foo, bar)))]
    |
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:7:1
+  --> $DIR/doc-cfg.rs:7:3
    |
 LL | #[doc(cfg())]
-   | ^^^^^^^^^--^^
+   |   ^^^^^^^--^
    |          |
    |          expected an argument here
    |
@@ -44,10 +44,10 @@ LL | #[doc(cfg(false))]
    |           +++++
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:8:1
+  --> $DIR/doc-cfg.rs:8:3
    |
 LL | #[doc(cfg(foo, bar))]
-   | ^^^^^^^^^----------^^
+   |   ^^^^^^^----------^
    |          |
    |          expected a single argument here
    |
@@ -63,10 +63,10 @@ LL + #[doc(cfg(any(foo, bar)))]
    |
 
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:9:1
+  --> $DIR/doc-cfg.rs:9:3
    |
 LL | #[doc(auto_cfg(hide(foo::bar)))]
-   | ^^^^^^^^^^^^^^^^^^^^--------^^^^
+   |   ^^^^^^^^^^^^^^^^^^--------^^^
    |                     |
    |                     expected a valid identifier here
 

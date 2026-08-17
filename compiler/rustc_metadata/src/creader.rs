@@ -7,6 +7,7 @@ use std::{cmp, env, iter};
 
 use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, AllocatorKind, global_fn_name};
 use rustc_ast::{self as ast, *};
+use rustc_crate_store::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
@@ -26,7 +27,6 @@ use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
 };
-use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Session, lint};
@@ -34,7 +34,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target};
-use tracing::{debug, info, trace};
+use tracing::{debug, info};
 
 use crate::diagnostics;
 use crate::locator::{CrateError, CrateLocator, CratePaths, CrateRejections};
@@ -68,6 +68,9 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
+
+    /// Cached map from hash to CrateNum, to avoid scanning metas during crate resolution.
+    hash_to_cnum: UnordMap<Svh, CrateNum>,
 
     /// Names that were used to load the crates via `extern crate` or paths.
     resolved_externs: UnordMap<Symbol, CrateNum>,
@@ -237,6 +240,7 @@ impl CStore {
 
     fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
+        self.hash_to_cnum.insert(data.hash(), cnum);
         self.metas[cnum] = Some(Box::new(data));
     }
 
@@ -380,6 +384,7 @@ impl CStore {
                         flag_name,
                         flag_name_prefixed,
                         extern_value: extern_value.to_string(),
+                        has_extern_value: !extern_value.is_empty(),
                     })
                 }
                 (Some(local_value), None) => {
@@ -390,6 +395,7 @@ impl CStore {
                         flag_name,
                         flag_name_prefixed,
                         local_value: local_value.to_string(),
+                        has_local_value: !local_value.is_empty(),
                     })
                 }
                 (None, None) => panic!("Incorrect target modifiers report_diff(None, None)"),
@@ -544,6 +550,7 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
+            hash_to_cnum: UnordMap::default(),
             resolved_externs: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
@@ -553,21 +560,9 @@ impl CStore {
 
     fn existing_match(&self, name: Symbol, hash: Option<Svh>) -> Option<CrateNum> {
         let hash = hash?;
-
-        for (cnum, data) in self.iter_crate_data() {
-            if data.name() != name {
-                trace!("{} did not match {}", data.name(), name);
-                continue;
-            }
-
-            if hash == data.hash() {
-                return Some(cnum);
-            } else {
-                debug!("actual hash {} did not match expected {}", hash, data.hash());
-            }
-        }
-
-        None
+        let cnum = *self.hash_to_cnum.get(&hash)?;
+        debug_assert_eq!(self.get_crate_data(cnum).name(), name);
+        Some(cnum)
     }
 
     /// Determine whether a dependency should be considered private.

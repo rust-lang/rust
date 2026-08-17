@@ -1,0 +1,36 @@
+error: literal non-ASCII character detected
+  --> tests/ui/non_ascii_literal_unfixable.rs:6:12
+   |
+LL |     print!(r"€");
+   |            ^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+   = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_ascii_literal)]`
+
+error: literal non-ASCII character detected
+  --> tests/ui/non_ascii_literal_unfixable.rs:8:12
+   |
+LL |     print!(r"Üben!");
+   |            ^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+
+error: literal non-ASCII character detected
+  --> tests/ui/non_ascii_literal_unfixable.rs:10:12
+   |
+LL |     print!(r"an en dash –");
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+
+error: literal non-ASCII character detected
+  --> tests/ui/non_ascii_literal_unfixable.rs:12:12
+   |
+LL |     print!(r#"€ between hashes"#);
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a normal string literal instead of a raw one to escape the character
+
+error: aborting due to 4 previous errors
+

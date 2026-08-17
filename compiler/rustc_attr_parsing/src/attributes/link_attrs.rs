@@ -1,9 +1,9 @@
+use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
-use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
-use rustc_hir::attrs::*;
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_span::edition::Edition::Edition2024;
 use rustc_span::kw;
@@ -13,7 +13,7 @@ use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
     ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
     InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,
@@ -144,13 +144,13 @@ impl CombineAttributeParser for LinkParser {
         let mut verbatim = None;
         if let Some((modifiers, span)) = modifiers {
             for modifier in modifiers.as_str().split(',') {
-                let (modifier, value): (Symbol, bool) = match modifier.strip_prefix(&['+', '-']) {
-                    Some(m) => (Symbol::intern(m), modifier.starts_with('+')),
-                    None => {
+                let (modifier, value): (Symbol, bool) =
+                    if let Some(m) = modifier.strip_prefix(['+', '-']) {
+                        (Symbol::intern(m), modifier.starts_with('+'))
+                    } else {
                         cx.emit_err(InvalidLinkModifier { span });
                         continue;
-                    }
-                };
+                    };
 
                 macro report_unstable_modifier($feature: ident) {
                     if !features.$feature() {
@@ -196,9 +196,14 @@ impl CombineAttributeParser for LinkParser {
                         cx.emit_err(WholeArchiveNeedsStatic { span });
                     }
 
-                    (sym::as_dash_needed, Some(NativeLibKind::Dylib { as_needed }))
-                    | (sym::as_dash_needed, Some(NativeLibKind::Framework { as_needed }))
-                    | (sym::as_dash_needed, Some(NativeLibKind::RawDylib { as_needed })) => {
+                    (
+                        sym::as_dash_needed,
+                        Some(
+                            NativeLibKind::Dylib { as_needed }
+                            | NativeLibKind::Framework { as_needed }
+                            | NativeLibKind::RawDylib { as_needed },
+                        ),
+                    ) => {
                         report_unstable_modifier!(native_link_modifiers_as_needed);
                         assign_modifier(as_needed)
                     }
@@ -576,7 +581,7 @@ impl NoArgsAttributeParser for FfiPureParser {
     const STABILITY: AttributeStability = unstable!(ffi_pure);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 
-    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[ffi_const]` functions cannot be `#[ffi_pure]`.
         if cx.all_attrs.iter().any(|a| a.word_is(sym::ffi_const)) {
             cx.emit_err(BothFfiConstAndPure { attr_span });
@@ -642,14 +647,13 @@ pub(crate) struct LinkageParser;
 impl SingleAttributeParser for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
+        Allow(Target::Fn), // const fn denied in check_attr
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
-        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignStatic), // extern static mut denied in check_attr
         Allow(Target::ForeignFn),
-        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
         "available_externally",
@@ -667,9 +671,7 @@ impl SingleAttributeParser for LinkageParser {
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::linkage))?;
 
-        let Some(value) = cx.expect_string_literal(name_value) else {
-            return None;
-        };
+        let value = cx.expect_string_literal(name_value)?;
 
         // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
         // applicable to variable declarations and may not really make sense for

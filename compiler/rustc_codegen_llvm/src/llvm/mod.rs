@@ -21,8 +21,10 @@ pub(crate) mod diagnostic;
 pub(crate) mod enzyme_ffi;
 mod ffi;
 mod metadata_kind;
+pub(crate) mod offload_ffi;
 
 pub(crate) use self::enzyme_ffi::*;
+pub(crate) use self::offload_ffi::*;
 
 impl LLVMRustResult {
     pub(crate) fn into_result(self) -> Result<(), ()> {
@@ -73,6 +75,21 @@ pub(crate) fn CreateAttrStringValue<'ll>(
             attr.len().try_into().unwrap(),
             value.as_c_char_ptr(),
             value.len().try_into().unwrap(),
+        )
+    }
+}
+pub(crate) fn CreateAttrStringValueFromCStr<'ll>(
+    llcx: &'ll Context,
+    attr: &std::ffi::CStr,
+    value: &std::ffi::CStr,
+) -> &'ll Attribute {
+    unsafe {
+        LLVMCreateStringAttribute(
+            llcx,
+            (*attr).as_ptr(),
+            (*attr).to_bytes().len() as c_uint,
+            (*value).as_ptr(),
+            (*value).to_bytes().len() as c_uint,
         )
     }
 }
@@ -474,4 +491,20 @@ pub(crate) fn add_alias<'ll>(
     name: &CStr,
 ) -> &'ll Value {
     unsafe { LLVMAddAlias2(module, ty, address_space.0, aliasee, name.as_ptr()) }
+}
+
+/// Safe wrapper for `LLVMRustConstPtrAuth`.
+pub(crate) fn const_ptr_auth<'ll>(
+    ptr: &'ll Value,
+    key: u32,
+    disc: u64,
+    addr_diversity: Option<&'ll Value>,
+) -> &'ll Value {
+    unsafe {
+        let addr_div_ptr = addr_diversity.map_or(std::ptr::null(), |v| v as *const Value);
+        let deactivation_symbol = std::ptr::null();
+        let result =
+            LLVMRustConstPtrAuth(ptr as *const Value, key, disc, addr_div_ptr, deactivation_symbol);
+        &*result
+    }
 }

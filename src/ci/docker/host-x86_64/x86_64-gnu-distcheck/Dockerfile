@@ -28,12 +28,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   libssl-dev \
   pkg-config \
+  zlib1g-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# Make distcheck builds faster
-ENV DISTCHECK_CONFIGURE_ARGS="--enable-sccache"
+# Make distcheck builds faster and use less disk space
+ENV DISTCHECK_CONFIGURE_ARGS="--enable-sccache --set llvm.link-shared=true"
 
 ENV SCRIPT="python3 ../x.py test distcheck"

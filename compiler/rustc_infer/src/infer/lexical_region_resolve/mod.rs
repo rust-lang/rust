@@ -110,7 +110,7 @@ pub enum RegionResolutionError<'tcx> {
         Region<'tcx>,          // the placeholder `'b`
     ),
 
-    CannotNormalize(ty::PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>),
+    CannotNormalize(ty::PolyTypeOutlivesClause<'tcx>, SubregionOrigin<'tcx>),
 }
 
 impl<'tcx> RegionResolutionError<'tcx> {

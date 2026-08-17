@@ -36,11 +36,12 @@ even other Rust compilers, such as rust-analyzer!
 
 */
 
+use std::cmp::min;
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
-use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, Sub};
+use std::num::{NonZero, ParseIntError};
+use std::ops::{Add, AddAssign, Deref, Mul, Sub};
 use std::range::RangeInclusive;
 use std::str::FromStr;
 
@@ -64,6 +65,7 @@ mod extern_abi;
 mod layout;
 #[cfg(test)]
 mod tests;
+mod wrapping_range;
 
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
 pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
@@ -73,6 +75,7 @@ pub use extern_abi::{ExternAbi, all_names};
 pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
 #[cfg(feature = "nightly")]
 pub use layout::{Layout, TyAbiInterface, TyAndLayout};
+pub use wrapping_range::WrappingRange;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
@@ -89,6 +92,10 @@ bitflags! {
         /// If true, the type's crate has opted into layout randomization.
         /// Other flags can still inhibit reordering and thus randomization.
         /// The seed stored in `ReprOptions.field_shuffle_seed`.
+        ///
+        /// `repr(Rust)` structs with only zero-sized fields, single-variant `repr(Rust)` enums with only
+        /// zero-sized fields, and zero-variant `repr(Rust)` enums must remain zero-sized as per
+        /// T-lang decisions in https://github.com/rust-lang/reference/pull/2262 and https://github.com/rust-lang/reference/pull/2293
         const RANDOMIZE_LAYOUT   = 1 << 4;
         /// If true, the type is always passed indirectly by non-Rustic ABIs.
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
@@ -237,7 +244,42 @@ impl ReprOptions {
 /// This value is selected based on backend support:
 /// * LLVM does not appear to have a vector width limit.
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
-pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+pub const MAX_SIMD_LANES: u16 = 1 << 0xF;
+
+/// The number of lanes in a [`BackendRepr::SimdVector`], `1..=`[`MAX_SIMD_LANES`].
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
+pub struct BackendLaneCount(NonZero<u16>);
+
+impl BackendLaneCount {
+    pub fn new<N>(count: u64) -> Result<Self, LayoutCalculatorError<N>> {
+        let Ok(count @ ..=MAX_SIMD_LANES) = u16::try_from(count) else {
+            return Err(LayoutCalculatorError::OversizedSimdType {
+                max_lanes: crate::MAX_SIMD_LANES.into(),
+            });
+        };
+        if let Some(count) = NonZero::new(count) {
+            Ok(BackendLaneCount(count))
+        } else {
+            Err(LayoutCalculatorError::ZeroLengthSimdType)
+        }
+    }
+
+    #[inline]
+    pub fn is_power_of_two(self) -> bool {
+        self.0.is_power_of_two()
+    }
+
+    #[inline]
+    pub fn as_u64(self) -> u64 {
+        self.0.get().into()
+    }
+
+    #[inline]
+    pub fn as_u32(self) -> u32 {
+        self.0.get().into()
+    }
+}
 
 /// How pointers are represented in a given address space
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -657,17 +699,25 @@ impl TargetDataLayout {
 
     /// psABI-mandated alignment for a vector type, if any
     #[inline]
-    fn cabi_vector_align(&self, vec_size: Size) -> Option<Align> {
+    fn c_vector_align(&self, vec_size: Size) -> Option<Align> {
         self.vector_align
             .iter()
             .find(|(size, _align)| *size == vec_size)
             .map(|(_size, align)| *align)
     }
 
-    /// an alignment resembling the one LLVM would pick for a vector
+    /// Rust-assigned alignment of any vector type
+    ///
+    /// When the shape of a vector matches that in a C psABI, we *must* agree when performing FFI.
+    /// This currently answers correctly for C compatibility purposes as it is a useful default.
+    /// Otherwise this choice is arbitrary, as vector types do not necessarily match hardware so
+    /// this can conjure "imaginary" answers that just happen to be convenient for us.
+    ///
+    /// Importantly, Rust vector alignment is not required to be monotonic between vector sizes,
+    /// even though it currently is.
     #[inline]
-    pub fn llvmlike_vector_align(&self, vec_size: Size) -> Align {
-        self.cabi_vector_align(vec_size)
+    pub fn rust_vector_align(&self, vec_size: Size) -> Align {
+        self.c_vector_align(vec_size)
             .unwrap_or(Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap())
     }
 
@@ -991,6 +1041,13 @@ impl Step for Size {
     }
 
     #[inline]
+    #[cfg(not(bootstrap))]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u64::forward_overflowing(start.bytes(), count);
+        (Self::from_bytes(s), o)
+    }
+
+    #[inline]
     fn forward(start: Self, count: usize) -> Self {
         Self::from_bytes(u64::forward(start.bytes(), count))
     }
@@ -1003,6 +1060,13 @@ impl Step for Size {
     #[inline]
     fn backward_checked(start: Self, count: usize) -> Option<Self> {
         u64::backward_checked(start.bytes(), count).map(Self::from_bytes)
+    }
+
+    #[inline]
+    #[cfg(not(bootstrap))]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u64::backward_overflowing(start.bytes(), count);
+        (Self::from_bytes(s), o)
     }
 
     #[inline]
@@ -1060,14 +1124,8 @@ impl Align {
     /// Either `1 << (pointer_bits - 1)` or [`Align::MAX`], whichever is smaller.
     #[inline]
     pub fn max_for_target(tdl: &TargetDataLayout) -> Align {
-        let pointer_bits = tdl.pointer_size().bits();
-        if let Ok(pointer_bits) = u8::try_from(pointer_bits)
-            && pointer_bits <= Align::MAX.pow2
-        {
-            Align { pow2: pointer_bits - 1 }
-        } else {
-            Align::MAX
-        }
+        let pointer_bits = u8::try_from(tdl.pointer_size().bits()).unwrap();
+        min(Align { pow2: pointer_bits - 1 }, Align::MAX)
     }
 
     #[inline]
@@ -1374,10 +1432,21 @@ impl Float {
             F128 => dl.f128_align,
         })
     }
+
+    pub fn ty_str(self) -> &'static str {
+        use Float::*;
+
+        match self {
+            F16 => "f16",
+            F32 => "f32",
+            F64 => "f64",
+            F128 => "f128",
+        }
+    }
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
@@ -1392,6 +1461,29 @@ pub enum Primitive {
     Pointer(AddressSpace),
 }
 
+impl fmt::Debug for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match *self {
+            Primitive::Int(integer, is_signed) => {
+                if is_signed {
+                    integer.int_ty_str()
+                } else {
+                    integer.uint_ty_str()
+                }
+            }
+            Primitive::Float(float) => float.ty_str(),
+            Primitive::Pointer(addr_space) => {
+                if addr_space == AddressSpace::ZERO {
+                    "pointer"
+                } else {
+                    return write!(f, "pointer({addr_space:?})");
+                }
+            }
+        };
+        f.write_str(name)
+    }
+}
+
 impl Primitive {
     pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
         use Primitive::*;
@@ -1404,7 +1496,11 @@ impl Primitive {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    /// The *platform-specific* ABI alignment of this primitive.
+    ///
+    /// This is the type alignment for the corresponding built-in.
+    /// In other contexts it might have different alignment.
+    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
         use Primitive::*;
         let dl = cx.data_layout();
 
@@ -1416,128 +1512,8 @@ impl Primitive {
     }
 }
 
-/// Inclusive wrap-around range of valid values, that is, if
-/// start > end, it represents `start..=MAX`, followed by `0..=end`.
-///
-/// That is, for an i8 primitive, a range of `254..=2` means following
-/// sequence:
-///
-///    254 (-2), 255 (-1), 0, 1, 2
-///
-/// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-pub struct WrappingRange {
-    pub start: u128,
-    pub end: u128,
-}
-
-impl WrappingRange {
-    pub fn full(size: Size) -> Self {
-        Self { start: 0, end: size.unsigned_int_max() }
-    }
-
-    /// Returns `true` if `v` is contained in the range.
-    #[inline(always)]
-    pub fn contains(&self, v: u128) -> bool {
-        if self.start <= self.end {
-            self.start <= v && v <= self.end
-        } else {
-            self.start <= v || v <= self.end
-        }
-    }
-
-    /// Returns `true` if all the values in `other` are contained in this range,
-    /// when the values are considered as having width `size`.
-    #[inline(always)]
-    pub fn contains_range(&self, other: Self, size: Size) -> bool {
-        if self.is_full_for(size) {
-            true
-        } else {
-            let trunc = |x| size.truncate(x);
-
-            let delta = self.start;
-            let max = trunc(self.end.wrapping_sub(delta));
-
-            let other_start = trunc(other.start.wrapping_sub(delta));
-            let other_end = trunc(other.end.wrapping_sub(delta));
-
-            // Having shifted both input ranges by `delta`, now we only need to check
-            // whether `0..=max` contains `other_start..=other_end`, which can only
-            // happen if the other doesn't wrap since `self` isn't everything.
-            (other_start <= other_end) && (other_end <= max)
-        }
-    }
-
-    /// Returns `self` with replaced `start`
-    #[inline(always)]
-    fn with_start(mut self, start: u128) -> Self {
-        self.start = start;
-        self
-    }
-
-    /// Returns `self` with replaced `end`
-    #[inline(always)]
-    fn with_end(mut self, end: u128) -> Self {
-        self.end = end;
-        self
-    }
-
-    /// Returns `true` if `size` completely fills the range.
-    ///
-    /// Note that this is *not* the same as `self == WrappingRange::full(size)`.
-    /// Niche calculations can produce full ranges which are not the canonical one;
-    /// for example `Option<NonZero<u16>>` gets `valid_range: (..=0) | (1..)`.
-    #[inline]
-    fn is_full_for(&self, size: Size) -> bool {
-        let max_value = size.unsigned_int_max();
-        debug_assert!(self.start <= max_value && self.end <= max_value);
-        self.start == (self.end.wrapping_add(1) & max_value)
-    }
-
-    /// Checks whether this range is considered non-wrapping when the values are
-    /// interpreted as *unsigned* numbers of width `size`.
-    ///
-    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
-    /// and `Err(..)` if the range is full so it depends how you think about it.
-    #[inline]
-    pub fn no_unsigned_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
-        if self.is_full_for(size) { Err(..) } else { Ok(self.start <= self.end) }
-    }
-
-    /// Checks whether this range is considered non-wrapping when the values are
-    /// interpreted as *signed* numbers of width `size`.
-    ///
-    /// This is heavily dependent on the `size`, as `100..=200` does wrap when
-    /// interpreted as `i8`, but doesn't when interpreted as `i16`.
-    ///
-    /// Returns `Ok(true)` if there's no wrap-around, `Ok(false)` if there is,
-    /// and `Err(..)` if the range is full so it depends how you think about it.
-    #[inline]
-    pub fn no_signed_wraparound(&self, size: Size) -> Result<bool, RangeFull> {
-        if self.is_full_for(size) {
-            Err(..)
-        } else {
-            let start: i128 = size.sign_extend(self.start);
-            let end: i128 = size.sign_extend(self.end);
-            Ok(start <= end)
-        }
-    }
-}
-
-impl fmt::Debug for WrappingRange {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.start > self.end {
-            write!(fmt, "(..={}) | ({}..)", self.end, self.start)?;
-        } else {
-            write!(fmt, "{}..={}", self.start, self.end)?;
-        }
-        Ok(())
-    }
-}
-
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Scalar {
     Initialized {
@@ -1556,6 +1532,24 @@ pub enum Scalar {
         /// so there is no `valid_range`.
         value: Primitive,
     },
+}
+
+impl fmt::Debug for Scalar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Initialized { value, valid_range } => {
+                let (size, is_signed) = match *value {
+                    Primitive::Int(integer, is_signed) => (integer.size(), is_signed),
+                    Primitive::Float(float) => (float.size(), false),
+                    Primitive::Pointer(_) => (Size::from_bits(128), false),
+                };
+                write!(f, "{value:?} is {:?}", valid_range.debug_as(size, is_signed))
+            }
+            Scalar::Union { value } => {
+                write!(f, "union {value:?}")
+            }
+        }
+    }
 }
 
 impl Scalar {
@@ -1579,8 +1573,12 @@ impl Scalar {
         }
     }
 
-    pub fn align(self, cx: &impl HasDataLayout) -> AbiAlign {
-        self.primitive().align(cx)
+    /// The *platform-specific* ABI alignment of this scalar.
+    ///
+    /// This is the type alignment for the corresponding built-in.
+    /// This is *not* necessarily the correct alignment for a type that has this `BackendRepr::Scalar`!
+    pub fn default_align(self, cx: &impl HasDataLayout) -> AbiAlign {
+        self.primitive().default_align(cx)
     }
 
     pub fn size(self, cx: &impl HasDataLayout) -> Size {
@@ -1648,7 +1646,7 @@ pub enum FieldsShape<FieldIdx: Idx> {
     Primitive,
 
     /// All fields start at no offset. The `usize` is the field count.
-    Union(NonZeroUsize),
+    Union(NonZero<usize>),
 
     /// Array/vector-like placement, with all fields of identical types.
     Array { stride: Size, count: u64 },
@@ -1792,15 +1790,27 @@ impl IntoDiagArg for NumScalableVectors {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum BackendRepr {
     Scalar(Scalar),
-    ScalarPair(Scalar, Scalar),
+    /// The data contained in this type can be entirely represented by two scalars.
+    /// The two scalars are listed in *memory* order, so `a` is at offset zero
+    /// and `b` is at non-zero offset `b_offset`.
+    /// These need not be `FieldIdx(0)` and `FieldIdx(1)`.
+    ///
+    /// As of June 2026 the `b_offset` is always the size of the `a`
+    /// scalar rounded up to the platform alignment of the `b` scalar.
+    /// That may soon change, however; see MCP#1007.
+    ScalarPair {
+        a: Scalar,
+        b: Scalar,
+        b_offset: Size,
+    },
     SimdScalableVector {
         element: Scalar,
-        count: u64,
+        count: BackendLaneCount,
         number_of_vectors: NumScalableVectors,
     },
     SimdVector {
         element: Scalar,
-        count: u64,
+        count: BackendLaneCount,
     },
     // FIXME: I sometimes use memory, sometimes use an IR aggregate!
     Memory {
@@ -1815,7 +1825,7 @@ impl BackendRepr {
     pub fn is_unsized(&self) -> bool {
         match *self {
             BackendRepr::Scalar(_)
-            | BackendRepr::ScalarPair(..)
+            | BackendRepr::ScalarPair { .. }
             // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
             // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
             // fully implemented, scalable vectors will remain `Sized`, they just won't be
@@ -1842,10 +1852,23 @@ impl BackendRepr {
         }
     }
 
-    /// Returns `true` if this is a scalar type
+    /// Returns `true` if this is specifically a [`Self::Scalar`] type.
+    ///
+    /// This excludes SIMD types.
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, BackendRepr::Scalar(_))
+    }
+
+    /// Returns `true` if this is a scalar type or SIMD type.
+    #[inline]
+    pub fn is_scalar_or_simd(&self) -> bool {
+        matches!(
+            *self,
+            BackendRepr::Scalar(_)
+                | BackendRepr::SimdVector { .. }
+                | BackendRepr::SimdScalableVector { .. }
+        )
     }
 
     /// Returns `true` if this is a bool
@@ -1857,10 +1880,16 @@ impl BackendRepr {
     /// The psABI alignment for a `Scalar` or `ScalarPair`
     ///
     /// `None` for other variants.
-    pub fn scalar_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
+    ///
+    /// It's unclear whether this is a meaningful operation, and MCP#1007 proposes changes.
+    /// You should generally be using the alignment of the place or the type,
+    /// not calculating something from the `Scalar`s.
+    pub fn scalar_platform_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
         match *self {
-            BackendRepr::Scalar(s) => Some(s.align(cx).abi),
-            BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
+            BackendRepr::Scalar(s) => Some(s.default_align(cx).abi),
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
+                Some(s1.default_align(cx).max(s2.default_align(cx)).abi)
+            }
             // The align of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }
             | BackendRepr::Memory { .. }
@@ -1876,10 +1905,9 @@ impl BackendRepr {
             // No padding in scalars.
             BackendRepr::Scalar(s) => Some(s.size(cx)),
             // May have some padding between the pair.
-            BackendRepr::ScalarPair(s1, s2) => {
-                let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
+            BackendRepr::ScalarPair { a: _, b: s2, b_offset: field2_offset } => {
                 let size = (field2_offset + s2.size(cx)).align_to(
-                    self.scalar_align(cx)
+                    self.scalar_platform_align(cx)
                         // We absolutely must have an answer here or everything is FUBAR.
                         .unwrap(),
                 );
@@ -1896,8 +1924,8 @@ impl BackendRepr {
     pub fn to_union(&self) -> Self {
         match *self {
             BackendRepr::Scalar(s) => BackendRepr::Scalar(s.to_union()),
-            BackendRepr::ScalarPair(s1, s2) => {
-                BackendRepr::ScalarPair(s1.to_union(), s2.to_union())
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset } => {
+                BackendRepr::ScalarPair { a: s1.to_union(), b: s2.to_union(), b_offset }
             }
             BackendRepr::SimdVector { element, count } => {
                 BackendRepr::SimdVector { element: element.to_union(), count }
@@ -1922,8 +1950,13 @@ impl BackendRepr {
                 BackendRepr::SimdVector { element: element_l, count: count_l },
                 BackendRepr::SimdVector { element: element_r, count: count_r },
             ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
-            (BackendRepr::ScalarPair(l1, l2), BackendRepr::ScalarPair(r1, r2)) => {
-                l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
+            (
+                BackendRepr::ScalarPair { a: l1, b: l2, b_offset: l_offset },
+                BackendRepr::ScalarPair { a: r1, b: r2, b_offset: r_offset },
+            ) => {
+                l1.primitive() == r1.primitive()
+                    && l2.primitive() == r2.primitive()
+                    && l_offset == r_offset
             }
             // Everything else must be strictly identical.
             _ => self == other,
@@ -2064,8 +2097,7 @@ impl Niche {
         let distance_end_zero = max_value - v.end;
         // FIXME: this ought to work for `bool` too, but that seems to be hitting a miscompilation
         // <https://github.com/rust-lang/rust/pull/155473#issuecomment-4302036343>
-        let is_bool = size.bytes() == 1 && v == WrappingRange { start: 0, end: 1 };
-        if count == 1 && !is_bool {
+        if count == 1 && v != (WrappingRange { start: 0, end: 1 }) {
             // We only need one, so just pick the one closest to zero.
             // Not only does that obviously use zero if it's possible, but it also
             // simplifies testing things like `Option<char>`, since looking for `-1`
@@ -2163,13 +2195,24 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
             | BackendRepr::SimdScalableVector { .. } => false,
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => true,
         }
     }
 
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
+    }
+
+    /// Returns `true` if the given variant is uninhabited.
+    pub fn is_variant_uninhabited(&self, variant: VariantIdx) -> bool {
+        match self.variants {
+            Variants::Empty => true,
+            Variants::Single { index } => variant != index || self.uninhabited,
+            Variants::Multiple { ref variants, .. } => {
+                variants.get(variant).map(|v| v.uninhabited).unwrap_or(true)
+            }
+        }
     }
 }
 
@@ -2263,7 +2306,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     }
 
     /// Returns the elements count of a scalable vector.
-    pub fn scalable_vector_element_count(&self) -> Option<u64> {
+    pub fn scalable_vector_element_count(&self) -> Option<BackendLaneCount> {
         match self.backend_repr {
             BackendRepr::SimdScalableVector { count, .. } => Some(count),
             _ => None,
@@ -2277,10 +2320,29 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     pub fn is_zst(&self) -> bool {
         match self.backend_repr {
             BackendRepr::Scalar(_)
-            | BackendRepr::ScalarPair(..)
+            | BackendRepr::ScalarPair { .. }
             | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
+        }
+    }
+
+    /// In the backend, a value with this type and layout is fully represented by
+    /// its SSA value(s), independent of the contents of memory.
+    ///
+    /// For example, you can swap by reading both then writing both without using
+    /// an alloca because the store of one cannot affect the value of the other.
+    ///
+    /// Any projection into a standalone type must also yield a standalone type,
+    /// since it might not be in memory at all.
+    #[inline]
+    pub fn is_ssa_standalone(&self) -> bool {
+        match self.backend_repr {
+            BackendRepr::Memory { .. } => self.is_zst(),
+            BackendRepr::Scalar(..)
+            | BackendRepr::ScalarPair { .. }
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::SimdScalableVector { .. } => true,
         }
     }
 
@@ -2321,7 +2383,7 @@ pub enum AbiFromStrErr {
     NoExplicitUnwind,
 }
 
-// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
+// NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct VariantLayout<FieldIdx: Idx> {

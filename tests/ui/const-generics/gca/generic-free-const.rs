@@ -1,9 +1,12 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
-#![feature(generic_const_items)]
+#![feature(
+    min_generic_const_args,
+    macroless_generic_const_args,
+    generic_const_args,
+    generic_const_items
+)]
 #![expect(incomplete_features)]
 
 const ADD1<const N: usize>: usize = N + 1;

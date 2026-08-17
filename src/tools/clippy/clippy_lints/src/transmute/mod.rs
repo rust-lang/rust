@@ -493,7 +493,7 @@ pub struct Transmute {
 }
 impl Transmute {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 
     /// When transmuting, a struct containing a single field works like the field.

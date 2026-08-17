@@ -1,5 +1,5 @@
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:15:5
+  --> tests/ui/needless_for_each_fixable.rs:14:5
    |
 LL | /     v.iter().for_each(|elem| {
 LL | |
@@ -18,7 +18,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:19:5
+  --> tests/ui/needless_for_each_fixable.rs:18:5
    |
 LL | /     v.into_iter().for_each(|elem| {
 LL | |
@@ -35,7 +35,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:24:5
+  --> tests/ui/needless_for_each_fixable.rs:23:5
    |
 LL | /     [1, 2, 3].iter().for_each(|elem| {
 LL | |
@@ -52,7 +52,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:30:5
+  --> tests/ui/needless_for_each_fixable.rs:29:5
    |
 LL | /     hash_map.iter().for_each(|(k, v)| {
 LL | |
@@ -69,7 +69,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:34:5
+  --> tests/ui/needless_for_each_fixable.rs:33:5
    |
 LL | /     hash_map.iter_mut().for_each(|(k, v)| {
 LL | |
@@ -86,7 +86,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:38:5
+  --> tests/ui/needless_for_each_fixable.rs:37:5
    |
 LL | /     hash_map.keys().for_each(|k| {
 LL | |
@@ -103,7 +103,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:42:5
+  --> tests/ui/needless_for_each_fixable.rs:41:5
    |
 LL | /     hash_map.values().for_each(|v| {
 LL | |
@@ -120,7 +120,7 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:50:5
+  --> tests/ui/needless_for_each_fixable.rs:49:5
    |
 LL | /     my_vec().iter().for_each(|elem| {
 LL | |
@@ -137,25 +137,25 @@ LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:135:9
+  --> tests/ui/needless_for_each_fixable.rs:134:9
    |
 LL |         rows.iter().for_each(|x| _ = v.push(x));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { _ = v.push(x) }`
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:142:9
+  --> tests/ui/needless_for_each_fixable.rs:141:9
    |
 LL |         rows.iter().for_each(|x| do_something(x, 1u8));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { do_something(x, 1u8); }`
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:149:5
+  --> tests/ui/needless_for_each_fixable.rs:148:5
    |
 LL |     vec.iter().for_each(|v| println!("{v}"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec.iter() { println!("{v}"); }`
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:155:5
+  --> tests/ui/needless_for_each_fixable.rs:154:5
    |
 LL | /     vec.iter().for_each(|elem| {
 LL | |

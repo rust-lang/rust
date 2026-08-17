@@ -7,7 +7,7 @@ use rustc_hir::{
     self as hir, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnRetTy,
     FnSig, Node, TyKind,
 };
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::sym;
 
 use super::INFINITE_LOOP;
@@ -178,7 +178,7 @@ impl<'hir> Visitor<'hir> for LoopVisitor<'hir, '_> {
                     self.is_finite = true;
                 }
             },
-            ExprKind::Ret(..) => self.is_finite = true,
+            ExprKind::Ret(..) | ExprKind::Yield(_, hir::YieldSource::Yield) => self.is_finite = true,
             ExprKind::Loop(_, label, _, _) => {
                 if let Some(label) = label {
                     self.inner_labels.push(*label);

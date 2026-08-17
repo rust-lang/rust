@@ -36,7 +36,7 @@ pub enum Alignment {
     Center,
 }
 
-#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "int_format_into", since = "1.98.0")]
 pub use num_buffer::NumBuffer;
 #[unstable(feature = "fmt_internals", issue = "none")]
 pub use num_buffer::NumBufferTrait;
@@ -1176,7 +1176,7 @@ pub use macros::Debug;
     ),
     on(
         from_desugaring = "FormatLiteral",
-        note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead",
+        note = "in format strings you may be able to use `{{:?}}` (or `{{:#?}}` for pretty-print) instead",
         label = "`{Self}` cannot be formatted with the default formatter",
     ),
     message = "`{Self}` doesn't implement `{This}`"
@@ -1611,7 +1611,7 @@ pub trait UpperExp: PointeeSized {
 ///
 /// let mut output = String::new();
 /// fmt::write(&mut output, format_args!("Hello {}!", "world"))
-///     .expect("Error occurred while trying to write in String");
+///     .expect("Writing to a `String` should not fail");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
@@ -1622,7 +1622,7 @@ pub trait UpperExp: PointeeSized {
 ///
 /// let mut output = String::new();
 /// write!(&mut output, "Hello {}!", "world")
-///     .expect("Error occurred while trying to write in String");
+///     .expect("Writing to a `String` should not fail");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
@@ -2577,6 +2577,21 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For C-like enums with concatenated variant name strings.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_c_like_enum_write_str<'b>(
+        &'b mut self,
+        names: &str,
+        offset: &[usize],
+        discr: usize,
+    ) -> Result {
+        let start = offset[discr];
+        let end = offset[discr + 1];
+        self.write_str(&names[start..end])
+    }
+
     /// Creates a `DebugTuple` builder designed to assist with creation of
     /// `fmt::Debug` implementations for tuple structs.
     ///
@@ -2927,7 +2942,7 @@ impl Debug for str {
         // the loop here first skips over runs of printable ASCII as a fast path.
         // other chars (unicode, or ASCII that needs escaping) are then handled per-`char`.
         let mut rest = self;
-        while rest.len() > 0 {
+        while !rest.is_empty() {
             let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
             else {
                 printable_range.end += rest.len();
@@ -3174,7 +3189,7 @@ impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Debug::fmt(&*(self.deref()), f)
+        Debug::fmt(self.deref(), f)
     }
 }
 

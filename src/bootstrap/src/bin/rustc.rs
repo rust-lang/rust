@@ -20,23 +20,16 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::Instant;
 
-use arg_file_command::ArgFileCommand;
-use shared_helpers::{
-    dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
-    parse_value_from_args,
+use shim_utils::{
+    ArgFileCommand, collect_args, dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage,
+    parse_rustc_verbose, parse_value_from_args,
 };
-
-#[path = "../utils/shared_helpers.rs"]
-mod shared_helpers;
-
-#[path = "../../../build_helper/src/arg_file_command.rs"]
-mod arg_file_command;
 
 #[path = "../utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
 
 fn main() {
-    let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
+    let orig_args = collect_args();
     let mut args = orig_args.clone();
 
     let stage = parse_rustc_stage();

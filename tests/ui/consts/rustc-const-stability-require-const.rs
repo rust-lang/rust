@@ -50,9 +50,9 @@ pub const fn barfoo() {}
 
 #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
 const fn barfoo_unmarked() {}
-//~^ ERROR can only be applied to functions that are declared `#[stable]`
+//~^ ERROR can only be applied to functions marked with the `stable` attribute
 
 #[unstable(feature = "unstable", issue = "none")]
 #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
 pub const fn barfoo_unstable() {}
-//~^ ERROR can only be applied to functions that are declared `#[stable]`
+//~^ ERROR can only be applied to functions marked with the `stable` attribute

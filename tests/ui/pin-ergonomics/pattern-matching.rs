@@ -9,13 +9,13 @@ use std::pin::Pin;
 // This test verifies that a `&pin mut T` can be projected to a pinned
 // reference field `&pin mut T.U` when `T` is marked with `#[pin_v2]`.
 
-#[pin_v2] //[normal]~ ERROR the `#[pin_v2]` attribute is an experimental feature
+#[pin_v2] //[normal]~ ERROR the `pin_v2` attribute is an experimental feature
 struct Foo<T, U> {
     x: T,
     y: U,
 }
 
-#[pin_v2] //[normal]~ ERROR the `#[pin_v2]` attribute is an experimental feature
+#[pin_v2] //[normal]~ ERROR the `pin_v2` attribute is an experimental feature
 enum Bar<T, U> {
     Foo(T, U),
     Bar { x: T, y: U },

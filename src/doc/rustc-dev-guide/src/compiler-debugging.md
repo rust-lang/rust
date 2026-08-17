@@ -236,7 +236,7 @@ The compiler uses the [`tracing`] crate for logging.
 
 For details, see [the chapter on tracing](./tracing.md).
 
-## Narrowing (Bisecting) Regressions
+## Narrowing (bisecting) regressions
 
 The [cargo-bisect-rustc][bisect] tool can be used as a quick and easy way to
 find exactly which PR caused a change in `rustc` behavior.
@@ -248,7 +248,7 @@ You can then look at the PR to get more context on *why* it was changed.
 [bisect]: https://github.com/rust-lang/cargo-bisect-rustc
 [bisect-tutorial]: https://rust-lang.github.io/cargo-bisect-rustc/tutorial.html
 
-## Downloading Artifacts from Rust's CI
+## Downloading artifacts from Rust's CI
 
 The [rustup-toolchain-install-master][rtim] tool by kennytm can be used to
 download the artifacts produced by Rust's CI for a specific SHA1 -- this
@@ -281,7 +281,7 @@ Here are some notable ones:
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
 | `rustc_dump_layout` | [See this section](#debugging-type-layouts). |
 | `rustc_dump_object_lifetime_defaults` | Dumps the [object lifetime defaults] of an item. |
-| `rustc_dump_predicates` | Dumps the [`predicates_of`] an item. |
+| `rustc_dump_predicates` | Dumps the [`clauses_of`] an item. |
 | `rustc_dump_symbol_name` | Dumps the mangled & demangled [`symbol_name`] of an item. |
 | `rustc_dump_variances` | Dumps the [variances] of an item. |
 | `rustc_dump_vtable` | Dumps the vtable layout of an impl, or a type alias of a dyn type. |
@@ -293,7 +293,7 @@ Right below you can find elaborate explainers on a selected few.
 [`def_path_str`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.def_path_str
 [`inferred_outlives_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.inferred_outlives_of
 [`item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.item_bounds
-[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.predicates_of
+[`clauses_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.clauses_of
 [`symbol_name`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.symbol_name
 [object lifetime defaults]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
 [opaq]: ./opaque-types-impl-trait-inference.md

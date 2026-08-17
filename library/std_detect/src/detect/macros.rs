@@ -75,7 +75,7 @@ macro_rules! features {
                 };
             )*
             ($t:tt,) => {
-                    $crate::$macro_name!($t);
+                    $crate::$macro_name!($t)
             };
             ($t:tt) => {
                 compile_error!(

@@ -9,7 +9,7 @@
 // Tests that OS targets are sorted alphabetically.
 //@ has 'foo/fn.foo.html'
 //@ has - '//*[@class="stab portability"]' 'Available on Android or Apple or Cygwin \
-// or DragonFly BSD or FreeBSD or Linux or NetBSD or OpenBSD or QNX Neutrino only.'
+// or DragonFly BSD or FreeBSD or Linux or NetBSD or OpenBSD only.'
 #[doc(cfg(any(
     target_os = "android",
     target_os = "linux",
@@ -17,7 +17,6 @@
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "nto",
     target_vendor = "apple",
     target_os = "cygwin"
 )))]
@@ -27,7 +26,7 @@ pub fn foo() {}
 // Tests that targets are sorted alphabetically just like explicit `doc(cfg)`.
 //@ has 'foo/fn.bar.html'
 //@ has - '//*[@class="stab portability"]' 'Available on Android or Apple or Cygwin \
-// or DragonFly BSD or FreeBSD or Linux or NetBSD or OpenBSD or QNX Neutrino only.'
+// or DragonFly BSD or FreeBSD or Linux or NetBSD or OpenBSD only.'
 #[cfg(any(
     target_os = "android",
     target_os = "linux",
@@ -35,7 +34,6 @@ pub fn foo() {}
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "nto",
     target_vendor = "apple",
     target_os = "cygwin"
 ))]

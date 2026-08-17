@@ -1,0 +1,28 @@
+// This test ensures that even if the item name isn't on one line, the rustdoc toolbar buttons
+// height won't change.
+// Regression test for <https://github.com/rust-lang/rust/issues/160086>.
+
+go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+set-window-size: (1000, 600)
+
+store-value: (heading_selector, ".main-heading")
+store-value: (heading_selector_title, |heading_selector| + " > h1")
+store-value: (heading_selector_sub, |heading_selector| + " .sub-heading")
+
+store-size: ("rustdoc-toolbar", {"height": toolbar_height})
+store-position: ("rustdoc-toolbar", {"x": toolbar_x, "y": toolbar_y})
+store-size: (|heading_selector_title|, {"height": heading_title_height})
+store-size: (|heading_selector_sub|, {"height": heading_sub_height})
+
+assert: |toolbar_height| == (|heading_title_height| + |heading_sub_height|)
+
+// We now change the item name so it takes more than one line.
+set-text: (|heading_selector| + " .struct", "Fosdkfjnsakjdnfkjsadnfkjadsnjfksandkjfndsakjfasndjfa")
+
+store-size: (|heading_selector_title|, {"height": new_heading_title_height})
+
+// The heading should now be taller.
+assert: |new_heading_title_height| > |heading_title_height|
+// However the toolbar size and position shouldn't have changed.
+assert-size: ("rustdoc-toolbar", {"height": |toolbar_height|})
+assert-position: ("rustdoc-toolbar", {"x": |toolbar_x|, "y": |toolbar_y|})

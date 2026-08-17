@@ -70,13 +70,11 @@ const TEST_REPOS: &[Test] = &[
         ],
     },
     Test {
-        name: "servo",
-        repo: "https://github.com/servo/servo",
-        sha: "785a344e32db58d4e631fd3cae17fd1f29a721ab",
+        name: "stylo",
+        repo: "https://github.com/servo/stylo",
+        sha: "127b0b5cab6a6927552e889debb20beb031b79d1",
         lock: None,
-        // Only test Stylo a.k.a. Quantum CSS, the parts of Servo going into Firefox.
-        // This takes much less time to build than all of Servo and supports stable Rust.
-        packages: &["selectors"],
+        packages: &["selectors", "stylo"],
         features: None,
         manifest_path: None,
         filters: &[],
@@ -201,14 +199,18 @@ fn run_cargo_test(
     command.args(filters);
 
     let status = command
+        // `xsv` locates binaries relative to `current_exe()`
+        // which assumes Cargo legacy build-dir layout.
+        //
+        // See failure logs:
+        // https://triage.rust-lang.org/gha-logs/rust-lang/rust/90658568103
+        //
+        // FIXME(weihanglo): replace xsv to something else with similar portfolio.
+        .env("__CARGO_TEMPORARY_BUILD_DIR_NEW_LAYOUT_OPT_OUT", "1")
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
         // Relax #![deny(warnings)] in some crates
         .env("RUSTFLAGS", "--cap-lints warn")
-        // servo tries to use 'lld-link.exe' on windows, but we don't
-        // have lld on our PATH in CI. Override it to use 'link.exe'
-        .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "link.exe")
-        .env("CARGO_TARGET_I686_PC_WINDOWS_MSVC_LINKER", "link.exe")
         .current_dir(crate_path)
         .status()
         .unwrap();

@@ -1,8 +1,10 @@
-error[E0423]: expected value, found macro `file`
+error[E0423]: cannot find value `file` in this scope
   --> $DIR/issue-109396.rs:5:13
    |
 LL |             file.as_raw_fd(),
-   |             ^^^^ not a value
+   |             ^^^^ not found in this scope
+   |
+   = note: a macro named `file` exists in another namespace
 
 error[E0061]: this function takes 0 arguments but 4 arguments were supplied
   --> $DIR/issue-109396.rs:3:25

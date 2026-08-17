@@ -181,6 +181,7 @@ fn system_time_elapsed() {
 }
 
 #[test]
+#[cfg_attr(target_os = "l4re", ignore = "No wallclock time support in L4Re")]
 fn since_epoch() {
     let ts = SystemTime::now();
     let a = ts.duration_since(UNIX_EPOCH + Duration::SECOND).unwrap();

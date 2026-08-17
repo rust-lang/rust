@@ -1,0 +1,38 @@
+error: expected a function item for the offload kernel, found `i32`
+  --> $DIR/type_mismatch.rs:8:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(not_fn, [1, 1, 1], [1, 1, 1], 0, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: offload kernel expects 1 arguments, but 0 arguments were provided
+  --> $DIR/type_mismatch.rs:12:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_1, [1, 1, 1], [1, 1, 1], 0, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type mismatch in offload kernel argument 0: expected `f32`, found `f64`
+  --> $DIR/type_mismatch.rs:16:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_1, [1, 1, 1], [1, 1, 1], 0, (42.0f64,));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: offload kernel return type mismatch: kernel returns `()`, but offload call expects `f64`
+  --> $DIR/type_mismatch.rs:20:18
+   |
+LL |     let _: f64 = core::intrinsics::offload::<_, _, f64>(kernel_0, [1, 1, 1], [1, 1, 1], 0, ());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type mismatch in offload kernel argument 0: expected `f32`, found `f64`
+  --> $DIR/type_mismatch.rs:24:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_2, [1, 1, 1], [1, 1, 1], 0, (42.0f64, 42.0f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type mismatch in offload kernel argument 1: expected `f32`, found `f64`
+  --> $DIR/type_mismatch.rs:24:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_2, [1, 1, 1], [1, 1, 1], 0, (42.0f64, 42.0f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

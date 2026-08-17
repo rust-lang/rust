@@ -1,5 +1,5 @@
 #![warn(clippy::unnecessary_join)]
-#![allow(clippy::uninlined_format_args, clippy::useless_vec)]
+#![expect(clippy::uninlined_format_args, clippy::useless_vec)]
 
 fn main() {
     // should be linted

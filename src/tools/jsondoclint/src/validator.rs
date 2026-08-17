@@ -97,7 +97,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::StructField(x) => self.check_struct_field(x),
                 ItemEnum::Enum(x) => self.check_enum(x),
                 ItemEnum::Variant(x) => self.check_variant(x, id),
-                ItemEnum::Function(x) => self.check_function(x),
+                ItemEnum::Function(x) => self.check_function(x, id),
                 ItemEnum::Trait(x) => self.check_trait(x, id),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
                 ItemEnum::Impl(x) => self.check_impl(x, id),
@@ -114,12 +114,35 @@ impl<'a> Validator<'a> {
                 ItemEnum::Module(x) => self.check_module(x, id),
                 // FIXME: Why don't these have their own structs?
                 ItemEnum::ExternCrate { .. } => {}
-                ItemEnum::AssocConst { type_, value: _ } => self.check_type(type_),
-                ItemEnum::AssocType { generics, bounds, type_ } => {
+                ItemEnum::AssocConst { type_, value, default_unstable } => {
+                    self.check_type(type_);
+                    if value.is_none()
+                        && let Some(default_unstable) = default_unstable
+                    {
+                        self.fail(
+                            id,
+                            ErrorKind::Custom(format!(
+                                "`default_unstable` must be `None` when `value` is `None`, but \
+                                 assoc const id {} had `default_unstable` with feature `{}`",
+                                id.0, default_unstable.feature
+                            )),
+                        );
+                    }
+                }
+                ItemEnum::AssocType { generics, bounds, type_, default_unstable } => {
                     self.check_generics(generics);
                     bounds.iter().for_each(|b| self.check_generic_bound(b));
                     if let Some(ty) = type_ {
                         self.check_type(ty);
+                    } else if let Some(default_unstable) = default_unstable {
+                        self.fail(
+                            id,
+                            ErrorKind::Custom(format!(
+                                "`default_unstable` must be `None` when `type_` is `None`, but \
+                                 assoc type id {} had `default_unstable` with feature `{}`",
+                                id.0, default_unstable.feature
+                            )),
+                        );
                     }
                 }
             }
@@ -194,9 +217,21 @@ impl<'a> Validator<'a> {
         }
     }
 
-    fn check_function(&mut self, x: &'a Function) {
+    fn check_function(&mut self, x: &'a Function, id: &Id) {
         self.check_generics(&x.generics);
         self.check_function_signature(&x.sig);
+        if !x.has_body
+            && let Some(default_unstable) = &x.default_unstable
+        {
+            self.fail(
+                id,
+                ErrorKind::Custom(format!(
+                    "`default_unstable` must be `None` when `has_body == false`, but \
+                     function item id {} had `default_unstable` with feature `{}`",
+                    id.0, default_unstable.feature
+                )),
+            );
+        }
     }
 
     fn check_trait(&mut self, x: &'a Trait, id: &Id) {

@@ -1,5 +1,3 @@
-// ignore-tidy-dbg
-
 use core::fmt::Debug;
 
 /// Test for <https://github.com/rust-lang/rust/issues/153850>:
