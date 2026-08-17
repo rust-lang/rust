@@ -380,6 +380,14 @@ impl<'tcx> PrirodaContext<'tcx> {
                                 && (*start_path != current_path
                                     || *start_line != current_location.line)
                             {
+                                // Return spans can point at a function header. Keep walking when
+                                // that would move `next` backwards within the same frame.
+                                if self.active_thread_stack_depth() == start_stack_depth
+                                    && *start_path == current_path
+                                    && current_location.line < *start_line
+                                {
+                                    continue;
+                                }
                                 return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                             }
                         }
