@@ -2387,7 +2387,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.token == token::Comma {
-            if !self.psess.source_map().is_multiline(prev_span.until(self.token.span)) {
+            if !self.psess.source_map().is_multiline(prev_span.until(open_delim_span)) {
                 return Ok(());
             }
             let mut snapshot = self.create_snapshot_for_diagnostic();
