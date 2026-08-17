@@ -23,6 +23,7 @@
 use crate::marker::PhantomData;
 use crate::mem::take;
 use crate::pattern::{Haystack, MatchOnly, RejectOnly, SearchStep};
+use crate::slice::memchr;
 use crate::str::{
     next_code_point, next_code_point_reverse, try_next_code_point, try_next_code_point_reverse,
     utf8_char_width,
@@ -638,7 +639,44 @@ fn encode_utf8(chr: char, buf: &mut [u8; 4]) -> &str {
 #[derive(Clone, Debug)]
 pub struct CharSearcher<'hs, F> {
     haystack: Bytes<'hs, F>,
-    state: CharSearcherState,
+    state: CharSearcherInner,
+}
+
+/// Dispatches searches over two different needle flavors:
+///
+/// - [`ByteSearcherState`] works with ASCII `u8` chars and uses faster `memchr`/`memrchr`
+/// - [`CharSearcherState`] works with any chars but works a bit slower.
+#[derive(Clone, Debug)]
+enum CharSearcherInner {
+    Byte(ByteSearcherState),
+    Char(CharSearcherState),
+}
+
+impl CharSearcherInner {
+    #[inline]
+    fn new(haystack_len: usize, chr: char) -> Self {
+        if chr.is_ascii() {
+            Self::Byte(ByteSearcherState::new(haystack_len, chr as u8))
+        } else {
+            Self::Char(CharSearcherState::new(haystack_len, chr))
+        }
+    }
+
+    #[inline]
+    fn next_fwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
+        match self {
+            Self::Byte(state) => state.next_fwd::<R, F>(haystack),
+            Self::Char(state) => state.next_fwd::<R, F>(haystack),
+        }
+    }
+
+    #[inline]
+    fn next_bwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
+        match self {
+            Self::Byte(state) => state.next_bwd::<R, F>(haystack),
+            Self::Char(state) => state.next_bwd::<R, F>(haystack),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -659,7 +697,7 @@ impl<'hs, F: Flavour> CharSearcher<'hs, F> {
     /// Creates a new searcher for the given character.
     #[inline]
     pub fn new(haystack: Bytes<'hs, F>, chr: char) -> Self {
-        Self { haystack, state: CharSearcherState::new(haystack.len(), chr) }
+        Self { haystack, state: CharSearcherInner::new(haystack.len(), chr) }
     }
 }
 
@@ -857,6 +895,154 @@ impl CharBuffer {
         // SAFETY: `self.0` is UTF-8 encoding of a single character and `self.1`
         // is its length.  See `new` constructor.
         unsafe { crate::str::from_utf8_unchecked(self.0.get_unchecked(..self.len())) }
+    }
+}
+
+/// Fast searcher for a single-byte needle using [`memchr`].
+///
+/// A single-byte `&str` needle is always an ASCII byte, which can never appear
+/// as a continuation byte of a well-formed WTF-8 sequence, so a memchr hit is
+/// always on a character boundary and always a full single-byte match.
+#[derive(Clone, Debug)]
+struct ByteSearcherState {
+    /// Not yet processed range of the haystack.
+    range: crate::ops::Range<usize>,
+    /// Needle (ASCII byte) the searcher is looking for within the haystack.
+    needle: u8,
+    /// If `true` and `range` is non-empty, `haystack[range]` starts with the
+    /// needle.
+    is_match_fwd: bool,
+    /// If `true` and `range` is non-empty, `haystack[range]` ends with the
+    /// needle.
+    is_match_bwd: bool,
+}
+
+impl ByteSearcherState {
+    #[inline]
+    fn new(haystack_len: usize, needle: u8) -> Self {
+        Self { needle, range: 0..haystack_len, is_match_fwd: false, is_match_bwd: false }
+    }
+
+    #[inline]
+    fn find_match_fwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
+        let start = if take(&mut self.is_match_fwd) {
+            (!self.range.is_empty()).then_some(self.range.start)
+        } else {
+            // SAFETY: self.range is valid range of haystack.
+            let bytes = unsafe { haystack.as_bytes().get_unchecked(self.range.clone()) };
+            memchr::memchr(self.needle, bytes).map(|i| self.range.start + i)
+        }?;
+        Some((start, start + 1))
+    }
+
+    #[inline]
+    fn next_reject_fwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
+        if take(&mut self.is_match_fwd) {
+            if self.range.is_empty() {
+                return None;
+            }
+            self.range.start += 1;
+        }
+        let bytes = haystack.as_bytes();
+        while self.range.start < self.range.end {
+            let start = self.range.start;
+            if bytes[start] == self.needle {
+                self.range.start += 1;
+            } else {
+                // `start` is always on a character boundary, so this rejects
+                // exactly the character starting at `start`.
+                let end = haystack.advance_range_start(self.range.clone());
+                self.range.start = end;
+                return Some((start, end));
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn next_fwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
+        if R::USE_EARLY_REJECT {
+            match self.next_reject_fwd(haystack) {
+                Some((start, end)) => R::rejecting(start, end).unwrap(),
+                None => R::DONE,
+            }
+        } else if let Some((start, end)) = self.find_match_fwd(haystack) {
+            if self.range.start < start {
+                if let Some(res) = R::rejecting(self.range.start, start) {
+                    self.range.start = start;
+                    self.is_match_fwd = true;
+                    return res;
+                }
+            }
+            self.range.start = end;
+            R::matching(start, end).unwrap()
+        } else if self.range.is_empty() {
+            R::DONE
+        } else {
+            let start = self.range.start;
+            self.range.start = self.range.end;
+            R::rejecting(start, self.range.end).unwrap_or(R::DONE)
+        }
+    }
+
+    #[inline]
+    fn find_match_bwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
+        let start = if take(&mut self.is_match_bwd) {
+            (!self.range.is_empty()).then(|| self.range.end - 1)
+        } else {
+            // SAFETY: self.range is valid range of haystack.
+            let bytes = unsafe { haystack.as_bytes().get_unchecked(self.range.clone()) };
+            memchr::memrchr(self.needle, bytes).map(|i| self.range.start + i)
+        }?;
+        Some((start, start + 1))
+    }
+
+    #[inline]
+    fn next_reject_bwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
+        if take(&mut self.is_match_bwd) {
+            if self.range.is_empty() {
+                return None;
+            }
+            self.range.end -= 1;
+        }
+        let bytes = haystack.as_bytes();
+        while !self.range.is_empty() {
+            let end = self.range.end;
+            if bytes[end - 1] == self.needle {
+                self.range.end -= 1;
+            } else {
+                let start = haystack.advance_range_end(self.range.start..end);
+                self.range.end = start;
+                return Some((start, end));
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn next_bwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
+        if R::USE_EARLY_REJECT {
+            match self.next_reject_bwd(haystack) {
+                Some((start, end)) => R::rejecting(start, end).unwrap(),
+                None => R::DONE,
+            }
+        } else if let Some((start, end)) = self.find_match_bwd(haystack) {
+            if end < self.range.end {
+                if let Some(res) = R::rejecting(end, self.range.end) {
+                    self.range.end = end;
+                    self.is_match_bwd = true;
+                    return res;
+                }
+            }
+            self.range.end = start;
+            R::matching(start, end).unwrap()
+        } else if self.range.is_empty() {
+            R::DONE
+        } else {
+            let end = self.range.end;
+            self.range.end = self.range.start;
+            R::rejecting(self.range.start, end).unwrap_or(R::DONE)
+        }
     }
 }
 
@@ -1402,6 +1588,7 @@ unsafe impl<'hs, 'p, F: Flavour> pattern::ReverseSearcher<Bytes<'hs, F>>
 #[derive(Clone, Debug)]
 enum StrSearcherInner<'p> {
     Empty(EmptySearcherState),
+    Byte(ByteSearcherState),
     Char(CharSearcherState),
     Str(StrSearcherState<'p>),
 }
@@ -1414,7 +1601,9 @@ impl<'p> StrSearcherInner<'p> {
             Some(chr) => chr,
             None => return Self::Empty(EmptySearcherState::new(haystack)),
         };
-        if chars.next().is_none() {
+        if let &[b] = needle.as_bytes() {
+            Self::Byte(ByteSearcherState::new(haystack.len(), b))
+        } else if chars.next().is_none() {
             Self::Char(CharSearcherState::new(haystack.len(), chr))
         } else {
             Self::Str(StrSearcherState::new(haystack, needle))
@@ -1425,6 +1614,7 @@ impl<'p> StrSearcherInner<'p> {
     fn next_fwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
         match self {
             Self::Empty(state) => state.next_fwd::<R, F>(haystack),
+            Self::Byte(state) => state.next_fwd::<R, F>(haystack),
             Self::Char(state) => state.next_fwd::<R, F>(haystack),
             Self::Str(state) => state.next_fwd::<R, F>(haystack),
         }
@@ -1434,6 +1624,7 @@ impl<'p> StrSearcherInner<'p> {
     fn next_bwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
         match self {
             Self::Empty(state) => state.next_bwd::<R, F>(haystack),
+            Self::Byte(state) => state.next_bwd::<R, F>(haystack),
             Self::Char(state) => state.next_bwd::<R, F>(haystack),
             Self::Str(state) => state.next_bwd::<R, F>(haystack),
         }
