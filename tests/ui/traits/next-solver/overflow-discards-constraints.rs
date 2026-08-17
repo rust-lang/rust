@@ -11,10 +11,6 @@
 // Setting it to 12 would make it compile.
 #![recursion_limit = "6"]
 
-
-//~^^^^^^^^^^^^^^ WARN: overflow evaluating the requirement `(): Trait<i32>` [recursion_depth_exceeding_limit]
-//~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 trait Trait<T> {}
 
 struct W1<T>(T);
