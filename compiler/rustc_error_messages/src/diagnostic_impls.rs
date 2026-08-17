@@ -5,8 +5,8 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
-use rustc_data_structures::Limit;
 use rustc_span::edition::Edition;
+use rustc_structures::Limit;
 
 use crate::{DiagArgValue, IntoDiagArg};
 

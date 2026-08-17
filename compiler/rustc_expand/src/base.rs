@@ -13,7 +13,7 @@ use rustc_attr_ir::{
     self as attrs, CfgEntry, CollapseMacroDebuginfo, Deprecation, Stability, find_attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::{Limit, sync};
+use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
@@ -27,6 +27,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_structures::Limit;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 

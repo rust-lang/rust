@@ -3664,6 +3664,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "smallvec",
  "thin-vec",
@@ -3688,6 +3689,7 @@ dependencies = [
  "rustc_parse_format",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "thin-vec",
 ]
@@ -3855,6 +3857,7 @@ dependencies = [
  "rustc_mir_dataflow",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "rustc_trait_selection",
  "tracing",
@@ -3973,6 +3976,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_structures",
  "unic-langid",
 ]
 
@@ -4023,6 +4027,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "scoped-tls",
  "smallvec",
  "thin-vec",
@@ -4098,6 +4103,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "rustc_trait_selection",
  "smallvec",
@@ -4251,6 +4257,7 @@ dependencies = [
  "rustc_resolve",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_symbol_mangling",
  "rustc_target",
  "rustc_thread_pool",
@@ -4405,6 +4412,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "rustc_thread_pool",
  "rustc_type_ir",
@@ -4476,6 +4484,7 @@ dependencies = [
  "rustc_mir_dataflow",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "rustc_trait_selection",
  "smallvec",
@@ -4498,6 +4507,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_symbol_mangling",
  "rustc_target",
  "serde",
@@ -4663,6 +4673,7 @@ dependencies = [
  "rustc_middle",
  "rustc_serialize",
  "rustc_span",
+ "rustc_structures",
  "rustc_thread_pool",
  "tracing",
 ]
@@ -4741,6 +4752,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "termize",
  "tracing",
@@ -4768,6 +4780,15 @@ dependencies = [
  "sha2",
  "tracing",
  "unicode-width 0.2.2",
+]
+
+[[package]]
+name = "rustc_structures"
+version = "0.0.0"
+dependencies = [
+ "rustc_data_structures",
+ "rustc_macros",
+ "rustc_serialize",
 ]
 
 [[package]]
@@ -4849,6 +4870,7 @@ dependencies = [
  "rustc_next_trait_solver",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_transmute",
  "smallvec",
  "thin-vec",
@@ -4897,6 +4919,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
+ "rustc_structures",
  "rustc_target",
  "rustc_trait_selection",
  "rustc_ty_walk",
