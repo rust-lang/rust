@@ -1,0 +1,22 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/closure-static-interface-lifetime-160979.rs:31:42
+   |
+LL |     let s = String::from("");
+   |         - binding `s` declared here
+LL |     let cm = ClosureMaker { some_string: &s };
+   |                                          ^^ borrowed value does not live long enough
+...
+LL |     let _leaked = leak_it(val);
+   |                   ------------ argument requires that `s` is borrowed for `'static`
+LL | }
+   | - `s` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/closure-static-interface-lifetime-160979.rs:25:15
+   |
+LL | fn leak_it<T: 'static>(val: T) -> &'static T {
+   |               ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

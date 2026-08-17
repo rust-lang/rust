@@ -144,7 +144,31 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                 variance,
                 ty,
             )?;
-            Ok(infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid))))
+            let new_var =
+                infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid)));
+
+            // Any regions in this new type must be live everywhere, so we mark them as such.
+            // (It may be that it only needs to be live where the opaque type itself is - which
+            // includes defining use sites, but we'll be conservative and mark all points as live).
+            // This is needed for Polonius, which doesn't propagate constraints
+            // through dead regions. See issue #160669.
+            //
+            // We only do this in the root universe. Inside a binder these regions live in a higher
+            // universe and their values contain placeholders; marking them live at every point
+            // leaks those placeholders, turning the higher-ranked check into an error which then
+            // suppresses the deferred opaque type diagnostics.
+            if infcx.universe() == ty::UniverseIndex::ROOT {
+                let tcx = infcx.tcx;
+                let liveness = &mut self.type_checker.constraints.liveness_constraints;
+                ty::fold_regions(tcx, new_var, |r, _| {
+                    if let ty::ReVar(vid) = r.kind() {
+                        liveness.add_all_points(vid);
+                    }
+                    r
+                });
+            }
+
+            Ok(new_var)
         };
 
         let (a, b) = match (a.kind(), b.kind()) {

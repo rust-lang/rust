@@ -1,0 +1,16 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/rpit-static-interface-lifetime-151861.rs:22:17
+   |
+LL |         let s = String::from("huh");
+   |             - binding `s` declared here
+LL |         a = foo(&s);
+   |                 ^^ borrowed value does not live long enough
+LL |     }
+   |     - `s` dropped here while still borrowed
+LL |     let _unrelated = String::from("UB!");
+LL |     let dangling: &str = a.into();
+   |                          - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
