@@ -2124,7 +2124,7 @@ crate::target_spec_enum! {
         // PowerPC
         ElfV1 = "elfv1",
         ElfV2 = "elfv2",
-        // Pointer authentication: Pauthtest
+        // AArch64
         Pauthtest = "pauthtest",
 
         Unspecified = "",
