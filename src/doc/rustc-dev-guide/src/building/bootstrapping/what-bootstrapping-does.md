@@ -89,7 +89,7 @@ build the new compiler with an older compiler and then use that to build the new
 compiler with itself.
 
 For development, you usually only want to use `--stage 1` flag to build things.
-See [Building the compiler](../how-to-build-and-run.html#building-the-compiler).
+See [Building the compiler](../how-to-build-and-run.md#building-the-compiler).
 
 ### Stage 3: the same-result test
 

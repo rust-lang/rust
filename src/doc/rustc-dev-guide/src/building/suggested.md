@@ -346,7 +346,7 @@ into the `rlib` files, or if you are editing things that wind up in the metadata
 (such as the definition of the MIR).
 
 That is, you might get weird behavior from a compile when using
-`--keep-stage-std=1`, for example, strange [ICEs](../appendix/glossary.html#ice) or other panics.
+`--keep-stage-std=1`, for example, strange [ICEs](../appendix/glossary.md#ice) or other panics.
 In that case, you should simply remove the `--keep-stage-std=1` from the command and rebuild.
 
 You can also use `--keep-stage-std=1` when running tests.
