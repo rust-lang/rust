@@ -79,14 +79,9 @@ The build files are found in the `book/html` directory.
 
 ### While writing
 
-When writing about a particular part of the compiler's code, we
-recommend that you link to the relevant parts of the [rustc API docs].
+See the guide itself for instructions on [writing new docs].
 
-We encourage, but do not enforce, "semantic line breaks": one line per sentence.
-This makes it easier to review diffs, since they avoid reflowing other unrelated prose.
-
-Links within the guide should use `.md` relative links, not `.html` links.
-CI will enforce this.
+[writing new docs]: src/contributing.md#contributing-to-rustc-dev-guide
 
 ## Maintaining the guide
 
@@ -105,5 +100,3 @@ This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.g
 You can use the [rustc-josh-sync](https://github.com/rust-lang/josh-sync) tool to perform synchronization.
 
 You can find a guide on how to perform the synchronization [here](./src/external-repos.md#synchronizing-a-josh-subtree).
-
-[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
