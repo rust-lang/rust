@@ -13,7 +13,7 @@ use clap::ValueEnum;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-pub use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
+pub(crate) use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
@@ -108,7 +108,7 @@ impl dyn AnyDebug {
 /// Historically, steps also participated in command-line processing.
 /// That responsibility has been split off into the larger [`CommandLineStep`] trait,
 /// which helper steps don't need to implement.
-pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
+pub(crate) trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Result type of [`Step::run`]. Stored in the step cache for later lookup.
     type Output: Clone;
 
@@ -118,6 +118,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     fn run(self, builder: &Builder<'_>) -> Self::Output;
 
     /// Returns metadata of the step, for tests.
+    #[cfg_attr(not(any(test, feature = "tracing")), expect(dead_code))]
     fn metadata(&self) -> Option<StepMetadata> {
         None
     }
@@ -141,7 +142,7 @@ impl<S: CommandLineStep> Step for S {
 /// A blanket impl allows every [`CommandLineStep`] to be used as a [`Step`].
 /// This is arguably nicer than having it be a subtrait, because it avoids the
 /// need for two separate `impl` blocks per command-line-step type.
-pub trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
+pub(crate) trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Result type of [`Step::run`].
     type Output: Clone;
 
@@ -190,7 +191,7 @@ pub trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
 /// Metadata that describes an executed step, mostly for testing and tracing.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StepMetadata {
+pub(crate) struct StepMetadata {
     name: String,
     kind: Kind,
     target: TargetSelection,
@@ -248,7 +249,8 @@ impl StepMetadata {
         self
     }
 
-    pub fn get_stage(&self) -> Option<u32> {
+    #[cfg_attr(not(any(test, feature = "tracing")), expect(dead_code))]
+    pub(crate) fn get_stage(&self) -> Option<u32> {
         self.stage.or(self
             .built_by
             // For std, its stage corresponds to the stage of the compiler that builds it.
@@ -256,11 +258,13 @@ impl StepMetadata {
             .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
     }
 
-    pub fn get_name(&self) -> &str {
+    #[cfg_attr(not(feature = "tracing"), expect(dead_code))]
+    pub(crate) fn get_name(&self) -> &str {
         &self.name
     }
 
-    pub fn get_target(&self) -> TargetSelection {
+    #[cfg_attr(not(feature = "tracing"), expect(dead_code))]
+    pub(crate) fn get_target(&self) -> TargetSelection {
         self.target
     }
 }
@@ -1565,7 +1569,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
     #[track_caller]
-    pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
+    pub(crate) fn ensure<S: Step>(&'a self, step: S) -> S::Output {
         {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
