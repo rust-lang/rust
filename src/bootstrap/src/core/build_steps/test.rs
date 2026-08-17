@@ -1153,6 +1153,7 @@ impl CommandLineStep for CoreArchTest {
             // tidy-alphabetical-end
         ];
         cargo.allow_features(&allowed_features.join(","));
+        cargo.rustflag("-Zmerge-functions=disabled");
 
         run_cargo_test(
             cargo,
