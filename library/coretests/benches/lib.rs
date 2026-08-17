@@ -3,6 +3,7 @@
 // This is marked as `test = true` and hence picked up by `./x miri`, but that would be too slow.
 #![cfg(not(miri))]
 #![feature(flt2dec)]
+#![feature(pattern)]
 #![feature(test)]
 #![feature(trusted_random_access)]
 #![feature(iter_array_chunks)]
