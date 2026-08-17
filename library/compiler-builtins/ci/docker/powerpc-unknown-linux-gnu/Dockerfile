@@ -15,5 +15,4 @@ ENV CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_LINKER="$TOOLCHAIN_PREFIX"gcc \
     CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER=qemu-ppc \
     AR_powerpc_unknown_linux_gnu="$TOOLCHAIN_PREFIX"ar \
     CC_powerpc_unknown_linux_gnu="$TOOLCHAIN_PREFIX"gcc \
-    QEMU_LD_PREFIX=/usr/powerpc-linux-gnu \
-    RUST_TEST_THREADS=1
+    QEMU_LD_PREFIX=/usr/powerpc-linux-gnu

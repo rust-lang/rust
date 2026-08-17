@@ -14,5 +14,4 @@ ENV CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER="$TOOLCHAIN_PREFIX"gcc \
     CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER=qemu-arm \
     AR_armv7_unknown_linux_gnueabihf="$TOOLCHAIN_PREFIX"ar \
     CC_armv7_unknown_linux_gnueabihf="$TOOLCHAIN_PREFIX"gcc \
-    QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf \
-    RUST_TEST_THREADS=1
+    QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
