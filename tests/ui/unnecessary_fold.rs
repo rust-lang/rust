@@ -242,6 +242,13 @@ fn option_fold() {
     let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
     //~^ unnecessary_fold
 
+    // should NOT lint: a `mut` accumulator is likely reassigned in the body,
+    // and substituting into the assignment would not compile
+    let _ = opt.iter().fold(0, |mut acc, x| {
+        acc += x;
+        acc
+    });
+
     // should NOT lint: substituting a call would re-evaluate it
     fn compute() -> i32 {
         42

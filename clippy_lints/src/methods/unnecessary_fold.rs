@@ -343,8 +343,10 @@ fn check_option_fold<'tcx>(
         && param_item.pat.span.ctxt() == ctxt
     {
         // Collect the accumulator uses to substitute with `init`.
+        // A `mut` accumulator is likely reassigned in the closure body, which
+        // would turn the substitution into nonsense like `0 += x`.
         let acc_id = match strip_pat_refs(param_acc.pat).kind {
-            PatKind::Binding(_, id, ..) => Some(id),
+            PatKind::Binding(hir::BindingMode::NONE, id, ..) => Some(id),
             PatKind::Wild => None,
             _ => return,
         };
