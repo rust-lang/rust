@@ -115,7 +115,7 @@ enum ResumeMode {
     StepOver { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
     /// Step out of the current frame, stopping once execution returns to a
     /// shallower stack depth.
-    StepOut { start_stack_depth: usize },
+    StepOut { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
     /// Stop at the first mapped source location from a user-relevant frame.
     ///
     /// This is the DAP entry-stop primitive: it skips over interpreter startup
@@ -130,6 +130,17 @@ enum InstructionVisibility {
     NoInstruction,
     Hidden,
     Visible,
+}
+
+impl ResumeMode {
+    fn skipped_breakpoint(&self) -> Option<&(PathBuf, usize)> {
+        match self {
+            ResumeMode::SourceLine(Some(position))
+            | ResumeMode::StepOver { start_position: Some(position), .. }
+            | ResumeMode::StepOut { start_position: Some(position), .. } => Some(position),
+            _ => None,
+        }
+    }
 }
 
 /// Describes why execution stopped and returned control to the frontend.
@@ -235,8 +246,9 @@ impl<'tcx> PrirodaContext<'tcx> {
         if let Some(result) = self.already_finished() {
             return interp_ok(result);
         }
+        let start_position = self.current_source_position();
         let start_stack_depth = self.active_thread_stack_depth();
-        self.resume(ResumeMode::StepOut { start_stack_depth })
+        self.resume(ResumeMode::StepOut { start_position, start_stack_depth })
     }
 
     /// Run until the initial editor-visible stop point.
@@ -311,7 +323,7 @@ impl<'tcx> PrirodaContext<'tcx> {
 
             // An explicit breakpoint should stop execution even when the current
             // MIR instruction would normally be hidden during manual stepping.
-            if self.is_at_breakpoint() {
+            if self.is_at_breakpoint(mode.skipped_breakpoint()) {
                 return interp_ok(ExecutionResult::Stopped(StepResult::Breakpoint));
             }
 
@@ -375,7 +387,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     }
                 }
 
-                ResumeMode::StepOut { start_stack_depth }
+                ResumeMode::StepOut { start_stack_depth, .. }
                     if self.active_thread_stack_depth() < start_stack_depth
                         && self.current_location.is_some() =>
                 {
@@ -443,10 +455,13 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
     }
 
-    fn is_at_breakpoint(&self) -> bool {
+    fn is_at_breakpoint(&self, skipped_breakpoint: Option<&(PathBuf, usize)>) -> bool {
         let Some(bp) = self.current_breakpoint() else {
             return false;
         };
+        if skipped_breakpoint == Some(&bp) {
+            return false;
+        }
 
         // If the previous interpreter step had the same source position, this
         // is another MIR location for the breakpoint we just reported.
