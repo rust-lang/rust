@@ -1026,19 +1026,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_fatal(fatal).emit()
     }
 
-    #[track_caller]
-    pub fn create_almost_fatal(
-        self,
-        fatal: impl Diagnostic<'a, FatalError>,
-    ) -> Diag<'a, FatalError> {
-        fatal.into_diag(self, Fatal)
-    }
-
-    #[track_caller]
-    pub fn emit_almost_fatal(self, fatal: impl Diagnostic<'a, FatalError>) -> FatalError {
-        self.create_almost_fatal(fatal).emit()
-    }
-
     // FIXME: This method should be removed (every error should have an associated error code).
     #[track_caller]
     pub fn struct_err(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
@@ -1582,24 +1569,21 @@ impl DelayedDiagInner {
     }
 }
 
-/// | Level        | is_error | EmissionGuarantee            | Top-level | Sub | Used in lints?
-/// | -----        | -------- | -----------------            | --------- | --- | --------------
-/// | Bug          | yes      | BugAbort                     | yes       | -   | -
-/// | Fatal        | yes      | FatalAbort/FatalError[^star] | yes       | -   | -
-/// | Error        | yes      | ErrorGuaranteed              | yes       | -   | yes
-/// | DelayedBug   | yes      | ErrorGuaranteed              | yes       | -   | -
-/// | ForceWarning | -        | ()                           | yes       | -   | lint-only
-/// | Warning      | -        | ()                           | yes       | yes | yes
-/// | Note         | -        | ()                           | rare      | yes | -
-/// | OnceNote     | -        | ()                           | -         | yes | lint-only
-/// | Help         | -        | ()                           | rare      | yes | -
-/// | OnceHelp     | -        | ()                           | -         | yes | lint-only
-/// | FailureNote  | -        | ()                           | rare      | -   | -
-/// | Allow        | -        | ()                           | yes       | -   | lint-only
-/// | Expect       | -        | ()                           | yes       | -   | lint-only
-///
-/// [^star]: `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
-///     occasionally used.
+/// | Level        | is_error | EmissionGuarantee | Top-level | Sub | Used in lints?
+/// | -----        | -------- | ----------------- | --------- | --- | --------------
+/// | Bug          | yes      | BugAbort          | yes       | -   | -
+/// | Fatal        | yes      | FatalAbort        | yes       | -   | -
+/// | Error        | yes      | ErrorGuaranteed   | yes       | -   | yes
+/// | DelayedBug   | yes      | ErrorGuaranteed   | yes       | -   | -
+/// | ForceWarning | -        | ()                | yes       | -   | lint-only
+/// | Warning      | -        | ()                | yes       | yes | yes
+/// | Note         | -        | ()                | rare      | yes | -
+/// | OnceNote     | -        | ()                | -         | yes | lint-only
+/// | Help         | -        | ()                | rare      | yes | -
+/// | OnceHelp     | -        | ()                | -         | yes | lint-only
+/// | FailureNote  | -        | ()                | rare      | -   | -
+/// | Allow        | -        | ()                | yes       | -   | lint-only
+/// | Expect       | -        | ()                | yes       | -   | lint-only
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {

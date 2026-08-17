@@ -230,11 +230,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
-                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
+                    let _ = tcx.dcx().emit_err(OffloadWithoutEnable);
                 }
 
                 if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                    let _ = tcx.dcx().emit_err(OffloadWithoutFatLTO);
                 }
 
                 codegen_offload(self, tcx, instance, args);
@@ -1760,18 +1760,18 @@ fn codegen_autodiff<'ll, 'tcx>(
 ) -> IntrinsicResult<'tcx, &'ll Value> {
     let tcx = bx.tcx;
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
-        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
+        let _ = tcx.dcx().emit_err(AutoDiffWithoutEnable);
     }
 
     let ct = tcx.crate_types();
     let lto = tcx.sess.lto();
     if ct.len() == 1 && ct.contains(&CrateType::Executable) {
         if lto != rustc_session::config::Lto::Fat {
-            let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+            let _ = tcx.dcx().emit_err(AutoDiffWithoutLto);
         }
     } else {
         if lto != rustc_session::config::Lto::Fat && !tcx.sess.opts.cg.linker_plugin_lto.enabled() {
-            let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+            let _ = tcx.dcx().emit_err(AutoDiffWithoutLto);
         }
     }
 
