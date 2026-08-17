@@ -24,6 +24,7 @@ mod u8;
 mod bignum;
 mod carryless_mul;
 mod cast;
+mod complex;
 mod const_from;
 mod dec2flt;
 mod float_ieee754_flt2dec_dec2flt;
