@@ -32,11 +32,8 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> fmt::Debug
             }
         }
         let (variant, field) = const {
-            use crate::mem::type_info::{Type, TypeKind};
-            // We have to use the intrinsic directly instead of through `TypeId::of` as
-            // that would enforce a static lifetime bound on T. As that bound is there for
-            // the `Eq` implementation of `TypeId` it is okay for us to work around it here.
-            let type_id = crate::intrinsics::type_id::<T>();
+            use crate::mem::type_info::{self, Type, TypeKind};
+            let type_id = type_info::of::<T>();
             match Type::of::<T>().kind {
                 TypeKind::Struct => (None, Member::Name(type_id.field(0, FIELD as usize).name())),
                 TypeKind::Tuple => (None, Member::Index(FIELD)),

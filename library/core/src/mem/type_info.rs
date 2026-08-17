@@ -58,6 +58,18 @@ impl Type {
     }
 }
 
+// FIXME(reflection): get rid of the static lifetime bound on TypeId and remove this function.
+/// Returns the [TypeId] of the generic type parameter.
+///
+/// This is identical to [TypeId::of] but without the static lifetime bound. It will be removed
+/// in the future.
+#[must_use]
+#[unstable(feature = "type_info", issue = "146922")]
+#[rustc_const_unstable(feature = "type_info", issue = "146922")]
+pub const fn of<T: ?Sized>() -> TypeId {
+    const { intrinsics::type_id::<T>() }
+}
+
 /// Compile-time type information.
 #[derive(Debug)]
 #[non_exhaustive]
