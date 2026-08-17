@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MDBOOK_VERSION: 0.5.2
-      MDBOOK_LINKCHECK2_VERSION: 0.11.0
+      MDBOOK_LINKCHECK2_VERSION: 0.12.2
       MDBOOK_MERMAID_VERSION: 0.17.0
       MDBOOK_OUTPUT__LINKCHECK__FOLLOW_WEB_LINKS: ${{ github.event_name != 'pull_request' }}
       DEPLOY_DIR: book/html
