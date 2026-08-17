@@ -332,7 +332,7 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64, types::F64),
         sym::exp2f128 => ("exp2f128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::sqrtf16 => ("sqrtf16", 1, fx.tcx.types.f16, types::F16),
+        sym::sqrtf16 => return false, // has a fallback via f32
         sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32, types::F32),
         sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64, types::F64),
         sym::sqrtf128 => ("sqrtf128", 1, fx.tcx.types.f128, types::F128),
@@ -362,56 +362,58 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::log10f64 => ("log10", 1, fx.tcx.types.f64, types::F64),
         sym::log10f128 => ("log10f128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::fmaf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16),
+        sym::fmaf16 => return false, // has a fallback via f32
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
         sym::fmaf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128),
 
-        // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware emulation
-        sym::fmuladdf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f16
-        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f32
-        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f64
-        sym::fmuladdf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128), // FIXME: use cranelift intrinsic analogous to llvm.fmuladd.f128
+        // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware
+        // emulation, use cranelift intrinsic analogous to llvm.fmuladd.*.
+        sym::fmuladdf16 => return false, // has a fallback
+        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
+        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
+        sym::fmuladdf128 => return false, // has a fallback
 
-        sym::copysignf16 => ("copysignf16", 2, fx.tcx.types.f16, types::F16),
+        sym::copysignf16 => return false, // has a fallback
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
-        sym::copysignf128 => ("copysignf128", 2, fx.tcx.types.f128, types::F128),
+        sym::copysignf128 => return false, // has a fallback
 
-        sym::floorf16 => ("floorf16", 1, fx.tcx.types.f16, types::F16),
+        sym::floorf16 => return false, // has a fallback via f32
         sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
         sym::floorf64 => ("floor", 1, fx.tcx.types.f64, types::F64),
         sym::floorf128 => ("floorf128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::ceilf16 => ("ceilf16", 1, fx.tcx.types.f16, types::F16),
+        sym::ceilf16 => return false, // has a fallback via f32
         sym::ceilf32 => ("ceilf", 1, fx.tcx.types.f32, types::F32),
         sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64, types::F64),
         sym::ceilf128 => ("ceilf128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::truncf16 => ("truncf16", 1, fx.tcx.types.f16, types::F16),
+        sym::truncf16 => return false, // has a fallback via f32
         sym::truncf32 => ("truncf", 1, fx.tcx.types.f32, types::F32),
         sym::truncf64 => ("trunc", 1, fx.tcx.types.f64, types::F64),
         sym::truncf128 => ("truncf128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::round_ties_even_f16 => ("rintf16", 1, fx.tcx.types.f16, types::F16),
+        sym::round_ties_even_f16 => return false, // has a fallback via f32
         sym::round_ties_even_f32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
         sym::round_ties_even_f64 => ("rint", 1, fx.tcx.types.f64, types::F64),
         sym::round_ties_even_f128 => ("rintf128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::roundf16 => ("roundf16", 1, fx.tcx.types.f16, types::F16),
+        sym::roundf16 => return false, // has a fallback via f32
         sym::roundf32 => ("roundf", 1, fx.tcx.types.f32, types::F32),
         sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
         sym::roundf128 => ("roundf128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::sinf16 => ("sinf16", 1, fx.tcx.types.f16, types::F16),
+        sym::sinf16 => return false, // has a fallback via f32
         sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
         sym::sinf128 => ("sinf128", 1, fx.tcx.types.f128, types::F128),
 
-        sym::cosf16 => ("cosf16", 1, fx.tcx.types.f16, types::F16),
+        sym::cosf16 => return false, // has a fallback via f32
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
         sym::cosf64 => ("cos", 1, fx.tcx.types.f64, types::F64),
         sym::cosf128 => ("cosf128", 1, fx.tcx.types.f128, types::F128),
+
         _ => return false,
     };
 
@@ -447,17 +449,8 @@ fn codegen_float_intrinsic_call<'tcx>(
     // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
     // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
     let res = match intrinsic {
-        sym::fmaf16 | sym::fmuladdf16 => {
-            CValue::by_val(codegen_f16_f128::fma_f16(fx, args[0], args[1], args[2]), layout)
-        }
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
             CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
-        }
-        sym::copysignf16 => {
-            CValue::by_val(codegen_f16_f128::copysign_f16(fx, args[0], args[1]), layout)
-        }
-        sym::copysignf128 => {
-            CValue::by_val(codegen_f16_f128::copysign_f128(fx, args[0], args[1]), layout)
         }
         sym::copysignf32 | sym::copysignf64 => {
             CValue::by_val(fx.bcx.ins().fcopysign(args[0], args[1]), layout)
