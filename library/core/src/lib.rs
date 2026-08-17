@@ -227,6 +227,7 @@ pub mod offload;
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
+#[allow(clippy::useless_attribute)]
 #[allow(unused_attributes)] // FIXME(#161153)
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use crate::macros::builtin::derive;

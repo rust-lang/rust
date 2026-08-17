@@ -712,9 +712,11 @@ pub mod arch {
     pub use std_detect::is_aarch64_feature_detected;
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
+    #[allow(clippy::useless_attribute)]
     #[allow(unused_attributes)] // FIXME(#161153)
     #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
     pub use std_detect::is_loongarch_feature_detected;
+    #[allow(clippy::useless_attribute)]
     #[allow(unused_attributes)] // FIXME(#161153)
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
@@ -752,6 +754,7 @@ pub use core::cfg_select;
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+#[allow(clippy::useless_attribute)]
 #[allow(unused_attributes)] // FIXME(#161153)
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
