@@ -8,3 +8,6 @@ pub(crate) mod debuggers;
 pub(crate) mod download;
 pub(crate) mod metadata;
 pub(crate) mod sanity;
+pub(crate) mod session {
+    pub(crate) use crate::*;
+}

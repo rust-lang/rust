@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
-use crate::Mode;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
@@ -16,6 +15,7 @@ use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor, default_paths_to_vend
 use crate::core::builder::{Builder, CommandLineStep, Kind, RunConfig, ShouldRun, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
+use crate::core::session::Mode;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
 
