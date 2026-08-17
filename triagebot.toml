@@ -1303,11 +1303,19 @@ cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 message = "This PR changes rustc_public"
 cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
-[mentions."compiler/rustc_target/src/spec"]
+[mentions."compiler/rustc_target/src/spec/targets"]
 message = """
 These commits modify **compiler targets**.
 (See the [Target Tier Policy](https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html).)
 """
+
+[mentions."compiler/rustc_target/src/spec/consistency.rs"]
+message = "Target consistency checks are being changed"
+cc = ["@RalfJung"]
+
+[mentions."compiler/rustc_target/src/target_features.rs"]
+message = "Target features are being changed; ensure all ABI effects are being accounted for"
+cc = ["@RalfJung"]
 
 [mentions."src/doc/style-guide"]
 cc = ["@rust-lang/style"]
