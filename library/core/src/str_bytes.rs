@@ -1734,7 +1734,17 @@ impl TwoWaySearcher {
             let start =
                 if long_period { self.crit_pos } else { cmp::max(self.crit_pos, self.memory) };
             for i in start..needle.len() {
-                if needle[i] != haystack[self.position + i] {
+                let haystack_byte = if cfg!(debug_assertions) {
+                    haystack[self.position + i]
+                } else {
+                    // SAFETY: each outer iteration, before entering this loop, we check that
+                    // `self.position + needle_last` is a valid index in the haystack. Inside the
+                    // loop `self.position` is unchanged and `i <= needle_last`, so
+                    // `self.position + i` is a valid index. If we adjust `self.position` we redo
+                    // the check via `continue 'search`.
+                    unsafe { *haystack.get_unchecked(self.position + i) }
+                };
+                if needle[i] != haystack_byte {
                     self.position += i - self.crit_pos + 1;
                     if !long_period {
                         self.memory = 0;
@@ -1746,7 +1756,17 @@ impl TwoWaySearcher {
             // See if the left part of the needle matches
             let start = if long_period { 0 } else { self.memory };
             for i in (start..self.crit_pos).rev() {
-                if needle[i] != haystack[self.position + i] {
+                let haystack_byte = if cfg!(debug_assertions) {
+                    haystack[self.position + i]
+                } else {
+                    // SAFETY: each outer iteration, before entering this loop, we check that
+                    // `self.position + needle_last` is a valid index in the haystack. Inside the
+                    // loop `self.position` is unchanged and `i <= needle_last`, so
+                    // `self.position + i` is a valid index. If we adjust `self.position` we redo
+                    // the check via `continue 'search`.
+                    unsafe { *haystack.get_unchecked(self.position + i) }
+                };
+                if needle[i] != haystack_byte {
                     self.position += self.period;
                     if !long_period {
                         self.memory = needle.len() - self.period;
@@ -1833,7 +1853,18 @@ impl TwoWaySearcher {
                 cmp::min(self.crit_pos_back, self.memory_back)
             };
             for i in (0..crit).rev() {
-                if needle[i] != haystack[self.end - needle.len() + i] {
+                let haystack_byte = if cfg!(debug_assertions) {
+                    haystack[self.end - needle.len() + i]
+                } else {
+                    // SAFETY: each outer iteration, before entering this loop, we check that
+                    // `self.end.wrapping_sub(needle.len())` is a valid index in the haystack.
+                    // Inside the loop `self.end` is unchanged and `i < needle.len()`, so
+                    // `end - needle.len() + i` is a valid index. If we adjust `self.end` we redo
+                    // the check via `continue 'search`.
+                    unsafe { *haystack.get_unchecked(self.end - needle.len() + i) }
+                };
+
+                if needle[i] != haystack_byte {
                     self.end -= self.crit_pos_back - i;
                     if !long_period {
                         self.memory_back = needle.len();
@@ -1845,7 +1876,18 @@ impl TwoWaySearcher {
             // See if the right part of the needle matches
             let needle_end = if long_period { needle.len() } else { self.memory_back };
             for i in self.crit_pos_back..needle_end {
-                if needle[i] != haystack[self.end - needle.len() + i] {
+                let haystack_byte = if cfg!(debug_assertions) {
+                    haystack[self.end - needle.len() + i]
+                } else {
+                    // SAFETY: each outer iteration, before entering this loop, we check that
+                    // `self.end.wrapping_sub(needle.len())` is a valid index in the haystack.
+                    // Inside the loop `self.end` is unchanged and `i < needle.len()`, so
+                    // `end - needle.len() + i` is a valid index. If we adjust `self.end` we redo
+                    // the check via `continue 'search`.
+                    unsafe { *haystack.get_unchecked(self.end - needle.len() + i) }
+                };
+
+                if needle[i] != haystack_byte {
                     self.end -= self.period;
                     if !long_period {
                         self.memory_back = self.period;
