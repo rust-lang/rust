@@ -336,17 +336,17 @@ impl ChangeFixture {
                 roots.push(prev_root);
             }
 
-            if let Some((krate, origin, version)) = meta.krate {
-                let crate_name = CrateName::normalize_dashes(&krate);
+            if let Some(crate_meta) = meta.krate {
+                let crate_name = CrateName::normalize_dashes(&crate_meta.name);
                 let crate_id = crate_graph.add_crate_root(
                     file_id,
                     meta.edition,
                     Some(crate_name.clone().into()),
-                    version,
+                    crate_meta.version,
                     meta.cfg.clone(),
                     Some(meta.cfg),
                     meta.env,
-                    origin,
+                    crate_meta.origin,
                     meta.crate_attrs,
                     TargetKind::Lib { is_proc_macro: false },
                     proc_macro_cwd.clone(),
@@ -739,9 +739,16 @@ enum SourceRootKind {
 }
 
 #[derive(Debug)]
+struct CrateMeta {
+    name: String,
+    origin: CrateOrigin,
+    version: Option<String>,
+}
+
+#[derive(Debug)]
 struct FileMeta {
     path: String,
-    krate: Option<(String, CrateOrigin, Option<String>)>,
+    krate: Option<CrateMeta>,
     deps: Vec<String>,
     extern_prelude: Option<Vec<String>>,
     cfg: CfgOptions,
@@ -795,7 +802,7 @@ fn parse_crate(
     crate_str: String,
     current_source_root_kind: SourceRootKind,
     explicit_non_workspace_member: bool,
-) -> (String, CrateOrigin, Option<String>) {
+) -> CrateMeta {
     let (crate_str, force_non_lang_origin) = if let Some(s) = crate_str.strip_prefix("r#") {
         (s.to_owned(), ForceNoneLangOrigin::Yes)
     } else {
@@ -837,7 +844,7 @@ fn parse_crate(
         }
     };
 
-    (name, origin, version)
+    CrateMeta { name, origin, version }
 }
 
 // Identity mapping
