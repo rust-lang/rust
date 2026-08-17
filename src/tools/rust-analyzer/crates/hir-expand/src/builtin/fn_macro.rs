@@ -766,7 +766,7 @@ fn relative_file(
     }
 }
 
-fn parse_string(tt: &tt::TopSubtree, rest: bool) -> Result<(Symbol, Span), ExpandError> {
+fn parse_string(tt: &tt::TopSubtree, allow_rest_args: bool) -> Result<(Symbol, Span), ExpandError> {
     let expect_literal = |span| ExpandError::other(span, "expected string literal");
     let mut tt = {
         let mut tt_iter = tt.iter();
@@ -779,7 +779,7 @@ fn parse_string(tt: &tt::TopSubtree, rest: bool) -> Result<(Symbol, Span), Expan
                 // Tail comma
                 // FIXME: Ignored like env!("NAME", "compile_error message")
                 if let Some(tt) = tt_iter.next()
-                    && !rest
+                    && !allow_rest_args
                 {
                     return Err(ExpandError::other(tt.first_span(), "unexpected input"));
                 }
