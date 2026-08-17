@@ -1,7 +1,7 @@
 use super::{Attribute, UNNECESSARY_CLIPPY_CFG};
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
-use clippy_utils::source::SpanExt;
-use itertools::Itertools;
+use clippy_utils::source::SpanExt as _;
+use itertools::Itertools as _;
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, Level};

@@ -45,6 +45,7 @@ use hir::def::Res;
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::*;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, FnDeclFlags};
 use rustc_middle::ty::Asyncness;
@@ -341,8 +342,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 crate::re_lowering::ReloweringChecker::allow_relowering(self, |this| {
                     this.lower_block_noalloc(HirId::INVALID, block, false)
                 })
-            },
-            _ => self.lower_block_noalloc(HirId::INVALID, block, false)
+            }
+            _ => self.lower_block_noalloc(HirId::INVALID, block, false),
         };
 
         // Remove node ids for which we overwrote resolution to generated param
@@ -439,7 +440,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let ident = Ident::new(kw::SelfUpper, span);
-            let path = self.create_resolved_path(res, ident, span);
+            let path = self.create_resolved_qpath(res, ident, span);
 
             // FIXME(fn_delegation): add default `..` for all other fields.
             let initializer = hir::ExprKind::Struct(
@@ -454,7 +455,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::StructTailExpr::None,
             );
 
-            self.arena.alloc(self.mk_expr(initializer, span))
+            let expr = self.mk_expr(initializer, span);
+
+            let path = self.make_lang_item_qpath(LangItem::FromFn, span, None);
+            let path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(path), span));
+
+            let call = hir::ExprKind::Call(path, self.arena.alloc_slice(&[expr]));
+
+            self.arena.alloc(self.mk_expr(call, span))
         } else {
             self.arena.alloc(call)
         };

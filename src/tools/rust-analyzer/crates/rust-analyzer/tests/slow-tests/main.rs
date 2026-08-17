@@ -30,7 +30,8 @@ use lsp_types::{
     FileRename, FormattingOptions, HoverParams, HoverRequest, InlayHint, InlayHintParams,
     InlayHintRequest, InlayHintResolveRequest, Label, LanguageKind, PartialResultParams, Position,
     Range, RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, TypeDefinitionParams,
-    TypeDefinitionRequest, WillRenameFilesRequest, WorkDoneProgressParams, WorkspaceSymbolRequest,
+    TypeDefinitionRequest, Uri, WillRenameFilesRequest, WorkDoneProgressParams,
+    WorkspaceSymbolRequest,
 };
 use rust_analyzer::lsp::ext::{OnEnterRequest, RunnablesParams, RunnablesRequest};
 use serde_json::json;
@@ -1304,8 +1305,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_owned(),
-                new_uri: base_path.join("src/new_file.rs").to_str().unwrap().to_owned(),
+                old_uri: Uri::parse(base_path.join("src/old_file.rs").to_str().unwrap()).unwrap(),
+                new_uri: Uri::parse(base_path.join("src/new_file.rs").to_str().unwrap()).unwrap(),
             }],
         },
         json!({
@@ -1339,8 +1340,10 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_owned(),
-                new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_owned(),
+                old_uri: Uri::parse(base_path.join("src/from_mod/mod.rs").to_str().unwrap())
+                    .unwrap(),
+                new_uri: Uri::parse(base_path.join("src/from_mod/foo.rs").to_str().unwrap())
+                    .unwrap(),
             }],
         },
         json!(null),
@@ -1350,8 +1353,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_owned(),
-                new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_owned(),
+                old_uri: Uri::parse(base_path.join("src/to_mod/foo.rs").to_str().unwrap()).unwrap(),
+                new_uri: Uri::parse(base_path.join("src/to_mod/mod.rs").to_str().unwrap()).unwrap(),
             }],
         },
         json!(null),
@@ -1361,8 +1364,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFilesRequest>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/old_folder").to_str().unwrap().to_owned(),
-                new_uri: base_path.join("src/new_folder").to_str().unwrap().to_owned(),
+                old_uri: Uri::parse(base_path.join("src/old_folder").to_str().unwrap()).unwrap(),
+                new_uri: Uri::parse(base_path.join("src/new_folder").to_str().unwrap()).unwrap(),
             }],
         },
         json!({

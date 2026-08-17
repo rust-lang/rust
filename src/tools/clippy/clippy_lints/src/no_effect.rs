@@ -1,15 +1,17 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanExt;
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::ty::{expr_type_is_certain, has_drop};
-use clippy_utils::{in_automatically_derived, is_inside_always_const_context, is_lint_allowed, peel_blocks};
+use clippy_utils::{
+    in_automatically_derived, is_from_proc_macro, is_inside_always_const_context, is_lint_allowed, peel_blocks,
+};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind, Stmt, StmtKind,
     StructTailExpr, UnsafeSource, is_range_literal,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::ops::Deref;
@@ -117,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 }
 
 impl NoEffect {
-    fn check_no_effect(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
+    fn check_no_effect<'tcx>(&mut self, cx: &LateContext<'tcx>, stmt: &Stmt<'tcx>) -> bool {
         if let StmtKind::Semi(expr) = stmt.kind {
             // Covered by rustc `path_statements` lint
             if matches!(expr.kind, ExprKind::Path(_)) {
@@ -184,11 +186,12 @@ impl NoEffect {
             && !matches!(local.source, LocalSource::AsyncFn)
             && let Some(init) = local.init
             && local.els.is_none()
-            && !local.pat.span.from_expansion()
+            && !local.span.from_expansion()
             && has_no_effect(cx, init)
             && let PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
             && ident.name.to_ident_string().starts_with('_')
             && !in_automatically_derived(cx.tcx, local.hir_id)
+            && !is_from_proc_macro(cx, init)
         {
             if let Some(l) = self.local_bindings.last_mut() {
                 l.push(hir_id);

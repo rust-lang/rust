@@ -25,5 +25,11 @@ error: omit braces around single expression condition
 LL |     if { true } { 6 } else { 10 }
    |        ^^^^^^^^ help: try: `true`
 
-error: aborting due to 2 previous errors
+error: omit braces around single expression condition
+  --> tests/ui/blocks_in_conditions.rs:136:15
+   |
+LL |         match { Foo.foo() } {
+   |               ^^^^^^^^^^^^^ help: try: `Foo.foo()`
+
+error: aborting due to 3 previous errors
 

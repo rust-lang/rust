@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::cmp::Ordering;
 use core::iter::zip;
 use core::num::NonZero;
 
@@ -17,13 +18,13 @@ impl PartialEq for Mod3 {
 impl Eq for Mod3 {}
 
 impl PartialOrd for Mod3 {
-    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Mod3 {
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         (self.0 % 3).cmp(&(other.0 % 3))
     }
 }
@@ -75,8 +76,6 @@ fn test_lt() {
 
 #[test]
 fn test_cmp_by() {
-    use core::cmp::Ordering;
-
     let f = |x: i32, y: i32| (x * x).cmp(&y);
     let xs = || [1, 2, 3, 4].iter().copied();
     let ys = || [1, 4, 16].iter().copied();
@@ -91,8 +90,6 @@ fn test_cmp_by() {
 
 #[test]
 fn test_partial_cmp_by() {
-    use core::cmp::Ordering;
-
     let f = |x: i32, y: i32| (x * x).partial_cmp(&y);
     let xs = || [1, 2, 3, 4].iter().copied();
     let ys = || [1, 4, 16].iter().copied();
@@ -721,4 +718,63 @@ fn _empty_impl_all_auto_traits<T>() {
     fn all_auto_traits<T: Send + Sync + Unpin + UnwindSafe + RefUnwindSafe>() {}
 
     all_auto_traits::<std::iter::Empty<T>>();
+}
+
+#[test]
+fn test_iterator_min_max_use_ord_min_max() {
+    // There's no stable guarantee that the iterator methods use these, but they were added
+    // on `Ord` (as opposed to just the functions in `cmp`) so that they could be overridden
+    // when a more efficient implementation is available, so we should probably use them.
+
+    let a = [OnlyMinMax(3), OnlyMinMax(1), OnlyMinMax(5), OnlyMinMax(9), OnlyMinMax(7)];
+    assert_eq!(a.iter().copied().min(), Some(OnlyMinMax(1)));
+    assert_eq!(a.iter().copied().max(), Some(OnlyMinMax(9)));
+
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    struct OnlyMinMax(i32);
+    impl PartialOrd for OnlyMinMax {
+        fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+            unimplemented!()
+        }
+    }
+    impl Ord for OnlyMinMax {
+        fn cmp(&self, _other: &Self) -> Ordering {
+            unimplemented!()
+        }
+        fn min(self, other: Self) -> Self {
+            Self(Ord::min(self.0, other.0))
+        }
+        fn max(self, other: Self) -> Self {
+            Self(Ord::max(self.0, other.0))
+        }
+    }
+}
+
+#[test]
+fn test_iterator_min_max_by_key_use_lt() {
+    // The exact method is certainly not a stable guarantee. The important part
+    // is that they use a simple `-> bool` method as opposed to three-way `cmp`.
+    // If they used `gt` instead, or something, that wouldn't be the end of the world,
+    // but `lt` tends to be best optimized because that's the one that C++ has
+    // traditionally used in standard library templates.
+
+    let a = [3, 1, 5, 9, 7];
+    assert_eq!(a.iter().copied().min_by_key(|x| OnlyLt(*x)), Some(1));
+    assert_eq!(a.iter().copied().max_by_key(|x| OnlyLt(*x)), Some(9));
+
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    struct OnlyLt(i32);
+    impl PartialOrd for OnlyLt {
+        fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+            unimplemented!()
+        }
+        fn lt(&self, other: &Self) -> bool {
+            self.0 < other.0
+        }
+    }
+    impl Ord for OnlyLt {
+        fn cmp(&self, _other: &Self) -> Ordering {
+            unimplemented!()
+        }
+    }
 }

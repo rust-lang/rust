@@ -12,9 +12,8 @@
 #![feature(closure_lifetime_binder)]
 #![rustfmt::skip]
 
-#![deny(clippy::unused_unit)]
-#![allow(dead_code)]
-#![allow(clippy::from_over_into)]
+#![warn(clippy::unused_unit)]
+#![expect(clippy::from_over_into)]
 
 struct Unitter;
 impl Unitter {
@@ -142,7 +141,6 @@ mod issue14577 {
 }
 
 mod pr14962 {
-    #[allow(unused_parens)]
     type UnusedParensButNoUnit = Box<dyn (Fn())>;
 }
 

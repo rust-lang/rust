@@ -1,16 +1,17 @@
 use std::iter;
 
 use rustc_errors::pluralize;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
 
-use crate::lints::{
+use crate::diagnostics::{
     UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion, UnusedOp, UnusedOpSuggestion,
     UnusedResult,
 };

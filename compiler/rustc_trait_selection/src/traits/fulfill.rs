@@ -8,7 +8,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{
     FromSolverError, PolyTraitObligation, PredicateObligations, ProjectionCacheKey, SelectionError,
-    TraitEngine,
+    TraitEngine, TraitErrors,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -28,7 +29,7 @@ use super::{
     ScrubbedTraitError, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::infer::InferCtxt;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -104,7 +105,7 @@ where
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> Vec<E> {
+    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> TraitErrors<E> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
         let infcx = selcx.infcx;
@@ -116,11 +117,9 @@ where
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
 
-        let errors: Vec<E> = outcome
-            .errors
-            .into_iter()
-            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
-            .collect();
+        let errors = TraitErrors::from_iter(
+            outcome.errors.into_iter().map(|err| E::from_solver_error(infcx, OldSolverError(err))),
+        );
 
         debug!(
             "select({} predicates remaining, {} errors) done",
@@ -154,15 +153,16 @@ where
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        self.predicates
-            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
-            .into_iter()
-            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
-            .collect()
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+        TraitErrors::from_iter(
+            self.predicates
+                .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
+                .into_iter()
+                .map(|err| E::from_solver_error(infcx, OldSolverError(err))),
+        )
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         let selcx = SelectionContext::new(infcx);
         self.select(selcx)
     }
@@ -618,8 +618,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         obligation.cause.span,
                     ) {
                         None => {
-                            pending_obligation.stalled_on =
-                                vec![TyOrConstInferVar::maybe_from_term(term).unwrap()];
+                            pending_obligation.stalled_on = vec![
+                                TyOrConstInferVar::maybe_from_term::<TyCtxt<'tcx>>(term).unwrap(),
+                            ];
                             ProcessResult::Unchanged
                         }
                         Some(os) => ProcessResult::Changed(mk_pending(obligation, os)),
@@ -684,11 +685,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         Ok(()) => ProcessResult::Changed(Default::default()),
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
-                            pending_obligation.stalled_on.extend(
-                                alias_const
-                                    .walk()
-                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
-                            );
+                            pending_obligation.stalled_on.extend(alias_const.walk().filter_map(
+                                TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>,
+                            ));
                             ProcessResult::Unchanged
                         }
                         Err(
@@ -768,12 +767,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             ) {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {
-                                    stalled_on.extend(
-                                        alias_const
-                                            .args
-                                            .iter()
-                                            .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
-                                    );
+                                    stalled_on.extend(alias_const.args.iter().filter_map(
+                                        TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>,
+                                    ));
                                     e
                                 }
                                 e @ Err(
@@ -1045,7 +1041,7 @@ fn args_infer_vars<'tcx>(
             }
             walker.visited.into_iter()
         })
-        .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
+        .filter_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
 }
 
 #[derive(Debug)]

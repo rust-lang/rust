@@ -71,7 +71,7 @@ mod macros;
 pub mod arena;
 
 pub mod dep_graph;
-pub mod error;
+pub mod diagnostics;
 pub mod hir;
 pub mod hooks;
 pub mod ich;

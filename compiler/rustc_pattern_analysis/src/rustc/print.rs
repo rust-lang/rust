@@ -60,7 +60,11 @@ pub(crate) fn write_struct_like<'tcx>(
             {
                 variant.name.to_string()
             } else {
-                format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
+                ty::print::with_types_for_suggestion!(format!(
+                    "{}::{}",
+                    tcx.def_path_str(adt_def.did()),
+                    variant.name
+                ))
             };
             Some((variant, name))
         }

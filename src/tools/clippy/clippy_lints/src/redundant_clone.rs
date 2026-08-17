@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
-use clippy_utils::res::MaybeDef;
-use clippy_utils::source::SpanExt;
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::ty::{has_drop, is_copy, peel_and_count_ty_refs};
 use clippy_utils::{fn_has_unsatisfiable_clauses, sym};
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, LangItem, def_id};
+use rustc_hir::{Body, FnDecl, def_id};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};

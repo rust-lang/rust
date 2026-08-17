@@ -4,6 +4,7 @@ use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
@@ -1630,7 +1631,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             match self
                 .infcx
                 .type_implements_trait_shallow(clone_trait, ty.peel_refs(), self.infcx.param_env)
-                .as_deref()
+                .as_ref()
+                .map(|it| it.as_slice())
             {
                 Some([]) => {
                     // FIXME: This error message isn't useful, since we're just
@@ -1927,11 +1929,11 @@ fn suggest_ampmut<'tcx>(
                     &call.kind
                 && let ty::FnDef(method_def_id, method_args) = *const_operand.ty().kind()
                 && let Some(trait_) = tcx.trait_of_assoc(method_def_id)
-                && tcx.is_lang_item(trait_, hir::LangItem::Index)
+                && tcx.is_lang_item(trait_, LangItem::Index)
             {
                 let trait_ref = ty::TraitRef::from_assoc(
                     tcx,
-                    tcx.require_lang_item(hir::LangItem::IndexMut, rhs_span),
+                    tcx.require_lang_item(LangItem::IndexMut, rhs_span),
                     method_args.no_bound_vars().unwrap(),
                 );
                 // The type only implements `Index` but not `IndexMut`, we must not suggest `&mut`.

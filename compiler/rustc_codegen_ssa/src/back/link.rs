@@ -28,7 +28,7 @@ use rustc_macros::Diagnostic;
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_middle::bug;
-use rustc_middle::error::DuplicateEiiImpls;
+use rustc_middle::diagnostics::DuplicateEiiImpls;
 use rustc_middle::lint::emit_lint_base;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -1073,27 +1073,43 @@ fn report_linker_output(
         escape_string(output.trim().as_bytes())
     }
 
+    fn has_lnk_code(line: &str) -> bool {
+        // link.exe diagnostics are structured as `LINK : warning LNK####:` or
+        // `LINK : fatal error LNK####:`. The code is always followed by a `:`
+        // that is the second colon in the line, so matching that structure
+        // instead of scanning for `LNK####` anywhere avoids false positives on
+        // file names.
+        let Some((code_colon, _)) = line.match_indices(':').nth(1) else {
+            return false;
+        };
+        let Some(code) = code_colon.checked_sub(7) else {
+            return false;
+        };
+        let code = &line.as_bytes()[code..code_colon];
+        code.starts_with(b"LNK") && code[3..].iter().all(u8::is_ascii_digit)
+    }
+
     if is_msvc_link_exe(sess) {
         info!("inferred MSVC link.exe");
 
         escaped_stdout = for_each(&stdout, |line, output| {
-            // Hide some progress messages from link.exe that we don't care about.
-            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
-            // When incremental linking is enabled and an .ilk exists, but its associated .exe is
-            // missing, link.exe prints the path of the missing .exe followed by:
+            // Hide progress messages from link.exe that we don't care about.
+            // These include localized variants of the English messages (e.g.
+            // "Creating library ..."), which rustc cannot recognize by text
+            // without the English language pack.
+            // See https://github.com/rust-lang/rust/issues/159133
+            // When incremental linking is enabled and an .ilk exists, but its
+            // associated .exe is missing, link.exe prints the path of the
+            // missing .exe followed by:
             let ilk_but_no_exe =
                 "not found or not built by the last incremental link; performing full link";
-            let trimmed = line.trim_start();
-            if trimmed.starts_with("Creating library")
-                || trimmed.starts_with("Generating code")
-                || trimmed.starts_with("Finished generating code")
-                || trimmed.ends_with(ilk_but_no_exe)
-            {
-                linker_info += line;
-                linker_info += "\r\n";
-            } else {
+            // LNK6004 is the one code-bearing line that is still informational.
+            if has_lnk_code(line) && !line.ends_with(ilk_but_no_exe) {
                 *output += line;
                 *output += "\r\n"
+            } else {
+                linker_info += line;
+                linker_info += "\r\n";
             }
         });
     } else if is_macos_linker(sess) {

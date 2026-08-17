@@ -13,7 +13,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-use crate::error;
+use crate::diagnostics;
 use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
@@ -47,7 +47,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.allowed_in_infallible && !span.is_dummy() {
-                    tcx.dcx().emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(diagnostics::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}

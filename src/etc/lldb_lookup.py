@@ -126,17 +126,6 @@ def register_providers_compatibility():
     global RUST_CATEGORY
 
     if LLDBFeature.TypeRecognizers in FEATURE_FLAGS:
-        # FIXME: this can be removed once full support for type recognizers is added.
-        # This prevents a semi-unfixable regression for CodeLLDB
-        register_synth(
-            synthetic_lookup,
-            lldb.SBTypeNameSpecifier(
-                MOD_PREFIX + is_udt.__name__,
-                lldb.eFormatterMatchCallback,
-            ),
-            lldb.eTypeOptionCascade,
-        )
-
         # enforce uniform aggregate formatting
         register_summary(
             StructSummaryProvider,
@@ -147,6 +136,34 @@ def register_providers_compatibility():
             lldb.eTypeOptionCascade
             | lldb.eTypeOptionHideEmptyAggregates
             | lldb.eTypeOptionHideChildren,
+        )
+
+        # Tuple-structs
+        register_synth(
+            TupleSyntheticProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_tuple_type.__name__, lldb.eFormatterMatchCallback
+            ),
+            lldb.eTypeOptionCascade,
+        )
+
+        # Gnu Sum-type Enums
+        register_synth(
+            ClangEncodedEnumProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_gnu_enum.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            lldb.eTypeOptionCascade,
+        )
+
+        register_summary(
+            ClangEncodedEnumSummaryProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_gnu_enum.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            lldb.eTypeOptionCascade,
         )
     else:
         # Need to toss any remaining types through this so that GNU enums are caught
@@ -166,14 +183,28 @@ def register_providers_compatibility():
     register(
         StdSliceSyntheticProvider,
         StdStrSummaryProvider,
-        r"^&(mut )?str$",
+        r"^((&(mut )?)|(\*(const|mut) ))str$",
+    )
+
+    # Box<str> GNU
+    register(
+        StdSliceSyntheticProvider,
+        StdStrSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<str,.*>$",
     )
 
     # str MSVC
     register(
         MSVCStrSyntheticProvider,
         StdStrSummaryProvider,
-        r"^ref(_mut)?\$<str\$>$",
+        r"^((ref(_mut)?)|(ptr_(const|mut)))\$<str\$>$",
+    )
+
+    # Box<str> MSVC
+    register(
+        MSVCStrSyntheticProvider,
+        StdStrSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<str\$,.*>$",
     )
 
     # slice GNU
@@ -393,6 +424,18 @@ def is_udt(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
         and not type.IsPointerType()
         and not type.IsArrayType()
     )
+
+
+def is_gnu_enum(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    return (
+        type.GetNumberOfFields() == 1
+        and type.GetFieldAtIndex(0).GetName() == "$variants$"
+    )
+
+
+def is_tuple_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    fields = type.fields
+    return len(fields) != 0 and is_tuple_fields(fields)
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:

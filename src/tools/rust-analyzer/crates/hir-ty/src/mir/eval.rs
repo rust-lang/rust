@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
-use base_db::{Crate, salsa::update_fallback_db, target::TargetLoadError};
+use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
     AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
@@ -31,7 +31,7 @@ use rustc_type_ir::{
     AliasTyKind,
     inherent::{GenericArgs as _, IntoKind, Region as _, SliceLike, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
@@ -349,7 +349,7 @@ impl Address {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Update)]
+#[derive(Clone, PartialEq, Eq, SalsaValue)]
 pub enum MirEvalError<'db> {
     ConstEvalError(String, Box<ConstEvalError<'db>>),
     LayoutError(LayoutError, StoredTy),
@@ -366,8 +366,7 @@ pub enum MirEvalError<'db> {
     InvalidConst,
     InFunction(
         Box<MirEvalError<'db>>,
-        #[update(bounds(InternedClosureId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
-         Vec<(Either<FunctionId, InternedClosureId<'db>>, MirSpan, InferBodyId<'db>)>,
+        Vec<(Either<FunctionId, InternedClosureId<'db>>, MirSpan, InferBodyId<'db>)>,
     ),
     ExecutionLimitExceeded,
     StackOverflow,

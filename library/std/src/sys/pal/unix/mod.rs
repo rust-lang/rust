@@ -145,6 +145,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "vita",
+            target_os = "l4re",
             // Unikraft's `signal` implementation is currently broken:
             // https://github.com/unikraft/lib-musl/issues/57
             target_vendor = "unikraft",
@@ -210,10 +211,10 @@ pub(crate) fn on_broken_pipe_used() -> bool {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
-// NOTE: this is not guaranteed to run, for example when the program aborts.
-pub unsafe fn cleanup() {
-    stack_overflow::cleanup();
-}
+// NOTE: this is not guaranteed to run, for example when the program aborts, and
+//       is not guaranteed to run on the main thread (#161018 was caused by that
+//       mistaken assumption).
+pub unsafe fn cleanup() {}
 
 #[allow(unused_imports)]
 pub use libc::signal;
@@ -363,15 +364,24 @@ cfg_select! {
     _ => {}
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
-pub mod unsupported {
-    use crate::io;
+#[cfg(any(
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nuttx",
+    target_os = "l4re",
+))]
+pub fn unsupported<T>() -> crate::io::Result<T> {
+    Err(unsupported_err())
+}
 
-    pub fn unsupported<T>() -> io::Result<T> {
-        Err(unsupported_err())
-    }
-
-    pub fn unsupported_err() -> io::Error {
-        io::Error::UNSUPPORTED_PLATFORM
-    }
+#[cfg(any(
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nuttx",
+    target_os = "l4re",
+))]
+pub fn unsupported_err() -> crate::io::Error {
+    io::Error::UNSUPPORTED_PLATFORM
 }

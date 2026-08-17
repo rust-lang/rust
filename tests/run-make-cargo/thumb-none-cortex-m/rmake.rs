@@ -18,7 +18,7 @@ use run_make_support::{cargo, cmd, env, env_var, target};
 
 const CRATE: &str = "cortex-m";
 const CRATE_URL: &str = "https://github.com/rust-embedded/cortex-m";
-const CRATE_SHA1: &str = "a448e9156e2cb1e556e5441fd65426952ef4b927"; // v0.5.0
+const CRATE_SHA1: &str = "bb4a78208323260a161e68b2498438867f971bc5"; // v0.7.7
 
 fn main() {
     // FIXME: requires an internet connection https://github.com/rust-lang/rust/issues/128733

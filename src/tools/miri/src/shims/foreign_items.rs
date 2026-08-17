@@ -57,7 +57,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             match *shim {
                 Either::Left(other_fn) => {
                     let handler = this
-                        .lookup_exported_symbol(other_fn)?
+                        .lookup_exported_fn(other_fn)?
                         .expect("missing alloc error handler symbol");
                     return interp_ok(Some(handler));
                 }
@@ -74,8 +74,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
         let res = this.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
-        res.jump_to_next_block(this, &dest, ret, Some(unwind), |this| {
-            if let Some(body) = this.lookup_exported_symbol(link_name)? {
+        res.jump_to_next_block(this, &dest.clone().into(), ret, Some(unwind), |this| {
+            if let Some(body) = this.lookup_exported_fn(link_name)? {
                 return interp_ok(Some(body));
             }
 
@@ -110,17 +110,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup the body of a function that has `link_name` as the symbol name.
+    /// Lookup the instance that has `link_name` as the symbol name.
     fn lookup_exported_symbol(
-        &mut self,
+        &self,
         link_name: Symbol,
-    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        let this = self.eval_context_mut();
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+        let this = self.eval_context_ref();
         let tcx = this.tcx.tcx;
 
         // If the result was cached, just return it.
         // (Cannot use `or_insert` since the code below might have to throw an error.)
-        let entry = this.machine.exported_symbols_cache.entry(link_name);
+        let mut cache = this.machine.exported_symbols_cache.borrow_mut();
+        let entry = cache.entry(link_name);
         let instance = *match entry {
             Entry::Occupied(e) => e.into_mut(),
             Entry::Vacant(e) => {
@@ -206,24 +207,48 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     interp_ok(())
                 })?;
 
-                // Once we identified the instance corresponding to the symbol, ensure
-                // it is a function. It is okay to encounter non-functions in the search above
-                // as long as the final instance we arrive at is a function.
-                if let Some(SymbolTarget { instance, .. }) = symbol_target {
-                    if !matches!(tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
-                        throw_ub_format!(
-                            "attempt to call an exported symbol that is not defined as a function"
-                        );
-                    }
-                }
-
                 e.insert(symbol_target.map(|SymbolTarget { instance, .. }| instance))
             }
         };
+        drop(cache);
+        interp_ok(instance)
+    }
+
+    /// Lookup the body of a function that has `link_name` as the symbol name.
+    fn lookup_exported_fn(
+        &self,
+        link_name: Symbol,
+    ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+        let this = self.eval_context_ref();
+        let instance = this.lookup_exported_symbol(link_name)?;
+        if let Some(instance) = &instance {
+            if !matches!(this.tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
+                throw_ub_format!(
+                    "attempt to call an exported symbol that is not defined as a function"
+                );
+            }
+        }
         match instance {
-            None => interp_ok(None), // no symbol with this name
+            None => interp_ok(None),
             Some(instance) => interp_ok(Some((this.load_mir(instance.def, None)?, instance))),
         }
+    }
+
+    /// Lookup the instance of a static that has `link_name` as the symbol name.
+    fn lookup_exported_static(
+        &self,
+        link_name: Symbol,
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+        let this = self.eval_context_ref();
+        let instance = this.lookup_exported_symbol(link_name)?;
+        if let Some(instance) = &instance {
+            if !matches!(this.tcx.def_kind(instance.def_id()), DefKind::Static { .. }) {
+                throw_ub_format!(
+                    "attempt to access an exported symbol `{link_name}` that is not defined as a static"
+                );
+            }
+        }
+        interp_ok(instance)
     }
 }
 

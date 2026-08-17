@@ -11,7 +11,7 @@ use rustc_ast as ast;
 use rustc_attr_parsing::ShouldEmit;
 use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
 use rustc_codegen_ssa::back::link::link_binary;
-use rustc_codegen_ssa::target_features::cfg_target_feature;
+use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
@@ -50,10 +50,27 @@ pub(crate) fn add_configuration(
     let tf = sym::target_feature;
     let tf_cfg = codegen_backend.target_config(sess);
 
-    sess.unstable_target_features.extend(tf_cfg.unstable_target_features.iter().copied());
-    sess.target_features.extend(tf_cfg.target_features.iter().copied());
+    // Add some of the target features to `cfg`.
+    cfg.extend(
+        sess.target
+            .rust_target_features()
+            .iter()
+            .filter_map(|(feature, gate, _)| {
+                if gate.in_cfg()
+                    && (sess.is_nightly_build()
+                        || gate.requires_nightly(/* in_cfg */ true).is_none())
+                {
+                    Some(Symbol::intern(feature))
+                } else {
+                    None
+                }
+            })
+            .filter(|feature| tf_cfg.internal_target_features.contains(&feature))
+            .map(|feature| (sym::target_feature, Some(feature))),
+    );
 
-    cfg.extend(tf_cfg.target_features.into_iter().map(|feat| (tf, Some(feat))));
+    // Store all of them in the session.
+    sess.internal_target_features.extend(tf_cfg.internal_target_features.into_sorted_stable_ord());
 
     if tf_cfg.has_reliable_f16 {
         cfg.insert((sym::target_has_reliable_f16, None));
@@ -74,10 +91,10 @@ pub(crate) fn add_configuration(
 }
 
 /// Ensures that all target features required by the ABI are present.
-/// Must be called after `unstable_target_features` has been populated!
+/// Must be called after `internal_target_features` has been populated!
 pub(crate) fn check_abi_required_features(sess: &Session) {
     let abi_feature_constraints = sess.target.abi_required_features();
-    // We check this against `unstable_target_features` as that is conveniently already
+    // We check this against `internal_target_features` as that is conveniently already
     // back-translated to rustc feature names, taking into account `-Ctarget-cpu` and `-Ctarget-feature`.
     // Just double-check that the features we care about are actually on our list.
     for feature in
@@ -90,13 +107,13 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
     }
 
     for feature in abi_feature_constraints.required {
-        if !sess.unstable_target_features.contains(&Symbol::intern(feature)) {
+        if !sess.internal_target_features.contains(&Symbol::intern(feature)) {
             sess.dcx()
                 .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "enabled" });
         }
     }
     for feature in abi_feature_constraints.incompatible {
-        if sess.unstable_target_features.contains(&Symbol::intern(feature)) {
+        if sess.internal_target_features.contains(&Symbol::intern(feature)) {
             sess.dcx()
                 .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "disabled" });
         }
@@ -104,7 +121,7 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
 }
 
 pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
-pub const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+pub const DEFAULT_STACK_SIZE: usize = 16 * 1024 * 1024;
 
 fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     // Obey the environment setting or default
@@ -346,7 +363,7 @@ pub fn get_codegen_backend(
             filename if filename.contains('.') => {
                 load_backend_from_dylib(early_dcx, filename.as_ref())
             }
-            "dummy" => || Box::new(DummyCodegenBackend { target_config_override: None }),
+            "dummy" => || Box::new(DummyCodegenBackend),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
@@ -359,9 +376,7 @@ pub fn get_codegen_backend(
     unsafe { load() }
 }
 
-pub struct DummyCodegenBackend {
-    pub target_config_override: Option<Box<dyn Fn(&Session) -> TargetConfig>>,
-}
+pub struct DummyCodegenBackend;
 
 impl CodegenBackend for DummyCodegenBackend {
     fn name(&self) -> &'static str {
@@ -369,12 +384,8 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
-        if let Some(target_config_override) = &self.target_config_override {
-            return target_config_override(sess);
-        }
-
         let abi_required_features = sess.target.abi_required_features();
-        let (target_features, unstable_target_features) = cfg_target_feature::<0>(
+        let internal_target_features = internal_target_features::<0>(
             sess,
             |_feature| Default::default(),
             |feature| {
@@ -387,8 +398,7 @@ impl CodegenBackend for DummyCodegenBackend {
         );
 
         TargetConfig {
-            target_features,
-            unstable_target_features,
+            internal_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
             has_reliable_f128: true,

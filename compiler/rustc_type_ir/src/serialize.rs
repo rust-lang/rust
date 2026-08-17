@@ -51,7 +51,7 @@ impl_binder_encode_decode! {
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,
-    ty::HostEffectPredicate<I>,
+    ty::HostEffectClause<I>,
 }
 
 impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, E: Encoder> Encodable<E> for ty::Binder<I, T>

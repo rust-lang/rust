@@ -32,9 +32,9 @@ pub enum TerminationInfo {
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
-    /// GenMC deemed this execution invalid, so Miri drops it, i.e., it skips to the next execution
-    /// (mirrors GenMC's `Invalid` result).
-    GenmcInvalid,
+    /// GenMC deemed this execution "moot" or invalid, so Miri drops it, i.e., it skips to the next
+    /// execution. Mirrors GenMC's `Invalid` result or a "moot" result from the scheduler.
+    GenmcMoot,
     /// All threads are blocked.
     GlobalDeadlock,
     /// Some thread discovered a deadlock condition (e.g. in a mutex with reentrancy checking).
@@ -84,7 +84,7 @@ impl fmt::Display for TerminationInfo {
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             GlobalDeadlock => write!(f, "the evaluated program deadlocked"),
             LocalDeadlock => write!(f, "a thread deadlocked"),
-            GenmcInvalid => write!(f, "GenMC wants to skip this execution"),
+            GenmcMoot => write!(f, "GenMC wants to skip this execution"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -237,7 +237,7 @@ pub fn prune_stacktrace<'tcx>(
 /// Report the result of a Miri execution.
 ///
 /// Returns `Some` if this was regular program termination with a given exit code and a `bool`
-/// indicating whether a leak check should happen; `None` otherwise.
+/// indicating whether a leak check should happen; `None` if execution was aborted with an error.
 pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     res: InterpErrorInfo<'tcx>,
@@ -258,7 +258,7 @@ pub fn report_result<'tcx>(
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
-            GenmcInvalid => {
+            GenmcMoot => {
                 assert!(ecx.machine.data_race.as_genmc_ref().is_some());
                 return Some((0, false));
             }
@@ -372,10 +372,7 @@ pub fn report_result<'tcx>(
                 ..
             }) => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!(
-                    "This validation error should be impossible in Miri: {}",
-                    res.to_string()
-                );
+                bug!("This validation error should be impossible in Miri: {}", res.to_string());
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",

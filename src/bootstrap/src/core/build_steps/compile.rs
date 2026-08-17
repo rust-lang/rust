@@ -19,13 +19,16 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::span;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
+use crate::core::build_steps::llvm::{LlvmFromCi, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
     self, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     apply_pgo, crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
@@ -34,12 +37,9 @@ use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
+    self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{
-    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, exit, trace,
-};
+use crate::{CLang, DependencyType, FileType, GitRepo, Mode, debug, trace};
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -505,14 +505,16 @@ pub fn std_crates_for_make_run(run: &RunConfig<'_>) -> Vec<String> {
 /// downloaded copy of CI LLVM, then we try to use the `compiler-rt` sources from
 /// there instead, which lets us avoid checking out the LLVM submodule.
 fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
-    // Try to use `compiler-rt` sources from downloaded CI LLVM, if possible.
-    if builder.config.llvm_from_ci {
-        // CI LLVM might not have been downloaded yet, so try to download it now.
-        builder.config.maybe_download_ci_llvm();
-        let ci_llvm_compiler_rt = builder.config.ci_llvm_root().join("compiler-rt");
-        if ci_llvm_compiler_rt.exists() {
-            return ci_llvm_compiler_rt;
+    // Try to use `compiler-rt` sources from downloaded CI LLVM, if available
+    if let Some(downloaded_llvm) = builder.ensure(LlvmFromCi { target: builder.host_target }) {
+        let ci_llvm_compiler_rt = downloaded_llvm.output.root_dir().join("compiler-rt");
+        if !builder.config.dry_run() {
+            assert!(
+                ci_llvm_compiler_rt.exists(),
+                "compiler-rt sources not found in LLVM downloaded from CI at {ci_llvm_compiler_rt:?}"
+            );
         }
+        return ci_llvm_compiler_rt;
     }
 
     // Otherwise, fall back to requiring the LLVM submodule.
@@ -1387,9 +1389,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     // (i.e. it's already built or is downloadable), we prefer to maintain a
     // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
-        let building_llvm_is_expensive =
-            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
-                .should_build();
+        let building_llvm_is_expensive = prebuilt_llvm_output(builder, target).is_none();
 
         let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
         if !skip_llvm {
@@ -1419,19 +1419,19 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 /// Note that this has the side-effect of _building LLVM_, which is sometimes
 /// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    if builder.config.is_rust_llvm(target) {
+    let llvm_output = builder.ensure(llvm::Llvm { target });
+    if builder.config.is_rust_llvm(&llvm_output, target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
-    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
     }
 
-    cargo.env("LLVM_CONFIG", &host_llvm_config);
+    cargo.env("LLVM_CONFIG", &llvm_output.host_llvm_config);
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by
@@ -1484,7 +1484,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         );
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
-    if builder.llvm_link_shared() {
+    if llvm_output.link_shared() {
         cargo.env("LLVM_LINK_SHARED", "1");
     }
     if builder.config.llvm_use_libcxx {
@@ -2044,7 +2044,7 @@ impl Step for Sysroot {
                         sysroot_lib_rustlib_src_rust.display(),
                     );
                 }
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
 
@@ -2062,7 +2062,7 @@ impl Step for Sysroot {
                     builder.src.display(),
                     e,
                 );
-                exit!(1);
+                helpers::exit_process(1);
             }
         }
 
@@ -2122,11 +2122,11 @@ impl CommandLineStep for Assemble {
             trace!("target_compiler.host" = ?target_compiler.host, "LLVM enabled");
 
             let target = target_compiler.host;
-            let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+            let llvm_output = builder.ensure(llvm::Llvm { target });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 trace!("LLVM tools enabled");
 
-                let host_llvm_bin_dir = command(&host_llvm_config)
+                let host_llvm_bin_dir = command(&llvm_output.host_llvm_config)
                     .arg("--bindir")
                     .cached()
                     .run_capture_stdout(builder)
@@ -2153,7 +2153,7 @@ impl CommandLineStep for Assemble {
                         // relative to its output build directory, and then apply it to the target
                         // LLVM output build directory.
                         let host_llvm_out = builder.llvm_out(builder.host_target);
-                        let target_llvm_out = builder.llvm_out(target);
+                        let target_llvm_out = llvm_output.root_dir();
                         if let Ok(relative_path) =
                             Path::new(&host_llvm_bin_dir).strip_prefix(host_llvm_out)
                         {
@@ -2179,13 +2179,13 @@ impl CommandLineStep for Assemble {
                 let _llvm_tools_span =
                     span!(tracing::Level::TRACE, "installing llvm tools to sysroot", ?libdir_bin)
                         .entered();
-                for tool in LLVM_TOOLS {
+                for tool in dist::LLVM_TOOLS {
                     trace!("installing `{tool}`");
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
 
                     // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
-                    if !src_path.exists() && builder.config.llvm_from_ci {
+                    if !src_path.exists() && builder.config.llvm_ci_mode.download_from_ci() {
                         eprintln!("{} does not exist; skipping copy", src_path.display());
                         continue;
                     }
@@ -2281,19 +2281,24 @@ impl CommandLineStep for Assemble {
 
         if builder.config.llvm_offload && !builder.config.dry_run() {
             debug!("`llvm_offload` requested");
-            let offload_install = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
             if let Some(_llvm_config) = builder.llvm_config(builder.config.host_target) {
+                let rust_offload =
+                    builder.ensure(llvm::RustOffload { target: build_compiler.host });
                 let target_libdir =
                     builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-                for p in offload_install.offload_paths() {
+                let rust_offload_dst_lib = target_libdir.join(rust_offload.rust_offload_filename());
+                builder.copy_link(
+                    &rust_offload.rust_offload_path(),
+                    &rust_offload_dst_lib,
+                    FileType::NativeLibrary,
+                );
+
+                let omp_offload = builder.ensure(llvm::OmpOffload { target: build_compiler.host });
+                for p in omp_offload.artifact_paths_with_symlink_targets() {
                     let libname = p.file_name().unwrap();
                     let dst_lib = target_libdir.join(libname);
                     builder.resolve_symlink_and_copy(&p, &dst_lib);
                 }
-                // FIXME(offload): Add amdgcn-amd-amdhsa and nvptx64-nvidia-cuda folder
-                // This one is slightly more tricky, since we have the same file twice, in two
-                // subfolders for amdgcn and nvptx64. We'll likely find two more in the future, once
-                // Intel and Spir-V support lands in offload.
             }
         }
 
@@ -2350,17 +2355,13 @@ impl CommandLineStep for Assemble {
             let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
             // If we link statically to stdlib, do not copy the libstd dynamic library file
-            // FIXME: Also do this for Windows once incremental post-optimization stage0 tests
-            // work without std.dll (see https://github.com/rust-lang/rust/pull/131188).
-            let can_be_rustc_dynamic_dep = if builder
-                .link_std_into_rustc_driver(target_compiler.host)
-                && !target_compiler.host.is_windows()
-            {
-                let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
-                !is_std
-            } else {
-                true
-            };
+            let can_be_rustc_dynamic_dep =
+                if builder.link_std_into_rustc_driver(target_compiler.host) {
+                    let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+                    !is_std
+                } else {
+                    true
+                };
 
             if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename), FileType::Regular);
@@ -2740,7 +2741,7 @@ pub fn run_cargo(
     });
 
     if !ok {
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     if builder.config.dry_run() {

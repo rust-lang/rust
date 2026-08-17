@@ -15,7 +15,6 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
     pluralize,
 };
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::symbol::used_keywords;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -31,7 +30,7 @@ use crate::diagnostics::{
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, FoundPathInGenerics,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
@@ -2651,11 +2650,8 @@ impl<'a> Parser<'a> {
         if is_op_or_dot {
             self.bump();
         }
-        match (|| {
-            let attrs = self.parse_outer_attributes()?;
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs)
-        })() {
-            Ok((expr, _)) => {
+        match (|| self.parse_expr_res(Restrictions::CONST_EXPR))() {
+            Ok(expr) => {
                 // Find a mistake like `MyTrait<Assoc == S::Assoc>`.
                 if snapshot.token == token::EqEq {
                     err.span_suggestion_verbose(
@@ -2707,13 +2703,10 @@ impl<'a> Parser<'a> {
         &mut self,
         mut snapshot: SnapshotParser<'a>,
     ) -> Option<Box<ast::Expr>> {
-        match (|| {
-            let attrs = self.parse_outer_attributes()?;
-            snapshot.parse_expr_res(Restrictions::CONST_EXPR, attrs)
-        })() {
+        match (|| snapshot.parse_expr_res(Restrictions::CONST_EXPR))() {
             // Since we don't know the exact reason why we failed to parse the type or the
             // expression, employ a simple heuristic to weed out some pathological cases.
-            Ok((expr, _)) if let token::Comma | token::Gt = snapshot.token.kind => {
+            Ok(expr) if let token::Comma | token::Gt = snapshot.token.kind => {
                 self.restore_snapshot(snapshot);
                 Some(expr)
             }

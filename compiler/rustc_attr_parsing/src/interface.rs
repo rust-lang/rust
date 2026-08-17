@@ -6,11 +6,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_lint_defs::RegisteredTools;
 use rustc_session::Session;
 use rustc_session::lint::LintId;
@@ -21,8 +21,8 @@ use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
     FinalizeFn, FinalizeOutput, SharedContext,
 };
+use crate::diagnostics::ParsedDescription;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
-use crate::session_diagnostics::ParsedDescription;
 use crate::synthetic::SyntheticAttrState;
 use crate::{AttributeTemplate, OmitDoc, ShouldEmit};
 
@@ -292,6 +292,7 @@ impl<'sess> AttributeParser<'sess> {
         self.sess
     }
 
+    #[track_caller]
     pub(crate) fn features(&self) -> &'sess Features {
         self.features.expect("features not available at this point in the compiler")
     }
@@ -451,6 +452,8 @@ impl<'sess> AttributeParser<'sess> {
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
                             cx.shared.cx.check_args_used(attr, &args)
                         }
+                    } else if let [sym::diagnostic, _unknown, ..] = &*parts {
+                        self.unknown_diagnostic_attr(&n.item.path.segments[1], &mut emit_lint);
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),

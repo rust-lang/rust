@@ -3,12 +3,12 @@ use std::{mem, slice};
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId, attr};
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::AttributeKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
-use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
@@ -99,7 +99,7 @@ impl<'a> CollectProcMacros<'a> {
         function_ident: Ident,
         attr: &'a ast::Attribute,
     ) {
-        let Some(rustc_hir::Attribute::Parsed(AttributeKind::ProcMacroDerive { .. })) =
+        let Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::ProcMacroDerive { .. })) =
             AttributeParser::parse_limited_sym(
                 self.session,
                 slice::from_ref(attr),

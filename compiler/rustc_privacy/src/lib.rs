@@ -133,9 +133,9 @@ where
             ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
                 self.visit_trait(trait_ref)
             }
-            ty::ClauseKind::HostEffect(pred) => {
-                try_visit!(self.visit_trait(pred.trait_ref));
-                pred.constness.visit_with(self)
+            ty::ClauseKind::HostEffect(clause) => {
+                try_visit!(self.visit_trait(clause.trait_ref));
+                clause.constness.visit_with(self)
             }
             ty::ClauseKind::Projection(ty::ProjectionPredicate {
                 projection_term: projection_ty,

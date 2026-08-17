@@ -71,7 +71,7 @@ fn normalize_canonicalized_projection<'tcx>(
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
             let errors = ocx.try_evaluate_obligations();
-            if !errors.is_empty() {
+            if !errors.no_errors() {
                 // Rustdoc may attempt to normalize type alias types which are not
                 // well-formed. Rustdoc also normalizes types that are just not
                 // well-formed, since we don't do as much HIR analysis (checking

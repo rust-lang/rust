@@ -4,12 +4,12 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::RustcVersion;
 use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::{self, TyCtxt, UintTy};
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
@@ -66,15 +66,16 @@ impl DurationSuboptimalUnits {
         if tcx.features().enabled(sym::duration_constructors) {
             units.extend(EXTENDED_UNITS);
         }
-        Self { msrv: conf.msrv, units }
+        Self {
+            msrv: conf.msrv.into(),
+            units,
+        }
     }
 }
 
 impl LateLintPass<'_> for DurationSuboptimalUnits {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if !expr.span.in_external_macro(cx.sess().source_map())
-            // Check if a function on std::time::Duration is called
-            && let ExprKind::Call(func, [arg]) = expr.kind
+        if let ExprKind::Call(func, [arg]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(func_ty, func_name)) = func.kind
             && cx
                 .typeck_results()
@@ -98,6 +99,7 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
             // For expressions (e.g. `10 * 60`), always lint since the expression already
             // signals intent to compute a converted value.
             && (!matches!(arg.kind, ExprKind::Lit(_)) || promoted_value > 10)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             span_lint_and_then(
                 cx,
@@ -110,7 +112,7 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
                         (arg.span, promoted_value.to_string()),
                     ];
                     diag.multipart_suggestion(
-                        format!("try using {promoted_constructor}"),
+                        format!("try using `Duration::{promoted_constructor}`"),
                         suggestions,
                         Applicability::MachineApplicable,
                     );

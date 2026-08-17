@@ -619,7 +619,7 @@ impl<T> Vec<T> {
     /// use std::alloc::{alloc, Layout};
     ///
     /// fn main() {
-    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///     let layout = Layout::array::<u32>(16).expect("16 u32s take 64 bytes, so it shouldn't overflow");
     ///
     ///     let vec = unsafe {
     ///         let mem = alloc(layout).cast::<u32>();
@@ -719,7 +719,7 @@ impl<T> Vec<T> {
     /// use std::ptr::NonNull;
     ///
     /// fn main() {
-    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///     let layout = Layout::array::<u32>(16).expect("16 u32s take 64 bytes, so it shouldn't overflow");
     ///
     ///     let vec = unsafe {
     ///         let Some(mem) = NonNull::new(alloc(layout).cast::<u32>()) else {
@@ -1162,7 +1162,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// use std::alloc::{AllocError, Allocator, Global, Layout};
     ///
     /// fn main() {
-    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///     let layout = Layout::array::<u32>(16).expect("16 u32s take 64 bytes, so it shouldn't overflow");
     ///
     ///     let vec = unsafe {
     ///         let mem = match Global.allocate(layout) {
@@ -1277,7 +1277,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// use std::alloc::{AllocError, Allocator, Global, Layout};
     ///
     /// fn main() {
-    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///     let layout = Layout::array::<u32>(16).expect("16 u32s take 64 bytes, so it shouldn't overflow");
     ///
     ///     let vec = unsafe {
     ///         let mem = match Global.allocate(layout) {
@@ -1521,7 +1521,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     ///     Ok(output)
     /// }
-    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # process_data(&[1, 2, 3]).expect("this test needs 12 bytes, so it shouldn't fail");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1564,7 +1564,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     ///     Ok(output)
     /// }
-    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # process_data(&[1, 2, 3]).expect("this test needs 12 bytes, so it shouldn't fail");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1648,7 +1648,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let mut vec = Vec::with_capacity(10);
     /// vec.extend([1, 2, 3]);
     /// assert!(vec.capacity() >= 10);
-    /// vec.try_shrink_to_fit().expect("why is the test harness failing to shrink to 12 bytes");
+    /// vec.try_shrink_to_fit().expect("for this test, shrink shouldn't fail");
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[unstable(feature = "vec_fallible_shrink", issue = "152350")]
@@ -1678,7 +1678,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let mut vec = Vec::with_capacity(10);
     /// vec.extend([1, 2, 3]);
     /// assert!(vec.capacity() >= 10);
-    /// vec.try_shrink_to(4).expect("why is the test harness failing to shrink to 12 bytes");
+    /// vec.try_shrink_to(4).expect("for this test, shrink shouldn't fail");
     /// assert!(vec.capacity() >= 4);
     /// vec.try_shrink_to(0).expect("this is a no-op and thus the allocator isn't involved.");
     /// assert!(vec.capacity() >= 3);
@@ -3688,7 +3688,10 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
     pub fn into_flattened(self) -> Vec<T, A> {
         let (ptr, len, cap, alloc) = self.into_raw_parts_with_alloc();
         let (new_len, new_cap) = if T::IS_ZST {
-            (len.checked_mul(N).expect("vec len overflow"), usize::MAX)
+            (
+                len.checked_mul(N).expect("the product of vec len and N shouldn't overflow"),
+                usize::MAX,
+            )
         } else {
             // SAFETY:
             // - `cap * N` cannot overflow because the allocation is already in
@@ -3875,7 +3878,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     /// capacity of the original.
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
-        <[T]>::to_vec_in(&**self, alloc)
+        <[T]>::to_vec_in(self, alloc)
     }
 
     /// Overwrites the contents of `self` with a clone of the contents of `source`.

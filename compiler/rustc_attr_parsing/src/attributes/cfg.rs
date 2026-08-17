@@ -3,10 +3,10 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, WithTokens};
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry, RustcVersion};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
-use rustc_hir::attrs::{CfgEntry, RustcVersion};
-use rustc_hir::{AttrPath, Target};
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
@@ -19,16 +19,14 @@ use thin_vec::ThinVec;
 
 use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, ShouldEmit};
-use crate::parser::{
-    AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
-};
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{
-    AttributeParser, AttributeTemplate, check_cfg, parse_version, session_diagnostics, template,
+use crate::parser::{
+    AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
 };
+use crate::{AttributeParser, AttributeTemplate, check_cfg, diagnostics, parse_version, template};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -131,25 +129,17 @@ fn parse_cfg_entry_version(
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
     let Some(version) = list.as_single() else {
-        return Err(
-            cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
-        );
+        return Err(cx.emit_err(diagnostics::ExpectedSingleVersionLiteral { span: list.span }));
     };
     let Some(version_lit) = version.as_lit() else {
-        return Err(
-            cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version.span() })
-        );
+        return Err(cx.emit_err(diagnostics::ExpectedVersionLiteral { span: version.span() }));
     };
     let Some(version_str) = version_lit.value_as_str() else {
-        return Err(
-            cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version_lit.span })
-        );
+        return Err(cx.emit_err(diagnostics::ExpectedVersionLiteral { span: version_lit.span }));
     };
 
     let min_version = parse_version(version_str).or_else(|| {
-        cx.sess()
-            .dcx()
-            .emit_warn(session_diagnostics::UnknownVersionLiteral { span: version_lit.span });
+        cx.sess().dcx().emit_warn(diagnostics::UnknownVersionLiteral { span: version_lit.span });
         None
     });
 
@@ -362,7 +352,7 @@ pub fn parse_cfg_attr(
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
-                suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
+                suggestions: diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
                         ParsedDescription::Attribute,
                         cfg_attr.get_normal_item().unsafety,

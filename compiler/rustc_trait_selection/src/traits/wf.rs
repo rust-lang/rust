@@ -6,7 +6,7 @@
 use std::iter;
 
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
@@ -174,8 +174,8 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_trait_pred(t, Elaborate::None);
         }
         ty::ClauseKind::HostEffect(..) => {
-            // Technically the well-formedness of this predicate is implied by
-            // the corresponding trait predicate it should've been generated beside.
+            // Technically the well-formedness of this clause is implied by
+            // the corresponding trait clause it should've been generated beside.
         }
         ty::ClauseKind::RegionOutlives(..) => {}
         ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, _reg)) => {

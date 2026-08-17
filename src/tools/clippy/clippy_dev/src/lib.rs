@@ -7,13 +7,13 @@
     rustc_private
 )]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications
 )]
-#![allow(clippy::case_sensitive_file_extension_comparisons, clippy::missing_panics_doc)]
+#![expect(clippy::missing_panics_doc)]
 
 extern crate rustc_arena;
 extern crate rustc_data_structures;

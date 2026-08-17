@@ -15,7 +15,7 @@ pub type ExistentialPredicate<'tcx> = ir::ExistentialPredicate<TyCtxt<'tcx>>;
 pub type ExistentialTraitRef<'tcx> = ir::ExistentialTraitRef<TyCtxt<'tcx>>;
 pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
 pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
-pub type HostEffectPredicate<'tcx> = ir::HostEffectPredicate<TyCtxt<'tcx>>;
+pub type HostEffectClause<'tcx> = ir::HostEffectClause<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
@@ -582,24 +582,16 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyProjectionPredicate<'tcx>> for Clause<'t
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>>
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectClause<'tcx>>>
     for Predicate<'tcx>
 {
-    fn upcast_from(
-        from: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Self {
+    fn upcast_from(from: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>>
-    for Clause<'tcx>
-{
-    fn upcast_from(
-        from: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Self {
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectClause<'tcx>>> for Clause<'tcx> {
+    fn upcast_from(from: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
         from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
     }
 }

@@ -66,6 +66,7 @@
 
 use rustc_ast::Label;
 use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
+use rustc_attr_ir::Attribute;
 use rustc_hir_id::HirId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, Symbol};
@@ -980,7 +981,7 @@ pub fn walk_generic_arg<'v, V: Visitor<'v>>(
         GenericArg::Type(ty) => visitor.visit_ty(ty),
         GenericArg::Const(ct) => visitor.visit_const_arg(ct),
         GenericArg::Infer(inf) => {
-            let InferArg { hir_id, span } = inf;
+            let InferArg { hir_id, span, kind: _ } = inf;
             visitor.visit_infer(*hir_id, *span, InferKind::Ambig(inf))
         }
     }
@@ -1445,7 +1446,7 @@ pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) -> V::R
 }
 
 pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) -> V::Result {
-    let InferArg { hir_id, span: _ } = inf;
+    let InferArg { hir_id, span: _, kind: _ } = inf;
     visitor.visit_id(*hir_id)
 }
 

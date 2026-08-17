@@ -1,6 +1,7 @@
 //@ edition: 2015
 //@ aux-build:edition-lint-paths.rs
 //@ run-rustfix
+//@ reference: paths.qualifiers.global-root.edition2018
 
 #![deny(absolute_paths_not_starting_with_crate)]
 #![allow(unused)]

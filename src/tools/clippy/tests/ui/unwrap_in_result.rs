@@ -1,5 +1,5 @@
 #![warn(clippy::unwrap_in_result)]
-#![allow(clippy::ok_expect)]
+#![expect(clippy::ok_expect)]
 
 struct A;
 

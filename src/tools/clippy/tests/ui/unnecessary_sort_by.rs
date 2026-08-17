@@ -1,4 +1,5 @@
-#![allow(clippy::stable_sort_primitive, clippy::useless_vec)]
+#![warn(clippy::unnecessary_sort_by)]
+#![expect(clippy::useless_vec)]
 
 use std::cell::Ref;
 

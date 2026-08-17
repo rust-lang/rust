@@ -1,17 +1,17 @@
 error[E0405]: cannot find trait `B` in this scope
-  --> $DIR/ice-generics-of-crate-root-152335.rs:27:43
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:43
    |
 LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    |                                           ^ not found in this scope
 
 error[E0601]: `main` function not found in crate `ice_generics_of_crate_root_152335`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:57
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:57
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                                                         ^ consider adding a `main` function to `$DIR/ice-generics-of-crate-root-152335.rs`
 
 error[E0271]: type mismatch resolving `<Self as Super<ActuallySuper>>::Assoc == Self`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:27:5
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:5
    |
 LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `Self`, found type parameter `T`
@@ -21,7 +21,7 @@ LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:42
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              ---------   ^^^^^^     ^
@@ -29,13 +29,13 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              unsatisfied trait bound introduced here
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-generics-of-crate-root-152335.rs:27:5
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:5
    |
 LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:42
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |      -                                   ^^^^^^     ^
@@ -69,7 +69,7 @@ LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:42
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              ---------   ^^^^^^     ^
@@ -83,49 +83,7 @@ LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
-   |
-LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
-   |      -                                   ^^^^^^     ^
-   |      |
-   |      unsatisfied trait bound implicitly introduced here
-help: consider further restricting `Self`
-   |
-LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T> + Sized
-   |                                                  +++++++
-
-error[E0271]: type mismatch resolving `<Self as Super<ActuallySuper>>::Assoc == Self`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
-   |
-LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
-   | ------------------------------------------------
-   | |         |
-   | |         found type parameter
-   | expected type parameter
-...
-LL |     <Self as Mirror>::Assoc: Super,
-   |                              ^^^^^ expected type parameter `Self`, found type parameter `T`
-   |
-   = note: expected type parameter `Self`
-              found type parameter `T`
-   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
-note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
-   |
-LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
-   |                              ---------   ^^^^^^     ^
-   |                              |
-   |                              unsatisfied trait bound introduced here
-
-error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
-   |
-LL |     <Self as Mirror>::Assoc: Super,
-   |                              ^^^^^ doesn't have a size known at compile-time
-   |
-note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:42
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |      -                                   ^^^^^^     ^
@@ -137,7 +95,7 @@ LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T> + Sized
    |                                                  +++++++
 
 error[E0046]: not all trait items implemented, missing: `Assoc`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:1
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:1
    |
 LL |     type Assoc: ?Sized;
    |     ------------------ `Assoc` from trait
@@ -146,7 +104,7 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Assoc` in implementation
 
 error[E0271]: type mismatch resolving `<Self as Super<ActuallySuper>>::Assoc == Self`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:27:5
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:5
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
    | ------------------------------------------------
@@ -162,7 +120,7 @@ LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:42
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              ---------   ^^^^^^     ^
@@ -170,13 +128,13 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              unsatisfied trait bound introduced here
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-generics-of-crate-root-152335.rs:27:5
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:5
    |
 LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
+  --> $DIR/ice-generics-of-crate-root-152335.rs:34:42
    |
 LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |      -                                   ^^^^^^     ^
@@ -187,50 +145,7 @@ help: consider further restricting `Self`
 LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc where Self: Sized;
    |                                                     +++++++++++++++++
 
-error[E0271]: type mismatch resolving `<Self as Super<ActuallySuper>>::Assoc == Self`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
-   |
-LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
-   | ------------------------------------------------
-   | |         |
-   | |         found type parameter
-   | expected type parameter
-...
-LL |     <Self as Mirror>::Assoc: Super,
-   |                              ^^^^^ expected type parameter `Self`, found type parameter `T`
-   |
-   = note: expected type parameter `Self`
-              found type parameter `T`
-   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
-note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
-   |
-LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
-   |                              ---------   ^^^^^^     ^
-   |                              |
-   |                              unsatisfied trait bound introduced here
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
-   |
-LL |     <Self as Mirror>::Assoc: Super,
-   |                              ^^^^^ doesn't have a size known at compile-time
-   |
-note: required for `Self` to implement `Mirror`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
-   |
-LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
-   |      -                                   ^^^^^^     ^
-   |      |
-   |      unsatisfied trait bound implicitly introduced here
-help: consider further restricting `Self`
-   |
-LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc where Self: Sized;
-   |                                                     +++++++++++++++++
-
-error: aborting due to 14 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0038, E0046, E0271, E0277, E0405, E0601.
 For more information about an error, try `rustc --explain E0038`.

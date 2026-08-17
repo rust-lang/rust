@@ -18,8 +18,8 @@ use crate::solve::{
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCacheEntry, DebruijnIndex, Region,
-    RegionKind, TraitRef, search_graph,
+    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex, Region, RegionKind,
+    TraitRef, search_graph,
 };
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
@@ -30,7 +30,7 @@ pub trait Interner:
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
     + IrPrint<ty::TraitPredicate<Self>>
-    + IrPrint<ty::HostEffectPredicate<Self>>
+    + IrPrint<ty::HostEffectClause<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionPredicate<Self>>
@@ -204,11 +204,9 @@ pub trait Interner:
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
-    fn canonical_param_env_cache_get_or_insert<R>(
+    fn with_canonical_param_env_cache<R>(
         self,
-        param_env: Self::ParamEnv,
-        f: impl FnOnce() -> CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce(&mut CanonicalParamEnvCache<Self>) -> R,
     ) -> R;
 
     /// Useful for testing. If a cache entry is replaced, this should

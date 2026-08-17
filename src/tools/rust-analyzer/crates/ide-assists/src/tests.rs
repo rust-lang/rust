@@ -34,7 +34,6 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -56,7 +55,6 @@ pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: false,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -78,7 +76,6 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -100,7 +97,6 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -495,6 +491,35 @@ pub fn test_some_range(a: int) -> bool {
         Extract into...
         Replace if let with match
         Convert to guarded return
+    "#]]
+    .assert_eq(&expected);
+}
+
+#[test]
+fn assist_order_term_search_unknown_type() {
+    let (db, frange) = RootDatabase::with_range(
+        r#"
+//- minicore: todo, unimplemented
+fn foo(_: u32) -> i32 { 2 }
+fn main() {
+    let unknown;
+    let _: i32 = $0todo!()$0;
+}
+"#,
+    );
+
+    let assists = assists(
+        &db,
+        &TEST_CONFIG,
+        AssistResolveStrategy::None,
+        FileRange { file_id: frange.file_id.file_id(&db), range: frange.range },
+    );
+    let expected = labels(&assists);
+
+    expect![[r#"
+        Inline macro
+        Extract into...
+        Extract Module
     "#]]
     .assert_eq(&expected);
 }

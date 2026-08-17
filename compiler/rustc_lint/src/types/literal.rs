@@ -12,7 +12,7 @@ use rustc_span::{Span, Symbol};
 
 use crate::LateContext;
 use crate::context::LintContext;
-use crate::lints::{
+use crate::diagnostics::{
     OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
     OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
     RangeEndpointOutOfRange, SurrogateCharCast, TooLargeCharCast, UseInclusiveRange,

@@ -1,9 +1,10 @@
+use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::target::Target;
 use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Span, sym};
 
+use crate::attributes::diagnostic::gate_diagnostic_attr;
 use crate::attributes::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::OpaqueDoesNotExpectArgs;
@@ -22,11 +23,9 @@ impl AttributeParser for OpaqueParser {
         (
             &[sym::diagnostic, sym::opaque],
             template!(Word),
-            AttributeStability::Stable, // Unstable, stability checked manually in the parser
+            AttributeStability::Stable, // Unstable, stability checked manually below
             |this, cx, args| {
-                if !cx.features().diagnostic_opaque() {
-                    return;
-                }
+                gate_diagnostic_attr!(diagnostic_opaque);
                 this.parse(cx, args);
             },
         ),

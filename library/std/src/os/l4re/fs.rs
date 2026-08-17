@@ -21,7 +21,7 @@ pub trait MetadataExt {
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     ///
-    /// [`stat`]: struct@crate::os::linux::raw::stat
+    /// [`stat`]: struct@crate::os::l4re::raw::stat
     ///
     /// # Examples
     ///
@@ -29,7 +29,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -50,7 +50,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -68,7 +68,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -86,7 +86,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -104,7 +104,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -122,7 +122,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -140,7 +140,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -158,7 +158,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -179,7 +179,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -197,7 +197,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -217,7 +217,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -235,7 +235,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -255,7 +255,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -273,7 +273,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -293,7 +293,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -311,7 +311,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -329,7 +329,7 @@ pub trait MetadataExt {
     #[cfg_attr(not(target_os = "l4re"), doc = "```ignore (needs l4re)")]
     /// use std::fs;
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::l4re::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -345,7 +345,7 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
-        unsafe { &*(self.as_inner().as_inner() as *const libc::stat64 as *const raw::stat) }
+        unsafe { &*(self.as_inner().as_inner() as *const _ as *const raw::stat) }
     }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
@@ -372,22 +372,22 @@ impl MetadataExt for Metadata {
         self.as_inner().as_inner().st_size as u64
     }
     fn st_atime(&self) -> i64 {
-        self.as_inner().as_inner().st_atime as i64
+        self.as_inner().as_inner().st_atim.tv_sec as i64
     }
     fn st_atime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_atime_nsec as i64
+        self.as_inner().as_inner().st_atim.tv_nsec as i64
     }
     fn st_mtime(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime as i64
+        self.as_inner().as_inner().st_mtim.tv_sec as i64
     }
     fn st_mtime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime_nsec as i64
+        self.as_inner().as_inner().st_mtim.tv_nsec as i64
     }
     fn st_ctime(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime as i64
+        self.as_inner().as_inner().st_ctim.tv_sec as i64
     }
     fn st_ctime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime_nsec as i64
+        self.as_inner().as_inner().st_ctim.tv_nsec as i64
     }
     fn st_blksize(&self) -> u64 {
         self.as_inner().as_inner().st_blksize as u64

@@ -336,7 +336,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
         // then this code will be broken by the never type fallback change.
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
-        if unit_errors.is_empty()
+        if unit_errors.no_errors()
             && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
             && let [never_error, ..] = never_errors.as_mut_slice()
         {

@@ -8,11 +8,10 @@ error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that 
   --> $DIR/note-and-explain-ReVar-124973.rs:3:76
    |
 LL | async unsafe extern "C" fn multiple_named_lifetimes<'a, 'b>(_: u8, _: ...) {}
-   |                                                                           -^^
-   |                                                                           |
-   |                                                                           opaque type defined here
-   |
-   = note: hidden type `{async fn body of multiple_named_lifetimes<'a, 'b>()}` captures lifetime `'_`
+   | ---------------------------------------------------------------------------^^
+   | |                                                                         |
+   | |                                                                         opaque type defined here
+   | hidden type `{async fn body of multiple_named_lifetimes<'a, 'b>()}` captures the anonymous lifetime as defined here
 
 error: aborting due to 2 previous errors
 

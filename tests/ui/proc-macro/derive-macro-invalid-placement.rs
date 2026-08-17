@@ -1,6 +1,6 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/49934>
 
-#![feature(stmt_expr_attributes)]
+#![feature(stmt_expr_attributes, proc_macro_hygiene)]
 
 fn foo<#[derive(Debug)] T>() { //~ ERROR expected non-macro attribute, found attribute macro
     match 0 {

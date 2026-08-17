@@ -623,10 +623,6 @@ config_data! {
         /// Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
         assist_preferSelf: bool = false,
 
-        /// Enable borrow checking for term search code assists. If set to false, also there will be
-        /// more suggestions, but some of them may not borrow-check.
-        assist_termSearch_borrowcheck: bool = true,
-
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
 
@@ -1868,7 +1864,6 @@ impl Config {
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
-            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             code_action_grouping: self.code_action_group(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
@@ -1998,7 +1993,6 @@ impl Config {
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
-            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
@@ -4034,7 +4028,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
                 "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                "The command will be executed once with the opened project as the working directory."
+                "The command will be executed once with the opened project as the working directory.\
+                \n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different \
+                or even only different than the default. Enabling this is not recommended."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {

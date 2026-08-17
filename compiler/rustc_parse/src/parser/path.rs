@@ -17,8 +17,8 @@ use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::diagnostics::{
     self, AttributeOnEmptyType, AttributeOnGenericArg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, FnPathFoundNamedParams, PathFoundAttributeInParams,
-    PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
+    ConstGenericWithoutBracesSugg, PathFoundAttributeInParams, PathFoundCVariadicParams,
+    PathSingleColon, PathTripleColon,
 };
 use crate::exp;
 use crate::parser::{
@@ -407,23 +407,19 @@ impl<'a> Parser<'a> {
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, false, false);
-                        param.map(move |param| {
-                            if !matches!(param.pat.kind, PatKind::Missing) {
-                                dcx.emit_err(FnPathFoundNamedParams {
-                                    named_param_span: param.pat.span,
-                                });
-                            }
-                            if matches!(param.ty.kind, TyKind::CVarArgs) {
-                                dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
-                            }
-                            if !param.attrs.is_empty() {
-                                dcx.emit_err(PathFoundAttributeInParams {
-                                    span: param.attrs[0].span,
-                                });
-                            }
-                            param.ty
-                        })
+                        let param = p.parse_param_general(&mode, false, false)?;
+                        if !matches!(param.pat.kind, PatKind::Missing) {
+                            self.psess
+                                .gated_spans
+                                .gate(sym::named_fn_trait_parameters, param.pat.span);
+                        }
+                        if matches!(param.ty.kind, TyKind::CVarArgs) {
+                            dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
+                        }
+                        if !param.attrs.is_empty() {
+                            dcx.emit_err(PathFoundAttributeInParams { span: param.attrs[0].span });
+                        }
+                        Ok(param)
                     });
 
                     let (inputs, _) = match parse_params_result {
@@ -892,15 +888,13 @@ impl<'a> Parser<'a> {
     /// wrapped in braces.
     pub(super) fn parse_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
         let start = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-        let (expr, _) =
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
-                err.span_label(
-                    start.shrink_to_lo(),
-                    "while parsing a const generic argument starting here",
-                );
-                err
-            })?;
+        let expr = self.parse_expr_res(Restrictions::CONST_EXPR).map_err(|mut err| {
+            err.span_label(
+                start.shrink_to_lo(),
+                "while parsing a const generic argument starting here",
+            );
+            err
+        })?;
         if !self.expr_is_valid_const_arg(&expr) {
             return Err(self.dcx().create_err(ConstGenericWithoutBraces {
                 span: expr.span,
@@ -990,9 +984,8 @@ impl<'a> Parser<'a> {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();
-            let attrs = self.parse_outer_attributes()?;
-            match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
-                Ok((expr, _)) => {
+            match self.parse_expr_res(Restrictions::CONST_EXPR) {
+                Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
                         expr.span,

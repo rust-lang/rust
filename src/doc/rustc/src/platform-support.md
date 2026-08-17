@@ -273,6 +273,7 @@ target | std | host | notes
 [`aarch64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | ARM64 HelenOS
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
+[`aarch64-unknown-l4re-uclibc`](platform-support/l4re.md) | ✓ |  | ARM64 L4Re with uclibc
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-linux-pauthtest`](platform-support/aarch64-unknown-linux-pauthtest.md) | ✓ | ✓ | ARM64 PAC ELF ABI
 [`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | ARM64 Managarm
@@ -329,8 +330,8 @@ target | std | host | notes
 [`armv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`armv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
 [`avr-none`](platform-support/avr-none.md) | * |  | AVR; requires `-Zbuild-std=core` and `-Ctarget-cpu=...`
-`bpfeb-unknown-none` | * |  | BPF (big endian)
-`bpfel-unknown-none` | * |  | BPF (little endian)
+[`bpfeb-unknown-none`](platform-support/bpf-unknown-none.md) | * |  | BPF (big endian)
+[`bpfel-unknown-none`](platform-support/bpf-unknown-none.md) | * |  | BPF (little endian)
 [`csky-unknown-linux-gnuabiv2`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux (little endian)
 [`csky-unknown-linux-gnuabiv2hf`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 [`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ |  | Hexagon Linux with musl 1.2.5
@@ -459,7 +460,7 @@ target | std | host | notes
 [`x86_64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | x86_64 Hermit
 [`x86_64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | x86_64 (amd64) HelenOS
 [`x86_64-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 64-bit GNU/Hurd
-`x86_64-unknown-l4re-uclibc` | ? |  |
+[`x86_64-unknown-l4re-uclibc`](platform-support/l4re.md) | ✓ |  | x86_64 L4Re with uclibc
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
 [`x86_64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | x86_64 Managarm
 [`x86_64-unknown-motor`](platform-support/motor.md) | ✓ |  | x86_64 Motor OS

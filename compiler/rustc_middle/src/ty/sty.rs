@@ -10,7 +10,7 @@ use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
@@ -770,7 +770,7 @@ impl<'tcx> Ty<'tcx> {
                 .map(|principal| {
                     tcx.associated_items(principal.def_id())
                         .in_definition_order()
-                        .filter(|item| item.is_type() || item.is_type_const())
+                        .filter(|item| item.can_have_equality_constraint(tcx))
                         .filter(|item| !item.is_impl_trait_in_trait())
                         .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                         .count()
@@ -1188,6 +1188,15 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_adt(self) -> bool {
         matches!(self.kind(), Adt(..))
+    }
+
+    #[inline]
+    pub fn is_self_param(self) -> bool {
+        if let Param(param) = self.kind() {
+            param.index == 0 && param.name == kw::SelfUpper
+        } else {
+            false
+        }
     }
 
     #[inline]
@@ -1725,7 +1734,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
-                    tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
+                    tcx.require_lang_item(LangItem::DiscriminantKind, DUMMY_SP),
                 );
                 Ty::new_projection_from_args(
                     tcx,

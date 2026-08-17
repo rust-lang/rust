@@ -209,7 +209,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
             tcx,
             cause,
             env,
-            ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef::new(tcx, destruct_trait, [field_ty]),
                 constness: ty::BoundConstness::Maybe,
             }),
@@ -312,7 +312,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // obligation cause code, and perhaps some custom logic in `report_region_errors`.
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         let mut guar = None;
         let mut root_predicates = FxHashSet::default();
         for error in errors {

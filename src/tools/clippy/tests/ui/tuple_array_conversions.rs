@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::no_effect, clippy::useless_vec, unused)]
 #![warn(clippy::tuple_array_conversions)]
+#![expect(clippy::no_effect, clippy::useless_vec)]
 
 #[macro_use]
 extern crate proc_macros;

@@ -1,13 +1,12 @@
 #![feature(f128)]
 #![feature(f16)]
-#![allow(
-    dead_code,
-    clippy::borrow_as_ptr,
-    unnecessary_transmutes,
-    integer_to_ptr_transmutes,
-    clippy::needless_lifetimes,
-    clippy::missing_transmute_annotations
+#![warn(
+    clippy::crosspointer_transmute,
+    clippy::transmute_bytes_to_str,
+    clippy::transmute_int_to_bool,
+    clippy::useless_transmute
 )]
+#![expect(integer_to_ptr_transmutes, clippy::needless_lifetimes)]
 //@no-rustfix
 extern crate core;
 
@@ -23,7 +22,6 @@ fn my_vec() -> MyVec<i32> {
 }
 
 #[allow(clippy::needless_lifetimes, clippy::transmute_ptr_to_ptr)]
-#[warn(clippy::useless_transmute)]
 unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     unsafe {
         // FIXME: should lint
@@ -42,7 +40,6 @@ unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     }
 }
 
-#[warn(clippy::useless_transmute)]
 fn useless() {
     unsafe {
         let _: Vec<i32> = core::mem::transmute(my_vec());
@@ -88,7 +85,6 @@ fn useless() {
 
 struct Usize(usize);
 
-#[warn(clippy::crosspointer_transmute)]
 fn crosspointer() {
     let mut int: Usize = Usize(0);
     let int_const_ptr: *const Usize = &int as *const Usize;
@@ -109,7 +105,6 @@ fn crosspointer() {
     }
 }
 
-#[warn(clippy::transmute_int_to_bool)]
 fn int_to_bool() {
     let _: bool = unsafe { std::mem::transmute(0_u8) };
     //~^ transmute_int_to_bool

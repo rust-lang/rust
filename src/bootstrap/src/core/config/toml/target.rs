@@ -10,15 +10,16 @@
 //!   build target, which is is stored in the main `Config` structure.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
+use crate::core::backend::CodegenBackendKind;
+use crate::core::config::macros::define_config;
 use crate::core::config::{
-    Allocator, CompilerBuiltins, CompressDebuginfo, LlvmLibunwind, Merge, ReplaceOpt,
-    SplitDebuginfo, StringOrBool,
+    Allocator, CompilerBuiltins, CompressDebuginfo, LlvmLibunwind, SplitDebuginfo, StringOrBool,
 };
-use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of how each build target is configured.

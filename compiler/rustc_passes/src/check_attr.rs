@@ -15,6 +15,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     OptimizeAttr, ReprAttr,
@@ -24,7 +25,7 @@ use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
-    GenericParamKind, HirId, Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem,
+    GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
     find_attr,
 };
 use rustc_macros::Diagnostic;
@@ -43,10 +44,10 @@ use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
-use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::{ObligationCtxt, TraitErrors};
 
 use crate::diagnostics;
 
@@ -288,7 +289,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
-            AttributeKind::Path(..) => (),
+            AttributeKind::Path(_, span) => self.check_path(*span, hir_id),
             AttributeKind::PatternComplexityLimit { .. } => (),
             AttributeKind::PinV2(..) => (),
             AttributeKind::PreludeImport => (),
@@ -409,6 +410,53 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::WindowsSubsystem(..) => (),
             // tidy-alphabetical-end
         }
+    }
+
+    fn check_path(&self, span: Span, hir_id: HirId) {
+        let Node::Item(item) = self.tcx.hir_node(hir_id) else {
+            return;
+        };
+
+        let ItemKind::Mod(_, module) = &item.kind else {
+            return;
+        };
+
+        if item.span == module.spans.inner_span || !item.span.contains(module.spans.inner_span) {
+            return;
+        }
+
+        // Do not warn when a nested module uses `#[path]` or is out-of-line,
+        // because the attribute may affect nested module path resolution.
+        if self.has_nested_module_path_dependency(module) {
+            return;
+        }
+
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            span,
+            diagnostics::Unused {
+                attr_span: span,
+                note: diagnostics::UnusedNote::PathOnInlineModule,
+            },
+        );
+    }
+
+    fn has_nested_module_path_dependency(&self, module: &Mod<'tcx>) -> bool {
+        module.item_ids.iter().any(|item_id| {
+            let child = self.tcx.hir_item(*item_id);
+
+            let ItemKind::Mod(_, child_module) = &child.kind else {
+                return false;
+            };
+
+            let is_out_of_line = child.span == child_module.spans.inner_span
+                || !child.span.contains(child_module.spans.inner_span);
+
+            let has_path_attr = find_attr!(self.tcx, child.hir_id(), Path(..));
+
+            is_out_of_line || has_path_attr || self.has_nested_module_path_dependency(child_module)
+        })
     }
 
     fn check_rustc_must_implement_one_of(
@@ -976,18 +1024,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         };
-        match item_kind {
-            Some(ItemKind::Mod(_, module)) => {
-                if !module.item_ids.is_empty() {
-                    self.dcx()
-                        .emit_err(diagnostics::DocKeywordAttributeEmptyMod { span, attr_name });
-                    return;
-                }
-            }
-            _ => {
-                self.dcx().emit_err(diagnostics::DocKeywordAttributeNotMod { span, attr_name });
-                return;
-            }
+        if let Some(ItemKind::Const(ident, _gen, _ty, _rhs)) = item_kind
+            && ident.name == kw::Underscore
+        {
+        } else {
+            self.dcx().emit_err(diagnostics::DocKeywordAttributeNotAnonConst { span, attr_name });
         }
     }
 
@@ -1083,7 +1124,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let hir::ItemKind::Impl(impl_) = item.kind
             && let Some(of_trait) = impl_.of_trait
             && let Some(def_id) = of_trait.trait_ref.trait_def_id()
-            && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
+            && self.tcx.is_lang_item(def_id, LangItem::Drop)
         {
             return;
         }
@@ -1429,7 +1470,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         // proc macro is not WF.
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             return;
         }
 
@@ -1496,7 +1537,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
+        if let TraitErrors::HasErrors(errors) = errors {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
         }

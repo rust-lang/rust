@@ -43,7 +43,7 @@ pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
         });
         Obligation::new(ecx.tcx.tcx, ObligationCause::dummy(), param_env, pred)
     }));
-    let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+    let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().no_errors();
     // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
     let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
 

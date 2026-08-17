@@ -4,6 +4,8 @@ set -ex
 
 # Run a subset of tests. Used to run tests in parallel in multiple jobs.
 
+# NOTE: keep in sync with `aarch64-apple*-{1,2}` jobs.
+
 # When this job partition is run as part of PR CI, skip tidy to allow revealing more failures. The
 # dedicated `tidy` job failing won't block other PR CI jobs from completing, and so tidy failures
 # shouldn't inhibit revealing other failures in PR CI jobs.

@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::path::Component::Prefix;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -15,7 +16,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort, PResult,
     TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
@@ -371,11 +372,11 @@ pub struct Session {
     /// Architecture to use for interpreting asm!.
     pub asm_arch: Option<InlineAsmArch>,
 
-    /// Set of enabled features for the current target.
-    pub target_features: FxIndexSet<Symbol>,
-
-    /// Set of enabled features for the current target, including unstable ones.
-    pub unstable_target_features: FxIndexSet<Symbol>,
+    /// Set of actually enabled features for the current target, including ones that are not
+    /// in `cfg(target_feature)` because they are unstable or internal-only.
+    /// This is used by the compiler itself when it needs to know which target features are actually
+    /// going to be enabled in the backend.
+    pub internal_target_features: FxIndexSet<Symbol>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -770,6 +771,41 @@ impl Session {
         match self.lint_store {
             Some(ref lint_store) => lint_store.lint_groups_iter(),
             None => Box::new(std::iter::empty()),
+        }
+    }
+
+    /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
+    ///
+    /// This unifies the logic used for resolving `include_*!` and debugger visualizers.
+    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
+        let path = path.into();
+
+        // Relative paths are resolved relative to the file in which they are found
+        // after macro expansion (that is, they are unhygienic).
+        if !path.is_absolute() {
+            let callsite = span.source_callsite();
+            let source_map = self.source_map();
+            let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path()
+            else {
+                return Err(self.dcx().create_err(diagnostics::ResolveRelativePath {
+                    span,
+                    path: source_map
+                        .filename_for_diagnostics(&source_map.span_to_filename(callsite))
+                        .to_string(),
+                }));
+            };
+            base_path.pop();
+            base_path.push(path);
+            Ok(base_path)
+        } else {
+            // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
+            // which can happen when `concat!` is used to join paths.
+            match path.components().next() {
+                Some(Prefix(prefix)) if prefix.kind().is_verbatim() => {
+                    Ok(path.components().collect())
+                }
+                _ => Ok(path),
+            }
         }
     }
 }
@@ -1341,8 +1377,7 @@ pub fn build_session(
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
-        target_features: Default::default(),
-        unstable_target_features: Default::default(),
+        internal_target_features: Default::default(),
         cfg_version,
         using_internal_features,
         env_depinfo: Default::default(),

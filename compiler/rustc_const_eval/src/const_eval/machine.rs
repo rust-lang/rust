@@ -5,8 +5,9 @@ use std::{fmt, mem};
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, find_attr};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -603,6 +604,11 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             sym::type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
+            }
+
+            sym::type_id_is_signed => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_scalar(Scalar::from_bool(ty.is_signed()), dest)?;
             }
 
             sym::size_of_type_id => {

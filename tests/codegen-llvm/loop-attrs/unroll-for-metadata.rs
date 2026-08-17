@@ -15,7 +15,7 @@ unsafe extern "C" {
 pub fn unroll_hint() {
     // CHECK-LABEL: @unroll_hint
     // CHECK: !llvm.loop ![[HINT:[0-9]+]]
-    #[unroll]
+    #[rustc_unroll]
     for _ in 0..10 {
         unsafe { maybe_has_side_effect() }
     }
@@ -25,7 +25,7 @@ pub fn unroll_hint() {
 pub fn unroll_full() {
     // CHECK-LABEL: @unroll_full
     // CHECK: !llvm.loop ![[FULL:[0-9]+]]
-    #[unroll(full)]
+    #[rustc_unroll(full)]
     for _ in 0..10 {
         unsafe { maybe_has_side_effect() }
     }
@@ -35,7 +35,7 @@ pub fn unroll_full() {
 pub fn unroll_never() {
     // CHECK-LABEL: @unroll_never
     // CHECK: !llvm.loop ![[DISABLE:[0-9]+]]
-    #[unroll(never)]
+    #[rustc_unroll(never)]
     for _ in 0..10 {
         unsafe { maybe_has_side_effect() }
     }
@@ -45,7 +45,7 @@ pub fn unroll_never() {
 pub fn unroll_count() {
     // CHECK-LABEL: @unroll_count
     // CHECK: !llvm.loop ![[COUNT:[0-9]+]]
-    #[unroll(5)]
+    #[rustc_unroll(5)]
     for _ in 0..10 {
         unsafe { maybe_has_side_effect() }
     }

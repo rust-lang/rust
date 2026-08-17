@@ -26,13 +26,6 @@ pub enum _Unwind_Context {}
     all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
     link(name = "unwind", kind = "static", modifiers = "-bundle")
 )]
-// Explicitly link the `unwind` library on WASI targets.
-//
-// This is provided in the self-contained sysroot for WASI targets by default.
-// Note that Rust defaults to `-Cpanic=abort` on WASI targets meaning that this
-// doesn't end up getting used by default, but this does mean that with
-// `-Zbuild-std` this'll automatically link it in.
-#[cfg_attr(target_os = "wasi", link(name = "unwind"))]
 unsafe extern "C-unwind" {
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }

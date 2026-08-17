@@ -357,3 +357,29 @@ fn wrongly_unmangled_macros() {
         0
     };
 }
+
+#[clippy::msrv = "1.46.0"]
+pub const fn const_msrv_too_low(mut x: u32) -> u32 {
+    if x != 0 {
+        x -= 1;
+    }
+    x
+}
+
+#[clippy::msrv = "1.47.0"]
+pub const fn const_msrv_ok(mut x: u32) -> u32 {
+    if x != 0 {
+        //~^ implicit_saturating_sub
+        x -= 1;
+    }
+    x
+}
+
+#[clippy::msrv = "1.46.0"]
+pub fn nonconst_msrv_low(mut x: u32) -> u32 {
+    if x != 0 {
+        //~^ implicit_saturating_sub
+        x -= 1;
+    }
+    x
+}

@@ -1,4 +1,4 @@
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use rustc_hir::{self as hir, HirId, HirIdSet, intravisit};
 use rustc_lint::LateContext;
 use rustc_middle::ty;

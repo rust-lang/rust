@@ -1,11 +1,10 @@
 //! Deeply normalize types using the old trait solver.
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
 use rustc_middle::span_bug;
@@ -14,6 +13,7 @@ use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
     TypeVisitableExt, TypingMode, Unnormalized,
 };
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use super::{BoundVarReplacer, PlaceholderReplacer, SelectionContext, project};
@@ -58,7 +58,7 @@ impl<'tcx> At<'_, 'tcx> {
         self,
         value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<T, Vec<E>>
+    ) -> Result<T, ThinVec<E>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -79,14 +79,15 @@ impl<'tcx> At<'_, 'tcx> {
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
-            if errors.is_empty() {
-                Ok(value)
-            } else {
-                // Drop pending obligations, since deep normalization may happen
-                // in a loop and we don't want to trigger the assertion on the next
-                // iteration due to pending ambiguous obligations we've left over.
-                let _ = fulfill_cx.collect_remaining_errors(self.infcx);
-                Err(errors)
+            match errors {
+                TraitErrors::NoErrors => Ok(value),
+                TraitErrors::HasErrors(errors) => {
+                    // Drop pending obligations, since deep normalization may happen
+                    // in a loop and we don't want to trigger the assertion on the next
+                    // iteration due to pending ambiguous obligations we've left over.
+                    let _ = fulfill_cx.collect_remaining_errors(self.infcx);
+                    Err(errors)
+                }
             }
         }
     }
@@ -122,9 +123,7 @@ where
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| {
-        AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization())
-    });
+    let result = AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization());
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result

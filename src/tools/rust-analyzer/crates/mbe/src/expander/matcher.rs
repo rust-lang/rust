@@ -842,11 +842,14 @@ fn match_meta_var<'t>(
                 _ => unreachable!(),
             }
             .err();
-            let tt_result = input.from_savepoint(savepoint);
-            return ValueResult {
-                value: Fragment::Tokens { tree: tt_result, origin: TokensOrigin::Raw },
-                err,
+            let value = match err {
+                Some(_) => Fragment::Empty,
+                None => Fragment::Tokens {
+                    tree: input.from_savepoint(savepoint),
+                    origin: TokensOrigin::Raw,
+                },
             };
+            return ValueResult { value, err };
         }
         MetaVarKind::Ty => (parser::PrefixEntryPoint::Ty, TokensOrigin::Ast),
         MetaVarKind::Pat => (parser::PrefixEntryPoint::PatTop, TokensOrigin::Ast),

@@ -1,12 +1,6 @@
 #![feature(box_patterns)]
 #![warn(clippy::unnested_or_patterns)]
-#![allow(
-    clippy::cognitive_complexity,
-    clippy::match_ref_pats,
-    clippy::needless_ifs,
-    clippy::manual_range_patterns
-)]
-#![allow(unreachable_patterns, irrefutable_let_patterns, unused_variables)]
+#![allow(clippy::manual_range_patterns)]
 
 fn main() {
     if let Some(Some(0)) | Some(Some(1)) = None {}

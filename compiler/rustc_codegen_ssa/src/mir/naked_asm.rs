@@ -151,7 +151,7 @@ fn prefix_and_suffix<'tcx>(
     let asm_binary_format = &tcx.sess.target.binary_format;
 
     let is_arm = tcx.sess.target.arch == Arch::Arm;
-    let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
+    let is_thumb = tcx.sess.internal_target_features.contains(&sym::thumb_mode);
     let function_sections =
         tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections);
 

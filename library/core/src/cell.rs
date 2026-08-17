@@ -255,7 +255,7 @@ use crate::marker::{Destruct, PhantomData, Unsize};
 use crate::mem::{self, ManuallyDrop};
 use crate::ops::{self, CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
-use crate::pin::PinCoerceUnsized;
+use crate::pin::PinSafePointer;
 use crate::ptr::{self, NonNull};
 use crate::range;
 
@@ -704,7 +704,7 @@ impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
 impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[Cell<T>] {
-        &*self.as_array_of_cells()
+        self.as_array_of_cells()
     }
 }
 
@@ -2710,8 +2710,14 @@ fn assert_coerce_unsized(
     let _: RefCell<&dyn Send> = d;
 }
 
+// The implementations of Deref/DerefMut are not malicious, so we can allow the
+// user to perform unsizing coercions with `Pin<Ref<'b, T>>` pointers if they
+// can manage to create one.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
+unsafe impl<'b, T: ?Sized> PinSafePointer for Ref<'b, T> {}
 
+// The implementations of Deref/DerefMut are not malicious, so we can allow the
+// user to perform unsizing coercions with `Pin<RefMut<'b, T>>` pointers if they
+// can manage to create one.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<'b, T: ?Sized> PinCoerceUnsized for RefMut<'b, T> {}
+unsafe impl<'b, T: ?Sized> PinSafePointer for RefMut<'b, T> {}

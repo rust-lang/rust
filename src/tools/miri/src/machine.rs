@@ -12,12 +12,14 @@ use rand::rngs::StdRng;
 use rand::{RngExt, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
+use rustc_ast::Mutability;
 use rustc_ast::expand::allocator::{self, SpecialAllocatorMethod};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_hir::attrs::{InlineAttr, Linkage};
+use rustc_hir::def::DefKind;
 use rustc_log::tracing;
 use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
@@ -566,7 +568,7 @@ pub struct MiriMachine<'tcx> {
 
     /// Cache of `Instance` exported under the given `Symbol` name.
     /// `None` means no `Instance` exported under the given name is found.
-    pub(crate) exported_symbols_cache: FxHashMap<Symbol, Option<Instance<'tcx>>>,
+    pub(crate) exported_symbols_cache: RefCell<FxHashMap<Symbol, Option<Instance<'tcx>>>>,
 
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
@@ -776,7 +778,7 @@ impl<'tcx> MiriMachine<'tcx> {
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
-            exported_symbols_cache: FxHashMap::default(),
+            exported_symbols_cache: RefCell::new(FxHashMap::default()),
             backtrace_style: config.backtrace_style,
             user_relevant_crates,
             extern_statics: FxHashMap::default(),
@@ -1203,14 +1205,14 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if attrs
             .target_features
             .iter()
-            .any(|feature| !ecx.tcx.sess.target_features.contains(&feature.name))
+            .any(|feature| !ecx.tcx.sess.internal_target_features.contains(&feature.name))
         {
             let unavailable = attrs
                 .target_features
                 .iter()
                 .filter(|&feature| {
                     feature.kind != TargetFeatureKind::Implied
-                        && !ecx.tcx.sess.target_features.contains(&feature.name)
+                        && !ecx.tcx.sess.internal_target_features.contains(&feature.name)
                 })
                 .fold(String::new(), |mut s, feature| {
                     if !s.is_empty() {
@@ -1462,6 +1464,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             Some(_) => ecx.machine.extern_statics_imports.get(&link_name),
         };
         if let Some(&ptr) = ptr {
+            ecx.check_shim_symbol_clash(link_name)?;
             // Various parts of the engine rely on `get_alloc_info` for size and alignment
             // information. That uses the type information of this static.
             // Make sure it matches the Miri allocation for this.
@@ -1503,7 +1506,61 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                     .expect("`missing_weak_symbol` should have been initialized"),
             )
         } else {
-            throw_unsup_format!("extern static `{link_name}` is not supported by Miri")
+            // Look for a Rust static with this symbol name in the crate graph.
+            let Some(instance) = ecx.lookup_exported_static(link_name)? else {
+                throw_unsup_format!("extern static `{link_name}` is not supported by Miri");
+            };
+            // Evaluate the static to get its allocation.
+            let place = ecx.eval_global(instance)?;
+            let static_ptr = place.ptr().into_pointer_or_addr().unwrap();
+            // Validate the allocation matches the declared size and alignment.
+            let alloc_id = static_ptr.provenance.get_alloc_id().unwrap();
+            let info = ecx.get_alloc_info(alloc_id);
+            if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
+                throw_ub_format!(
+                    "extern static `{link_name}` has been declared as `{krate}::{name}` \
+                    with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
+                    but the exported static with that name has a size of {shim_size} bytes and \
+                    alignment of {shim_align} bytes",
+                    name = ecx.tcx.def_path_str(def_id),
+                    krate = ecx.tcx.crate_name(def_id.krate),
+                    decl_size = extern_decl_layout.size.bytes(),
+                    decl_align = extern_decl_layout.align.bytes(),
+                    shim_size = info.size.bytes(),
+                    shim_align = info.align.bytes(),
+                )
+            }
+            // Check that the mutability of the declared static matches that of the backing.
+            // If the backing static can be modified (because it is a `static mut`, or because
+            // it is a `static` whose type has interior mutability) while the declaration here
+            // is a non-mut `static` with a `Freeze` type, then the compiler's assumption that
+            // the value never changes may be violated, so this may cause UB.
+            // This is somehow defensive, as the allocation might be mutable but no mutation
+            // ever happens, but this is probably the most precise thing we can do.
+            // Specially, the second case is very defensive and we may be able to lift it.
+            let DefKind::Static { mutability, .. } = ecx.tcx.def_kind(def_id) else {
+                unreachable!("`{def_id:?}` is not a static");
+            };
+            let decl_is_mut =
+                !(mutability == Mutability::Not && ecx.type_is_freeze(extern_decl_layout.ty));
+            let backing_is_mut = ecx.get_alloc_mutability(alloc_id)? == Mutability::Mut;
+            if !decl_is_mut && backing_is_mut {
+                throw_ub_format!(
+                    "extern static `{krate}::{name}` is declared as an immutable `static`, \
+                    but the backing static is mutable",
+                    name = ecx.tcx.def_path_str(def_id),
+                    krate = ecx.tcx.crate_name(def_id.krate),
+                )
+            }
+            if decl_is_mut && !backing_is_mut {
+                throw_ub_format!(
+                    "extern static `{krate}::{name}` is declared as an mutable `static`, \
+                    but the backing static is immutable",
+                    name = ecx.tcx.def_path_str(def_id),
+                    krate = ecx.tcx.crate_name(def_id.krate),
+                )
+            }
+            interp_ok(static_ptr)
         }
     }
 

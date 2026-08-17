@@ -11,7 +11,7 @@ use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
@@ -366,11 +366,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 Limit(0) => Limit(2),
                 limit => limit * 2,
             };
-            let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
-                span,
-                ty,
-                suggested_limit,
-            });
+            let reported =
+                tcx.dcx().emit_err(crate::diagnostics::RecursionLimitReachedSizeSkeleton {
+                    span,
+                    ty,
+                    suggested_limit,
+                });
             return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
         }
 
@@ -1210,6 +1211,20 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    /// Does this type have a layout compatible with C `_Complex`?
+    ///
+    /// The value must be of type `core::num::Complex<T>` where `T` is numeric.
+    fn is_complex_number(this: TyAndLayout<'tcx>, cx: &C) -> bool {
+        let ty::Adt(def, generic_args) = this.ty.kind() else { return false };
+
+        if !cx.tcx().is_lang_item(def.did(), LangItem::Complex) {
+            return false;
+        }
+
+        // Only Complex<{ float }> and Complex<{ integer }> have special layout.
+        generic_args.type_at(0).is_numeric()
     }
 
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {

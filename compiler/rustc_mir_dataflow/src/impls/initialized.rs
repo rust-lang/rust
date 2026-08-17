@@ -391,14 +391,15 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn get_terminator_edges<'mir>(
         &self,
-        state: &mut Self::Domain,
+        state: &Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
-        location: Location,
+        _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        // Note: `edges` must be computed first because `drop_flag_effects_for_location` can change
-        // the result of `is_unwind_dead`.
+        // Note: this relies on `get_terminator_edges` being called before
+        // `apply_primary_terminator_effect` because the result of `is_unwind_dead` is affected by
+        // the `drop_flag_effects_for_location` in `apply_primary_terminator_effect`.
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
             && let mir::TerminatorKind::Drop { target, unwind, place, replace: _, drop: _ } =
@@ -408,10 +409,18 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         {
             edges = TerminatorEdges::Single(target);
         }
+        edges
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        location: Location,
+    ) {
         drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
             Self::update_bits(state, path, s)
         });
-        edges
     }
 
     fn apply_call_return_effect(
@@ -514,15 +523,12 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         // mutable borrow occurs. Places cannot become uninitialized through a mutable reference.
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn get_terminator_edges<'mir>(
         &self,
-        state: &mut Self::Domain,
+        _state: &Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(state, path, s)
-        });
         if self.skip_unreachable_unwind.contains(location.block) {
             let mir::TerminatorKind::Drop { target, unwind, .. } = terminator.kind else { bug!() };
             assert_matches!(unwind, mir::UnwindAction::Cleanup(_));
@@ -530,6 +536,17 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         } else {
             terminator.edges()
         }
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        location: Location,
+    ) {
+        drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
+            Self::update_bits(state, path, s)
+        });
     }
 
     fn apply_call_return_effect(
@@ -633,13 +650,13 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, state, terminator), level = "debug")]
-    fn apply_primary_terminator_effect<'mir>(
+    #[instrument(skip(self, state, _terminator), level = "debug")]
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         let move_data = self.move_data();
         let init_loc_map = &move_data.init_loc_map;
 
@@ -652,7 +669,6 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
                 None
             }
         }));
-        terminator.edges()
     }
 
     fn apply_call_return_effect(

@@ -1713,63 +1713,6 @@ unsafe extern "C" {
     ) -> &'a Value;
 }
 
-#[cfg(feature = "llvm_offload")]
-pub(crate) use self::Offload::*;
-
-#[cfg(feature = "llvm_offload")]
-mod Offload {
-    use super::*;
-    unsafe extern "C" {
-        /// Processes the module and writes it in an offload compatible way into a "device.bin" file.
-        pub(crate) fn LLVMRustBundleImages<'a>(
-            M: &'a Module,
-            TM: &'a TargetMachine,
-            device_bin: *const c_char,
-        ) -> bool;
-        pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
-            _M: &'a Module,
-            _device_bin: *const c_char,
-        ) -> bool;
-        pub(crate) fn LLVMRustOffloadMapper<'a>(
-            OldFn: &'a Value,
-            NewFn: &'a Value,
-            RebuiltArgs: *const &Value,
-        );
-    }
-}
-
-#[cfg(not(feature = "llvm_offload"))]
-pub(crate) use self::Offload_fallback::*;
-
-#[cfg(not(feature = "llvm_offload"))]
-mod Offload_fallback {
-    use super::*;
-    /// Processes the module and writes it in an offload compatible way into a "device.bin" file.
-    /// Marked as unsafe to match the real offload wrapper which is unsafe due to FFI.
-    #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustBundleImages<'a>(
-        _M: &'a Module,
-        _TM: &'a TargetMachine,
-        _device_bin: *const c_char,
-    ) -> bool {
-        unimplemented!("This rustc version was not built with LLVM Offload support!");
-    }
-    pub(crate) unsafe fn LLVMRustOffloadEmbedBufferInModule<'a>(
-        _M: &'a Module,
-        _device_bin: *const c_char,
-    ) -> bool {
-        unimplemented!("This rustc version was not built with LLVM Offload support!");
-    }
-    #[allow(unused_unsafe)]
-    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(
-        _OldFn: &'a Value,
-        _NewFn: &'a Value,
-        _RebuiltArgs: *const &Value,
-    ) {
-        unimplemented!("This rustc version was not built with LLVM Offload support!");
-    }
-}
-
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.
 // Try to keep these in the same order as in `llvm/include/llvm-c/DebugInfo.h`.
 //

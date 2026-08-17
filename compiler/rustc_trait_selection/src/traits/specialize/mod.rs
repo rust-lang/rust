@@ -167,7 +167,7 @@ fn fulfill_implication<'tcx>(
     let ocx = ObligationCtxt::new(infcx);
     let source_trait_ref = ocx.normalize(cause, param_env, Unnormalized::new_wip(source_trait_ref));
 
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         infcx.dcx().span_delayed_bug(
             infcx.tcx.def_span(source_impl),
             format!("failed to fully normalize {source_trait_ref}"),
@@ -198,7 +198,7 @@ fn fulfill_implication<'tcx>(
     ocx.register_obligations(obligations);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         // no dice!
         debug!(
             "fulfill_implication: for impls on {:?} and {:?}, \
@@ -295,7 +295,7 @@ pub(super) fn specializes(
     let ocx = ObligationCtxt::new(&infcx);
     let specializing_impl_trait_ref = ocx.normalize(cause, param_env, specializing_impl_trait_ref);
 
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         infcx.dcx().span_delayed_bug(
             infcx.tcx.def_span(specializing_impl_def_id),
             format!("failed to fully normalize {specializing_impl_trait_ref}"),
@@ -329,7 +329,7 @@ pub(super) fn specializes(
     ocx.register_obligations(obligations);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         // no dice!
         debug!(
             "fulfill_implication: for impls on {:?} and {:?}, \
@@ -365,7 +365,7 @@ pub(super) fn specializes(
         }));
 
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             // no dice!
             debug!(
                 "fulfill_implication: for impls on {:?} and {:?}, \

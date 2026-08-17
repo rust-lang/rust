@@ -527,7 +527,7 @@ impl GenmcCtx {
             alignment.bytes(),
         );
         let chosen_address = match malloc_result.into_genmc_result() {
-            GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcInvalid),
+            GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcMoot),
             GenmcHandlerResult::Error(_e) => throw_exhaust!(AddressSpaceFull),
             GenmcHandlerResult::Ok(a) => a,
         };

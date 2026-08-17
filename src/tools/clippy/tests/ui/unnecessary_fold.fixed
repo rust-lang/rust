@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![warn(clippy::unnecessary_fold)]
 
 fn is_any(acc: bool, x: usize) -> bool {
     acc || x > 2

@@ -1,7 +1,7 @@
 //! A simple progress bar
 //!
 //! A single thread non-optimized progress bar
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 
 /// A Simple ASCII Progress Bar
 pub(crate) struct ProgressReport<'a> {
@@ -16,7 +16,8 @@ pub(crate) struct ProgressReport<'a> {
 
 impl<'a> ProgressReport<'a> {
     pub(crate) fn new(len: usize) -> ProgressReport<'a> {
-        ProgressReport { curr: 0.0, text: String::new(), hidden: false, len, pos: 0, msg: None }
+        let is_tty = io::stdout().is_terminal();
+        ProgressReport { curr: 0.0, text: String::new(), hidden: !is_tty, len, pos: 0, msg: None }
     }
 
     pub(crate) fn hidden() -> ProgressReport<'a> {

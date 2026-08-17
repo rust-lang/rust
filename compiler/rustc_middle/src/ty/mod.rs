@@ -38,10 +38,11 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{self as hir, LangItem, MissingLifetimeKind, attrs as attr, find_attr};
+use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -86,7 +87,7 @@ pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, AliasTermKind, ArgOutlivesClause, Clause, ClauseKind, CoercePredicate,
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
-    ExistentialTraitRef, HostEffectPredicate, NormalizesTo, OutlivesClause, PolyCoercePredicate,
+    ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionPredicate,
@@ -111,7 +112,7 @@ pub use self::typeck_results::{
     Rust2024IncompatiblePatInfo, SplattedDef, TypeckResults, UserType, UserTypeAnnotationIndex,
     UserTypeKind,
 };
-use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
+use crate::diagnostics::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, SourceInfo};
@@ -1258,7 +1259,14 @@ impl<'tcx> TypingEnv<'tcx> {
         Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
-    /// Ideally we just use `TypingMode::PostTypeckUntilBorrowck`.
+    /// The `TypingEnv` which should be for everything happens after HIR typeck
+    /// up-to and including borrowck itself.
+    pub fn post_typeck_until_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
+        let param_env = tcx.param_env(def_id.to_def_id());
+        TypingEnv::new(param_env, ty::TypingMode::borrowck(tcx, def_id))
+    }
+
+    /// Ideally we just use `TypingMode::post_typeck_until_borrowck`.
     /// But that's not compatible with the old solver yet.
     ///
     /// FIXME: this should not be needed in the long term.

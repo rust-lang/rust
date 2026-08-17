@@ -6,7 +6,7 @@ LL |         for _ in self.clone().into_iter() {}
    |                  |
    |                  move occurs because value has type `Vec<usize>`, which does not implement the `Copy` trait
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves value
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves value
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |

@@ -304,7 +304,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         }
     }
 
-    if !sess.target.singlethread(&sess.target_features) {
+    if !sess.target.singlethread(&sess.internal_target_features) {
         ins_none!(sym::target_has_threads);
     }
 
@@ -391,6 +391,7 @@ impl CheckCfg {
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);
+        ins!(sym::rust_analyzer, no_values);
         ins!(sym::rustfmt, no_values);
 
         ins!(sym::overflow_checks, no_values);

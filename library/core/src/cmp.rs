@@ -743,6 +743,54 @@ impl<T: Clone> Clone for Reverse<T> {
     }
 }
 
+/// A pair where ordering and equality work on only the `key`, ignoring the `value`.
+///
+/// Used to implement `Iterator::min_by_key` as `map`+`min`, for example.
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct KeyAndValue<K, V> {
+    pub key: K,
+    pub value: V,
+}
+impl<K: PartialEq, V> PartialEq for KeyAndValue<K, V> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        self.key != other.key
+    }
+}
+impl<K: Eq, V> Eq for KeyAndValue<K, V> {}
+impl<K: PartialOrd, V> PartialOrd for KeyAndValue<K, V> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&self.key, &other.key)
+    }
+    #[inline]
+    fn lt(&self, other: &Self) -> bool {
+        self.key < other.key
+    }
+    #[inline]
+    fn le(&self, other: &Self) -> bool {
+        self.key <= other.key
+    }
+    #[inline]
+    fn gt(&self, other: &Self) -> bool {
+        self.key > other.key
+    }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool {
+        self.key >= other.key
+    }
+}
+impl<K: Ord, V> Ord for KeyAndValue<K, V> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ord::cmp(&self.key, &other.key)
+    }
+}
+
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
 /// Implementations must be consistent with the [`PartialOrd`] implementation, and ensure `max`,
@@ -1871,6 +1919,214 @@ where
     K: [const] Ord + [const] Destruct,
 {
     if f(&v2) < f(&v1) { [v2, v1] } else { [v1, v2] }
+}
+
+/// Calls `mac` on lists of arguments from size `0` to `1 + count($y)`.
+macro impl_for_tuples_up_to($mac:ident! { $($x:ident, $($y:ident,)*)? }) {
+    $(impl_for_tuples_up_to! {
+        $mac! { $($y,)* }
+    })?
+    $mac! { $($x, $($y,)*)? }
+}
+
+/// Calls each `mac` on lists of arguments from size zero to twelve.
+macro impl_tuples($($mac:ident,)+) {
+    $(impl_for_tuples_up_to! { $mac! { x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, } })+
+}
+
+/// Implementation detail for [`smallest`] and [`largest`].
+/// Marker indicating that `Self` is a tuple where all members are of the same type.
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a homogeneous tuple")]
+#[unstable(feature = "cmp_splat_internals", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+const trait HomogeneousTuple: crate::marker::Tuple {
+    /// The type of each item in this tuple.
+    type Item;
+}
+
+/// Implements [`HomogeneousTuple`] for a provided tuple.
+macro impl_homogeneous_tuple($($($x:ident,)+)?) {
+    $(
+        #[unstable(feature = "cmp_splat_internals", issue = "160728")]
+        #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+        const impl<T> HomogeneousTuple for ($(${ignore($x)}T,)+) {
+            type Item = T;
+        }
+    )?
+}
+
+impl_tuples! {
+    impl_homogeneous_tuple,
+}
+
+/// Compares and returns the minimum of the provided values.
+///
+/// Returns the first argument if the comparison determines them to be equal.
+///
+/// Internally uses [`Ord::min`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::smallest(1), 1);
+/// assert_eq!(cmp::smallest(1, 2), 1);
+/// assert_eq!(cmp::smallest(3, 2, 1), 1);
+/// assert_eq!(cmp::smallest(1, 2, 3, 4), 1);
+/// ```
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp::{self, Ordering};
+///
+/// #[derive(Eq)]
+/// struct Equal(&'static str);
+///
+/// impl PartialEq for Equal {
+///     fn eq(&self, other: &Self) -> bool { true }
+/// }
+/// impl PartialOrd for Equal {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(Ordering::Equal) }
+/// }
+/// impl Ord for Equal {
+///     fn cmp(&self, other: &Self) -> Ordering { Ordering::Equal }
+/// }
+///
+/// assert_eq!(cmp::smallest(Equal("v1"), Equal("v2")).0, "v1");
+/// ```
+///
+/// # Stability
+///
+/// This function is added in its current form as an experiment in variadic functions.
+/// In a future iteration of the feature, this function may be removed in favour of
+/// making [`min`] itself variadic instead.
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_splat", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat", issue = "160728")]
+#[expect(private_bounds, reason = "`SmallestArgs` is an internal implementation detail")]
+#[cfg(not(test))] // FIXME: splat interacts poorly with the double linking of `core` in tests
+pub const fn smallest<T: [const] Ord + [const] Destruct>(
+    #[rustc_splat] args: impl [const] SmallestArgs<Item = T>,
+) -> T {
+    SmallestArgs::smallest(args)
+}
+
+/// Implementation detail for [`smallest`].
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a valid set of arguments for `smallest`")]
+#[unstable(feature = "cmp_splat_internals", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+const trait SmallestArgs: HomogeneousTuple {
+    /// Reduces all elements of a homogeneous tuple to its smallest value.
+    fn smallest(self) -> Self::Item;
+}
+
+/// Implements [`SmallestArgs`] for a provided tuple if applicable.
+macro impl_smallest_args($($x:ident, $($($y:ident,)+)?)?) {
+    $(
+        #[unstable(feature = "cmp_splat_internals", issue = "160728")]
+        #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+        const impl<T> SmallestArgs for (T, $($(${ignore($y)}T,)+)?)
+        $(where T: [const] Destruct + [const] Ord, $(${ignore($y)})+)?
+        {
+            #[inline]
+            fn smallest(self) -> Self::Item {
+                let ($x, $($($y,)+)?) = self;
+                $($(let $x = $x.min($y);)+)?
+                $x
+            }
+        }
+    )?
+}
+
+impl_tuples! {
+    impl_smallest_args,
+}
+
+/// Compares and returns the maximum of the provided values.
+///
+/// Returns the last argument if the comparison determines them to be equal.
+///
+/// Internally uses [`Ord::max`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp;
+///
+/// assert_eq!(cmp::largest(1), 1);
+/// assert_eq!(cmp::largest(1, 2), 2);
+/// assert_eq!(cmp::largest(3, 2, 1), 3);
+/// assert_eq!(cmp::largest(1, 2, 3, 4), 4);
+/// ```
+/// ```
+/// #![feature(cmp_splat)]
+/// use std::cmp::{self, Ordering};
+///
+/// #[derive(Eq)]
+/// struct Equal(&'static str);
+///
+/// impl PartialEq for Equal {
+///     fn eq(&self, other: &Self) -> bool { true }
+/// }
+/// impl PartialOrd for Equal {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(Ordering::Equal) }
+/// }
+/// impl Ord for Equal {
+///     fn cmp(&self, other: &Self) -> Ordering { Ordering::Equal }
+/// }
+///
+/// assert_eq!(cmp::largest(Equal("v1"), Equal("v2")).0, "v2");
+/// ```
+///
+/// # Stability
+///
+/// This function is added in its current form as an experiment in variadic functions.
+/// In a future iteration of the feature, this function may be removed in favour of
+/// making [`max`] itself variadic instead.
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_splat", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat", issue = "160728")]
+#[expect(private_bounds, reason = "`LargestArgs` is an internal implementation detail")]
+#[cfg(not(test))] // FIXME: splat interacts poorly with the double linking of `core` in tests
+pub const fn largest<T: [const] Ord + [const] Destruct>(
+    #[rustc_splat] args: impl [const] LargestArgs<Item = T>,
+) -> T {
+    LargestArgs::largest(args)
+}
+
+/// Implementation detail for [`largest`].
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a valid set of arguments for `largest`")]
+#[unstable(feature = "cmp_splat_internals", issue = "160728")]
+#[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+const trait LargestArgs: HomogeneousTuple {
+    /// Reduces all elements of a homogeneous tuple to its largest value.
+    fn largest(self) -> Self::Item;
+}
+
+/// Implements [`LargestArgs`] for a provided tuple if applicable.
+macro impl_largest_args($($x:ident, $($($y:ident,)+)?)?) {
+    $(
+        #[unstable(feature = "cmp_splat_internals", issue = "160728")]
+        #[rustc_const_unstable(feature = "cmp_splat_internals", issue = "160728")]
+        const impl<T> LargestArgs for (T, $($(${ignore($y)}T,)+)?)
+        $(where T: [const] Destruct + [const] Ord, $(${ignore($y)})+)?
+        {
+            #[inline]
+            fn largest(self) -> Self::Item {
+                let ($x, $($($y,)+)?) = self;
+                $($(let $x = $x.max($y);)+)?
+                $x
+            }
+        }
+    )?
+}
+
+impl_tuples! {
+    impl_largest_args,
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

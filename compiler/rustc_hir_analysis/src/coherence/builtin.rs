@@ -7,10 +7,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{Obligation, TraitErrors};
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -425,7 +425,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     ty::TraitRef::new(tcx, trait_ref.def_id, [ty_a, ty_b]),
                 ));
                 let errors = ocx.evaluate_obligations_error_on_ambiguity();
-                if !errors.is_empty() {
+                if let TraitErrors::HasErrors(errors) = errors {
                     if is_from_coerce_pointee_derive(tcx, span) {
                         return Err(tcx.dcx().emit_err(diagnostics::CoerceFieldValidity {
                             span,
@@ -600,7 +600,7 @@ fn field_type_is_reborrow<'tcx>(
         param_env,
         ty::TraitRef::new(tcx, reborrow_trait, [ty]),
     ));
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }
 
 fn field_type_is_copy<'tcx>(
@@ -620,7 +620,7 @@ fn field_type_is_copy<'tcx>(
         param_env,
         ty::TraitRef::new(tcx, copy_trait, [ty]),
     ));
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }
 
 fn assert_field_type_is_copy<'tcx>(
@@ -639,7 +639,7 @@ fn assert_field_type_is_copy<'tcx>(
     ocx.register_obligation(obligation);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         Err(infcx.err_ctxt().report_fulfillment_errors(errors))
     } else {
         Ok(())
@@ -861,7 +861,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     ocx.register_obligation(obligation);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         if is_from_coerce_pointee_derive(tcx, span) {
             return Err(tcx.dcx().emit_err(diagnostics::CoerceFieldValidity {
                 span,

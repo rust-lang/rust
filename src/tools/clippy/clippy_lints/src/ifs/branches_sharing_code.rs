@@ -1,15 +1,18 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{IntoSpan, SpanExt, first_line_of_span, indent_of, reindent_multiline, snippet};
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::{IntoSpan as _, SpanExt as _, first_line_of_span, indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
     ContainsName, HirEqInterExpr, SpanlessEq, capture_local_usage, get_enclosing_block, hash_expr, hash_stmt,
+    is_expr_final_block_expr,
 };
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, intravisit};
+use rustc_hir::{
+    Arm, Block, Expr, ExprKind, HirId, HirIdSet, ItemKind, LetStmt, Node, Stmt, StmtKind, UseKind, intravisit,
+};
 use rustc_lint::LateContext;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
@@ -98,6 +101,111 @@ pub(super) fn check<'tcx>(
             diag.warn("some moved values might need to be renamed to avoid wrong references");
         }
     });
+}
+
+/// Detects `match` expressions where every arm's body is a block ending in the same trailing
+/// expression, so that expression can be hoisted out below the `match`.
+///
+/// ```ignore
+/// match mode {
+///     Mode::A => { a(); Ok(()) }
+///     Mode::B => { b(); Ok(()) }
+/// }
+/// ```
+/// can become
+/// ```ignore
+/// match mode {
+///     Mode::A => a(),
+///     Mode::B => b(),
+/// }
+/// Ok(())
+/// ```
+pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'tcx>]) {
+    if arms.len() < 2 {
+        return;
+    }
+
+    // We only move the shared expression after the `match`, so the `match` must be in tail position
+    // of its block. Cheapest, most selective check, so do it first.
+    if !is_expr_final_block_expr(cx.tcx, expr) {
+        return;
+    }
+
+    // Each arm body must be a block with a trailing expression.
+    let mut blocks = Vec::with_capacity(arms.len());
+    for arm in arms {
+        let ExprKind::Block(block, None) = arm.body.kind else {
+            return;
+        };
+        let Some(tail) = block.expr else {
+            return;
+        };
+        if block.span.from_expansion() || tail.span.from_expansion() {
+            return;
+        }
+        // Same drop-order concern for arm-locals dropped at the end of the arm.
+        let arm_local_needs_ordered_drop = block.stmts.iter().any(|stmt| {
+            matches!(stmt.kind, StmtKind::Let(l) if needs_ordered_drop(cx, cx.typeck_results().node_type(l.hir_id)))
+        });
+        if arm_local_needs_ordered_drop {
+            return;
+        }
+        blocks.push((block, tail));
+    }
+
+    // All tails must be equal. This also rules out tails referencing an arm-local: those have a
+    // distinct `HirId` per arm and so never compare equal.
+    let first = blocks[0].1;
+    let mut eq = SpanlessEq::new(cx);
+    if !blocks[1..]
+        .iter()
+        .all(|&(_, t)| eq.eq_expr(SyntaxContext::root(), first, t))
+    {
+        return;
+    }
+
+    // Don't bother for a `()` tail: nothing worth moving.
+    if matches!(first.kind, ExprKind::Tup([])) {
+        return;
+    }
+
+    // Require some code before the tail, else hoisting just leaves empty arms.
+    if blocks.iter().all(|(block, _)| block.stmts.is_empty()) {
+        return;
+    }
+
+    span_lint_and_then(
+        cx,
+        BRANCHES_SHARING_CODE,
+        expr.span,
+        "all match arms end with the same expression",
+        |diag| {
+            let indent = " ".repeat(indent_of(cx, expr.span).unwrap_or(0));
+            let tail_snippet = snippet(cx, first.span, "..").into_owned();
+            let mut suggestions: Vec<(Span, String)> = blocks
+                .iter()
+                .map(|&(block, tail)| {
+                    // Drop the tail (and the whitespace before it) from each arm.
+                    let span = match block.stmts.last() {
+                        Some(last) => last.span.shrink_to_hi().to(tail.span),
+                        None => tail.span,
+                    };
+                    (span, String::new())
+                })
+                .collect();
+            suggestions.push((expr.span.shrink_to_hi(), format!("\n{indent}{tail_snippet}")));
+            // `Unspecified`, like the if/else end-suggestion: may need manual adjustment (e.g. a
+            // significant-drop temporary in the scrutinee), so don't auto-apply via `--fix`.
+            diag.multipart_suggestion(
+                "consider moving the shared expression after the `match`",
+                suggestions,
+                Applicability::Unspecified,
+            );
+            diag.note(
+                "the suggestion may need adjustments to preserve drop order or to use the expression result correctly",
+            );
+        },
+    );
 }
 
 struct BlockEq {

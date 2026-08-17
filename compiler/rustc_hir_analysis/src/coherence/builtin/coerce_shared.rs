@@ -1,10 +1,10 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{Obligation, TraitErrors};
 use rustc_middle::ty::relate::solver_relating::RelateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::Span;
@@ -257,7 +257,7 @@ pub(super) fn coerce_shared_info<'tcx>(
         )
         .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
@@ -719,7 +719,7 @@ fn validate_field_tys_satisfy_coerce_shared_relation<'tcx>(
     ));
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-    if !errors.is_empty() {
+    if errors.has_errors() {
         return Err(emit_coerce_shared_field_mismatch(
             tcx,
             trait_name,
@@ -779,7 +779,7 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         return false;
     };
 
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if ocx.evaluate_obligations_error_on_ambiguity().has_errors() {
         return false;
     }
 
@@ -807,6 +807,6 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         }
     };
 
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
         && ocx.resolve_regions(impl_did, param_env, []).is_empty()
 }

@@ -488,10 +488,7 @@ FormatArgsExpr =
   ')'
 
 FormatArgsArg =
-  arg_name:FormatArgsArgName? Expr
-
-FormatArgsArgName =
-  '=' // This also has a name, but it's any token and we can't put it here
+  (Name '=')? Expr
 
 MacroExpr =
   MacroCall

@@ -117,6 +117,12 @@ struct Args {
     /// Path to rustc to use for compiling run-make recipes.
     #[arg(long)]
     stage0_rustc_path: Option<Utf8PathBuf>,
+    /// Path to librun-make-support .rlib to use for compiling run-make recipes.
+    #[arg(long)]
+    run_make_support_rlib: Option<Utf8PathBuf>,
+    /// Path to librun-make-support .rmeta to use for compiling run-make recipes.
+    #[arg(long)]
+    run_make_support_rmeta: Option<Utf8PathBuf>,
     /// Path to rustc to use for querying target information.
     #[arg(long)]
     query_rustc_path: Option<Utf8PathBuf>,
@@ -281,6 +287,10 @@ struct Args {
     /// Ignore `//@ ignore-backends` directives.
     #[arg(long)]
     bypass_ignore_backends: bool,
+    /// Build proc-macros for wasm. Assumes environment is configured to support this; e.g., std is
+    /// already built appropriately.
+    #[arg(long)]
+    wasm_proc_macros: bool,
 
     // These values can be entered multiple times, for example:
     // --skip foo --skip bar
@@ -385,118 +395,135 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
     let iteration_count = args.iteration_count.unwrap_or(Config::DEFAULT_ITERATION_COUNT);
     assert!(iteration_count > 0, "`--iteration-count` must be a positive integer");
 
+    let gcc_supported_target_tuples = match default_codegen_backend {
+        CodegenBackend::Gcc => {
+            directives::find_gcc_supported_targets(&args.sysroot_base, &args.host)
+        }
+        CodegenBackend::Llvm | CodegenBackend::Cranelift => vec![],
+    };
+
+    // FIXME: this run scheme is... confusing.
+    let run = args.run.and_then(|mode| match mode.as_str() {
+        "auto" => None,
+        "always" => Some(true),
+        "never" => Some(false),
+        _ => panic!("unknown `--run` option `{}` given", mode),
+    });
+
     Config {
+        // tidy-alphabetical-start
+        adb_device_status,
+        adb_path: args.adb_path,
+        adb_test_dir: args.adb_test_dir,
+        android_cross_path: args.android_cross_path,
+        ar: args.ar,
         bless: args.bless,
-        fail_fast: args.fail_fast || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
-
-        host_compile_lib_path: make_absolute(args.compile_lib_path),
-        target_run_lib_path: make_absolute(args.run_lib_path),
-        rustc_path: args.rustc_path,
-        cargo_path: args.cargo_path,
-        stage0_rustc_path: args.stage0_rustc_path,
-        query_rustc_path: args.query_rustc_path,
-        rustdoc_path: args.rustdoc_path,
-        coverage_dump_path: args.coverage_dump_path,
-        python: args.python,
-        jsondocck_path: args.jsondocck_path,
-        jsondoclint_path: args.jsondoclint_path,
-        run_clang_based_tests_with: args.run_clang_based_tests_with,
-        llvm_filecheck: args.llvm_filecheck,
-        llvm_bin_dir: args.llvm_bin_dir,
-
-        src_root,
-        src_test_suite_root,
-
         build_root,
         build_test_suite_root,
 
-        sysroot_base: args.sysroot_base,
-
-        stage: args.stage,
-        stage_id: args.stage_id,
-
-        mode,
-        suite: args.suite,
-        run_ignored: args.ignored,
-        with_rustc_debug_assertions: args.with_rustc_debug_assertions,
-        with_std_debug_assertions: args.with_std_debug_assertions,
-        with_std_remap_debuginfo: args.with_std_remap_debuginfo,
-        filters,
-        skip: args.skip,
-        filter_exact: args.exact,
-        force_pass_mode: args.pass,
-        // FIXME: this run scheme is... confusing.
-        run: args.run.and_then(|mode| match mode.as_str() {
-            "auto" => None,
-            "always" => Some(true),
-            "never" => Some(false),
-            _ => panic!("unknown `--run` option `{}` given", mode),
-        }),
-        runner: args.runner,
-        host_rustcflags: args.host_rustcflags,
-        target_rustcflags: args.target_rustcflags,
-        optimize_tests: args.optimize_tests,
-        rust_randomized_layout: args.rust_randomized_layout,
-        target: args.target,
-        host: args.host,
-        cdb: args.cdb,
-        cdb_version,
-        gdb: args.gdb,
-        gdb_version,
-        lldb: args.lldb,
-        lldb_version,
-        llvm_version,
-        system_llvm: args.system_llvm,
-        android_cross_path: args.android_cross_path,
-        adb_path: args.adb_path,
-        adb_test_dir: args.adb_test_dir,
-        adb_device_status,
-        verbose: args.verbose,
-        verbose_run_make_subprocess_output: args.verbose_run_make_subprocess_output,
-        only_modified: args.only_modified,
-        remote_test_client: args.remote_test_client,
-        compare_mode,
-        rustfix_coverage: args.rustfix_coverage,
-        has_enzyme: args.has_enzyme,
-        has_offload: args.has_offload,
-        channel: args.channel,
-        git_hash: args.git_hash,
-        edition: args.edition,
-
-        cc: args.cc,
-        cxx: args.cxx,
-        cflags: args.cflags,
-        cxxflags: args.cxxflags,
-        ar: args.ar,
-        target_linker: args.target_linker,
-        host_linker: args.host_linker,
-        llvm_components: args.llvm_components,
-        nodejs: args.nodejs,
-
-        force_rerun: args.force_rerun,
-
-        target_cfgs: OnceLock::new(),
         builtin_cfg_names: OnceLock::new(),
-        supported_crate_types: OnceLock::new(),
+        bypass_ignore_backends: args.bypass_ignore_backends,
 
         capture: !args.no_capture,
 
-        nightly_branch: args.nightly_branch,
-        git_merge_commit_email: args.git_merge_commit_email,
-
-        profiler_runtime: args.profiler_runtime,
-
+        cargo_path: args.cargo_path,
+        cc: args.cc,
+        cdb: args.cdb,
+        cdb_version,
+        cflags: args.cflags,
+        channel: args.channel,
+        compare_mode,
+        coverage_dump_path: args.coverage_dump_path,
+        cxx: args.cxx,
+        cxxflags: args.cxxflags,
+        default_codegen_backend,
         diff_command: args.compiletest_diff_tool,
 
-        minicore_path: args.minicore_path,
+        edition: args.edition,
 
-        default_codegen_backend,
-        override_codegen_backend: args.override_codegen_backend,
-        bypass_ignore_backends: args.bypass_ignore_backends,
+        fail_fast: args.fail_fast || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
 
+        filter_exact: args.exact,
+        filters,
+        force_pass_mode: args.pass,
+        force_rerun: args.force_rerun,
+
+        gcc_supported_target_tuples,
+
+        gdb: args.gdb,
+        gdb_version,
+        git_hash: args.git_hash,
+        git_merge_commit_email: args.git_merge_commit_email,
+
+        has_enzyme: args.has_enzyme,
+        has_offload: args.has_offload,
+        host: args.host,
+        host_compile_lib_path: make_absolute(args.compile_lib_path),
+        host_linker: args.host_linker,
+        host_rustcflags: args.host_rustcflags,
+        iteration_count,
         jobs: args.jobs,
 
+        jsondocck_path: args.jsondocck_path,
+        jsondoclint_path: args.jsondoclint_path,
+        lldb: args.lldb,
+        lldb_version,
+        llvm_bin_dir: args.llvm_bin_dir,
+
+        llvm_components: args.llvm_components,
+        llvm_filecheck: args.llvm_filecheck,
+        llvm_version,
+        minicore_path: args.minicore_path,
+
+        mode,
+        nightly_branch: args.nightly_branch,
+        nodejs: args.nodejs,
+
+        only_modified: args.only_modified,
+        optimize_tests: args.optimize_tests,
+        override_codegen_backend: args.override_codegen_backend,
         parallel_frontend_threads,
-        iteration_count,
+        profiler_runtime: args.profiler_runtime,
+
+        python: args.python,
+        query_rustc_path: args.query_rustc_path,
+        remote_test_client: args.remote_test_client,
+        run,
+        run_clang_based_tests_with: args.run_clang_based_tests_with,
+        run_ignored: args.ignored,
+        run_make_support_rlib: args.run_make_support_rlib,
+        run_make_support_rmeta: args.run_make_support_rmeta,
+        runner: args.runner,
+        rust_randomized_layout: args.rust_randomized_layout,
+        rustc_path: args.rustc_path,
+        rustdoc_path: args.rustdoc_path,
+        rustfix_coverage: args.rustfix_coverage,
+        skip: args.skip,
+        src_root,
+        src_test_suite_root,
+
+        stage0_rustc_path: args.stage0_rustc_path,
+        stage: args.stage,
+        stage_id: args.stage_id,
+
+        suite: args.suite,
+        supported_crate_types: OnceLock::new(),
+
+        sysroot_base: args.sysroot_base,
+
+        system_llvm: args.system_llvm,
+        target: args.target,
+        target_cfgs: OnceLock::new(),
+        target_linker: args.target_linker,
+        target_run_lib_path: make_absolute(args.run_lib_path),
+        target_rustcflags: args.target_rustcflags,
+        verbose: args.verbose,
+        verbose_run_make_subprocess_output: args.verbose_run_make_subprocess_output,
+        wasm_proc_macros: args.wasm_proc_macros,
+
+        with_rustc_debug_assertions: args.with_rustc_debug_assertions,
+        with_std_debug_assertions: args.with_std_debug_assertions,
+        with_std_remap_debuginfo: args.with_std_remap_debuginfo,
+        // tidy-alphabetical-end
     }
 }

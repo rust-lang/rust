@@ -11,5 +11,5 @@ pub mod foo {
 }
 
 fn main() {
-    println!("Hello, {}!", crate::bar::do_the_thing); //~ ERROR cannot find `bar` in `crate`
+    println!("Hello, {}!", crate::bar::do_the_thing); //~ ERROR cannot find `bar` in the crate root
 }

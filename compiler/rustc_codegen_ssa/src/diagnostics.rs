@@ -98,10 +98,6 @@ pub(crate) struct Ld64UnimplementedModifier;
 pub(crate) struct LinkerUnsupportedModifier;
 
 #[derive(Diagnostic)]
-#[diag("exporting symbols not implemented yet for L4Bender")]
-pub(crate) struct L4BenderExportingSymbolsUnimplemented;
-
-#[derive(Diagnostic)]
 #[diag("error enumerating natvis directory: {$error}")]
 pub(crate) struct NoNatvisDirectory {
     pub error: Error,
@@ -1100,7 +1096,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct InternalOnlyTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1233,7 +1229,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}")]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
+pub(crate) struct InternalOnlyCTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
     pub reason: &'a str,

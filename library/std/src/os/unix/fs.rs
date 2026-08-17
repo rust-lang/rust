@@ -18,6 +18,7 @@ use crate::sys::{AsInner, AsInnerMut, FromInner};
 use crate::{io, sys};
 
 // Tests for this module
+#[cfg(not(target_os = "l4re"))]
 #[cfg(test)]
 mod tests;
 

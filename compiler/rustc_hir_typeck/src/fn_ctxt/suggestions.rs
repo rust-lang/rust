@@ -7,9 +7,9 @@ use itertools::Itertools;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify, msg};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
     GenericBound, HirId, LoopSource, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind,
@@ -24,7 +24,6 @@ use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
@@ -35,7 +34,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::diagnostics::{self, SuggestBoxingForReturnImplTrait};
+use crate::diagnostics::{self, ExprParenthesesNeeded, SuggestBoxingForReturnImplTrait};
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
@@ -2095,7 +2094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let manually_impl = "consider manually implementing `Clone` to avoid the \
                         implicit type parameter bounds";
-                    match &errors[..] {
+                    match errors.as_slice() {
                         [] => {}
                         [error] => {
                             let msg = "`Clone` is not implemented because a trait bound is not \
@@ -2126,6 +2125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         _ => {
                             let unsatisfied_bounds: Vec<_> = errors
+                                .as_slice()
                                 .iter()
                                 .filter_map(|error| match error.obligation.cause.code() {
                                     traits::ObligationCauseCode::ImplDerived(data) => {
@@ -2160,12 +2160,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     unsatisfied_bounds_spans.push_span_label(span, label);
                                 }
                                 diag.span_help(unsatisfied_bounds_spans, msg);
-                                if errors.iter().all(|error| match error.obligation.cause.code() {
-                                    traits::ObligationCauseCode::ImplDerived(data) => {
-                                        self.tcx.is_automatically_derived(data.impl_or_alias_def_id)
-                                            && data.impl_or_alias_def_id.is_local()
+                                if errors.as_slice().iter().all(|error| {
+                                    match error.obligation.cause.code() {
+                                        traits::ObligationCauseCode::ImplDerived(data) => {
+                                            self.tcx
+                                                .is_automatically_derived(data.impl_or_alias_def_id)
+                                                && data.impl_or_alias_def_id.is_local()
+                                        }
+                                        _ => false,
                                     }
-                                    _ => false,
                                 }) {
                                     diag.help(manually_impl);
                                     suggest_derive = false;
@@ -2173,8 +2176,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 diag.help(format!(
                                     "{msg}: {}",
-                                    listify(&errors, |e| format!("`{}`", e.obligation.predicate))
-                                        .unwrap(),
+                                    listify(errors.as_slice(), |e| format!(
+                                        "`{}`",
+                                        e.obligation.predicate
+                                    ))
+                                    .unwrap(),
                                 ));
                             }
                         }

@@ -107,6 +107,9 @@ $ BOOTSTRAP_TRACING=CONFIG_HANDLING=trace,STEP=info,COMMAND=trace ./x build libr
 
 Note that the level that you specify using `BOOTSTRAP_TRACING` also has an effect on the spans that will be recorded in the Chrome trace file.
 
+You can also pass the `BOOTSTRAP_TRACING_SKIP_TIME=1` environment variable to avoid including the timestamp in the tracing output.
+This is useful for comparing/diffing the executed steps between two versions of bootstrap.
+
 ##### FIXME(#96176): specific tracing for `compiler()` vs `compiler_for()`
 
 The additional targets `COMPILER` and `COMPILER_FOR` are used to help trace what

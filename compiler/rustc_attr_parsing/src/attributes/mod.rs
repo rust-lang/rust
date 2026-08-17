@@ -20,15 +20,15 @@
 
 use std::marker::PhantomData;
 
+use rustc_attr_ir::AttributeKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext};
+use crate::diagnostics::UnusedMultiple;
 use crate::parser::ArgParser;
-use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeTemplate, template};
 

@@ -3,6 +3,7 @@
 //@ [without_isolation] compile-flags: -Zmiri-disable-isolation
 
 #![feature(linkage)]
+#![allow(unused_features)] // only used on some targets
 
 fn gettid() -> u64 {
     cfg_select! {

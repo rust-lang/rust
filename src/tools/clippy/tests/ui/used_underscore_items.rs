@@ -1,5 +1,4 @@
 //@aux-build:external_item.rs
-#![allow(unused)]
 #![warn(clippy::used_underscore_items)]
 
 extern crate external_item;

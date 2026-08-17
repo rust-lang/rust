@@ -20,6 +20,7 @@ mod net;
 mod stdio;
 
 #[cfg(test)]
+#[cfg(not(target_os = "l4re"))]
 mod tests;
 
 // Export the types and traits for the public API.

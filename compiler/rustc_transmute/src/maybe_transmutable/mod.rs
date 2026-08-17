@@ -1,4 +1,3 @@
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use tracing::{debug, instrument, trace};
 
 pub(crate) mod query_context;
@@ -160,7 +159,7 @@ where
         if let Some(answer) = cache.get(&(src_state, dst_state)) {
             answer.clone()
         } else {
-            let answer = ensure_sufficient_stack(|| self.answer_impl(cache, src_state, dst_state));
+            let answer = self.answer_impl(cache, src_state, dst_state);
             if let Some(..) = cache.insert((src_state, dst_state), answer.clone()) {
                 panic!("failed to correctly cache transmutability")
             }

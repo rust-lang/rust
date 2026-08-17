@@ -179,7 +179,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         param_env,
         Unnormalized::new_wip(trait_m_sig.inputs_and_output),
     ));
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (selection)");
         return;
     }

@@ -2,7 +2,6 @@
 #![no_builtins]
 #![no_std]
 //
-#![feature(abi_custom)]
 #![feature(abi_unadjusted)]
 #![feature(asm_experimental_arch)]
 #![feature(cfg_target_has_atomic)]

@@ -906,34 +906,50 @@ impl ItemScope {
 impl PerNs {
     pub(crate) fn from_def(
         def: ModuleDefId,
-        v: Visibility,
-        has_constructor: bool,
+        vis: Visibility,
+        value_ns_ctor_vis: Option<Visibility>,
         import: Option<ImportOrExternCrate>,
     ) -> PerNs {
         match def {
-            ModuleDefId::ModuleId(_) => PerNs::types(def, v, import),
+            ModuleDefId::ModuleId(_) => PerNs::types(def, vis, import),
             ModuleDefId::FunctionId(_) => {
-                PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
+                PerNs::values(def, vis, import.and_then(ImportOrExternCrate::import_or_glob))
             }
             ModuleDefId::AdtId(adt) => match adt {
-                AdtId::UnionId(_) => PerNs::types(def, v, import),
-                AdtId::EnumId(_) => PerNs::types(def, v, import),
-                AdtId::StructId(_) => {
-                    if has_constructor {
-                        PerNs::both(def, def, v, import)
-                    } else {
-                        PerNs::types(def, v, import)
-                    }
-                }
+                AdtId::UnionId(_) => PerNs::types(def, vis, import),
+                AdtId::EnumId(_) => PerNs::types(def, vis, import),
+                AdtId::StructId(_) => match value_ns_ctor_vis {
+                    Some(value_ns_ctor_vis) => PerNs {
+                        types: Some(Item { def, vis, import }),
+                        values: Some(Item {
+                            def,
+                            vis: value_ns_ctor_vis,
+                            import: import.and_then(ImportOrExternCrate::import_or_glob),
+                        }),
+                        macros: None,
+                    },
+                    None => PerNs::types(def, vis, import),
+                },
             },
-            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v, import),
+            ModuleDefId::EnumVariantId(_) => match value_ns_ctor_vis {
+                Some(value_ns_ctor_vis) => PerNs {
+                    types: Some(Item { def, vis, import }),
+                    values: Some(Item {
+                        def,
+                        vis: value_ns_ctor_vis,
+                        import: import.and_then(ImportOrExternCrate::import_or_glob),
+                    }),
+                    macros: None,
+                },
+                None => PerNs::types(def, vis, import),
+            },
             ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => {
-                PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
+                PerNs::values(def, vis, import.and_then(ImportOrExternCrate::import_or_glob))
             }
-            ModuleDefId::TraitId(_) => PerNs::types(def, v, import),
-            ModuleDefId::TypeAliasId(_) => PerNs::types(def, v, import),
-            ModuleDefId::BuiltinType(_) => PerNs::types(def, v, import),
-            ModuleDefId::MacroId(mac) => PerNs::macros(mac, v, import),
+            ModuleDefId::TraitId(_) => PerNs::types(def, vis, import),
+            ModuleDefId::TypeAliasId(_) => PerNs::types(def, vis, import),
+            ModuleDefId::BuiltinType(_) => PerNs::types(def, vis, import),
+            ModuleDefId::MacroId(mac) => PerNs::macros(mac, vis, import),
         }
     }
 }

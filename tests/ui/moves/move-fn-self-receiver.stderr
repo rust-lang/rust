@@ -6,7 +6,7 @@ LL |     val.0.into_iter().next();
 LL |     val.0;
    |     ^^^^^ value used here after move
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves `val.0`
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `val.0`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: move occurs because `val.0` has type `Vec<bool>`, which does not implement the `Copy` trait
 help: you can `clone` the value and consume it, but this might not be your desired behavior

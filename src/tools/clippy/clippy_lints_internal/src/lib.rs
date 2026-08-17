@@ -1,21 +1,18 @@
 #![feature(rustc_private)]
-#![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
+#![expect(
+    clippy::missing_clippy_version_attribute, // None of these lints need a version.
     clippy::symbol_as_str
 )]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal
 )]
 // Disable this rustc lint for now, as it was also done in rustc
 #![allow(rustc::potential_query_instability)]
-// None of these lints need a version.
-#![allow(clippy::missing_clippy_version_attribute)]
 
 extern crate rustc_ast;
 extern crate rustc_attr_parsing;

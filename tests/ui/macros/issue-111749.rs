@@ -9,4 +9,5 @@ fn main() {
     //~^ ERROR the `test` attribute may only be used on a free function
     //~| ERROR attribute must be of the form `#[test]`
     //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~| ERROR macro attributes on expressions are unstable
 }

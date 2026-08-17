@@ -21,6 +21,10 @@ mod ok {
     #[test]
     fn asm_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_expr.rs"); }
     #[test]
+    fn asm_keyword_name() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/asm_keyword_name.rs");
+    }
+    #[test]
     fn asm_kinds() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_kinds.rs"); }
     #[test]
     fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
@@ -339,6 +343,10 @@ mod ok {
     }
     #[test]
     fn global_asm() { run_and_expect_no_errors("test_data/parser/inline/ok/global_asm.rs"); }
+    #[test]
+    fn guard_let_struct() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/guard_let_struct.rs");
+    }
     #[test]
     fn half_open_range_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/half_open_range_pat.rs");

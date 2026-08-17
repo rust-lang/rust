@@ -168,7 +168,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_bound(ObligationCause::dummy(), full_env, ty, trait_did);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             panic!("Unable to fulfill trait {trait_did:?} for '{ty:?}': {errors:?}");
         }
 
@@ -245,7 +245,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_bound(ObligationCause::dummy(), orig_env, fresh_ty, trait_did);
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             return AutoTraitResult::NegativeImpl;
         }
 
@@ -685,8 +685,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(p)) => {
-                    let p = bound_predicate.rebind(p);
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(c)) => {
+                    let p = bound_predicate.rebind(c);
                     if self.is_param_no_infer(p.skip_binder().trait_ref.args) && is_new_pred {
                         self.add_user_clause(computed_clauses, predicate.expect_clause());
                     }

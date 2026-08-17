@@ -2328,10 +2328,7 @@ fn main() {
         );
     }
 
-    // macros in this position are not yet supported
     #[test]
-    // FIXME
-    #[should_panic]
     fn goto_doc_include_str() {
         check(
             r#"

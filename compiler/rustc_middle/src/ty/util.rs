@@ -7,7 +7,6 @@ use rustc_apfloat::Float as _;
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -268,7 +267,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Limit(0) => Limit(2),
                     limit => limit * 2,
                 };
-                let reported = self.dcx().emit_err(crate::error::RecursionLimitReached {
+                let reported = self.dcx().emit_err(crate::diagnostics::RecursionLimitReached {
                     span: cause.span,
                     ty,
                     suggested_limit,
@@ -867,7 +866,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// be shown in `impl` suggestions.
     ///
     /// [public]: TyCtxt::is_private_dep
-    /// [direct]: rustc_session::cstore::ExternCrate::is_direct
+    /// [direct]: rustc_crate_store::ExternCrate::is_direct
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
         // `#![rustc_private]` overrides defaults to make private dependencies usable.
         if self.features().enabled(sym::rustc_private) {
@@ -1080,13 +1079,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        let ty = ensure_sufficient_stack(|| {
-            self.tcx
-                .type_of(def_id)
-                .instantiate(self.tcx, args)
-                .skip_normalization()
-                .fold_with(self)
-        });
+        let ty = self
+            .tcx
+            .type_of(def_id)
+            .instantiate(self.tcx, args)
+            .skip_normalization()
+            .fold_with(self);
         self.depth -= 1;
         ty
     }

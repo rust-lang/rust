@@ -7,6 +7,7 @@
         all(target_os = "wasi", target_env = "p1"),
         target_os = "xous",
         target_os = "trusty",
+        target_os = "l4re",
     ))
 ))]
 mod tests;
@@ -1057,7 +1058,7 @@ impl TcpListener {
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
-    /// listener.take_error().expect("No error was expected");
+    /// listener.take_error().expect("`take_error` should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

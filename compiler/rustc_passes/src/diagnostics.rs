@@ -73,16 +73,8 @@ pub(crate) struct DocAliasNotAnAlias {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on empty modules")]
-pub(crate) struct DocKeywordAttributeEmptyMod {
-    #[primary_span]
-    pub span: Span,
-    pub attr_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on modules")]
-pub(crate) struct DocKeywordAttributeNotMod {
+#[diag("`#[doc({$attr_name} = \"...\")]` should be used on anonymous constants")]
+pub(crate) struct DocKeywordAttributeNotAnonConst {
     #[primary_span]
     pub span: Span,
     pub attr_name: &'static str,
@@ -263,6 +255,8 @@ pub(crate) enum UnusedNote {
     LinkerMessagesBinaryCrateOnly,
     #[note("the `dead_code_pub_in_binary` lint has no effect in library crates")]
     NoEffectDeadCodePubInBinary,
+    #[note("`#[path]` is unused on this inline module")]
+    PathOnInlineModule,
 }
 
 #[derive(Diagnostic)]

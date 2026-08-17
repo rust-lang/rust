@@ -291,7 +291,7 @@ trigger_files = [
     "compiler/rustc_codegen_ssa/src/codegen_attrs.rs",
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
-    "compiler/rustc_hir/src/attrs",
+    "compiler/rustc_attr_ir",
 ]
 
 [autolabel."A-compiler-builtins"]
@@ -1490,7 +1490,7 @@ cc = ["@BoxyUwU", "@tshepang"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
-[mentions."compiler/rustc_hir/src/attrs"]
+[mentions."compiler/rustc_attr_ir"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
@@ -1525,7 +1525,7 @@ cc = ["@jieyouxu"]
 [mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
-[mentions."compiler/rustc_hir/src/attrs/diagnostic.rs"]
+[mentions."compiler/rustc_attr_ir/src/diagnostic.rs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
 
@@ -1607,6 +1607,7 @@ infra-ci = [
     "@marcoieni",
     "@jdno",
     "@jieyouxu",
+    "@ubiratansoares"
 ]
 docs = [
     "@GuillaumeGomez",

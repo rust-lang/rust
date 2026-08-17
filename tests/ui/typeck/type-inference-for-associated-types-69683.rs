@@ -29,6 +29,5 @@ fn main() {
     let b: [u8; 3] = [0u8; 3];
 
     0u16.foo(b); //~ ERROR type annotations needed
-    //~^ ERROR type annotations needed
     //<u16 as Foo<[(); 3]>>::foo(0u16, b);
 }

@@ -1,17 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::{is_from_proc_macro, is_inside_let_else};
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::ResultErr;
+use rustc_hir::attrs::lang_items::LangItem::ResultErr;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource, Node, Stmt, StmtKind};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::adjustment::Adjust;
 
 use super::NEEDLESS_RETURN_WITH_QUESTION_MARK;
 
 pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-    if !stmt.span.in_external_macro(cx.sess().source_map())
-        && let StmtKind::Semi(expr) = stmt.kind
+    if let StmtKind::Semi(expr) = stmt.kind
         && let ExprKind::Ret(Some(ret)) = expr.kind
         // return Err(...)? desugars to a match
         // over a Err(...).branch()
@@ -28,6 +27,7 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         && !is_inside_let_else(cx.tcx, expr)
         && let [.., final_stmt] = block.stmts
         && (block.expr.is_some() || final_stmt.hir_id != stmt.hir_id)
+        && !stmt.span.in_external_macro(cx.sess().source_map())
         && !is_from_proc_macro(cx, expr)
         && !stmt_needs_never_type(cx, stmt.hir_id)
     {

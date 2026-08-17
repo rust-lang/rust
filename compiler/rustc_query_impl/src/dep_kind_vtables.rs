@@ -3,8 +3,8 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
 
-use crate::GetQueryVTable;
-use crate::plumbing::promote_from_disk_inner;
+use crate::incremental::promote_from_disk_inner;
+use crate::query_vtables::GetQueryVTable;
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
 #[expect(non_snake_case, reason = "use non-snake case to avoid collision with query names")]
@@ -166,7 +166,7 @@ macro_rules! define_dep_kind_vtables {
         let q_vtables: [DepKindVTable<'tcx>; _] = [
             $(
                 $crate::dep_kind_vtables::make_dep_kind_vtable_for_query::<
-                    $crate::query_impl::$name::VTableGetter,
+                    $crate::query_vtables::$name::VTableGetter,
                 >(
                     $cache_on_disk,
                     $eval_always,

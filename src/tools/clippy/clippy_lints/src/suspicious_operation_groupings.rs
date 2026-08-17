@@ -539,7 +539,7 @@ fn ident_difference_expr_with_base_location(
     // then we should be able to change this function to do the correct traversal,
     // without needing to change the rest of the code.
 
-    #![allow(clippy::enum_glob_use)]
+    #[allow(clippy::enum_glob_use)]
     use ExprKind::*;
 
     match (

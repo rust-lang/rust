@@ -819,10 +819,13 @@ pub(crate) struct OutsideLoop<'a> {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct OutsideLoopSuggestion {
-    #[suggestion_part(code = "'block: ")]
+    #[suggestion_part(code = "{block_prefix}")]
     pub block_span: Span,
     #[suggestion_part(code = " 'block")]
     pub break_spans: Vec<Span>,
+    #[suggestion_part(code = " }}")]
+    pub wrap_end: Option<Span>,
+    pub block_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -1326,4 +1329,22 @@ pub(crate) struct FloatLiteralF32Fallback {
         applicability = "machine-applicable"
     )]
     pub span: Option<Span>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "parentheses are required to parse this as an expression",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    left: Span,
+    #[suggestion_part(code = ")")]
+    right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub(crate) fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
+    }
 }

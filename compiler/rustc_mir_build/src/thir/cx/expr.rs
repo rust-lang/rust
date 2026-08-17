@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{AttributeKind, HasAttrs};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, LangItem, find_attr};
+use rustc_hir::{HirId, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -28,6 +28,36 @@ use tracing::{debug, info, instrument, trace};
 use crate::diagnostics::*;
 use crate::thir::cx::ThirBuildCx;
 
+/// The receiver of a splatted method, or the expression for a splatted function call.
+#[derive(Copy, Clone, Debug)]
+enum SplattedFunc<'tcx> {
+    /// The expression for a method receiver. Always a FnDef.
+    FnDefReceiver(&'tcx hir::Expr<'tcx>),
+    /// The expression or path for a function call.
+    /// This can be a FnDef or FnPtr.
+    FnExpression(&'tcx hir::Expr<'tcx>),
+}
+
+impl<'tcx> SplattedFunc<'tcx> {
+    fn has_receiver(&self) -> bool {
+        matches!(self, SplattedFunc::FnDefReceiver(_))
+    }
+
+    fn receiver(&self) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self {
+            SplattedFunc::FnDefReceiver(receiver) => Some(receiver),
+            SplattedFunc::FnExpression(_fn_expression) => None,
+        }
+    }
+
+    fn fn_expression(&self) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self {
+            SplattedFunc::FnDefReceiver(_receiver) => None,
+            SplattedFunc::FnExpression(fn_expression) => Some(fn_expression),
+        }
+    }
+}
+
 fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
@@ -48,15 +78,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
     ///
     /// [dev-guide]: https://rustc-dev-guide.rust-lang.org/thir.html
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
-        // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
-        ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
+        self.mirror_expr_inner(expr)
     }
 
     pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
-        // `mirror_exprs` may also recurse deeply, so it needs protection from stack overflow.
-        // Note that we *could* forward to `mirror_expr` for that, but we can consolidate the
-        // overhead of stack growth by doing it outside the iteration.
-        ensure_sufficient_stack(|| exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect())
+        exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
     }
 
     #[instrument(level = "trace", skip(self, hir_expr))]
@@ -249,7 +275,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 });
 
                 // kind = Pin { pointer }
-                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
+                let pin_did = self.tcx.require_lang_item(LangItem::Pin, span);
                 let args = self.tcx.mk_args(&[new_pin_target.into()]);
                 let kind = ExprKind::Adt(Box::new(AdtExpr {
                     adt_def: self.tcx.adt_def(pin_did),
@@ -375,7 +401,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 if self.typeck_results.is_splatted_call(expr) {
                     // The callee has a splatted tuple argument.
                     // rewrite `receiver.f(a, u, v)` into `receiver.f(a, #[rustc_splat] (u, v))`
-                    self.convert_splatted_callee(expr, fn_span, args, Some(receiver))
+                    self.convert_splatted_callee(
+                        expr,
+                        fn_span,
+                        args,
+                        SplattedFunc::FnDefReceiver(receiver),
+                    )
                 } else {
                     // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
                     let expr = self.method_callee(expr, segment.ident.span, None);
@@ -425,7 +456,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 } else if self.typeck_results.is_splatted_call(expr) {
                     // The callee has a splatted tuple argument.
                     // rewrite `f(a, u, v)` into `f(a, #[rustc_splat] (u, v))`
-                    self.convert_splatted_callee(expr, fun.span, args, None)
+                    self.convert_splatted_callee(
+                        expr,
+                        fun.span,
+                        args,
+                        SplattedFunc::FnExpression(fun),
+                    )
                 } else {
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     let adt_data = if let hir::ExprKind::Path(ref qpath) = fun.kind
@@ -507,7 +543,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             // Make `&pin mut $expr` and `&pin const $expr` into
             // `Pin { __pointer: &mut { $expr } }` and `Pin { __pointer: &$expr }`.
             hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg_expr) => match expr_ty.kind() {
-                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin) => {
+                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), LangItem::Pin) => {
                     let ty = args.type_at(0);
                     let arg_ty = self.typeck_results.expr_ty(arg_expr);
                     let mut arg = self.mirror_expr(arg_expr);
@@ -1224,95 +1260,42 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
     }
 
-    fn splatted_callee(
-        &mut self,
-        expr: &hir::Expr<'_>,
-        span: Span,
-    ) -> (Expr<'tcx>, u16 /* arg_index */, u16 /* arg_count */) {
-        let SplattedDef { def_id, arg_index, arg_count } =
-            self.typeck_results.splatted_def(expr.hir_id).unwrap_or_else(|| {
-                span_bug!(expr.span, "no splatted def for function or method callee")
-            });
-
-        let expr = if let Some(def_id) = def_id {
-            // We're calling a function via a FnDef, and its possibly generic type
-            let def_kind = self.tcx.def_kind(def_id);
-            let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(def_kind, def_id));
-            debug!(
-                "splatted_callee FnDef: user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?} arg_count={:?}",
-                user_ty, def_kind, def_id, arg_index, arg_count,
-            );
-
-            Expr {
-                temp_scope_id: expr.hir_id.local_id,
-                ty: self
-                    .tcx
-                    .type_of(def_id)
-                    .instantiate(self.tcx, self.typeck_results.node_args(expr.hir_id))
-                    .skip_norm_wip(),
-                span,
-                kind: ExprKind::ZstLiteral { user_ty },
-            }
-        } else {
-            // We're calling a function via a FnPtr and its type
-            // FIXME(splat): populate the side-tables for FnPtrs, using liberated_fn_sigs if needed
-            let fn_ty = self.typeck_results.expr_ty_adjusted(expr);
-            let user_ty =
-                self.typeck_results.user_provided_types().get(expr.hir_id).copied().map(Box::new);
-            debug!(
-                "splatted_callee FnPtr: user_ty={:?} fn_ty={:?} arg_index={:?} arg_count={:?}",
-                user_ty, fn_ty, arg_index, arg_count,
-            );
-
-            if !fn_ty.is_fn() {
-                span_bug!(expr.span, "splatted FnPtr side-tables are not yet implemented")
-            }
-
-            Expr {
-                temp_scope_id: expr.hir_id.local_id,
-                // Create a new FnPtr FnSig type, representing the splatted function arguments with
-                // user-supplied generic types applied
-                ty: Ty::new_fn_ptr(self.tcx, fn_ty.fn_sig(self.tcx)),
-                span,
-                kind: ExprKind::ZstLiteral { user_ty },
-            }
-        };
-
-        (expr, arg_index, arg_count)
-    }
-
     /// The callee has a splatted tuple argument.
     /// Rewrite a splatted call `receiver.f(a, u, v)` into `receiver.f(a, #[rustc_splat] (u, v))`.
     /// The receiver is optional.
     fn convert_splatted_callee(
         &mut self,
-        expr: &hir::Expr<'_>,
+        call_expr: &'tcx hir::Expr<'_>,
         fn_span: Span,
         args: &'tcx [hir::Expr<'tcx>],
-        receiver: Option<&'tcx hir::Expr<'tcx>>,
+        receiver_or_func: SplattedFunc<'tcx>,
     ) -> ExprKind<'tcx> {
         let tcx = self.tcx;
 
-        // The callee has a splatted tuple argument.
-        let (func, tupled_arg_index, tupled_args_count) = self.splatted_callee(expr, fn_span);
-        let tupled_arg_index = usize::from(tupled_arg_index);
-        let tupled_args_count = usize::from(tupled_args_count);
+        // Look up the typeck results
+        let splatted_def =
+            self.typeck_results.splatted_def(call_expr.hir_id).unwrap_or_else(|| {
+                span_bug!(call_expr.span, "no splatted def for function or method callee")
+            });
+
+        let tupled_arg_index = usize::from(splatted_def.arg_index());
+        let tupled_args_count = usize::from(splatted_def.arg_count());
 
         // Splatting an empty tuple is permitted: `a.f() -> Trait::f(a, #[rustc_splat] ())`.
         // In that case, the tupled arg index is one past the end of the args.
         if tupled_arg_index + tupled_args_count > args.len() {
             span_bug!(
-                expr.span,
-                "splatted arg index out of bounds of function args: {:?} + {:?} > {:?} for function call: receiver {:?}, args {:?}",
+                call_expr.span,
+                "splatted arg index out of bounds of function args: {:?} + {:?} > {:?} for function call: {:?}, args {:?}",
                 tupled_arg_index,
                 tupled_args_count,
                 args.len(),
-                receiver,
+                receiver_or_func,
                 args,
             );
         }
 
-        info!("Using splatted function span: {:?}", func.span);
+        debug!("Using splatted function span: {:?}", fn_span);
 
         // Split into non-tupled and tupled arguments
         let initial_non_tupled_args =
@@ -1331,29 +1314,94 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         let tupled_arg_tys = tupled_args.iter().map(|e| self.typeck_results.expr_ty_adjusted(e));
 
-        let temp_scope_id =
-            if receiver.is_some() { func.temp_scope_id } else { expr.hir_id.local_id };
+        // We need the tupled arguments in HIR/MIR for type checking
+        // FIXME(splat): de-tuple args in codegen for performance
         let tupled_args = Expr {
             ty: Ty::new_tup_from_iter(tcx, tupled_arg_tys),
-            temp_scope_id,
-            span: expr.span,
+            temp_scope_id: call_expr.hir_id.local_id,
+            span: call_expr.span,
             kind: ExprKind::Tuple { fields: self.mirror_exprs(tupled_args) },
         };
 
         let tupled_args = self.thir.exprs.push(tupled_args);
 
-        let mut args =
-            if let Some(receiver) = receiver { vec![self.mirror_expr(receiver)] } else { vec![] };
+        // Handle the receiver as the first arg, if present
+        let mut args = Vec::with_capacity(
+            usize::from(receiver_or_func.has_receiver())
+                + initial_non_tupled_args.len()
+                + 1
+                + final_non_tupled_args.len(),
+        );
+        if let Some(receiver) = receiver_or_func.receiver() {
+            args.push(self.mirror_expr(receiver));
+        }
         args.extend(initial_non_tupled_args);
         args.push(tupled_args);
         args.extend(final_non_tupled_args);
 
-        // We need the tupled arguments in HIR/MIR for type checking, but codegen can
-        // de-tuple them for performance
-        let fn_span = if receiver.is_some() { func.span } else { expr.span };
+        let fn_span = if receiver_or_func.has_receiver() { fn_span } else { call_expr.span };
+
+        let (fn_ty, fun_expr) = match (splatted_def, receiver_or_func.fn_expression()) {
+            // Create a FnDef shim for user-provided types
+            (SplattedDef::FnDef { def_id, arg_index, arg_count }, _) => {
+                // We're calling a function via a FnDef, and its possibly generic type
+                // This is effectively `self.method_callee(call_expr, fn_span, None)`,
+                // applied to `splatted_def` instead of `type_dependent_def`.
+                let def_kind = self.tcx.def_kind(def_id);
+                let user_ty =
+                    self.user_args_applied_to_res(call_expr.hir_id, Res::Def(def_kind, def_id));
+                debug!(
+                    "splatted_callee FnDef: user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?} arg_count={:?}",
+                    user_ty, def_kind, def_id, arg_index, arg_count,
+                );
+
+                // Create a new FnDef expression with user-provided type applied
+                let callee_expr = Expr {
+                    temp_scope_id: call_expr.hir_id.local_id,
+                    ty: self
+                        .tcx
+                        .type_of(def_id)
+                        .instantiate(self.tcx, self.typeck_results.node_args(call_expr.hir_id))
+                        .skip_norm_wip(),
+                    span: fn_span,
+                    kind: ExprKind::ZstLiteral { user_ty },
+                };
+                (callee_expr.ty, self.thir.exprs.push(callee_expr))
+            }
+
+            // We're calling a function via a FnPtr and its type
+            // FIXME(splat): do we need to populate and apply user_provided_types() ?
+            (SplattedDef::FnPtr { fn_ptr_type, arg_index, arg_count }, Some(fn_expression)) => {
+                debug!(
+                    "splatted_callee FnPtr: fn_ty={:?} arg_index={:?} arg_count={:?}",
+                    fn_ptr_type, arg_index, arg_count,
+                );
+
+                if !fn_ptr_type.is_fn() {
+                    span_bug!(
+                        call_expr.span,
+                        "splatted FnPtr side-tables were not populated correctly, non-fn type received: {:?}",
+                        fn_ptr_type
+                    )
+                }
+
+                // Pass through the FnPtr type and the mirrored function path
+                (fn_ptr_type, self.mirror_expr(fn_expression))
+            }
+            // FnPtrs must have a function expression (and they never have method receivers)
+            (SplattedDef::FnPtr { .. }, None) => {
+                span_bug!(
+                    call_expr.span,
+                    "convert_splatted_callee: FnPtr without fn expression (or with receiver) is invalid: splatted_def={:?}, receiver_or_func={:?}",
+                    splatted_def,
+                    receiver_or_func,
+                );
+            }
+        };
+
         ExprKind::Call {
-            ty: func.ty,
-            fun: self.thir.exprs.push(func),
+            ty: fn_ty,
+            fun: fun_expr,
             args: args.into_boxed_slice(),
             from_hir_call: true,
             fn_span,

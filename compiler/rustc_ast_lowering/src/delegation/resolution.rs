@@ -5,10 +5,10 @@ use hir::def::DefKind;
 use rustc_ast::{self as ast, Delegation, DelegationSource, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::{span_bug, ty};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{ErrorGuaranteed, Span, kw};
+use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::delegation::generics::GenericsGenerationResults;
 use crate::delegation::resolution::resolver::DelegationResolver;
@@ -31,7 +31,7 @@ pub(super) struct ParamInfo {
     pub splatted: Option<u8>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(super) struct SigMapping {
     pub map_return: bool,
     pub arguments_to_map: FxIndexSet<usize>,
@@ -254,17 +254,52 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         }
 
         if self.can_perform_self_mapping(delegation, parent)? {
-            // FIXME(fn_delegation): support heuristics for mapping of complex
-            // return types: `Self` -> `Box<Arc<Rc<Self>>>`
-            mapping.map_return = sig.output().is_param(0);
+            /// Finds `Self` generic param only in ADT or references, so we avoid cases like
+            /// `Self::Item` which will return true if `output.contains(...)` will be used.
+            struct SelfFinder;
 
-            let self_param = Ty::new_param(self.tcx(), 0, kw::SelfUpper);
+            impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for SelfFinder {
+                type Result = ControlFlow<()>;
+
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                    match t.kind() {
+                        ty::Adt(_, args) => {
+                            if args
+                                .iter()
+                                .flat_map(|arg| arg.as_type())
+                                .any(|type_arg| type_arg.is_self_param())
+                            {
+                                return ControlFlow::Break(());
+                            }
+
+                            t.super_visit_with(self)
+                        }
+                        ty::Ref(_, ref_t, _) => {
+                            if ref_t.is_self_param() {
+                                return ControlFlow::Break(());
+                            }
+
+                            t.super_visit_with(self)
+                        }
+                        _ => ControlFlow::Continue(()),
+                    }
+                }
+            }
+
+            impl SelfFinder {
+                fn contains_self(t: Ty<'_>) -> bool {
+                    t.is_self_param() || t.visit_with(&mut SelfFinder).is_break()
+                }
+            }
+
+            mapping.map_return = SelfFinder::contains_self(sig.output());
+
             let arguments_to_map = sig
                 .inputs()
                 .iter()
                 .enumerate()
                 .skip(1) // Already checked above.
-                .filter_map(|(idx, param)| param.contains(self_param).then_some(idx));
+                .filter_map(|(idx, &param)| SelfFinder::contains_self(param).then_some(idx));
 
             mapping.arguments_to_map.extend(arguments_to_map);
         }

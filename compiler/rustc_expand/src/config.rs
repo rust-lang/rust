@@ -7,10 +7,9 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
 };
-use rustc_ast::{
-    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
-    SyntheticAttr,
-};
+use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, NodeId, SyntheticAttr};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{self as attrs, AttributeKind};
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
@@ -22,10 +21,6 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
 };
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{
-    Target, {self as hir},
-};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
@@ -34,7 +29,7 @@ use tracing::instrument;
 
 use crate::diagnostics::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
-    FeatureRemovedReason, InvalidCfg, RemoveExprNotSupported,
+    FeatureRemovedReason, RemoveExprNotSupported,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -51,7 +46,7 @@ pub struct StripUnconfigured<'a> {
 pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
     let mut features = Features::default();
 
-    if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
+    if let Some(attrs::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
         AttributeParser::parse_limited_sym(sess, krate_attrs, &[sym::feature])
     {
         for feature_ident in feature_idents {
@@ -441,32 +436,6 @@ impl<'a> StripUnconfigured<'a> {
 
         self.process_cfg_attrs(expr);
         self.try_configure_tokens(&mut *expr);
-    }
-}
-
-/// FIXME: Still used by Rustdoc, should be removed after
-pub fn parse_cfg_old<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
-    let span = meta_item.span;
-    match meta_item.meta_item_list() {
-        None => {
-            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens { span });
-            None
-        }
-        Some([]) => {
-            sess.dcx().emit_err(InvalidCfg::NoPredicate { span });
-            None
-        }
-        Some([_, .., l]) => {
-            sess.dcx().emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
-            None
-        }
-        Some([single]) => match single.meta_item_or_bool() {
-            Some(meta_item) => Some(meta_item),
-            None => {
-                sess.dcx().emit_err(InvalidCfg::PredicateLiteral { span: single.span() });
-                None
-            }
-        },
     }
 }
 

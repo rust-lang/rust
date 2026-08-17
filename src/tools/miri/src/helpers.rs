@@ -937,7 +937,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_feature: &str,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_ref();
-        if !this.tcx.sess.unstable_target_features.contains(&Symbol::intern(target_feature)) {
+        if !this.tcx.sess.internal_target_features.contains(&Symbol::intern(target_feature)) {
             throw_ub_format!(
                 "attempted to call intrinsic `{intrinsic}` that requires missing target feature {target_feature}"
             );

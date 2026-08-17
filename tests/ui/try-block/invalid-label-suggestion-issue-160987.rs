@@ -1,0 +1,16 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/160987.
+//! A label suggested for a try block must use valid syntax.
+
+//@ edition: 2024
+//@ run-rustfix
+
+#![feature(try_blocks)]
+#![allow(unreachable_code)]
+
+fn main() {
+    try {
+        break;
+        //~^ ERROR `break` outside of a loop or labeled block
+        None?;
+    };
+}

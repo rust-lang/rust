@@ -445,4 +445,69 @@ fn issue16116() {
     }
 }
 
+fn issue17453() {
+    static mut GLOBAL_INT: u32 = 5;
+
+    // no lint: taking a raw pointer to a mutable static is safe, only not_very_safe is unsafe
+    fn set_global_int() {
+        unsafe {
+            not_very_safe();
+            let _ = &raw mut GLOBAL_INT;
+        }
+    }
+
+    // no lint: taking a raw pointer to a dereferenced raw pointer is safe, only not_very_safe is unsafe
+    fn reborrow_raw(value: *mut u32) {
+        unsafe {
+            not_very_safe();
+            let _ = &raw mut *value;
+        }
+    }
+
+    // lint: two unsaves are:
+    // 1. taking a raw pointer to a **dereferenced** raw pointer with field access
+    // 2. not_very_safe
+    #[derive(Clone, Copy)]
+    struct S {
+        x: u32,
+    }
+    fn reborrow_raw_field(value: *mut S) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            not_very_safe();
+            let _ = &raw mut (*value).x;
+        }
+    }
+
+    struct Nested {
+        s: S,
+    }
+
+    // no lint: nested field access on a safe base under &raw is safe, only not_very_safe is unsafe
+    fn safe_nested(mut value: Nested) {
+        unsafe {
+            not_very_safe();
+            let _ = &raw mut value.s.x;
+        }
+    }
+
+    // lint: nested field access on a mutable static under &raw is unsafe, plus not_very_safe
+    static mut GLOBAL_STRUCT: Nested = Nested { s: S { x: 5 } };
+    fn unsafe_nested_static() {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            not_very_safe();
+            let _ = &raw mut GLOBAL_STRUCT.s.x;
+        }
+    }
+
+    // lint: nested field access on a raw pointer deref under &raw is unsafe, plus not_very_safe
+    fn unsafe_nested_raw(ptr: *mut Nested) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            not_very_safe();
+            let _ = &raw mut (*ptr).s.x;
+        }
+    }
+}
 fn main() {}

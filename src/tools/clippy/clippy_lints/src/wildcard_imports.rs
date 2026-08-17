@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::BytePos;
@@ -104,14 +104,14 @@ impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 pub struct WildcardImports {
     warn_on_all: bool,
-    allowed_segments: FxHashSet<String>,
+    allowed_segments: &'static FxHashSet<String>,
 }
 
 impl WildcardImports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             warn_on_all: conf.warn_on_all_wildcard_imports,
-            allowed_segments: conf.allowed_wildcard_imports.iter().cloned().collect(),
+            allowed_segments: &conf.allowed_wildcard_imports,
         }
     }
 }
@@ -123,9 +123,7 @@ impl LateLintPass<'_> for WildcardImports {
         }
 
         let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
-        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module)
-            && !self.warn_on_all
-        {
+        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module) && !self.warn_on_all {
             return;
         }
         if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind
@@ -185,7 +183,7 @@ impl WildcardImports {
     fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
         item.span.from_expansion()
             || is_prelude_import(segments)
-            || is_allowed_via_config(segments, &self.allowed_segments)
+            || is_allowed_via_config(segments, self.allowed_segments)
             || (is_super_only_import(segments) && is_in_test(cx.tcx, item.hir_id()))
     }
 }

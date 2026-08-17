@@ -66,9 +66,9 @@ impl LateLintPass<'_> for TestsOutsideTestModule {
                 cx,
                 TESTS_OUTSIDE_TEST_MODULE,
                 sp,
-                "this function marked with #[test] is outside a #[cfg(test)] module",
+                "this function marked with `#[test]` is outside a `#[cfg(test)]` module",
                 |diag| {
-                    diag.note("move it to a testing module marked with #[cfg(test)]");
+                    diag.note("move it to a testing module marked with `#[cfg(test)]`");
                 },
             );
         }
