@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::time::Duration;
 
 use anyhow::Context;
@@ -103,25 +104,18 @@ impl JobInfoResolver {
     }
 
     fn get_job_data(&mut self, ci_metadata: &CiMetadata, job_name: &str) -> Option<&GitHubJob> {
-        if let Some(job) = self
-            .workflow_job_cache
-            .get(&ci_metadata.workflow_run_id)
-            .and_then(|jobs| jobs.iter().find(|j| j.name == job_name))
-        {
-            return Some(job);
+        match self.workflow_job_cache.entry(ci_metadata.workflow_run_id) {
+            Entry::Occupied(jobs) => jobs.into_mut().iter().find(|j| j.name == job_name),
+            Entry::Vacant(entry) => {
+                let jobs = self
+                    .client
+                    .get_workflow_run_jobs(&ci_metadata.repository, ci_metadata.workflow_run_id)
+                    .inspect_err(|e| eprintln!("Cannot download workflow jobs: {e:?}"))
+                    .ok()?;
+                // Save the cache even if the job name was not found, it could be useful for further lookups
+                let jobs = entry.insert(jobs);
+                jobs.iter().find(|j| j.name == job_name)
+            }
         }
-
-        let jobs = self
-            .client
-            .get_workflow_run_jobs(&ci_metadata.repository, ci_metadata.workflow_run_id)
-            .inspect_err(|e| eprintln!("Cannot download workflow jobs: {e:?}"))
-            .ok()?;
-        // Save the cache even if the job name was not found, it could be useful for further lookups
-        self.workflow_job_cache.insert(ci_metadata.workflow_run_id, jobs);
-        self.workflow_job_cache
-            .get(&ci_metadata.workflow_run_id)
-            .unwrap()
-            .iter()
-            .find(|j| j.name == job_name)
     }
 }
