@@ -348,7 +348,7 @@ impl ChangeFixture {
                     meta.env,
                     crate_meta.origin,
                     meta.crate_attrs,
-                    TargetKind::Lib { is_proc_macro: false },
+                    crate_meta.target_kind,
                     proc_macro_cwd.clone(),
                     crate_ws_data.clone(),
                 );
@@ -743,6 +743,7 @@ struct CrateMeta {
     name: String,
     origin: CrateOrigin,
     version: Option<String>,
+    target_kind: TargetKind,
 }
 
 #[derive(Debug)]
@@ -812,12 +813,31 @@ fn parse_crate(
     // syntax:
     //   "my_awesome_crate"
     //   "my_awesome_crate@0.0.1,http://example.com"
+    //   "bin:my_awesome_crate"
+    //   "bin:my_awesome_crate@0.0.1,http://example.com"
     let (name, repo, version) = if let Some((name, remain)) = crate_str.split_once('@') {
         let (version, repo) =
             remain.split_once(',').expect("crate meta: found '@' without version and url");
         (name.to_owned(), Some(repo.to_owned()), Some(version.to_owned()))
     } else {
         (crate_str, None, None)
+    };
+
+    let (target_kind, name) = if let Some((target_kind, name)) = name.split_once(':') {
+        let target_kind = match target_kind {
+            "lib" => TargetKind::Lib { is_proc_macro: true },
+            "proc-macro" => TargetKind::Lib { is_proc_macro: true },
+            "bin" => TargetKind::Bin,
+            "example" => TargetKind::Example,
+            "test" => TargetKind::Test,
+            "bench" => TargetKind::Bench,
+            "custom-build" => TargetKind::BuildScript,
+            "other" => TargetKind::Other,
+            _ => panic!("crate meta: unexpected target kind {target_kind}"),
+        };
+        (target_kind, name.to_owned())
+    } else {
+        (TargetKind::Lib { is_proc_macro: false }, name)
     };
 
     let non_workspace_member = explicit_non_workspace_member
@@ -844,7 +864,7 @@ fn parse_crate(
         }
     };
 
-    CrateMeta { name, origin, version }
+    CrateMeta { name, origin, version, target_kind }
 }
 
 // Identity mapping
