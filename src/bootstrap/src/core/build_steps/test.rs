@@ -15,6 +15,7 @@ use std::{env, fs, iter};
 
 use build_helper::git::get_closest_upstream_commit;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::format::InternalRustfmt;
@@ -31,9 +32,10 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
-    self, Alias, Builder, CommandLineStep, Compiler, Kind, RunConfig, ShouldRun, Step,
-    StepMetadata, crate_description,
+    self, Alias, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
 use crate::core::{android, debuggers};
@@ -41,14 +43,32 @@ use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, LldThreads, TestFilterCategory, add_dylib_path, add_rustdoc_cargo_linker_args,
-    dylib_path, dylib_path_var, linker_args, linker_flags, t, target_supports_cranelift_backend,
-    up_to_date,
+    dylib_path, dylib_path_var, envify, linker_args, linker_flags, t,
+    target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, TestTarget, envify, exit};
+use crate::{CLang, GitRepo, Mode};
 
 mod compiletest;
 pub mod failed_tests;
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum TestTarget {
+    /// Run unit, integration and doc tests (default).
+    Default,
+    /// Run unit, integration, doc tests, examples, bins, benchmarks (no doc tests).
+    AllTargets,
+    /// Only run doc tests.
+    DocOnly,
+    /// Only run unit and integration tests.
+    Tests,
+}
+
+impl TestTarget {
+    pub(crate) fn runs_doctests(&self) -> bool {
+        matches!(self, TestTarget::DocOnly | TestTarget::Default)
+    }
+}
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -291,7 +311,7 @@ impl CommandLineStep for Cargotest {
             eprintln!(
                 "ERROR: running cargotest with stage 0 is currently unsupported. Use at least stage 1."
             );
-            exit!(1);
+            helpers::exit_process(1);
         }
         // We want to build cargo stage N (where N == top_stage), and rustc stage N,
         // and test both of these together.
@@ -948,7 +968,7 @@ impl CommandLineStep for CompiletestTest {
 ERROR: `--stage 0` causes compiletest to query information from the stage0 (precompiled) compiler, instead of the in-tree compiler, which can cause some tests to fail inappropriately
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         let bootstrap_compiler = builder.compiler(0, host);
@@ -1297,7 +1317,7 @@ impl CommandLineStep for Clippy {
         }
 
         if !builder.config.cmd.bless() {
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
     }
 
@@ -1702,7 +1722,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                         PATH = inferred_rustfmt_dir.display(),
                         CHAN = builder.config.channel,
                     );
-                    crate::exit!(1);
+                    helpers::exit_process(1);
                 };
                 let all = false;
                 crate::core::build_steps::format::format(
@@ -1733,7 +1753,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             eprintln!(
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         builder.info("x.py help check");
@@ -1743,13 +1763,13 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             let help_path = get_help_path(builder);
             let cur_help = std::fs::read_to_string(&help_path).unwrap_or_else(|err| {
                 eprintln!("couldn't read {}: {}", help_path.display(), err);
-                crate::exit!(1);
+                helpers::exit_process(1);
             });
             let new_help = top_level_help();
 
             if new_help != cur_help {
                 eprintln!("x.py help was changed; run `x.py run generate-help` to update it");
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
         }
     }
@@ -2232,7 +2252,7 @@ ERROR: `--stage 0` runs compiletest on the stage0 (precompiled) compiler, not yo
 HELP: to test the compiler or standard library, omit the stage or explicitly use `--stage 1` instead
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         let mut test_compiler = self.test_compiler;
@@ -2277,14 +2297,19 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
+        // Build the standard library for wasm32-wasip2 (current target for wasm proc macros).
+        if builder.config.wasm_proc_macros {
+            builder.ensure(compile::Std::new(
+                test_compiler,
+                TargetSelection::from_user("wasm32-wasip2"),
+            ));
+        }
+
         if suite == "debuginfo" {
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(test_compiler).to_path_buf(),
                 target,
             });
-        }
-        if mode == CompiletestMode::RunMake {
-            builder.tool_exe(Tool::RunMakeSupport);
         }
 
         // ensure that `libproc_macro` is available on the host.
@@ -2297,6 +2322,36 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
+
+        if mode == CompiletestMode::RunMake {
+            // Find .rlib and .rmeta files of the run-make-support library, and pass them to
+            // compiletest
+            let output = builder.tool(Tool::RunMakeSupport);
+            let find = |extension: &str| -> Option<&PathBuf> {
+                output.artifacts.iter().find_map(|p| {
+                    // We want librun_make_support .rlib and .rmeta files
+                    // They can be in separate directories, because Cargo currently uplifts the
+                    // .rlib file when using -Zembed-metadata=no, but it doesn't uplift the
+                    // .rmeta file
+                    let filename = p.file_name()?.to_str()?;
+                    if !filename.starts_with("librun_make_support") {
+                        return None;
+                    }
+
+                    if extension == p.extension()? { Some(p) } else { None }
+                })
+            };
+            if !builder.config.dry_run() {
+                let rlib =
+                    find("rlib").expect(".rlib not found when compiling librun_make_support");
+                cmd.arg("--run-make-support-rlib").arg(rlib);
+
+                // .rmeta might not be found if we're not using -Zembed-metadata=no
+                if let Some(rmeta) = find("rmeta") {
+                    cmd.arg("--run-make-support-rmeta").arg(rmeta);
+                }
+            }
+        }
 
         if suite == "mir-opt" {
             builder.ensure(compile::Std::new(test_compiler, target).is_for_mir_opt_tests(true));
@@ -2325,6 +2380,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             .arg(builder.src.join("tests").join("auxiliary").join("minicore.rs"));
 
         let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
+
+        if builder.config.wasm_proc_macros {
+            cmd.arg("--wasm-proc-macros");
+        }
 
         // There are (potentially) 2 `cargo`s to consider:
         //
@@ -2431,7 +2490,7 @@ ERROR: No configured backend named `{name}`
 HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}]`",
                     name = codegen_backend.name(),
                 );
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
 
             if let CodegenBackendKind::Gcc = codegen_backend
@@ -2695,11 +2754,10 @@ Please disable assertions with `rust.debug-assertions = false`.
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(test_compiler.host) {
-            let llvm::LlvmOutput { host_llvm_config, .. } =
-                builder.ensure(llvm::Llvm { target: builder.config.host_target });
+            let llvm_output = builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_version = get_llvm_version(builder, &host_llvm_config);
-                let llvm_components = command(&host_llvm_config)
+                let llvm_version = get_llvm_version(builder, &llvm_output.host_llvm_config);
+                let llvm_components = command(&llvm_output.host_llvm_config)
                     .cached()
                     .arg("--components")
                     .run_capture_stdout(builder)
@@ -2711,7 +2769,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                     .arg(llvm_components.trim());
                 llvm_components_passed = true;
             }
-            if !builder.config.is_rust_llvm(target) {
+            if !builder.config.is_rust_llvm(&llvm_output, target) {
                 cmd.arg("--system-llvm");
             }
 
@@ -2720,7 +2778,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             // separate compilations. We can add LLVM's library path to the
             // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
-                let llvm_libdir = command(&host_llvm_config)
+                let llvm_libdir = command(&llvm_output.host_llvm_config)
                     .cached()
                     .arg("--libdir")
                     .run_capture_stdout(builder)
@@ -2740,7 +2798,8 @@ Please disable assertions with `rust.debug-assertions = false`.
                 // tools. Pass the path to run-make tests so they can use them.
                 // (The coverage-run tests also need these tools to process
                 // coverage reports.)
-                let llvm_bin_path = host_llvm_config
+                let llvm_bin_path = llvm_output
+                    .host_llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
                 assert!(llvm_bin_path.is_dir());
@@ -4794,14 +4853,14 @@ impl CommandLineStep for StdSemverCheck {
                     );
                     if builder.fail_fast {
                         eprintln!("{error}",);
-                        exit!(1);
+                        helpers::exit_process(1);
                     } else {
                         builder.config.exec_ctx().add_to_delay_failure(error);
                     }
                 }
                 _ => {
                     eprintln!("cargo-semver-checks failed.\n{}\n{}", res.stderr(), res.stdout());
-                    exit!(1);
+                    helpers::exit_process(1);
                 }
             }
         }

@@ -14,23 +14,23 @@ use clap::ValueEnum;
 use tracing::instrument;
 
 pub use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
-pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
-use crate::core::builder::cli_paths::CLIStepPath;
 use crate::core::builder::step_stack::StepRecord;
 pub use crate::core::builder::step_stack::StepStack;
+use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
+use crate::core::metadata::Crate;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::utils::tracing::format_location;
-use crate::{Build, Crate, trace};
+use crate::{Build, trace};
 
 mod cargo;
 mod cli_paths;
@@ -361,7 +361,7 @@ struct CommandLineStepDescription {
     kind: Kind,
 }
 
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct TaskPath {
     pub path: PathBuf,
 }
@@ -373,7 +373,7 @@ impl Debug for TaskPath {
 }
 
 /// Collection of paths used to match a task rule.
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum PathSet {
     /// A collection of individual paths or aliases.
     ///
@@ -413,34 +413,6 @@ impl PathSet {
     fn check(p: &TaskPath, needle: &Path) -> bool {
         // This order is important for retro-compatibility, as `starts_with` was introduced later.
         p.path.ends_with(needle) || p.path.starts_with(needle)
-    }
-
-    /// Returns true if self is matched by any of the command-line selectors,
-    /// and mutates those selectors to flag them as will-be-executed.
-    fn match_and_flag_selectors(&self, selectors: &mut [CLIStepPath]) -> bool {
-        let mut check_and_flag = |p| {
-            let mut result = false;
-            for selector in selectors.iter_mut() {
-                let matched = Self::check(p, &selector.path);
-                if matched {
-                    selector.will_be_executed = true;
-                    result = true;
-                }
-            }
-            result
-        };
-
-        match self {
-            PathSet::Set(set) => {
-                // Flag all matching selectors, not just the first match.
-                let mut matched = false;
-                for p in set {
-                    matched |= check_and_flag(p);
-                }
-                matched
-            }
-            PathSet::Suite(suite) => check_and_flag(suite),
-        }
     }
 
     /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
@@ -633,36 +605,9 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    /// Handles individual files (not directories) within a test suite.
-    fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
-        self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(suite) => requested_path.starts_with(&suite.path),
-            PathSet::Set(_) => false,
-        })
-    }
-
     pub fn suite_path(mut self, suite: &str) -> Self {
         self.paths.insert(PathSet::Suite(TaskPath { path: suite.into() }));
         self
-    }
-
-    /// Given a set of requested paths, return the subset which match the Step for this `ShouldRun`,
-    /// removing the matches from `paths`.
-    ///
-    /// NOTE: this returns multiple PathSets to allow for the possibility of multiple units of work
-    /// within the same step. For example, `test::Crate` allows testing multiple crates in the same
-    /// cargo invocation, which are put into separate sets because they aren't aliases.
-    ///
-    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
-    /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
-    fn pathsets_for_paths_flagging_matches(&self, paths: &mut [CLIStepPath]) -> Vec<PathSet> {
-        let mut sets = vec![];
-        for pathset in &self.paths {
-            if pathset.match_and_flag_selectors(paths) {
-                sets.push(pathset.clone());
-            }
-        }
-        sets
     }
 
     /// When the corresponding step is run "by default" (without explicit command-line paths),
@@ -1433,7 +1378,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
 
         // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_from_ci {
+        if self.config.llvm_ci_mode.download_from_ci() {
             let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
@@ -1583,6 +1528,24 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             }
         }
         None
+    }
+
+    /// Root output directory of LLVM for `target`
+    ///
+    /// Note that if LLVM is configured externally then the directory returned
+    /// will likely be empty.
+    pub fn llvm_out(&self, target: TargetSelection) -> PathBuf {
+        // We don't want to eagerly build LLVM by calling this function, so we only check if it
+        // was already downloaded from CI.
+        // The first part of the condition ensures that we don't download LLVM for non-host targets
+        // from CI eagerly (FIXME: this could be relaxed in the future).
+        if self.config.is_host_target(target)
+            && let Some(llvm_ci) = self.ensure(llvm::LlvmFromCi { target })
+        {
+            llvm_ci.output.root_dir().to_path_buf()
+        } else {
+            self.out.join(target).join("llvm")
+        }
     }
 
     /// Updates all submodules, and exits with an error if submodule

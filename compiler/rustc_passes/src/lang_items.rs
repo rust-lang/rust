@@ -9,12 +9,12 @@
 
 use rustc_ast as ast;
 use rustc_ast::visit;
+use rustc_crate_store::ExternCrate;
 use rustc_hir::Target;
 use rustc_hir::attrs::lang_items::{GenericRequirement, LangItem, LanguageItems};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
-use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::diagnostics::{DuplicateLangItem, IncorrectCrateType, IncorrectTarget};

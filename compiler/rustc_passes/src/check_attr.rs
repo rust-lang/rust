@@ -44,7 +44,7 @@ use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::{ObligationCtxt, TraitErrors};
@@ -1024,18 +1024,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
         };
-        match item_kind {
-            Some(ItemKind::Mod(_, module)) => {
-                if !module.item_ids.is_empty() {
-                    self.dcx()
-                        .emit_err(diagnostics::DocKeywordAttributeEmptyMod { span, attr_name });
-                    return;
-                }
-            }
-            _ => {
-                self.dcx().emit_err(diagnostics::DocKeywordAttributeNotMod { span, attr_name });
-                return;
-            }
+        if let Some(ItemKind::Const(ident, _gen, _ty, _rhs)) = item_kind
+            && ident.name == kw::Underscore
+        {
+        } else {
+            self.dcx().emit_err(diagnostics::DocKeywordAttributeNotAnonConst { span, attr_name });
         }
     }
 

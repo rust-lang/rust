@@ -4,7 +4,7 @@
 # --generate-hashes --strip-extras src/tools/tidy/config/requirements.in`
 #
 # Note: this generation step should be run with the oldest supported python
-# version (currently 3.10) to ensure backward compatibility
+# version (currently 3.11) to ensure backward compatibility
 
 ruff==0.4.9
 clang-format==18.1.7

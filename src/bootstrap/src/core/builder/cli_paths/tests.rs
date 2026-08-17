@@ -197,8 +197,14 @@ declare_tests!(
     (x_test_src_tools_miri, "test src/tools/miri"),
     (x_test_src_tools_miri_and_cargo_miri, "test src/tools/miri src/tools/miri/cargo-miri"),
     (x_test_tests, "test tests"),
+    (x_test_tests_coverage_trivial_rs, "test tests/coverage/trivial.rs"),
+    (
+        x_test_tests_coverage_trivial_rs_and_attr_impl_rs,
+        "test tests/coverage/trivial.rs tests/coverage/attr/impl.rs"
+    ),
     (x_test_tests_skip_coverage, "test tests --skip=coverage"),
     (x_test_tests_ui, "test tests/ui"),
+    (x_test_tests_ui_dot_prefix, "test ./tests/ui"),
     (x_test_tidy, "test tidy"),
     (x_test_tidyselftest, "test tidyselftest"),
     (x_test_ui, "test ui"),

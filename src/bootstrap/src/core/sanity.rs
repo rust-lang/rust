@@ -14,11 +14,13 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::builder::Builder;
+use crate::Build;
 use crate::core::build_steps::tool;
+use crate::core::builder::Builder;
+use crate::core::config::flags::Subcommand;
 use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand, t};
+use crate::utils::helpers::{self, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -109,7 +111,7 @@ pub fn check(build: &mut Build) {
     if cfg!(not(test))
         && !build.config.dry_run()
         && !build.host_target.is_msvc()
-        && build.config.llvm_from_ci
+        && build.config.llvm_ci_mode.download_from_ci()
     {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.host_target });
@@ -137,7 +139,7 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = !build.config.llvm_from_ci
+    let building_llvm = !build.config.llvm_ci_mode.download_from_ci()
         && !build.config.local_rebuild
         && build.hosts.iter().any(|host| {
             build.config.llvm_enabled(*host)
@@ -160,7 +162,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     build.config.python = build

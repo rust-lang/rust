@@ -63,7 +63,7 @@ pub const fn _andn_u64(a: u64, b: u64) -> u64 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _blsi_u64(x: u64) -> u64 {
-    x & x.wrapping_neg()
+    x.isolate_lowest_one()
 }
 
 /// Gets mask up to lowest set bit.

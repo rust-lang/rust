@@ -1,6 +1,6 @@
 use super::key::{Key, LazyKey, get, set};
 use super::{abort_on_dtor_unwind, guard};
-use crate::alloc::{self, GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
@@ -103,13 +103,14 @@ struct AlignedSystemBox<T: 'static, const ALIGN: usize> {
 impl<T: 'static, const ALIGN: usize> AlignedSystemBox<T, ALIGN> {
     #[inline]
     fn new(v: Value<T>) -> Self {
-        let layout = Layout::new::<Value<T>>().align_to(ALIGN).unwrap();
+        let layout = rtunwrap!(Ok, Layout::new::<Value<T>>().align_to(ALIGN));
 
         // We use the System allocator here to avoid interfering with a potential
         // Global allocator using thread-local storage.
         let ptr: *mut Value<T> = (unsafe { System.alloc(layout) }).cast();
         let Some(ptr) = NonNull::new(ptr) else {
-            alloc::handle_alloc_error(layout);
+            // Do not call the alloc error hook here. It may allocate!
+            rtabort!("Allocation failure");
         };
         unsafe { ptr.write(v) };
         Self { ptr }
@@ -139,7 +140,7 @@ impl<T: 'static, const ALIGN: usize> Deref for AlignedSystemBox<T, ALIGN> {
 impl<T: 'static, const ALIGN: usize> Drop for AlignedSystemBox<T, ALIGN> {
     #[inline]
     fn drop(&mut self) {
-        let layout = Layout::new::<Value<T>>().align_to(ALIGN).unwrap();
+        let layout = rtunwrap!(Ok, Layout::new::<Value<T>>().align_to(ALIGN));
 
         unsafe {
             let unwind_result = catch_unwind(AssertUnwindSafe(|| self.ptr.drop_in_place()));

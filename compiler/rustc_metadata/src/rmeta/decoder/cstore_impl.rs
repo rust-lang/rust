@@ -2,6 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
+use rustc_crate_store::{CrateStore, ExternCrate};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -19,7 +20,6 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
-use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};

@@ -45,6 +45,8 @@ pub(super) fn trace<'tcx>(
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
 ) {
+    let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
+
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
     let cx = LivenessContext {
         typeck,
@@ -485,6 +487,7 @@ impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
             // a much, much smaller domain: in our benchmarks, when it's not zero (the most likely
             // case), there are a few dozens compared to e.g. thousands or tens of thousands of
             // locals and move paths.
+            let _timer = tcx.prof.generic_activity("borrowck_dataflow_maybe_inits");
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
                 .into_results_cursor(body);

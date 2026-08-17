@@ -4,7 +4,7 @@ use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, NoSolution,
     VisibleForLeakCheck,
 };
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
+use rustc_type_ir::{self as ty, CanonicalizerState, InferCtxtLike, Interner, TypeFoldable};
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     type Infcx: InferCtxtLike<Interner = Self::Interner>;
@@ -91,4 +91,14 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         dst: <Self::Interner as Interner>::Ty,
         assume: <Self::Interner as Interner>::Const,
     ) -> Result<Certainty, NoSolution>;
+
+    /// Obtain canonicalizer state, either by allocating it afresh (the default) or by reusing
+    /// previously allocated state.
+    fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
+        Default::default()
+    }
+
+    /// Release canonicalizer state, either by deallocating it (the default) or by clearing it and
+    /// stashing it for later reuse.
+    fn release_canonicalizer_state(&self, _: CanonicalizerState<Self::Interner>) {}
 }

@@ -74,7 +74,7 @@ pub mod wfcheck;
 use std::borrow::Cow;
 use std::num::NonZero;
 
-pub use check::{check_abi, check_custom_abi};
+pub use check::check_abi;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{ErrorGuaranteed, pluralize, struct_span_code_err};

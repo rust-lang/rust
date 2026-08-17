@@ -16,17 +16,12 @@
 
 mod arena;
 pub mod def;
-pub mod def_path_hash_map;
-pub mod definitions;
 mod hir;
 pub mod intravisit;
 pub mod lints;
 pub mod pat_util;
 mod stable_hash_impls;
 mod target_impls;
-
-#[cfg(test)]
-mod tests;
 
 #[doc(no_inline)]
 pub use hir::*;

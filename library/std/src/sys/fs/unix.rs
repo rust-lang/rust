@@ -1191,7 +1191,7 @@ impl OpenOptions {
                 if self.truncate && !self.create_new {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
+                        "append and truncate cannot both be enabled",
                     ));
                 }
             }
@@ -1334,7 +1334,7 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
-                return Ok(());
+                Ok(())
             }
             _ => {
                 Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported"))
@@ -1358,7 +1358,7 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
-                return Ok(());
+                Ok(())
             }
             _ => {
                 Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
@@ -1452,7 +1452,7 @@ impl File {
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
-                return Ok(());
+                Ok(())
             }
             _ => {
                 Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
@@ -2415,7 +2415,7 @@ mod remove_dir_impl {
 
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &path) {
+        let fd = match openat_nofollow_dironly(parent_fd, path) {
             Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                 // not a directory - don't traverse further
                 // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
@@ -2485,7 +2485,7 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             super::unlink(p)
         } else {
-            remove_dir_all_recursive(None, &p)
+            remove_dir_all_recursive(None, p)
         }
     }
 

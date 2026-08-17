@@ -418,3 +418,16 @@ fn test_step_by_nth_non_fused_on_non_first_take() {
     // so we should expect `StepBy::nth` to return `None`
     assert_eq!(iter.nth(usize::MAX), None)
 }
+
+#[test]
+fn test_step_by_fused() {
+    // `StepBy` is fused whenever the underlying iterator is fused.
+    fn assert_fused<I: FusedIterator>(_: I) {}
+    assert_fused((0..10).step_by(3));
+
+    // Once the underlying fused iterator is exhausted, `StepBy` keeps yielding `None`.
+    let mut it = (0..3).step_by(5);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next(), None);
+    assert_eq!(it.next(), None);
+}

@@ -344,9 +344,9 @@ fn test_memset() {
 
 fn test_memcmp() {
     unsafe {
-        assert_eq!(libc::memcmp(b"123".as_ptr().cast(), b"132".as_ptr().cast(), 3), -1);
-        assert_eq!(libc::memcmp(b"abc".as_ptr().cast(), b"aaa".as_ptr().cast(), 3), 1);
-        assert_eq!(libc::memcmp(b"xyz".as_ptr().cast(), b"xyz".as_ptr().cast(), 3), 0);
+        assert!(libc::memcmp(b"123".as_ptr().cast(), b"132".as_ptr().cast(), 3) < 0);
+        assert!(libc::memcmp(b"abc".as_ptr().cast(), b"aaa".as_ptr().cast(), 3) > 0);
+        assert!(libc::memcmp(b"xyz".as_ptr().cast(), b"xyz".as_ptr().cast(), 3) == 0);
     }
 }
 

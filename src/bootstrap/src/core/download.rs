@@ -13,11 +13,10 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::build_steps::llvm::detect_llvm_freshness;
 use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
-use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
+use crate::core::config::{BUILDER_CONFIG_FILENAME, Config, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, hex_encode, move_file};
-use crate::{Config, exit, t};
+use crate::utils::helpers::{self, exe, hex_encode, move_file, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
@@ -270,17 +269,15 @@ impl Config {
         download_component(dwn_ctx, &self.out, mode, filename, prefix, key, destination);
     }
 
-    pub(crate) fn maybe_download_ci_llvm(&self) {
+    /// Attempts to download LLVM from CI for the **host target**.
+    /// Returns a path to the downloaded and extracted directory.
+    pub(crate) fn maybe_download_host_ci_llvm(&self) -> Option<PathBuf> {
         // Never try to download CI LLVM during unit tests.
         if cfg!(test) {
-            return;
+            return None;
         }
 
-        if !self.llvm_from_ci {
-            return;
-        }
-
-        let llvm_root = self.ci_llvm_root();
+        let llvm_root = self.out.join(self.host_target).join("ci-llvm");
         let llvm_freshness =
             detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository());
         self.do_if_verbose(|| {
@@ -294,13 +291,13 @@ impl Config {
                 eprintln!("HELP: maybe your repository history is too shallow?");
                 eprintln!("HELP: consider disabling `download-ci-llvm`");
                 eprintln!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
         };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
-            self.download_ci_llvm(&llvm_sha);
+            self.download_ci_llvm(&llvm_root, &llvm_sha);
 
             if self.should_fix_bins_and_dylibs() {
                 for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
@@ -350,13 +347,14 @@ impl Config {
                 }
                 Err(e) => {
                     eprintln!("ERROR: Failed to parse CI LLVM bootstrap.toml: {e}");
-                    exit!(2);
+                    helpers::exit_process(2);
                 }
             };
         };
+        Some(llvm_root)
     }
 
-    fn download_ci_llvm(&self, llvm_sha: &str) {
+    fn download_ci_llvm(&self, llvm_root: &Path, llvm_sha: &str) {
         // For unit tests, downloading should have been blocked by `maybe_download_ci_llvm`.
         assert!(cfg!(not(test)), "unit tests shouldn't be downloading CI LLVM");
 
@@ -391,8 +389,7 @@ impl Config {
     ";
             self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
         }
-        let llvm_root = self.ci_llvm_root();
-        self.unpack(&tarball, &llvm_root, "rust-dev");
+        self.unpack(&tarball, llvm_root, "rust-dev");
     }
 
     pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
@@ -1121,7 +1118,7 @@ fn download_http_with_retries(
         if !help_on_error.is_empty() {
             eprintln!("{help_on_error}");
         }
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 }
 

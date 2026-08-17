@@ -1410,7 +1410,7 @@ impl<'a> SplitAsciiWhitespace<'a> {
         }
 
         // SAFETY: Slice is created from str.
-        Some(unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) })
+        Some(unsafe { crate::str::from_utf8_unchecked(self.inner.iter.iter.v) })
     }
 }
 

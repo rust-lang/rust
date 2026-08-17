@@ -20,7 +20,6 @@ pub struct Type {
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
 #[derive(Debug, PartialEq, Eq)]
 #[unstable(feature = "type_info", issue = "146922")]
-#[non_exhaustive]
 pub struct TraitImpl<T: PointeeSized> {
     pub(crate) vtable: DynMetadata<T>,
 }
@@ -379,6 +378,27 @@ pub enum Abi {
 }
 
 impl TypeId {
+    /// Returns `true` if the type represented by this `TypeId` is an signed integer.
+    ///
+    /// For everything else this returns false.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<i32>().is_signed() }, true);
+    /// assert_eq!(const { TypeId::of::<u8>().is_signed() }, false);
+    /// assert_eq!(const { TypeId::of::<bool>().is_signed() }, false);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn is_signed(self) -> bool {
+        intrinsics::type_id_is_signed(self)
+    }
+
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
     ///
     /// # Examples

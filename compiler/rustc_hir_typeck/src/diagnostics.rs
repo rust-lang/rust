@@ -819,10 +819,13 @@ pub(crate) struct OutsideLoop<'a> {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct OutsideLoopSuggestion {
-    #[suggestion_part(code = "'block: ")]
+    #[suggestion_part(code = "{block_prefix}")]
     pub block_span: Span,
     #[suggestion_part(code = " 'block")]
     pub break_spans: Vec<Span>,
+    #[suggestion_part(code = " }}")]
+    pub wrap_end: Option<Span>,
+    pub block_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]

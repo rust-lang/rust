@@ -1,56 +1,14 @@
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:10:24
-   |
-LL |             pub mut(in ::std) i2: i32,
-   |                        ^^^^^
-
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:11:24
-   |
-LL |             pub mut(in self::c) i3: i32,
-   |                        ^^^^^^^
-
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:12:24
-   |
-LL |             pub mut(in super::d) i4: i32,
-   |                        ^^^^^^^^
-
 error[E0433]: too many leading `super` keywords within `crate::a::b`
   --> $DIR/restriction-resolution-errors.rs:15:38
    |
 LL |             pub mut(in super::super::super) i7: i32,
    |                                      ^^^^^ this `super` would go above the crate root
 
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:32:16
-   |
-LL |         mut(in crate::a) e1: i32,
-   |                ^^^^^^^^
-
 error[E0433]: too many leading `super` keywords within `crate`
   --> $DIR/restriction-resolution-errors.rs:36:13
    |
 LL |         mut(super) e5: i32,
    |             ^^^^^ this `super` would go above the crate root
-
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:38:16
-   |
-LL |     Tup(mut(in external) i32),
-   |                ^^^^^^^^
-
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:52:24
-   |
-LL |             pub mut(in crate::m2) i32,
-   |                        ^^^^^^^^^
-
-error: field mutation can only be restricted to ancestor modules
-  --> $DIR/restriction-resolution-errors.rs:54:24
-   |
-LL |             pub mut(in m6::m5) i32,
-   |                        ^^^^^^
 
 error[E0433]: cannot find module or crate `a` in this scope
   --> $DIR/restriction-resolution-errors.rs:9:24
@@ -100,6 +58,48 @@ error[E0577]: expected module, found enum `m7`
    |
 LL |             pub mut(in m7) i32,
    |                        ^^ not a module
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:10:24
+   |
+LL |             pub mut(in ::std) i2: i32,
+   |                        ^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:11:24
+   |
+LL |             pub mut(in self::c) i3: i32,
+   |                        ^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:12:24
+   |
+LL |             pub mut(in super::d) i4: i32,
+   |                        ^^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:32:16
+   |
+LL |         mut(in crate::a) e1: i32,
+   |                ^^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:38:16
+   |
+LL |     Tup(mut(in external) i32),
+   |                ^^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:52:24
+   |
+LL |             pub mut(in crate::m2) i32,
+   |                        ^^^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:54:24
+   |
+LL |             pub mut(in m6::m5) i32,
+   |                        ^^^^^^
 
 error: aborting due to 14 previous errors
 

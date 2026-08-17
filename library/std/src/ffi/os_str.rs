@@ -719,7 +719,7 @@ impl fmt::Debug for OsString {
 impl PartialEq for OsString {
     #[inline]
     fn eq(&self, other: &OsString) -> bool {
-        &**self == &**other
+        **self == **other
     }
 }
 
@@ -762,23 +762,23 @@ impl Eq for OsString {}
 impl PartialOrd for OsString {
     #[inline]
     fn partial_cmp(&self, other: &OsString) -> Option<cmp::Ordering> {
-        (&**self).partial_cmp(&**other)
+        (**self).partial_cmp(&**other)
     }
     #[inline]
     fn lt(&self, other: &OsString) -> bool {
-        &**self < &**other
+        **self < **other
     }
     #[inline]
     fn le(&self, other: &OsString) -> bool {
-        &**self <= &**other
+        **self <= **other
     }
     #[inline]
     fn gt(&self, other: &OsString) -> bool {
-        &**self > &**other
+        **self > **other
     }
     #[inline]
     fn ge(&self, other: &OsString) -> bool {
-        &**self >= &**other
+        **self >= **other
     }
 }
 
@@ -786,7 +786,7 @@ impl PartialOrd for OsString {
 impl PartialOrd<str> for OsString {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
-        (&**self).partial_cmp(other)
+        (**self).partial_cmp(other)
     }
 }
 
@@ -794,7 +794,7 @@ impl PartialOrd<str> for OsString {
 impl Ord for OsString {
     #[inline]
     fn cmp(&self, other: &OsString) -> cmp::Ordering {
-        (&**self).cmp(&**other)
+        (**self).cmp(&**other)
     }
 }
 
@@ -802,7 +802,7 @@ impl Ord for OsString {
 impl Hash for OsString {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&**self).hash(state)
+        (**self).hash(state)
     }
 }
 
@@ -1777,7 +1777,7 @@ impl AsRef<OsStr> for str {
 impl AsRef<OsStr> for String {
     #[inline]
     fn as_ref(&self) -> &OsStr {
-        (&**self).as_ref()
+        (**self).as_ref()
     }
 }
 

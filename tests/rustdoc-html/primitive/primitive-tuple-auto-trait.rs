@@ -19,4 +19,4 @@
 /// This header is hard-coded in the HTML format linking for `#[doc(fake_variadics)]`.
 /// To make sure it gets linked correctly, we need to make sure the hardcoded anchor
 /// in the code matches what rustdoc generates for the header.
-mod tuple_prim {}
+const _: () = ();

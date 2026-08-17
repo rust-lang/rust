@@ -461,7 +461,7 @@ impl str {
                 }
             }
         }
-        return s;
+        s
     }
 
     /// Returns the titlecase equivalent of this string slice,
@@ -906,6 +906,18 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }
 
+/// Internal; same as `from_boxed_utf8_unchecked` but allocator-generic. Name
+/// probably not suitable for being made `pub` as-is.
+#[must_use]
+#[inline]
+#[cfg(not(no_global_oom_handling))]
+pub(crate) unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
+    v: Box<[u8], A>,
+) -> Box<str, A> {
+    let (ptr, alloc) = Box::into_raw_with_allocator(v);
+    unsafe { Box::from_raw_in(ptr as *mut str, alloc) }
+}
+
 /// Converts leading ascii bytes in `s` by calling the `convert` function.
 ///
 /// For better average performance, this happens in chunks of `2*size_of::<usize>()`.
@@ -965,7 +977,7 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
     }
 
     // handle the remainder as individual bytes
-    while slice.len() > 0 {
+    while !slice.is_empty() {
         let byte = slice[0];
         if byte > 127 {
             break;

@@ -228,14 +228,24 @@ intrinsics! {
         f64::from_bits(int_to_float::u64_to_f64_bits(i))
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
         f32::from_bits(int_to_float::u128_to_f32_bits(i))
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floatuntisf(lo: u64, hi: u64) -> f32 {
+        f32::from_bits(int_to_float::u128_to_f32_bits((u128::from(hi) << 64) | u128::from(lo)))
+    }
+
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
         f64::from_bits(int_to_float::u128_to_f64_bits(i))
+    }
+
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floatuntidf(lo: u64, hi: u64) -> f64 {
+        f64::from_bits(int_to_float::u128_to_f64_bits((u128::from(hi) << 64) | u128::from(lo)))
     }
 
     #[ppc_alias = __floatunsikf]
@@ -279,14 +289,24 @@ intrinsics! {
         int_to_float::signed(i, int_to_float::u64_to_f64_bits)
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
         int_to_float::signed(i, int_to_float::u128_to_f32_bits)
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floattisf(lo: u64, hi: u64) -> f32 {
+        int_to_float::signed((i128::from(hi) << 64) | i128::from(lo), int_to_float::u128_to_f32_bits)
+    }
+
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
         int_to_float::signed(i, int_to_float::u128_to_f64_bits)
+    }
+
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floattidf(lo: u64, hi: u64) -> f64 {
+        int_to_float::signed((i128::from(hi) << 64) | i128::from(lo), int_to_float::u128_to_f64_bits)
     }
 
     #[ppc_alias = __floatsikf]
