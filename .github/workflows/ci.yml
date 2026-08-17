@@ -59,13 +59,13 @@ jobs:
         if: ${{ github.ref == 'refs/heads/automation/bors/auto' }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo test
+          CARGO_INCREMENTAL=0 cargo test --locked
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
+          CARGO_INCREMENTAL=0 cargo run --locked calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.full_name }}
@@ -222,7 +222,7 @@ jobs:
       - name: build citool
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
+          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build --locked
 
       - name: run the build
         run: |
