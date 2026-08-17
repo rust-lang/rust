@@ -237,40 +237,9 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: dist-aarch64-apple-darwin
+          pattern: dist-*
           path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-apple-darwin
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-unknown-linux-gnu
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-unknown-linux-musl
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-aarch64-unknown-linux-gnu
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-arm-unknown-linux-gnueabihf
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-pc-windows-msvc
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-i686-pc-windows-msvc
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-aarch64-pc-windows-msvc
-          path: dist
+          merge-multiple: true
       - run: ls -al ./dist
 
       - name: Publish Release
