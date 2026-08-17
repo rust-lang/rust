@@ -1,3 +1,5 @@
+use std::ffi::{OsStr, OsString};
+
 use test::{Bencher, black_box};
 
 #[bench]
@@ -236,6 +238,193 @@ fn split_1byte_str_multibyte_haystack(b: &mut Bencher) {
 fn split_char_multibyte_haystack(b: &mut Bencher) {
     let s = "\u{251c}\u{2500}\u{2500} ".repeat(8 * 1024);
     let haystack = black_box(s.as_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(' ').count()))
+}
+
+fn haystack_without_needle_os() -> OsString {
+    OsString::from(haystack_without_needle())
+}
+//
+#[bench]
+fn find_1byte_str_long_nomatch_os(b: &mut Bencher) {
+    let s = haystack_without_needle_os();
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.find(",")))
+}
+
+#[bench]
+fn find_char_long_nomatch_os(b: &mut Bencher) {
+    let s = haystack_without_needle_os();
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.find(',')))
+}
+
+#[bench]
+fn find_1byte_str_long_match_end_os(b: &mut Bencher) {
+    let mut s = haystack_without_needle();
+    s.push(',');
+    let s = OsString::from(s);
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.find(",")))
+}
+
+#[bench]
+fn find_char_long_match_end_os(b: &mut Bencher) {
+    let mut s = haystack_without_needle();
+    s.push(',');
+    let s = OsString::from(s);
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.find(',')))
+}
+
+#[bench]
+fn rfind_1byte_str_long_nomatch_os(b: &mut Bencher) {
+    let s = haystack_without_needle_os();
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.rfind(",")))
+}
+
+#[bench]
+fn rfind_char_long_nomatch_os(b: &mut Bencher) {
+    let s = haystack_without_needle_os();
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.rfind(',')))
+}
+
+#[bench]
+fn find_1byte_str_early_return_os(b: &mut Bencher) {
+    let mut s = String::from("abcdefg,");
+    s.push_str(&haystack_without_needle());
+    let s = OsString::from(s);
+    let haystack = black_box(s.as_os_str());
+    b.iter(|| {
+        for _ in 0..1024 {
+            black_box(black_box(haystack).find(","));
+        }
+    })
+}
+
+#[bench]
+fn find_char_early_return_os(b: &mut Bencher) {
+    let mut s = String::from("abcdefg,");
+    s.push_str(&haystack_without_needle());
+    let s = OsString::from(s);
+    let haystack = black_box(s.as_os_str());
+    b.iter(|| {
+        for _ in 0..1024 {
+            black_box(black_box(haystack).find(','));
+        }
+    })
+}
+
+// Short haystacks measure searcher construction overhead as much as the scan.
+#[bench]
+fn find_1byte_str_short_haystack_os(b: &mut Bencher) {
+    let haystack = black_box(OsStr::new("abcdefg,ijklmno"));
+    b.iter(|| {
+        for _ in 0..1024 {
+            black_box(black_box(haystack).find(","));
+        }
+    })
+}
+
+#[bench]
+fn find_char_short_haystack_os(b: &mut Bencher) {
+    let haystack = black_box(OsStr::new("abcdefg,ijklmno"));
+    b.iter(|| {
+        for _ in 0..1024 {
+            black_box(black_box(haystack).find(','));
+        }
+    })
+}
+
+// Match-dense input: a match every third byte, the worst case for any
+// skip-ahead scheme since there is nothing to skip.
+#[bench]
+fn split_1byte_str_dense_os(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(",").count()))
+}
+
+#[bench]
+fn split_char_dense_os(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(',').count()))
+}
+
+#[bench]
+fn split_char_dense_os_char(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(',').count()))
+}
+
+#[bench]
+fn split_char_dense_os_char_arr(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split([',']).count()))
+}
+
+#[bench]
+fn split_char_dense_os_char_arr_ref(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(&[',']).count()))
+}
+
+#[bench]
+fn split_char_dense_os_char_slice(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(&[','][..]).count()))
+}
+
+// A match every 65 bytes, resembling line splitting.
+#[bench]
+fn split_1byte_str_sparse_os(b: &mut Bencher) {
+    let s = OsString::from(format!("{},", "abcdefgh".repeat(8)).repeat(1000));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(",").count()))
+}
+
+#[bench]
+fn split_char_sparse_os(b: &mut Bencher) {
+    let s = OsString::from(format!("{},", "abcdefgh".repeat(8)).repeat(1000));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(',').count()))
+}
+
+// Haystack dominated by multi-byte chars, ASCII needle.
+#[bench]
+fn split_1byte_str_multibyte_haystack_os(b: &mut Bencher) {
+    let s = OsString::from("\u{251c}\u{2500}\u{2500} ".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(" ").count()))
+}
+
+#[bench]
+fn split_char_multibyte_haystack_os(b: &mut Bencher) {
+    let s = OsString::from("\u{251c}\u{2500}\u{2500} ".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
     b.iter(|| black_box(haystack.split(' ').count()))
 }
