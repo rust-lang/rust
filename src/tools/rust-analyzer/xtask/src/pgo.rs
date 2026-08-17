@@ -97,15 +97,10 @@ fn download_crate_for_training(sh: &Shell, pgo_dir: &Path, repo: &str) -> anyhow
 }
 
 /// Helper function to create a build command for rust-analyzer
-pub(crate) fn build_command<'a>(
-    sh: &'a Shell,
-    command: &str,
-    target_name: &str,
-    features: &[&str],
-) -> Cmd<'a> {
+pub(crate) fn build_command<'a>(sh: &'a Shell, target_name: &str, features: &[&str]) -> Cmd<'a> {
     cmd!(
         sh,
-        "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release"
+        "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release"
     )
 }
 
