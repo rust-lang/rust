@@ -57,7 +57,8 @@ macro_rules! select_implementation {
             }
         }
 
-        // By default, never use arch-specific implementations if `arch` is disabled or with Miri.
+        // By default, never use arch-specific implementations if `arch` is disabled or with Miri
+        // (no inline assembly support).
         #[cfg(all(feature = "arch", not(miri)))]
         select_implementation! {
             @cfg $($use_arch)?;

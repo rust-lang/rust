@@ -6,7 +6,8 @@
 //! well as improving things when these routines are called as part of other implementations.
 
 // Most implementations should be defined here, to ensure they are not made available when
-// soft floats are required.
+// soft floats are required. Primarily gated on the `arch` feature, Miri does not support inline
+// assembly.
 #[cfg(all(feature = "arch", not(miri)))]
 cfg_select_nofmt! {
     all(target_arch = "wasm32", intrinsics_enabled) => {
