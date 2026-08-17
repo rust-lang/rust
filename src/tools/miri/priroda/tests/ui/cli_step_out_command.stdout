@@ -1,3 +1,3 @@
 (priroda) {RUSTC_SYSROOT}/lib/rustlib/src/rust/library/std/src/rt.rs:206
-(priroda) program finished with exit code 0
+(priroda) stepOut is not meaningful in the outermost user frame
 (priroda) quitting

@@ -62,6 +62,7 @@ impl Cli {
                     ExecutionResult::ProgramExited { code } => {
                         println!("program finished with exit code {code}");
                     }
+                    ExecutionResult::Rejected { message } => println!("{message}"),
                 },
             CommandResult::BreakpointResult(res) =>
                 match res {

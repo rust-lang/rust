@@ -113,9 +113,9 @@ enum ResumeMode {
     /// inside a call made from the stepped-over line), and stops once it is back
     /// at that depth or shallower and the displayed source position has changed.
     StepOver { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
-    /// Step out of the current frame, stopping once execution returns to a
-    /// shallower stack depth.
-    StepOut { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
+    /// Step out of the current user frame, stopping once execution returns to a
+    /// shallower user-frame depth.
+    StepOut { start_position: Option<(PathBuf, usize)>, start_user_frame_depth: usize },
     /// Stop at the first mapped source location from a user-relevant frame.
     ///
     /// This is the DAP entry-stop primitive: it skips over interpreter startup
@@ -153,6 +153,7 @@ pub(super) enum StepResult {
 pub(super) enum ExecutionResult {
     Stopped(StepResult),
     ProgramExited { code: i32 },
+    Rejected { message: &'static str },
 }
 
 fn normalize_path(path: PathBuf) -> PathBuf {
@@ -246,9 +247,14 @@ impl<'tcx> PrirodaContext<'tcx> {
         if let Some(result) = self.already_finished() {
             return interp_ok(result);
         }
+        let start_user_frame_depth = self.active_user_frame_depth();
+        if start_user_frame_depth <= 1 {
+            return interp_ok(ExecutionResult::Rejected {
+                message: "stepOut is not meaningful in the outermost user frame",
+            });
+        }
         let start_position = self.current_source_position();
-        let start_stack_depth = self.active_thread_stack_depth();
-        self.resume(ResumeMode::StepOut { start_position, start_stack_depth })
+        self.resume(ResumeMode::StepOut { start_position, start_user_frame_depth })
     }
 
     /// Run until the initial editor-visible stop point.
@@ -395,8 +401,8 @@ impl<'tcx> PrirodaContext<'tcx> {
                     }
                 }
 
-                ResumeMode::StepOut { start_stack_depth, .. }
-                    if self.active_thread_stack_depth() < start_stack_depth
+                ResumeMode::StepOut { start_user_frame_depth, .. }
+                    if self.active_user_frame_depth() < start_user_frame_depth
                         && self.current_location.is_some() =>
                 {
                     return interp_ok(ExecutionResult::Stopped(StepResult::Step));
@@ -417,10 +423,18 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     fn has_user_relevant_frame(&self) -> bool {
+        self.active_user_frame_depth() > 0
+    }
+
+    fn active_user_frame_depth(&self) -> usize {
         // Walk the whole stack, not just the top frame: during interpreter
         // startup the user's `main` can sit under Miri-internal frames that
         // have no source span, so checking only `last()` would miss it.
-        self.ecx.active_thread_stack().iter().any(|frame| frame.extra.user_relevance == u8::MAX)
+        self.ecx
+            .active_thread_stack()
+            .iter()
+            .filter(|frame| frame.extra.user_relevance == u8::MAX)
+            .count()
     }
 
     /// Advance Miri by one interpreter-loop transition.

@@ -53,6 +53,7 @@ enum DapState {
 enum ExecutionOutcome {
     Stopped(StepResult),
     Terminated { code: i32 },
+    Rejected(String),
     Failed(String),
 }
 
@@ -370,6 +371,13 @@ impl<R: Read, W: Write> DapSession<R, W> {
                     ],
                     outcome: HandlerOutcome::Exit,
                 }),
+            ExecutionOutcome::Rejected(message) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: None,
+                    events: Vec::new(),
+                    outcome: HandlerOutcome::Continue,
+                }),
             ExecutionOutcome::Failed(message) =>
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Error(message),
@@ -504,6 +512,13 @@ impl<R: Read, W: Write> DapSession<R, W> {
                     ],
                     outcome: HandlerOutcome::Exit,
                 }),
+            ExecutionOutcome::Rejected(message) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: None,
+                    events: Vec::new(),
+                    outcome: HandlerOutcome::Continue,
+                }),
             ExecutionOutcome::Failed(message) =>
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Error(message),
@@ -541,6 +556,13 @@ impl<R: Read, W: Write> DapSession<R, W> {
                         Event::Terminated(None),
                     ],
                     outcome: HandlerOutcome::Exit,
+                }),
+            ExecutionOutcome::Rejected(message) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: None,
+                    events: Vec::new(),
+                    outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Failed(message) =>
                 Ok(HandlerSuccess {
@@ -670,6 +692,8 @@ impl<R: Read, W: Write> DapSession<R, W> {
         match result.report_err() {
             Ok(ExecutionResult::Stopped(step)) => ExecutionOutcome::Stopped(step),
             Ok(ExecutionResult::ProgramExited { code }) => ExecutionOutcome::Terminated { code },
+            Ok(ExecutionResult::Rejected { message }) =>
+                ExecutionOutcome::Rejected(message.to_string()),
             Err(err) => Self::interp_error_outcome(err),
         }
     }

@@ -12,8 +12,6 @@ Content-Length: {CONTENT_LENGTH}
 
 {"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_step_out_from_main.rs","path":"{MANIFEST_DIR}/tests/ui/dap_step_out_from_main.rs","sourceReference":0},"line":9,"column":5}],"totalFrames":1},"error":null}Content-Length: {CONTENT_LENGTH}
 
-{"seq":7,"type":"response","request_seq":5,"success":true,"command":"stepOut","error":null}Content-Length: {CONTENT_LENGTH}
+{"seq":7,"type":"response","request_seq":5,"success":false,"message":"stepOut is not meaningful in the outermost user frame","command":"stepOut","error":null}Content-Length: {CONTENT_LENGTH}
 
-{"seq":8,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
-
-{"seq":9,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())","source":{"name":"function.rs","path":"{RUSTC_SYSROOT}/lib/rustlib/src/rust/library/core/src/ops/function.rs","sourceReference":0},"line":250,"column":5}],"totalFrames":1},"error":null}
+{"seq":8,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_step_out_from_main.rs","path":"{MANIFEST_DIR}/tests/ui/dap_step_out_from_main.rs","sourceReference":0},"line":9,"column":5}],"totalFrames":1},"error":null}
