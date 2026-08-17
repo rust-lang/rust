@@ -16,7 +16,7 @@ use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
-use rustc_structures::{CrateType, Limit, NativeLibKind, SanitizerSet};
+use rustc_structures::{CollapseMacroDebuginfo, CrateType, Limit, NativeLibKind, SanitizerSet};
 use thin_vec::ThinVec;
 
 pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
@@ -599,26 +599,6 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
         rustc_serialize::Encodable::<E>::encode(test_attrs, encoder);
         rustc_serialize::Encodable::<E>::encode(no_crate_inject, encoder);
     }
-}
-
-/// How to perform collapse macros debug info
-/// if-ext - if macro from different crate (related to callsite code)
-/// | cmd \ attr    | no  | (unspecified) | external | yes |
-/// | no            | no  | no            | no       | no  |
-/// | (unspecified) | no  | no            | if-ext   | yes |
-/// | external      | no  | if-ext        | if-ext   | yes |
-/// | yes           | yes | yes           | yes      | yes |
-#[derive(Copy, Clone, Debug, Hash, PartialEq)]
-#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
-pub enum CollapseMacroDebuginfo {
-    /// Don't collapse debuginfo for the macro
-    No = 0,
-    /// Unspecified value
-    Unspecified = 1,
-    /// Collapse debuginfo if the macro comes from a different crate
-    External = 2,
-    /// Collapse debuginfo for the macro
-    Yes = 3,
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]

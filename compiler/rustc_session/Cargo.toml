@@ -8,7 +8,6 @@ edition = "2024"
 getopts = "0.2"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_attr_ir = { path = "../rustc_attr_ir" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }

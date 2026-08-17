@@ -4748,7 +4748,6 @@ dependencies = [
  "libc",
  "rustc_abi",
  "rustc_ast",
- "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",

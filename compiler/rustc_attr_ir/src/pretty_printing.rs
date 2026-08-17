@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
-use rustc_structures::{CrateType, Limit, NativeLibKind, SanitizerSet};
+use rustc_structures::{CollapseMacroDebuginfo, CrateType, Limit, NativeLibKind, SanitizerSet};
 use thin_vec::ThinVec;
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
@@ -209,4 +209,5 @@ print_debug!(
     DiffMode,
     CrateType,
     NativeLibKind,
+    CollapseMacroDebuginfo,
 );
