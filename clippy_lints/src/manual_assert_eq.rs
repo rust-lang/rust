@@ -18,6 +18,12 @@ declare_clippy_lint! {
     /// `assert_{eq,ne}!` and `debug_assert_{eq,ne}!` achieves the same goal, and provides some
     /// additional debug information
     ///
+    /// ### Known problems
+    /// This lint cannot determine how large the `Debug` output of the compared values will be.
+    /// To avoid producing excessively large assertion output, it ignores comparisons involving
+    /// byte-slice-like types. These include byte slices and types that dereference to a byte slice
+    /// or implement `AsRef<[u8]>` without also implementing `AsRef<str>`.
+    ///
     /// ### Example
     /// ```no_run
     /// assert!(2 * 2 == 4);
