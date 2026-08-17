@@ -160,13 +160,21 @@ fn test_option_env_expand() {
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { option_env!("TEST_ENV_VAR"); }
+fn main() {
+    option_env!("TEST_ENV_VAR");
+    option_env!("TEST_ENV_VAR",);
+    option_env!("TEST_ENV_VAR", "invalid");
+}
 "#,
         expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { $crate::option::Option::None:: < &str>; }
+fn main() {
+    $crate::option::Option::None:: < &str>;
+    $crate::option::Option::None:: < &str>;
+    /* error: unexpected input */;
+}
 "#]],
     );
 }
