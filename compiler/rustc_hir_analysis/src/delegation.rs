@@ -635,29 +635,24 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     }
 
     let kinds @ (def_kind, _) = fn_kinds(tcx, def_id, sig_id);
-    if def_kind == FnKind::Free {
+    if def_kind == FnKind::Free || !matches!(kinds, (_, FnKind::AssocInherentImpl)) {
         return;
     }
 
-    if matches!(kinds, (_, FnKind::AssocInherentImpl)) {
-        let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
-            unreachable!("delegation is supported only to struct or enums")
+    let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+        unreachable!("delegation is supported only to struct or enums")
+    };
+
+    for i in 0..sig.len() {
+        let sig_self_type = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+        let replacement = match def_kind {
+            FnKind::Free => unreachable!(),
+
+            FnKind::AssocTrait => Ty::new_param(tcx, 0, kw::SelfUpper),
+            _ => tcx.type_of(tcx.parent(def_id.to_def_id())).instantiate_identity().skip_norm_wip(),
         };
 
-        for i in 0..sig.len() {
-            let sig_self_type = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
-            let replacement = match def_kind {
-                FnKind::Free => unreachable!(),
-
-                FnKind::AssocTrait => Ty::new_param(tcx, 0, kw::SelfUpper),
-                _ => tcx
-                    .type_of(tcx.parent(def_id.to_def_id()))
-                    .instantiate_identity()
-                    .skip_norm_wip(),
-            };
-
-            sig[i] = sig[i].replace(tcx, sig_self_type, replacement);
-        }
+        sig[i] = sig[i].replace(tcx, sig_self_type, replacement);
     }
 }
 
@@ -703,16 +698,12 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
 
             let parent_args = if matches!(tcx.def_kind(parent), DefKind::Impl { of_trait: false }) {
                 ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+            } else if let Some(parent_args) = parent_args {
+                parent_args
+            } else if matches!(tcx.def_kind(parent), DefKind::Trait) {
+                ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
             } else {
-                if let Some(parent_args) = parent_args {
-                    parent_args
-                } else {
-                    if matches!(tcx.def_kind(parent), DefKind::Trait) {
-                        ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
-                    } else {
-                        &[]
-                    }
-                }
+                &[]
             };
 
             let args = lowerer
