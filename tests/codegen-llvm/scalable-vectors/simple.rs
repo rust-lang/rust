@@ -2,7 +2,7 @@
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]
-#![feature(simd_ffi, rustc_attrs, link_llvm_intrinsics)]
+#![feature(link_llvm_intrinsics, rustc_attrs, simd_ffi)]
 
 #[derive(Copy, Clone)]
 #[rustc_scalable_vector(4)]
@@ -13,7 +13,7 @@ pub struct svint32_t(i32);
 #[target_feature(enable = "sve")]
 pub unsafe fn svdup_n_s32(op: i32) -> svint32_t {
     extern "C" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dup.x.nxv4i32")]
+        #[link_name = "llvm.aarch64.sve.dup.x.nxv4i32"]
         fn _svdup_n_s32(op: i32) -> svint32_t;
     }
     unsafe { _svdup_n_s32(op) }
@@ -23,7 +23,7 @@ pub unsafe fn svdup_n_s32(op: i32) -> svint32_t {
 #[target_feature(enable = "sve,sve2")]
 pub unsafe fn svxar_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_t {
     extern "C" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.xar.nxv4i32")]
+        #[link_name = "llvm.aarch64.sve.xar.nxv4i32"]
         fn _svxar_n_s32(op1: svint32_t, op2: svint32_t, imm3: i32) -> svint32_t;
     }
     unsafe { _svxar_n_s32(op1, op2, IMM3) }

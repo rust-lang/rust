@@ -1,7 +1,7 @@
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]
-#![feature(abi_unadjusted, core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
 
 // Tests that tuples of scalable vectors are passed as immediates and that the intrinsics for
 // creating/getting/setting tuples of scalable vectors generate the correct assembly
@@ -30,7 +30,7 @@ pub struct svfloat32x4_t(svfloat32_t, svfloat32_t, svfloat32_t, svfloat32_t);
 #[target_feature(enable = "sve")]
 pub fn svdup_n_f32(op: f32) -> svfloat32_t {
     extern "C" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dup.x.nxv4f32")]
+        #[link_name = "llvm.aarch64.sve.dup.x.nxv4f32"]
         fn _svdup_n_f32(op: f32) -> svfloat32_t;
     }
     unsafe { _svdup_n_f32(op) }
