@@ -13,16 +13,15 @@ mod simple;
 mod trait_aliases;
 mod traits;
 
-use base_db::{Crate, SourceDatabase};
+use base_db::{Crate, EditionedFileId, SourceDatabase};
 use expect_test::Expect;
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, GenericDefId, HasModule, Lookup, ModuleDefId, ModuleId,
+    AdtId, AssocItemId, DefWithBodyId, GenericDefId, HasModule, ModuleDefId, ModuleId,
     SyntheticSyntax, VariantId,
-    expr_store::{Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap},
-    hir::{ExprId, Pat, PatId},
+    expr_store::{Body, ExpressionStore, ExpressionStoreSourceMap, SelfParamPtr},
+    hir::{BindingId, ClosureKind, Expr, ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
-    src::HasSource,
     type_ref::TypeRefId,
 };
 use hir_expand::{FileRange, InFile};
@@ -36,7 +35,7 @@ use syntax::{
 use test_fixture::WithFixture;
 
 use crate::{
-    InferenceDiagnostic, InferenceResult,
+    InferBodyId, InferenceDiagnostic, InferenceResult,
     db::{AnonConstId, HirDatabase},
     display::{DisplayTarget, HirDisplay},
     infer::Adjustment,
@@ -67,6 +66,115 @@ fn check_no_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
 #[track_caller]
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, false, false)
+}
+
+fn infer_defs<'db>(
+    db: &'db TestDB,
+    files: &[EditionedFileId],
+) -> Vec<(
+    InferBodyId<'db>,
+    &'db ExpressionStore,
+    &'db ExpressionStoreSourceMap,
+    ExprId,
+    Option<(BindingId, Option<InFile<SelfParamPtr>>)>,
+    Crate,
+)> {
+    let mut defs = Vec::new();
+
+    let anon_const_data = |anon_const: AnonConstId<'db>, krate| {
+        let loc = anon_const.loc(db);
+        let (store, source_map) = ExpressionStore::with_source_map(db, loc.owner);
+        (InferBodyId::AnonConstId(anon_const), store, source_map, loc.expr, None, krate)
+    };
+    let push_generic_def = |defs: &mut Vec<_>, generic_def: Option<GenericDefId>, krate| {
+        let Some(generic_def) = generic_def else { return };
+        defs.extend(
+            AnonConstId::all_from_signature(db, generic_def).map(|it| anon_const_data(it, krate)),
+        );
+    };
+    let push_def_with_body = |defs: &mut Vec<_>, def_with_body: Option<DefWithBodyId>, krate| {
+        let Some(def_with_body) = def_with_body else { return };
+        let (body, source_map) = Body::with_source_map(db, def_with_body);
+
+        let mut root_expr = body.root_expr();
+        if source_map.expr_syntax(root_expr).is_err()
+            && let Expr::Closure {
+                closure_kind: ClosureKind::Coroutine { .. },
+                body: closure_body,
+                ..
+            } = body[root_expr]
+            && let Expr::Block { tail: Some(tail), .. } = body[closure_body]
+        {
+            // async fns etc. lower to coroutines without source as the root expr.
+            root_expr = tail;
+        }
+
+        defs.push((
+            InferBodyId::DefWithBodyId(def_with_body),
+            &***body,
+            &**source_map,
+            root_expr,
+            body.self_param.map(|param| (param.formal, source_map.self_param_syntax())),
+            krate,
+        ));
+    };
+
+    for file_id in files {
+        let module = db.module_for_file_opt(file_id.file_id(db));
+        let module = match module {
+            Some(m) => m,
+            None => continue,
+        };
+        let def_map = module.def_map(db);
+        let krate = module.krate(db);
+
+        visit_module(db, def_map, module, &mut |it| {
+            let generic_def = match it {
+                ModuleDefId::FunctionId(it) => Some(it.into()),
+                ModuleDefId::AdtId(it) => Some(it.into()),
+                ModuleDefId::ConstId(it) => Some(it.into()),
+                ModuleDefId::StaticId(it) => Some(it.into()),
+                ModuleDefId::TraitId(it) => Some(it.into()),
+                ModuleDefId::TypeAliasId(it) => Some(it.into()),
+                ModuleDefId::ModuleId(_) => None,
+                ModuleDefId::EnumVariantId(_) => None,
+                ModuleDefId::BuiltinType(_) => None,
+                ModuleDefId::MacroId(_) => None,
+            };
+            push_generic_def(&mut defs, generic_def, krate);
+
+            let variant_def: Option<VariantId> = match it {
+                ModuleDefId::AdtId(AdtId::StructId(it)) => Some(it.into()),
+                ModuleDefId::AdtId(AdtId::UnionId(it)) => Some(it.into()),
+                ModuleDefId::EnumVariantId(it) => Some(it.into()),
+                _ => None,
+            };
+            if let Some(variant_def) = variant_def {
+                defs.extend(
+                    db.field_types_with_diagnostics(variant_def)
+                        .defined_anon_consts()
+                        .iter()
+                        .map(|&it| anon_const_data(it, krate)),
+                );
+            }
+
+            let def_with_body = match it {
+                ModuleDefId::FunctionId(it) => Some(it.into()),
+                ModuleDefId::EnumVariantId(it) => Some(it.into()),
+                ModuleDefId::ConstId(it) => Some(it.into()),
+                ModuleDefId::StaticId(it) => Some(it.into()),
+                _ => None,
+            };
+            push_def_with_body(&mut defs, def_with_body, krate);
+        });
+    }
+
+    defs.retain(|(_, _, source_map, root_expr, _, _)| source_map.expr_syntax(*root_expr).is_ok());
+    defs.sort_by_key(|(_, _, source_map, root_expr, _, _)| {
+        source_map.expr_syntax(*root_expr).unwrap().value.text_range().start()
+    });
+
+    defs
 }
 
 #[track_caller]
@@ -103,55 +211,18 @@ fn check_impl(
         }
         assert!(had_annotations || allow_none, "no `//^` annotations found");
 
-        let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
-        for file_id in files {
-            let module = db.module_for_file_opt(file_id.file_id(&db));
-            let module = match module {
-                Some(m) => m,
-                None => continue,
-            };
-            let def_map = module.def_map(&db);
-            visit_module(&db, def_map, module, &mut |it| {
-                let def = match it {
-                    ModuleDefId::FunctionId(it) => it.into(),
-                    ModuleDefId::EnumVariantId(it) => it.into(),
-                    ModuleDefId::ConstId(it) => it.into(),
-                    ModuleDefId::StaticId(it) => it.into(),
-                    _ => return,
-                };
-                defs.push((def, module.krate(&db)))
-            });
-        }
-        defs.sort_by_key(|(def, _)| match def {
-            DefWithBodyId::FunctionId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-            DefWithBodyId::ConstId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-            DefWithBodyId::StaticId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-            DefWithBodyId::VariantId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-        });
+        let defs = infer_defs(&db, &files);
         let mut unexpected_type_mismatches = String::new();
-        for (def, krate) in defs {
+        for (def, store, source_map, _root_expr, _self_param, krate) in defs {
             let display_target = DisplayTarget::from_crate(&db, krate);
-            let (body, body_source_map) = Body::with_source_map(&db, def);
             let inference_result = InferenceResult::of(&db, def);
 
             for (pat, ty) in inference_result.type_of_pat.iter() {
                 let mut ty = ty.as_ref();
-                if let Pat::Bind { id, .. } = body[pat] {
+                if let Pat::Bind { id, .. } = store[pat] {
                     ty = inference_result.type_of_binding[id].as_ref();
                 }
-                let node = match pat_node(body_source_map, pat, &db) {
+                let node = match pat_node(source_map, pat, &db) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -168,7 +239,7 @@ fn check_impl(
 
             for (expr, ty) in inference_result.type_of_expr.iter() {
                 let ty = ty.as_ref();
-                let node = match expr_node(body_source_map, expr, &db) {
+                let node = match expr_node(source_map, expr, &db) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -205,10 +276,8 @@ fn check_impl(
                 });
             for (expr_or_pat, expected, actual) in type_mismatches {
                 let Some(node) = (match expr_or_pat.unpack() {
-                    hir_def::hir::ExprOrPatId::ExprId(expr) => {
-                        expr_node(body_source_map, expr, &db)
-                    }
-                    hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(body_source_map, pat, &db),
+                    hir_def::hir::ExprOrPatId::ExprId(expr) => expr_node(source_map, expr, &db),
+                    hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(source_map, pat, &db),
                 }) else {
                     continue;
                 };
@@ -227,7 +296,7 @@ fn check_impl(
             }
 
             for (type_ref, ty) in inference_result.placeholder_types() {
-                let node = match type_node(body_source_map, type_ref, &db) {
+                let node = match type_node(source_map, type_ref, &db) {
                     Some(value) => value,
                     None => continue,
                 };
@@ -272,11 +341,11 @@ fn check_impl(
 }
 
 fn expr_node(
-    body_source_map: &BodySourceMap,
+    source_map: &ExpressionStoreSourceMap,
     expr: ExprId,
     db: &TestDB,
 ) -> Option<InFile<SyntaxNode>> {
-    Some(match body_source_map.expr_syntax(expr) {
+    Some(match source_map.expr_syntax(expr) {
         Ok(sp) => {
             let root = sp.file_id.parse_or_expand(db);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
@@ -286,11 +355,11 @@ fn expr_node(
 }
 
 fn pat_node(
-    body_source_map: &BodySourceMap,
+    source_map: &ExpressionStoreSourceMap,
     pat: PatId,
     db: &TestDB,
 ) -> Option<InFile<SyntaxNode>> {
-    Some(match body_source_map.pat_syntax(pat) {
+    Some(match source_map.pat_syntax(pat) {
         Ok(sp) => {
             let root = sp.file_id.parse_or_expand(db);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
@@ -300,11 +369,11 @@ fn pat_node(
 }
 
 fn type_node(
-    body_source_map: &BodySourceMap,
+    source_map: &ExpressionStoreSourceMap,
     type_ref: TypeRefId,
     db: &TestDB,
 ) -> Option<InFile<SyntaxNode>> {
-    Some(match body_source_map.type_syntax(type_ref) {
+    Some(match source_map.type_syntax(type_ref) {
         Ok(sp) => {
             let root = sp.file_id.parse_or_expand(db);
             sp.map(|ptr| ptr.to_node(&root).syntax().clone())
@@ -327,10 +396,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         let mut infer_def = |inference_result: &InferenceResult<'_>,
                              store: &ExpressionStore,
                              source_map: &ExpressionStoreSourceMap,
-                             self_param: Option<(
-            hir_def::hir::BindingId,
-            Option<InFile<hir_def::expr_store::SelfParamPtr>>,
-        )>,
+                             self_param: Option<(BindingId, Option<InFile<SelfParamPtr>>)>,
                              krate: Crate| {
             let display_target = DisplayTarget::from_crate(&db, krate);
             let mut types: Vec<(InFile<SyntaxNode>, Ty<'_>)> = Vec::new();
@@ -428,122 +494,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             }
         };
 
-        let module = db.module_for_file(file_id.file_id(&db));
-        let def_map = module.def_map(&db);
-
-        let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
-        let mut generic_defs: Vec<(GenericDefId, Crate)> = Vec::new();
-        let mut variants: Vec<(VariantId, Crate)> = Vec::new();
-        visit_module(&db, def_map, module, &mut |it| {
-            let krate = module.krate(&db);
-            match it {
-                ModuleDefId::FunctionId(it) => {
-                    defs.push((it.into(), krate));
-                    generic_defs.push((it.into(), krate));
-                }
-                ModuleDefId::EnumVariantId(it) => {
-                    defs.push((it.into(), krate));
-                }
-                ModuleDefId::ConstId(it) => {
-                    defs.push((it.into(), krate));
-                    generic_defs.push((it.into(), krate));
-                }
-                ModuleDefId::StaticId(it) => {
-                    defs.push((it.into(), krate));
-                    generic_defs.push((it.into(), krate));
-                }
-                ModuleDefId::AdtId(it) => {
-                    generic_defs.push((it.into(), krate));
-                    match it {
-                        AdtId::StructId(id) => variants.push((id.into(), krate)),
-                        AdtId::UnionId(id) => variants.push((id.into(), krate)),
-                        AdtId::EnumId(id) => variants.extend(
-                            id.enum_variants(&db)
-                                .variants
-                                .values()
-                                .map(|&(variant, ..)| (variant.into(), krate)),
-                        ),
-                    }
-                }
-                ModuleDefId::TraitId(it) => {
-                    generic_defs.push((it.into(), krate));
-                }
-                ModuleDefId::TypeAliasId(it) => {
-                    generic_defs.push((it.into(), krate));
-                }
-                _ => {}
-            }
-        });
-        // Also collect impls
-        for impl_id in def_map[module].scope.impls() {
-            generic_defs.push((impl_id.into(), module.krate(&db)));
-            let impl_data = impl_id.impl_items(&db);
-            for &(_, item) in impl_data.items.iter() {
-                match item {
-                    AssocItemId::FunctionId(it) => {
-                        generic_defs.push((it.into(), module.krate(&db)));
-                    }
-                    AssocItemId::ConstId(it) => {
-                        generic_defs.push((it.into(), module.krate(&db)));
-                    }
-                    AssocItemId::TypeAliasId(it) => {
-                        generic_defs.push((it.into(), module.krate(&db)));
-                    }
-                }
-            }
-        }
-
-        defs.sort_by_key(|(def, _)| match def {
-            DefWithBodyId::FunctionId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-            DefWithBodyId::ConstId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-            DefWithBodyId::StaticId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-            DefWithBodyId::VariantId(it) => {
-                let loc = it.lookup(&db);
-                loc.source(&db).value.syntax().text_range().start()
-            }
-        });
-        for (def, krate) in defs {
-            let (body, source_map) = Body::with_source_map(&db, def);
+        let defs = infer_defs(&db, &[file_id]);
+        for (def, store, source_map, _root_expr, self_param, krate) in defs {
             let infer = InferenceResult::of(&db, def);
-            let self_param =
-                body.self_param.map(|param| (param.formal, source_map.self_param_syntax()));
-            infer_def(infer, body, source_map, self_param, krate);
-        }
-
-        // Also infer signature const expressions (array lengths, const generic args, etc.)
-        generic_defs.dedup();
-        for (def, krate) in generic_defs {
-            let (store, source_map) = ExpressionStore::with_source_map(&db, def.into());
-            // Skip if there are no const expressions in the signature
-            if store.expr_roots().next().is_none() {
-                continue;
-            }
-            for anon_const in AnonConstId::all_from_signature(&db, def) {
-                let infer = InferenceResult::of(&db, anon_const);
-                infer_def(infer, store, source_map, None, krate);
-            }
-        }
-        variants.dedup();
-        for (def, krate) in variants {
-            let (store, source_map) = ExpressionStore::with_source_map(&db, def.into());
-            // Skip if there are no const expressions in the signature
-            if store.expr_roots().next().is_none() {
-                continue;
-            }
-            let anon_consts = db.field_types_with_diagnostics(def).defined_anon_consts();
-            for &anon_const in anon_consts {
-                let infer = InferenceResult::of(&db, anon_const);
-                infer_def(infer, store, source_map, None, krate);
-            }
+            infer_def(infer, store, source_map, self_param, krate);
         }
 
         buf.truncate(buf.trim_end().len());

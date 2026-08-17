@@ -658,8 +658,6 @@ fn issue_4053_diesel_where_clauses() {
         }
         "#,
         expect![[r#"
-            65..69 'self': Self
-            267..271 'self': Self
             466..470 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
             488..522 '{     ...     }': ()
             498..502 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
@@ -720,7 +718,6 @@ fn issue_4931() {
         }
         "#,
         expect![[r#"
-            117..121 'self': Self
             148..149 'i': T
             154..170 '{     ...w(); }': ()
             160..161 'i': T
@@ -811,7 +808,6 @@ fn issue_4800() {
             401..424 '{     ...     }': dyn Future<Output = ()> + 'static
             411..418 'loop {}': !
             416..418 '{}': ()
-            575..579 'self': &'? mut Self
         "#]],
     );
 }
@@ -1030,7 +1026,6 @@ fn test() {
 }
         "#,
         expect![[r#"
-            176..184 'residual': R
             418..419 'r': ControlFlow<B, !>
             448..476 '{ Cont...ata) }': ControlFlow<B, C>
             450..461 'ControlFlow': fn ControlFlow<B, C>(PhantomData<(B, C)>) -> ControlFlow<B, C>
@@ -2776,8 +2771,6 @@ where
             319..323 'None': Option<T>
             340..343 '&()': &'? ()
             341..343 '()': ()
-            421..425 'self': &'? Self
-            427..433 'filter': &'? Filter<'?, '?, T>
             580..584 'self': &'? [T; N]
             586..592 'filter': &'? Filter<'?, '?, T>
             622..704 '{     ...     }': T

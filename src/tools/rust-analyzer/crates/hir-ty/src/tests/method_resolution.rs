@@ -660,7 +660,6 @@ fn infer_call_trait_method_on_generic_param_1() {
         }
         "#,
         expect![[r#"
-            29..33 'self': &'? Self
             63..64 't': T
             69..88 '{     ...d(); }': ()
             75..76 't': T
@@ -681,7 +680,6 @@ fn infer_call_trait_method_on_generic_param_2() {
         }
         "#,
         expect![[r#"
-            32..36 'self': &'? Self
             70..71 't': T
             76..95 '{     ...d(); }': ()
             82..83 't': T
@@ -707,7 +705,6 @@ fn infer_with_multiple_trait_impls() {
         }
         "#,
         expect![[r#"
-            28..32 'self': Self
             110..201 '{     ...(S); }': ()
             120..121 'x': u32
             129..130 'S': S
@@ -1041,7 +1038,6 @@ fn super_trait_impl_return_trait_method_resolution() {
         }
         "#,
         expect![[r#"
-            24..28 'self': Self
             90..101 '{ loop {} }': !
             92..99 'loop {}': !
             97..99 '{}': ()

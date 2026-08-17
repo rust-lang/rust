@@ -582,6 +582,8 @@ fn test_at_most() {
             200..206 '_other': Between<M, 0, T>
             222..242 '{     ...     }': Between<M, 0, T>
             232..236 'self': Between<M, 0, T>
+            320..335 '{ Consts::MAX }': usize
+            322..333 'Consts::MAX': usize
             300..304 'self': Self
             343..372 '{     ...     }': Between<M, 0, Self>
             353..360 'Between': fn Between<M, 0, Self>(Self) -> Between<M, 0, Self>
@@ -607,10 +609,6 @@ fn test_at_most() {
             623..626 ''9'': char
             623..641 ''9'.at...:<1>()': Between<0, 1, char>
             637..638 '1': usize
-            320..335 '{ Consts::MAX }': usize
-            322..333 'Consts::MAX': usize
-            144..159 '{ Consts::MAX }': usize
-            146..157 'Consts::MAX': usize
         "#]],
     );
 }
@@ -740,7 +738,6 @@ where
 }
 "#,
         expect![[r#"
-            43..47 'self': &'? Self
             168..172 'self': &'? F
             205..227 '{     ...     }': <F as AsyncFnMut<()>>::CallRefFuture<'?>
             215..219 'self': &'? F
@@ -864,7 +861,6 @@ fn main() {
             192..224 '{     ...     }': Option<T>
             202..206 'self': &'? mut Foo<T>
             202..218 'self.n...spec()': Option<T>
-            278..282 'self': &'? mut Self
             380..384 'self': &'? mut Foo<T>
             408..428 '{     ...     }': Option<T>
             418..422 'None': Option<T>
@@ -924,10 +920,6 @@ fn test2<T: FooFactory>(factory: T) {
 }
 "#,
         expect![[r#"
-            39..43 'self': &'? Self
-            101..105 'self': &'? Self
-            198..202 'self': &'? Self
-            239..243 'self': &'? Self
             290..293 'foo': impl Foo + ?Sized
             325..359 '{     ...z(); }': ()
             335..338 'baz': u8
