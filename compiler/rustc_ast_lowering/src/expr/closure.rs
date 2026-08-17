@@ -22,17 +22,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let expr_hir_id = self.lower_node_id(e.id);
         let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
 
-        match closure.coroutine_kind {
+        match closure.coroutine_marker {
             // FIXME(TaKO8Ki): Support `move(expr)` in coroutine closures too.
             // For the first step, we only support plain closures.
-            Some(coroutine_kind) => hir::Expr {
+            Some(coroutine_marker) => hir::Expr {
                 hir_id: expr_hir_id,
                 kind: self.lower_expr_coroutine_closure(
                     &closure.binder,
                     closure.capture_clause,
                     e.id,
                     expr_hir_id,
-                    coroutine_kind,
+                    coroutine_marker,
                     closure.constness,
                     &closure.fn_decl,
                     &closure.body,
@@ -303,7 +303,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         capture_clause: CaptureBy,
         closure_id: NodeId,
         closure_hir_id: HirId,
-        coroutine_kind: CoroutineKind,
+        coroutine_marker: CoroutineMarker,
         constness: Const,
         decl: &FnDecl,
         body: &Expr,
@@ -314,11 +314,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let coroutine_desugaring = match coroutine_kind {
-            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
-            CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
-            CoroutineKind::AsyncGen { span, .. } => {
-                span_bug!(span, "only async closures and `iter!` closures are supported currently")
+        let coroutine_desugaring = match coroutine_marker.kind {
+            CoroutineKind::Async => hir::CoroutineDesugaring::Async,
+            CoroutineKind::Gen => hir::CoroutineDesugaring::Gen,
+            CoroutineKind::AsyncGen => {
+                span_bug!(
+                    coroutine_marker.span,
+                    "only async closures and `iter!` closures are supported currently"
+                )
             }
         };
 
@@ -335,7 +338,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
                         fn_decl_span,
                         body.span,
-                        coroutine_kind,
+                        coroutine_marker,
                         hir::CoroutineSource::Closure,
                     )
                 });

@@ -1147,11 +1147,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         this.visit_generics(generics);
 
                         let declaration = &sig.decl;
-                        let coro_node_id = sig
-                            .header
-                            .coroutine_kind
-                            .map(|coroutine_kind| coroutine_kind.return_id());
-
                         this.resolve_fn_signature(
                             fn_id,
                             declaration.has_self(),
@@ -1160,7 +1155,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                                 .iter()
                                 .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
                             &declaration.output,
-                            coro_node_id.is_some(),
+                            sig.header.coroutine_marker.is_some(),
                         );
 
                         if let Some(contract) = contract {
@@ -1168,12 +1163,13 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         }
 
                         if let Some(body) = body {
-                            // Ignore errors in function bodies if this is rustdoc
-                            // Be sure not to set this until the function signature has been resolved.
+                            // Ignore errors in function bodies if this is rustdoc. Be sure not to
+                            // set this until the function signature has been resolved.
                             let previous_state = replace(&mut this.in_func_body, true);
                             // We only care block in the same function
                             this.last_block_rib = None;
-                            // Resolve the function body, potentially inside the body of an async closure
+                            // Resolve the function body, potentially inside the body of an async
+                            // closure.
                             this.with_lifetime_rib(
                                 LifetimeRibKind::elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),

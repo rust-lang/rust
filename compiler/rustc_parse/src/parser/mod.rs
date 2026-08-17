@@ -36,8 +36,9 @@ use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
-    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasTokens, ImplRestriction, MutRestriction,
-    Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility, VisibilityKind,
+    CoroutineMarker, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasTokens, ImplRestriction,
+    MutRestriction, Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility,
+    VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -1212,8 +1213,8 @@ impl<'a> Parser<'a> {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
     }
 
-    /// Parses asyncness: `async` or nothing.
-    fn parse_coroutine_kind(&mut self, case: Case) -> Option<CoroutineKind> {
+    /// Parses optional coroutine marker: `async`/`gen`/`async gen`.
+    fn parse_coroutine_marker(&mut self, case: Case) -> Option<CoroutineMarker> {
         let span = self.token_uninterpolated_span();
         if self.eat_keyword_case(exp!(Async), case) {
             // FIXME(gen_blocks): Do we want to unconditionally parse `gen` and then
@@ -1222,29 +1223,18 @@ impl<'a> Parser<'a> {
                 && self.eat_keyword_case(exp!(Gen), case)
             {
                 let gen_span = self.prev_token_uninterpolated_span();
-                Some(CoroutineKind::AsyncGen {
-                    span: span.to(gen_span),
-                    closure_id: DUMMY_NODE_ID,
-                    return_impl_trait_id: DUMMY_NODE_ID,
-                })
+                Some((CoroutineKind::AsyncGen, span.to(gen_span)))
             } else {
-                Some(CoroutineKind::Async {
-                    span,
-                    closure_id: DUMMY_NODE_ID,
-                    return_impl_trait_id: DUMMY_NODE_ID,
-                })
+                Some((CoroutineKind::Async, span))
             }
         } else if self.token_uninterpolated_span().at_least_rust_2024()
             && self.eat_keyword_case(exp!(Gen), case)
         {
-            Some(CoroutineKind::Gen {
-                span,
-                closure_id: DUMMY_NODE_ID,
-                return_impl_trait_id: DUMMY_NODE_ID,
-            })
+            Some((CoroutineKind::Gen, span))
         } else {
             None
         }
+        .map(|(kind, span)| CoroutineMarker::new(kind, span))
     }
 
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
