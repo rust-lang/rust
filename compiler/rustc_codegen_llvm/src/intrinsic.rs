@@ -66,45 +66,10 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
         sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::sinf16 => ("llvm.sin", &[bx.type_f16()]),
-        sym::sinf32 => ("llvm.sin", &[bx.type_f32()]),
-        sym::sinf64 => ("llvm.sin", &[bx.type_f64()]),
-        sym::sinf128 => ("llvm.sin", &[bx.type_f128()]),
-
-        sym::cosf16 => ("llvm.cos", &[bx.type_f16()]),
-        sym::cosf32 => ("llvm.cos", &[bx.type_f32()]),
-        sym::cosf64 => ("llvm.cos", &[bx.type_f64()]),
-        sym::cosf128 => ("llvm.cos", &[bx.type_f128()]),
-
         sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
         sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
         sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
         sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
-
-        sym::expf16 => ("llvm.exp", &[bx.type_f16()]),
-        sym::expf32 => ("llvm.exp", &[bx.type_f32()]),
-        sym::expf64 => ("llvm.exp", &[bx.type_f64()]),
-        sym::expf128 => ("llvm.exp", &[bx.type_f128()]),
-
-        sym::exp2f16 => ("llvm.exp2", &[bx.type_f16()]),
-        sym::exp2f32 => ("llvm.exp2", &[bx.type_f32()]),
-        sym::exp2f64 => ("llvm.exp2", &[bx.type_f64()]),
-        sym::exp2f128 => ("llvm.exp2", &[bx.type_f128()]),
-
-        sym::logf16 => ("llvm.log", &[bx.type_f16()]),
-        sym::logf32 => ("llvm.log", &[bx.type_f32()]),
-        sym::logf64 => ("llvm.log", &[bx.type_f64()]),
-        sym::logf128 => ("llvm.log", &[bx.type_f128()]),
-
-        sym::log10f16 => ("llvm.log10", &[bx.type_f16()]),
-        sym::log10f32 => ("llvm.log10", &[bx.type_f32()]),
-        sym::log10f64 => ("llvm.log10", &[bx.type_f64()]),
-        sym::log10f128 => ("llvm.log10", &[bx.type_f128()]),
-
-        sym::log2f16 => ("llvm.log2", &[bx.type_f16()]),
-        sym::log2f32 => ("llvm.log2", &[bx.type_f32()]),
-        sym::log2f64 => ("llvm.log2", &[bx.type_f64()]),
-        sym::log2f128 => ("llvm.log2", &[bx.type_f128()]),
 
         sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
         sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
@@ -556,13 +521,35 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            sym::fabs => {
+            sym::fabs
+            | sym::exp
+            | sym::exp2
+            | sym::log
+            | sym::log10
+            | sym::log2
+            | sym::sin
+            | sym::cos => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
-                    span_bug!(span, "the `fabs` intrinsic requires a floating-point argument, got {:?}", ty);
+                    span_bug!(
+                        span,
+                        "the `{}` intrinsic requires a floating-point argument, got {:?}",
+                        name,
+                        ty
+                    );
                 };
                 let llty = self.type_float_from_ty(*f);
-                let llvm_name = "llvm.fabs";
+                let llvm_name = match name {
+                    sym::fabs => "llvm.fabs",
+                    sym::exp => "llvm.exp",
+                    sym::exp2 => "llvm.exp2",
+                    sym::log => "llvm.log",
+                    sym::log10 => "llvm.log10",
+                    sym::log2 => "llvm.log2",
+                    sym::sin => "llvm.sin",
+                    sym::cos => "llvm.cos",
+                    _ => bug!(),
+                };
                 self.call_intrinsic(
                     llvm_name,
                     &[llty],
