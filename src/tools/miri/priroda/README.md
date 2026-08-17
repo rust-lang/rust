@@ -152,7 +152,8 @@ RUSTC_BLESS=1 cargo test
 | Command | Description |
 |---|---|
 | Enter, `si`, `stepi` | Execute one Miri interpreter step. |
-| `s`, `step` | Step until the displayed source location changes. |
+| `s`, `step` | Step to the next displayed source location, entering calls. |
+| `n`, `next` | Step over the current displayed source location. |
 | `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
 | `l`, `locals` | List source-level locals in the current frame by name. |
