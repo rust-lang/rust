@@ -48,10 +48,12 @@ stack frame, exposes one flat Locals scope, and maps `list_locals()` into DAP
 variables with no child expansion.
 
 DAP supports `stepIn`, `next`, and `stepOut`. `stepIn` stops at the next
-displayed source location and can enter calls. `next` steps over calls by
-tracking the starting stack depth, and `stepOut` runs until execution reaches a
-shallower stack frame. This is still single-threaded and source-position based,
-not the full future thread/frame model.
+displayed source location and can enter calls when the callee has a distinct
+displayed source position. `next` steps over calls by tracking the starting stack
+depth, and `stepOut` runs until execution reaches a shallower user frame.
+`stepOut` from the outermost user frame is rejected. This is still
+single-threaded and source-position based, not the full future thread/frame
+model.
 
 ### VS Code
 
@@ -154,9 +156,9 @@ RUSTC_BLESS=1 cargo test
 | Command | Description |
 |---|---|
 | Enter, `si`, `stepi` | Execute one Miri interpreter step. |
-| `s`, `step` | Step to the next displayed source location, entering calls. |
+| `s`, `step` | Step to the next displayed source location, entering calls with their own displayed position. |
 | `n`, `next` | Step over the current displayed source location. |
-| `out`, `stepout` | Run until execution returns to a shallower stack frame. |
+| `out`, `stepout` | Run until execution returns to a shallower user frame. |
 | `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
 | `l`, `locals` | List source-level locals in the current frame by name. |

@@ -209,10 +209,10 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.step_in_source()
     }
 
-    /// Step into the next source location, entering any call that is made.
+    /// Step into the next source location.
     ///
-    /// This keeps source-line stepping as the step-in behavior while `next` uses
-    /// [`Self::step_over_source`].
+    /// This can enter calls that have a distinct displayed source position,
+    /// while `next` uses [`Self::step_over_source`].
     pub(super) fn step_in_source(&mut self) -> InterpResult<'tcx, ExecutionResult> {
         if let Some(result) = self.already_finished() {
             return interp_ok(result);
@@ -239,10 +239,10 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.ecx.active_thread_stack().len()
     }
 
-    /// Step out of the current stack frame.
+    /// Step out of the current user frame.
     ///
-    /// Records the current stack depth and runs until execution reaches a source
-    /// location in a shallower frame.
+    /// Records the current user-frame depth and runs until execution reaches a
+    /// source location in a shallower user frame.
     pub(super) fn step_out_source(&mut self) -> InterpResult<'tcx, ExecutionResult> {
         if let Some(result) = self.already_finished() {
             return interp_ok(result);
