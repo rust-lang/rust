@@ -641,6 +641,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let canonical_symbols = stat!("canonical-symbols", || self.encode_canonical_symbols());
 
+        let fake_doc_items = stat!("fake-doc-items", || self.encode_fake_doc_items());
+
         let native_libraries = stat!("native-libs", || self.encode_native_libraries());
 
         let foreign_modules = stat!("foreign-modules", || self.encode_foreign_modules());
@@ -760,6 +762,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 lang_items,
                 diagnostic_items,
                 canonical_symbols,
+                fake_doc_items,
                 lang_items_missing,
                 stripped_cfg_items,
                 native_libraries,
@@ -2156,6 +2159,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
         self.lazy_array(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
+    }
+
+    fn encode_fake_doc_items(&mut self) -> LazyArray<DefIndex> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        let fake_doc_items = &tcx.fake_doc_items(LOCAL_CRATE);
+        self.lazy_array(fake_doc_items.iter().map(|cs| cs.index))
     }
 
     fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, LangItem)> {
