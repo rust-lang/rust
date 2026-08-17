@@ -70,62 +70,62 @@ pub(crate) enum GitRepo {
 /// organize).
 pub(crate) struct Build {
     /// User-specified configuration from `bootstrap.toml`.
-    config: Config,
+    pub(crate) config: Config,
 
     // Version information
-    version: String,
+    pub(crate) version: String,
 
     // Properties derived from the above configuration
-    src: PathBuf,
-    out: PathBuf,
-    bootstrap_out: PathBuf,
-    cargo_info: GitInfo,
-    rust_analyzer_info: GitInfo,
-    clippy_info: GitInfo,
-    miri_info: GitInfo,
-    rustfmt_info: GitInfo,
-    enzyme_info: GitInfo,
-    in_tree_llvm_info: GitInfo,
-    in_tree_gcc_info: GitInfo,
-    local_rebuild: bool,
-    fail_fast: bool,
-    test_target: TestTarget,
-    verbosity: usize,
+    pub(crate) src: PathBuf,
+    pub(crate) out: PathBuf,
+    pub(crate) bootstrap_out: PathBuf,
+    pub(crate) cargo_info: GitInfo,
+    pub(crate) rust_analyzer_info: GitInfo,
+    pub(crate) clippy_info: GitInfo,
+    pub(crate) miri_info: GitInfo,
+    pub(crate) rustfmt_info: GitInfo,
+    pub(crate) enzyme_info: GitInfo,
+    pub(crate) in_tree_llvm_info: GitInfo,
+    pub(crate) in_tree_gcc_info: GitInfo,
+    pub(crate) local_rebuild: bool,
+    pub(crate) fail_fast: bool,
+    pub(crate) test_target: TestTarget,
+    pub(crate) verbosity: usize,
 
     /// Build triple for the pre-compiled snapshot compiler.
-    host_target: TargetSelection,
+    pub(crate) host_target: TargetSelection,
     /// Which triples to produce a compiler toolchain for.
-    hosts: Vec<TargetSelection>,
+    pub(crate) hosts: Vec<TargetSelection>,
     /// Which triples to build libraries (core/alloc/std/test/proc_macro) for.
-    targets: Vec<TargetSelection>,
+    pub(crate) targets: Vec<TargetSelection>,
 
-    initial_rustc: PathBuf,
-    initial_rustdoc: PathBuf,
-    initial_cargo: PathBuf,
-    initial_lld: PathBuf,
-    initial_relative_libdir: PathBuf,
-    initial_sysroot: PathBuf,
+    pub(crate) initial_rustc: PathBuf,
+    pub(crate) initial_rustdoc: PathBuf,
+    pub(crate) initial_cargo: PathBuf,
+    pub(crate) initial_lld: PathBuf,
+    pub(crate) initial_relative_libdir: PathBuf,
+    pub(crate) initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
-    cc: HashMap<TargetSelection, cc::Tool>,
-    cxx: HashMap<TargetSelection, cc::Tool>,
-    ar: HashMap<TargetSelection, PathBuf>,
-    ranlib: HashMap<TargetSelection, PathBuf>,
-    wasi_sdk_path: Option<PathBuf>,
+    pub(crate) cc: HashMap<TargetSelection, cc::Tool>,
+    pub(crate) cxx: HashMap<TargetSelection, cc::Tool>,
+    pub(crate) ar: HashMap<TargetSelection, PathBuf>,
+    pub(crate) ranlib: HashMap<TargetSelection, PathBuf>,
+    pub(crate) wasi_sdk_path: Option<PathBuf>,
 
     // Miscellaneous
     // allow bidirectional lookups: both name -> path and path -> name
-    crates: HashMap<String, Crate>,
-    crate_paths: HashMap<PathBuf, String>,
-    is_sudo: bool,
-    prerelease_version: Cell<Option<u32>>,
+    pub(crate) crates: HashMap<String, Crate>,
+    pub(crate) crate_paths: HashMap<PathBuf, String>,
+    pub(crate) is_sudo: bool,
+    pub(crate) prerelease_version: Cell<Option<u32>>,
 
     #[cfg(feature = "build-metrics")]
-    metrics: crate::utils::metrics::BuildMetrics,
+    pub(crate) metrics: crate::utils::metrics::BuildMetrics,
 
     #[cfg(feature = "tracing")]
-    step_graph: std::cell::RefCell<crate::utils::step_graph::StepGraph>,
+    pub(crate) step_graph: std::cell::RefCell<crate::utils::step_graph::StepGraph>,
 }
 
 /// When building Rust various objects are handled differently.
@@ -253,9 +253,11 @@ impl FileType {
 macro_rules! forward {
     ( $( $fn:ident( $($param:ident: $ty:ty),* ) $( -> $ret:ty)? ),+ $(,)? ) => {
         impl Build {
-            $( fn $fn(&self, $($param: $ty),* ) $( -> $ret)? {
-                self.config.$fn( $($param),* )
-            } )+
+            $(
+                pub(crate) fn $fn(&self, $($param: $ty),* ) $( -> $ret)? {
+                    self.config.$fn( $($param),* )
+                }
+            )+
         }
     }
 }
@@ -271,7 +273,7 @@ forward! {
 
 /// An alternative way of specifying what target and stage is involved in some bootstrap activity.
 /// Ideally using a `Compiler` directly should be preferred.
-struct TargetAndStage {
+pub(crate) struct TargetAndStage {
     target: TargetSelection,
     stage: u32,
 }
@@ -550,7 +552,7 @@ impl Build {
 
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
-    fn update_existing_submodules(&self) {
+    pub(crate) fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout, or the user has
         // explicitly disabled submodules in `bootstrap.toml`.
         if !self.config.submodules() {
@@ -670,13 +672,13 @@ impl Build {
         self.metrics.persist(self);
     }
 
-    fn rust_info(&self) -> &GitInfo {
+    pub(crate) fn rust_info(&self) -> &GitInfo {
         &self.config.rust_info
     }
 
     /// Gets the space-separated set of activated features for the standard library.
     /// This can be configured with the `std-features` key in bootstrap.toml.
-    fn std_features(&self, target: TargetSelection) -> String {
+    pub(crate) fn std_features(&self, target: TargetSelection) -> String {
         let mut features: BTreeSet<&str> =
             self.config.rust_std_features.iter().map(|s| s.as_str()).collect();
 
@@ -703,7 +705,12 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, kind: Kind, target: TargetSelection, crates: &[String]) -> String {
+    pub(crate) fn rustc_features(
+        &self,
+        kind: Kind,
+        target: TargetSelection,
+        crates: &[String],
+    ) -> String {
         let possible_features_by_crates: HashSet<_> = crates
             .iter()
             .flat_map(|krate| &self.crates[krate].features)
@@ -753,7 +760,7 @@ impl Build {
 
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
-    fn cargo_dir(&self, mode: Mode) -> &'static str {
+    pub(crate) fn cargo_dir(&self, mode: Mode) -> &'static str {
         match (mode, self.config.rust_optimize.is_release()) {
             (Mode::Std, _) => "dist",
             (_, true) => "release",
@@ -761,7 +768,7 @@ impl Build {
         }
     }
 
-    fn tools_dir(&self, build_compiler: Compiler) -> PathBuf {
+    pub(crate) fn tools_dir(&self, build_compiler: Compiler) -> PathBuf {
         let out = self
             .out
             .join(build_compiler.host)
@@ -774,7 +781,7 @@ impl Build {
     /// stage when being built with a particular build compiler.
     ///
     /// The mode indicates what the root directory is for.
-    fn stage_out(&self, build_compiler: Compiler, mode: Mode) -> PathBuf {
+    pub(crate) fn stage_out(&self, build_compiler: Compiler, mode: Mode) -> PathBuf {
         use std::fmt::Write;
 
         fn bootstrap_tool() -> (Option<u32>, &'static str) {
@@ -814,64 +821,69 @@ impl Build {
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self, build_compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
+    pub(crate) fn cargo_out(
+        &self,
+        build_compiler: Compiler,
+        mode: Mode,
+        target: TargetSelection,
+    ) -> PathBuf {
         self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir(mode))
     }
 
     /// Output directory for all documentation for a target
-    fn doc_out(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("doc")
     }
 
     /// Output directory for all JSON-formatted documentation for a target
-    fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("json-doc")
     }
 
-    fn test_out(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn test_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("test")
     }
 
     /// Output directory for all documentation for a target
-    fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("compiler-doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
-    fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("md-doc")
     }
 
     /// Path to the vendored Rust crates.
-    fn vendored_crates_path(&self) -> Option<PathBuf> {
+    pub(crate) fn vendored_crates_path(&self) -> Option<PathBuf> {
         if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
     }
 
     /// Directory for libraries built from C/C++ code and shared between stages.
-    fn native_dir(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn native_dir(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
-    fn test_helpers_out(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn test_helpers_out(&self, target: TargetSelection) -> PathBuf {
         self.native_dir(target).join("rust-test-helpers")
     }
 
     /// Adds the `RUST_TEST_THREADS` env var if necessary
-    fn add_rust_test_threads(&self, cmd: &mut BootstrapCommand) {
+    pub(crate) fn add_rust_test_threads(&self, cmd: &mut BootstrapCommand) {
         if env::var_os("RUST_TEST_THREADS").is_none() {
             cmd.env("RUST_TEST_THREADS", self.jobs().to_string());
         }
     }
 
     /// Returns the libdir of the snapshot compiler.
-    fn rustc_snapshot_libdir(&self) -> PathBuf {
+    pub(crate) fn rustc_snapshot_libdir(&self) -> PathBuf {
         self.rustc_snapshot_sysroot().join(libdir(self.config.host_target))
     }
 
     /// Returns the sysroot of the snapshot compiler.
-    fn rustc_snapshot_sysroot(&self) -> &Path {
+    pub(crate) fn rustc_snapshot_sysroot(&self) -> &Path {
         static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
             command(&self.initial_rustc)
@@ -885,7 +897,7 @@ impl Build {
         })
     }
 
-    fn info(&self, msg: &str) {
+    pub(crate) fn info(&self, msg: &str) {
         match self.config.get_dry_run() {
             DryRun::SelfCheck => (),
             DryRun::Disabled | DryRun::UserSelected => {
@@ -907,7 +919,7 @@ impl Build {
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
-    fn msg(
+    pub(crate) fn msg(
         &self,
         action: impl Into<Kind>,
         what: impl Display,
@@ -964,7 +976,7 @@ impl Build {
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
-    fn msg_test(
+    pub(crate) fn msg_test(
         &self,
         what: impl Display,
         target: TargetSelection,
@@ -980,7 +992,7 @@ impl Build {
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
     #[track_caller]
-    fn msg_unstaged(
+    pub(crate) fn msg_unstaged(
         &self,
         action: impl Into<Kind>,
         what: impl Display,
@@ -992,7 +1004,7 @@ impl Build {
     }
 
     #[track_caller]
-    fn group(&self, msg: &str) -> Option<gha::Group> {
+    pub(crate) fn group(&self, msg: &str) -> Option<gha::Group> {
         match self.config.get_dry_run() {
             DryRun::SelfCheck => None,
             DryRun::Disabled | DryRun::UserSelected => Some(gha::group(msg)),
@@ -1001,13 +1013,17 @@ impl Build {
 
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
-    fn jobs(&self) -> u32 {
+    pub(crate) fn jobs(&self) -> u32 {
         self.config.jobs.unwrap_or_else(|| {
             std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         })
     }
 
-    fn debuginfo_map_to(&self, which: GitRepo, remap_scheme: RemapScheme) -> Option<String> {
+    pub(crate) fn debuginfo_map_to(
+        &self,
+        which: GitRepo,
+        remap_scheme: RemapScheme,
+    ) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
             return None;
         }
@@ -1039,7 +1055,7 @@ impl Build {
     }
 
     /// Returns the path to the C compiler for the target specified.
-    fn cc(&self, target: TargetSelection) -> PathBuf {
+    pub(crate) fn cc(&self, target: TargetSelection) -> PathBuf {
         if self.config.dry_run() {
             return PathBuf::new();
         }
@@ -1047,18 +1063,18 @@ impl Build {
     }
 
     /// Returns the internal `cc::Tool` for the C compiler.
-    fn cc_tool(&self, target: TargetSelection) -> cc::Tool {
+    pub(crate) fn cc_tool(&self, target: TargetSelection) -> cc::Tool {
         self.cc[&target].clone()
     }
 
     /// Returns the internal `cc::Tool` for the C++ compiler.
-    fn cxx_tool(&self, target: TargetSelection) -> cc::Tool {
+    pub(crate) fn cxx_tool(&self, target: TargetSelection) -> cc::Tool {
         self.cxx[&target].clone()
     }
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
     /// specified target by default.
-    fn cc_handled_cflags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
+    pub(crate) fn cc_handled_cflags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1077,7 +1093,7 @@ impl Build {
     }
 
     /// Returns extra C flags that `cc-rs` doesn't handle.
-    fn cc_unhandled_cflags(
+    pub(crate) fn cc_unhandled_cflags(
         &self,
         target: TargetSelection,
         which: GitRepo,
@@ -1113,7 +1129,7 @@ impl Build {
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
-    fn ar(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub(crate) fn ar(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.dry_run() {
             return None;
         }
@@ -1121,7 +1137,7 @@ impl Build {
     }
 
     /// Returns the path to the `ranlib` utility for the target specified.
-    fn ranlib(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub(crate) fn ranlib(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.dry_run() {
             return None;
         }
@@ -1129,7 +1145,7 @@ impl Build {
     }
 
     /// Returns the path to the C++ compiler for the target specified.
-    fn cxx(&self, target: TargetSelection) -> Result<PathBuf, String> {
+    pub(crate) fn cxx(&self, target: TargetSelection) -> Result<PathBuf, String> {
         if self.config.dry_run() {
             return Ok(PathBuf::new());
         }
@@ -1140,7 +1156,7 @@ impl Build {
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
-    fn linker(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub(crate) fn linker(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.dry_run() {
             return Some(PathBuf::new());
         }
@@ -1172,12 +1188,12 @@ impl Build {
 
     // Is LLD configured directly through `-Clinker`?
     // Only MSVC targets use LLD directly at the moment.
-    fn is_lld_direct_linker(&self, target: TargetSelection) -> bool {
+    pub(crate) fn is_lld_direct_linker(&self, target: TargetSelection) -> bool {
         target.is_msvc()
     }
 
     /// Returns if this target should statically link the C runtime, if specified
-    fn crt_static(&self, target: TargetSelection) -> Option<bool> {
+    pub(crate) fn crt_static(&self, target: TargetSelection) -> Option<bool> {
         if target.contains("pc-windows-msvc") {
             Some(true)
         } else {
@@ -1189,7 +1205,7 @@ impl Build {
     ///
     /// If this is a native target (host is also musl) and no musl-root is given,
     /// it falls back to the system toolchain in /usr.
-    fn musl_root(&self, target: TargetSelection) -> Option<&Path> {
+    pub(crate) fn musl_root(&self, target: TargetSelection) -> Option<&Path> {
         let configured_root = self
             .config
             .target_config
@@ -1206,7 +1222,7 @@ impl Build {
     }
 
     /// Returns the "musl libdir" for this `target`.
-    fn musl_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub(crate) fn musl_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
         self.config
             .target_config
             .get(&target)
@@ -1220,7 +1236,7 @@ impl Build {
     /// This first consults `wasi-root` as configured in per-target
     /// configuration, and failing that it assumes that `$WASI_SDK_PATH` is
     /// set in the environment, and failing that `None` is returned.
-    fn wasi_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub(crate) fn wasi_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
         let configured =
             self.config.target_config.get(&target).and_then(|t| t.wasi_root.as_ref()).map(|p| &**p);
         if let Some(path) = configured {
@@ -1235,13 +1251,13 @@ impl Build {
     }
 
     /// Returns `true` if this is a no-std `target`, if defined
-    fn no_std(&self, target: TargetSelection) -> Option<bool> {
+    pub(crate) fn no_std(&self, target: TargetSelection) -> Option<bool> {
         self.config.target_config.get(&target).map(|t| t.no_std)
     }
 
     /// Returns `true` if the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
-    fn remote_tested(&self, target: TargetSelection) -> bool {
+    pub(crate) fn remote_tested(&self, target: TargetSelection) -> bool {
         self.qemu_rootfs(target).is_some()
             || target.contains("android")
             || env::var_os("TEST_DEVICE_ADDR").is_some()
@@ -1252,7 +1268,7 @@ impl Build {
     ///
     /// An example of this would be a WebAssembly runtime when testing the wasm
     /// targets.
-    fn runner(&self, target: TargetSelection) -> Option<String> {
+    pub(crate) fn runner(&self, target: TargetSelection) -> Option<String> {
         let configured_runner =
             self.config.target_config.get(&target).and_then(|t| t.runner.as_ref()).map(|p| &**p);
         if let Some(runner) = configured_runner {
@@ -1301,7 +1317,7 @@ impl Build {
     ///
     /// This requires that both the `extended` key is set and the `tools` key is
     /// either unset or specifically contains the specified tool.
-    fn tool_enabled(&self, tool: &str) -> bool {
+    pub(crate) fn tool_enabled(&self, tool: &str) -> bool {
         if !self.config.extended {
             return false;
         }
@@ -1316,12 +1332,12 @@ impl Build {
     ///
     /// If `Some` is returned then that means that tests for this target are
     /// emulated with QEMU and binaries will need to be shipped to the emulator.
-    fn qemu_rootfs(&self, target: TargetSelection) -> Option<&Path> {
+    pub(crate) fn qemu_rootfs(&self, target: TargetSelection) -> Option<&Path> {
         self.config.target_config.get(&target).and_then(|t| t.qemu_rootfs.as_ref()).map(|p| &**p)
     }
 
     /// Temporary directory that extended error information is emitted to.
-    fn extended_error_dir(&self) -> PathBuf {
+    pub(crate) fn extended_error_dir(&self) -> PathBuf {
         self.out.join("tmp/extended-error-metadata")
     }
 
@@ -1343,7 +1359,7 @@ impl Build {
     ///
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
-    fn force_use_stage1(&self, stage: u32, target: TargetSelection) -> bool {
+    pub(crate) fn force_use_stage1(&self, stage: u32, target: TargetSelection) -> bool {
         !self.config.full_bootstrap
             && !self.config.download_rustc()
             && stage >= 2
@@ -1355,7 +1371,7 @@ impl Build {
     ///
     /// When we download the pre-compiled version of rustc and compiler stage is >= 2,
     /// it should be forced to use a stage2 compiler.
-    fn force_use_stage2(&self, stage: u32) -> bool {
+    pub(crate) fn force_use_stage2(&self, stage: u32) -> bool {
         self.config.download_rustc() && stage >= 2
     }
 
@@ -1364,7 +1380,7 @@ impl Build {
     ///
     /// For example on nightly this returns "a.b.c-nightly", on beta it returns
     /// "a.b.c-beta.1" and on stable it just returns "a.b.c".
-    fn release(&self, num: &str) -> String {
+    pub(crate) fn release(&self, num: &str) -> String {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
             "beta" => {
@@ -1415,7 +1431,7 @@ impl Build {
     }
 
     /// Returns the value of `release` above for Rust itself.
-    fn rust_release(&self) -> String {
+    pub(crate) fn rust_release(&self) -> String {
         self.release(&self.version)
     }
 
@@ -1424,7 +1440,7 @@ impl Build {
     /// The package version is typically what shows up in the names of tarballs.
     /// For channels like beta/nightly it's just the channel name, otherwise it's the release
     /// version.
-    fn rust_package_vers(&self) -> String {
+    pub(crate) fn rust_package_vers(&self) -> String {
         match &self.config.channel[..] {
             "stable" => self.version.to_string(),
             "beta" => "beta".to_string(),
@@ -1438,7 +1454,7 @@ impl Build {
     ///
     /// Note that this is a descriptive string which includes the commit date,
     /// sha, version, etc.
-    fn rust_version(&self) -> String {
+    pub(crate) fn rust_version(&self) -> String {
         let mut version = self.rust_info().version(self, &self.version);
         if let Some(ref s) = self.config.description
             && !s.is_empty()
@@ -1451,12 +1467,12 @@ impl Build {
     }
 
     /// Returns the full commit hash.
-    fn rust_sha(&self) -> Option<&str> {
+    pub(crate) fn rust_sha(&self) -> Option<&str> {
         self.rust_info().sha()
     }
 
     /// Returns the `a.b.c` version that the given package is at.
-    fn release_num(&self, package: &str) -> String {
+    pub(crate) fn release_num(&self, package: &str) -> String {
         if self.config.dry_run() {
             return "0.0.0 (dry-run)".into();
         }
@@ -1475,14 +1491,18 @@ impl Build {
 
     /// Returns `true` if unstable features should be enabled for the compiler
     /// we're building.
-    fn unstable_features(&self) -> bool {
+    pub(crate) fn unstable_features(&self) -> bool {
         !matches!(&self.config.channel[..], "stable" | "beta")
     }
 
     /// Returns a Vec of all the dependencies of the given root crate,
     /// including transitive dependencies and the root itself. Only includes
     /// "local" crates (those in the local source tree, not from a registry).
-    fn in_tree_crates(&self, root: &str, target: Option<TargetSelection>) -> Vec<&Crate> {
+    pub(crate) fn in_tree_crates(
+        &self,
+        root: &str,
+        target: Option<TargetSelection>,
+    ) -> Vec<&Crate> {
         let mut ret = Vec::new();
         let mut list = vec![root.to_owned()];
         let mut visited = HashSet::new();
@@ -1520,7 +1540,7 @@ impl Build {
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &BuildStamp) -> Vec<(PathBuf, DependencyType)> {
+    pub(crate) fn read_stamp_file(&self, stamp: &BuildStamp) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1691,13 +1711,13 @@ impl Build {
         }
     }
 
-    fn copy_link_to_folder(&self, src: &Path, dest_folder: &Path) {
+    pub(crate) fn copy_link_to_folder(&self, src: &Path, dest_folder: &Path) {
         let file_name = src.file_name().unwrap();
         let dest = dest_folder.join(file_name);
         self.copy_link(src, &dest, FileType::Regular);
     }
 
-    fn install(&self, src: &Path, dstdir: &Path, file_type: FileType) {
+    pub(crate) fn install(&self, src: &Path, dstdir: &Path, file_type: FileType) {
         if self.config.dry_run() {
             return;
         }
@@ -1722,7 +1742,7 @@ impl Build {
         }
     }
 
-    fn read(&self, path: &Path) -> String {
+    pub(crate) fn read(&self, path: &Path) -> String {
         if self.config.dry_run() {
             return String::new();
         }
@@ -1730,7 +1750,7 @@ impl Build {
     }
 
     #[track_caller]
-    fn create_dir(&self, dir: &Path) {
+    pub(crate) fn create_dir(&self, dir: &Path) {
         if self.config.dry_run() {
             return;
         }
@@ -1741,7 +1761,7 @@ impl Build {
         t!(fs::create_dir_all(dir))
     }
 
-    fn remove_dir(&self, dir: &Path) {
+    pub(crate) fn remove_dir(&self, dir: &Path) {
         if self.config.dry_run() {
             return;
         }
@@ -1754,7 +1774,7 @@ impl Build {
 
     /// Make sure that `dir` will be an empty existing directory after this function ends.
     /// If it existed before, it will be first deleted.
-    fn clear_dir(&self, dir: &Path) {
+    pub(crate) fn clear_dir(&self, dir: &Path) {
         if self.config.dry_run() {
             return;
         }
@@ -1766,7 +1786,7 @@ impl Build {
         self.create_dir(dir);
     }
 
-    fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
+    pub(crate) fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run() => return vec![].into_iter(),
@@ -1775,7 +1795,11 @@ impl Build {
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
 
-    fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, link: Q) -> io::Result<()> {
+    pub(crate) fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        src: P,
+        link: Q,
+    ) -> io::Result<()> {
         #[cfg(unix)]
         use std::os::unix::fs::symlink as symlink_file;
         #[cfg(windows)]
@@ -1785,7 +1809,7 @@ impl Build {
 
     /// Returns if config.ninja is enabled, and checks for ninja existence,
     /// exiting with a nicer error message if not.
-    fn ninja(&self) -> bool {
+    pub(crate) fn ninja(&self) -> bool {
         let mut cmd_finder = crate::core::sanity::Finder::new();
 
         if self.config.ninja_in_file {
