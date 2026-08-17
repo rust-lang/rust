@@ -6,7 +6,8 @@ use miri::{InterpResult, interp_ok};
 use rustc_middle::mir::interpret::AllocId;
 
 use crate::debugger::{
-    BreakpointSetResult, CommandResult, DebuggerCommand, PrirodaContext, StepResult,
+    BreakpointSetResult, CommandResult, DebuggerCommand, ExecutionResult, PrirodaContext,
+    StepResult,
 };
 
 pub(crate) struct Cli;
@@ -46,12 +47,22 @@ impl Cli {
         session: &PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         match command_res {
-            CommandResult::ExecutionStopped(result) => {
-                if matches!(result, StepResult::Breakpoint) {
-                    println!("Hit breakpoint");
-                }
-                Self::print_location(session);
-            }
+            CommandResult::Execution(result) =>
+                match result {
+                    ExecutionResult::Stopped(step) =>
+                        match step {
+                            StepResult::Step => Self::print_location(session),
+                            StepResult::Breakpoint => {
+                                println!("Hit breakpoint");
+                                Self::print_location(session);
+                            }
+                            StepResult::Exception { ref message } =>
+                                Self::print_exception_stop(message, session),
+                        },
+                    ExecutionResult::ProgramExited { code } => {
+                        println!("program finished with exit code {code}");
+                    }
+                },
             CommandResult::BreakpointResult(res) =>
                 match res {
                     BreakpointSetResult::Added(path, line) => {
@@ -105,6 +116,11 @@ impl Cli {
             }
         }
         interp_ok(true)
+    }
+
+    fn print_exception_stop<'tcx>(message: &str, session: &PrirodaContext<'tcx>) {
+        println!("program stopped with error: {message}");
+        Self::print_location(session);
     }
 
     fn parse_command(&self, input: &str) -> Option<DebuggerCommand> {

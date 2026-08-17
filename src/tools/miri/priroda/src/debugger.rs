@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use miri::Immediate::Uninit;
-use miri::*;
+use miri::{InterpErrorInfo, InterpErrorKind, TerminationInfo, *};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
 use rustc_hir::def::CtorKind;
 use rustc_middle::mir::interpret::AllocId;
@@ -39,6 +39,9 @@ pub(super) struct PrirodaContext<'tcx> {
     breakpoints: BreakpointTable,
     pub(super) current_location: Option<SourceLocation>,
     last_location: Option<SourceLocation>,
+    // FIXME: add restart and other post-exit commands, similar to GDB and
+    // old Priroda, instead of only replaying the saved exit code.
+    exit_code: Option<i32>,
 }
 
 pub(super) enum StorageProj {
@@ -123,6 +126,12 @@ enum InstructionVisibility {
 pub(super) enum StepResult {
     Step,
     Breakpoint,
+    Exception { message: String },
+}
+
+pub(super) enum ExecutionResult {
+    Stopped(StepResult),
+    ProgramExited { code: i32 },
 }
 
 fn normalize_path(path: PathBuf) -> PathBuf {
@@ -131,7 +140,13 @@ fn normalize_path(path: PathBuf) -> PathBuf {
 
 impl<'tcx> PrirodaContext<'tcx> {
     pub(super) fn new(ecx: MiriInterpCx<'tcx>) -> Self {
-        Self { ecx, breakpoints: HashMap::new(), current_location: None, last_location: None }
+        Self {
+            ecx,
+            breakpoints: HashMap::new(),
+            current_location: None,
+            last_location: None,
+            exit_code: None,
+        }
     }
 
     pub(super) fn local_path(&self, location: &SourceLocation) -> Option<PathBuf> {
@@ -152,17 +167,28 @@ impl<'tcx> PrirodaContext<'tcx> {
         Some((self.local_path(location)?, location.line))
     }
 
+    fn already_finished(&self) -> Option<ExecutionResult> {
+        self.exit_code.map(|code| ExecutionResult::ProgramExited { code })
+    }
+
     /// Step to the next visible MIR instruction.
-    fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
+    fn stepi(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
         self.resume(ResumeMode::MirInstruction)
     }
+
     /// Step until the displayed source file or line changes.
-    pub(super) fn step(&mut self) -> InterpResult<'tcx, StepResult> {
+    pub(super) fn step(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
         self.resume(ResumeMode::SourceLine(self.current_source_position()))
     }
 
     /// Run until the initial editor-visible stop point.
-    pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, StepResult> {
+    pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, ExecutionResult> {
         self.resume(ResumeMode::FirstUserSourceLocation)
     }
 
@@ -173,8 +199,15 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
-    pub(super) fn continue_execution(&mut self) -> InterpResult<'tcx, StepResult> {
+    pub(super) fn continue_execution(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
         self.resume(ResumeMode::Continue)
+    }
+
+    pub(super) fn finish_session(&mut self) -> InterpResult<'tcx, ()> {
+        interp_ok(())
     }
 
     pub(super) fn set_breakpoint(&mut self, path: PathBuf, line: usize) -> BreakpointSetResult {
@@ -190,15 +223,44 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
     }
 
+    fn program_exit(err: &InterpErrorInfo<'tcx>) -> Option<i32> {
+        let InterpErrorKind::MachineStop(info) = err.kind() else {
+            return None;
+        };
+        // FIXME: Preserve `TerminationInfo::Exit::leak_check` and run Miri's
+        // leak/thread-leak diagnostics once Priroda grows a proper post-exit
+        // finalization path. For now, program exit only records the debuggee exit code.
+        let Some(TerminationInfo::Exit { code, .. }) = info.downcast_ref::<TerminationInfo>()
+        else {
+            return None;
+        };
+        Some(*code)
+    }
+
+    fn stop_at_exception(&mut self, err: InterpErrorInfo<'tcx>) -> StepResult {
+        let message = err.kind().to_string();
+        self.last_location = self.current_location.take();
+        self.current_location = self.resolve_current_location();
+        StepResult::Exception { message }
+    }
+
     /// Advance execution until the selected resume mode reaches a stopping point.
-    fn resume(&mut self, mode: ResumeMode) -> InterpResult<'tcx, StepResult> {
+    fn resume(&mut self, mode: ResumeMode) -> InterpResult<'tcx, ExecutionResult> {
         loop {
-            self.advance()?;
+            // Program exits are not debugger exceptions. Preserve all other
+            // interpreter errors as stopped debugger events.
+            if let Err(err) = self.advance().report_err() {
+                if let Some(code) = Self::program_exit(&err) {
+                    self.exit_code = Some(code);
+                    return interp_ok(ExecutionResult::ProgramExited { code });
+                }
+                return interp_ok(ExecutionResult::Stopped(self.stop_at_exception(err)));
+            }
 
             // An explicit breakpoint should stop execution even when the current
             // MIR instruction would normally be hidden during manual stepping.
             if self.is_at_breakpoint() {
-                return interp_ok(StepResult::Breakpoint);
+                return interp_ok(ExecutionResult::Stopped(StepResult::Breakpoint));
             }
 
             match mode {
@@ -208,14 +270,15 @@ impl<'tcx> PrirodaContext<'tcx> {
                         InstructionVisibility::Visible
                     ) =>
                 {
-                    return interp_ok(StepResult::Step);
+                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                 }
 
                 ResumeMode::SourceLine(ref prev_location) => {
                     match (prev_location, &self.current_location) {
                         // We started from an unmapped location; stop once there
                         // is a source position the frontend can display.
-                        (None, Some(_)) => return interp_ok(StepResult::Step),
+                        (None, Some(_)) =>
+                            return interp_ok(ExecutionResult::Stopped(StepResult::Step)),
 
                         (Some((prev_path, prev_line)), Some(current_location)) => {
                             if let Some(current_path) = self.local_path(current_location) {
@@ -223,7 +286,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                                 // position changes to a different file or line.
                                 if *prev_path != current_path || *prev_line != current_location.line
                                 {
-                                    return interp_ok(StepResult::Step);
+                                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                                 }
                             }
                         }
@@ -235,7 +298,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                 ResumeMode::FirstUserSourceLocation
                     if self.current_location.is_some() && self.has_user_relevant_frame() =>
                 {
-                    return interp_ok(StepResult::Step);
+                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                 }
 
                 ResumeMode::MirInstruction
@@ -326,10 +389,9 @@ impl<'tcx> PrirodaContext<'tcx> {
         command: DebuggerCommand,
     ) -> InterpResult<'tcx, CommandResult> {
         match command {
-            DebuggerCommand::StepI => self.stepi().map(CommandResult::ExecutionStopped),
-            DebuggerCommand::Step => self.step().map(CommandResult::ExecutionStopped),
-            DebuggerCommand::Continue =>
-                self.continue_execution().map(CommandResult::ExecutionStopped),
+            DebuggerCommand::StepI => self.stepi().map(CommandResult::Execution),
+            DebuggerCommand::Step => self.step().map(CommandResult::Execution),
+            DebuggerCommand::Continue => self.continue_execution().map(CommandResult::Execution),
             DebuggerCommand::Breakpoint(path, line) =>
                 interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
             DebuggerCommand::ListLocals => interp_ok(CommandResult::Locals(self.list_locals())),
@@ -337,7 +399,8 @@ impl<'tcx> PrirodaContext<'tcx> {
                 interp_ok(CommandResult::SingleLocal(self.get_local(local))),
             DebuggerCommand::Follow(alloc_id, offset) =>
                 self.follow_alloc(alloc_id, offset).map(CommandResult::Memory),
-            DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
+            DebuggerCommand::TerminateSession =>
+                self.finish_session().map(|()| CommandResult::TerminateSession),
         }
     }
 
@@ -840,7 +903,7 @@ pub(super) enum BreakpointSetResult {
 }
 
 pub(super) enum CommandResult {
-    ExecutionStopped(StepResult),
+    Execution(ExecutionResult),
     BreakpointResult(BreakpointSetResult),
     Locals(Vec<LocalDesc>),
     SingleLocal(Option<LocalDesc>),
