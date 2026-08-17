@@ -381,12 +381,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
                 let ordering = fn_args.const_at(1).to_value();
+                let volatile = fn_args.const_at(2).to_value();
                 let layout = bx.layout_of(ty);
                 let source = args[0].immediate();
                 OperandValue::Immediate(bx.atomic_load(
                     bx.backend_type(layout),
                     source,
                     parse_atomic_ordering(ordering),
+                    volatile.to_leaf().try_to_bool().unwrap(),
                     layout.size,
                 ))
             }
@@ -397,10 +399,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
                 let ordering = fn_args.const_at(1).to_value();
+                let volatile = fn_args.const_at(2).to_value();
                 let size = bx.layout_of(ty).size;
                 let val = args[1].immediate();
                 let ptr = args[0].immediate();
-                bx.atomic_store(val, ptr, parse_atomic_ordering(ordering), size);
+                bx.atomic_store(
+                    val,
+                    ptr,
+                    parse_atomic_ordering(ordering),
+                    volatile.to_leaf().try_to_bool().unwrap(),
+                    size,
+                );
                 OperandValue::ZeroSized
             }
             // These are all AtomicRMW ops

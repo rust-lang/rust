@@ -812,8 +812,8 @@ pub(crate) fn check_intrinsic_type(
             vec![Ty::new_mut_ptr(tcx, param(0)), param(0), param(0)],
             Ty::new_tup(tcx, &[param(0), tcx.types.bool]),
         ),
-        sym::atomic_load => (1, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
-        sym::atomic_store => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
+        sym::atomic_load => (1, 2, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
+        sym::atomic_store => (1, 2, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
 
         sym::atomic_xchg
         | sym::atomic_max

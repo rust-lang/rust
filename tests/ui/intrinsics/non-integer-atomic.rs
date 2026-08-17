@@ -12,12 +12,12 @@ pub type Bar = &'static dyn Fn();
 pub type Quux = [u8; 100];
 
 pub unsafe fn test_bool_load(p: &mut bool, v: bool) {
-    intrinsics::atomic_load::<_, { SeqCst }>(p);
+    intrinsics::atomic_load::<_, { SeqCst }, false>(p);
     //~^ ERROR `atomic_load` intrinsic: expected basic integer or pointer type, found `bool`
 }
 
 pub unsafe fn test_bool_store(p: &mut bool, v: bool) {
-    intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+    intrinsics::atomic_store::<_, { SeqCst }, false>(p, v);
     //~^ ERROR `atomic_store` intrinsic: expected basic integer or pointer type, found `bool`
 }
 
@@ -32,12 +32,12 @@ pub unsafe fn test_bool_cxchg(p: &mut bool, v: bool) {
 }
 
 pub unsafe fn test_Foo_load(p: &mut Foo, v: Foo) {
-    intrinsics::atomic_load::<_, { SeqCst }>(p);
+    intrinsics::atomic_load::<_, { SeqCst }, false>(p);
     //~^ ERROR `atomic_load` intrinsic: expected basic integer or pointer type, found `Foo`
 }
 
 pub unsafe fn test_Foo_store(p: &mut Foo, v: Foo) {
-    intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+    intrinsics::atomic_store::<_, { SeqCst }, false>(p, v);
     //~^ ERROR `atomic_store` intrinsic: expected basic integer or pointer type, found `Foo`
 }
 
@@ -52,12 +52,12 @@ pub unsafe fn test_Foo_cxchg(p: &mut Foo, v: Foo) {
 }
 
 pub unsafe fn test_Bar_load(p: &mut Bar, v: Bar) {
-    intrinsics::atomic_load::<_, { SeqCst }>(p);
+    intrinsics::atomic_load::<_, { SeqCst }, false>(p);
     //~^ ERROR expected basic integer or pointer type, found `&dyn Fn()`
 }
 
 pub unsafe fn test_Bar_store(p: &mut Bar, v: Bar) {
-    intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+    intrinsics::atomic_store::<_, { SeqCst }, false>(p, v);
     //~^ ERROR expected basic integer or pointer type, found `&dyn Fn()`
 }
 
@@ -72,12 +72,12 @@ pub unsafe fn test_Bar_cxchg(p: &mut Bar, v: Bar) {
 }
 
 pub unsafe fn test_Quux_load(p: &mut Quux, v: Quux) {
-    intrinsics::atomic_load::<_, { SeqCst }>(p);
+    intrinsics::atomic_load::<_, { SeqCst }, false>(p);
     //~^ ERROR `atomic_load` intrinsic: expected basic integer or pointer type, found `[u8; 100]`
 }
 
 pub unsafe fn test_Quux_store(p: &mut Quux, v: Quux) {
-    intrinsics::atomic_store::<_, { SeqCst }>(p, v);
+    intrinsics::atomic_store::<_, { SeqCst }, false>(p, v);
     //~^ ERROR `atomic_store` intrinsic: expected basic integer or pointer type, found `[u8; 100]`
 }
 

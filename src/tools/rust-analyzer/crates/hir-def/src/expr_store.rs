@@ -750,10 +750,6 @@ impl ExpressionStore {
                 visitor.on_expr(*lhs);
                 visitor.on_expr(*rhs);
             }
-            Expr::Range { lhs, rhs, range_type: _ } => {
-                visitor.on_expr_opt(*lhs);
-                visitor.on_expr_opt(*rhs);
-            }
             Expr::Index { base, index } => {
                 visitor.on_expr(*base);
                 visitor.on_expr(*index);

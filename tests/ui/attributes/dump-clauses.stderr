@@ -1,5 +1,5 @@
-error: rustc_dump_predicates
-  --> $DIR/dump-preds.rs:6:1
+error: rustc_dump_clauses
+  --> $DIR/dump-clauses.rs:6:1
    |
 LL | trait Trait<T>: Iterator<Item: Copy>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,8 +11,8 @@ LL | trait Trait<T>: Iterator<Item: Copy>
    = note: Binder { value: TraitPredicate(<std::string::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as Trait<T>>, polarity:Positive), bound_vars: [] }
 
-error: rustc_dump_predicates
-  --> $DIR/dump-preds.rs:13:5
+error: rustc_dump_clauses
+  --> $DIR/dump-clauses.rs:13:5
    |
 LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<()> as std::marker::Copy>, polarity:Positive), bound_vars: [] }
 
 error: rustc_dump_item_bounds
-  --> $DIR/dump-preds.rs:13:5
+  --> $DIR/dump-clauses.rs:13:5
    |
 LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

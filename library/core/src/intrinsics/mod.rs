@@ -130,7 +130,9 @@ pub const unsafe fn atomic_cxchgweak<
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
+pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+    src: *const T,
+) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -139,7 +141,10 @@ pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const 
 /// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val: T);
+pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+    dst: *mut T,
+    val: T,
+);
 
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
