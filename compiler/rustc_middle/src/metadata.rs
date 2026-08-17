@@ -1,7 +1,7 @@
 use rustc_hir::def::Res;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Ident;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, ModId};
 use smallvec::SmallVec;
 
 use crate::ty;
@@ -39,7 +39,7 @@ pub struct ModChild {
     /// Local variables cannot be exported, so this `Res` doesn't need the ID parameter.
     pub res: Res<!>,
     /// Visibility of the item.
-    pub vis: ty::Visibility<DefId>,
+    pub vis: ty::Visibility<ModId>,
     /// Reexport chain linking this module child to its original reexported item.
     /// Empty if the module child is a proper item.
     pub reexport_chain: SmallVec<[Reexport; 2]>,

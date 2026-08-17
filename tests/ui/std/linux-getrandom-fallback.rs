@@ -1,5 +1,6 @@
 //@ only-linux
 //@ run-pass
+//@ needs-unwind
 
 #![feature(random)]
 #![feature(rustc_private)]

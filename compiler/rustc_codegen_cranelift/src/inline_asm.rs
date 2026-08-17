@@ -5,7 +5,7 @@ use std::fmt::Write;
 use cranelift_codegen::isa::CallConv;
 use rustc_abi::CanonAbi;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_span::sym;
 use rustc_target::asm::*;
@@ -96,10 +96,18 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             }
             InlineAsmOperand::Const { ref value } => {
                 let (const_value, ty) = crate::constant::eval_mir_constant(fx, value);
+                let mir::ConstValue::Scalar(scalar) = const_value else {
+                    span_bug!(
+                        span,
+                        "expected Scalar for promoted asm const, but got {:#?}",
+                        const_value
+                    )
+                };
+
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     fx.tcx,
                     span,
-                    const_value,
+                    scalar.assert_scalar_int(),
                     fx.layout_of(ty),
                 );
                 CInlineAsmOperand::Const { value }
@@ -117,7 +125,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                         fx.tcx,
                         ty::TypingEnv::fully_monomorphized(),
                         def_id,
-                        args,
+                        args.no_bound_vars().unwrap(),
                     )
                     .unwrap();
                     let symbol = fx.tcx.symbol_name(instance);
@@ -396,7 +404,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let abi_clobber = InlineAsmClobberAbi::parse(
             self.arch,
             &self.tcx.sess.target,
-            &self.tcx.sess.unstable_target_features,
+            &self.tcx.sess.internal_target_features,
             sym::C,
         )
         .unwrap()
@@ -847,7 +855,7 @@ fn call_inline_asm<'tcx>(
         stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).store(
             fx,
             value,
-            MemFlags::trusted(),
+            MemFlagsData::trusted(),
         );
     }
 
@@ -865,7 +873,7 @@ fn call_inline_asm<'tcx>(
         let value = stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).load(
             fx,
             ty,
-            MemFlags::trusted(),
+            MemFlagsData::trusted(),
         );
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
     }

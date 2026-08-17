@@ -476,8 +476,9 @@ impl<T> [T] {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+    pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         unsafe {
             let len = self.len();
             let (b, alloc) = Box::into_raw_with_allocator(self);
@@ -638,9 +639,7 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
-        let mut me = self.to_vec();
-        me.make_ascii_uppercase();
-        me
+        self.iter().map(|b| b.to_ascii_uppercase()).collect()
     }
 
     /// Returns a vector containing a copy of this slice where each byte
@@ -659,9 +658,7 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
-        let mut me = self.to_vec();
-        me.make_ascii_lowercase();
-        me
+        self.iter().map(|b| b.to_ascii_lowercase()).collect()
     }
 }
 

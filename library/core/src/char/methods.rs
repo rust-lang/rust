@@ -486,8 +486,11 @@ impl char {
             '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
             '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
 
-            // ASCII fast path
-            '\x20'..='\x7E' => EscapeDebug::printable(self),
+            // ASCII fast path,
+            // plus U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
+            // and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK
+            // which should not be escaped despite being grapheme extenders.
+            '\x20'..='\x7E' | '\u{FF9E}' | '\u{FF9F}' => EscapeDebug::printable(self),
 
             _ if self.is_control()
                 || self.is_private_use()
@@ -1244,7 +1247,8 @@ impl char {
     ///
     /// Basic usage:
     ///
-    /// ```ignore(private)
+    /// ```
+    /// #![feature(default_ignorable)]
     /// assert!('\u{AD}'.is_default_ignorable()); // SOFT HYPHEN
     /// assert!('\u{115F}'.is_default_ignorable()); // HANGUL CHOSEONG FILLER
     /// assert!('\u{200B}'.is_default_ignorable()); // ZERO WIDTH SPACE
@@ -1255,9 +1259,11 @@ impl char {
     /// assert!(!'\n'.is_default_ignorable());
     /// assert!(!'\0'.is_default_ignorable());
     /// assert!(!'q'.is_default_ignorable());
+    /// ```
     #[must_use]
+    #[unstable(feature = "default_ignorable", issue = "160583")]
     #[inline]
-    fn is_default_ignorable(self) -> bool {
+    pub fn is_default_ignorable(self) -> bool {
         self > '\u{AC}' && unicode::Default_Ignorable_Code_Point(self)
     }
 
@@ -1806,10 +1812,32 @@ impl char {
     /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[must_use = "this returns the case-folded character as a new iterator, \
                   without modifying the original"]
-    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "157000")]
     #[inline]
     pub fn to_casefold_unnormalized(self) -> ToCasefold {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
+    }
+
+    /// Returns the code point value as a `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(char_to_u32)]
+    ///
+    /// let ascii = 'a';
+    /// let heart = '❤';
+    ///
+    /// assert_eq!(ascii.to_u32(), 97_u32);
+    /// assert_eq!(heart.to_u32(), 0x2764_u32);
+    /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[unstable(feature = "char_to_u32", issue = "158938")]
+    #[rustc_const_unstable(feature = "char_to_u32", issue = "158938")]
+    #[inline(always)]
+    pub const fn to_u32(self) -> u32 {
+        self as u32
     }
 
     /// Checks if the value is within the ASCII range.
@@ -2354,8 +2382,8 @@ impl char {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_06_05
     ///
     /// # Examples
     ///
@@ -2427,6 +2455,13 @@ impl char {
 
 pub(crate) struct EscapeDebugExtArgs {
     /// Escape Grapheme Extender codepoints?
+    ///
+    /// Note that this excludes
+    /// U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
+    /// and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK,
+    /// which are never escaped, as graphically
+    /// they are not combining. See <https://github.com/microsoft/terminal/issues/18087>
+    /// for background on these characters.
     pub(crate) escape_grapheme_extender: bool,
 
     /// Escape single quotes?

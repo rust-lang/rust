@@ -5,7 +5,7 @@ clap = "4"
 ---
 
 //@ check-pass
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 // crlf line endings should be accepted
 

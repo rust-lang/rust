@@ -1,5 +1,5 @@
 #![expect(incomplete_features)]
-#![feature(c_variadic, explicit_tail_calls)]
+#![feature(explicit_tail_calls)]
 #![allow(unused)]
 
 unsafe extern "C" fn foo(mut ap: ...) -> u32 {

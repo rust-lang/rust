@@ -12,7 +12,7 @@
 
 pub mod check_consts;
 pub mod const_eval;
-mod errors;
+mod diagnostics;
 pub mod interpret;
 pub mod util;
 
@@ -33,6 +33,7 @@ fn assert_typing_mode(typing_mode: ty::TypingMode<'_>) {
             // `InterpCx::new` for more details.
             ty::TypingMode::Coherence
             | ty::TypingMode::Typeck { .. }
+            | ty::TypingMode::Reflection
             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. } => bug!(
                 "Const eval should always happens in PostAnalysis or Codegen mode. See the comment on `assert_typing_mode` for more details."

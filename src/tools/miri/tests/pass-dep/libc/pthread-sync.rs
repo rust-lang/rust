@@ -12,10 +12,12 @@ fn main() {
     test_mutex_libc_init_recursive();
     test_mutex_libc_init_normal();
     test_mutex_libc_init_errorcheck();
+
     #[cfg(target_os = "linux")]
-    test_mutex_libc_static_initializer_recursive();
-    #[cfg(target_os = "linux")]
-    test_mutex_libc_static_initializer_errorcheck();
+    {
+        test_mutex_libc_static_initializer_recursive();
+        test_mutex_libc_static_initializer_errorcheck();
+    }
 
     test_cond();
     test_condattr();

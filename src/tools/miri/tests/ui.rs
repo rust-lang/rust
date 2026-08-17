@@ -182,8 +182,9 @@ fn miri_config(
                         .map(Into::into)
                         .collect(),
                     envs: vec![
-                        // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+                        // Reset `RUSTFLAGS`/`CARGO_ENCODED_RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
                         ("RUSTFLAGS".into(), None),
+                        ("CARGO_ENCODED_RUSTFLAGS".into(), None),
                         // Reset `MIRIFLAGS` because it caused trouble in the past and should not be needed.
                         ("MIRIFLAGS".into(), None),
                         // Allow `cargo miri build`.
@@ -439,7 +440,10 @@ fn main() -> Result<()> {
 
     ui(Mode::Pass { native: false }, "tests/pass", &target, WithoutDeps, tmpdir.path())?;
     ui(Mode::Pass { native: false }, "tests/pass-dep", &target, WithDeps, tmpdir.path())?;
-    if target == host {
+    if target == host
+        // Skip native test execution during bootstrap as the sysroot is not quite right there.
+        && env::var("RUSTC_STAGE").ok().is_none_or(|s| s != "0")
+    {
         ui(Mode::Pass { native: true }, "tests/pass", &target, WithoutDeps, tmpdir.path())?;
         ui(Mode::Pass { native: true }, "tests/pass-dep", &target, WithDeps, tmpdir.path())?;
     }

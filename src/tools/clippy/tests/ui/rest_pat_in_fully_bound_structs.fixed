@@ -1,5 +1,5 @@
 #![warn(clippy::rest_pat_in_fully_bound_structs)]
-#![allow(clippy::struct_field_names)]
+#![expect(clippy::struct_field_names)]
 
 struct A {
     a: i32,

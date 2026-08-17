@@ -71,12 +71,18 @@ error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop
    |
 LL |     impl Drop for Foo {}
    |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+   = help: implement the missing item: `fn pin_drop(self: Pin<&mut Self>) { todo!() }`
 
 error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
   --> $DIR/pinned-drop-check.rs:60:5
    |
 LL |     impl Drop for Bar {}
    |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+   = help: implement the missing item: `fn pin_drop(self: Pin<&mut Self>) { todo!() }`
 
 error: `Bar` must implement `pin_drop`
   --> $DIR/pinned-drop-check.rs:87:9

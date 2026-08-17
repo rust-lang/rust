@@ -8,6 +8,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir};
+use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument};
 
 use super::operand::OperandValue;
@@ -227,8 +228,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
         let unaligned_offset = bx.cx().const_usize(offset.bytes());
 
-        // Get the alignment of the field
-        let (_, mut unsized_align) = size_of_val::size_and_align_of_dst(bx, field.ty, meta);
+        // Get the alignment of the field. No span is available here to blame a layout error on.
+        let (_, mut unsized_align) =
+            size_of_val::size_and_align_of_dst(bx, field.ty, meta, DUMMY_SP);
 
         // For packed types, we need to cap alignment.
         if let ty::Adt(def, _) = self.layout.ty.kind()
@@ -317,6 +319,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
     pub fn storage_dead<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_end(self.val.llval, self.layout.size);
+    }
+
+    /// The same place, but with [`PlaceValue::align`] lowered to [`Align::ONE`].
+    pub fn unaligned(self) -> Self {
+        let Self { val, layout } = self;
+        let val = PlaceValue { align: Align::ONE, ..val };
+        Self { val, layout }
     }
 }
 
@@ -470,7 +479,7 @@ pub(super) fn codegen_tag_value<'tcx, V>(
 ) -> Result<Option<(FieldIdx, V)>, UninhabitedVariantError> {
     // By checking uninhabited-ness first we don't need to worry about types
     // like `(u32, !)` which are single-variant but weird.
-    if layout.for_variant(cx, variant_index).is_uninhabited() {
+    if layout.is_variant_uninhabited(variant_index) {
         return Err(UninhabitedVariantError);
     }
 

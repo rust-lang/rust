@@ -1,14 +1,8 @@
 //@normalize-stderr-test: "\(\d+ byte\)" -> "(N byte)"
 //@normalize-stderr-test: "\(limit: \d+ byte\)" -> "(limit: N byte)"
-#![deny(clippy::trivially_copy_pass_by_ref)]
-#![allow(
-    clippy::disallowed_names,
-    clippy::extra_unused_lifetimes,
-    clippy::needless_lifetimes,
-    clippy::needless_pass_by_ref_mut,
-    clippy::redundant_field_names,
-    clippy::uninlined_format_args
-)]
+#![warn(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::extra_unused_lifetimes)]
+#![expect(clippy::disallowed_names, clippy::needless_lifetimes)]
 
 #[derive(Copy, Clone)]
 struct Foo(u32);

@@ -15,11 +15,13 @@ error: cannot glob-import all possible crates
 LL | use *;
    |     ^
 
-error[E0423]: expected value, found crate `::xcrate`
-  --> $DIR/single-segment.rs:9:13
+error[E0423]: cannot find crate `xcrate` in the list of imported crates
+  --> $DIR/single-segment.rs:9:15
    |
 LL |     let s = ::xcrate;
-   |             ^^^^^^^^ not a value
+   |               ^^^^^^ not found in the list of imported crates
+   |
+   = note: a crate named `::xcrate` exists in another namespace
 
 error: aborting due to 3 previous errors
 

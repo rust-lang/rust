@@ -2,12 +2,12 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, DirBuilder, File, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
@@ -51,6 +51,13 @@ struct DirEntry {
     name: OsString,
     ino: u64,
     d_type: i32,
+}
+
+/// What a `futimens` `timespec` asks for: leave the timestamp alone (`UTIME_OMIT`) or set it.
+#[derive(Copy, Clone)]
+enum TimeUpdate {
+    Omit,
+    Set(SystemTime),
 }
 
 impl UnixFileDescription for FileHandle {
@@ -224,6 +231,33 @@ fn maybe_sync_file(
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Decode one `futimens` `timespec`, handling the `UTIME_NOW`/`UTIME_OMIT` `tv_nsec` values.
+    /// `None` means the `timespec` is invalid and the caller should report `EINVAL`.
+    fn parse_utimens_timespec(
+        &self,
+        tp: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx, Option<TimeUpdate>> {
+        let this = self.eval_context_ref();
+        // `UTIME_NOW` reads the host clock, which we must not do under isolation.
+        assert!(this.machine.communicate(), "isolation should have prevented reaching this");
+
+        // `tv_nsec` and the `UTIME_*` constants are `c_long`, i.e. the target's `isize`.
+        let nsec_place = this.project_field(tp, FieldIdx::ONE)?;
+        let nsec = this.read_scalar(&nsec_place)?.to_target_isize(this)?;
+
+        if nsec == this.eval_libc("UTIME_OMIT").to_target_isize(this)? {
+            return interp_ok(Some(TimeUpdate::Omit));
+        }
+        if nsec == this.eval_libc("UTIME_NOW").to_target_isize(this)? {
+            return interp_ok(Some(TimeUpdate::Set(SystemTime::now())));
+        }
+
+        let Some(duration) = this.read_timespec(tp)? else {
+            return interp_ok(None);
+        };
+        interp_ok(SystemTime::UNIX_EPOCH.checked_add(duration).map(TimeUpdate::Set))
+    }
+
     fn write_stat_buf(
         &mut self,
         metadata: FileMetadata,
@@ -1083,9 +1117,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if !matches!(
             &this.tcx.sess.target.os,
-            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd
+            Os::Linux | Os::Android | Os::Solaris | Os::Illumos | Os::FreeBsd | Os::MacOs
         ) {
-            panic!("`readdir` should not be called on {}", this.tcx.sess.target.os);
+            throw_unsup_format!("`readdir` is not yet supported on {}", this.tcx.sess.target.os);
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
@@ -1136,6 +1170,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 //     pub d_namlen: uint8_t,
                 //     pub d_name: [c_char; 256],
                 // }
+                //
+                // On macOS:
+                // pub struct dirent {
+                //     pub d_ino: u64,
+                //     pub d_seekoff: u64,
+                //     pub d_reclen: u16,
+                //     pub d_namlen: u16,
+                //     pub d_type: u8,
+                //     pub d_name: [c_char; 1024],
+                // }
 
                 // We just use the pointee type here since determining the right pointee type
                 // independently is highly non-trivial: it depends on which exact alias of the
@@ -1179,6 +1223,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(d_off) = this.try_project_field_named(&entry, "d_off")? {
                     this.write_null(&d_off)?;
                 }
+                if let Some(d_seekoff) = this.try_project_field_named(&entry, "d_seekoff")? {
+                    this.write_null(&d_seekoff)?;
+                }
                 if let Some(d_namlen) = this.try_project_field_named(&entry, "d_namlen")? {
                     this.write_int(name_len.strict_sub(1), &d_namlen)?;
                 }
@@ -1206,88 +1253,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.write_pointer(entry.unwrap_or_else(Pointer::null), dest)?;
         interp_ok(())
-    }
-
-    fn macos_readdir_r(
-        &mut self,
-        dirp_op: &OpTy<'tcx>,
-        entry_op: &OpTy<'tcx>,
-        result_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-
-        this.assert_target_os(Os::MacOs, "readdir_r");
-
-        let dirp = this.read_target_usize(dirp_op)?;
-        let result_place = this.deref_pointer_as(result_op, this.machine.layouts.mut_raw_ptr)?;
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`readdir_r`", reject_with)?;
-            // Return error code, do *not* set `errno`.
-            return interp_ok(this.eval_libc("EBADF"));
-        }
-
-        let open_dir = this.machine.dirs.streams.get_mut(&dirp).ok_or_else(|| {
-            err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
-        })?;
-        interp_ok(match open_dir.next_host_entry() {
-            Some(Ok(dir_entry)) => {
-                let dir_entry = this.dir_entry_fields(dir_entry)?;
-                // Write into entry, write pointer to result, return 0 on success.
-                // The name is written with write_os_str_to_c_str, while the rest of the
-                // dirent struct is written using write_int_fields.
-
-                // For reference, on macOS this looks like:
-                // pub struct dirent {
-                //     pub d_ino: u64,
-                //     pub d_seekoff: u64,
-                //     pub d_reclen: u16,
-                //     pub d_namlen: u16,
-                //     pub d_type: u8,
-                //     pub d_name: [c_char; 1024],
-                // }
-
-                let entry_place = this.deref_pointer_as(entry_op, this.libc_ty_layout("dirent"))?;
-
-                // Write the name.
-                let name_place = this.project_field_named(&entry_place, "d_name")?;
-                let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(
-                    &dir_entry.name,
-                    name_place.ptr(),
-                    name_place.layout.size.bytes(),
-                )?;
-                if !name_fits {
-                    throw_unsup_format!(
-                        "a directory entry had a name too large to fit in libc::dirent"
-                    );
-                }
-
-                // Write the other fields.
-                this.write_int_fields_named(
-                    &[
-                        ("d_reclen", entry_place.layout.size.bytes().into()),
-                        ("d_namlen", file_name_buf_len.strict_sub(1).into()),
-                        ("d_type", dir_entry.d_type.into()),
-                        ("d_ino", dir_entry.ino.into()),
-                        ("d_seekoff", 0),
-                    ],
-                    &entry_place,
-                )?;
-                this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
-
-                Scalar::from_i32(0)
-            }
-            None => {
-                // end of stream: return 0, assign *result=NULL
-                this.write_null(&result_place)?;
-                Scalar::from_i32(0)
-            }
-            Some(Err(e)) => {
-                // return positive error number on error (do *not* set last error)
-                this.io_error_to_errnum(e)?
-            }
-        })
     }
 
     fn closedir(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -1356,44 +1321,88 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(this.eval_libc("EBADF"));
         }
 
-        // EINVAL is returned when: "offset was less than 0, or len was less than or equal to 0".
-        if offset < 0 || len <= 0 {
-            return interp_ok(this.eval_libc("EINVAL"));
+        match this.fallocate_impl(fd_num, offset, len)? {
+            Ok(()) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.io_error_to_errnum(e),
+        }
+    }
+
+    fn linux_fallocate(
+        &mut self,
+        fd: i32,
+        mode: i32,
+        offset: i64,
+        size: i64,
+    ) -> InterpResult<'tcx, Scalar> {
+        // This is mostly a copy of `posix_fallocate` except that errors are returned via errno.
+        let this = self.eval_context_mut();
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`fallocate`", reject_with)?;
+            // Set error code "EBADF" (bad fd).
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
 
-        // Get the file handle.
+        // We only support `fallocate` as a replacement for `posix_fallocate` on linux,
+        // so a non-default `mode` is not supported.
+        if mode != 0 {
+            throw_unsup_format!("unsupported flags for `fallocate` in `mode` argument: {mode}")
+        }
+
+        match this.fallocate_impl(fd, offset, size)? {
+            Ok(()) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
+    }
+
+    /// Shared logic between `posix_fallocate` and `linux_fallocate`.
+    fn fallocate_impl(
+        &mut self,
+        fd_num: i32,
+        offset: i64,
+        len: i64,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let this = self.eval_context_mut();
+
+        // EINVAL is returned/set when: "offset was less than 0, or len was less than or equal to 0".
+        if offset < 0 || len <= 0 {
+            return interp_ok(Err(LibcError("EINVAL")));
+        }
+
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return interp_ok(this.eval_libc("EBADF"));
+            return interp_ok(Err(LibcError("EBADF")));
         };
         let Some(file) = fd.downcast::<FileHandle>() else {
             // Man page specifies to return ENODEV if `fd` is not a regular file.
-            return interp_ok(this.eval_libc("ENODEV"));
+            return interp_ok(Err(LibcError("ENODEV")));
         };
 
         if !file.writable {
-            // The file is not writable.
-            return interp_ok(this.eval_libc("EBADF"));
+            return interp_ok(Err(LibcError("EBADF")));
         }
 
         let current_size = match file.file.metadata() {
             Ok(metadata) => metadata.len(),
-            Err(err) => return this.io_error_to_errnum(err),
+            Err(err) => return interp_ok(Err(err.into())),
         };
+
         // Checked i64 addition, to ensure the result does not exceed the max file size.
         let new_size = match offset.checked_add(len) {
             // `new_size` is definitely non-negative, so we can cast to `u64`.
             Some(new_size) => u64::try_from(new_size).unwrap(),
-            None => return interp_ok(this.eval_libc("EFBIG")), // new size too big
+            None => return interp_ok(Err(LibcError("EFBIG"))), // new size too big
         };
-        // If the size of the file is less than offset+size, then the file is increased to this size;
-        // otherwise the file size is left unchanged.
+
+        // If the size of the file is less than offset+size, then the file is increased to this
+        // size; otherwise the file size is left unchanged.
         if current_size < new_size {
-            interp_ok(match file.file.set_len(new_size) {
-                Ok(()) => Scalar::from_i32(0),
-                Err(e) => this.io_error_to_errnum(e)?,
-            })
+            match file.file.set_len(new_size) {
+                Ok(()) => interp_ok(Ok(())),
+                Err(err) => interp_ok(Err(err.into())),
+            }
         } else {
-            interp_ok(Scalar::from_i32(0))
+            interp_ok(Ok(()))
         }
     }
 
@@ -1441,6 +1450,53 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
+    }
+
+    /// `futimens(fd, times)`: set `fd`'s access/modification times. `times` is `[atime, mtime]`, or
+    /// NULL to set both to now.
+    fn futimens(
+        &mut self,
+        fd_op: &OpTy<'tcx>,
+        times_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let fd_num = this.read_scalar(fd_op)?.to_i32()?;
+        let times_ptr = this.read_pointer(times_op)?;
+
+        let Some(fd) = this.machine.fds.get(fd_num) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+        let file = fd.downcast::<FileHandle>().ok_or_else(|| {
+            err_unsup_format!("`futimens` is only supported on file-backed file descriptors")
+        })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
+        let (access, modified) = if this.ptr_is_null(times_ptr)? {
+            let now = TimeUpdate::Set(SystemTime::now());
+            (now, now)
+        } else {
+            let timespec = this.libc_ty_layout("timespec");
+            let access_place = this.deref_pointer_as(times_op, timespec)?;
+            let modified_place = access_place.offset(timespec.size, timespec, this)?;
+            let Some(access) = this.parse_utimens_timespec(&access_place)? else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            };
+            let Some(modified) = this.parse_utimens_timespec(&modified_place)? else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+            };
+            (access, modified)
+        };
+
+        let mut filetimes = FileTimes::new();
+        if let TimeUpdate::Set(access) = access {
+            filetimes = filetimes.set_accessed(access);
+        }
+        if let TimeUpdate::Set(modified) = modified {
+            filetimes = filetimes.set_modified(modified);
+        }
+        let result = file.file.set_times(filetimes);
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0i32))?))
     }
 
     fn sync_file_range(
@@ -1665,15 +1721,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fopts.read(true).write(true).create_new(true);
 
         cfg_select! {
-            unix =>
-            {
+            unix => {
                 use std::os::unix::fs::OpenOptionsExt;
                 // Do not allow others to read or modify this file.
                 fopts.mode(0o600);
                 fopts.custom_flags(libc::O_EXCL);
             }
-            windows =>
-            {
+            windows => {
                 use std::os::windows::fs::OpenOptionsExt;
                 // Do not allow others to read or modify this file.
                 fopts.share_mode(0);
@@ -1867,8 +1921,7 @@ impl FileMetadata {
 
         cfg_select! {
             unix => {
-                use std::os::unix::fs::MetadataExt;
-                use std::os::unix::fs::PermissionsExt;
+                use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
                 let dev = metadata.dev();
                 let ino = metadata.ino();
@@ -1913,7 +1966,7 @@ impl FileMetadata {
                     blksize: None,
                     blocks: None,
                 }))
-            },
+            }
         }
     }
 }

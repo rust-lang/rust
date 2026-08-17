@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::mem;
 
 use rustc_ast::AsmMacro;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
@@ -405,9 +405,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Scope { value, hir_id, region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                ensure_sufficient_stack(|| {
-                    self.visit_expr(&self.thir[value]);
-                });
+                self.visit_expr(&self.thir[value]);
                 self.hir_context = prev_id;
                 return; // don't visit the whole expression
             }
@@ -448,7 +446,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         let build_enabled = self
                             .tcx
                             .sess
-                            .target_features
+                            .internal_target_features
                             .iter()
                             .copied()
                             .filter(|feature| missing.contains(feature))
@@ -459,7 +457,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         );
                     }
                     if let Some(trait_did) = self.tcx.trait_of_assoc(func_did)
-                        && self.tcx.is_lang_item(trait_did, hir::LangItem::Drop)
+                        && self.tcx.is_lang_item(trait_did, LangItem::Drop)
                     {
                         self.requires_unsafe(expr.span, CallDropExplicitly(func_did));
                     }
@@ -1093,8 +1091,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         body_target_features,
         assignment_info: None,
         in_union_destructure: false,
-        // FIXME(#132279): we're clearly in a body here.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,

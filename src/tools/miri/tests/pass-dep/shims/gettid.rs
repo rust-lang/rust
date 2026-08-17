@@ -3,24 +3,15 @@
 //@ [without_isolation] compile-flags: -Zmiri-disable-isolation
 
 #![feature(linkage)]
+#![allow(unused_features)] // only used on some targets
 
 fn gettid() -> u64 {
     cfg_select! {
-        any(target_os = "android", target_os = "linux") => {
-            gettid_linux_like()
-        }
-        target_os = "nto" => {
-            unsafe { libc::gettid() as u64 }
-        }
-        target_os = "openbsd" => {
-            unsafe { libc::getthrid() as u64 }
-        }
-        target_os = "freebsd" => {
-            unsafe { libc::pthread_getthreadid_np() as u64 }
-        }
-        target_os = "netbsd" => {
-            unsafe { libc::_lwp_self() as u64 }
-        }
+        any(target_os = "android", target_os = "linux") => gettid_linux_like(),
+        any(target_os = "nto", target_os = "qnx") => unsafe { libc::gettid() as u64 },
+        target_os = "openbsd" => unsafe { libc::getthrid() as u64 },
+        target_os = "freebsd" => unsafe { libc::pthread_getthreadid_np() as u64 },
+        target_os = "netbsd" => unsafe { libc::_lwp_self() as u64 },
         any(target_os = "solaris", target_os = "illumos") => {
             // On Solaris and Illumos, the `pthread_t` is the OS TID.
             unsafe { libc::pthread_self() as u64 }

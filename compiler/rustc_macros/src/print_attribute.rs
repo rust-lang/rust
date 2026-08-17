@@ -120,7 +120,6 @@ pub(crate) fn print_attribute(input: Structure<'_>) -> TokenStream {
         }
     };
 
-    #[allow(keyword_idents_2024)]
     input.gen_impl(quote! {
         #[allow(unused)]
         gen impl PrintAttribute for @Self {

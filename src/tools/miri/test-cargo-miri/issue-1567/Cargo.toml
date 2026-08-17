@@ -7,6 +7,7 @@ edition = "2018"
 # Regression test for https://github.com/rust-lang/miri/issues/1567: crate must have this crate-type set.
 # It must also depend on some other crate and use that dependency (we use byteorder).
 crate-type = ["cdylib", "rlib"]
+test = false
 
 [dependencies]
 byteorder = "1.0"

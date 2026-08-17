@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::qpath_generic_tys;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath};
 use rustc_lint::LateContext;

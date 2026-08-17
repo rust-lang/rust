@@ -1,5 +1,6 @@
 //! Code related to parsing literals.
 
+use std::fmt::Write as _;
 use std::{ascii, fmt, str};
 
 use rustc_literal_escaper::{
@@ -15,8 +16,42 @@ use crate::token::{self, Token};
 // avoiding interning, if no changes are required.
 pub fn escape_string_symbol(symbol: Symbol) -> Symbol {
     let s = symbol.as_str();
-    let escaped = s.escape_default().to_string();
-    if s == escaped { symbol } else { Symbol::intern(&escaped) }
+
+    fn requires_escape(b: &u8) -> bool {
+        match *b {
+            b'\\' | b'\'' | b'"' => true,
+            b'\x20'..=b'\x7e' => false,
+            _ => true,
+        }
+    }
+
+    // Fast-path: if we don't need escaping, just return the original symbol
+    let Some(position) = s.as_bytes().iter().position(requires_escape) else {
+        return symbol;
+    };
+
+    // At this point we know that we need to escape something in `suffix`
+    let (prefix, suffix) = s.split_at(position);
+
+    // We set the capacity to the original size + 1, because the resulting string will be at least
+    // one character larger than the original, because of escaping.
+    let mut escaped = String::with_capacity(s.len() + 1);
+    escaped.push_str(prefix);
+
+    // Don't use escape_default() here, because using it is slower than escaping manually.
+    for c in suffix.chars() {
+        match c {
+            '\t' => escaped.push_str("\\t"),
+            '\r' => escaped.push_str("\\r"),
+            '\n' => escaped.push_str("\\n"),
+            '\\' => escaped.push_str("\\\\"),
+            '\'' => escaped.push_str("\\'"),
+            '\"' => escaped.push_str("\\\""),
+            '\x20'..='\x7e' => escaped.push(c),
+            c => write!(escaped, "\\u{{{:x}}}", c as u32).unwrap(),
+        }
+    }
+    Symbol::intern(&escaped)
 }
 
 // Escapes a char.

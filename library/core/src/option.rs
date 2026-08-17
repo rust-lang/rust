@@ -1293,7 +1293,7 @@ impl<T> Option<T> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[stable(feature = "result_option_map_or_default", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "result_option_map_or_default", since = "1.98.0")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
@@ -2082,10 +2082,7 @@ impl<T: IntoIterator> Option<T> {
     /// assert_eq!(o2.into_flat_iter().collect::<Vec<_>>(), Vec::<&usize>::new());
     /// ```
     #[unstable(feature = "option_into_flat_iter", issue = "148441")]
-    pub fn into_flat_iter<A>(self) -> OptionFlatten<A>
-    where
-        T: IntoIterator<IntoIter = A>,
-    {
+    pub fn into_flat_iter(self) -> OptionFlatten<T::IntoIter> {
         OptionFlatten { iter: self.map(IntoIterator::into_iter) }
     }
 }

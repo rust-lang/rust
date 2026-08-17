@@ -1,7 +1,6 @@
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, msg, struct_span_code_err};
 use rustc_hir::def::*;
@@ -39,8 +38,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         typeck_results,
-        // FIXME(#132279): We're in a body, should handle opaques.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def_id),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def_id),
         hir_source: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
@@ -201,7 +199,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     fn with_let_source(&mut self, let_source: LetSource, f: impl FnOnce(&mut Self)) {
         let old_let_source = self.let_source;
         self.let_source = let_source;
-        ensure_sufficient_stack(|| f(self));
+        f(self);
         self.let_source = old_let_source;
     }
 
@@ -386,7 +384,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             tcx: self.tcx,
             typeck_results: self.typeck_results,
             typing_env: self.typing_env,
-            module: self.tcx.parent_module(self.hir_source).to_def_id(),
+            module: self.tcx.parent_module(self.hir_source),
             dropless_arena: self.dropless_arena,
             match_lint_level: self.hir_source,
             whole_match_span,
@@ -1376,9 +1374,11 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             // Arms with a never pattern don't take a body.
             pattern
         } else {
+            // ignore-tidy-todo
             format!("{pattern} => todo!()")
         }
     } else {
+        // ignore-tidy-todo
         format!("_ => todo!()")
     };
     let mut suggestion = None;

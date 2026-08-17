@@ -1,20 +1,22 @@
 use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-use rustc_feature::AttributeStability;
-use rustc_hir::LangItem;
-use rustc_hir::attrs::{
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::GenericParamKind;
+use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
     DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
+use rustc_data_structures::fx::FxHashMap;
+use rustc_feature::AttributeStability;
 use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::diagnostics;
-use crate::diagnostics::UnknownExternLangItem;
-use crate::session_diagnostics::{
-    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
+use crate::diagnostics::{
+    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange,
+    UnknownExternLangItem, UnknownLangItem,
 };
 
 pub(crate) struct RustcMainParser;
@@ -24,7 +26,7 @@ impl NoArgsAttributeParser for RustcMainParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "the `#[rustc_main]` attribute is used internally to specify test entry point function"
+        "the `rustc_main` attribute is used internally to specify test entry point function"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
 }
@@ -36,7 +38,7 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete definition of a trait. Its syntax and semantics are highly experimental and will be subject to change before stabilization"
+        "the `rustc_must_implement_one_of` attribute is used to change minimal complete definition of a trait. Its syntax and semantics are highly experimental and will be subject to change before stabilization"
     );
     const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -71,6 +73,18 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
             return None;
         }
 
+        if cx.target == Target::Trait {
+            // Check for duplicates
+            let mut seen: FxHashMap<Symbol, Span> = FxHashMap::default();
+            for ident in &fn_names {
+                if let Some(dup) = seen.insert(ident.name, ident.span) {
+                    cx.emit_err(diagnostics::FunctionNamesDuplicated {
+                        spans: vec![dup, ident.span],
+                    });
+                }
+            }
+        }
+
         Some(AttributeKind::RustcMustImplementOneOf { attr_span: cx.attr_span, fn_names })
     }
 }
@@ -90,6 +104,20 @@ impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
 
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
 }
+
+pub(crate) struct RustcPanicsWhenZeroParser;
+
+impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
+    const PATH: &[Symbol] = &[sym::rustc_panics_when_zero];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: true }),
+        Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: false }),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;
+}
+
 pub(crate) struct RustcNoImplicitAutorefsParser;
 
 impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
@@ -582,20 +610,14 @@ impl SingleAttributeParser for LangParser {
         // Only weak lang items may be applied to foreign items
         if [Target::ForeignFn, Target::ForeignStatic, Target::ForeignTy, Target::ForeignMod]
             .contains(&cx.target)
-            && !(lang_item.is_weak() || lang_item.is_weak_only())
+            && !lang_item.is_weak()
         {
             cx.emit_err(UnknownExternLangItem { span: cx.attr_span, lang_item: lang_item.name() });
             return None;
         }
 
         // Check the target
-        let allowed_targets: &[_] = if lang_item == LangItem::PanicImpl {
-            &[Allow(Target::Fn), Allow(Target::ForeignFn)]
-        } else if lang_item.is_weak_only() {
-            &[Allow(Target::ForeignFn)]
-        } else {
-            &[Allow(lang_item.target())]
-        };
+        let allowed_targets: &[_] = &[Allow(lang_item.target())];
         cx.check_target(&format!(" = \"{name}\""), &AllowedTargets::AllowList(allowed_targets));
 
         Some(AttributeKind::Lang(lang_item))
@@ -740,7 +762,7 @@ impl NoArgsAttributeParser for RustcNonConstTraitMethodParser {
     ]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "`#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods as non-const to allow large traits an easier transition to const"
+        "the `rustc_non_const_trait_method` attribute should only be used by the standard library to mark trait methods as non-const to allow large traits an easier transition to const"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonConstTraitMethod;
 }
@@ -1024,7 +1046,7 @@ impl SingleAttributeParser for RustcDiagnosticItemParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types from the standard library for diagnostic purposes"
+        "the `rustc_diagnostic_item` attribute allows the compiler to reference types from the standard library for diagnostic purposes"
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -1047,7 +1069,7 @@ impl NoArgsAttributeParser for RustcDoNotConstCheckParser {
     ]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "`#[rustc_do_not_const_check]` skips const-check for this function's body"
+        "the `rustc_do_not_const_check` attribute skips const-check for this function's body"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDoNotConstCheck;
 }
@@ -1059,7 +1081,7 @@ impl NoArgsAttributeParser for RustcNonnullOptimizationGuaranteedParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document guaranteed niche optimizations in the standard library",
+        "the `rustc_nonnull_optimization_guaranteed` attribute is just used to document guaranteed niche optimizations in the standard library",
         "the compiler does not even check whether the type indeed is being non-null-optimized; it is your responsibility to ensure that the attribute is only used on types that are optimized"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
@@ -1110,11 +1132,11 @@ pub(crate) struct RustcDocPrimitiveParser;
 
 impl SingleAttributeParser for RustcDocPrimitiveParser {
     const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Mod)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Const)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "the `#[rustc_doc_primitive]` attribute is used by the standard library to provide a way to generate documentation for primitive types"
+        "the `rustc_doc_primitive` attribute is used by the standard library to provide a way to generate documentation for primitive types"
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -1150,4 +1172,19 @@ impl NoArgsAttributeParser for RustcExhaustiveParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
+}
+
+pub(crate) struct RustcCanonicalSymbolParser;
+
+impl NoArgsAttributeParser for RustcCanonicalSymbolParser {
+    const PATH: &[Symbol] = &[sym::rustc_canonical_symbol];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `rustc_canonical_symbol` attribute registers a function's symbol to be linted against \
+        by the `invalid_runtime_symbol_definitions` and `suspicious_runtime_symbol_definitions` \
+        lints"
+    );
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCanonicalSymbol;
 }

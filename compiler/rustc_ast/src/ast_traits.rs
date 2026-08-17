@@ -5,11 +5,11 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::tokenstream::LazyAttrTokenStream;
+use crate::tokenstream::{LazyAttrTokenStream, WithTokens};
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
-    FieldDef, ForeignItem, GenericParam, ImplRestriction, Item, MutRestriction, NodeId, Param, Pat,
-    PatField, Path, Stmt, StmtKind, Ty, Variant, Visibility, WherePredicate,
+    FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
+    Ty, Variant, Visibility, WherePredicate,
 };
 
 /// A trait for AST nodes having an ID.
@@ -62,7 +62,7 @@ impl<T: HasNodeId> HasNodeId for Box<T> {
 }
 
 /// A trait for AST nodes having (or not having) collected tokens.
-pub trait HasTokens {
+pub trait HasTokens: HasAttrs {
     fn tokens(&self) -> Option<&LazyAttrTokenStream>;
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>>;
 }
@@ -97,20 +97,7 @@ macro_rules! impl_has_tokens_none {
     };
 }
 
-impl_has_tokens!(
-    AssocItem,
-    AttrItem,
-    Block,
-    Expr,
-    ForeignItem,
-    Item,
-    Pat,
-    Path,
-    Ty,
-    Visibility,
-    ImplRestriction,
-    MutRestriction,
-);
+impl_has_tokens!(AssocItem, Expr, ForeignItem, Item);
 impl_has_tokens_none!(
     Arm,
     ExprField,
@@ -121,6 +108,15 @@ impl_has_tokens_none!(
     Variant,
     WherePredicate
 );
+
+impl<T: HasAttrs> HasTokens for WithTokens<T> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+        self.tokens.as_ref()
+    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+        Some(&mut self.tokens)
+    }
+}
 
 impl<T: HasTokens> HasTokens for Option<T> {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
@@ -174,17 +170,13 @@ impl HasTokens for Attribute {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.tokens.as_ref(),
-            kind @ AttrKind::DocComment(..) => {
-                panic!("Called tokens on doc comment attr {kind:?}")
-            }
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         Some(match &mut self.kind {
             AttrKind::Normal(normal) => &mut normal.tokens,
-            kind @ AttrKind::DocComment(..) => {
-                panic!("Called tokens_mut on doc comment attr {kind:?}")
-            }
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         })
     }
 }
@@ -255,17 +247,17 @@ impl_has_attrs!(
     Variant,
     WherePredicate,
 );
-impl_has_attrs_none!(
-    Attribute,
-    AttrItem,
-    Block,
-    Pat,
-    Path,
-    Ty,
-    Visibility,
-    ImplRestriction,
-    MutRestriction
-);
+impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
+
+impl<T: HasAttrs> HasAttrs for WithTokens<T> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;
+    fn attrs(&self) -> &[Attribute] {
+        self.node.attrs()
+    }
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
+        self.node.visit_attrs(f);
+    }
+}
 
 impl<T: HasAttrs> HasAttrs for Box<T> {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;

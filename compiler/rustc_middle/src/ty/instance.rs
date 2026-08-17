@@ -3,15 +3,15 @@ use std::{assert_matches, fmt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use crate::error;
+use crate::diagnostics;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
@@ -70,10 +70,17 @@ pub enum InstanceKind<'tcx> {
 
     /// An intrinsic `fn` item (with`#[rustc_intrinsic]`).
     ///
-    /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
-    /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
-    /// caller.
+    /// Alongside `LlvmIntrinsic` and `Virtual`, this is the only `InstanceKind`
+    /// that does not have its own callable MIR. Instead, codegen and const eval
+    /// "magically" evaluate calls to intrinsics purely in the caller.
     Intrinsic(DefId),
+
+    /// An LLVM intrinsic `fn` item (with `extern "unadjusted"`).
+    ///
+    /// Alongside `Intrinsic` and `Virtual`, this is the only `InstanceKind`
+    /// that does not have its own callable MIR. Instead, codegen and const eval
+    /// "magically" evaluate calls to LLVM intrinsics purely in the caller.
+    LlvmIntrinsic(DefId),
 
     /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
     ///
@@ -253,7 +260,8 @@ impl<'tcx> InstanceKind<'tcx> {
         match self {
             InstanceKind::Item(def_id)
             | InstanceKind::Virtual(def_id, _)
-            | InstanceKind::Intrinsic(def_id) => def_id,
+            | InstanceKind::Intrinsic(def_id)
+            | InstanceKind::LlvmIntrinsic(def_id) => def_id,
             InstanceKind::Shim(shim) => shim.def_id(),
         }
     }
@@ -262,7 +270,9 @@ impl<'tcx> InstanceKind<'tcx> {
     pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
         match self {
             InstanceKind::Item(def) => Some(def),
-            InstanceKind::Virtual(..) | InstanceKind::Intrinsic(..) => None,
+            InstanceKind::Virtual(..)
+            | InstanceKind::Intrinsic(..)
+            | InstanceKind::LlvmIntrinsic(..) => None,
             InstanceKind::Shim(shim) => shim.def_id_if_not_guaranteed_local_codegen(),
         }
     }
@@ -280,7 +290,9 @@ impl<'tcx> InstanceKind<'tcx> {
                 DefPathData::Ctor | DefPathData::Closure
             ),
             InstanceKind::Shim(shim) => shim.requires_inline(),
-            InstanceKind::Virtual(..) | InstanceKind::Intrinsic(..) => true,
+            InstanceKind::Virtual(..)
+            | InstanceKind::Intrinsic(..)
+            | InstanceKind::LlvmIntrinsic(..) => true,
         }
     }
 
@@ -308,7 +320,10 @@ impl<'tcx> InstanceKind<'tcx> {
     /// body should perform necessary instantiations.
     pub fn has_polymorphic_mir_body(&self) -> bool {
         match *self {
-            InstanceKind::Item(_) | InstanceKind::Intrinsic(..) | InstanceKind::Virtual(..) => true,
+            InstanceKind::Item(_)
+            | InstanceKind::Intrinsic(..)
+            | InstanceKind::LlvmIntrinsic(..)
+            | InstanceKind::Virtual(..) => true,
             InstanceKind::Shim(shim) => shim.has_polymorphic_mir_body(),
         }
     }
@@ -557,7 +572,6 @@ impl<'tcx> Instance<'tcx> {
                 | DefKind::Const { .. }
                 | DefKind::AssocConst { .. }
                 | DefKind::AnonConst
-                | DefKind::InlineConst
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)
                 | DefKind::Closure
@@ -604,7 +618,7 @@ impl<'tcx> Instance<'tcx> {
             Ok(None) => {
                 let type_length = type_length(args);
                 if !tcx.type_length_limit().value_within_limit(type_length) {
-                    tcx.dcx().emit_fatal(error::TypeLengthLimit {
+                    tcx.dcx().emit_fatal(diagnostics::TypeLengthLimit {
                         // We don't use `def_span(def_id)` so that diagnostics point
                         // to the crate root during mono instead of to foreign items.
                         // This is arguably better.
@@ -852,22 +866,22 @@ impl<'tcx> Instance<'tcx> {
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
             );
-            hir::LangItem::FuturePoll
+            LangItem::FuturePoll
         } else if tcx.is_lang_item(trait_id, LangItem::Iterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
             );
-            hir::LangItem::IteratorNext
+            LangItem::IteratorNext
         } else if tcx.is_lang_item(trait_id, LangItem::AsyncIterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
             );
-            hir::LangItem::AsyncIteratorPollNext
+            LangItem::AsyncIteratorPollNext
         } else if tcx.is_lang_item(trait_id, LangItem::Coroutine) {
             assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
-            hir::LangItem::CoroutineResume
+            LangItem::CoroutineResume
         } else {
             return None;
         };

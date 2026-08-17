@@ -1,5 +1,5 @@
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:12:13
+  --> tests/ui/set_contains_or_insert.rs:10:13
    |
 LL |     if !set.contains(&value) {
    |             ^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL |         set.insert(value);
    = help: to override `-D warnings` add `#[allow(clippy::set_contains_or_insert)]`
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:18:12
+  --> tests/ui/set_contains_or_insert.rs:16:12
    |
 LL |     if set.contains(&value) {
    |            ^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:24:13
+  --> tests/ui/set_contains_or_insert.rs:22:13
    |
 LL |     if !set.contains(&value) {
    |             ^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:29:14
+  --> tests/ui/set_contains_or_insert.rs:27:14
    |
 LL |     if !!set.contains(&value) {
    |              ^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:35:15
+  --> tests/ui/set_contains_or_insert.rs:33:15
    |
 LL |     if (&set).contains(&value) {
    |               ^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:41:13
+  --> tests/ui/set_contains_or_insert.rs:39:13
    |
 LL |     if !set.contains(borrow_value) {
    |             ^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |         set.insert(*borrow_value);
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:47:20
+  --> tests/ui/set_contains_or_insert.rs:45:20
    |
 LL |     if !borrow_set.contains(&value) {
    |                    ^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |         borrow_set.insert(value);
    |                    ^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:86:13
+  --> tests/ui/set_contains_or_insert.rs:84:13
    |
 LL |     if !set.contains(&value) {
    |             ^^^^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:92:12
+  --> tests/ui/set_contains_or_insert.rs:90:12
    |
 LL |     if set.contains(&value) {
    |            ^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:98:13
+  --> tests/ui/set_contains_or_insert.rs:96:13
    |
 LL |     if !set.contains(&value) {
    |             ^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:103:14
+  --> tests/ui/set_contains_or_insert.rs:101:14
    |
 LL |     if !!set.contains(&value) {
    |              ^^^^^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:109:15
+  --> tests/ui/set_contains_or_insert.rs:107:15
    |
 LL |     if (&set).contains(&value) {
    |               ^^^^^^^^^^^^^^^^
@@ -110,7 +110,7 @@ LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:115:13
+  --> tests/ui/set_contains_or_insert.rs:113:13
    |
 LL |     if !set.contains(borrow_value) {
    |             ^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |         set.insert(*borrow_value);
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of `BTreeSet::insert` after `BTreeSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:121:20
+  --> tests/ui/set_contains_or_insert.rs:119:20
    |
 LL |     if !borrow_set.contains(&value) {
    |                    ^^^^^^^^^^^^^^^^
@@ -128,7 +128,7 @@ LL |         borrow_set.insert(value);
    |                    ^^^^^^^^^^^^^
 
 error: usage of `HashSet::insert` after `HashSet::contains`
-  --> tests/ui/set_contains_or_insert.rs:176:11
+  --> tests/ui/set_contains_or_insert.rs:174:11
    |
 LL |     if !s.contains(&v) {
    |           ^^^^^^^^^^^^

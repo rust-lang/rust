@@ -1,0 +1,9 @@
+error[E0433]: too many leading `super` keywords within `crate::outer::inner`
+  --> $DIR/too-many-super-issue-158275.rs:5:38
+   |
+LL |         struct Example(super::super::super::Impl);
+   |                                      ^^^^^ this `super` would go above the crate root
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

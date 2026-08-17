@@ -245,7 +245,7 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
     let e = range.end.map(|expr| ecx.eval(expr));
     let end = match e {
         Some(Some(Constant::Int(x))) => {
-            if range.limits == RangeLimits::Closed {
+            if range.ty.limits() == RangeLimits::Closed {
                 Some(x + 1)
             } else {
                 Some(x)

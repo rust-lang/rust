@@ -34,11 +34,13 @@ error[E0423]: expected function, found associated constant `Trait::CONST`
 LL |     reuse impl Trait for S { &self.0 }
    |                ^^^^^ not a function
 
-error[E0423]: expected function, found associated type `Trait::Type`
-  --> $DIR/impl-reuse-non-reuse-items.rs:22:16
+error[E0423]: cannot find function `Type` in trait `Trait`
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
 LL |     reuse impl Trait for S { &self.0 }
-   |                ^^^^^ not a function
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `Trait`
+   |
+   = note: an associated type named `Trait::Type` exists in another namespace
 
 error[E0046]: not all trait items implemented, missing: `CONST`, `Type`, `method`
   --> $DIR/impl-reuse-non-reuse-items.rs:22:5

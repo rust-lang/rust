@@ -1,7 +1,6 @@
 //@ run-pass
 //@ reference: input.crlf
-// ignore-tidy-cr
-// ignore-tidy-cr (repeated again because of tidy bug)
+// ignore-tidy-file-cr
 // license is ignored because tidy can't handle the CRLF here properly.
 
 // N.B., this file needs CRLF line endings. The .gitattributes file in

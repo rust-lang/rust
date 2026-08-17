@@ -1,4 +1,4 @@
-error[E0271]: expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to return `Box<_>`, but it returns `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
+error[E0271]: expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to return `Box<_>`, but it returns `{async closure body@dont-suggest-boxing-async-closure-body.rs:9:23}`
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:9:9
    |
 LL |     foo(async move || {});
@@ -18,7 +18,7 @@ error[E0308]: mismatched types
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:11:9
    |
 LL |     bar(async move || {});
-   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure@dont-suggest-boxing-async-closure-body.rs:11:9}`
+   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure@...}`
    |     |
    |     arguments to this function are incorrect
    |

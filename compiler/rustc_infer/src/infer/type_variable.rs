@@ -157,6 +157,10 @@ impl<'tcx> TypeVariableStorage<'tcx> {
         debug_assert!(self.values.len() >= self.eq_relations.len());
         self.values.truncate(self.eq_relations.len());
     }
+
+    pub(crate) fn sub_unification_table_ref(&self) -> &ut::UnificationTableStorage<TyVidSubKey> {
+        &self.sub_unification_table
+    }
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
@@ -246,13 +250,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     /// Returns the "root" variable of `vid` in the `sub_unification_table`
-    /// equivalence table. All type variables that have been are related via
+    /// equivalence table. All type variables that have been related via
     /// equality or subtyping will yield the same root variable (per the
     /// union-find algorithm), so `sub_unification_table_root_var(a)
-    /// == sub_unification_table_root_var(b)` implies that:
-    /// ```text
-    /// exists X. (a <: X || X <: a) && (b <: X || X <: b)
-    /// ```
+    /// == sub_unification_table_root_var(b)` implies that `a` and `b` are
+    /// transitively related via subtyping.
     pub(crate) fn sub_unification_table_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.sub_unification_table().find(vid).vid
     }
@@ -267,6 +269,25 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     #[inline(always)]
     pub(crate) fn inlined_probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
         self.eq_relations().inlined_probe_value(vid)
+    }
+
+    /// Retrieves the type to which `vid` has been instantiated, if
+    /// any, along with the root `vid`.
+    pub(crate) fn probe_with_root_vid(
+        &mut self,
+        vid: ty::TyVid,
+    ) -> (ty::TyVid, TypeVariableValue<'tcx>) {
+        self.inlined_probe_with_vid(vid)
+    }
+
+    /// An always-inlined variant of `probe_with_root_vid`, for very hot call sites.
+    #[inline(always)]
+    pub(crate) fn inlined_probe_with_vid(
+        &mut self,
+        vid: ty::TyVid,
+    ) -> (ty::TyVid, TypeVariableValue<'tcx>) {
+        let (id, value) = self.eq_relations().inlined_probe_key_value(vid);
+        (id.vid, value)
     }
 
     #[inline]
@@ -288,16 +309,13 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         (range.clone(), range.map(|index| self.var_origin(index)).collect())
     }
 
-    /// Returns indices of all variables that are not yet
-    /// instantiated.
-    pub(crate) fn unresolved_variables(&mut self) -> Vec<ty::TyVid> {
+    /// Returns indices of all root variables that are not yet instantiated.
+    pub(crate) fn unresolved_root_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.num_vars())
-            .filter_map(|i| {
-                let vid = ty::TyVid::from_usize(i);
-                match self.probe(vid) {
-                    TypeVariableValue::Unknown { .. } => Some(vid),
-                    TypeVariableValue::Known { .. } => None,
-                }
+            .map(ty::TyVid::from_usize)
+            .filter(|&vid| {
+                let (root, value) = self.probe_with_root_vid(vid);
+                root == vid && value.is_unknown()
             })
             .collect()
     }

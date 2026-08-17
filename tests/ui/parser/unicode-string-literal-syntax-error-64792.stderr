@@ -1,4 +1,4 @@
-error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
+error[E0423]: cannot find function, tuple struct or tuple variant `X` in this scope
   --> $DIR/unicode-string-literal-syntax-error-64792.rs:4:14
    |
 LL | struct X {}
@@ -6,6 +6,8 @@ LL | struct X {}
 LL |
 LL | const Y: X = X("ö");
    |              ^^^^^^ help: use struct literal syntax instead: `X {}`
+   |
+   = note: a struct named `X` exists in another namespace
 
 error: aborting due to 1 previous error
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+# ignore-tidy-file-linelength
 
 # Free disk space on Linux GitHub action runners
 # Script inspired by https://github.com/jlumbroso/free-disk-space
@@ -334,7 +335,6 @@ checkAlternative() {
     available_space_kb=$(df -k "$gha_alt_disk" --output=avail | tail -n 1)
 
     # mount options that trade durability for performance
-    # ignore-tidy-linelength
     local mntopts="defaults,discard,journal_async_commit,barrier=0,noauto_da_alloc,lazytime,data=writeback"
 
     # GHA has a 2nd disk mounted at /mnt that is almost empty.

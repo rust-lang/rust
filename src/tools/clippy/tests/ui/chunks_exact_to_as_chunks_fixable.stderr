@@ -1,0 +1,59 @@
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:7:18
+   |
+LL |     for _ in arr.chunks_exact(4) {}
+   |                  ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0`
+   |
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: using `chunks_exact_mut` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:9:18
+   |
+LL |     for _ in arr.chunks_exact_mut(4) {}
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks_mut` instead: `as_chunks_mut::<4>().0`
+
+error: using `chunks_exact_mut` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:11:22
+   |
+LL |     for chunk in arr.chunks_exact_mut(4).take(2) {
+   |                      ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks_mut` instead: `as_chunks_mut::<4>().0.iter_mut()`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:17:18
+   |
+LL |     for _ in arr.chunks_exact(1 + 1) {}
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<{ 1 + 1 }>().0`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:20:18
+   |
+LL |     for _ in arr.chunks_exact(CHUNK_SIZE + 1) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<{ CHUNK_SIZE + 1 }>().0`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:22:18
+   |
+LL |     for _ in arr.chunks_exact(size_of::<u32>()) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<{ size_of::<u32>() }>().0`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:24:18
+   |
+LL |     for _ in arr.chunks_exact(const { 1 }) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<{ const { 1 } }>().0`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:26:18
+   |
+LL |     for _ in arr.chunks_exact(unsafe { 1 }) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<{ unsafe { 1 } }>().0`
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks_fixable.rs:32:18
+   |
+LL |     for _ in arr.chunks_exact(A::A) {}
+   |                  ^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<{ A::A }>().0`
+
+error: aborting due to 9 previous errors
+

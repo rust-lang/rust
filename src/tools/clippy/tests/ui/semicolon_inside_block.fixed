@@ -1,12 +1,11 @@
-#![allow(
-    unused,
-    clippy::unused_unit,
-    clippy::unnecessary_operation,
+#![warn(clippy::semicolon_inside_block)]
+#![allow(clippy::unnecessary_operation)]
+#![expect(
+    clippy::double_parens,
     clippy::no_effect,
     clippy::single_element_loop,
-    clippy::double_parens
+    clippy::unused_unit
 )]
-#![warn(clippy::semicolon_inside_block)]
 #![feature(try_blocks)]
 
 macro_rules! m {

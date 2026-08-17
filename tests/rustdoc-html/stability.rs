@@ -160,7 +160,7 @@ pub trait UnstableTraitWithStableMethod {
 //
 /// `i32` is always stable in 1.0, even if you look at it from core.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i32 {}
+const _: () = ();
 
 //@ has stability/keyword.if.html \
 //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
@@ -168,4 +168,4 @@ mod prim_i32 {}
 //
 /// We currently don't document stability for keywords, but let's test it anyway.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod if_keyword {}
+const _: () = ();

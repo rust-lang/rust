@@ -8,7 +8,7 @@
 //@ needs-rust-lld
 // ignore-tidy-linelength
 
-#![feature(abi_gpu_kernel, no_core, asm_experimental_arch, repr_simd, f16)]
+#![feature(abi_gpu_kernel, no_core, asm_experimental_arch, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(
@@ -21,89 +21,25 @@
 )]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
 
-#[repr(simd)]
-pub struct i16x2([i16; 2]);
-#[repr(simd)]
-pub struct f16x2([f16; 2]);
+type i32x3 = Simd<i32, 3>;
+type f32x3 = Simd<f32, 3>;
 
-#[repr(simd)]
-pub struct i16x4([i16; 4]);
-#[repr(simd)]
-pub struct f16x4([f16; 4]);
-#[repr(simd)]
-pub struct i32x2([i32; 2]);
-#[repr(simd)]
-pub struct f32x2([f32; 2]);
+type i32x5 = Simd<i32, 5>;
+type f32x5 = Simd<f32, 5>;
 
-#[repr(simd)]
-pub struct i32x3([i32; 3]);
-#[repr(simd)]
-pub struct f32x3([f32; 3]);
+type i32x6 = Simd<i32, 6>;
+type f32x6 = Simd<f32, 6>;
 
-#[repr(simd)]
-pub struct i16x8([i16; 8]);
-#[repr(simd)]
-pub struct f16x8([f16; 8]);
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
+type i32x7 = Simd<i32, 7>;
+type f32x7 = Simd<f32, 7>;
 
-#[repr(simd)]
-pub struct i32x5([i32; 5]);
-#[repr(simd)]
-pub struct f32x5([f32; 5]);
-
-#[repr(simd)]
-pub struct i32x6([i32; 6]);
-#[repr(simd)]
-pub struct f32x6([f32; 6]);
-
-#[repr(simd)]
-pub struct i32x7([i32; 7]);
-#[repr(simd)]
-pub struct f32x7([f32; 7]);
-
-#[repr(simd)]
-pub struct i16x16([i16; 16]);
-#[repr(simd)]
-pub struct f16x16([f16; 16]);
-#[repr(simd)]
-pub struct i32x8([i32; 8]);
-#[repr(simd)]
-pub struct f32x8([f32; 8]);
-
-#[repr(simd)]
-pub struct i32x10([i32; 10]);
-#[repr(simd)]
-pub struct f32x10([f32; 10]);
-
-#[repr(simd)]
-pub struct i16x32([i16; 32]);
-#[repr(simd)]
-pub struct f16x32([f16; 32]);
-#[repr(simd)]
-pub struct i32x16([i32; 16]);
-#[repr(simd)]
-pub struct f32x16([f32; 16]);
-
-macro_rules! impl_copy {
-    ($($ty:ident)*) => {
-        $(
-            impl Copy for $ty {}
-        )*
-    };
-}
-
-impl_copy!(
-    i16x2 f16x2 i16x4 f16x4 i32x2 f32x2 i32x3 f32x3 i16x8 f16x8 i32x4 f32x4
-    i32x5 f32x5 i32x6 f32x6 i32x7 f32x7 i16x16 f16x16 i32x8 f32x8 i32x10 f32x10
-    i16x32 f16x32 i32x16 f32x16
-);
+type i32x10 = Simd<i32, 10>;
+type f32x10 = Simd<f32, 10>;
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {

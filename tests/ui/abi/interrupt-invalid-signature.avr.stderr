@@ -12,7 +12,7 @@ LL + extern "avr-interrupt" fn avr_arg() {}
    |
 
 error: invalid signature for `extern "avr-interrupt"` function
-  --> $DIR/interrupt-invalid-signature.rs:60:40
+  --> $DIR/interrupt-invalid-signature.rs:59:40
    |
 LL | extern "avr-interrupt" fn avr_ret() -> u8 {
    |                                        ^^
@@ -24,5 +24,30 @@ LL - extern "avr-interrupt" fn avr_ret() -> u8 {
 LL + extern "avr-interrupt" fn avr_ret() {
    |
 
-error: aborting due to 2 previous errors
+error: invalid signature for `extern "avr-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:107:42
+   |
+LL | fn avr_ptr(_f: extern "avr-interrupt" fn(u8) -> u8) {
+   |                                          ^^     ^^
+   |
+   = note: functions with the "avr-interrupt" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - fn avr_ptr(_f: extern "avr-interrupt" fn(u8) -> u8) {
+LL + fn avr_ptr(_f: extern "avr-interrupt" fn()) {
+   |
+
+error: function pointers cannot be declared with `safe` safety qualifier
+  --> $DIR/interrupt-invalid-signature.rs:141:13
+   |
+LL | type Safe = safe extern "avr-interrupt" fn();
+   |             ^^^^
+   |
+help: remove the `safe` qualifier
+   |
+LL - type Safe = safe extern "avr-interrupt" fn();
+LL + type Safe = extern "avr-interrupt" fn();
+   |
+
+error: aborting due to 4 previous errors
 

@@ -9,11 +9,14 @@ We primarily interface with the following LLDB classes:
 """
 
 from struct import unpack, calcsize
+from enum import Enum, IntFlag
+from typing import Optional, Union
 
 import lldb
 import lldb_lookup
 
 from .common import (
+    BLESS,
     TARGET,
     Child,
     Field,
@@ -21,7 +24,55 @@ from .common import (
     TargetData,
     Type,
     Variable,
+    is_arraylike,
+    make_arraylike,
 )
+
+HAS_FLOAT128: bool = getattr(lldb, "eBasicTypeFloat128", None) is not None
+
+
+class FromLLDB(Exception):
+    pass
+
+
+# We use the following lists to dynamically create the enums at run-time (they're used to print
+# more meaningful error messages when basic_type and type_class don't match).
+# It takes a few hundred microseconds at runtime to generate these lists, but it means we never have
+# to upkeep version-specific flags. Since the underlying integers are what are stored and tested
+# against, these don't affect (and are not affected by) the test data.
+_lldb_type_classes = {
+    k.removeprefix("eTypeClass"): v
+    for k, v in lldb.__dict__.items()
+    if k.startswith("eTypeClass")
+}
+_lldb_basic_types = {
+    k.removeprefix("eBasicType"): v
+    for k, v in lldb.__dict__.items()
+    if k.startswith("eBasicType")
+}
+
+
+# We specify boundary=KEEP to tell python that values that aren't directly specified should still
+# be formatted as if they're members of TypeClass (rather than throwing an exception)
+class TypeClass(IntFlag):
+    """Direct mapping of `lldb.eTypeClass` bitflags for convenience. Used to print a more meaningful
+    error message when Type.type_class does not match.
+    """
+
+    # Enums create their members based on locals. We can access and modify the locals dict just like
+    # any other. As gross as it is, this is canonical, per Python's own tutorial.
+    # See: https://docs.python.org/3/howto/enum.html#timeperiod
+    # The alternative is using the functional syntax, but that doesn't allow us to set boundary=KEEP
+    vars().update(_lldb_type_classes)
+
+
+class BasicType(Enum):
+    """Direct mapping of `lldb.eBasicType` enumerations for convenience. Used to print a more
+    meaningful error message when Type.basic_type does not match.
+    """
+
+    vars().update(_lldb_basic_types)
+
 
 _UNSIGNED_INT_TYPES = {
     lldb.eBasicTypeUnsignedChar,
@@ -36,11 +87,10 @@ _FLOAT_TYPES = {
     lldb.eBasicTypeHalf,
     lldb.eBasicTypeFloat,
     lldb.eBasicTypeDouble,
-    # FIXME: lldb added support for Float128 in 22.1, but python has no native
-    # support for it (even through `ctypes` or other alternatives). The best we
-    # can probably manage is comparing the raw bytes and/or trusting LLDB's output.
-    lldb.eBasicTypeFloat128,
 }
+
+if HAS_FLOAT128:
+    _FLOAT_TYPES.add(lldb.eBasicTypeFloat128)
 
 _SIZE_TO_FLOAT_FMT = {
     2: "e",
@@ -82,7 +132,7 @@ def type_unpack_fmt(kind: int, size: int) -> str:
     return fmt
 
 
-def decode_primitive(valobj: lldb.SBValue) -> int | float | bool | str:
+def decode_primitive(valobj: lldb.SBValue) -> Union[int, float, bool, str]:
     data: lldb.SBData = valobj.GetData()
 
     type: lldb.SBType = valobj.GetType().GetCanonicalType()
@@ -119,7 +169,7 @@ def decode_primitive(valobj: lldb.SBValue) -> int | float | bool | str:
     return got
 
 
-def get_summary_or_value(valobj: lldb.SBValue) -> str | None:
+def get_summary_or_value(valobj: lldb.SBValue) -> Optional[str]:
     """`SBValue.GetSummary` only prints summaries from summary providers. It returns `None` if there
     is no summary provider, rather than printing the default representation of the value. Often we
     want any printable representation at all, so this function falls back to `SBValue.GetValue`.
@@ -134,7 +184,14 @@ def get_summary_or_value(valobj: lldb.SBValue) -> str | None:
 
 
 def field_from_lldb(field: lldb.SBTypeMember) -> Field:
-    return Field(field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes())
+    if BLESS and not field.IsValid():
+        raise FromLLDB("Cannot bless invalid SBTypeMember object")
+
+    return Field(
+        name=field.GetName(),
+        type=field.GetType().GetName(),
+        offset=field.GetOffsetInBytes(),
+    )
 
 
 def get_generics(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> list[lldb.SBType]:
@@ -175,19 +232,33 @@ def get_generics(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> list[lldb.SBType]:
 
 
 def type_from_lldb(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> Type:
+    if BLESS and not ty.IsValid():
+        raise FromLLDB("Cannot bless invalid SBType object")
+
     generic_types = get_generics(ty, sbtarget)
     generics = [g.GetName() for g in generic_types]
 
+    basic_type: int = ty.GetBasicType()
+
+    if basic_type == lldb.eBasicTypeInvalid:
+        basic_type = None
+
     return Type(
-        ty.GetByteSize(),
-        ty.GetBasicType(),
-        ty.GetTypeClass(),
-        [field_from_lldb(ty.GetFieldAtIndex(i)) for i in range(ty.GetNumberOfFields())],
-        generics,
+        size=ty.GetByteSize(),
+        type_class=ty.GetTypeClass(),
+        basic_type=basic_type,
+        fields=[
+            field_from_lldb(ty.GetFieldAtIndex(i))
+            for i in range(ty.GetNumberOfFields())
+        ],
+        generic_params=generics,
     )
 
 
 def child_from_lldb(child: lldb.SBValue) -> Child:
+    if BLESS and not child.IsValid():
+        raise FromLLDB("Cannot bless invalid child")
+
     sbtype: lldb.SBType = child.GetType()
 
     if not sbtype.IsPointerType() and sbtype.GetBasicType() != lldb.eBasicTypeInvalid:
@@ -199,10 +270,21 @@ def child_from_lldb(child: lldb.SBValue) -> Child:
         child_from_lldb(child.GetChildAtIndex(i)) for i in range(child.GetNumChildren())
     ]
 
-    return Child(child.GetName(), child.GetType().GetName(), value, children)
+    if is_arraylike(children):
+        children = make_arraylike(children)
+
+    return Child(
+        name=child.GetName(),
+        type=child.GetType().GetName(),
+        value=value,
+        children=children,
+    )
 
 
 def variable_from_lldb(var: lldb.SBValue) -> Variable:
+    if BLESS and not var.IsValid():
+        raise FromLLDB("Cannot bless invalid SBValue object")
+
     sbtype = var.GetType()
     type_name = sbtype.GetName()
 
@@ -221,12 +303,16 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
         value = None
 
     if (synth := var.GetTypeSynthetic()).IsValid():
-        synthetic = synth.GetData().strip()
+        synthetic = synth.GetData()
+        if synthetic is not None:
+            synthetic = synthetic.strip()
     else:
         synthetic = None
 
     if (summ := var.GetTypeSummary()).IsValid():
-        summary = summ.GetData().strip()
+        summary = summ.GetData()
+        if summary is not None:
+            summary = summary.strip()
     else:
         summary = None
 
@@ -235,21 +321,28 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
     else:
         format = None
 
-    pretty_print = get_summary_or_value(var)
+    # Pointer values change from run to run, so don't store their pretty print either
+    if not sbtype.IsPointerType():
+        pretty_print = get_summary_or_value(var)
+    else:
+        pretty_print = None
 
     children = [
         child_from_lldb(var.GetChildAtIndex(i)) for i in range(var.GetNumChildren())
     ]
 
+    if is_arraylike(children):
+        children = make_arraylike(children)
+
     return Variable(
-        type_name,
-        pretty_type_name,
-        pretty_print,
-        value,
-        synthetic,
-        summary,
-        format,
-        children,
+        type=type_name,
+        pretty_type_name=pretty_type_name,
+        pretty_print=pretty_print,
+        value=value,
+        synthetic=synthetic,
+        summary=summary,
+        format=format,
+        children=children,
     )
 
 
@@ -264,20 +357,35 @@ def bless_variable(
     valobj = frame.FindVariable(var_name)
     if not valobj.IsValid():
         # FIXME (todo) error handling
-        raise Exception(f"<bless error: Cannot find variable {var_name}>")
+        raise FromLLDB(f"<bless error: Cannot find variable {var_name}>")
 
+    # HACK it's obviously not ideal to output empty breakpoints, but it will be somewhat rare for it
+    # to happen (you would need a breakpoint with repr -> breakpoint without repr -> breakpoint
+    # with repr). In the more common case (e.g. 1 breakpoint, sequential breakpoints all with repr
+    # commands), this saves a lot more space than converting all TargetData.breakpoints to
+    # `dict[int,...]`
     if len(target_data.breakpoints) <= breakpoint_idx:
-        target_data.breakpoints.append({})
+        target_data.breakpoints.extend(
+            {} for i in range(1 + breakpoint_idx - len(target_data.breakpoints))
+        )
 
     var_data = variable_from_lldb(valobj)
     target_data.breakpoints[breakpoint_idx][var_name] = var_data
 
-    bless_type(target_data, valobj.GetType(), valobj.GetTarget())
+    # Don't bless types if we don't have anything that could possibly break from the type changing
+    if not var_data.has_visualizer():
+        return
 
     # We also need to bless the types of the valobj's children, as they may not appear in the type
     # or fields.
-    for i in range(valobj.GetNumChildren()):
-        bless_type(target_data, valobj.GetChildAtIndex(i).GetType(), valobj.GetTarget())
+    target = valobj.GetTarget()
+
+    work_list = [valobj]
+    while len(work_list) != 0:
+        obj = work_list.pop()
+        work_list.extend([obj.GetChildAtIndex(i) for i in range(obj.GetNumChildren())])
+
+        bless_type(target_data, obj.GetType(), target)
 
 
 def bless_type(target_data: TargetData, type: lldb.SBType, sbtarget: lldb.SBTarget):
@@ -289,8 +397,14 @@ def bless_type(target_data: TargetData, type: lldb.SBType, sbtarget: lldb.SBTarg
         # If the type already exists in the type map, we don't need to process any further. We do
         # need to check that the type data is actually identical to its mapping before moving on.
         # It shouldn't ever be different, but better safe than sorry.
-        assert target_data.types[t_name] == t_data
+        import pprint
+
+        assert (
+            target_data.types[t_name] == t_data
+        ), f"old: {pprint.pformat(target_data.types[t_name])}\nnew: {pprint.pformat(t_data)}"
         return
+
+    print(f"blessing type: {t_name}")
 
     # We need to add this type first just in case the type contains itself.
     target_data.types[t_name] = t_data

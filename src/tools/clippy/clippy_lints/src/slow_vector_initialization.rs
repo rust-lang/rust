@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{SpanlessEq, get_enclosing_block, is_integer_literal, span_contains_comment, sym};
 use rustc_errors::Applicability;

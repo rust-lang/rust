@@ -7,7 +7,7 @@ that the value has to be initialized.
 # Safety
 
 When calling this method, you have to ensure that *either* the pointer is null *or*
-all of the following is true:
+all of the following are true:
 
 * The pointer must be [valid] for reads for `ptr.len() * size_of::<T>()` many bytes,
   and it must be properly aligned. This means in particular:

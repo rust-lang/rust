@@ -7,7 +7,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
+use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
     SyntaxExtensionKind,
@@ -23,12 +23,11 @@ use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-    UNUSED_MACRO_RULES, UNUSED_MACROS,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
-use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::def_id::ModId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -121,37 +120,52 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+const PREDEFINED_TOOLS: &[Symbol] =
+    &[sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
+
+pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
+
+    let mut registered_tools =
+        if let Some(Attribute::Parsed(AttributeKind::RegisterTool { attr_tools, .. })) =
+            AttributeParser::parse_limited(tcx.sess, pre_configured_attrs, &|attr| {
+                attr.path_matches(&[sym::register_tool])
+                    || attr.path_matches(&[sym::register_attribute_tool])
+            })
+        {
+            attr_tools.into_iter().collect::<RegisteredTools>()
+        } else {
+            Default::default()
+        };
+
+    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
+    registered_tools
 }
 
-pub fn registered_tools_ast(
-    dcx: DiagCtxtHandle<'_>,
-    pre_configured_attrs: &[ast::Attribute],
+pub(crate) fn registered_lint_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+    let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
+    registered_lint_tools_ast(tcx.sess, pre_configured_attrs)
+}
+
+pub fn registered_lint_tools_ast(
     sess: &Session,
+    pre_configured_attrs: &[ast::Attribute],
 ) -> RegisteredTools {
-    let mut registered_tools = RegisteredTools::default();
+    let mut registered_tools =
+        if let Some(Attribute::Parsed(AttributeKind::RegisterTool { lint_tools, .. })) =
+            AttributeParser::parse_limited(sess, pre_configured_attrs, &|attr| {
+                attr.path_matches(&[sym::register_tool])
+                    || attr.path_matches(&[sym::register_lint_tool])
+            })
+        {
+            lint_tools.into_iter().collect::<RegisteredTools>()
+        } else {
+            Default::default()
+        };
 
-    if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
-        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
-    {
-        for tool in tools {
-            if let Some(old_tool) = registered_tools.replace(tool) {
-                dcx.emit_err(diagnostics::ToolWasAlreadyRegistered {
-                    span: tool.span,
-                    tool,
-                    old_ident_span: old_tool.span,
-                });
-            }
-        }
-    }
-
-    // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
-    // tools, but it's not an error to register them explicitly.
-    let predefined_tools =
-        [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
-    registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
+    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
 
@@ -214,8 +228,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
-        let parent_module =
-            parent_module_id.map(|module_id| self.owner_def_id(module_id).to_def_id());
+        let parent_module = parent_module_id
+            .map(|module_id| ModId::new_unchecked(self.owner_def_id(module_id).to_def_id()));
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -230,8 +244,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        let parent_scope = parent_module
-            .map_or(self.empty_module, |def_id| self.expect_module(def_id).expect_local());
+        let parent_scope = parent_module.map_or(self.empty_module, |mod_id| {
+            self.expect_module(mod_id.to_def_id()).expect_local()
+        });
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
@@ -248,19 +263,30 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         force: bool,
     ) -> Result<Arc<SyntaxExtension>, Indeterminate> {
         let invoc_id = invoc.expansion_data.id;
-        let parent_scope = match self.invocation_parent_scopes.get(&invoc_id) {
-            Some(parent_scope) => *parent_scope,
-            None => {
-                // If there's no entry in the table, then we are resolving an eagerly expanded
-                // macro, which should inherit its parent scope from its eager expansion root -
+        let (parent_scope, invocation_parent) = match (
+            self.invocation_parent_scopes.get(&invoc_id),
+            self.invocation_parents.get(&invoc_id),
+        ) {
+            (Some(parent_scope), Some(invocation_parent)) => (*parent_scope, *invocation_parent),
+            (None, None) => {
+                // Eager macro invocations are not collected into the reduced graph, so they
+                // inherit their parent scope and invocation parent from the eager expansion root -
                 // the macro that requested this eager expansion.
                 let parent_scope = *self
                     .invocation_parent_scopes
                     .get(&eager_expansion_root)
                     .expect("non-eager expansion without a parent scope");
+                let invocation_parent = *self
+                    .invocation_parents
+                    .get(&eager_expansion_root)
+                    .expect("non-eager expansion without an invocation parent");
                 self.invocation_parent_scopes.insert(invoc_id, parent_scope);
-                parent_scope
+                self.invocation_parents.insert(invoc_id, invocation_parent);
+                (parent_scope, invocation_parent)
             }
+            _ => unreachable!(
+                "invocation parent tables must both contain or both miss an invocation"
+            ),
         };
 
         let (mut derives, mut inner_attr, mut deleg_impl) = (&[][..], false, None);
@@ -275,7 +301,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             InvocationKind::GlobDelegation { ref item, .. } => {
                 let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 let DelegationSuffixes::Glob(star_span) = deleg.suffixes else { unreachable!() };
-                deleg_impl = Some((self.invocation_parent(invoc_id), star_span));
+                deleg_impl = Some((invocation_parent.parent_def, star_span));
                 // It is sufficient to consider glob delegation a bang macro for now.
                 (&deleg.prefix, MacroKind::Bang)
             }
@@ -286,16 +312,13 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = invoc.expansion_data.lint_node_id;
         // This is a heuristic, but it's good enough for the lint.
-        let looks_like_invoc_in_mod_inert_attr = self
-            .invocation_parents
-            .get(&invoc_id)
-            .or_else(|| self.invocation_parents.get(&eager_expansion_root))
-            .filter(|&&InvocationParent { parent_def: mod_def_id, in_attr, .. }| {
+        let looks_like_invoc_in_mod_inert_attr = Some(invocation_parent)
+            .filter(|&InvocationParent { parent_def: mod_def_id, in_attr, .. }| {
                 in_attr
                     && invoc.fragment_kind == AstFragmentKind::Expr
                     && self.tcx.def_kind(mod_def_id) == DefKind::Mod
             })
-            .map(|&InvocationParent { parent_def: mod_def_id, .. }| mod_def_id);
+            .map(|InvocationParent { parent_def: mod_def_id, .. }| mod_def_id);
         let sugg_span = match &invoc.kind {
             InvocationKind::Attr { item: Annotatable::Item(item), .. }
                 if !item.span.from_expansion() =>
@@ -518,8 +541,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
     }
 
-    fn registered_tools(&self) -> &RegisteredTools {
-        self.registered_tools
+    fn registered_attr_tools(&self) -> &RegisteredTools {
+        self.registered_attr_tools
+    }
+
+    fn registered_lint_tools(&self) -> &RegisteredTools {
+        self.registered_lint_tools
     }
 
     fn register_glob_delegation(&mut self, invoc_id: LocalExpnId) {
@@ -533,7 +560,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
-        if target_trait.has_unexpanded_invocations() {
+        if target_trait.has_unexpanded_invocations(self) {
             return Err(Indeterminate);
         }
         // FIXME: Instead of waiting try generating all trait methods, and pruning
@@ -584,7 +611,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(&'ra Arc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
+        let (ext, res) = match self.cm_mut().resolve_macro_or_delegation_path(
             path,
             kind,
             parent_scope,
@@ -711,59 +738,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 "custom inner attributes are unstable"
             };
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
-        }
-
-        const DIAGNOSTIC_ATTRIBUTES: &[(Symbol, Option<Symbol>)] = &[
-            (sym::on_unimplemented, None),
-            (sym::do_not_recommend, None),
-            (sym::on_move, Some(sym::diagnostic_on_move)),
-            (sym::on_const, Some(sym::diagnostic_on_const)),
-            (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
-            (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
-            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
-        ];
-
-        if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
-            && let [namespace, attribute, ..] = &*path.segments
-            && namespace.ident.name == sym::diagnostic
-            && !DIAGNOSTIC_ATTRIBUTES.iter().any(|(attr, feature)| {
-                attribute.ident.name == *attr && feature.is_none_or(|f| self.features.enabled(f))
-            })
-        {
-            let name = attribute.ident.name;
-            let span = attribute.span();
-
-            let help = 'help: {
-                if self.tcx.sess.is_nightly_build() {
-                    for (attr, feature) in DIAGNOSTIC_ATTRIBUTES {
-                        if let Some(feature) = *feature
-                            && *attr == name
-                        {
-                            break 'help Some(
-                                diagnostics::UnknownDiagnosticAttributeHelp::UseFeature { feature },
-                            );
-                        }
-                    }
-                }
-
-                let candidates = DIAGNOSTIC_ATTRIBUTES
-                    .iter()
-                    .filter_map(|(attr, feature)| {
-                        feature.is_none_or(|f| self.features.enabled(f)).then_some(*attr)
-                    })
-                    .collect::<Vec<_>>();
-
-                find_best_match_for_name(&candidates, name, None).map(|typo_name| {
-                    diagnostics::UnknownDiagnosticAttributeHelp::Typo { span, typo_name }
-                })
-            };
-
-            self.tcx.sess.psess.buffer_lint(
-                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-                span,
-                node_id,
-                diagnostics::UnknownDiagnosticAttribute { help },
-            );
         }
 
         Ok((ext, res))
@@ -936,7 +910,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             for seg in &mut path {
                 seg.id = None;
             }
-            match self.cm().resolve_path(
+            match self.cm_mut().resolve_path(
                 &path,
                 Some(ns),
                 &parent_scope,
@@ -1033,7 +1007,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
-            match self.cm().resolve_ident_in_scope_set(
+            match self.cm_mut().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
@@ -1087,7 +1061,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
-            let _ = self.cm().resolve_ident_in_scope_set(
+            let _ = self.cm_mut().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
@@ -1170,7 +1144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
             // so it cannot be in scope unless imported.
-            && self.tcx.is_descendant_of(def_id, mod_def_id.to_def_id())
+            && self.tcx.is_descendant_of(def_id, mod_def_id)
         {
             // Try to resolve our ident ignoring `macro_rules` scopes.
             // If such resolution is successful and gives the same result
@@ -1265,7 +1239,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn path_accessible(
-        &mut self,
+        &self,
         expn_id: LocalExpnId,
         path: &ast::Path,
         namespaces: &[Namespace],

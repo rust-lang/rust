@@ -2,7 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
-use rustc_hir::{HirId, Lit, RustcVersion};
+use rustc_hir::attrs::RustcVersion;
+use rustc_hir::{HirId, Lit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, symbol};
@@ -42,7 +43,7 @@ declare_clippy_lint! {
 impl_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 
 // Tuples are of the form (constant, name, min_digits, msrv)
-const KNOWN_CONSTS: [(f64, &str, usize, Option<RustcVersion>); 19] = [
+const KNOWN_CONSTS: [(f64, &str, usize, Option<RustcVersion>); 21] = [
     (f64::E, "E", 4, None),
     (f64::FRAC_1_PI, "FRAC_1_PI", 4, None),
     (f64::FRAC_1_SQRT_2, "FRAC_1_SQRT_2", 5, None),
@@ -62,6 +63,8 @@ const KNOWN_CONSTS: [(f64, &str, usize, Option<RustcVersion>); 19] = [
     (f64::PI, "PI", 3, None),
     (f64::SQRT_2, "SQRT_2", 5, None),
     (f64::TAU, "TAU", 3, Some(msrvs::TAU)),
+    (f64::EULER_GAMMA, "EULER_GAMMA", 5, Some(msrvs::EULER_GAMMA)),
+    (f64::GOLDEN_RATIO, "GOLDEN_RATIO", 5, Some(msrvs::GOLDEN_RATIO)),
 ];
 
 pub struct ApproxConstant {
@@ -70,12 +73,12 @@ pub struct ApproxConstant {
 
 impl ApproxConstant {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
 impl LateLintPass<'_> for ApproxConstant {
-    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: Lit, _negated: bool) {
+    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: Lit, _is_negated_pat: bool) {
         match lit.node {
             LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
                 FloatTy::F16 => self.check_known_consts(cx, lit.span, s, "f16"),

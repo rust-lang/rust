@@ -8,7 +8,7 @@
 use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
-use crate::error::DropCheckOverflow;
+use crate::diagnostics::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
 use crate::traits::solve;
 pub use crate::traits::solve::NoSolution;
@@ -17,7 +17,7 @@ use crate::ty::{self, GenericArg, Ty, TyCtxt};
 pub mod type_op {
     use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 
-    use crate::ty::{Predicate, Ty, UserType};
+    use crate::ty::{Predicate, Ty, Unnormalized, UserType};
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
@@ -42,16 +42,10 @@ pub mod type_op {
         pub predicate: Predicate<'tcx>,
     }
 
-    /// Normalizes, but not in the new solver.
+    /// Normalizes a value that may contain unnormalized aliases.
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
-    pub struct Normalize<T> {
-        pub value: T,
-    }
-
-    /// Normalizes, and deeply normalizes in the new solver.
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
-    pub struct DeeplyNormalize<T> {
-        pub value: T,
+    pub struct Normalize<'tcx, T> {
+        pub value: Unnormalized<'tcx, T>,
     }
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
@@ -89,16 +83,23 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
-
-pub type CanonicalTypeOpDeeplyNormalizeGoal<'tcx, T> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DeeplyNormalize<T>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<'tcx, T>>>;
 
 pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ImpliedOutlivesBounds<'tcx>>>;
 
 pub type CanonicalDropckOutlivesGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DropckOutlives<'tcx>>>;
+
+/// The implied bounds and normalized MIR signature used by borrowck.
+#[derive(Clone, Debug, StableHash, TypeFoldable, TypeVisitable)]
+pub struct MirBorrowckImpliedOutlivesBounds<'tcx> {
+    pub outlives_bounds: Vec<OutlivesBound<'tcx>>,
+
+    /// The normalized function signature. We need to return this from implied
+    /// bounds computation to deal with #136547.
+    pub normalized_inputs_and_output: Vec<Ty<'tcx>>,
+}
 
 #[derive(Clone, Debug, Default, StableHash, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {

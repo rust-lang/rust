@@ -6,6 +6,8 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, move_path_children_matching};
 
+use crate::PassPolicy;
+
 /// Removes `Drop` terminators whose target is known to be uninitialized at
 /// that point.
 ///
@@ -64,8 +66,9 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Const checking relies on uninitialized drops being removed before drop elaboration.
+        PassPolicy::Required
     }
 }
 

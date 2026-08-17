@@ -1,9 +1,10 @@
 //@ compile-flags: -Znext-solver=globally
+//@ ignore-parallel-frontend query cycle
 // ICE regression test for https://github.com/rust-lang/rust/issues/151327
 
 #![feature(min_specialization)]
 
-trait Foo {
+trait Foo { //~ ERROR cycle detected when coherence checking all impls of trait `Foo`
     type Item;
 }
 
@@ -16,10 +17,11 @@ where
 }
 
 impl<'a, T> Foo for &T
-//~^ ERROR: conflicting implementations of trait `Foo` for type `&_`
 where
     Self::Item: Baz,
 {
 }
 
 fn main() {}
+
+//@ ignore-parallel-frontend query cycle

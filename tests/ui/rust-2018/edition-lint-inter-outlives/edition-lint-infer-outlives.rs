@@ -801,10 +801,9 @@ where
     yoo: &'a U
 }
 
-// https://github.com/rust-lang/rust/issues/105150
-struct InferredWhereBoundWithInlineBound<'a, T: ?Sized>
-//~^ ERROR outlives requirements can be inferred
-    where T: 'a,
+// `T: 'a` is implied by the field — the lint should fire here.
+struct InferredWhereBoundWithInlineBound<'a, T>
+    where T: 'a, //~^ ERROR outlives requirements can be inferred
 {
     data: &'a T,
 }

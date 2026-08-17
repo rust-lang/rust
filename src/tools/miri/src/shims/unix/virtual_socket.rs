@@ -5,15 +5,17 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read};
+use std::rc::Rc;
 
 use rustc_target::spec::Os;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{
-    EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+    EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
+use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::linux_like::epoll::{EpollReadiness, EvalContextExt as _};
+use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
@@ -53,8 +55,13 @@ struct VirtualSocket {
     blocked_write_tid: RefCell<Vec<ThreadId>>,
     /// Whether this fd is non-blocking or not.
     is_nonblock: Cell<bool>,
-    // Differentiate between different virtual socket fd types.
+    /// Differentiate between different virtual socket fd types.
     fd_type: VirtualSocketType,
+    /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
+    /// to the readiness update queue
+    delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 #[derive(Debug)]
@@ -72,6 +79,22 @@ impl Buffer {
 impl VirtualSocket {
     fn peer_fd(&self) -> &WeakFileDescriptionRef<VirtualSocket> {
         self.peer_fd.get().unwrap()
+    }
+}
+
+impl Drop for VirtualSocket {
+    fn drop(&mut self) {
+        if let Some(peer_fd) = self.peer_fd().upgrade() {
+            // If the current readbuf is non-empty when the file description is closed,
+            // notify the peer that data lost has happened in current file description.
+            if let Some(readbuf) = &self.readbuf {
+                if !readbuf.borrow().buf.is_empty() {
+                    peer_fd.peer_lost_data.set(true);
+                }
+            }
+            // Notify peer fd that close has happened, since that can unblock reads and writes.
+            self.delayed_readiness_updates.add(peer_fd);
+        }
     }
 }
 
@@ -93,26 +116,6 @@ impl FileDescription for VirtualSocket {
         interp_ok(Either::Right(mode_name))
     }
 
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            // If the current readbuf is non-empty when the file description is closed,
-            // notify the peer that data lost has happened in current file description.
-            if let Some(readbuf) = &self.readbuf {
-                if !readbuf.borrow().buf.is_empty() {
-                    peer_fd.peer_lost_data.set(true);
-                }
-            }
-            // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.update_epoll_active_events(peer_fd, /* force_edge */ false)?;
-        }
-        interp_ok(Ok(()))
-    }
-
     fn read<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -121,7 +124,7 @@ impl FileDescription for VirtualSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        virtual_socket_read(self, ptr, len, ecx, finish)
+        ecx.virtual_socket_read(self, ptr, len, /* is_non_block */ false, finish)
     }
 
     fn write<'tcx>(
@@ -132,7 +135,7 @@ impl FileDescription for VirtualSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        virtual_socket_write(self, ptr, len, ecx, finish)
+        ecx.virtual_socket_write(self, ptr, len, /* is_non_block */ false, finish)
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -143,7 +146,10 @@ impl FileDescription for VirtualSocket {
         false
     }
 
-    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
     }
 
@@ -198,212 +204,25 @@ impl FileDescription for VirtualSocket {
 
         interp_ok(Scalar::from_i32(0))
     }
-}
 
-/// Write to VirtualSocket based on the space available and return the written byte size.
-fn virtual_socket_write<'tcx>(
-    self_ref: FileDescriptionRef<VirtualSocket>,
-    ptr: Pointer,
-    len: usize,
-    ecx: &mut MiriInterpCx<'tcx>,
-    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-) -> InterpResult<'tcx> {
-    // Always succeed on write size 0.
-    // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
-    if len == 0 {
-        return finish.call(ecx, Ok(0));
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
     }
 
-    // We are writing to our peer's readbuf.
-    let Some(peer_fd) = self_ref.peer_fd().upgrade() else {
-        // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
-        // closed. It is an error to write even if there would be space.
-        return finish.call(ecx, Err(ErrorKind::BrokenPipe.into()));
-    };
-
-    let Some(writebuf) = &peer_fd.readbuf else {
-        // Writing to the read end of a pipe.
-        return finish.call(ecx, Err(IoError::LibcError("EBADF")));
-    };
-
-    // Let's see if we can write.
-    let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
-    if available_space == 0 {
-        if self_ref.is_nonblock.get() {
-            // Non-blocking socketpair with a full buffer.
-            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
-        } else {
-            self_ref.blocked_write_tid.borrow_mut().push(ecx.active_thread());
-            // Blocking socketpair with a full buffer.
-            // Block the current thread; only keep a weak ref for this.
-            let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
-            ecx.block_thread(
-                BlockReason::VirtualSocket,
-                None,
-                callback!(
-                    @capture<'tcx> {
-                        weak_self_ref: WeakFileDescriptionRef<VirtualSocket>,
-                        ptr: Pointer,
-                        len: usize,
-                        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                    }
-                    |this, unblock: UnblockKind| {
-                        assert_eq!(unblock, UnblockKind::Ready);
-                        // If we got unblocked, then our peer successfully upgraded its weak
-                        // ref to us. That means we can also upgrade our weak ref.
-                        let self_ref = weak_self_ref.upgrade().unwrap();
-                        virtual_socket_write(self_ref, ptr, len, this, finish)
-                    }
-                ),
-            );
-        }
-    } else {
-        // There is space to write!
-        let mut writebuf = writebuf.borrow_mut();
-        // Remember this clock so `read` can synchronize with us.
-        ecx.release_clock(|clock| {
-            writebuf.clock.join(clock);
-        })?;
-        // Do full write / partial write based on the space available.
-        let write_size = len.min(available_space);
-        let actual_write_size = ecx.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
-        assert_eq!(actual_write_size, write_size);
-
-        // Need to stop accessing peer_fd so that it can be notified.
-        drop(writebuf);
-
-        // Unblock all threads that are currently blocked on peer_fd's read.
-        let waiting_threads = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
-        // FIXME: We can randomize the order of unblocking.
-        for thread_id in waiting_threads {
-            ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
-        }
-        // Notify epoll waiters: we might be no longer writable, peer might now be readable.
-        // The notification to the peer seems to be always sent on Linux, even if the
-        // FD was readable before.
-        ecx.update_epoll_active_events(self_ref, /* force_edge */ false)?;
-        ecx.update_epoll_active_events(peer_fd, /* force_edge */ true)?;
-
-        return finish.call(ecx, Ok(write_size));
-    }
-    interp_ok(())
-}
-
-/// Read from VirtualSocket and return the number of bytes read.
-fn virtual_socket_read<'tcx>(
-    self_ref: FileDescriptionRef<VirtualSocket>,
-    ptr: Pointer,
-    len: usize,
-    ecx: &mut MiriInterpCx<'tcx>,
-    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-) -> InterpResult<'tcx> {
-    // Always succeed on read size 0.
-    if len == 0 {
-        return finish.call(ecx, Ok(0));
-    }
-
-    let Some(readbuf) = &self_ref.readbuf else {
-        // FIXME: This should return EBADF, but there's no nice way to do that as there's no
-        // corresponding ErrorKind variant.
-        throw_unsup_format!("reading from the write end of a pipe")
-    };
-
-    if readbuf.borrow_mut().buf.is_empty() {
-        if self_ref.peer_fd().upgrade().is_none() {
-            // Socketpair with no peer and empty buffer.
-            // 0 bytes successfully read indicates end-of-file.
-            return finish.call(ecx, Ok(0));
-        } else if self_ref.is_nonblock.get() {
-            // Non-blocking socketpair with writer and empty buffer.
-            // https://linux.die.net/man/2/read
-            // EAGAIN or EWOULDBLOCK can be returned for socket,
-            // POSIX.1-2001 allows either error to be returned for this case.
-            // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
-            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
-        } else {
-            self_ref.blocked_read_tid.borrow_mut().push(ecx.active_thread());
-            // Blocking socketpair with writer and empty buffer.
-            // Block the current thread; only keep a weak ref for this.
-            let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
-            ecx.block_thread(
-                BlockReason::VirtualSocket,
-                None,
-                callback!(
-                    @capture<'tcx> {
-                        weak_self_ref: WeakFileDescriptionRef<VirtualSocket>,
-                        ptr: Pointer,
-                        len: usize,
-                        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                    }
-                    |this, unblock: UnblockKind| {
-                        assert_eq!(unblock, UnblockKind::Ready);
-                        // If we got unblocked, then our peer successfully upgraded its weak
-                        // ref to us. That means we can also upgrade our weak ref.
-                        let self_ref = weak_self_ref.upgrade().unwrap();
-                        virtual_socket_read(self_ref, ptr, len, this, finish)
-                    }
-                ),
-            );
-        }
-    } else {
-        // There's data to be read!
-        let mut readbuf = readbuf.borrow_mut();
-        // Synchronize with all previous writes to this buffer.
-        // FIXME: this over-synchronizes; a more precise approach would be to
-        // only sync with the writes whose data we will read.
-        ecx.acquire_clock(&readbuf.clock)?;
-
-        // Do full read / partial read based on the space available.
-        // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-        let read_size = ecx.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
-        let readbuf_now_empty = readbuf.buf.is_empty();
-
-        // Need to drop before others can access the readbuf again.
-        drop(readbuf);
-
-        // A notification should be provided for the peer file description even when it can
-        // only write 1 byte. This implementation is not compliant with the actual Linux kernel
-        // implementation. For optimization reasons, the kernel will only mark the file description
-        // as "writable" when it can write more than a certain number of bytes. Since we
-        // don't know what that *certain number* is, we will provide a notification every time
-        // a read is successful. This might result in our epoll emulation providing more
-        // notifications than the real system.
-        if let Some(peer_fd) = self_ref.peer_fd().upgrade() {
-            // Unblock all threads that are currently blocked on peer_fd's write.
-            let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
-            // FIXME: We can randomize the order of unblocking.
-            for thread_id in waiting_threads {
-                ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
-            }
-            // Notify epoll waiters: peer is now writable.
-            // Linux seems to always notify the peer if the read buffer is now empty.
-            // (Linux also does that if this was a "big" read, but to avoid some arbitrary
-            // threshold, we do not match that.)
-            ecx.update_epoll_active_events(peer_fd, /* force_edge */ readbuf_now_empty)?;
-        };
-        // Notify epoll waiters: we might be no longer readable.
-        ecx.update_epoll_active_events(self_ref, /* force_edge */ false)?;
-
-        return finish.call(ecx, Ok(read_size));
-    }
-    interp_ok(())
-}
-
-impl UnixFileDescription for VirtualSocket {
-    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadiness> {
-        // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
+    fn readiness(&self) -> Readiness {
+        // We only check the "readable", "writable", "read closed" and "write closed" readiness.
         // If other event flags need to be supported in the future, the check should be added here.
 
-        let mut epoll_readiness = EpollReadiness::empty();
+        let mut readiness = Readiness::EMPTY;
 
         // Check if it is readable.
         if let Some(readbuf) = &self.readbuf {
             if !readbuf.borrow().buf.is_empty() {
-                epoll_readiness.epollin = true;
+                readiness.readable = true;
             }
         } else {
             // Without a read buffer, reading never blocks, so we are always ready.
-            epoll_readiness.epollin = true;
+            readiness.readable = true;
         }
 
         // Check if is writable.
@@ -412,28 +231,321 @@ impl UnixFileDescription for VirtualSocket {
                 let data_size = writebuf.borrow().buf.len();
                 let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
                 if available_space != 0 {
-                    epoll_readiness.epollout = true;
+                    readiness.writable = true;
                 }
             } else {
                 // Without a write buffer, writing never blocks.
-                epoll_readiness.epollout = true;
+                readiness.writable = true;
             }
         } else {
-            // Peer FD has been closed. This always sets both the RDHUP and HUP flags
+            // Peer FD has been closed. This always sets both the "read closed" and "write closed" flags
             // as we do not support `shutdown` that could be used to partially close the stream.
-            epoll_readiness.epollrdhup = true;
-            epoll_readiness.epollhup = true;
+            readiness.read_closed = true;
+            readiness.write_closed = true;
             // Since the peer is closed, even if no data is available reads will return EOF and
             // writes will return EPIPE. In other words, they won't block, so we mark this as ready
             // for read and write.
-            epoll_readiness.epollin = true;
-            epoll_readiness.epollout = true;
-            // If there is data lost in peer_fd, set EPOLLERR.
+            readiness.readable = true;
+            readiness.writable = true;
+            // If there is data lost in peer_fd, set error readiness.
             if self.peer_lost_data.get() {
-                epoll_readiness.epollerr = true;
+                readiness.error = true;
             }
         }
-        interp_ok(epoll_readiness)
+        readiness
+    }
+}
+
+impl UnixFileDescription for VirtualSocket {
+    fn ioctl<'tcx>(
+        &self,
+        op: Scalar,
+        arg: Option<&OpTy<'tcx>>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, i32> {
+        match self.fd_type {
+            VirtualSocketType::Socketpair => { /* fall-through to below */ }
+            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => {
+                // The standard library only uses ioctl for changing the blocking mode
+                // of Unix sockets. Thus, since using ioctl isn't the preferred way of
+                // changing the blocking mode, we don't support it on pipes.
+                throw_unsup_format!("cannot use ioctl on pipe");
+            }
+        }
+
+        let fionbio = ecx.eval_libc("FIONBIO");
+
+        if op == fionbio {
+            // On these OSes, Rust uses the ioctl, so we trust that it is reasonable and controls
+            // the same internal flag as fcntl.
+            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
+            {
+                // FIONBIO cannot be used to change the blocking mode of a socket on solarish targets:
+                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
+                // Since there might be more targets which do weird things with this option, we use
+                // an allowlist instead of just denying solarish targets.
+                throw_unsup_format!(
+                    "ioctl: setting FIONBIO on sockets is unsupported on target {}",
+                    ecx.tcx.sess.target.os
+                );
+            }
+
+            let Some(value_ptr) = arg else {
+                throw_ub_format!("ioctl: setting FIONBIO on sockets requires a third argument");
+            };
+            let value = ecx.deref_pointer_as(value_ptr, ecx.machine.layouts.i32)?;
+            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
+            self.is_nonblock.set(non_block);
+            return interp_ok(0);
+        }
+
+        throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
+    }
+
+    fn as_socket<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &MiriInterpCx<'tcx>,
+    ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
+        match self.fd_type {
+            VirtualSocketType::Socketpair => Some(self),
+            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => None,
+        }
+    }
+}
+
+impl UnixSocketFileDescription for VirtualSocket {
+    fn send<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        ecx.virtual_socket_write(self, ptr, len, is_non_block, finish)
+    }
+
+    fn recv<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        ptr: Pointer,
+        len: usize,
+        is_peek: bool,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        if is_peek {
+            throw_unsup_format!("socketpair: virtual sockets don't support peeking")
+        }
+
+        ecx.virtual_socket_read(self, ptr, len, is_non_block, finish)
+    }
+}
+
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Attempt two write `len` bytes from the buffer pointed to by `ptr` into the
+    /// virtual socket `socket`.
+    /// `is_non_block` specifies whether the operation should be performed as if the
+    /// socket was non-blocking.
+    /// After a successful write, `finish` is called with the amount of bytes written.
+    fn virtual_socket_write(
+        &mut self,
+        socket: FileDescriptionRef<VirtualSocket>,
+        ptr: Pointer,
+        len: usize,
+        is_non_block: bool,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        // Always succeed on write size 0.
+        // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
+        if len == 0 {
+            return finish.call(this, Ok(0));
+        }
+
+        // We are writing to our peer's readbuf.
+        let Some(peer_fd) = socket.peer_fd().upgrade() else {
+            // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
+            // closed. It is an error to write even if there would be space.
+            return finish.call(this, Err(ErrorKind::BrokenPipe.into()));
+        };
+
+        let Some(writebuf) = &peer_fd.readbuf else {
+            // Writing to the read end of a pipe.
+            return finish.call(this, Err(IoError::LibcError("EBADF")));
+        };
+
+        // Let's see if we can write.
+        let available_space =
+            MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
+        if available_space == 0 {
+            if socket.is_nonblock.get() || is_non_block {
+                // Non-blocking socketpair with a full buffer.
+                return finish.call(this, Err(ErrorKind::WouldBlock.into()));
+            } else {
+                socket.blocked_write_tid.borrow_mut().push(this.active_thread());
+                this.block_thread(
+                    BlockReason::VirtualSocket,
+                    None,
+                    callback!(
+                        @capture<'tcx> {
+                            socket: FileDescriptionRef<VirtualSocket>,
+                            ptr: Pointer,
+                            len: usize,
+                            is_non_block: bool,
+                            finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                        }
+                        |this, unblock: UnblockKind| {
+                            assert_eq!(unblock, UnblockKind::Ready);
+                            this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
+                        }
+                    ),
+                );
+            }
+        } else {
+            // There is space to write!
+            let mut writebuf = writebuf.borrow_mut();
+            // Remember this clock so `read` can synchronize with us.
+            this.release_clock(|clock| {
+                writebuf.clock.join(clock);
+            })?;
+            // Do full write / partial write based on the space available.
+            let write_size = len.min(available_space);
+            let actual_write_size =
+                this.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
+            assert_eq!(actual_write_size, write_size);
+
+            // Need to stop accessing peer_fd so that it can be notified.
+            drop(writebuf);
+
+            // Unblock all threads that are currently blocked on peer_fd's read.
+            let waiting_threads = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
+            // FIXME: We can randomize the order of unblocking.
+            for thread_id in waiting_threads {
+                this.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
+            }
+            // Notify readiness watchers: we might be no longer writable, peer might now be readable.
+            // The notification to the peer seems to be always sent on Linux, even if the
+            // FD was readable before.
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
+            this.update_fd_readiness(peer_fd, ReadinessUpdateFlags::FORCE_EDGE)?;
+
+            return finish.call(this, Ok(write_size));
+        }
+        interp_ok(())
+    }
+
+    /// Attempt to read `len` bytes from the virtual socket `socket` into the buffer
+    /// pointed to by `ptr`.
+    /// `is_non_block` specifies whether the operation should be performed as if the
+    /// socket was non-blocking.
+    /// After a successful read, `finish` is called with the amount of bytes read.
+    fn virtual_socket_read(
+        &mut self,
+        socket: FileDescriptionRef<VirtualSocket>,
+        ptr: Pointer,
+        len: usize,
+        is_non_block: bool,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        // Always succeed on read size 0.
+        if len == 0 {
+            return finish.call(this, Ok(0));
+        }
+
+        let Some(readbuf) = &socket.readbuf else {
+            // FIXME: This should return EBADF, but there's no nice way to do that as there's no
+            // corresponding ErrorKind variant.
+            throw_unsup_format!("reading from the write end of a pipe")
+        };
+
+        if readbuf.borrow_mut().buf.is_empty() {
+            if socket.peer_fd().upgrade().is_none() {
+                // Socketpair with no peer and empty buffer.
+                // 0 bytes successfully read indicates end-of-file.
+                return finish.call(this, Ok(0));
+            } else if socket.is_nonblock.get() || is_non_block {
+                // Non-blocking socketpair with writer and empty buffer.
+                // https://linux.die.net/man/2/read
+                // EAGAIN or EWOULDBLOCK can be returned for socket,
+                // POSIX.1-2001 allows either error to be returned for this case.
+                // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
+                return finish.call(this, Err(ErrorKind::WouldBlock.into()));
+            } else {
+                socket.blocked_read_tid.borrow_mut().push(this.active_thread());
+                this.block_thread(
+                    BlockReason::VirtualSocket,
+                    None,
+                    callback!(
+                        @capture<'tcx> {
+                            socket: FileDescriptionRef<VirtualSocket>,
+                            ptr: Pointer,
+                            len: usize,
+                            is_non_block: bool,
+                            finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                        }
+                        |this, unblock: UnblockKind| {
+                            assert_eq!(unblock, UnblockKind::Ready);
+                            this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
+                        }
+                    ),
+                );
+            }
+        } else {
+            // There's data to be read!
+            let mut readbuf = readbuf.borrow_mut();
+            // Synchronize with all previous writes to this buffer.
+            // FIXME: this over-synchronizes; a more precise approach would be to
+            // only sync with the writes whose data we will read.
+            this.acquire_clock(&readbuf.clock)?;
+
+            // Do full read / partial read based on the space available.
+            // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
+            let read_size = this.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
+            let readbuf_now_empty = readbuf.buf.is_empty();
+
+            // Need to drop before others can access the readbuf again.
+            drop(readbuf);
+
+            // A notification should be provided for the peer file description even when it can
+            // only write 1 byte. This implementation is not compliant with the actual Linux kernel
+            // implementation. For optimization reasons, the kernel will only mark the file description
+            // as "writable" when it can write more than a certain number of bytes. Since we
+            // don't know what that *certain number* is, we will provide a notification every time
+            // a read is successful. This might result in our readiness emulation providing more
+            // events than the real system.
+            if let Some(peer_fd) = socket.peer_fd().upgrade() {
+                // Unblock all threads that are currently blocked on peer_fd's write.
+                let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
+                // FIXME: We can randomize the order of unblocking.
+                for thread_id in waiting_threads {
+                    this.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
+                }
+                // Notify readiness watchers: peer is now writable.
+                // Linux seems to always notify the peer if the read buffer is now empty.
+                // (Linux also does that if this was a "big" read, but to avoid some arbitrary
+                // threshold, we do not match that.)
+                this.update_fd_readiness(
+                    peer_fd,
+                    if readbuf_now_empty {
+                        ReadinessUpdateFlags::FORCE_EDGE
+                    } else {
+                        ReadinessUpdateFlags::DEFAULT
+                    },
+                )?;
+            };
+            // Notify readiness watchers: we might be no longer readable.
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
+
+            return finish.call(this, Ok(read_size));
+        }
+        interp_ok(())
     }
 }
 
@@ -460,8 +572,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
-        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
-            // SOCK_NONBLOCK only exists on Linux.
+        if matches!(
+            this.tcx.sess.target.os,
+            Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
+        ) {
+            // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
+            // Solaris, and Illumos targets.
             let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
             let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
             if flags & sock_nonblock == sock_nonblock {
@@ -505,6 +621,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
@@ -514,6 +632,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.
@@ -575,6 +695,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: None,
@@ -584,6 +706,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.

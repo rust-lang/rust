@@ -19,7 +19,7 @@ fn main() {
         unsafe {
             (&mut ptr as *mut _ as *mut *const u8).write(&buf as *const _ as *const u8);
         }
-        // Re-borrow that. This should be UB.
-        let _ptr = &*ptr; //~ERROR: required 256 byte alignment
+        // Dereference that. This should be UB.
+        let _ptr = &raw const *ptr; //~ERROR: required 256 byte alignment
     }
 }

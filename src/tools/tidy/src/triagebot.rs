@@ -51,7 +51,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 // The full-path doesn't exists, maybe it's a glob, let's add it to the glob set builder
                 // to be checked against all the file and directories in the repository.
                 let trimmed_path = clean_path.trim_end_matches('/');
-                builder.add(globset::Glob::new(&format!("{trimmed_path}{{,/*}}")).unwrap());
+                builder.add(
+                    globset::GlobBuilder::new(&format!("{trimmed_path}{{,/*}}"))
+                        .empty_alternates(true)
+                        .build()
+                        .unwrap(),
+                );
                 glob_entries.push(clean_path.to_string());
             } else if is_in_submodule(Path::new(clean_path)) {
                 check.error(format!(

@@ -14,8 +14,8 @@ note: ...so that the method type is compatible with trait
    |
 LL |     fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `fn(&Subject<'_, _, _, _>) -> Subject<'_, std::collections::hash_map::Keys<'_, _, _>, _, _>`
-              found `fn(&Subject<'_, _, _, _>) -> Subject<'a, std::collections::hash_map::Keys<'_, _, _>, _, _>`
+   = note: expected `fn(&Subject<'_, _, _, _>) -> Subject<'_, Keys<'_, _, _>, _, _>`
+              found `fn(&Subject<'_, _, _, _>) -> Subject<'a, Keys<'_, _, _>, _, _>`
 note: but, the lifetime must be valid for the lifetime `'a` as defined here...
   --> $DIR/resolve-re-error-ice.rs:10:6
    |

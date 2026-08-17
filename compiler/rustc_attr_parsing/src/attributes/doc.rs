@@ -1,32 +1,30 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::{Applicability, msg};
-use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::{
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
 };
-use rustc_session::errors::feature_err;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
+use rustc_errors::{Applicability, msg};
+use rustc_feature::AttributeStability;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
-    AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
+    AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
+    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocTestLiteral, DocTestTakesList,
-    DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
-    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
+    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
+    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
+    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
-};
-use crate::session_diagnostics::{
-    DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
-    DocAttributeNotAttribute, DocKeywordNotKeyword, UnusedDuplicate,
 };
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
@@ -348,8 +346,11 @@ impl DocParser {
                 // If it's a list, then only `any()` and `none()` are allowed and they must not
                 // contain any item.
                 MetaItemOrLitParser::MetaItemParser(sub_item) => {
-                    if let Some(ident) = sub_item.ident()
-                        && [sym::any, sym::none].contains(&ident.name)
+                    let Some(ident) = sub_item.ident() else {
+                        cx.adcx().expected_identifier(sub_item.path().span());
+                        continue;
+                    };
+                    if [sym::any, sym::none].contains(&ident.name)
                         && let ArgParser::List(list) = sub_item.args()
                         && list.mixed().count() == 0
                     {
@@ -371,9 +372,7 @@ impl DocParser {
                     } else {
                         cx.emit_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                            DocAutoCfgHideShowUnexpectedItem {
-                                attr_name: sub_item.ident().unwrap().name,
-                            },
+                            DocAutoCfgHideShowUnexpectedItem { attr_name: ident.name },
                             sub_item.span(),
                         );
                     }
@@ -727,7 +726,7 @@ impl DocParser {
         match args {
             ArgParser::NoArgs => {
                 let suggestions = cx.adcx().suggestions();
-                let span = cx.attr_span;
+                let span = cx.inner_span;
                 cx.emit_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                     IllFormedAttributeInput::new(&suggestions, None, None),

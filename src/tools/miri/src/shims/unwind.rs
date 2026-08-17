@@ -62,7 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         try_fn: &OpTy<'tcx>,
         data: &OpTy<'tcx>,
         catch_fn: &OpTy<'tcx>,
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -82,6 +82,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let try_fn = this.read_pointer(try_fn)?;
         let data = this.read_immediate(data)?;
         let catch_fn = this.read_pointer(catch_fn)?;
+        let dest = this.force_allocation(dest)?; // needs to be valid across fn calls
 
         // Now we make a function call, and pass `data` as first and only argument.
         let f_instance = this.get_ptr_fn(try_fn)?.as_instance()?;
@@ -97,14 +98,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
-        this.write_null(dest)?;
+        this.write_null(&dest)?;
 
         // In unwind mode, we tag this frame with the extra data needed to catch unwinding.
         // This lets `handle_stack_pop` (below) know that we should stop unwinding
         // when we pop this frame.
         if this.tcx.sess.panic_strategy() == PanicStrategy::Unwind {
             this.frame_mut().extra.catch_unwind =
-                Some(CatchUnwindData { catch_fn, data, dest: dest.clone(), ret });
+                Some(CatchUnwindData { catch_fn, data, dest, ret });
         }
 
         interp_ok(())

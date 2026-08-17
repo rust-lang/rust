@@ -3,8 +3,8 @@ use std::{assert_matches, fmt, iter};
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
@@ -119,7 +119,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                         &add_call_guards::CriticalCallEdges,
                     ],
                     Some(MirPhase::Runtime(RuntimePhase::Optimized)),
-                    pm::Optimizations::Allowed,
                 );
 
                 return body;
@@ -143,7 +142,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                     &add_call_guards::CriticalCallEdges,
                 ],
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-                pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
             debug!("make_shim({:?}) = {:?}", shim, body);
@@ -327,7 +325,12 @@ pub fn build_drop_shim<'tcx>(
         start.terminator = Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, def_id, [ty::GenericArg::from(slice_ty)], span),
+                func: Operand::function_handle(
+                    tcx,
+                    def_id,
+                    &[ty::GenericArg::from(slice_ty)],
+                    span,
+                ),
                 args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
                 destination: Place::from(RETURN_PLACE),
                 target: Some(return_block),
@@ -456,7 +459,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         None
     }
 
-    fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {}
+    fn drop_flags_for(&mut self, _path: Self::Path, _mode: DropFlagMode) -> Vec<Place<'tcx>> {
+        Vec::new()
+    }
 
     fn field_subpath(&self, _path: Self::Path, _field: FieldIdx) -> Option<Self::Path> {
         None
@@ -618,7 +623,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = Ty::new_fn_def(tcx, self.def_id, [ty]);
+        let func_ty = tcx.type_of(self.def_id).instantiate(tcx, &[ty.into()]).skip_norm_wip();
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,
             user_ty: None,
@@ -1061,6 +1066,8 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // so this would otherwise not get filled).
     body.set_mentioned_items(Vec::new());
 
+    // We don't pass any passes here, we just force a phase change to `Optimized`.
+    // Otherwise this bit of MIR will trigger assertions trying to detect MIR with an invalid phase.
     pm::run_passes_no_validate(
         tcx,
         &mut body,

@@ -97,7 +97,13 @@ pub(crate) fn orphan_check_impl(
     );
 
     if tcx.trait_is_auto(trait_def_id) {
-        let self_ty = trait_ref.self_ty();
+        // Expand free alias types (e.g. lazy type aliases) so that the checks below operate
+        // on the type the alias resolves to rather than the alias itself. Otherwise an impl
+        // whose self type is an alias expanding to an otherwise valid nominal type would be
+        // wrongly rejected, e.g. `unsafe impl Sync for Alias {}` where `type Alias = Local;`.
+        // Expansion also reveals genuinely problematic self types (trait objects, opaque
+        // types, type parameters), so those keep being rejected. See issue #157756.
+        let self_ty = tcx.expand_free_alias_tys(trait_ref.self_ty());
 
         // If the impl is in the same crate as the auto-trait, almost anything
         // goes.
@@ -313,7 +319,8 @@ fn orphan_check<'tcx>(
     }
 
     // (1)  Instantiate all generic params with fresh inference vars.
-    let infcx = tcx.infer_ctxt().build(TypingMode::Coherence);
+    let infcx =
+        tcx.infer_ctxt().enable_next_solver_overflow_fcw(false).build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();
     let args = infcx.fresh_args_for_item(cause.span, impl_def_id.to_def_id());
     let trait_ref = trait_ref.instantiate(tcx, args).skip_norm_wip();
@@ -325,7 +332,7 @@ fn orphan_check<'tcx>(
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), Unnormalized::new_wip(user_ty));
         let ty = infcx.resolve_vars_if_possible(ty);
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             return Ok(user_ty);
         }
 

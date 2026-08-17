@@ -20,7 +20,8 @@ trait Foo {
 
 impl Foo for () {
     type Item = String where String: Copy;
-    //~^ ERROR overflow evaluating the requirement `String: Copy`
+    //~^ ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
 }
 
 fn main() {

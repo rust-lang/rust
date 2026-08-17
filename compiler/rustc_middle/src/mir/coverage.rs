@@ -70,7 +70,7 @@ impl Debug for CovTerm {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, StableHash)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]
 pub enum CoverageKind {
     /// Marks a span that might otherwise not be represented in MIR, so that
     /// coverage instrumentation can associate it with its enclosing block/BCB.

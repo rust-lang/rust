@@ -174,7 +174,7 @@ fn satisfied_from_param_env<'tcx>(
             if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new(self.infcx);
                 ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
-                    && ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+                    && ocx.evaluate_obligations_error_on_ambiguity().no_errors()
             }) {
                 self.single_match = match self.single_match {
                     None => Some(Ok(c)),
@@ -191,7 +191,7 @@ fn satisfied_from_param_env<'tcx>(
                 // with its own `ConstEvaluatable` bound in the param env which we will visit separately.
                 //
                 // If we start allowing directly writing `ConstKind::Expr` without an intermediate anon const
-                // this will be incorrect. It might be worth investigating making `predicates_of` elaborate
+                // this will be incorrect. It might be worth investigating making `clauses_of` elaborate
                 // all of the `ConstEvaluatable` bounds rather than having a visitor here.
             }
         }
@@ -199,8 +199,8 @@ fn satisfied_from_param_env<'tcx>(
 
     let mut single_match: Option<Result<ty::Const<'tcx>, ()>> = None;
 
-    for pred in param_env.caller_bounds() {
-        match pred.kind().skip_binder() {
+    for clause in param_env.caller_bounds() {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::ConstEvaluatable(ce) => {
                 let b_ct = tcx.expand_abstract_consts(ce);
                 let mut v = Visitor { ct, infcx, param_env, single_match };
@@ -215,7 +215,7 @@ fn satisfied_from_param_env<'tcx>(
     if let Some(Ok(c)) = single_match {
         let ocx = ObligationCtxt::new(infcx);
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
-        assert!(ocx.evaluate_obligations_error_on_ambiguity().is_empty());
+        assert!(ocx.evaluate_obligations_error_on_ambiguity().no_errors());
         return true;
     }
 

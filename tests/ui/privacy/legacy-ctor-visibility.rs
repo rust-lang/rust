@@ -7,7 +7,7 @@ mod m {
         use crate::S;
         fn f() {
             S(10);
-            //~^ ERROR expected function, tuple struct or tuple variant, found struct `S`
+            //~^ ERROR cannot find function, tuple struct or tuple variant `S` in this scope
         }
     }
 }

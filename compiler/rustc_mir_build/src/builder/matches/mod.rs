@@ -12,8 +12,8 @@ use std::{debug_assert_matches, mem};
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
@@ -28,7 +28,7 @@ use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::matches::buckets::PartitionedCandidates;
 use crate::builder::matches::user_ty::ProjectedUserTypesNode;
-use crate::builder::scope::{DropKind, LintLevel};
+use crate::builder::scope::LintLevel;
 use crate::builder::{
     BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
 };
@@ -791,7 +791,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id)
             && matches!(schedule_drop, ScheduleDrops::Yes)
         {
-            self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+            self.schedule_drop_storage(span, region_scope, local_id);
         }
         let local_info = self.local_decls[local_id].local_info.as_mut().unwrap_crate_local();
         if let LocalInfo::User(BindingForm::Var(var_info)) = &mut **local_info {
@@ -808,7 +808,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let local_id = self.var_local_id(var, for_guard);
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) {
-            self.schedule_drop(span, region_scope, local_id, DropKind::Value);
+            self.schedule_drop_value(span, region_scope, local_id);
         }
     }
 
@@ -1746,9 +1746,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'tcx>],
     ) -> BasicBlock {
-        ensure_sufficient_stack(|| {
-            self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
-        })
+        self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
     }
 
     /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`

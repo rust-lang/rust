@@ -18,7 +18,7 @@ use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution, assembly,
 };
 
-impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
+impl<D, I> assembly::GoalKind<D> for ty::HostEffectClause<I>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -136,6 +136,7 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
@@ -143,7 +144,7 @@ where
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
-            .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
+            .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
         {
             return Err(NoSolution.into());
         }
@@ -170,12 +171,12 @@ where
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
-            ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
+            ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id.into())
+                .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
@@ -221,10 +222,10 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let where_clause_bounds = cx
-                .predicates_of(goal.predicate.def_id().into())
+                .clauses_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|p| goal.with(cx, p));
+                .map(|c| goal.with(cx, c));
 
             let const_conditions = cx
                 .const_conditions(goal.predicate.def_id().into())
@@ -289,7 +290,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        todo!("Fn* are not yet const")
+        unimplemented!("Fn* are not yet const")
     }
 
     #[instrument(level = "trace", skip_all, ret)]
@@ -347,7 +348,7 @@ where
         _goal: Goal<I, Self>,
         _kind: rustc_type_ir::ClosureKind,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        todo!("AsyncFn* are not yet const")
+        unimplemented!("AsyncFn* are not yet const")
     }
 
     fn consider_builtin_async_fn_kind_helper_candidate(
@@ -451,6 +452,13 @@ where
         unreachable!("BikeshedGuaranteedNoDrop is not const");
     }
 
+    fn consider_builtin_try_as_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        unreachable!("`TryAsDynCompat` is not const: {:?}", goal)
+    }
+
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
@@ -474,7 +482,7 @@ where
     #[instrument(level = "trace", skip(self))]
     pub(super) fn compute_host_effect_goal(
         &mut self,
-        goal: Goal<I, ty::HostEffectPredicate<I>>,
+        goal: Goal<I, ty::HostEffectClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
             let trait_goal: Goal<I, ty::TraitPredicate<I>> =

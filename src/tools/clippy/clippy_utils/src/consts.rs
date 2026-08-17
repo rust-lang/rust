@@ -4,12 +4,12 @@
 //! executable MIR bodies, so we have to do this instead.
 #![expect(clippy::float_cmp)]
 
-use crate::res::MaybeDef;
-use crate::source::{SpanExt, walk_span_to_context};
+use crate::res::MaybeDef as _;
+use crate::source::{SpanExt as _, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use rustc_abi::Size;
-use rustc_apfloat::Float;
+use rustc_apfloat::Float as _;
 use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_hir::def::{DefKind, Res};
@@ -893,7 +893,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
             if self
                 .tcx
-                .instantiate_and_check_impossible_predicates((owner_def_id, identity_args))
+                .instantiate_and_check_impossible_clauses((owner_def_id, identity_args))
             {
                 return None;
             }
@@ -979,6 +979,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn binop(&self, op: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant> {
         let l = self.expr(left)?;
         let r = self.expr(right);
@@ -1027,6 +1028,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 },
                 ty::Uint(ity) => {
                     let bits = ity.bits();
+                    let mask = !0u128 >> (128 - bits);
 
                     match op {
                         BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
@@ -1034,8 +1036,12 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
                         BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                         BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                        BinOpKind::Shr if r < bits => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
-                        BinOpKind::Shl if r < bits => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::Shr if r < bits => {
+                            l.checked_shr(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
+                        BinOpKind::Shl if r < bits => {
+                            l.checked_shl(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
                         BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                         BinOpKind::BitOr => Some(Constant::Int(l | r)),
                         BinOpKind::BitAnd => Some(Constant::Int(l & r)),

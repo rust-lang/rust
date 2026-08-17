@@ -19,7 +19,7 @@ note: type in trait
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
    = note: expected signature `fn(&Bar)`
-              found signature `#[target_features] fn(&Bar)`
+              found signature `#[target_feature(..)] fn(&Bar)`
 
 error: `#[target_feature(..)]` cannot be applied to safe trait method
   --> $DIR/trait-impl.rs:21:5

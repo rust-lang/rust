@@ -14,6 +14,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{TyCtxt, Unnormalized};
 
@@ -113,11 +114,11 @@ fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> 
     if child == trait_ {
         return true;
     }
-    let predicates = tcx.explicit_super_predicates_of(child);
-    predicates
+    let clauses = tcx.explicit_super_clauses_of(child);
+    clauses
         .iter_identity_copied()
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|(pred, _)| Some(pred.as_trait_clause()?.def_id()))
+        .filter_map(|(clause, _)| Some(clause.as_trait_clause()?.def_id()))
         .any(|did| trait_is_same_or_supertrait(tcx, did, trait_))
 }
 
@@ -161,8 +162,8 @@ pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Ge
         let Some(param_sizedness) = type_params.get_mut(param) else { return true };
 
         let sizedness = match cx.tcx.as_lang_item(trait_ref.trait_.def_id()) {
-            Some(hir::LangItem::Sized) => Sizedness::Sized,
-            Some(hir::LangItem::MetaSized) => Sizedness::MetaSized,
+            Some(LangItem::Sized) => Sizedness::Sized,
+            Some(LangItem::MetaSized) => Sizedness::MetaSized,
             _ => return true,
         };
 

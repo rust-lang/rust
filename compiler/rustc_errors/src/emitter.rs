@@ -175,7 +175,7 @@ pub trait Emitter {
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, name) => {
-                        Some((macro_kind, name, expn_data.hide_backtrace))
+                        Some((macro_kind, name, expn_data.diagnostic_opaque))
                     }
                 }
             })
@@ -188,8 +188,7 @@ pub trait Emitter {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            // Skip builtin macros, as their expansion isn't relevant to the end user. This includes
-            // actual intrinsics, like `asm!`.
+            // Skip macros annotated with `#[diagnostic::opaque]`. Builtin macros are "opaque" too.
             if let Some((macro_kind, name, _)) = has_macro_spans.first()
                 && let Some((_, _, false)) = has_macro_spans.last()
             {
@@ -334,6 +333,13 @@ pub trait Emitter {
     // we move these spans from the external macros to their corresponding use site.
     fn fix_multispan_in_extern_macros(&self, span: &mut MultiSpan) {
         let Some(source_map) = self.source_map() else { return };
+        let should_hide = |span| {
+            source_map.is_imported(span) || {
+                let expn = span.data().ctxt.outer_expn_data();
+                expn.diagnostic_opaque && matches!(expn.kind, ExpnKind::Macro(MacroKind::Bang, _))
+            }
+        };
+
         // First, find all the spans in external macros and point instead at their use site.
         let replacements: Vec<(Span, Span)> = span
             .primary_spans()
@@ -341,11 +347,11 @@ pub trait Emitter {
             .copied()
             .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
             .filter_map(|sp| {
-                if !sp.is_dummy() && source_map.is_imported(sp) {
+                if !sp.is_dummy() && should_hide(sp) {
                     let mut span = sp;
                     while let Some(callsite) = span.parent_callsite() {
                         span = callsite;
-                        if !source_map.is_imported(span) {
+                        if !should_hide(span) {
                             return Some((sp, span));
                         }
                     }

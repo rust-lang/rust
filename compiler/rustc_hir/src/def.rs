@@ -4,15 +4,16 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 
+use crate as hir;
 use crate::definitions::DefPathData;
-use crate::hir;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
@@ -165,7 +166,8 @@ pub enum DefKind {
     Use,
     /// An `extern` block.
     ForeignMod,
-    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]` or `enum E { A = 1 + 2 }`, or an
+    /// inline constant, e.g. `const { 1 + 2 }`.
     ///
     /// Not all anon-consts are actually still relevant in the HIR. We lower
     /// trivial const-arguments directly to `hir::ConstArgKind::Path`, at which
@@ -176,8 +178,6 @@ pub enum DefKind {
     /// constants should only be reachable by iterating all definitions of a
     /// given crate, you should not have to worry about this.
     AnonConst,
-    /// An inline constant, e.g. `const { 1 + 2 }`
-    InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
     /// A field in a struct, enum or union. e.g.
@@ -239,7 +239,6 @@ impl DefKind {
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
             DefKind::AnonConst => "constant expression",
-            DefKind::InlineConst => "inline constant",
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
@@ -263,7 +262,6 @@ impl DefKind {
             | DefKind::OpaqueTy
             | DefKind::Impl { .. }
             | DefKind::Use
-            | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
             DefKind::Macro(kinds) => kinds.article(),
             _ => "a",
@@ -296,7 +294,6 @@ impl DefKind {
 
             // Not namespaced.
             DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
@@ -343,7 +340,6 @@ impl DefKind {
             DefKind::Use => DefPathData::Use,
             DefKind::ForeignMod => DefPathData::ForeignMod,
             DefKind::AnonConst => DefPathData::AnonConst,
-            DefKind::InlineConst => DefPathData::AnonConst,
             DefKind::OpaqueTy => DefPathData::OpaqueTy,
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
@@ -390,7 +386,6 @@ impl DefKind {
             | DefKind::Fn
             | DefKind::ForeignTy
             | DefKind::Impl { .. }
-            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::Static { .. }
             | DefKind::Struct
@@ -443,46 +438,8 @@ impl DefKind {
             | DefKind::ConstParam
             | DefKind::LifetimeParam
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::GlobalAsm
             | DefKind::ExternCrate => false,
-        }
-    }
-
-    /// Returns `true` if `self` is a kind of definition that does not have its own
-    /// type-checking context, i.e. closure, coroutine or inline const.
-    #[inline]
-    pub fn is_typeck_child(self) -> bool {
-        match self {
-            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => true,
-            DefKind::Mod
-            | DefKind::Struct
-            | DefKind::Union
-            | DefKind::Enum
-            | DefKind::Variant
-            | DefKind::Trait
-            | DefKind::TyAlias
-            | DefKind::ForeignTy
-            | DefKind::TraitAlias
-            | DefKind::AssocTy
-            | DefKind::TyParam
-            | DefKind::Fn
-            | DefKind::Const { .. }
-            | DefKind::ConstParam
-            | DefKind::Static { .. }
-            | DefKind::Ctor(_, _)
-            | DefKind::AssocFn
-            | DefKind::AssocConst { .. }
-            | DefKind::Macro(_)
-            | DefKind::ExternCrate
-            | DefKind::Use
-            | DefKind::ForeignMod
-            | DefKind::AnonConst
-            | DefKind::OpaqueTy
-            | DefKind::Field
-            | DefKind::LifetimeParam
-            | DefKind::GlobalAsm
-            | DefKind::Impl { .. } => false,
         }
     }
 }
@@ -516,7 +473,7 @@ impl DefKind {
 ///   pointing to the definition of `str_to_string` in the current crate.
 //
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
-pub enum Res<Id = hir::HirId> {
+pub enum Res<Id = HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
     /// **Not bound to a specific namespace.**
@@ -1006,4 +963,6 @@ pub enum LifetimeRes {
     ElidedAnchor { start: NodeId, end: NodeId },
 }
 
-pub type DocLinkResMap = UnordMap<(Symbol, Namespace), Option<Res<NodeId>>>;
+// FxIndexMap is necessary because its data ends up in .rmeta files,
+// so its iteration order must be consistent. See #159677 for context.
+pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;

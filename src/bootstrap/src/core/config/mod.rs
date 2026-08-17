@@ -1,16 +1,5 @@
 //! Entry point for the `config` module.
 //!
-//! This module defines two macros:
-//!
-//! - `define_config!`: A declarative macro used instead of `#[derive(Deserialize)]` to reduce
-//!   compile time and binary size, especially for the bootstrap binary.
-//!
-//! - `check_ci_llvm!`: A compile-time assertion macro that ensures certain settings are
-//!   not enabled when `download-ci-llvm` is active.
-//!
-//! A declarative macro is used here in place of a procedural derive macro to minimize
-//! the compile time of the bootstrap process.
-//!
 //! Additionally, this module defines common types, enums, and helper functions used across
 //! various TOML configuration sections in `bootstrap.toml`.
 //!
@@ -22,16 +11,19 @@
 #[expect(clippy::module_inception)]
 mod config;
 pub mod flags;
+pub(crate) mod macros;
 pub mod target_selection;
 #[cfg(test)]
 mod tests;
 pub mod toml;
 
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::path::PathBuf;
+use std::str::FromStr;
 
-use build_helper::exit;
 pub use config::*;
+use serde::de::Unexpected;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 pub use target_selection::TargetSelection;
@@ -40,142 +32,7 @@ pub use toml::change_id::ChangeId;
 pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
-use crate::Display;
-use crate::str::FromStr;
-
-// We are using a decl macro instead of a derive proc macro here to reduce the compile time of bootstrap.
-#[macro_export]
-macro_rules! define_config {
-    ($(#[$attr:meta])* struct $name:ident {
-        $(
-            $(#[$field_attr:meta])*
-            $field:ident: Option<$field_ty:ty> = $field_key:literal,
-        )*
-    }) => {
-        $(#[$attr])*
-        pub struct $name {
-            $(
-                $(#[$field_attr])*
-                pub $field: Option<$field_ty>,
-            )*
-        }
-
-        impl Merge for $name {
-            fn merge(
-                &mut self,
-                _parent_config_path: Option<PathBuf>,
-                _included_extensions: &mut HashSet<PathBuf>,
-                other: Self,
-                replace: ReplaceOpt
-            ) {
-                $(
-                    match replace {
-                        ReplaceOpt::IgnoreDuplicate => {
-                            if self.$field.is_none() {
-                                self.$field = other.$field;
-                            }
-                        },
-                        ReplaceOpt::Override => {
-                            if other.$field.is_some() {
-                                self.$field = other.$field;
-                            }
-                        }
-                        ReplaceOpt::ErrorOnDuplicate => {
-                            if other.$field.is_some() {
-                                if self.$field.is_some() {
-                                    if cfg!(test) {
-                                        panic!("overriding existing option")
-                                    } else {
-                                        eprintln!("overriding existing option: `{}`", stringify!($field));
-                                        exit!(2);
-                                    }
-                                } else {
-                                    self.$field = other.$field;
-                                }
-                            }
-                        }
-                    }
-                )*
-            }
-        }
-
-        // The following is a trimmed version of what serde_derive generates. All parts not relevant
-        // for toml deserialization have been removed. This reduces the binary size and improves
-        // compile time of bootstrap.
-        impl<'de> Deserialize<'de> for $name {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct Field;
-                impl<'de> serde::de::Visitor<'de> for Field {
-                    type Value = $name;
-                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        f.write_str(concat!("struct ", stringify!($name)))
-                    }
-
-                    #[inline]
-                    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-                    where
-                        A: serde::de::MapAccess<'de>,
-                    {
-                        $(let mut $field: Option<$field_ty> = None;)*
-                        while let Some(key) =
-                            match serde::de::MapAccess::next_key::<String>(&mut map) {
-                                Ok(val) => val,
-                                Err(err) => {
-                                    return Err(err);
-                                }
-                            }
-                        {
-                            match &*key {
-                                $($field_key => {
-                                    if $field.is_some() {
-                                        return Err(<A::Error as serde::de::Error>::duplicate_field(
-                                            $field_key,
-                                        ));
-                                    }
-                                    $field = match serde::de::MapAccess::next_value::<$field_ty>(
-                                        &mut map,
-                                    ) {
-                                        Ok(val) => Some(val),
-                                        Err(err) => {
-                                            return Err(err);
-                                        }
-                                    };
-                                })*
-                                key => {
-                                    return Err(serde::de::Error::unknown_field(key, FIELDS));
-                                }
-                            }
-                        }
-                        Ok($name { $($field),* })
-                    }
-                }
-                const FIELDS: &'static [&'static str] = &[
-                    $($field_key,)*
-                ];
-                Deserializer::deserialize_struct(
-                    deserializer,
-                    stringify!($name),
-                    FIELDS,
-                    Field,
-                )
-            }
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! check_ci_llvm {
-    ($name:expr) => {
-        assert!(
-            $name.is_none(),
-            "setting {} is incompatible with download-ci-llvm.",
-            stringify!($name).replace("_", "-")
-        );
-    };
-}
+use crate::utils::helpers;
 
 pub(crate) trait Merge {
     fn merge(
@@ -213,7 +70,7 @@ impl<T> Merge for Option<T> {
                             panic!("overriding existing option")
                         } else {
                             eprintln!("overriding existing option");
-                            exit!(2);
+                            helpers::exit_process(2);
                         }
                     } else {
                         *self = other;
@@ -248,6 +105,35 @@ impl<'de> Deserialize<'de> for CompilerBuiltins {
             StringOrBool::Bool(true) => Self::BuildLLVMFuncs,
             StringOrBool::String(path) => Self::LinkLLVMBuiltinsLib(path),
         })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Allocator {
+    System,
+    Jemalloc,
+}
+
+impl Allocator {
+    pub fn feature_name(self) -> Option<&'static str> {
+        match self {
+            Allocator::System => None,
+            Allocator::Jemalloc => Some("jemalloc"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Allocator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        match name.as_str() {
+            "system" => Ok(Self::System),
+            "jemalloc" => Ok(Self::Jemalloc),
+            other => Err(serde::de::Error::unknown_variant(other, &["system", "jemalloc"])),
+        }
     }
 }
 
@@ -378,6 +264,53 @@ impl std::str::FromStr for SplitDebuginfo {
     }
 }
 
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum CompressDebuginfo {
+    Zlib,
+    #[default]
+    Off,
+}
+
+impl CompressDebuginfo {
+    fn default_on() -> Self {
+        Self::Zlib
+    }
+}
+
+impl std::str::FromStr for CompressDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "zlib" => Ok(CompressDebuginfo::Zlib),
+            "off" => Ok(CompressDebuginfo::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for CompressDebuginfo {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrBool::Bool(value) => {
+                if value {
+                    CompressDebuginfo::default_on()
+                } else {
+                    CompressDebuginfo::Off
+                }
+            }
+            StringOrBool::String(value) => CompressDebuginfo::from_str(&value).map_err(|_| {
+                D::Error::invalid_value(Unexpected::Str(&value), &"`zlib` or `off`")
+            })?,
+        })
+    }
+}
+
 /// Describes how to handle conflicts in merging two `TomlConfig`
 #[derive(Copy, Clone, Debug)]
 pub enum ReplaceOpt {
@@ -433,6 +366,47 @@ pub enum GccCiMode {
     /// If it is not available on CI, it will be built locally instead.
     #[default]
     DownloadFromCi,
+}
+
+/// Determines how will LLVM be provided.
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum LlvmCiMode {
+    /// Build LLVM from the local `src/llvm-project` submodule.
+    BuildLocally,
+    /// Try to download LLVM from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    #[default]
+    DownloadFromCi,
+}
+
+impl LlvmCiMode {
+    pub fn download_from_ci(&self) -> bool {
+        match self {
+            LlvmCiMode::BuildLocally => false,
+            LlvmCiMode::DownloadFromCi => true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DebuggerPath {
+    /// Use a debugger at this path
+    Path(PathBuf),
+    /// Try to automatically discover a version of a debugger from the environment
+    Discover,
+}
+
+impl<'d> Deserialize<'d> for DebuggerPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as serde::Deserializer<'d>>::Error>
+    where
+        D: serde::Deserializer<'d>,
+    {
+        let value = String::deserialize(deserializer)?;
+        match value.as_str() {
+            "discover" => Ok(Self::Discover),
+            path => Ok(Self::Path(PathBuf::from(path))),
+        }
+    }
 }
 
 pub fn threads_from_config(v: u32) -> u32 {

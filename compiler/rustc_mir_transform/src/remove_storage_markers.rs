@@ -4,11 +4,15 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
+use crate::PassPolicy;
+
 pub(super) struct RemoveStorageMarkers;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveStorageMarkers {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0 && !sess.emit_lifetime_markers()
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(
+            sess.mir_opt_level() > 0 && !sess.emit_lifetime_markers(),
+        )
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -21,9 +25,5 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveStorageMarkers {
                 _ => true,
             })
         }
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }

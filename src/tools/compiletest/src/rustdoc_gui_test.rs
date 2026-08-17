@@ -63,6 +63,8 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         rustc_path: Utf8PathBuf::default(),
         cargo_path: Default::default(),
         stage0_rustc_path: Default::default(),
+        run_make_support_rlib: Default::default(),
+        run_make_support_rmeta: Default::default(),
         query_rustc_path: Default::default(),
         rustdoc_path: Default::default(),
         coverage_dump_path: Default::default(),
@@ -79,7 +81,6 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         sysroot_base: Utf8PathBuf::default(),
         stage: Default::default(),
         stage_id: String::default(),
-        debugger: Default::default(),
         run_ignored: Default::default(),
         with_rustc_debug_assertions: Default::default(),
         with_std_debug_assertions: Default::default(),
@@ -140,8 +141,10 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         default_codegen_backend: CodegenBackend::Llvm,
         override_codegen_backend: None,
         bypass_ignore_backends: Default::default(),
+        gcc_supported_target_tuples: vec![],
         jobs: Default::default(),
         parallel_frontend_threads: Config::DEFAULT_PARALLEL_FRONTEND_THREADS,
         iteration_count: Config::DEFAULT_ITERATION_COUNT,
+        wasm_proc_macros: false,
     }
 }

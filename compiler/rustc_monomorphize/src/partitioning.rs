@@ -98,10 +98,11 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
@@ -457,6 +458,13 @@ fn merge_codegen_units<'tcx>(
                 };
                 cgu.set_name(new_cgu_name);
             }
+
+            // Assign symbol name to each CGU units.
+            cgu.set_symbol_name(Symbol::intern(&rustc_symbol_mangling::mangle_cgu(
+                cx.tcx,
+                LOCAL_CRATE,
+                Either::Right(cgu.name().as_str()),
+            )));
         }
 
         // A sorted order here ensures what follows can be deterministic.
@@ -491,6 +499,12 @@ fn merge_codegen_units<'tcx>(
             let numbered_codegen_unit_name =
                 cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(suffix));
             cgu.set_name(numbered_codegen_unit_name);
+
+            cgu.set_symbol_name(Symbol::intern(&rustc_symbol_mangling::mangle_cgu(
+                cx.tcx,
+                LOCAL_CRATE,
+                Either::Left(index.try_into().unwrap()),
+            )));
         }
     }
 }
@@ -631,6 +645,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
                 ty::InstanceKind::Intrinsic(..)
+                | ty::InstanceKind::LlvmIntrinsic(..)
                 | ty::InstanceKind::Virtual(..)
                 | ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
@@ -770,6 +785,17 @@ fn static_visibility<'tcx>(
         *can_be_internalized = false;
         default_visibility(tcx, def_id, false)
     } else {
+        if tcx.def_kind(def_id).has_codegen_attrs() {
+            // Prevent EII and `rustc_std_internal_symbol` statics being internalized.
+            let attrs = tcx.codegen_fn_attrs(def_id);
+            if attrs.flags.intersects(
+                CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+                    | CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM,
+            ) {
+                *can_be_internalized = false;
+            }
+        }
+
         Visibility::Hidden
     }
 }
@@ -810,12 +836,23 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Shim(ShimKind::FnPtr(..))
         | InstanceKind::Virtual(..)
         | InstanceKind::Intrinsic(..)
+        | InstanceKind::LlvmIntrinsic(..)
         | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
         | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Visibility::Hidden,
     };
+
+    let attrs = tcx.codegen_fn_attrs(def_id);
+    if attrs.flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL) {
+        *can_be_internalized = false;
+        return default_visibility(
+            tcx,
+            def_id,
+            instance.args.non_erasable_generics().next().is_some(),
+        );
+    }
 
     // Both the `start_fn` lang item and `main` itself should not be exported,
     // so we give them with `Hidden` visibility but these symbols are

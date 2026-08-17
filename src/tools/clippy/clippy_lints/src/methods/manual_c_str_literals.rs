@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::{get_parent_expr, sym};
@@ -31,19 +31,28 @@ pub(super) fn check_as_ptr<'tcx>(
         && !get_parent_expr(cx, casts_removed).is_some_and(
             |parent| matches!(parent.kind, ExprKind::Call(func, _) if is_c_str_function(cx, func).is_some()),
         )
-        && let Some(sugg) = rewrite_as_cstr(cx, lit.span)
+        && let Some(sugg) = rewrite_as_cstr(cx, lit.span, lit.node)
         && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             MANUAL_C_STR_LITERALS,
             receiver.span,
             "manually constructing a nul-terminated string",
-            r#"use a `c""` literal"#,
-            sugg,
-            // an additional cast may be needed, since the type of `CStr::as_ptr` and
-            // `"".as_ptr()` can differ and is platform dependent
-            Applicability::HasPlaceholders,
+            |diag| {
+                diag.span_suggestion(
+                    receiver.span,
+                    r#"use a `c""` literal"#,
+                    sugg,
+                    Applicability::HasPlaceholders,
+                );
+                if casts_removed.hir_id == expr.hir_id {
+                    diag.note(
+                        "an additional cast may be needed, since the type of `c\"\".as_ptr()` \
+                        and `b\"\".as_ptr()` can differ and is platform dependent",
+                    );
+                }
+            },
         );
     }
 }
@@ -77,7 +86,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
                     && let ExprKind::Lit(lit) = arg.kind
                     && let LitKind::ByteStr(_, StrStyle::Cooked) | LitKind::Str(_, StrStyle::Cooked) = lit.node =>
             {
-                check_from_bytes(cx, expr, arg, fn_name);
+                check_from_bytes(cx, expr, arg, lit.node, fn_name);
             },
             sym::from_ptr => check_from_ptr(cx, expr, arg),
             _ => {},
@@ -92,7 +101,7 @@ fn check_from_ptr(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) {
         && !lit.span.from_expansion()
         && let ExprKind::Lit(lit) = lit.kind
         && let LitKind::ByteStr(_, StrStyle::Cooked) = lit.node
-        && let Some(sugg) = rewrite_as_cstr(cx, lit.span)
+        && let Some(sugg) = rewrite_as_cstr(cx, lit.span, lit.node)
     {
         span_lint_and_sugg(
             cx,
@@ -106,7 +115,7 @@ fn check_from_ptr(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) {
     }
 }
 /// Checks `CStr::from_bytes_with_nul(b"foo\0")`
-fn check_from_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, method: Symbol) {
+fn check_from_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, lit: LitKind, method: Symbol) {
     let (span, applicability) = if let Some(parent) = get_parent_expr(cx, expr)
         && let ExprKind::MethodCall(method, ..) = parent.kind
         && [sym::unwrap, sym::expect].contains(&method.ident.name)
@@ -120,7 +129,7 @@ fn check_from_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, metho
         (expr.span, Applicability::HasPlaceholders)
     };
 
-    let Some(sugg) = rewrite_as_cstr(cx, arg.span) else {
+    let Some(sugg) = rewrite_as_cstr(cx, arg.span, lit) else {
         return;
     };
 
@@ -139,7 +148,11 @@ fn check_from_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, metho
 /// `b"foo\0"` -> `c"foo"`
 ///
 /// Returns `None` if it doesn't end in a NUL byte.
-fn rewrite_as_cstr(cx: &LateContext<'_>, span: Span) -> Option<String> {
+fn rewrite_as_cstr(cx: &LateContext<'_>, span: Span, lit: LitKind) -> Option<String> {
+    if !is_nul_terminated(lit) {
+        return None;
+    }
+
     let mut sugg = String::from("c") + snippet(cx, span.source_callsite(), "..").trim_start_matches('b');
 
     // NUL byte should always be right before the closing quote.
@@ -164,6 +177,16 @@ fn rewrite_as_cstr(cx: &LateContext<'_>, span: Span) -> Option<String> {
     }
 
     Some(sugg)
+}
+
+/// Checks whether the `ByteString` or `String` literal ends with a `NUL` character
+fn is_nul_terminated(lit: LitKind) -> bool {
+    match lit {
+        LitKind::ByteStr(content, _) => content.as_byte_str().last() == Some(&0),
+        // In UTF-8, no multi-byte character can contain a NUL byte
+        LitKind::Str(content, _) => content.as_str().as_bytes().last() == Some(&0),
+        _ => false,
+    }
 }
 
 fn get_cast_target<'tcx>(e: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {

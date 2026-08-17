@@ -37,7 +37,6 @@
 // ```
 
 #![crate_name = "foo"]
-#![allow(unused)]
 #![warn(clippy::literal_string_with_formatting_args)]
 
 fn another_bad() {

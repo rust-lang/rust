@@ -6,7 +6,7 @@ use askama::Template;
 use askama::filters::Safe;
 use cargo_metadata::Message;
 use cargo_metadata::diagnostic::{Applicability, Diagnostic};
-use clippy_config::ClippyConfiguration;
+use clippy_config::ConfMetadata;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
 use declare_clippy_lint::LintInfo;
@@ -24,7 +24,7 @@ use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict};
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 use std::{fs, iter, thread};
@@ -82,8 +82,9 @@ fn internal_extern_flags() -> Vec<String> {
         .copied()
         .filter(|n| !crates.contains_key(n))
         .collect();
-    assert!(
-        not_found.is_empty(),
+    assert_eq!(
+        not_found,
+        [] as [&str; 0],
         "dependencies not found in depinfo: {not_found:?}\n\
         help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
         help: Try adding to dev-dependencies in Cargo.toml\n\
@@ -540,7 +541,7 @@ impl DiagnosticCollector {
                 }
             }
 
-            let configs = clippy_config::get_configuration_metadata();
+            let configs = clippy_config::Conf::get_metadata();
             let mut metadata: Vec<LintMetadata> = LINTS
                 .iter()
                 .map(|lint| LintMetadata::new(lint, &applicabilities, &configs))
@@ -612,7 +613,7 @@ struct LintMetadata {
 }
 
 impl LintMetadata {
-    fn new(lint: &LintInfo, applicabilities: &HashMap<String, Applicability>, configs: &[ClippyConfiguration]) -> Self {
+    fn new(lint: &LintInfo, applicabilities: &HashMap<String, Applicability>, configs: &[ConfMetadata]) -> Self {
         let name = lint.name_lower();
         let applicability = applicabilities
             .get(&name)

@@ -1,12 +1,12 @@
 error[E0038]: the trait `Trait` is not dyn compatible
-  --> $DIR/not-dyn-compatible.rs:27:30
+  --> $DIR/not-dyn-compatible.rs:26:30
    |
 LL |         let dyn_object: &dyn Trait = &Struct(64);
    |                              ^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/not-dyn-compatible.rs:14:26
+  --> $DIR/not-dyn-compatible.rs:13:26
    |
 LL | trait Trait {
    |       ----- this trait is not dyn compatible...

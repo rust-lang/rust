@@ -11,7 +11,8 @@
 //!
 //! # Examples
 //!
-//! ```no_run
+#![cfg_attr(target_os = "wasi", doc = "```no_run")]
+#![cfg_attr(not(target_os = "wasi"), doc = "```ignore (needs wasi)")]
 //! use std::fs::File;
 //! use std::os::wasi::prelude::*;
 //!

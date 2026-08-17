@@ -1,12 +1,7 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::unnecessary_map_or)]
-#![allow(
-    clippy::no_effect,
-    clippy::eq_op,
-    clippy::unnecessary_lazy_evaluations,
-    clippy::nonminimal_bool,
-    clippy::manual_assert_eq
-)]
+#![expect(clippy::eq_op, clippy::unnecessary_lazy_evaluations)]
+
 #[clippy::msrv = "1.70.0"]
 #[macro_use]
 extern crate proc_macros;

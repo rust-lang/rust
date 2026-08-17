@@ -44,7 +44,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
             || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
             || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_closure_to_fn_ptr_coercion(err, expr, expected, expr_ty)
             || self.suggest_boxing_when_appropriate(
                 err,
                 expr.peel_blocks().span,
@@ -332,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
-        let body = self.tcx.hir_body_owned_by(self.body_id);
+        let body = self.tcx.hir_body_owned_by(self.body_def_id);
         expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.

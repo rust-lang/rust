@@ -67,7 +67,7 @@ fn classify<'a, Ty, C>(
         },
         BackendRepr::SimdVector { .. } => {}
         BackendRepr::SimdScalableVector { .. } => {}
-        BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
+        BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
             }

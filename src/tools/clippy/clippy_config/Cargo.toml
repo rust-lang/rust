@@ -1,16 +1,21 @@
 [package]
 name = "clippy_config"
-version = "0.1.98"
+version = "0.1.99"
 edition = "2024"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arrayvec = { version = "0.7", default-features = false }
 clippy_utils = { path = "../clippy_utils" }
-itertools = "0.12"
-serde = { version = "1.0", features = ["derive"] }
-toml = "0.7.3"
+itertools = "0.15"
+
+[dependencies.toml]
+version = "1.1"
+default-features = false
+# preserve_order keeps diagnostic output in file order
+features = ["parse", "preserve_order"]
 
 [dev-dependencies]
 walkdir = "2.3"

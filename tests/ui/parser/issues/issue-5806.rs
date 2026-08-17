@@ -2,6 +2,6 @@
 //@ normalize-stderr: "os error \d+" -> "os error $$ACCESS_DENIED_CODE"
 
 #[path = "../parser"]
-mod foo; //~ ERROR couldn't read
+mod foo; //~ ERROR couldn't find file `$DIR/../parser`
 
 fn main() {}

@@ -82,12 +82,13 @@ macro do_not_use_safe_print($($t:tt)*) {
 #[allow(unused_imports)]
 use {do_not_use_print as print, do_not_use_print as println};
 
+mod allocator;
 pub mod args;
 pub mod pretty;
 #[macro_use]
 mod print;
+mod diagnostics;
 pub mod highlighter;
-mod session_diagnostics;
 
 // Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
 // dependency in `compiler/rustc_driver/Cargo.toml`, to keep
@@ -102,7 +103,7 @@ mod signal_handler {
     pub(super) fn install() {}
 }
 
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     CantEmitMIR, RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
@@ -231,28 +232,21 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
 
-        // This is used for early exits unrelated to errors. E.g. when just
-        // printing some information without compiling, or exiting immediately
-        // after parsing, etc.
-        let early_exit = || {
-            sess.dcx().abort_if_errors();
-        };
-
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
             describe_lints(sess, registered_lints);
-            return early_exit();
+            return;
         }
 
         // We have now handled all help options, exit
         if help_only {
-            return early_exit();
+            return;
         }
 
         if print_crate_info(codegen_backend, sess, has_input) == Compilation::Stop {
-            return early_exit();
+            return;
         }
 
         if !has_input {
@@ -261,12 +255,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
         if !sess.opts.unstable_opts.ls.is_empty() {
             list_metadata(sess, &*codegen_backend.metadata_loader());
-            return early_exit();
+            return;
         }
 
         if sess.opts.unstable_opts.link_only {
             process_rlink(sess, compiler);
-            return early_exit();
+            return;
         }
 
         // Parse the crate root source code (doesn't parse submodules yet)
@@ -285,28 +279,23 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing { krate: &krate });
             }
             trace!("finished pretty-printing");
-            return early_exit();
+            return;
         }
 
         if callbacks.after_crate_root_parsing(compiler, &mut krate) == Compilation::Stop {
-            return early_exit();
+            return;
         }
 
         if sess.opts.unstable_opts.parse_crate_root_only {
-            return early_exit();
+            return;
         }
 
         let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
-            let early_exit = || {
-                sess.dcx().abort_if_errors();
-                None
-            };
-
             // Make sure name resolution and macro expansion is run.
             let _ = tcx.resolver_for_lowering();
 
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
-                return early_exit();
+                return None;
             }
 
             passes::write_dep_info(tcx);
@@ -316,11 +305,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
-                return early_exit();
+                return None;
             }
 
             if sess.opts.unstable_opts.no_analysis {
-                return early_exit();
+                return None;
             }
 
             tcx.ensure_ok().analysis(());
@@ -330,16 +319,16 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
-                return early_exit();
+                return None;
             }
 
-            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+            if sess.opts.output_types.contains_key(&OutputType::Mir) {
                 if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }
 
-            let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
 
             tcx.report_unused_features();
 
@@ -348,8 +337,8 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
         // Linking is done outside the `compiler.enter()` so that the
         // `GlobalCtxt` within `Queries` can be freed as early as possible.
-        if let Some(linker) = linker {
-            linker.link(sess, codegen_backend);
+        if let (Some(linker), incr_comp_session) = linker {
+            linker.link(sess, incr_comp_session, codegen_backend);
         }
     })
 }
@@ -598,15 +587,26 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref path) => {
             let mut v = Vec::new();
-            locator::list_file_metadata(
+            if let Err(error) = locator::list_file_metadata(
                 &sess.target,
                 path,
                 metadata_loader,
                 &mut v,
                 &sess.opts.unstable_opts.ls,
                 sess.cfg_version,
-            )
-            .unwrap();
+            ) {
+                if path.extension().is_some_and(|extension| extension == "rs") {
+                    let mut err = sess
+                        .dcx()
+                        .struct_fatal("`-Zls` takes a `.rmeta` file as input, not a source file");
+                    if rustc_session::utils::was_invoked_from_cargo() {
+                        // Give a Cargo-tailored suggestion if we're coming from Cargo
+                        err.note("use `rustc +nightly -Zls=... path/to/file.rmeta` directly, instead of going through Cargo");
+                    }
+                    err.emit();
+                }
+                sess.dcx().fatal(error.to_string());
+            }
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
@@ -713,13 +713,13 @@ fn print_crate_info(
                 let crate_name = passes::get_crate_name(sess, attrs);
                 let lint_store = crate::unerased_lint_store(sess);
                 let features = rustc_expand::config::features(sess, attrs, crate_name);
-                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess);
+                let registered_lint_tools = rustc_resolve::registered_lint_tools_ast(sess, attrs);
                 let builder = rustc_lint::LintLevelsBuilder::crate_root(
                     sess,
                     &features,
                     true,
                     lint_store,
-                    &registered_tools,
+                    &registered_lint_tools,
                     attrs,
                 );
                 for lint in lint_store.get_lints() {
@@ -1412,7 +1412,7 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
                     return None;
                 }
                 if let Some(unstable_opts) = config && unstable_opts.metrics_dir.is_some() {
-                    tracing::warn!("ignoring -Zerror-metrics in favor of RUSTC_ICE for destination of ICE report files");
+                    tracing::warn!("ignoring -Zmetrics-dir in favor of RUSTC_ICE for destination of ICE report files");
                 }
                 PathBuf::from(s)
             }
@@ -1539,17 +1539,17 @@ fn report_ice(
     if !info.payload().is::<rustc_errors::ExplicitBug>()
         && !info.payload().is::<rustc_errors::DelayedBugPanic>()
     {
-        dcx.emit_err(session_diagnostics::Ice);
+        dcx.emit_err(diagnostics::Ice);
     }
 
     if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-        dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
+        dcx.emit_note(diagnostics::IceBugReportInternalFeature);
     } else {
-        dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        dcx.emit_note(diagnostics::IceBugReport { bug_report_url });
 
         // Only emit update nightly hint for users on nightly builds.
         if rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
-            dcx.emit_note(session_diagnostics::UpdateNightlyNote);
+            dcx.emit_note(diagnostics::UpdateNightlyNote);
         }
     }
 
@@ -1562,7 +1562,7 @@ fn report_ice(
         // Create the ICE dump target file.
         match crate::fs::File::options().create(true).append(true).open(path) {
             Ok(mut file) => {
-                dcx.emit_note(session_diagnostics::IcePath { path: path.clone() });
+                dcx.emit_note(diagnostics::IcePath { path: path.clone() });
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = write!(file, "\n\nrustc version: {version}\nplatform: {tuple}");
                 }
@@ -1570,12 +1570,12 @@ fn report_ice(
             }
             Err(err) => {
                 // The path ICE couldn't be written to disk, provide feedback to the user as to why.
-                dcx.emit_warn(session_diagnostics::IcePathError {
+                dcx.emit_warn(diagnostics::IcePathError {
                     path: path.clone(),
                     error: err.to_string(),
                     env_var: std::env::var_os("RUSTC_ICE")
                         .map(PathBuf::from)
-                        .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
+                        .map(|env_var| diagnostics::IcePathErrorEnv { env_var }),
                 });
                 None
             }
@@ -1584,12 +1584,12 @@ fn report_ice(
         None
     };
 
-    dcx.emit_note(session_diagnostics::IceVersion { version, triple: tuple });
+    dcx.emit_note(diagnostics::IceVersion { version, triple: tuple });
 
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
-        dcx.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
+        dcx.emit_note(diagnostics::IceFlags { flags: flags.join(" ") });
         if excluded_cargo_defaults {
-            dcx.emit_note(session_diagnostics::IceExcludeCargoDefaults);
+            dcx.emit_note(diagnostics::IceExcludeCargoDefaults);
         }
     }
 

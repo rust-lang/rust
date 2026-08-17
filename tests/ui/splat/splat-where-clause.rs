@@ -1,17 +1,17 @@
 //@ run-pass
-//! Test using `#[splat]` on tuple arguments with where clause bounds.
+//! Test using `#[rustc_splat]` on tuple arguments with where clause bounds.
 
 #![allow(incomplete_features)]
 #![feature(splat)]
 #![feature(tuple_trait)]
 
-fn where_splat<T>(#[splat] _t: T) where T: std::marker::Tuple {}
+fn where_splat<T>(#[rustc_splat] _t: T) where T: std::marker::Tuple {}
 
-fn where_splat_with_extra<T>(#[splat] _t: T, _extra: u32) where T: std::marker::Tuple {}
+fn where_splat_with_extra<T>(#[rustc_splat] _t: T, _extra: u32) where T: std::marker::Tuple {}
 
-fn impl_tuple_splat(#[splat] _t: impl std::marker::Tuple) {}
+fn impl_tuple_splat(#[rustc_splat] _t: impl std::marker::Tuple) {}
 
-fn impl_tuple_splat_with_extra(#[splat] _t: impl std::marker::Tuple, _extra: u32) {}
+fn impl_tuple_splat_with_extra(#[rustc_splat] _t: impl std::marker::Tuple, _extra: u32) {}
 
 fn main() {
     // empty tuple

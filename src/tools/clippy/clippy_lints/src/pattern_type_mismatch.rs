@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::{
     Body, Expr, ExprKind, FnDecl, LetExpr, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind, intravisit,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;

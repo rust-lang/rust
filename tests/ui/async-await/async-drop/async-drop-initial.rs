@@ -54,7 +54,7 @@ fn main() {
     let fut = pin!(async {
         test_async_drop(Int(0), 16).await;
         test_async_drop(AsyncInt(0), 32).await;
-        test_async_drop([AsyncInt(1), AsyncInt(2)], 104).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)], 112).await;
         test_async_drop((AsyncInt(3), AsyncInt(4)), 120).await;
         test_async_drop(5, 16).await;
         let j = 42;

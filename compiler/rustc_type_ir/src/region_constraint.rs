@@ -49,19 +49,19 @@ use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
-use crate::visit::TypeSuperVisitable;
 use crate::{
-    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ConstKind, DebruijnIndex,
-    FallibleTypeFolder, InferCtxtLike, InferTy, Interner, IsRigid, OutlivesPredicate, RegionKind,
+    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
+    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind,
     TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
-    Variance, VisitorResult, set_aliases_to_non_rigid,
+    Variance, VisitorResult, max_universe, set_aliases_to_non_rigid, try_visit,
+    walk_visitable_list,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct Assumptions<I: Interner> {
-    pub type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
-    pub region_outlives: TransitiveRelation<I::Region>,
-    pub inverse_region_outlives: TransitiveRelation<I::Region>,
+    pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
+    pub region_outlives: TransitiveRelation<Region<I>>,
+    pub inverse_region_outlives: TransitiveRelation<Region<I>>,
 }
 
 impl<I: Interner> Assumptions<I> {
@@ -74,8 +74,8 @@ impl<I: Interner> Assumptions<I> {
     }
 
     pub fn new(
-        type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
-        region_outlives: TransitiveRelation<I::Region>,
+        type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
+        region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
         Self {
             inverse_region_outlives: {
@@ -92,9 +92,10 @@ impl<I: Interner> Assumptions<I> {
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
 pub enum RegionConstraint<I: Interner> {
     Ambiguity,
-    RegionOutlives(I::Region, I::Region),
+    RegionOutlives(Region<I>, Region<I>),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
     /// region due to an assumption in the environment. This cannot be satisfied via component outlives
     /// or item bounds.
@@ -104,7 +105,7 @@ pub enum RegionConstraint<I: Interner> {
     ///
     /// We eagerly destructure alias outlives requirements into region outlives requirements corresponding to
     /// component outlives & item bound outlives rules, leaving only param env candidates.
-    AliasTyOutlivesViaEnv(Binder<I, (AliasTy<I>, I::Region)>),
+    AliasTyOutlivesViaEnv(Binder<I, (AliasTy<I>, Region<I>)>),
     /// This is an `I::Ty` for two reasons:
     /// 1. We need the type visitable impl to be able to `visit_ty` on this so canonicalization
     ///    knows about the placeholder
@@ -114,18 +115,18 @@ pub enum RegionConstraint<I: Interner> {
     ///
     /// We cannot eagerly look at assumptions as we are usually working with an incomplete set of assumptions
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
-    PlaceholderTyOutlives(I::Ty, I::Region),
+    PlaceholderTyOutlives(I::Ty, Region<I>),
 
     And(Box<[RegionConstraint<I>]>),
     Or(Box<[RegionConstraint<I>]>),
 }
 
 // This is not a derived impl because a perfect derive leads to inductive
-// cycle causing the trait to never actually be implemented
+// cycle causing the trait to never actually be implemented.
 #[cfg(feature = "nightly")]
 impl<I: Interner> StableHash for RegionConstraint<I>
 where
-    I::Region: StableHash,
+    Region<I>: StableHash,
     I::Ty: StableHash,
     I::GenericArgs: StableHash,
     I::TraitAssocTyId: StableHash,
@@ -220,44 +221,26 @@ impl<I: Interner> TypeFoldable<I> for RegionConstraint<I> {
 
 impl<I: Interner> TypeVisitable<I> for RegionConstraint<I> {
     fn visit_with<F: TypeVisitor<I>>(&self, f: &mut F) -> F::Result {
-        use core::ops::ControlFlow::*;
-
         use RegionConstraint::*;
 
         match self {
             Ambiguity => (),
             RegionOutlives(a, b) => {
-                if let b @ Break(_) = a.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
-                if let b @ Break(_) = b.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
+                try_visit!(a.visit_with(f));
+                try_visit!(b.visit_with(f));
             }
             AliasTyOutlivesViaEnv(outlives) => {
-                return outlives.visit_with(f);
+                try_visit!(outlives.visit_with(f));
             }
             PlaceholderTyOutlives(a, b) => {
-                if let b @ Break(_) = a.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
-                if let b @ Break(_) = b.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
+                try_visit!(a.visit_with(f));
+                try_visit!(b.visit_with(f));
             }
             And(and) => {
-                for a in and {
-                    if let b @ Break(_) = a.visit_with(f).branch() {
-                        return F::Result::from_branch(b);
-                    };
-                }
+                walk_visitable_list!(f, and);
             }
             Or(or) => {
-                for a in or {
-                    if let b @ Break(_) = a.visit_with(f).branch() {
-                        return F::Result::from_branch(b);
-                    };
-                }
+                walk_visitable_list!(f, or);
             }
         };
 
@@ -357,10 +340,11 @@ impl<I: Interner> RegionConstraint<I> {
                 [or1, rest_ors @ ..] => {
                     let mut choices = vec![];
                     for choice in or1 {
-                        choices.extend(permutations(rest_ors).into_iter().map(|mut and| {
-                            and.push(choice.clone());
-                            and
-                        }));
+                        choices.extend(
+                            permutations(rest_ors)
+                                .into_iter()
+                                .map(|and| std::iter::once(choice.clone()).chain(and).collect()),
+                        );
                     }
                     choices
                 }
@@ -536,7 +520,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
         for ub in region_flow.reachable_from(r) {
             // we want to retain any region constraints between two "placeholder-likes" where for our
             // purposes a placeholder-like is either a placeholder or variable in a lower universe
-            let is_placeholder_like = |r: I::Region| match r.kind() {
+            let is_placeholder_like = |r: Region<I>| match r.kind() {
                 RegionKind::ReLateParam(..)
                 | RegionKind::ReEarlyParam(..)
                 | RegionKind::RePlaceholder(..)
@@ -915,6 +899,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
                 | TypingMode::ErasedNotCoherence { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen => (),
             };
@@ -949,9 +934,9 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
 /// Returns all regions `r2` for which `r: r2` is known to hold in
 /// the universe associated with `assumptions`
 pub fn regions_outlived_by<I: Interner>(
-    r: I::Region,
+    r: Region<I>,
     assumptions: &Assumptions<I>,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     // FIXME(-Zassumptions-on-binders): do we need to be adding the reflexive edge here?
     assumptions.region_outlives.reachable_from(r).into_iter().chain([r])
 }
@@ -959,17 +944,17 @@ pub fn regions_outlived_by<I: Interner>(
 /// Returns all regions `r2` for which `r2: r` is known to hold in
 /// the universe associated with `assumptions`
 pub fn regions_outliving<I: Interner>(
-    r: I::Region,
+    r: Region<I>,
     assumptions: &Assumptions<I>,
     cx: I,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     assumptions
         .inverse_region_outlives
         .reachable_from(r)
         .into_iter()
         // FIXME(-Zassumptions-on-binders): 'static may have been an input region canonicalized to something else is that important?
         // FIXME(-Zassumptions-on-binders): do we need to adding the reflexive edge here?
-        .chain([r, I::Region::new_static(cx)])
+        .chain([r, Region::new_static(cx)])
 }
 
 /// Returns all regions `r` for which `!t: r` is known to hold in
@@ -978,94 +963,16 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
     t: I::Ty,
     assumptions: &Assumptions<I>,
     cx: I,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     match t.kind() {
         TyKind::Placeholder(..) | TyKind::Param(..) => (),
         _ => unreachable!("non-placeholder in `regions_outlived_by_placeholder`: {t:?}"),
     }
 
     assumptions.type_outlives.iter().flat_map(move |binder| match binder.no_bound_vars() {
-        Some(OutlivesPredicate(ty, r)) => (ty == t).then_some(r),
-        None => Some(I::Region::new_static(cx)),
+        Some(OutlivesClause(ty, r)) => (ty == t).then_some(r),
+        None => Some(Region::new_static(cx)),
     })
-}
-
-/// The largest universe a variable or placeholder was from in `t`
-pub fn max_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner, T: TypeFoldable<I>>(
-    infcx: &Infcx,
-    t: T,
-) -> UniverseIndex {
-    let mut visitor = MaxUniverse::new(infcx);
-    // `max_universe` is also used while rewriting constraints to lower universes,
-    // so do not rely on callers having already resolved non-region infer vars.
-    let t = infcx.resolve_vars_if_possible(t);
-    t.visit_with(&mut visitor);
-    visitor.max_universe()
-}
-
-// FIXME(-Zassumptions-on-binders): Share this with the visitor used by generalization. We currently don't
-// as generalization does not look at universes of inference variables but we do
-struct MaxUniverse<'a, Infcx: InferCtxtLike> {
-    max_universe: UniverseIndex,
-    infcx: &'a Infcx,
-}
-
-impl<'a, Infcx: InferCtxtLike> MaxUniverse<'a, Infcx> {
-    fn new(infcx: &'a Infcx) -> Self {
-        MaxUniverse { infcx, max_universe: UniverseIndex::ROOT }
-    }
-
-    fn max_universe(self) -> UniverseIndex {
-        self.max_universe
-    }
-}
-
-impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
-    for MaxUniverse<'a, Infcx>
-{
-    type Result = ();
-
-    fn visit_ty(&mut self, t: I::Ty) {
-        match t.kind() {
-            TyKind::Placeholder(p) => self.max_universe = self.max_universe.max(p.universe),
-            TyKind::Infer(InferTy::TyVar(inf)) => {
-                let u = self.infcx.universe_of_ty(inf).unwrap();
-                debug!("var {inf:?} in universe {u:?}");
-                self.max_universe = self.max_universe.max(u);
-            }
-            _ => t.super_visit_with(self),
-        }
-    }
-
-    fn visit_const(&mut self, c: I::Const) {
-        match c.kind() {
-            ConstKind::Placeholder(p) => self.max_universe = self.max_universe.max(p.universe),
-            ConstKind::Infer(rustc_type_ir::InferConst::Var(inf)) => {
-                let u = self.infcx.universe_of_ct(inf).unwrap();
-                debug!("var {inf:?} in universe {u:?}");
-                self.max_universe = self.max_universe.max(u);
-            }
-            _ => c.super_visit_with(self),
-        }
-    }
-
-    fn visit_region(&mut self, r: I::Region) {
-        match r.kind() {
-            RegionKind::RePlaceholder(p) => self.max_universe = self.max_universe.max(p.universe),
-            RegionKind::ReVar(var) => match self.infcx.opportunistic_resolve_lt_var(var).kind() {
-                RegionKind::RePlaceholder(p) => {
-                    self.max_universe = self.max_universe.max(p.universe)
-                }
-                RegionKind::ReVar(var) => {
-                    let u = self.infcx.universe_of_lt(var).unwrap();
-                    debug!("var {var:?} in universe {u:?}");
-                    self.max_universe = self.max_universe.max(u);
-                }
-                _ => (),
-            },
-            _ => (),
-        }
-    }
 }
 
 pub struct PlaceholderReplacer<I: Interner> {
@@ -1081,7 +988,7 @@ impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
         self.cx
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
             RegionKind::RePlaceholder(p) if p.universe == self.universe => {
                 let bound_vars_len = self.bound_vars.len();
@@ -1089,7 +996,7 @@ impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
                     var: BoundVar::from_usize(self.existing_var_count + bound_vars_len),
                     kind: p.bound.kind,
                 });
-                I::Region::new_bound(self.cx, self.current_index, *mapped_var)
+                Region::new_bound(self.cx, self.current_index, *mapped_var)
             }
             // FIXME(-Zassumptions-on-binders): We should be handling region variables here somehow
             _ => r,
@@ -1111,7 +1018,7 @@ impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
 #[instrument(level = "debug", skip(infcx), ret)]
 fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    bound_outlives: Binder<I, (AliasTy<I>, I::Region)>,
+    bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
     assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     let mut candidates = Vec::new();
@@ -1120,7 +1027,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
     infcx.enter_forall_with_empty_assumptions(bound_outlives, |(alias, r)| {
         for bound_type_outlives in assumptions.type_outlives.iter() {
-            let OutlivesPredicate(alias2, r2) =
+            let OutlivesClause(alias2, r2) =
                 infcx.instantiate_binder_with_infer(*bound_type_outlives);
 
             let mut relation = HigherRankedAliasMatcher {
@@ -1194,7 +1101,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         rustc_type_ir::relate::structurally_relate_tys(self, a, b)
     }
 
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region> {
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if a != b {
             self.region_constraints.push(RegionConstraint::RegionOutlives(a, b));
             self.region_constraints.push(RegionConstraint::RegionOutlives(b, a));

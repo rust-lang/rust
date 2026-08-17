@@ -59,7 +59,11 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
             .filter_by_name_unhygienic_and_kind(sym::Error, AssocTag::Type)
         {
             let ii_ty = cx.tcx.type_of(ii.def_id).instantiate_identity().skip_norm_wip();
-            if !ii_ty.is_inhabited_from(cx.tcx, ii.def_id, cx.typing_env()) {
+            if !ii_ty.is_inhabited_from(
+                cx.tcx,
+                cx.tcx.parent_module_from_def_id(ii.def_id.expect_local()),
+                cx.typing_env(),
+            ) {
                 let mut span = MultiSpan::from_span(cx.tcx.def_span(item.owner_id.to_def_id()));
                 let ii_ty_span = cx
                     .tcx

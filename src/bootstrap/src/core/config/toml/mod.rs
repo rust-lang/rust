@@ -15,8 +15,13 @@ pub mod dist;
 pub mod gcc;
 pub mod install;
 pub mod llvm;
+pub mod pgo;
 pub mod rust;
 pub mod target;
+
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use build::Build;
 use change_id::{ChangeId, ChangeIdWrapper};
@@ -27,8 +32,10 @@ use llvm::Llvm;
 use rust::Rust;
 use target::TomlTarget;
 
-use crate::core::config::{Merge, ReplaceOpt};
-use crate::{Config, HashMap, HashSet, Path, PathBuf, exit, fs, t};
+use crate::core::config::toml::pgo::Pgo;
+use crate::core::config::{Config, Merge, ReplaceOpt};
+use crate::utils::change_tracker::{find_recent_config_change_ids, human_readable_changes};
+use crate::utils::helpers::{self, t};
 
 /// Structure of the `bootstrap.toml` file that configuration is read from.
 ///
@@ -47,6 +54,7 @@ pub(crate) struct TomlConfig {
     pub(super) rust: Option<Rust>,
     pub(super) target: Option<HashMap<String, TomlTarget>>,
     pub(super) dist: Option<Dist>,
+    pub(super) pgo: Option<Pgo>,
     pub(super) profile: Option<String>,
     pub(super) include: Option<Vec<PathBuf>>,
 }
@@ -56,7 +64,19 @@ impl Merge for TomlConfig {
         &mut self,
         parent_config_path: Option<PathBuf>,
         included_extensions: &mut HashSet<PathBuf>,
-        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id, include }: Self,
+        TomlConfig {
+            build,
+            install,
+            llvm,
+            gcc,
+            rust,
+            dist,
+            target,
+            pgo,
+            profile,
+            change_id,
+            include,
+        }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -78,6 +98,7 @@ impl Merge for TomlConfig {
         do_merge(&mut self.gcc, gcc, replace);
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
+        do_merge(&mut self.pgo, pgo, replace);
 
         match (self.target.as_mut(), target) {
             (_, None) => {}
@@ -104,12 +125,12 @@ impl Merge for TomlConfig {
             let include_path = parent_dir.join(include_path);
             let include_path = include_path.canonicalize().unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to canonicalize '{}' path: {e}", include_path.display());
-                exit!(2);
+                helpers::exit_process(2);
             });
 
             let included_toml = Config::get_toml_inner(&include_path).unwrap_or_else(|e| {
                 eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
-                exit!(2);
+                helpers::exit_process(2);
             });
 
             assert!(
@@ -167,11 +188,11 @@ impl Config {
                     toml::from_str::<toml::Value>(&contents)
                         .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
                 {
-                    let changes = crate::find_recent_config_change_ids(id);
+                    let changes = find_recent_config_change_ids(id);
                     if !changes.is_empty() {
                         println!(
                             "WARNING: There have been changes to x.py since you last updated:\n{}",
-                            crate::human_readable_changes(changes)
+                            human_readable_changes(changes)
                         );
                     }
                 }

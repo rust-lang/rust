@@ -1,74 +1,14 @@
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:16:21
-   |
-LL |         pub impl(in ::std) trait T2 {}
-   |                     ^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:18:21
-   |
-LL |         pub impl(in self::c) trait T3 {}
-   |                     ^^^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:20:21
-   |
-LL |         pub impl(in super::d) trait T4 {}
-   |                     ^^^^^^^^
-
-error[E0433]: too many leading `super` keywords
+error[E0433]: too many leading `super` keywords within `crate::a::b`
   --> $DIR/restriction_resolution_errors.rs:26:35
    |
 LL |         pub impl(in super::super::super) trait T7 {}
-   |                                   ^^^^^ there are too many leading `super` keywords
+   |                                   ^^^^^ this `super` would go above the crate root
 
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:36:21
-   |
-LL |         pub impl(in self::f) trait L1 {}
-   |                     ^^^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:40:21
-   |
-LL |         pub impl(in super::h) trait L3 {}
-   |                     ^^^^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:49:13
-   |
-LL | pub impl(in crate::a) trait T13 {}
-   |             ^^^^^^^^
-
-error[E0433]: too many leading `super` keywords
+error[E0433]: too many leading `super` keywords within `crate`
   --> $DIR/restriction_resolution_errors.rs:56:10
    |
 LL | pub impl(super) trait T17 {}
-   |          ^^^^^ there are too many leading `super` keywords
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:58:13
-   |
-LL | pub impl(in external) trait T18 {}
-   |             ^^^^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:61:13
-   |
-LL | pub impl(in crate::j) trait L4 {}
-   |             ^^^^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:77:21
-   |
-LL |         pub impl(in crate::m2) trait U2 {}
-   |                     ^^^^^^^^^
-
-error: trait implementation can only be restricted to ancestor modules
-  --> $DIR/restriction_resolution_errors.rs:79:21
-   |
-LL |         pub impl(in m6::m5) trait U4 {}
-   |                     ^^^^^^
+   |          ^^^^^ this `super` would go above the crate root
 
 error[E0433]: cannot find module or crate `a` in this scope
   --> $DIR/restriction_resolution_errors.rs:14:21
@@ -139,6 +79,66 @@ error[E0577]: expected module, found enum `m7`
    |
 LL |         pub impl(in m7) trait U5 {}
    |                     ^^ not a module
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:16:21
+   |
+LL |         pub impl(in ::std) trait T2 {}
+   |                     ^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:18:21
+   |
+LL |         pub impl(in self::c) trait T3 {}
+   |                     ^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:20:21
+   |
+LL |         pub impl(in super::d) trait T4 {}
+   |                     ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:36:21
+   |
+LL |         pub impl(in self::f) trait L1 {}
+   |                     ^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:40:21
+   |
+LL |         pub impl(in super::h) trait L3 {}
+   |                     ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:49:13
+   |
+LL | pub impl(in crate::a) trait T13 {}
+   |             ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:58:13
+   |
+LL | pub impl(in external) trait T18 {}
+   |             ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:61:13
+   |
+LL | pub impl(in crate::j) trait L4 {}
+   |             ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:77:21
+   |
+LL |         pub impl(in crate::m2) trait U2 {}
+   |                     ^^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:79:21
+   |
+LL |         pub impl(in m6::m5) trait U4 {}
+   |                     ^^^^^^
 
 error: aborting due to 19 previous errors
 

@@ -1,6 +1,6 @@
 trait A: B + A {}
-//~^ ERROR cycle detected when computing the super predicates of `A` [E0391]
-//~| ERROR cycle detected when computing the implied predicates of `A` [E0391]
+//~^ ERROR cycle detected when computing the super clauses of `A` [E0391]
+//~| ERROR cycle detected when computing the implied clauses of `A` [E0391]
 
 trait B {}
 

@@ -1,10 +1,10 @@
-error: symbol-name(_ZN5basic4main17h33f35fba43592008E)
+error: symbol-name(_ZN5basic4main17hd30beb15618b9d64E)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_dump_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(basic::main::h33f35fba43592008)
+error: demangling(basic::main::hd30beb15618b9d64)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_dump_symbol_name]

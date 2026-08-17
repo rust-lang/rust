@@ -2,7 +2,7 @@ use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
@@ -13,9 +13,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_target::callconv::{
-    AbiMap, ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, FnAbi, PassMode,
-};
+use rustc_target::callconv::{AbiMap, ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
 use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -46,7 +44,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
             let mut sig = tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+                tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
             );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
@@ -331,13 +329,6 @@ fn arg_attrs_for_rust_scalar<'tcx>(
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
 
-    // Booleans are always a noundef i1 that needs to be zero-extended.
-    if scalar.is_bool() {
-        attrs.ext(ArgExtension::Zext);
-        attrs.set(ArgAttribute::NoUndef);
-        return attrs;
-    }
-
     if !scalar.is_uninit_valid() {
         attrs.set(ArgAttribute::NoUndef);
     }
@@ -366,11 +357,6 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
             let noalias_for_box = tcx.sess.opts.unstable_opts.box_noalias;
 
-            // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
-            // (see #54878), so it was conditionally disabled, but we don't support earlier
-            // versions at all anymore. We still support turning it off using -Zmutable-noalias.
-            let noalias_mut_ref = tcx.sess.opts.unstable_opts.mutable_noalias;
-
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
             // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on memory
             // dependencies rather than pointer equality. However this only applies to arguments,
@@ -379,7 +365,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // `&mut T` and `Box<T>` where `T: Unpin` are unique and hence `noalias`.
             let no_alias = match kind {
                 PointerKind::SharedRef { frozen } => frozen,
-                PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
+                PointerKind::MutableRef { unpin } => unpin,
                 PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
             };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
@@ -447,7 +433,6 @@ fn fn_abi_sanity_check<'tcx>(
 
     fn fn_arg_sanity_check<'tcx>(
         cx: &LayoutCx<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         spec_abi: ExternAbi,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
         is_ret: bool,
@@ -480,28 +465,17 @@ fn fn_abi_sanity_check<'tcx>(
             PassMode::Direct(attrs) => {
                 // Here the Rust type is used to determine the actual ABI, so we have to be very
                 // careful. Scalar/Vector is fine, since backends will generally use
-                // `layout.backend_repr` and ignore everything else. We should just reject
-                //`Aggregate` entirely here, but some targets need to be fixed first.
+                // `layout.backend_repr` and ignore everything else.
                 match arg.layout.backend_repr {
                     BackendRepr::Scalar(_)
                     | BackendRepr::SimdVector { .. }
                     | BackendRepr::SimdScalableVector { .. } => {}
-                    BackendRepr::ScalarPair(..) => {
+                    BackendRepr::ScalarPair { .. } => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
-                    BackendRepr::Memory { sized } => {
-                        // For an unsized type we'd only pass the sized prefix, so there is no universe
-                        // in which we ever want to allow this.
-                        assert!(sized, "`PassMode::Direct` for unsized type in ABI: {:#?}", fn_abi);
-
-                        // This really shouldn't happen even for sized aggregates, since
-                        // `immediate_llvm_type` will use `layout.fields` to turn this Rust type into an
-                        // LLVM type. This means all sorts of Rust type details leak into the ABI.
-                        // The unadjusted ABI however uses Direct for all args. It is ill-specified,
-                        // but unfortunately we need it for calling certain LLVM intrinsics.
-                        assert!(
-                            matches!(spec_abi, ExternAbi::Unadjusted),
-                            "`PassMode::Direct` for aggregates only allowed for \"unadjusted\"\n\
+                    BackendRepr::Memory { .. } => {
+                        panic!(
+                            "`PassMode::Direct` for aggregates not allowed\n\
                              Problematic type: {:#?}",
                             arg.layout,
                         );
@@ -513,7 +487,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // Similar to `Direct`, we need to make sure that backends use `layout.backend_repr`
                 // and ignore the rest of the layout.
                 assert!(
-                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair(..)),
+                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair { .. }),
                     "PassMode::Pair for type {}",
                     arg.layout.ty
                 );
@@ -553,9 +527,9 @@ fn fn_abi_sanity_check<'tcx>(
     }
 
     for arg in fn_abi.args.iter() {
-        fn_arg_sanity_check(cx, fn_abi, spec_abi, arg, false);
+        fn_arg_sanity_check(cx, spec_abi, arg, false);
     }
-    fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret, true);
+    fn_arg_sanity_check(cx, spec_abi, &fn_abi.ret, true);
 }
 
 #[tracing::instrument(
@@ -612,7 +586,7 @@ fn fn_abi_new_uncached<'tcx>(
             layout
         };
 
-        Ok(ArgAbi::new(cx, layout, |scalar, offset| {
+        Ok(ArgAbi::new(layout, |scalar, offset| {
             arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, determined_fn_def_id)
         }))
     };
@@ -650,26 +624,13 @@ fn fn_abi_adjust_for_abi<'tcx>(
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: ExternAbi,
 ) {
-    if abi == ExternAbi::Unadjusted {
-        // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
-        // some LLVM intrinsics.
-        fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
-            // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be intended,
-            // but who knows what breaks if we change this now.
-            if matches!(arg.layout.backend_repr, BackendRepr::Memory { .. }) {
-                assert!(
-                    arg.layout.backend_repr.is_sized(),
-                    "'unadjusted' ABI does not support unsized arguments"
-                );
-            }
-            arg.make_direct_deprecated();
-        }
+    assert_ne!(
+        abi,
+        ExternAbi::Unadjusted,
+        "fn_abi_of_instance should not be called on LLVM intrinsics"
+    );
 
-        unadjust(&mut fn_abi.ret);
-        for arg in fn_abi.args.iter_mut() {
-            unadjust(arg);
-        }
-    } else if abi.is_rustic_abi() {
+    if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi);
@@ -741,7 +702,7 @@ fn make_thin_self_ptr<'tcx>(
         Ty::new_mut_ptr(tcx, layout.ty)
     } else {
         match layout.backend_repr {
-            BackendRepr::ScalarPair(..) | BackendRepr::Scalar(..) => (),
+            BackendRepr::ScalarPair { .. } | BackendRepr::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

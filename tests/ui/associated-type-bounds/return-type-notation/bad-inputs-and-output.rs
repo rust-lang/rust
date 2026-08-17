@@ -29,12 +29,12 @@ fn baz_path<T: Trait>() where T::method(): Send {}
 //~^ ERROR return type notation arguments must be elided with `..`
 
 fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
-//~^ ERROR expected associated type
+//~^ ERROR cannot find associated type `method` in trait `Trait`
 
 fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
-//~^ ERROR expected associated type
+//~^ ERROR cannot find associated type `method` in trait `Trait`
 
 fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
-//~^ ERROR expected associated type
+//~^ ERROR cannot find associated type `method` in trait `Trait`
 
 fn main() {}

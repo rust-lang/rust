@@ -20,7 +20,7 @@ use crate::sys::process::PidFd;
 use crate::{fmt, mem, sys};
 
 cfg_select! {
-    target_os = "nto" => {
+    any(target_os = "nto", target_os = "qnx") => {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
@@ -183,16 +183,21 @@ impl Command {
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(any(target_os = "watchos", target_os = "tvos", target_os = "nto")))]
+    #[cfg(not(any(
+        target_os = "watchos",
+        target_os = "tvos",
+        target_os = "nto",
+        target_os = "qnx"
+    )))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         cvt(libc::fork())
     }
 
-    // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
+    // On QNX SDP, fork can fail with EBADF in case "another thread might have opened
     // or closed a file descriptor while the fork() was occurring".
     // Documentation says "... or try calling fork() again". This is what we do here.
-    // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
-    #[cfg(target_os = "nto")]
+    // See also https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
+    #[cfg(any(target_os = "nto", target_os = "qnx"))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::io::errno;
 
@@ -424,6 +429,7 @@ impl Command {
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
+        target_os = "qnx",
         target_vendor = "apple",
         target_os = "cygwin",
     )))]
@@ -443,6 +449,7 @@ impl Command {
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
+        target_os = "qnx",
         target_vendor = "apple",
         target_os = "cygwin",
     ))]
@@ -546,11 +553,11 @@ impl Command {
             }
         }
 
-        // On QNX Neutrino, posix_spawnp can fail with EBADF in case "another thread might have opened
+        // On QNX SDP, posix_spawnp can fail with EBADF in case "another thread might have opened
         // or closed a file descriptor while the posix_spawn() was occurring".
         // Documentation says "... or try calling posix_spawn() again". This is what we do here.
-        // See also http://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
-        #[cfg(target_os = "nto")]
+        // See also https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
+        #[cfg(any(target_os = "nto", target_os = "qnx"))]
         unsafe fn retrying_libc_posix_spawnp(
             pid: *mut pid_t,
             file: *const c_char,
@@ -749,7 +756,7 @@ impl Command {
             if self.get_setsid() {
                 cfg_select! {
                     all(target_os = "linux", target_env = "gnu") => {
-                        flags |= libc::POSIX_SPAWN_SETSID;
+                        flags |= libc::POSIX_SPAWN_SETSID as i32;
                     }
                     _ => {
                         return Ok(None);
@@ -763,9 +770,9 @@ impl Command {
             let _env_lock = sys::env::env_read_lock();
             let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::env::environ() as *const _);
 
-            #[cfg(not(target_os = "nto"))]
+            #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
             let spawn_fn = libc::posix_spawnp;
-            #[cfg(target_os = "nto")]
+            #[cfg(any(target_os = "nto", target_os = "qnx"))]
             let spawn_fn = retrying_libc_posix_spawnp;
 
             #[cfg(target_os = "linux")]
@@ -822,7 +829,7 @@ impl Command {
                 envp as *const _,
             );
 
-            #[cfg(target_os = "nto")]
+            #[cfg(any(target_os = "nto", target_os = "qnx"))]
             let spawn_res = spawn_res?;
 
             cvt_nz(spawn_res)?;
@@ -1094,7 +1101,7 @@ impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
         // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0. This is
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
-        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
+        // https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
         // unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero::try_from(self.0) {
@@ -1202,7 +1209,12 @@ fn signal_string(signal: i32) -> &'static str {
             )
         ))]
         libc::SIGSTKFLT => " (SIGSTKFLT)",
-        #[cfg(any(target_os = "linux", target_os = "nto", target_os = "cygwin"))]
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "nto",
+            target_os = "qnx",
+            target_os = "cygwin"
+        ))]
         libc::SIGPWR => " (SIGPWR)",
         #[cfg(any(
             target_os = "freebsd",
@@ -1210,6 +1222,7 @@ fn signal_string(signal: i32) -> &'static str {
             target_os = "openbsd",
             target_os = "dragonfly",
             target_os = "nto",
+            target_os = "qnx",
             target_vendor = "apple",
             target_os = "cygwin",
         ))]

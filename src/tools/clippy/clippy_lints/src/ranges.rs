@@ -2,8 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::{SpanExt as _, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
@@ -12,7 +12,8 @@ use clippy_utils::{
 use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
@@ -184,7 +185,7 @@ pub struct Ranges {
 
 impl Ranges {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -433,8 +434,8 @@ fn can_switch_ranges<'tcx>(
                 .param_env(id)
                 .caller_bounds()
                 .into_iter()
-                .any(|p| {
-                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
+                .any(|c| {
+                    if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && t.polarity == PredicatePolarity::Positive
                         && matches!(
                             cx.tcx.get_diagnostic_name(t.trait_ref.def_id),
@@ -523,11 +524,11 @@ fn check_range_switch<'tcx>(
     if let higher::Range {
         start,
         end: Some(end),
-        limits,
+        ty,
         span,
     } = *range
         && span.can_be_used_for_suggestions()
-        && limits == kind
+        && ty.limits() == kind
         && let Some(y) = predicate(end)
         && can_switch_ranges(cx, span.ctxt(), expr, kind, cx.typeck_results().expr_ty(y))
     {
@@ -590,7 +591,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
     if let higher::Range {
         start: Some(start),
         end: Some(end),
-        limits,
+        ty: range_ty,
         span,
     } = *range
         && let ty = cx.typeck_results().expr_ty(start)
@@ -599,7 +600,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
         && let Some(start_idx) = ecx.eval(start)
         && let Some(end_idx) = ecx.eval(end)
         && let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx)
-        && is_empty_range(limits, ordering)
+        && is_empty_range(range_ty.limits(), ordering)
     {
         if inside_indexing_expr(cx, expr) {
             // Avoid linting `N..N` as it has proven to be useful, see #5689 and #5628 ...
@@ -622,7 +623,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
                     if ordering != Ordering::Equal {
                         let start_snippet = snippet(cx, start.span, "_");
                         let end_snippet = snippet(cx, end.span, "_");
-                        let dots = match limits {
+                        let dots = match range_ty.limits() {
                             RangeLimits::HalfOpen => "..",
                             RangeLimits::Closed => "..=",
                         };

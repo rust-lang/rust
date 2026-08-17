@@ -1,3 +1,4 @@
+   LL|       |//@ min-llvm-version: 23
    LL|       |#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
    LL|       |#![allow(unused_assignments)]
    LL|       |

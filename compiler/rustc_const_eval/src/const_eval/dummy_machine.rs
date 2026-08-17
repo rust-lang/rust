@@ -105,6 +105,16 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         unimplemented!()
     }
 
+    fn call_llvm_intrinsic(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[interpret::OpTy<'tcx, Self::Provenance>],
+        _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
+        _target: Option<BasicBlock>,
+    ) -> interpret::InterpResult<'tcx> {
+        unimplemented!()
+    }
+
     fn assert_panic(
         _ecx: &mut InterpCx<'tcx, Self>,
         _msg: &rustc_middle::mir::AssertMessage<'tcx>,

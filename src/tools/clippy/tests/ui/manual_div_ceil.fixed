@@ -143,3 +143,15 @@ fn issue_16219() {
     let z = MyStruct(x);
     let _ = z.next_multiple_of(8) / 8;
 }
+
+fn side_effects() {
+    use core::hint::black_box;
+
+    // No lint: each expression calls `black_box` twice, while the suggested
+    // `div_ceil` expression would only call it once.
+    let _ = (33 + (black_box(4) - 1)) / black_box(4);
+    let _ = ((black_box(4) - 1) + 33) / black_box(4);
+    let _ = (33 + black_box(4) - 1) / black_box(4);
+    let _ = 33_u32.next_multiple_of(black_box(4)) / black_box(4);
+    let _ = u32::next_multiple_of(33, black_box(4)) / black_box(4);
+}

@@ -4,4 +4,4 @@ expression: test debuginfo
 ---
 [Test] test::Debuginfo
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/debuginfo)
+    - Suite(tests/debuginfo)

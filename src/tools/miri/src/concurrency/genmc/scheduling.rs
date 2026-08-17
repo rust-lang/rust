@@ -115,17 +115,13 @@ impl GenmcCtx {
         let thread_infos = self.exec_state.thread_id_manager.borrow();
         let genmc_tid = thread_infos.get_genmc_tid(active_thread_id);
 
-        let result = self.handle.borrow_mut().pin_mut().schedule_next(genmc_tid, atomic_kind);
+        let result = self.genmc.borrow_mut().pin_mut().schedule_next(genmc_tid, atomic_kind);
         // Depending on the exec_state, we either schedule the given thread, or we are finished with this execution.
         match result.exec_status {
             ExecutionStatus::Ok => interp_ok(Some(thread_infos.get_miri_tid(result.next_thread))),
             ExecutionStatus::Blocked => {
-                // This execution doesn't need further exploration. We treat this as "success, no
-                // leak check needed", which makes it a NOP in the big outer loop.
-                throw_machine_stop!(TerminationInfo::Exit {
-                    code: 0, // success
-                    leak_check: false,
-                });
+                // This execution is "moot", it doesn't need further exploration.
+                throw_machine_stop!(TerminationInfo::GenmcMoot);
             }
             ExecutionStatus::Finished => {
                 let exit_status = self.exec_state.exit_status.get().expect(

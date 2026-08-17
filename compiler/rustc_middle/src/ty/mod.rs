@@ -16,6 +16,7 @@ use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
+use std::ops::ControlFlow;
 use std::ptr::NonNull;
 use std::{assert_matches, fmt, iter, str};
 
@@ -28,19 +29,20 @@ use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::{self as ast};
+use rustc_ast::{self as ast, NodeId};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{self as hir, LangItem, MissingLifetimeKind, attrs as attr, find_attr};
+use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -50,22 +52,15 @@ use rustc_macros::{
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::OptLevel;
 pub use rustc_session::lint::RegisteredTools;
+use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
-#[allow(
-    hidden_glob_reexports,
-    rustc::usage_of_type_ir_inherent,
-    rustc::non_glob_import_of_type_ir_inherent
-)]
-use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
-#[allow(hidden_glob_reexports, unused_imports)]
-use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 pub use vtable::*;
 
@@ -90,17 +85,18 @@ pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    AliasTerm, AliasTermKind, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate,
+    AliasTerm, AliasTermKind, ArgOutlivesClause, Clause, ClauseKind, CoercePredicate,
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
-    ExistentialTraitRef, HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
+    ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionConstraint, RegionEqPredicate, RegionOutlivesPredicate, SubtypePredicate, TraitPredicate,
-    TraitRef, TypeOutlivesPredicate,
+    PolyProjectionPredicate, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
+    PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionPredicate,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitPredicate,
+    TraitRef, TypeOutlivesClause,
 };
 pub use self::region::{
-    EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,
+    EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionExt, RegionKind,
+    RegionVid,
 };
 pub use self::sty::{
     Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind,
@@ -116,7 +112,7 @@ pub use self::typeck_results::{
     Rust2024IncompatiblePatInfo, SplattedDef, TypeckResults, UserType, UserTypeAnnotationIndex,
     UserTypeKind,
 };
-use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
+use crate::diagnostics::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, SourceInfo};
@@ -126,6 +122,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{FnAbiError, LayoutError};
+use crate::ty::print::{with_crate_prefix, with_no_trimmed_paths};
 use crate::ty::util::Discr;
 use crate::ty::walk::TypeWalker;
 
@@ -143,6 +140,7 @@ pub mod pattern;
 pub mod print;
 pub mod relate;
 pub mod significant_drop_order;
+pub mod sty;
 pub mod trait_def;
 pub mod typetree;
 pub mod util;
@@ -167,8 +165,6 @@ mod opaque_types;
 mod predicate;
 mod region;
 mod structural_impls;
-#[allow(hidden_glob_reexports)]
-mod sty;
 mod typeck_results;
 mod visit;
 
@@ -199,8 +195,8 @@ pub struct ResolverGlobalCtxt {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxIndexMap<Span, Span>,
-    pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
-    pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
+    pub doc_link_resolutions: FxIndexMap<LocalModId, DocLinkResMap>,
+    pub doc_link_traits_in_scope: FxIndexMap<LocalModId, Vec<DefId>>,
     pub all_macro_rules: UnordSet<Symbol>,
     pub stripped_cfg_items: Vec<StrippedCfgItem>,
     // Information about delegations which is used when handling recursive delegations
@@ -223,6 +219,8 @@ pub struct PerOwnerResolverData<'tcx> {
 
     /// Resolution for import nodes, which have multiple resolutions in different namespaces.
     pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
+    /// Lifetime parameters that lowering will have to introduce.
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// The id of the owner
     pub id: ast::NodeId,
@@ -244,6 +242,17 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
     pub fn get_lifetime_res(&self, id: ast::NodeId) -> Option<LifetimeRes> {
         self.lifetimes_res_map.get(&id).copied()
     }
+
+    /// Obtain the list of lifetimes parameters to add to an item.
+    ///
+    /// Extra lifetime parameters should only be added in places that can appear
+    /// as a `binder` in `LifetimeRes`.
+    ///
+    /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
+    /// should appear at the enclosing `PolyTraitRef`.
+    pub fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
+        self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
+    }
 }
 
 /// Resolutions that should only be used for lowering.
@@ -252,8 +261,6 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
-    /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
     pub next_node_id: ast::NodeId,
 
@@ -296,6 +303,64 @@ pub struct ImplTraitHeader<'tcx> {
     pub constness: hir::Constness,
 }
 
+impl<'tcx> ImplTraitHeader<'tcx> {
+    /// For trait impls, checks whether
+    /// * the type and trait only use generic lifetime arguments (and no concrete ones like `'static`), and
+    /// * uses any generic param (lifetime or type) only once.
+    ///
+    /// This is a pessimistic analysis, so it will reject alias types
+    /// and other types that may be actually ok. We can allow more in the future.
+    ///
+    /// Constants (associated or generic) are irrelevant for this analysis, as their value is neither
+    /// affected by lifetimes, nor do they affect lifetimes.
+    pub fn is_fully_generic_for_reflection(self) -> bool {
+        #[derive(Default)]
+        struct ParamFinder {
+            seen: FxHashSet<u32>,
+        }
+
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamFinder {
+            type Result = ControlFlow<()>;
+            fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
+                match r.kind() {
+                    RegionKind::ReEarlyParam(param) => {
+                        if self.seen.insert(param.index) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+                    RegionKind::ReBound(..) => ControlFlow::Continue(()),
+                    RegionKind::ReStatic | RegionKind::ReError(_) => ControlFlow::Break(()),
+                    RegionKind::ReVar(_)
+                    | RegionKind::RePlaceholder(_)
+                    | RegionKind::ReErased
+                    | RegionKind::ReLateParam(_) => bug!("unexpected lifetime in impl: {r:?}"),
+                }
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                match t.kind() {
+                    TyKind::Param(p) => {
+                        // Reject using a parameter twice (e.g. in `Foo<T, T>`)
+                        if !self.seen.insert(p.index) {
+                            return ControlFlow::Break(());
+                        }
+                    }
+                    TyKind::Alias(..) => return ControlFlow::Break(()),
+                    _ => (),
+                }
+                t.super_visit_with(self)
+            }
+        }
+        self.trait_ref
+            .instantiate_identity()
+            .skip_norm_wip()
+            .visit_with(&mut ParamFinder::default())
+            .is_continue()
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash, Debug)]
 #[derive(TypeFoldable, TypeVisitable, Default)]
 pub enum Asyncness {
@@ -311,7 +376,7 @@ impl Asyncness {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, StableHash)]
-pub enum Visibility<Id = LocalDefId> {
+pub enum Visibility<Id = LocalModId> {
     /// Visible everywhere (including in other crates).
     Public,
     /// Visible only in the given crate-local module.
@@ -324,7 +389,7 @@ impl Visibility {
             ty::Visibility::Restricted(restricted_id) => {
                 if restricted_id.is_top_level_module() {
                     "pub(crate)".to_string()
-                } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
+                } else if restricted_id == tcx.parent_module_from_def_id(def_id) {
                     "pub(self)".to_string()
                 } else {
                     format!(
@@ -334,6 +399,66 @@ impl Visibility {
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, StableHash, PartialEq, Clone, Copy, Encodable, Decodable)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted(DefId, Span),
+}
+
+impl RestrictionKind {
+    /// Returns `true` if the behavior is allowed/unrestricted in the given module.
+    /// A value of `false` indicates that the behavior is prohibited.
+    pub fn is_allowed_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
+        match self {
+            RestrictionKind::Unrestricted => true,
+            RestrictionKind::Restricted(restricted_to, _) => {
+                tcx.is_descendant_of(module, restricted_to)
+            }
+        }
+    }
+
+    /// Obtain the [`Span`] of the restriction. Panics if the restriction is unrestricted.
+    pub fn expect_span(self) -> Span {
+        match self {
+            RestrictionKind::Unrestricted => {
+                bug!("called `expect_span` on an unrestricted item")
+            }
+            RestrictionKind::Restricted(_, span) => span,
+        }
+    }
+
+    /// Obtain the path of the restriction. If unrestricted, an empty string is returned.
+    pub fn restriction_path(self, tcx: TyCtxt<'_>) -> String {
+        match self {
+            RestrictionKind::Unrestricted => String::new(),
+            RestrictionKind::Restricted(restricted_to, _) => {
+                if restricted_to.krate == rustc_hir::def_id::LOCAL_CRATE {
+                    with_crate_prefix!(with_no_trimmed_paths!(tcx.def_path_str(restricted_to)))
+                } else {
+                    tcx.def_path_str(restricted_to.krate.as_mod_id())
+                }
+            }
+        }
+    }
+
+    /// Obtain the stricter restriction between `self` and `rhs`.
+    /// Panics if the restrictions do not reference the same crate.
+    pub fn stricter_of(self, rhs: Self, tcx: TyCtxt<'_>) -> Self {
+        match (self, rhs) {
+            (RestrictionKind::Unrestricted, r) | (r, RestrictionKind::Unrestricted) => r,
+            (
+                RestrictionKind::Restricted(left_did, _),
+                RestrictionKind::Restricted(right_did, _),
+            ) => {
+                if left_did.krate != right_did.krate {
+                    bug!("stricter_of: left and right restriction do not reference the same crate");
+                }
+                if tcx.is_descendant_of(left_did, right_did) { self } else { rhs }
+            }
         }
     }
 }
@@ -403,9 +528,13 @@ impl TyCtxt<'_> {
         }
     }
 
-    pub fn is_descendant_of(self, descendant: DefId, ancestor: DefId) -> bool {
+    pub fn is_descendant_of(
+        self,
+        descendant: impl Into<DefId>,
+        ancestor: impl Into<DefId>,
+    ) -> bool {
         matches!(
-            self.def_id_partial_cmp(descendant, ancestor),
+            self.def_id_partial_cmp(descendant.into(), ancestor.into()),
             Some(Ordering::Less | Ordering::Equal)
         )
     }
@@ -424,17 +553,19 @@ impl<Id> Visibility<Id> {
     }
 }
 
-impl<Id: Into<DefId>> Visibility<Id> {
-    pub fn to_def_id(self) -> Visibility<DefId> {
-        self.map_id(Into::into)
+impl Visibility<LocalModId> {
+    pub fn to_mod_id(self) -> Visibility<ModId> {
+        self.map_id(LocalModId::to_mod_id)
     }
+}
 
+impl<Id: Into<DefId>> Visibility<Id> {
     /// Returns `true` if an item with this visibility is accessible from the given module.
     pub fn is_accessible_from(self, module: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
-            Visibility::Restricted(id) => tcx.is_descendant_of(module.into(), id.into()),
+            Visibility::Restricted(id) => tcx.is_descendant_of(module, id),
         }
     }
 
@@ -473,7 +604,7 @@ impl<Id: Into<DefId> + Debug + Copy> Visibility<Id> {
     }
 }
 
-impl Visibility<DefId> {
+impl Visibility<ModId> {
     pub fn expect_local(self) -> Visibility {
         self.map_id(|id| id.expect_local())
     }
@@ -482,7 +613,7 @@ impl Visibility<DefId> {
     pub fn is_visible_locally(self) -> bool {
         match self {
             Visibility::Public => true,
-            Visibility::Restricted(def_id) => def_id.is_local(),
+            Visibility::Restricted(mod_id) => mod_id.is_local(),
         }
     }
 }
@@ -540,11 +671,11 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 /// `tcx.inferred_outlives_of()` to get the outlives for a *particular*
 /// item.
 #[derive(StableHash, Debug)]
-pub struct CratePredicatesMap<'tcx> {
+pub struct CrateClausesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
-    /// predicate of its outlive bounds. If an item has no outlives
+    /// clause of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: DefIdMap<&'tcx [(Clause<'tcx>, Span)]>,
+    pub clauses: DefIdMap<&'tcx [(Clause<'tcx>, Span)]>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -768,11 +899,11 @@ impl<'tcx> TermKind<'tcx> {
 
 /// Represents the bounds declared on a particular set of type
 /// parameters. Should eventually be generalized into a flag list of
-/// where-clauses. You can obtain an `InstantiatedPredicates` list from a
-/// `GenericPredicates` by using the `instantiate` method. Note that this method
-/// reflects an important semantic invariant of `InstantiatedPredicates`: while
-/// the `GenericPredicates` are expressed in terms of the bound type
-/// parameters of the impl/trait/whatever, an `InstantiatedPredicates` instance
+/// where-clauses. You can obtain an `InstantiatedClauses` list from a
+/// `GenericClauses` by using the `instantiate` method. Note that this method
+/// reflects an important semantic invariant of `InstantiatedClauses`: while
+/// the `GenericClauses` are expressed in terms of the bound type
+/// parameters of the impl/trait/whatever, an `InstantiatedClauses` instance
 /// represented a set of bounds for some particular instantiation,
 /// meaning that the generic parameters have been instantiated with
 /// their values.
@@ -781,23 +912,23 @@ impl<'tcx> TermKind<'tcx> {
 /// ```ignore (illustrative)
 /// struct Foo<T, U: Bar<T>> { ... }
 /// ```
-/// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
+/// Here, the `GenericClauses` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
-/// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
+/// like `Foo<isize,usize>`, then the `InstantiatedClauses` would be `[[],
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug)]
-pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
+pub struct InstantiatedClauses<'tcx> {
+    pub clauses: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
     pub spans: Vec<Span>,
 }
 
-impl<'tcx> InstantiatedPredicates<'tcx> {
-    pub fn empty() -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates { predicates: vec![], spans: vec![] }
+impl<'tcx> InstantiatedClauses<'tcx> {
+    pub fn empty() -> InstantiatedClauses<'tcx> {
+        InstantiatedClauses { clauses: vec![], spans: vec![] }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.predicates.is_empty()
+        self.clauses.is_empty()
     }
 
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
@@ -805,7 +936,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
+impl<'tcx> IntoIterator for InstantiatedClauses<'tcx> {
     type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
     type IntoIter = std::iter::Zip<
@@ -814,12 +945,12 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates, self.spans)
+        debug_assert_eq!(self.clauses.len(), self.spans.len());
+        std::iter::zip(self.clauses, self.spans)
     }
 }
 
-impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
+impl<'a, 'tcx> IntoIterator for &'a InstantiatedClauses<'tcx> {
     type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
     type IntoIter = std::iter::Zip<
@@ -828,8 +959,8 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+        debug_assert_eq!(self.clauses.len(), self.spans.len());
+        std::iter::zip(self.clauses.iter().copied(), self.spans.iter().copied())
     }
 }
 
@@ -1128,6 +1259,30 @@ impl<'tcx> TypingEnv<'tcx> {
         Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
+    /// The `TypingEnv` which should be for everything happens after HIR typeck
+    /// up-to and including borrowck itself.
+    pub fn post_typeck_until_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
+        let param_env = tcx.param_env(def_id.to_def_id());
+        TypingEnv::new(param_env, ty::TypingMode::borrowck(tcx, def_id))
+    }
+
+    /// Ideally we just use `TypingMode::post_typeck_until_borrowck`.
+    /// But that's not compatible with the old solver yet.
+    ///
+    /// FIXME: this should not be needed in the long term.
+    pub fn post_typeck_until_borrowck_for_mir_build(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+    ) -> TypingEnv<'tcx> {
+        if tcx.use_typing_mode_post_typeck_until_borrowck() {
+            TypingEnv::new(tcx.param_env(def_id.to_def_id()), ty::TypingMode::borrowck(tcx, def_id))
+        } else {
+            // FIXME(#132279): We're in a body, we should use a typing
+            // mode which reveals the opaque types defined by that body.
+            TypingEnv::non_body_analysis(tcx, def_id)
+        }
+    }
+
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
         TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::PostAnalysis)
     }
@@ -1142,6 +1297,7 @@ impl<'tcx> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
+            | TypingMode::Reflection
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. } => {}
@@ -1158,6 +1314,7 @@ impl<'tcx> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
+            | TypingMode::Reflection
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
@@ -1447,7 +1604,8 @@ pub enum VariantDiscr {
 pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
-    pub vis: Visibility<DefId>,
+    pub vis: Visibility<ModId>,
+    pub mut_restriction: RestrictionKind,
     pub safety: hir::Safety,
     pub value: Option<DefId>,
 }
@@ -1462,16 +1620,18 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _, safety: _, value: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, mut_restriction: _, safety: _, value: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _, safety: _, value: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, mut_restriction: _, safety: _, value: _ } = other;
 
         let res = lhs_did == rhs_did;
 
         // Double check that implicit assumption detailed above.
         if cfg!(debug_assertions) && res {
-            let deep =
-                self.name == other.name && self.vis == other.vis && self.safety == other.safety;
+            let deep = self.name == other.name
+                && self.vis == other.vis
+                && self.mut_restriction == other.mut_restriction
+                && self.safety == other.safety;
             assert!(deep, "FieldDef for the same def-id has differing data");
         }
 
@@ -1491,7 +1651,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _, safety: _, value: _ } = &self;
+        let Self { did, name: _, vis: _, mut_restriction: _, safety: _, value: _ } = &self;
 
         did.hash(s)
     }
@@ -1802,8 +1962,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     | DefKind::Static { .. }
                     | DefKind::AssocConst { .. }
                     | DefKind::Ctor(..)
-                    | DefKind::AnonConst
-                    | DefKind::InlineConst => self.mir_for_ctfe(def),
+                    | DefKind::AnonConst => self.mir_for_ctfe(def),
                     DefKind::Fn | DefKind::AssocFn
                         if matches!(
                             self.constness(def),
@@ -1817,7 +1976,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     _ => self.optimized_mir(def),
                 }
             }
-            ty::InstanceKind::Intrinsic(..) => bug!("intrinsics have no instance MIR"),
+            ty::InstanceKind::Intrinsic(..) | ty::InstanceKind::LlvmIntrinsic(..) => {
+                bug!("intrinsics have no instance MIR")
+            }
             ty::InstanceKind::Virtual(..) => bug!("virtual dispatches have no instance MIR"),
             ty::InstanceKind::Shim(shim) => self.mir_shims(shim),
         };
@@ -1838,7 +1999,7 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
@@ -2137,18 +2298,17 @@ impl<'tcx> TyCtxt<'tcx> {
         ident
     }
 
-    // FIXME(vincenzopalazzo): move the HirId to a LocalDefId
     pub fn adjust_ident_and_get_scope(
         self,
         mut ident: Ident,
         scope: DefId,
-        block: hir::HirId,
-    ) -> (Ident, DefId) {
+        item_id: LocalDefId,
+    ) -> (Ident, ModId) {
         let scope = ident
             .span
             .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
-            .unwrap_or_else(|| self.parent_module(block).to_def_id());
+            .unwrap_or_else(|| self.parent_module_from_def_id(item_id).to_mod_id());
         (ident, scope)
     }
 
@@ -2244,7 +2404,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm

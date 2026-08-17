@@ -16,6 +16,7 @@ use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::jobserver;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::DiagCtxtHandle;
@@ -24,19 +25,17 @@ use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::Diagnostic;
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
-use rustc_metadata::{
-    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
-    walk_native_lib_search_dirs,
-};
 use rustc_middle::bug;
+use rustc_middle::diagnostics::DuplicateEiiImpls;
 use rustc_middle::lint::emit_lint_base;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, OutFileName,
-    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs,
+    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -63,7 +62,10 @@ use super::rmeta_link::RmetaLinkCache;
 use super::rpath::{self, RPathConfig};
 use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
-use crate::{CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
+use crate::{
+    CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, SymbolExport,
+    diagnostics,
+};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -71,6 +73,231 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
             dcx.err(format!("failed to remove {}: {}", path.display(), e));
         }
     }
+}
+
+fn eii_impl_crate_name(crate_info: &CrateInfo, cnum: CrateNum) -> Symbol {
+    if cnum == LOCAL_CRATE { crate_info.local_crate_name } else { crate_info.crate_name[&cnum] }
+}
+
+fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &CrateInfo) {
+    if crate_info.eii_linkage.is_empty() {
+        return;
+    }
+
+    // A crate can request multiple linked outputs with overlapping dependency
+    // formats, so report each underlying conflict once.
+    let mut emitted = FxHashSet::default();
+
+    // This needs the dependency formats selected for the final artifact. The
+    // earlier EII pass still handles missing impls and duplicate explicit impls.
+    for dependency_formats in crate_info.dependency_formats.values() {
+        for (eii_index, eii) in crate_info.eii_linkage.iter().enumerate() {
+            let Some(explicit_impl) = eii.impls.first() else {
+                continue;
+            };
+            // If the explicit impl is already coming from a dylib, that dylib
+            // has already resolved the default-vs-explicit choice.
+            if matches!(
+                dependency_formats.get(explicit_impl.impl_crate),
+                Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
+            ) {
+                continue;
+            }
+
+            let Some(default_impl) = &eii.default_impl else {
+                continue;
+            };
+            if !matches!(
+                dependency_formats.get(default_impl.impl_crate),
+                Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
+            ) {
+                continue;
+            }
+
+            if !emitted.insert(eii_index) {
+                continue;
+            }
+
+            sess.dcx().emit_err(DuplicateEiiImpls {
+                name: eii.name,
+                first_span: explicit_impl.span,
+                first_crate: eii_impl_crate_name(crate_info, explicit_impl.impl_crate),
+                second_span: default_impl.span,
+                second_crate: eii_impl_crate_name(crate_info, default_impl.impl_crate),
+                help: (),
+                additional_crates: None,
+                num_additional_crates: 0,
+                additional_crate_names: String::new(),
+            });
+        }
+    }
+}
+
+/// The fallback directories are passed to linker, but not used when rustc does the search,
+/// because in the latter case the set of fallback directories cannot always be determined
+/// consistently at the moment.
+struct NativeLibSearchFallback<'a> {
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&'a Path>,
+}
+
+fn walk_native_lib_search_dirs<R>(
+    sess: &Session,
+    fallback: Option<NativeLibSearchFallback<'_>>,
+    mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
+) -> ControlFlow<R> {
+    // Library search paths explicitly supplied by user (`-L` on the command line).
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Native) {
+        f(&search_path.dir, false)?;
+    }
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Framework) {
+        // Frameworks are looked up strictly in framework-specific paths.
+        if search_path.kind != PathKind::All {
+            f(&search_path.dir, true)?;
+        }
+    }
+
+    let Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root }) = fallback
+    else {
+        return ControlFlow::Continue(());
+    };
+
+    // The toolchain ships some native library components and self-contained linking was enabled.
+    // Add the self-contained library directory to search paths.
+    if self_contained_components.intersects(
+        LinkSelfContainedComponents::LIBC
+            | LinkSelfContainedComponents::UNWIND
+            | LinkSelfContainedComponents::MINGW,
+    ) {
+        f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
+    }
+
+    let has_shared_llvm_apple_darwin =
+        sess.target.is_like_darwin && sess.target_tlib_path.dir.join("libLLVM.dylib").exists();
+
+    // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
+    // library directory instead of the self-contained directories.
+    // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
+    // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
+    // On Apple targets, shared LLVM is linked by name, so when `libLLVM.dylib` is
+    // present in the target libdir, add that directory to the linker search path.
+    // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
+    // and sanitizers to self-contained directory, and stop adding this search path.
+    // FIXME: On AIX this also has the side-effect of making the list of library search paths
+    // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
+    // defined, as the search path instead of appending the default search paths.
+    if sess.target.cfg_abi == CfgAbi::Fortanix
+        || sess.target.os == Os::Linux
+        || sess.target.os == Os::Fuchsia
+        || sess.target.is_like_aix
+        || sess.target.is_like_darwin
+            && (!sess.sanitizers().is_empty() || has_shared_llvm_apple_darwin)
+        || sess.target.os == Os::Windows
+            && sess.target.env == Env::Gnu
+            && sess.target.cfg_abi == CfgAbi::Llvm
+    {
+        f(&sess.target_tlib_path.dir, false)?;
+    }
+
+    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
+    // we must have the support library stubs in the library search path (#121430).
+    if let Some(sdk_root) = apple_sdk_root
+        && sess.target.env == Env::MacAbi
+    {
+        f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
+        f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
+    }
+
+    ControlFlow::Continue(())
+}
+
+pub(super) fn try_find_native_static_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
+    let formats = if verbatim {
+        vec![default]
+    } else {
+        // On Windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let unix = ("lib", ".a");
+        if default == unix { vec![default] } else { vec![default, unix] }
+    };
+
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    })
+    .break_value()
+}
+
+pub(super) fn try_find_native_dynamic_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
+    let formats = if verbatim {
+        vec![default]
+    } else {
+        // While the official naming convention for MSVC import libraries
+        // is foo.lib, Meson follows the libfoo.dll.a convention to
+        // disambiguate .a for static libraries
+        let meson = ("lib", ".dll.a");
+        // and MinGW uses .a altogether
+        let mingw = ("lib", ".a");
+        vec![default, meson, mingw]
+    };
+
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    })
+    .break_value()
+}
+
+pub(super) fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
+    try_find_native_static_library(sess, name, verbatim).unwrap_or_else(|| {
+        sess.dcx().emit_fatal(diagnostics::MissingNativeLibrary::new(name, verbatim))
+    })
+}
+
+/// If `lib` is a static library that is bundled into the rlib as a packed archive, returns the
+/// file name of that archive. Returns `None` for libraries that are instead unpacked into loose
+/// object files, or not bundled at all.
+fn find_bundled_library(
+    lib: &NativeLib,
+    sess: &Session,
+    crate_types: &[CrateType],
+) -> Option<Symbol> {
+    if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = lib.kind
+        && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
+        && (sess.opts.unstable_opts.packed_bundled_libs
+            || lib.cfg.is_some()
+            || whole_archive == Some(true))
+    {
+        return find_native_static_library(lib.name.as_str(), lib.verbatim, sess)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(Symbol::intern);
+    }
+    None
 }
 
 /// Performs the linkage portion of the compilation phase. This will generate all
@@ -88,6 +315,14 @@ pub fn link_binary(
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
     let mut rmeta_link_cache = RmetaLinkCache::default();
+
+    if outputs.outputs.should_link() {
+        sess.time("check_externally_implementable_item_linkage", || {
+            check_externally_implementable_item_linkage(sess, &crate_info);
+        });
+        sess.dcx().abort_if_errors();
+    }
+
     for &crate_type in &crate_info.crate_types {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
@@ -117,7 +352,9 @@ pub fn link_binary(
             let tmpdir = TempDirBuilder::new()
                 .prefix("rustc")
                 .tempdir_in(output.parent().unwrap_or_else(|| Path::new(".")))
-                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
+                .unwrap_or_else(|error| {
+                    sess.dcx().emit_fatal(diagnostics::CreateTempDir { error })
+                });
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
 
             let crate_name = format!("{}", crate_info.local_crate_name);
@@ -189,11 +426,15 @@ pub fn link_binary(
 
             if output.is_stdout() {
                 if output.is_tty() {
-                    sess.dcx().emit_err(errors::BinaryOutputToTty {
+                    sess.dcx().emit_err(diagnostics::BinaryOutputToTty {
                         shorthand: OutputType::Exe.shorthand(),
                     });
                 } else if let Err(e) = copy_to_stdout(&out_filename) {
-                    sess.dcx().emit_err(errors::CopyPath::new(&out_filename, output.as_path(), e));
+                    sess.dcx().emit_err(diagnostics::CopyPath::new(
+                        &out_filename,
+                        output.as_path(),
+                        e,
+                    ));
                 }
                 tempfiles_for_stdout_output.push(out_filename);
             }
@@ -257,18 +498,18 @@ pub fn each_linked_rlib(
     info: &CrateInfo,
     crate_type: Option<CrateType>,
     f: &mut dyn FnMut(CrateNum, &Path),
-) -> Result<(), errors::LinkRlibError> {
+) -> Result<(), diagnostics::LinkRlibError> {
     let fmts = if let Some(crate_type) = crate_type {
         let Some(fmts) = info.dependency_formats.get(&crate_type) else {
-            return Err(errors::LinkRlibError::MissingFormat);
+            return Err(diagnostics::LinkRlibError::MissingFormat);
         };
 
         fmts
     } else {
         let mut dep_formats = info.dependency_formats.iter();
-        let (ty1, list1) = dep_formats.next().ok_or(errors::LinkRlibError::MissingFormat)?;
+        let (ty1, list1) = dep_formats.next().ok_or(diagnostics::LinkRlibError::MissingFormat)?;
         if let Some((ty2, list2)) = dep_formats.find(|(_, list2)| list1 != *list2) {
-            return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+            return Err(diagnostics::LinkRlibError::IncompatibleDependencyFormats {
                 ty1: format!("{ty1:?}"),
                 ty2: format!("{ty2:?}"),
                 list1: format!("{list1:?}"),
@@ -283,16 +524,16 @@ pub fn each_linked_rlib(
         match fmts.get(cnum) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
-            None => return Err(errors::LinkRlibError::MissingFormat),
+            None => return Err(diagnostics::LinkRlibError::MissingFormat),
         }
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some(path) = &used_crate_source.rlib {
             f(cnum, path);
         } else if used_crate_source.rmeta.is_some() {
-            return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+            return Err(diagnostics::LinkRlibError::OnlyRmetaFound { crate_name });
         } else {
-            return Err(errors::LinkRlibError::NotFound { crate_name });
+            return Err(diagnostics::LinkRlibError::NotFound { crate_name });
         }
     }
     Ok(())
@@ -326,8 +567,16 @@ fn link_rlib<'a>(
         .map(|obj| obj.file_name().unwrap().to_str().unwrap().to_string())
         .collect();
 
+    let native_lib_filenames: Vec<Option<Symbol>> = crate_info
+        .used_libraries
+        .iter()
+        .map(|lib| find_bundled_library(lib, sess, &crate_info.crate_types))
+        .collect();
+
     let metadata_link_file = if matches!(flavor, RlibFlavor::Normal) {
-        let metadata_link = rmeta_link::RmetaLink { rust_object_files };
+        let native_lib_filenames: Vec<Option<String>> =
+            native_lib_filenames.iter().map(|f| f.map(|s| s.to_string())).collect();
+        let metadata_link = rmeta_link::RmetaLink { rust_object_files, native_lib_filenames };
         let metadata_link_data = metadata_link.encode();
         let (wrapper, _) =
             create_wrapper_file(sess, rmeta_link::SECTION.to_string(), &metadata_link_data);
@@ -410,23 +659,24 @@ fn link_rlib<'a>(
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
-    for lib in crate_info.used_libraries.iter() {
+    for (i, lib) in crate_info.used_libraries.iter().enumerate() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
         if flavor == RlibFlavor::Normal
-            && let Some(filename) = lib.filename
+            && let Some(filename) = native_lib_filenames[i]
         {
             let path = find_native_static_library(filename.as_str(), true, sess);
-            let src = read(path)
-                .unwrap_or_else(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }));
+            let src = read(path).unwrap_or_else(|e| {
+                sess.dcx().emit_fatal(diagnostics::ReadFileError { message: e })
+            });
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir.as_ref(), filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
             ab.add_archive(&path, AddArchiveKind::Other).unwrap_or_else(|error| {
-                sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
+                sess.dcx().emit_fatal(diagnostics::AddNativeLibrary { library_path: path, error })
             });
         }
     }
@@ -444,7 +694,7 @@ fn link_rlib<'a>(
         ) {
             ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx()
-                    .emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
+                    .emit_fatal(diagnostics::AddNativeLibrary { library_path: output_path, error });
             });
         }
     }
@@ -529,11 +779,21 @@ fn link_staticlib(
         let lto = are_upstream_rust_objects_already_included(sess)
             && !ignored_for_lto(sess, crate_info, cnum);
 
-        let native_libs = crate_info.native_libraries[&cnum].iter();
-        let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
-        let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
+        let native_libs = &crate_info.native_libraries[&cnum];
+        let bundled_filenames =
+            rmeta_link_cache.native_lib_filenames(&sess.target, path, native_libs);
+        let relevant_libs: FxIndexSet<_> = native_libs
+            .iter()
+            .enumerate()
+            .filter(|(_, lib)| relevant_lib(sess, lib))
+            .filter_map(|(i, _)| bundled_filenames.get(i).copied().flatten())
+            .collect();
 
-        let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+        let bundled_libs: FxIndexSet<_> = native_libs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, _)| bundled_filenames.get(i).copied().flatten())
+            .collect();
         ab.add_archive(
             path,
             AddArchiveKind::Rlib(rmeta_link_cache, &|fname: &str, entry_kind| {
@@ -579,12 +839,12 @@ fn link_staticlib(
     let exported_symbols = if hide || rename {
         if !matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO) {
             if hide {
-                sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                sess.dcx().emit_warn(diagnostics::StaticlibHideInternalSymbolsUnsupported {
                     binary_format: sess.target.archive_format.to_string(),
                 });
             }
             if rename {
-                sess.dcx().emit_warn(errors::StaticlibRenameInternalSymbolsUnsupported {
+                sess.dcx().emit_warn(diagnostics::StaticlibRenameInternalSymbolsUnsupported {
                     binary_format: sess.target.archive_format.to_string(),
                 });
             }
@@ -593,7 +853,7 @@ fn link_staticlib(
             crate_info
                 .exported_symbols
                 .get(&CrateType::StaticLib)
-                .map(|symbols| symbols.iter().map(|(s, _)| s.clone()).collect())
+                .map(|symbols| symbols.iter().map(|symbol| symbol.name.clone()).collect())
         }
     } else {
         None
@@ -624,9 +884,9 @@ fn link_staticlib(
         if let Some(path) = &used_crate_source.dylib {
             all_rust_dylibs.push(&**path);
         } else if used_crate_source.rmeta.is_some() {
-            sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+            sess.dcx().emit_fatal(diagnostics::LinkRlibError::OnlyRmetaFound { crate_name });
         } else {
-            sess.dcx().emit_fatal(errors::LinkRlibError::NotFound { crate_name });
+            sess.dcx().emit_fatal(diagnostics::LinkRlibError::NotFound { crate_name });
         }
     }
 
@@ -747,7 +1007,7 @@ fn link_dwarf_object(
         Ok(())
     }) {
         Ok(()) => {}
-        Err(e) => sess.dcx().emit_fatal(errors::ThorinErrorWrapper(e)),
+        Err(e) => sess.dcx().emit_fatal(diagnostics::ThorinErrorWrapper(e)),
     }
 }
 
@@ -767,9 +1027,9 @@ fn is_msvc_link_exe(sess: &Session) -> bool {
         && linker_path.to_str() == Some("link.exe")
 }
 
-fn is_macos_ld(sess: &Session) -> bool {
+fn is_macos_linker(sess: &Session) -> bool {
     let (_, flavor) = linker_and_flavor(sess);
-    sess.target.is_like_darwin && matches!(flavor, LinkerFlavor::Darwin(_, Lld::No))
+    sess.target.is_like_darwin && matches!(flavor, LinkerFlavor::Darwin(..))
 }
 
 fn is_windows_gnu_ld(sess: &Session) -> bool {
@@ -813,31 +1073,47 @@ fn report_linker_output(
         escape_string(output.trim().as_bytes())
     }
 
+    fn has_lnk_code(line: &str) -> bool {
+        // link.exe diagnostics are structured as `LINK : warning LNK####:` or
+        // `LINK : fatal error LNK####:`. The code is always followed by a `:`
+        // that is the second colon in the line, so matching that structure
+        // instead of scanning for `LNK####` anywhere avoids false positives on
+        // file names.
+        let Some((code_colon, _)) = line.match_indices(':').nth(1) else {
+            return false;
+        };
+        let Some(code) = code_colon.checked_sub(7) else {
+            return false;
+        };
+        let code = &line.as_bytes()[code..code_colon];
+        code.starts_with(b"LNK") && code[3..].iter().all(u8::is_ascii_digit)
+    }
+
     if is_msvc_link_exe(sess) {
         info!("inferred MSVC link.exe");
 
         escaped_stdout = for_each(&stdout, |line, output| {
-            // Hide some progress messages from link.exe that we don't care about.
-            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
-            // When incremental linking is enabled and an .ilk exists, but its associated .exe is
-            // missing, link.exe prints the path of the missing .exe followed by:
+            // Hide progress messages from link.exe that we don't care about.
+            // These include localized variants of the English messages (e.g.
+            // "Creating library ..."), which rustc cannot recognize by text
+            // without the English language pack.
+            // See https://github.com/rust-lang/rust/issues/159133
+            // When incremental linking is enabled and an .ilk exists, but its
+            // associated .exe is missing, link.exe prints the path of the
+            // missing .exe followed by:
             let ilk_but_no_exe =
                 "not found or not built by the last incremental link; performing full link";
-            let trimmed = line.trim_start();
-            if trimmed.starts_with("Creating library")
-                || trimmed.starts_with("Generating code")
-                || trimmed.starts_with("Finished generating code")
-                || trimmed.ends_with(ilk_but_no_exe)
-            {
-                linker_info += line;
-                linker_info += "\r\n";
-            } else {
+            // LNK6004 is the one code-bearing line that is still informational.
+            if has_lnk_code(line) && !line.ends_with(ilk_but_no_exe) {
                 *output += line;
                 *output += "\r\n"
+            } else {
+                linker_info += line;
+                linker_info += "\r\n";
             }
         });
-    } else if is_macos_ld(sess) {
-        info!("inferred macOS LD");
+    } else if is_macos_linker(sess) {
+        info!("inferred macOS linker");
 
         // FIXME: Tracked by https://github.com/rust-lang/rust/issues/136113
         let deployment_mismatch = |line: &str| {
@@ -850,6 +1126,8 @@ fn report_linker_output(
                 && line.contains("building for")
                 && line.contains("but linking with")
                 && line.contains("which was built for newer version"))
+            // lld (ld64.lld / rust-lld):
+            || line.contains("which is newer than target minimum of")
         };
         // FIXME: This is a real warning we would like to show, but it hits too many crates
         // to want to turn it on immediately.
@@ -966,7 +1244,7 @@ fn link_natively(
         should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
     let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
 
-    let mut cmd = linker_with_args(
+    let (mut cmd, jobserver_tokens) = linker_with_args(
         &linker_path,
         flavor,
         sess,
@@ -1088,9 +1366,7 @@ fn link_natively(
             let get_objects = |objects: &CrtObjects, kind| {
                 objects
                     .get(&kind)
-                    .iter()
-                    .copied()
-                    .flatten()
+                    .into_flat_iter()
                     .map(|obj| {
                         get_object_file_path(sess, obj, self_contained_crt_objects).into_os_string()
                     })
@@ -1125,13 +1401,16 @@ fn link_natively(
         break;
     }
 
+    // Finished running linker, release the tokens.
+    drop(jobserver_tokens);
+
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 let escaped_output = escape_linker_output(&output, flavor);
-                let err = errors::LinkingFailed {
+                let err = diagnostics::LinkingFailed {
                     linker_path: &linker_path,
                     exit_status: prog.status,
                     command: cmd,
@@ -1152,25 +1431,25 @@ fn link_natively(
                             find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
                                 .is_some();
 
-                        sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+                        sess.dcx().emit_note(diagnostics::LinkExeUnexpectedError);
 
                         // STATUS_STACK_BUFFER_OVERRUN is also used for fast abnormal program termination, e.g. abort().
                         // Emit a special diagnostic to let people know that this most likely doesn't indicate a stack buffer overrun.
                         const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xc0000409u32 as _;
                         if code == STATUS_STACK_BUFFER_OVERRUN {
-                            sess.dcx().emit_note(errors::LinkExeStatusStackBufferOverrun);
+                            sess.dcx().emit_note(diagnostics::LinkExeStatusStackBufferOverrun);
                         }
 
                         if is_vs_installed && has_linker {
                             // the linker is broken
-                            sess.dcx().emit_note(errors::RepairVSBuildTools);
-                            sess.dcx().emit_note(errors::MissingCppBuildToolComponent);
+                            sess.dcx().emit_note(diagnostics::RepairVSBuildTools);
+                            sess.dcx().emit_note(diagnostics::MissingCppBuildToolComponent);
                         } else if is_vs_installed {
                             // the linker is not installed
-                            sess.dcx().emit_note(errors::SelectCppBuildToolWorkload);
+                            sess.dcx().emit_note(diagnostics::SelectCppBuildToolWorkload);
                         } else {
                             // visual studio is not installed
-                            sess.dcx().emit_note(errors::VisualStudioNotInstalled);
+                            sess.dcx().emit_note(diagnostics::VisualStudioNotInstalled);
                         }
                     }
                 }
@@ -1185,9 +1464,9 @@ fn link_natively(
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
             let err = if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e })
+                sess.dcx().emit_err(diagnostics::LinkerNotFound { linker_path, error: e })
             } else {
-                sess.dcx().emit_err(errors::UnableToExeLinker {
+                sess.dcx().emit_err(diagnostics::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{cmd:?}"),
@@ -1195,9 +1474,9 @@ fn link_natively(
             };
 
             if sess.target.is_like_msvc && linker_not_found {
-                sess.dcx().emit_note(errors::MsvcMissingLinker);
-                sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
-                sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
+                sess.dcx().emit_note(diagnostics::MsvcMissingLinker);
+                sess.dcx().emit_note(diagnostics::CheckInstalledVisualStudio);
+                sess.dcx().emit_note(diagnostics::InsufficientVSCodeProduct);
             }
             err.raise_fatal();
         }
@@ -1222,13 +1501,13 @@ fn link_natively(
                     if !prog.status.success() {
                         let mut output = prog.stderr.clone();
                         output.extend_from_slice(&prog.stdout);
-                        sess.dcx().emit_warn(errors::ProcessingDymutilFailed {
+                        sess.dcx().emit_warn(diagnostics::ProcessingDymutilFailed {
                             status: prog.status,
                             output: escape_string(&output),
                         });
                     }
                 }
-                Err(error) => sess.dcx().emit_fatal(errors::UnableToRunDsymutil { error }),
+                Err(error) => sess.dcx().emit_fatal(diagnostics::UnableToRunDsymutil { error }),
             }
         }
 
@@ -1287,7 +1566,7 @@ fn link_natively(
     if sess.target.is_like_aix {
         // `llvm-strip` doesn't work for AIX - their strip must be used.
         if !sess.host.is_like_aix {
-            sess.dcx().emit_warn(errors::AixStripNotUsed);
+            sess.dcx().emit_warn(diagnostics::AixStripNotUsed);
         }
         let stripcmd = "/usr/bin/strip";
         match strip {
@@ -1326,14 +1605,14 @@ fn strip_with_external_utility(sess: &Session, util: &str, out_filename: &Path, 
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.dcx().emit_warn(errors::StrippingDebugInfoFailed {
+                sess.dcx().emit_warn(diagnostics::StrippingDebugInfoFailed {
                     util,
                     status: prog.status,
                     output: escape_string(&output),
                 });
             }
         }
-        Err(error) => sess.dcx().emit_fatal(errors::UnableToRun { util, error }),
+        Err(error) => sess.dcx().emit_fatal(diagnostics::UnableToRun { util, error }),
     }
 }
 
@@ -1483,6 +1762,12 @@ fn add_sanitizer_libraries(
     if sanitizer.contains(SanitizerSet::REALTIME) {
         link_sanitizer_runtime(sess, flavor, linker, "rtsan");
     }
+    if sanitizer.contains(SanitizerSet::CFI)
+        && (sess.opts.unstable_opts.sanitizer_cfi_diag.unwrap_or(false)
+            || sess.opts.unstable_opts.sanitizer_cfi_recover.unwrap_or(false))
+    {
+        link_sanitizer_runtime(sess, flavor, linker, "ubsan");
+    }
 }
 
 fn link_sanitizer_runtime(
@@ -1494,7 +1779,7 @@ fn link_sanitizer_runtime(
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let path = sess.target_tlib_path.dir.join(filename);
         if path.exists() {
-            sess.target_tlib_path.dir.clone()
+            sess.target_tlib_path.dir.to_path_buf()
         } else {
             filesearch::make_target_lib_path(
                 &sess.opts.sysroot.default,
@@ -1597,7 +1882,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             )),
             (Some(linker), None) => {
                 let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.dcx().emit_fatal(errors::LinkerFileStem);
+                    sess.dcx().emit_fatal(diagnostics::LinkerFileStem);
                 });
                 let flavor = sess.target.linker_flavor.with_linker_hints(stem);
                 let flavor = adjust_flavor_to_features(flavor, features);
@@ -1768,10 +2053,10 @@ fn print_native_static_libs(
     match out {
         OutFileName::Real(path) => {
             out.overwrite(&lib_args.join(" "), sess);
-            sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
+            sess.dcx().emit_note(diagnostics::StaticLibraryNativeArtifactsToFile { path });
         }
         OutFileName::Stdout => {
-            sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
+            sess.dcx().emit_note(diagnostics::StaticLibraryNativeArtifacts);
             // Prefix for greppability
             // Note: This must not be translated as tools are allowed to depend on this exact string.
             sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
@@ -1791,6 +2076,9 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
             return file_path;
         }
     }
+
+    // Note: this is O(n^2), it could be expensive-ish if we lookup many object files for many
+    // search paths
     for search_path in sess.target_filesearch().search_paths(PathKind::Native) {
         let file_path = search_path.dir.join(name);
         if file_path.exists() {
@@ -2019,7 +2307,7 @@ fn self_contained_components(
             // Emit an error if the user requested self-contained mode on the CLI but the target
             // explicitly refuses it.
             if sess.target.link_self_contained.is_disabled() {
-                sess.dcx().emit_err(errors::UnsupportedLinkSelfContained);
+                sess.dcx().emit_err(diagnostics::UnsupportedLinkSelfContained);
             }
             self_contained
         } else {
@@ -2070,7 +2358,7 @@ fn add_pre_link_objects(
     } else {
         &empty
     };
-    for obj in objects.get(&link_output_kind).iter().copied().flatten() {
+    for obj in objects.get(&link_output_kind).into_flat_iter() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
@@ -2087,7 +2375,7 @@ fn add_post_link_objects(
     } else {
         &sess.target.post_link_objects
     };
-    for obj in objects.get(&link_output_kind).iter().copied().flatten() {
+    for obj in objects.get(&link_output_kind).into_flat_iter() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
@@ -2107,14 +2395,14 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
     match (crate_type, &sess.target.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
             if !sess.target.linker_flavor.is_gnu() {
-                sess.dcx().emit_fatal(errors::LinkScriptUnavailable);
+                sess.dcx().emit_fatal(diagnostics::LinkScriptUnavailable);
             }
 
             let file_name = ["rustc", &sess.target.llvm_target, "linkfile.ld"].join("-");
 
             let path = tmpdir.join(file_name);
             if let Err(error) = fs::write(&path, script.as_ref()) {
-                sess.dcx().emit_fatal(errors::LinkScriptWriteFailure { path, error });
+                sess.dcx().emit_fatal(diagnostics::LinkScriptWriteFailure { path, error });
             }
 
             cmd.link_arg("--script").link_arg(path);
@@ -2196,9 +2484,15 @@ fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
     tmpdir: &Path,
-    symbols: &[(String, SymbolExportKind)],
+    crate_type: CrateType,
+    linked_symbols: &[(String, SymbolExportKind)],
+    exported_symbols: &[SymbolExport],
 ) {
-    if symbols.is_empty() {
+    let should_export_symbols = sess.target.is_like_msvc
+        && !exported_symbols.is_empty()
+        && (crate_type != CrateType::Executable
+            || sess.opts.unstable_opts.export_executable_symbols);
+    if linked_symbols.is_empty() && !should_export_symbols {
         return;
     }
 
@@ -2235,7 +2529,7 @@ fn add_linked_symbol_object(
         None
     };
 
-    for (sym, kind) in symbols.iter() {
+    for (sym, kind) in linked_symbols.iter() {
         let symbol = file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
             value: 0,
@@ -2293,10 +2587,41 @@ fn add_linked_symbol_object(
         }
     }
 
+    if should_export_symbols {
+        // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
+        // export symbols from a dynamic library. When building a dynamic library,
+        // however, we're going to want some symbols exported, so this adds a
+        // `.drectve` section which lists all the symbols using /EXPORT arguments.
+        //
+        // The linker will read these arguments from the `.drectve` section and
+        // export all the symbols from the dynamic library. Note that this is not
+        // as simple as just exporting all the symbols in the current crate (as
+        // specified by `codegen.reachable`) but rather we also need to possibly
+        // export the symbols of upstream crates. Upstream rlibs may be linked
+        // statically to this dynamic library, in which case they may continue to
+        // transitively be used and hence need their symbols exported.
+        fn msvc_drectve_export(symbol: &SymbolExport) -> String {
+            let data = if symbol.kind == SymbolExportKind::Data { ",DATA" } else { "" };
+
+            if let Some(link_name) = symbol.link_name.as_deref() {
+                // The first name is the decorated symbol used by the import library, while
+                // EXPORTAS gives the public name written to the DLL export table.
+                format!(" /EXPORT:\"{link_name}\"{data},EXPORTAS,\"{}\"", symbol.name)
+            } else {
+                format!(" /EXPORT:\"{}\"{data}", symbol.name)
+            }
+        }
+
+        let drectve = exported_symbols.iter().map(msvc_drectve_export).collect::<String>();
+
+        let section = file.add_section(vec![], b".drectve".to_vec(), object::SectionKind::Linker);
+        file.append_section_data(section, drectve.as_bytes(), 1);
+    }
+
     let path = tmpdir.join("symbols.o");
     let result = std::fs::write(&path, file.write().unwrap());
     if let Err(error) = result {
-        sess.dcx().emit_fatal(errors::FailedToWrite { path, error });
+        sess.dcx().emit_fatal(diagnostics::FailedToWrite { path, error });
     }
     cmd.add_object(&path);
 }
@@ -2486,7 +2811,7 @@ fn undecorate_c_symbol<'a>(
 fn add_c_staticlib_symbols(
     sess: &Session,
     lib: &NativeLib,
-    out: &mut Vec<(String, SymbolExportKind)>,
+    out: &mut Vec<SymbolExport>,
 ) -> io::Result<()> {
     let file_path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
 
@@ -2549,7 +2874,11 @@ fn add_c_staticlib_symbols(
             let Some(undecorated) = undecorate_c_symbol(name, sess, export_kind) else {
                 continue;
             };
-            out.push((undecorated.to_string(), export_kind));
+            out.push(SymbolExport::with_link_name(
+                undecorated.to_string(),
+                export_kind,
+                name.to_string(),
+            ));
         }
     }
 
@@ -2578,7 +2907,7 @@ fn linker_with_args(
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
     codegen_backend: &'static str,
-) -> Command {
+) -> (Command, Vec<jobserver::Acquired>) {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
         sess,
@@ -2629,7 +2958,14 @@ fn linker_with_args(
     // Pre-link CRT objects.
     add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
 
-    add_linked_symbol_object(cmd, sess, tmpdir, &crate_info.linked_symbols[&crate_type]);
+    add_linked_symbol_object(
+        cmd,
+        sess,
+        tmpdir,
+        crate_type,
+        &crate_info.linked_symbols[&crate_type],
+        &export_symbols,
+    );
 
     // Sanitizer libraries.
     add_sanitizer_libraries(sess, flavor, crate_type, cmd);
@@ -2688,6 +3024,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         tmpdir,
         link_output_kind,
@@ -2710,6 +3047,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         tmpdir,
         link_output_kind,
@@ -2723,7 +3061,7 @@ fn linker_with_args(
         // the directory of the stub to the linker search path.
         // We make an extra directory for this to avoid polluting the search path.
         if let Err(error) = fs::create_dir(&raw_dylib_dir) {
-            sess.dcx().emit_fatal(errors::CreateTempDir { error })
+            sess.dcx().emit_fatal(diagnostics::CreateTempDir { error })
         }
         cmd.include_path(&raw_dylib_dir);
     }
@@ -2845,7 +3183,38 @@ fn linker_with_args(
     // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
-    cmd.take_cmd()
+    // Only LLD supports controlling parallelism at the moment.
+    let mut tokens = Vec::new();
+    if let LinkerJobs::Explicit(limit) = sess.opts.jobs.linker
+        && flavor.uses_lld()
+    {
+        // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
+        // linking. One token is available implicitly since we are running on the main thread.
+        let client = jobserver::client();
+
+        let mut unsupported = false;
+        for _ in 0..limit.get() - 1 {
+            match client.try_acquire() {
+                Ok(Some(token)) => tokens.push(token),
+                Ok(None) => {}
+                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                    assert!(tokens.is_empty());
+                    unsupported = true;
+                    break;
+                }
+                Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
+            }
+        }
+
+        let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
+        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+        // Linking is typically the last step in a multi-crate project build,
+        // so the resources should usually be free.
+        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
+        cmd.link_arg(format!("{prefix}{threads}"));
+    }
+
+    (cmd.take_cmd(), tokens)
 }
 
 fn add_order_independent_options(
@@ -2995,7 +3364,7 @@ fn collect_natvis_visualizers(
                 visualizer_paths.push(visualizer_out_file);
             }
             Err(error) => {
-                sess.dcx().emit_warn(errors::UnableToWriteDebuggerVisualizer {
+                sess.dcx().emit_warn(diagnostics::UnableToWriteDebuggerVisualizer {
                     path: visualizer_out_file,
                     error,
                 });
@@ -3009,6 +3378,7 @@ fn add_native_libs_from_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     bundled_libs: &FxIndexSet<Symbol>,
@@ -3032,13 +3402,24 @@ fn add_native_libs_from_crate(
             .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
     }
 
-    let native_libs = match cnum {
-        LOCAL_CRATE => &crate_info.used_libraries,
-        _ => &crate_info.native_libraries[&cnum],
+    let (native_libs, bundled_filenames): (&Vec<NativeLib>, Vec<Option<Symbol>>) = match cnum {
+        // Bundled libraries are only linked by path for upstream crates, so the local crate
+        // never needs their filenames.
+        LOCAL_CRATE => (&crate_info.used_libraries, Vec::new()),
+        _ => {
+            let native_libs = &crate_info.native_libraries[&cnum];
+            let filenames =
+                if let Some(rlib_path) = crate_info.used_crate_source[&cnum].rlib.as_ref() {
+                    rmeta_link_cache.native_lib_filenames(&sess.target, rlib_path, native_libs)
+                } else {
+                    Vec::new()
+                };
+            (native_libs, filenames)
+        }
     };
 
     let mut last = (None, NativeLibKind::Unspecified, false);
-    for lib in native_libs {
+    for (i, lib) in native_libs.iter().enumerate() {
         if !relevant_lib(sess, lib) {
             continue;
         }
@@ -3058,7 +3439,7 @@ fn add_native_libs_from_crate(
                     let bundle = bundle.unwrap_or(true);
                     let whole_archive = whole_archive == Some(true);
                     if bundle && cnum != LOCAL_CRATE {
-                        if let Some(filename) = lib.filename {
+                        if let Some(filename) = bundled_filenames.get(i).copied().flatten() {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
                             let path = tmpdir.join(filename.as_str());
                             cmd.link_staticlib_by_path(&path, whole_archive);
@@ -3110,6 +3491,7 @@ fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
@@ -3121,6 +3503,7 @@ fn add_local_native_libraries(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         tmpdir,
         &Default::default(),
@@ -3180,10 +3563,17 @@ fn add_upstream_rust_crates(
         match linkage {
             Linkage::Static | Linkage::IncludedFromDylib | Linkage::NotLinked => {
                 if link_static_crate {
-                    bundled_libs = crate_info.native_libraries[&cnum]
-                        .iter()
-                        .filter_map(|lib| lib.filename)
-                        .collect();
+                    if let Some(rlib_path) = crate_info.used_crate_source[&cnum].rlib.as_ref() {
+                        bundled_libs = rmeta_link_cache
+                            .native_lib_filenames(
+                                &sess.target,
+                                rlib_path,
+                                &crate_info.native_libraries[&cnum],
+                            )
+                            .into_iter()
+                            .flatten()
+                            .collect();
+                    }
                     add_static_crate(
                         cmd,
                         sess,
@@ -3217,6 +3607,7 @@ fn add_upstream_rust_crates(
             cmd,
             sess,
             archive_builder_builder,
+            rmeta_link_cache,
             crate_info,
             tmpdir,
             &bundled_libs,
@@ -3232,6 +3623,7 @@ fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
@@ -3255,6 +3647,7 @@ fn add_upstream_native_libraries(
             cmd,
             sess,
             archive_builder_builder,
+            rmeta_link_cache,
             crate_info,
             tmpdir,
             &Default::default(),
@@ -3278,12 +3671,12 @@ fn add_upstream_native_libraries(
 fn rehome_sysroot_lib_dir(sess: &Session, lib_dir: &Path) -> PathBuf {
     let sysroot_lib_path = &sess.target_tlib_path.dir;
     let canonical_sysroot_lib_path =
-        { try_canonicalize(sysroot_lib_path).unwrap_or_else(|_| sysroot_lib_path.clone()) };
+        { try_canonicalize(sysroot_lib_path).unwrap_or_else(|_| sysroot_lib_path.to_path_buf()) };
 
     let canonical_lib_dir = try_canonicalize(lib_dir).unwrap_or_else(|_| lib_dir.to_path_buf());
     if canonical_lib_dir == canonical_sysroot_lib_path {
         // This path already had `fix_windows_verbatim_for_gcc()` applied if needed.
-        sysroot_lib_path.clone()
+        sysroot_lib_path.to_path_buf()
     } else {
         fix_windows_verbatim_for_gcc(lib_dir)
     }
@@ -3379,8 +3772,10 @@ fn add_static_crate(
                 false
             }),
         ) {
-            sess.dcx()
-                .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
+            sess.dcx().emit_fatal(diagnostics::RlibArchiveBuildFailure {
+                path: cratepath.clone(),
+                error,
+            });
         }
         if archive.build(&dst, None) {
             link_upstream(&dst);
@@ -3727,7 +4122,7 @@ fn add_lld_args(
         if !linker_path_exists {
             // As a sanity check, we emit an error if none of these paths exist: we want
             // self-contained linking and have no linker.
-            sess.dcx().emit_fatal(errors::SelfContainedLinkerMissing);
+            sess.dcx().emit_fatal(diagnostics::SelfContainedLinkerMissing);
         }
     }
 

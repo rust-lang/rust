@@ -1,8 +1,10 @@
-error[E0423]: expected function, found trait `Trait`
+error[E0423]: cannot find function `Trait` in this scope
   --> $DIR/reuse-trait-path-with-empty-generics.rs:9:11
    |
 LL |     reuse Trait::<> as bar4;
-   |           ^^^^^^^^^ not a function
+   |           ^^^^^ not found in this scope
+   |
+   = note: a trait named `Trait` exists in another namespace
 
 error: aborting due to 1 previous error
 

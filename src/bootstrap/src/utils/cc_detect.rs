@@ -25,7 +25,8 @@ use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use crate::core::config::TargetSelection;
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{CompressDebuginfo, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
@@ -36,10 +37,18 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         .opt_level(2)
         .warnings(false)
         .debug(false)
-        // Compress debuginfo
-        .flag_if_supported("-gz")
+        // We have to configure out_dir, otherwise flag_if_supported will not work
+        .out_dir(build.tempdir().join("cc-rs-out-dir"))
         .target(&target.triple)
         .host(&build.host_target.triple);
+
+    match build.config.compress_debuginfo(target) {
+        CompressDebuginfo::Zlib => {
+            cfg.flag_if_supported("-gz");
+        }
+        CompressDebuginfo::Off => {}
+    }
+
     match build.crt_static(target) {
         Some(a) => {
             cfg.static_crt(a);
@@ -47,9 +56,6 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         None => {
             if target.is_msvc() {
                 cfg.static_crt(true);
-            }
-            if target.contains("musl") {
-                cfg.static_flag(true);
             }
         }
     }
@@ -63,12 +69,12 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 /// by combining the primary build target, host targets, and any additional targets. For
 /// each target, it calls [`fill_target_compiler`] to configure the necessary compiler tools.
 pub fn fill_compilers(build: &mut Build) {
-    let targets: HashSet<_> = match build.config.cmd {
+    let mut targets: HashSet<_> = match build.config.cmd {
         // We don't need to check cross targets for these commands.
-        crate::Subcommand::Clean { .. }
-        | crate::Subcommand::Check { .. }
-        | crate::Subcommand::Format { .. }
-        | crate::Subcommand::Setup { .. } => {
+        Subcommand::Clean { .. }
+        | Subcommand::Check { .. }
+        | Subcommand::Format { .. }
+        | Subcommand::Setup { .. } => {
             build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
         }
 
@@ -85,7 +91,14 @@ pub fn fill_compilers(build: &mut Build) {
         }
     };
 
-    for target in targets.into_iter() {
+    // When we intend to build wasm proc macros, we'll need to detect a toolchain for linking those
+    // as well. In the future it would be good to make this a no-op given that we shouldn't need to
+    // build any C/C++ code for wasm...
+    if build.config.wasm_proc_macros {
+        targets.insert(TargetSelection::from_user("wasm32-wasip2"));
+    }
+
+    for target in targets {
         fill_target_compiler(build, target);
     }
 }
@@ -100,20 +113,18 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     let config = build.config.target_config.get(&target);
     if let Some(cc) = config
         .and_then(|c| c.cc.clone())
-        .or_else(|| default_compiler(&mut cfg, Language::C, target, build))
+        .or_else(|| default_compiler(&cfg, Language::C, target, build))
     {
         cfg.compiler(cc);
     }
 
     let compiler = cfg.get_compiler();
-    let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
-        ar
-    } else {
-        cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok()
-    };
+    let ar = config
+        .and_then(|c| c.ar.clone())
+        .or_else(|| cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok());
 
     build.cc.insert(target, compiler.clone());
-    let mut cflags = build.cc_handled_clags(target, CLang::C);
+    let mut cflags = build.cc_handled_cflags(target, CLang::C);
     cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
 
     // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
@@ -122,7 +133,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     cfg.cpp(true);
     let cxx_configured = if let Some(cxx) = config
         .and_then(|c| c.cxx.clone())
-        .or_else(|| default_compiler(&mut cfg, Language::CPlusPlus, target, build))
+        .or_else(|| default_compiler(&cfg, Language::CPlusPlus, target, build))
     {
         cfg.compiler(cxx);
         true
@@ -140,7 +151,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     build.do_if_verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
     build.do_if_verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
-        let mut cxxflags = build.cc_handled_clags(target, CLang::Cxx);
+        let mut cxxflags = build.cc_handled_cflags(target, CLang::Cxx);
         cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
         build.do_if_verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
         build.do_if_verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
@@ -158,7 +169,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
 /// Determines the default compiler for a given target and language when not explicitly
 /// configured in `bootstrap.toml`.
 fn default_compiler(
-    cfg: &mut cc::Build,
+    cfg: &cc::Build,
     compiler: Language,
     target: TargetSelection,
     build: &Build,

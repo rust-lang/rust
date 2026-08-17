@@ -1,5 +1,5 @@
 error: unnecessary `pub(self)`
-  --> tests/ui/needless_pub_self.rs:13:1
+  --> tests/ui/needless_pub_self.rs:12:1
    |
 LL | pub(self) fn a() {}
    | ^^^^^^^^^
@@ -9,7 +9,7 @@ LL | pub(self) fn a() {}
    = help: remove it
 
 error: unnecessary `pub(in self)`
-  --> tests/ui/needless_pub_self.rs:15:1
+  --> tests/ui/needless_pub_self.rs:14:1
    |
 LL | pub(in self) fn b() {}
    | ^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | pub(in self) fn b() {}
    = help: remove it
 
 error: unnecessary `pub(self)`
-  --> tests/ui/needless_pub_self.rs:22:5
+  --> tests/ui/needless_pub_self.rs:21:5
    |
 LL |     pub(self) fn f() {}
    |     ^^^^^^^^^

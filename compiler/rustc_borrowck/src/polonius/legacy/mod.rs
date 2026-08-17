@@ -132,9 +132,9 @@ fn emit_move_facts(
 
     // moved_out_at
     // deinitialisation is assumed to always happen!
-    facts
-        .path_moved_at_base
-        .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
+    facts.path_moved_at_base.extend(
+        move_data.move_outs.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))),
+    );
 }
 
 /// Emit universal regions facts, and their relations.

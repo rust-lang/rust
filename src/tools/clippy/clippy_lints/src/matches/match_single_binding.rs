@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::macros::HirNode;
+use clippy_utils::macros::HirNode as _;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet, snippet_block_with_context, snippet_with_context};
 use clippy_utils::{is_expr_identity_of_pat, is_refutable, peel_blocks};
 use rustc_data_structures::fx::FxHashSet;

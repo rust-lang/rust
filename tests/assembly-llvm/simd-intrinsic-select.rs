@@ -11,42 +11,19 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, intrinsics)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
-use minicore::*;
+use minicore::simd::*;
 
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-
-#[repr(simd)]
-pub struct m8x16([i8; 16]);
-
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
-
-#[repr(simd)]
-pub struct m32x4([i32; 4]);
-
-#[repr(simd)]
-pub struct f64x2([f64; 2]);
-
-#[repr(simd)]
-pub struct m64x2([i64; 2]);
-
-#[repr(simd)]
-pub struct f64x4([f64; 4]);
-
-#[repr(simd)]
-pub struct m64x4([i64; 4]);
-
-#[repr(simd)]
-pub struct f64x8([f64; 8]);
-
-#[repr(simd)]
-pub struct m64x8([i64; 8]);
+type m8x16 = i8x16;
+type m32x4 = i32x4;
+type m32x8 = i32x8;
+type m64x2 = i64x2;
+type m64x4 = i64x4;
+type m64x8 = i64x8;
 
 #[rustc_intrinsic]
 unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;

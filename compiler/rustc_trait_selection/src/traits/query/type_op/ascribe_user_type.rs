@@ -126,24 +126,24 @@ fn relate_mir_and_user_args<'tcx>(
 
     ocx.eq(&cause, param_env, mir_ty, ty)?;
 
-    // Prove the predicates coming along with `def_id`.
+    // Prove the clauses coming along with `def_id`.
     //
-    // Also, normalize the `instantiated_predicates`
+    // Also, normalize the `instantiated_clauses`
     // because otherwise we wind up with duplicate "type
     // outlives" error messages.
-    let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
+    let instantiated_clauses = tcx.clauses_of(def_id).instantiate(tcx, args);
 
-    debug!(?instantiated_predicates);
-    for (instantiated_predicate, predicate_span) in instantiated_predicates {
-        let span = if span == DUMMY_SP { predicate_span } else { span };
+    debug!(?instantiated_clauses);
+    for (instantiated_clause, clause_span) in instantiated_clauses {
+        let span = if span == DUMMY_SP { clause_span } else { span };
         let cause = ObligationCause::new(
             span,
             CRATE_DEF_ID,
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(clause_span),
         );
-        let instantiated_predicate = ocx.normalize(&cause, param_env, instantiated_predicate);
+        let instantiated_clause = ocx.normalize(&cause, param_env, instantiated_clause);
 
-        ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
+        ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_clause));
     }
 
     // Now prove the well-formedness of `def_id` with `args`.

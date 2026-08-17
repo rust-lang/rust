@@ -8,6 +8,7 @@ extern size_t check_list_0(va_list ap);
 extern size_t check_list_1(va_list ap);
 extern size_t check_list_2(va_list ap);
 extern size_t check_list_copy_0(va_list ap);
+extern size_t check_list_i128(va_list ap);
 extern size_t check_varargs_0(int fixed, ...);
 extern size_t check_varargs_1(int fixed, ...);
 extern size_t check_varargs_2(int fixed, ...);
@@ -37,6 +38,10 @@ int main(int argc, char* argv[]) {
     assert(test_rust(check_list_2, 3.14, 12l, 'a', 6.28, "Hello", 42, "World") == 0);
 
     assert(test_rust(check_list_copy_0, 6.28, 16, 'A', "Skip Me!", "Correct") == 0);
+
+#if defined(__SIZEOF_INT128__)
+    assert(test_rust(check_list_i128, (__int128)-42, 0xAAAAAAAA, (unsigned __int128)-1) == 0);
+#endif
 
     assert(check_varargs_0(0, 42, "Hello, World!") == 0);
 

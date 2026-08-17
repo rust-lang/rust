@@ -5,8 +5,9 @@ use std::{fmt, mem};
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, find_attr};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -18,12 +19,12 @@ use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
 use super::error::*;
-use crate::errors::{LongRunning, LongRunningWarn};
+use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode,
-    Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
-    throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
+    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
+    RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
+    throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
     type_implements_dyn_trait,
 };
 
@@ -605,6 +606,11 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_info(ty, dest)?;
             }
 
+            sym::type_id_is_signed => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_scalar(Scalar::from_bool(ty.is_signed()), dest)?;
+            }
+
             sym::size_of_type_id => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
@@ -693,7 +699,48 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
             sym::field_offset => {
                 let frt_ty = instance.args.type_at(0);
-                ensure_monomorphic_enough(ecx.tcx.tcx, frt_ty)?;
+                ensure_monomorphic_enough(frt_ty)?;
+
+                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    (base, variant_idx, field_idx)
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let layout = ecx.layout_of(ty)?;
+                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
+
+                let layout = layout.for_variant(&cx, variant);
+                let offset = layout.fields.offset(field.index()).bytes();
+
+                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
+            }
+
+            sym::field_representing_type_name => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { name, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
+            sym::field_representing_type_offset => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
@@ -726,6 +773,28 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_id(field_ty, dest)?;
             }
 
+            sym::type_id_generics => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_type_id_generics(dest, ty)?;
+            }
+
+            sym::non_exhaustive => {
+                let ty = ecx.read_type_id(&args[0])?;
+
+                // FIXME(reflection): need a way to obtain non-exhaustiveness of a variant's fields.
+                let non_exhaustive = if let ty::Adt(def, _) = ty.kind() {
+                    if def.is_enum() {
+                        def.is_variant_list_non_exhaustive()
+                    } else {
+                        def.non_enum_variant().is_field_list_non_exhaustive()
+                    }
+                } else {
+                    false
+                };
+
+                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
+            }
+
             _ => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
                 if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
@@ -743,6 +812,18 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         // Intrinsic is done, jump to next block.
         ecx.return_to_block(target)?;
         interp_ok(None)
+    }
+
+    fn call_llvm_intrinsic(
+        ecx: &mut InterpCx<'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        _args: &[OpTy<'tcx>],
+        _dest: &PlaceTy<'tcx, Self::Provenance>,
+        _target: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        let intrinsic_name = ecx.tcx.codegen_fn_attrs(instance.def_id()).symbol_name.unwrap();
+
+        throw_unsup_format!("LLVM intrinsic `{intrinsic_name}` is not supported at compile-time");
     }
 
     fn assert_panic(
@@ -772,6 +853,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 found: eval_to_int(found)?,
             },
             NullPointerDereference => NullPointerDereference,
+            NullReferenceConstructed => NullReferenceConstructed,
             InvalidEnumConstruction(source) => InvalidEnumConstruction(eval_to_int(source)?),
         };
         Err(ConstEvalErrKind::AssertFailure(err)).into()

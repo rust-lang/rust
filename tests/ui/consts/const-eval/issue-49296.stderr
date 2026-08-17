@@ -1,4 +1,4 @@
-error[E0080]: memory access failed: ALLOC0 has been freed, so this pointer is dangling
+error[E0080]: memory access failed: ALLOC$ID has been freed, so this pointer is dangling
   --> $DIR/issue-49296.rs:9:16
    |
 LL | const X: u64 = *wat(42);

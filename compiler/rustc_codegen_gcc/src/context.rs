@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use gccjit::{Block, CType, Context, Function, FunctionType, LValue, Location, RValue, Type};
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use rustc_codegen_ssa::errors as ssa_errors;
+use rustc_codegen_ssa::diagnostics as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -16,9 +16,9 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers,
 };
 use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
-use rustc_session::Session;
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
+use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Symbol, respan};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
@@ -116,6 +116,9 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+
+    /// A counter that is used for generating global symbol names
+    global_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<Function<'gcc>>>,
     #[cfg(feature = "master")]
@@ -296,6 +299,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             tcx,
             struct_types: Default::default(),
             local_gen_sym_counter: Cell::new(0),
+            global_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
             #[cfg(feature = "master")]
             rust_try_fn: Cell::new(None),
@@ -398,7 +402,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn_addr(
+        &self,
+        instance: Instance<'tcx>,
+        _pointer_auth_schema: Option<&PointerAuthSchema>,
+    ) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
         let func = if let Some(variable) = self.get_declared_value(func_name) {
@@ -586,6 +594,24 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         self.local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
         // user defined names
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push('.');
+        // Offset the index by the base so that always at least two characters
+        // are generated. This avoids cases where the suffix is interpreted as
+        // size by the assembler (for m68k: .b, .w, .l).
+        name.push_str(&(idx as u64 + ALPHANUMERIC_ONLY as u64).to_base(ALPHANUMERIC_ONLY));
+        name
+    }
+
+    /// Generates a new global symbol name with the given prefix. This symbol name must
+    /// only be used for definitions with `internal` or `private` linkage.
+    pub fn generate_global_symbol_name(&self) -> String {
+        let idx = self.global_gen_sym_counter.get();
+        self.global_gen_sym_counter.set(idx + 1);
+
+        let sym = self.codegen_unit.symbol_name();
+        let prefix = sym.as_str();
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');

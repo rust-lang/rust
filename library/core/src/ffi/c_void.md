@@ -9,7 +9,7 @@ stabilized, it is recommended to use a newtype wrapper around an empty
 byte array. See the [Nomicon] for details.
 
 One could use `std::os::raw::c_void` if they want to support old Rust
-compiler down to 1.1.0. After Rust 1.30.0, it was re-exported by
+compilers down to 1.1.0. After Rust 1.30.0, it was re-exported by
 this definition. For more information, please read [RFC 2521].
 
 [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs

@@ -1,13 +1,12 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::HirId;
 use rustc_middle::middle::region::{Scope, ScopeData, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
-use crate::builder::scope::{DropKind, LintLevel};
+use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -23,7 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // this is the only place in mir building that we need to truly need to worry about
         // infinite recursion. Everything else does recurse, too, but it always gets broken up
         // at some point by inserting an intermediate temporary
-        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr_id, mutability))
+        self.as_temp_inner(block, temp_lifetime, expr_id, mutability)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -120,7 +119,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `bar(&foo())` or anything within a block will keep the
                 // regular drops just like runtime code.
                 if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
-                    this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Storage);
+                    this.schedule_drop_storage(expr_span, temp_lifetime, temp);
                 }
             }
         }
@@ -128,7 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block = this.expr_into_dest(temp_place, block, expr_id).into_block();
 
         if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
-            this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);
+            this.schedule_drop_value(expr_span, temp_lifetime, temp);
         }
 
         if let Some(backwards_incompatible) = temp_lifetime.backwards_incompatible {

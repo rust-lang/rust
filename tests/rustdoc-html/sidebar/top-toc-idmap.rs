@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
 //! # Structs

@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 include: "utils.goml"
 
 // Checks that, if a type has two methods with the same name, they both get

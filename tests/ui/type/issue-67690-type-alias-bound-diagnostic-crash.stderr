@@ -6,7 +6,7 @@ LL | pub type T<P: Send + Send + Send> = P;
    |
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: `#[warn(type_alias_bounds)]` on by default
 help: remove this bound
    |

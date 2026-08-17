@@ -6,7 +6,7 @@
 //@ ignore-cross-compile
 //@ ignore-remote
 //@ edition: 2024
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(rustc_private)]
 

@@ -5,39 +5,37 @@ use std::{iter, mem, slice};
 
 use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
+use rustc_ast::visit::{AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
-    ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
-    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrKind, AttrStyle, AttrVec,
+    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, ExprKind, ForeignItemKind, HasAttrs,
+    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
+    PatKind, StmtKind, SyntheticAttr, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::target::Target;
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
     eval_config_entry, parse_cfg, validate_attr,
 };
+use rustc_data_structures::Limit;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{PResult, msg};
+use rustc_errors::PResult;
 use rustc_feature::Features;
-use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
-use rustc_hir::limit::Limit;
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
     RecoverColon, RecoverComma, Recovery, token_descr,
 };
-use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
-use crate::config::{StripUnconfigured, attr_into_trace};
+use crate::config::StripUnconfigured;
 use crate::diagnostics::{
     EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
@@ -770,7 +768,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             InvocationKind::Attr { attr, pos, mut item, derives } => {
                 if let Some(expander) = ext.as_attr() {
-                    self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
                     let tokens = match &item {
                         // FIXME: Collect tokens and use them instead of generating
@@ -793,12 +790,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                                Some(&attr),
+                            )
                         }
                         Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                                None,
+                            )
                         }
-                        // When a function has EII implementations attached (via `eii_impls`),
+                        // When a function has EII implementations attached (via `eii_impl`),
                         // use fake tokens so the pretty-printer re-emits the EII attribute
                         // (e.g. `#[hello]`) in the token stream. Without this, the EII
                         // attribute is lost during the token roundtrip performed by
@@ -806,9 +811,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // breaking the EII link on the resulting re-parsed item.
                         Annotatable::Item(item_inner)
                             if matches!(&item_inner.kind,
-                                ItemKind::Fn(f) if !f.eii_impls.is_empty()) =>
+                                ItemKind::Fn(f) if f.eii_impl.is_some()) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                                None,
+                            )
                         }
                         Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_foreign_item(
@@ -820,10 +829,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.get_normal_item();
                     let safety = attr_item.unsafety;
-                    if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
+                    if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
-                    let inner_tokens = attr_item.args.unparsed_ref().unwrap().inner_tokens();
+                    let inner_tokens = attr_item.args.inner_tokens();
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
@@ -848,6 +857,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
                 } else if let SyntaxExtensionKind::LegacyAttr(expander) = ext {
+                    self.gate_proc_macro_attr_item(span, &item);
                     // `LegacyAttr` is only used for builtin attribute macros, which have their
                     // safety checked by `check_builtin_meta_item`, so we don't need to check
                     // `unsafety` here.
@@ -904,9 +914,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
-                    if let SyntaxExtensionKind::Derive(..) = ext {
-                        self.gate_proc_macro_input(&item);
-                    }
                     // The `MetaItem` representing the trait to derive can't
                     // have an unsafe around it (as of now).
                     let meta = ast::MetaItem {
@@ -1038,40 +1045,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.sess,
             sym::proc_macro_hygiene,
             span,
-            format!("custom attributes cannot be applied to {kind}"),
+            format!("macro attributes on {kind} are unstable"),
         )
         .emit();
-    }
-
-    fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
-        struct GateProcMacroInput<'a> {
-            sess: &'a Session,
-        }
-
-        impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
-            fn visit_item(&mut self, item: &'ast ast::Item) {
-                match &item.kind {
-                    ItemKind::Mod(_, _, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
-                    {
-                        feature_err(
-                            self.sess,
-                            sym::proc_macro_hygiene,
-                            item.span,
-                            msg!("file modules in proc macro input are unstable"),
-                        )
-                        .emit();
-                    }
-                    _ => {}
-                }
-
-                visit::walk_item(self, item);
-            }
-        }
-
-        if !self.cx.ecfg.features.proc_macro_hygiene() {
-            annotatable.visit_with(&mut GateProcMacroInput { sess: self.cx.sess });
-        }
     }
 
     fn parse_ast_fragment(
@@ -1144,9 +1120,7 @@ pub fn parse_ast_fragment<'a>(
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
             while this.token != token::Eof && this.token != token::CloseBrace {
-                if let Some(stmt) = this.parse_full_stmt(AttemptLocalParseRecovery::Yes)? {
-                    stmts.push(stmt);
-                }
+                stmts.push(this.parse_full_stmt(AttemptLocalParseRecovery::Yes)?);
             }
             AstFragment::Stmts(stmts)
         }
@@ -1360,8 +1334,6 @@ impl InvocationCollectorNode for Box<ast::Item> {
             return Ok(walk_flat_map(node, collector));
         }
 
-        // Work around borrow checker not seeing through `P`'s deref.
-        let (span, mut attrs) = (node.span, mem::take(&mut node.attrs));
         let ItemKind::Mod(_, ident, ref mut mod_kind) = node.kind else { unreachable!() };
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
@@ -1370,7 +1342,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
                     ident,
-                    &attrs,
+                    &node.attrs,
                     &ecx.current_expansion.module,
                     ecx.current_expansion.dir_ownership,
                     *inline,
@@ -1379,14 +1351,13 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 // This lets `parse_external_mod` catch cycles if it's self-referential.
                 let file_path = match inline {
                     Inline::Yes => None,
-                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
+                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &node.attrs, &dir_path),
                 };
-                node.attrs = attrs;
                 (file_path, dir_path, dir_ownership)
             }
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
-                let old_attrs_len = attrs.len();
+                let old_attrs_len = node.attrs.len();
                 let ParsedExternalMod {
                     items,
                     spans,
@@ -1397,26 +1368,25 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 } = parse_external_mod(
                     ecx.sess,
                     ident,
-                    span,
+                    node.span,
                     &ecx.current_expansion.module,
                     ecx.current_expansion.dir_ownership,
-                    &mut attrs,
+                    &mut node.attrs,
                 );
 
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
                         ecx.sess,
                         ecx.ecfg.features,
-                        ecx.resolver.registered_tools(),
+                        ecx.resolver.registered_lint_tools(),
                         ecx.current_expansion.lint_node_id,
-                        &attrs,
+                        &node.attrs,
                         &items,
                         ident.name,
                     );
                 }
 
                 *mod_kind = ModKind::Loaded(items, Inline::No { had_parse_error }, spans);
-                node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
                     // then we need to re-configure it and re-collect attributes for
@@ -1745,15 +1715,15 @@ impl InvocationCollectorNode for ast::GenericParam {
         Target::GenericParam {
             kind: match &self.kind {
                 rustc_ast::GenericParamKind::Lifetime => {
-                    rustc_hir::target::GenericParamKind::Lifetime
+                    rustc_attr_ir::target::GenericParamKind::Lifetime
                 }
                 rustc_ast::GenericParamKind::Type { default } => {
                     has_default = default.is_some();
-                    rustc_hir::target::GenericParamKind::Type
+                    rustc_attr_ir::target::GenericParamKind::Type
                 }
                 rustc_ast::GenericParamKind::Const { default, .. } => {
                     has_default = default.is_some();
-                    rustc_hir::target::GenericParamKind::Const
+                    rustc_attr_ir::target::GenericParamKind::Const
                 }
             },
             has_default,
@@ -1941,7 +1911,7 @@ impl InvocationCollectorNode for ast::Pat {
         }
     }
     fn as_target(&self) -> Target {
-        todo!();
+        unimplemented!();
     }
 }
 
@@ -2101,23 +2071,13 @@ impl DummyAstNode for ast::Crate {
 
 impl DummyAstNode for ast::Ty {
     fn dummy() -> Self {
-        ast::Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::Dummy,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
+        ast::Ty { id: DUMMY_NODE_ID, kind: TyKind::Dummy, span: Default::default() }
     }
 }
 
 impl DummyAstNode for ast::Pat {
     fn dummy() -> Self {
-        ast::Pat {
-            id: DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
+        ast::Pat { id: DUMMY_NODE_ID, kind: PatKind::Wild, span: Default::default() }
     }
 }
 
@@ -2209,7 +2169,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut cfg_pos = None;
         let mut attr_pos = None;
         for (pos, attr) in item.attrs().iter().enumerate() {
-            if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
+            if let AttrKind::Normal(..) = attr.kind
+                && !self.cx.expanded_inert_attrs.is_marked(attr)
+            {
                 let name = attr.name();
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
@@ -2253,6 +2215,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
+        use SyntheticAttr::*;
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -2268,7 +2231,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 self.cx.current_expansion.lint_node_id,
                 Some(self.cx.ecfg.features),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
-                Some(self.cx.resolver.registered_tools()),
+                Some(self.cx.resolver.registered_attr_tools()),
             );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
@@ -2278,28 +2241,41 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 continue;
             }
 
-            if attr.doc_str_and_fragment_kind().is_some() {
+            if match &attr.kind {
+                AttrKind::Normal(normal) => normal.item.name() == Some(sym::doc),
+                AttrKind::DocComment(..) => true,
+                _ => false,
+            } {
                 self.cx.sess.psess.buffer_lint(
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
                     crate::diagnostics::MacroCallUnusedDocComment { span: attr.span },
                 );
-            } else if rustc_attr_parsing::is_builtin_attr(attr)
-                && !AttributeParser::is_parsed_attribute(&attr.path())
-            {
-                let attr_name = attr.name().unwrap();
-                self.cx.sess.psess.buffer_lint(
-                    UNUSED_ATTRIBUTES,
-                    attr.span,
-                    self.cx.current_expansion.lint_node_id,
-                    crate::diagnostics::UnusedBuiltinAttribute {
-                        attr_name,
-                        macro_name: pprust::path_to_string(&call.path),
-                        invoc_span: call.path.span,
-                        attr_span: attr.span,
-                    },
-                );
+                continue;
+            }
+
+            match &attr.kind {
+                AttrKind::Normal(normal)
+                    if rustc_attr_parsing::is_builtin_attr(&normal.item)
+                        && !AttributeParser::is_parsed_attribute(&attr.path()) =>
+                {
+                    let attr_name = attr.name().unwrap();
+                    self.cx.sess.psess.buffer_lint(
+                        UNUSED_ATTRIBUTES,
+                        attr.span,
+                        self.cx.current_expansion.lint_node_id,
+                        crate::diagnostics::UnusedBuiltinAttribute {
+                            attr_name,
+                            macro_name: pprust::path_to_string(&call.path),
+                            invoc_span: call.path.span,
+                            attr_span: attr.span,
+                        },
+                    );
+                }
+                AttrKind::Normal(_) => {}
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
+                AttrKind::DocComment(..) => unreachable!(), // handled above
             }
         }
     }
@@ -2329,10 +2305,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
         let res = eval_config_entry(self.cfg().sess, &cfg);
         if res.as_bool() {
-            // A trace attribute left in AST in place of the original `cfg` attribute.
+            // A synthetic trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
-            let mut trace_attr = attr_into_trace(attr, sym::cfg_trace);
-            trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)));
+            let trace_attr = attr.convert_normal_to_synthetic(SyntheticAttr::CfgTrace(cfg));
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 
@@ -2602,7 +2577,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
-        ensure_sufficient_stack(|| self.visit_node(node))
+        self.visit_node(node)
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {

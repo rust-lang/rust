@@ -1,6 +1,5 @@
 //@ build-pass
 //@ compile-flags: --emit=obj
-#![feature(c_variadic)]
 #![feature(const_c_variadic)]
 #![feature(const_destruct)]
 #![crate_type = "lib"]

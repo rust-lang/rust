@@ -4,6 +4,7 @@ error[E0532]: cannot match against a tuple struct which contains private fields
 LL |     let Bar(x, y, Foo(z)) = make_bar();
    |         ^^^
    |
+   = note: a struct named `Bar` exists in another namespace
 note: constructor is not visible here due to private fields
   --> $DIR/issue-75907.rs:15:16
    |
@@ -23,6 +24,7 @@ error[E0532]: cannot match against a tuple struct which contains private fields
 LL |     let Bar(x, y, Foo(z)) = make_bar();
    |                   ^^^
    |
+   = note: a struct named `Foo` exists in another namespace
 note: constructor is not visible here due to private fields
   --> $DIR/issue-75907.rs:15:23
    |

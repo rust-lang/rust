@@ -102,12 +102,12 @@ fn integration_test() {
         panic!("incompatible crate versions");
     } else if stderr.contains("failed to run `rustc` to learn about target-specific information") {
         panic!("couldn't find librustc_driver, consider setting `LD_LIBRARY_PATH`");
-    } else {
-        assert!(
-            !stderr.contains("toolchain") || !stderr.contains("is not installed"),
-            "missing required toolchain"
-        );
     }
+
+    assert!(
+        !stderr.contains("toolchain") || !stderr.contains("is not installed"),
+        "missing required toolchain"
+    );
 
     match output.status.code() {
         Some(0) => println!("Compilation successful"),

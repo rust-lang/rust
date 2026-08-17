@@ -12,6 +12,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::Span;
+use rustc_span::def_id::ModId;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -138,13 +139,13 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         pairs.push((trait_projection, impl_opaque));
     }
 
-    let hybrid_preds = tcx
-        .predicates_of(impl_def_id)
+    let hybrid_clauses = tcx
+        .clauses_of(impl_def_id)
         .instantiate_identity(tcx)
         .into_iter()
-        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
+        .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -178,7 +179,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         param_env,
         Unnormalized::new_wip(trait_m_sig.inputs_and_output),
     ));
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (selection)");
         return;
     }
@@ -380,7 +381,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     );
 }
 
-fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<DefId>> {
+fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<ModId>> {
     match *ty.kind() {
         ty::Ref(_, ty, _) => type_visibility(tcx, ty),
         ty::Adt(def, args) => {

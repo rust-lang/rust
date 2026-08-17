@@ -1,8 +1,8 @@
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-target-compact-errors.rs:5:1
+  --> $DIR/cfg-target-compact-errors.rs:5:3
    |
 LL | #[cfg(target(o::o))]
-   | ^^^^^^^^^^^^^----^^^
+   |   ^^^^^^^^^^^----^^
    |              |
    |              expected a valid identifier here
    |
@@ -14,10 +14,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-target-compact-errors.rs:5:1
+  --> $DIR/cfg-target-compact-errors.rs:5:3
    |
 LL | #[cfg(target(o::o))]
-   | ^^^^^^^^^^^^^----^^^
+   |   ^^^^^^^^^^^----^^
    |              |
    |              expected this to be of the form `... = "..."`
    |
@@ -29,10 +29,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-target-compact-errors.rs:14:1
+  --> $DIR/cfg-target-compact-errors.rs:14:3
    |
 LL | #[cfg(target(os = 8))]
-   | ^^^^^^^^^^^^^^^^^^-^^^
+   |   ^^^^^^^^^^^^^^^^-^^
    |                   |
    |                   expected a string literal here
    |
@@ -44,10 +44,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-target-compact-errors.rs:20:1
+  --> $DIR/cfg-target-compact-errors.rs:20:3
    |
 LL | #[cfg(target(os = "linux", pointer(width = "64")))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^---------------------^^
    |                            |
    |                            expected this to be of the form `... = "..."`
    |
@@ -59,10 +59,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-target-compact-errors.rs:26:1
+  --> $DIR/cfg-target-compact-errors.rs:26:3
    |
 LL | #[cfg(target(true))]
-   | ^^^^^^^^^^^^^----^^^
+   |   ^^^^^^^^^^^----^^
    |              |
    |              expected this to be of the form `... = "..."`
    |
@@ -74,10 +74,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-target-compact-errors.rs:32:1
+  --> $DIR/cfg-target-compact-errors.rs:32:3
    |
 LL | #[cfg(target(clippy::os = "linux"))]
-   | ^^^^^^^^^^^^^----------^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^----------^^^^^^^^^^^^
    |              |
    |              expected a valid identifier here
    |

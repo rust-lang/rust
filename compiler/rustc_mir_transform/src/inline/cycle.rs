@@ -1,8 +1,7 @@
+use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::limit::Limit;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
@@ -21,7 +20,9 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         }
 
         // These have no own callable MIR.
-        InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => return false,
+        InstanceKind::Intrinsic(_) | InstanceKind::LlvmIntrinsic(_) | InstanceKind::Virtual(..) => {
+            return false;
+        }
 
         // These have MIR and if that MIR is inlined, instantiated and then inlining is run
         // again, a function item can end up getting inlined. Thus we'll be able to cause
@@ -116,18 +117,17 @@ fn process<'tcx>(
             trace!(?callee, recursion = *recursion);
             let callee_reaches_root = if recursion_limit.value_within_limit(*recursion) {
                 *recursion += 1;
-                ensure_sufficient_stack(|| {
-                    process(
-                        tcx,
-                        typing_env,
-                        callee,
-                        target,
-                        seen,
-                        involved,
-                        recursion_limiter,
-                        recursion_limit,
-                    )
-                })?
+
+                process(
+                    tcx,
+                    typing_env,
+                    callee,
+                    target,
+                    seen,
+                    involved,
+                    recursion_limiter,
+                    recursion_limit,
+                )?
             } else {
                 return None;
             };
@@ -223,5 +223,5 @@ pub(crate) fn mir_inliner_callees<'tcx>(
             calls.insert(call);
         }
     }
-    tcx.arena.alloc_from_iter(calls.iter().copied())
+    tcx.arena.alloc_from_iter(calls.iter().map(|(did, args)| (*did, args.no_bound_vars().unwrap())))
 }

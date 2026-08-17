@@ -1,20 +1,14 @@
 use std::mem;
 
 use rustc_data_structures::sso::SsoHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
-};
+use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
 
-use super::{
-    PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
-};
+use super::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
 use crate::infer::type_variable::TypeVariableValue;
 use crate::infer::unify_key::ConstVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin, relate};
@@ -145,13 +139,8 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // We then relate `generalized_term <: source_term`, adding constraints like `'x: '?2` and
         // `?1 <: ?3`.
-        let Generalization { value_may_be_infer: generalized_term } = self.generalize(
-            relation.span(),
-            relation.structurally_relate_aliases(),
-            target_vid,
-            instantiation_variance,
-            source_term,
-        )?;
+        let Generalization { value_may_be_infer: generalized_term } =
+            self.generalize(relation.span(), target_vid, instantiation_variance, source_term)?;
 
         // Constrain `b_vid` to the generalized type `generalized_term`.
         self.union_var_term(target_vid, generalized_term);
@@ -168,48 +157,35 @@ impl<'tcx> InferCtxt<'tcx> {
             // cyclic type. We instead delay the unification in case
             // the alias can be normalized to something which does not
             // mention `?0`.
-            if self.next_trait_solver() {
-                let (lhs, rhs, direction) = match instantiation_variance {
-                    ty::Invariant => {
-                        (generalized_term, source_term, AliasRelationDirection::Equate)
-                    }
-                    ty::Covariant => {
-                        (generalized_term, source_term, AliasRelationDirection::Subtype)
-                    }
-                    ty::Contravariant => {
-                        (source_term, generalized_term, AliasRelationDirection::Subtype)
-                    }
-                    ty::Bivariant => unreachable!("bivariant generalization"),
-                };
-
-                relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
-            } else {
-                let Some(source_alias) = source_term.to_alias_term() else {
-                    bug!("generalized `{source_term:?} to infer, not an alias");
-                };
-                match source_alias.kind {
-                    ty::AliasTermKind::ProjectionTy { .. }
-                    | ty::AliasTermKind::ProjectionConst { .. } => {
-                        // FIXME: This does not handle subtyping correctly, we could
-                        // instead create a new inference variable `?normalized_source`, emitting
-                        // `Projection(normalized_source, ?ty_normalized)` and
-                        // `?normalized_source <: generalized_term`.
-                        relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: source_alias,
-                            term: generalized_term,
-                        }]);
-                    }
-                    // The old solver only accepts projection predicates for associated types.
-                    ty::AliasTermKind::InherentTy { .. }
-                    | ty::AliasTermKind::FreeTy { .. }
-                    | ty::AliasTermKind::OpaqueTy { .. } => {
-                        return Err(TypeError::CyclicTy(source_term.expect_type()));
-                    }
-                    ty::AliasTermKind::InherentConst { .. }
-                    | ty::AliasTermKind::FreeConst { .. }
-                    | ty::AliasTermKind::AnonConst { .. } => {
-                        return Err(TypeError::CyclicConst(source_term.expect_const()));
-                    }
+            let Some(source_alias) = source_term.to_alias_term() else {
+                bug!("generalized `{source_term:?} to infer, not an alias");
+            };
+            assert!(
+                !self.next_trait_solver(),
+                "nonrigid aliases should be handled in relations, not here"
+            );
+            match source_alias.kind {
+                ty::AliasTermKind::ProjectionTy { .. }
+                | ty::AliasTermKind::ProjectionConst { .. } => {
+                    // FIXME: This does not handle subtyping correctly, we could
+                    // instead create a new inference variable `?normalized_source`, emitting
+                    // `Projection(normalized_source, ?ty_normalized)` and
+                    // `?normalized_source <: generalized_term`.
+                    relation.register_predicates([ty::ProjectionPredicate {
+                        projection_term: source_alias,
+                        term: generalized_term,
+                    }]);
+                }
+                // The old solver only accepts projection predicates for associated types.
+                ty::AliasTermKind::InherentTy { .. }
+                | ty::AliasTermKind::FreeTy { .. }
+                | ty::AliasTermKind::OpaqueTy { .. } => {
+                    return Err(TypeError::CyclicTy(source_term.expect_type()));
+                }
+                ty::AliasTermKind::InherentConst { .. }
+                | ty::AliasTermKind::FreeConst { .. }
+                | ty::AliasTermKind::AnonConst { .. } => {
+                    return Err(TypeError::CyclicConst(source_term.expect_const()));
                 }
             }
         } else {
@@ -271,6 +247,12 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(r) = r.ty_vid() {
                     self.inner.borrow_mut().type_variables().equate(l, r)
                 } else {
+                    // Ideally, we put this assert into `type_variables().instantiate()`.
+                    // But we can't pass the infcx into it as the infcx is already
+                    // mutably borrowed.
+                    debug_assert!(
+                        self.try_resolve_ty_var(l).unwrap_err().can_name(ty::max_universe(self, r))
+                    );
                     self.inner.borrow_mut().type_variables().instantiate(l, r)
                 }
             }
@@ -278,6 +260,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(r) = r.ct_vid() {
                     self.inner.borrow_mut().const_unification_table().union(l, r)
                 } else {
+                    debug_assert!(
+                        self.try_resolve_const_var(l)
+                            .unwrap_err()
+                            .can_name(ty::max_universe(self, r))
+                    );
                     self.inner
                         .borrow_mut()
                         .const_unification_table()
@@ -293,7 +280,6 @@ impl<'tcx> InferCtxt<'tcx> {
     fn generalize(
         &self,
         span: Span,
-        structurally_relate_aliases: StructurallyRelateAliases,
         target_vid: TermVid,
         ambient_variance: ty::Variance,
         source_term: Term<'tcx>,
@@ -312,7 +298,6 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut generalizer = Generalizer {
             infcx: self,
             span,
-            structurally_relate_aliases,
             root_vid,
             for_universe,
             root_term: source_term,
@@ -323,45 +308,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let value_may_be_infer = generalizer.relate(source_term, source_term)?;
         Ok(Generalization { value_may_be_infer })
-    }
-}
-
-/// Finds the max universe present
-struct MaxUniverse {
-    max_universe: ty::UniverseIndex,
-}
-
-impl MaxUniverse {
-    fn new() -> Self {
-        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
-    }
-
-    fn max_universe(self) -> ty::UniverseIndex {
-        self.max_universe
-    }
-}
-
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
-    fn visit_ty(&mut self, t: Ty<'tcx>) {
-        if let ty::Placeholder(placeholder) = t.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-
-        t.super_visit_with(self)
-    }
-
-    fn visit_const(&mut self, c: ty::Const<'tcx>) {
-        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-
-        c.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
     }
 }
 
@@ -382,10 +328,6 @@ struct Generalizer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
 
     span: Span,
-
-    /// Whether aliases should be related structurally. If not, we have to
-    /// be careful when generalizing aliases.
-    structurally_relate_aliases: StructurallyRelateAliases,
 
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
@@ -475,10 +417,9 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                 if is_nested_alias {
                     return Err(e);
                 } else {
-                    let mut visitor = MaxUniverse::new();
-                    alias.visit_with(&mut visitor);
+                    let alias_max_universe = ty::max_universe_of_placeholders(self.infcx, alias);
                     let infer_replacement_is_complete =
-                        self.for_universe.can_name(visitor.max_universe())
+                        self.for_universe.can_name(alias_max_universe)
                             && !alias.has_escaping_bound_vars();
                     if !infer_replacement_is_complete {
                         warn!("may incompletely handle alias type: {alias:?}");
@@ -534,7 +475,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         debug!(?self.ambient_variance, "new ambient variance");
         // Recursive calls to `relate` can overflow the stack. For example a deeper version of
         // `ui/associated-consts/issue-93775.rs`.
-        let r = ensure_sufficient_stack(|| self.relate(a, b));
+        let r = self.relate(a, b);
         self.ambient_variance = old_ambient_variance;
         r
     }
@@ -641,12 +582,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
 
             // We only need to be careful with potentially normalizeable
             // aliases here. See `generalize_alias_term` for more information.
-            ty::Alias(ty::IsRigid::No, data) => match self.structurally_relate_aliases {
-                StructurallyRelateAliases::No => {
-                    self.generalize_alias_term(data.into()).map(|v| v.expect_type())
-                }
-                StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
-            },
+            ty::Alias(ty::IsRigid::No, data) => {
+                self.generalize_alias_term(data.into()).map(|v| v.expect_type())
+            }
 
             _ => relate::structurally_relate_tys(self, t, t),
         }?;
@@ -755,33 +693,30 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             // FIXME: Alias consts are also not rigid, so the current
             // approach of always relating them structurally is incomplete.
             //
-            // FIXME: replace the StructurallyRelateAliases::Yes branch with
+            // FIXME: replace the `else` branch with
             // `structurally_relate_consts` once it is fully structural.
             //
             // We only need to be careful with potentially normalizeable
             // aliases here. See `generalize_alias_term` for more information.
             ty::ConstKind::Alias(ty::IsRigid::No, alias_const) => {
-                match self.structurally_relate_aliases {
-                    // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
-                    // path), as doing this new No path breaks some GCE things. I expect GCE to be
-                    // ripped out soon so this shouldn't matter soon.
-                    StructurallyRelateAliases::No if !tcx.features().generic_const_exprs() => {
-                        self.generalize_alias_term(alias_const.into()).map(|v| v.expect_const())
-                    }
-                    _ => {
-                        let ty::AliasConst { kind, args, .. } = alias_const;
-                        let args = self.relate_with_variance(
-                            ty::Invariant,
-                            ty::VarianceDiagInfo::default(),
-                            args,
-                            args,
-                        )?;
-                        Ok(ty::Const::new_alias(
-                            tcx,
-                            ty::IsRigid::No,
-                            ty::AliasConst::new(tcx, kind, args),
-                        ))
-                    }
+                // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
+                // path), as doing this new No path breaks some GCE things. I expect GCE to be
+                // ripped out soon so this shouldn't matter soon.
+                if self.infcx.next_trait_solver() || !tcx.features().generic_const_exprs() {
+                    self.generalize_alias_term(alias_const.into()).map(|v| v.expect_const())
+                } else {
+                    let ty::AliasConst { kind, args, .. } = alias_const;
+                    let args = self.relate_with_variance(
+                        ty::Invariant,
+                        ty::VarianceDiagInfo::default(),
+                        args,
+                        args,
+                    )?;
+                    Ok(ty::Const::new_alias(
+                        tcx,
+                        ty::IsRigid::No,
+                        ty::AliasConst::new(tcx, kind, args),
+                    ))
                 }
             }
             ty::ConstKind::Placeholder(placeholder) => {

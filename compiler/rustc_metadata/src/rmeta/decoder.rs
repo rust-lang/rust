@@ -8,6 +8,7 @@ use std::{io, mem};
 
 pub(super) use cstore_impl::provide;
 use rustc_ast as ast;
+use rustc_crate_store::{CrateSource, ExternCrate};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -16,22 +17,23 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::Safety;
+use rustc_hir::attrs::CanonicalSymbols;
+use rustc_hir::attrs::diagnostic_items::DiagnosticItems;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
-use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::Visibility;
 use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::{RestrictionKind, Visibility};
 use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::cstore::{CrateSource, ExternCrate};
+use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
@@ -401,11 +403,6 @@ impl<'a> BlobDecodeContext<'a> {
 impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
-    #[inline]
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>,
@@ -439,6 +436,15 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     fn decode_alloc_id(&mut self) -> rustc_middle::mir::interpret::AllocId {
         let ads = self.alloc_decoding_session;
         ads.decode_alloc_id(self)
+    }
+}
+
+impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for MetadataDecodeContext<'a, 'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
+    #[inline]
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
 
@@ -749,6 +755,7 @@ impl MetadataBlob {
             "lang_items".to_owned(),
             "features".to_owned(),
             "items".to_owned(),
+            "target_modifiers".to_owned(),
         ];
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
@@ -918,11 +925,28 @@ impl MetadataBlob {
 
                     write!(out, "\n")?;
                 }
+                "target_modifiers" => {
+                    writeln!(out, "=Target modifiers=")?;
+
+                    for modifier in root.decode_target_modifiers(self) {
+                        let extended = modifier.extend();
+
+                        writeln!(
+                            out,
+                            "-{}{}={} [{}]",
+                            extended.prefix,
+                            extended.name,
+                            modifier.value_name,
+                            extended.tech_value,
+                        )?;
+                    }
+                }
 
                 _ => {
                     writeln!(
                         out,
-                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items"
+                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items, \
+                            target_modifiers"
                     )?;
                 }
             }
@@ -1121,6 +1145,7 @@ impl CrateMetadata {
                         did,
                         name: self.item_name(did.index),
                         vis: self.get_visibility(tcx, did.index),
+                        mut_restriction: self.get_mut_restriction(tcx, did.index),
                         safety: self.get_safety(did.index),
                         value: self.get_default_field(tcx, did.index),
                     })
@@ -1173,14 +1198,23 @@ impl CrateMetadata {
         )
     }
 
-    fn get_visibility(&self, tcx: TyCtxt<'_>, id: DefIndex) -> Visibility<DefId> {
+    fn get_visibility(&self, tcx: TyCtxt<'_>, id: DefIndex) -> Visibility<ModId> {
         self.root
             .tables
             .visibility
             .get(self, id)
             .unwrap_or_else(|| self.missing("visibility", id))
             .decode((self, tcx))
-            .map_id(|index| self.local_def_id(index))
+            .map_id(|index| ModId::new_unchecked(self.local_def_id(index)))
+    }
+
+    fn get_mut_restriction(&self, tcx: TyCtxt<'_>, id: DefIndex) -> RestrictionKind {
+        self.root
+            .tables
+            .mut_restriction
+            .get(self, id)
+            .unwrap_or_else(|| self.missing("mut_restriction", id))
+            .decode((self, tcx))
     }
 
     fn get_safety(&self, id: DefIndex) -> Safety {
@@ -1260,6 +1294,18 @@ impl CrateMetadata {
             })
             .collect();
         DiagnosticItems { id_to_name, name_to_id }
+    }
+
+    /// Iterates over the canonical_symbols in the given crate.
+    fn get_canonical_symbols(&self, tcx: TyCtxt<'_>) -> CanonicalSymbols {
+        let mut canonical_symbols = CanonicalSymbols::new();
+
+        for (name, def_index) in self.root.canonical_symbols.decode((self, tcx)) {
+            let id = self.local_def_id(def_index);
+            let _ = canonical_symbols.set(name, id);
+        }
+
+        canonical_symbols
     }
 
     fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
@@ -1397,17 +1443,26 @@ impl CrateMetadata {
             .attributes
             .get(self, id)
             .unwrap_or_else(|| {
-                // Structure and variant constructors don't have any attributes encoded for them,
-                // but we assume that someone passing a constructor ID actually wants to look at
-                // the attributes on the corresponding struct or variant.
                 let def_key = self.def_key(id);
-                assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
-                let parent_id = def_key.parent.expect("no parent for a constructor");
-                self.root
-                    .tables
-                    .attributes
-                    .get(self, parent_id)
-                    .expect("no encoded attributes for a structure or variant")
+                match def_key.disambiguated_data.data {
+                    DefPathData::Ctor => {
+                        // Structure and variant constructors don't have any attributes encoded for them,
+                        // but we assume that someone passing a constructor ID actually wants to look at
+                        // the attributes on the corresponding struct or variant.
+                        assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
+                        let parent_id = def_key.parent.expect("no parent for a constructor");
+                        self.root
+                            .tables
+                            .attributes
+                            .get(self, parent_id)
+                            .expect("no encoded attributes for a structure or variant")
+                    }
+                    DefPathData::SyntheticCoroutineBody => {
+                        // SyntheticCoroutineBodies cannot have attributes
+                        LazyArray::default()
+                    }
+                    _ => panic!("Definition key {def_key:?} of type `{:?}` did not have any attributes stored", def_key.disambiguated_data.data)
+                }
             })
             .decode((self, tcx))
     }
@@ -2038,10 +2093,12 @@ impl CrateMetadata {
         krate: CrateNum,
     ) -> impl Iterator<Item = DefId> {
         gen move {
-            for def_id in self.root.proc_macro_data.as_ref().into_iter().flat_map(move |data| {
-                data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
-            }) {
-                yield def_id;
+            if let Some(data) = &self.root.proc_macro_data {
+                for def_id in
+                    data.macros.decode((self, tcx)).map(move |(index, _)| DefId { index, krate })
+                {
+                    yield def_id;
+                }
             }
         }
     }

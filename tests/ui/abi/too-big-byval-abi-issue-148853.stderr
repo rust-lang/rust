@@ -1,0 +1,8 @@
+error: values of the type `[u8; 9223372036854775808]` are too big for the target architecture
+  --> $DIR/too-big-byval-abi-issue-148853.rs:11:1
+   |
+LL | pub extern "C" fn foo(_x: Big) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

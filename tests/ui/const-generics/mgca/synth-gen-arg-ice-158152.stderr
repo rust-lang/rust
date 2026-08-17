@@ -1,8 +1,8 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for implementations
+error: function items cannot be used as const args
   --> $DIR/synth-gen-arg-ice-158152.rs:6:16
    |
 LL | impl A<[usize; fn_item]> for () {}
-   |                ^^^^^^^ not allowed in type signatures
+   |                ^^^^^^^
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/synth-gen-arg-ice-158152.rs:9:26
@@ -17,5 +17,4 @@ LL | fn fn_item(_: impl Trait<{ usize }>) {}
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0121, E0747.
-For more information about an error, try `rustc --explain E0121`.
+For more information about this error, try `rustc --explain E0747`.

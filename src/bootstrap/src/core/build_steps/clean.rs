@@ -9,20 +9,25 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
+use crate::core::builder::{
+    Builder, CommandLineStep, Kind, RunConfig, ShouldRun, crate_description,
+};
+use crate::core::compiler::Compiler;
+use crate::core::config::flags::Subcommand;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
-use crate::{Build, Compiler, Kind, Mode, Subcommand};
+use crate::{Build, Mode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
 
-impl Step for CleanAll {
+impl CommandLineStep for CleanAll {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Only runs as the default `./x clean` step; cannot be selected explicitly.
-        run.never()
+        // Normally this step is invoked implicitly via `./x clean`, but all
+        // steps are required to register at least one explicit path/alias.
+        run.alias("default")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -54,12 +59,11 @@ macro_rules! clean_crate_tree {
             crates: Vec<String>,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let crates = run.builder.in_tree_crates($root_crate, None);
-                run.crates(crates)
+                run.crate_or_deps($root_crate)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -177,6 +181,16 @@ fn clean_default(build: &Build) {
 }
 
 fn rm_rf(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => return,
+        // Already deleted, nothing for us to do.
+        Err(e) if e.kind() == ErrorKind::NotFound => return,
+        _ => {}
+    }
+
+    // If remove_dir_all fails then retry.
+    // We do so manually so we can provide better diagnostics,
+    // e.g. pointing to the exact file that failed.
     match path.symlink_metadata() {
         Err(e) => {
             if e.kind() == ErrorKind::NotFound {
@@ -235,7 +249,7 @@ where
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
                 // Delete symlinked directories on Windows
-                if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
+                if fs::remove_dir(path).is_ok() {
                     return;
                 }
                 panic!("failed to {} {}: {}", desc, path.display(), e);

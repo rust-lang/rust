@@ -3,8 +3,6 @@
 //@ needs-force-clang-based-tests
 //@ needs-llvm-components: riscv
 
-// ignore-tidy-linelength
-
 use object::elf;
 use object::read::elf as readelf;
 use run_make_support::{bin_name, clang, object, rfs, rustc};
@@ -48,6 +46,7 @@ fn check_target<H: readelf::FileHeader<Endian = object::Endianness>>(
     // Check `(e_flags & EF_RISCV_FLOAT_ABI) == EF_RISCV_FLOAT_ABI_DOUBLE`.
     //
     // See
+    // ignore-tidy-linelength
     // <https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-elf.adoc#elf-object-files>.
     if is_double_float {
         assert_eq!(

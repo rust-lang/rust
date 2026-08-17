@@ -7,11 +7,13 @@ LL |     println!("{:?}", S(X));
    |               required by this formatting parameter
    |
    = help: the trait `Debug` is not implemented for `X`
-help: the trait `Debug` is implemented for `S<T>`
+help: the trait `Debug` is conditionally implemented for `S<T>`
   --> $DIR/redundant-derive-note-on-unimplemented.rs:8:10
    |
 LL | #[derive(Debug)]
    |          ^^^^^
+LL | struct S<T>(T);
+   |          - unsatisfied requirement introduced here: `X: Debug`
 note: required for `S<X>` to implement `Debug`
   --> $DIR/redundant-derive-note-on-unimplemented.rs:9:8
    |
@@ -19,7 +21,8 @@ LL | #[derive(Debug)]
    |          ----- in this derive macro expansion
 LL | struct S<T>(T);
    |        ^ - type parameter would need to implement `Debug`
-   = help: consider manually implementing `Debug` to avoid undesired bounds
+   = help: consider manually implementing `Debug` to avoid undesired bounds caused by "imperfect derives"
+   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 help: consider annotating `X` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]

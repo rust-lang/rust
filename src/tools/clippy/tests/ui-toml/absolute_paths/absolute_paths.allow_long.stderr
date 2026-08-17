@@ -1,5 +1,5 @@
 error: consider bringing this path into scope with the `use` keyword
-  --> tests/ui-toml/absolute_paths/absolute_paths.rs:25:13
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:26:13
    |
 LL |     let _ = std::collections::hash_map::HashMap::<i32, i32>::new();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

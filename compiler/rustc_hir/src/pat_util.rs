@@ -1,11 +1,11 @@
 use std::iter::Enumerate;
 
+use rustc_hir_id::HirId;
 use rustc_span::{Ident, Span};
 
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::{DefId, DefIdSet};
-use crate::hir::{self, BindingMode, ByRef, HirId, PatKind};
-
+use crate::hir::{self, BindingMode, ByRef, PatKind};
 pub struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,
     gap_pos: usize,

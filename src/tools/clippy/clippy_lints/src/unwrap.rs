@@ -4,7 +4,7 @@ use std::iter;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{can_use_if_let_chains, higher, sym};
@@ -13,7 +13,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceWithHirId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
@@ -88,7 +88,7 @@ pub(crate) struct Unwrap {
 
 impl Unwrap {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -428,11 +428,6 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        // Shouldn't lint when `expr` is in macro.
-        if expr.span.in_external_macro(self.cx.tcx.sess.source_map()) {
-            walk_expr(self, expr);
-            return;
-        }
         // Skip checking inside closures since they are visited through `Unwrap::check_fn()` already.
         if matches!(expr.kind, ExprKind::Closure(_)) {
             return;
@@ -455,6 +450,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                 && let span_ctxt = expr.span.ctxt()
                 && unwrappable.branch.span.ctxt() == span_ctxt
                 && unwrappable.check.span.ctxt() == span_ctxt
+                && !expr.span.in_external_macro(self.cx.tcx.sess.source_map())
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
                     let unwrappable_variable_str = unwrappable.local.snippet(self.cx);

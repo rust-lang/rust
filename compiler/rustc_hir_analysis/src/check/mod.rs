@@ -74,24 +74,25 @@ pub mod wfcheck;
 use std::borrow::Cow;
 use std::num::NonZero;
 
-pub use check::{check_abi, check_custom_abi};
+pub use check::check_abi;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, TraitErrors};
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
+    self, GenericArgs, GenericArgsRef, OutlivesClause, Region, RegionExt, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -102,6 +103,10 @@ use tracing::debug;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
+use crate::diagnostics::{
+    MissingTraitItemLabel, MissingTraitItemSuggestion, MissingTraitItemSuggestionNone,
+    MissingTraitItemSuggestionUnstable,
+};
 use crate::{check_c_variadic_abi, diagnostics};
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
@@ -202,11 +207,31 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     }
 }
 
-fn missing_items_err(
+fn impl_suggestion_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
+    let full_impl_span = tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_def_id));
+    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
+        && snippet.ends_with("}")
+    {
+        // `Span` before impl block closing brace.
+        let hi = full_impl_span.hi() - BytePos(1);
+        // Point at the place right before the closing brace of the relevant `impl` to suggest
+        // adding the associated item at the end of its body.
+        full_impl_span.with_lo(hi).with_hi(hi)
+    } else {
+        full_impl_span.shrink_to_hi()
+    }
+}
+
+fn missing_items_suggestions(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
     missing_items: &[ty::AssocItem],
-    full_impl_span: Span,
+) -> (
+    String,
+    Vec<MissingTraitItemSuggestion>,
+    Vec<MissingTraitItemSuggestionNone>,
+    Vec<MissingTraitItemSuggestionUnstable>,
+    Vec<MissingTraitItemLabel>,
 ) {
     let missing_items =
         missing_items.iter().filter(|trait_item| !trait_item.is_impl_trait_in_trait());
@@ -217,22 +242,16 @@ fn missing_items_err(
         .collect::<Vec<_>>()
         .join("`, `");
 
-    let sugg_sp = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
-        && snippet.ends_with("}")
-    {
-        // `Span` before impl block closing brace.
-        let hi = full_impl_span.hi() - BytePos(1);
-        // Point at the place right before the closing brace of the relevant `impl` to suggest
-        // adding the associated item at the end of its body.
-        full_impl_span.with_lo(hi).with_hi(hi)
-    } else {
-        full_impl_span.shrink_to_hi()
-    };
+    let sugg_sp = impl_suggestion_span(tcx, impl_def_id);
 
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
-    let (mut missing_trait_item, mut missing_trait_item_none, mut missing_trait_item_label) =
-        (Vec::new(), Vec::new(), Vec::new());
+    let (
+        mut missing_trait_item,
+        mut missing_trait_item_none,
+        mut missing_trait_item_unstable,
+        mut missing_trait_item_label,
+    ) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
         let snippet = with_types_for_signature!(suggestion_signature(
@@ -250,13 +269,42 @@ fn missing_items_err(
                 snippet,
             });
         } else {
-            missing_trait_item_none.push(diagnostics::MissingTraitItemSuggestionNone {
-                span: sugg_sp,
-                code,
-                snippet,
-            })
+            if let EvalResult::Deny { feature, .. } =
+                tcx.eval_stability(trait_item.def_id, None, sugg_sp, None)
+            {
+                missing_trait_item_unstable.push(diagnostics::MissingTraitItemSuggestionUnstable {
+                    span: sugg_sp,
+                    code,
+                    snippet,
+                    feature,
+                });
+            } else {
+                missing_trait_item_none.push(diagnostics::MissingTraitItemSuggestionNone {
+                    span: sugg_sp,
+                    code,
+                    snippet,
+                });
+            }
         }
     }
+
+    (
+        missing_items_msg,
+        missing_trait_item,
+        missing_trait_item_none,
+        missing_trait_item_unstable,
+        missing_trait_item_label,
+    )
+}
+
+fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[ty::AssocItem]) {
+    let (
+        missing_items_msg,
+        missing_trait_item,
+        missing_trait_item_none,
+        missing_trait_item_unstable,
+        missing_trait_item_label,
+    ) = missing_items_suggestions(tcx, impl_def_id, missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
@@ -264,23 +312,41 @@ fn missing_items_err(
         missing_trait_item_label,
         missing_trait_item,
         missing_trait_item_none,
+        missing_trait_item_unstable,
     });
 }
 
 fn missing_items_must_implement_one_of_err(
     tcx: TyCtxt<'_>,
-    impl_span: Span,
-    missing_items: &[Ident],
+    impl_def_id: LocalDefId,
+    missing_items: impl Iterator<Item = Symbol>,
     annotation_span: Option<Span>,
-) {
-    let missing_items_msg =
-        missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
+) -> ErrorGuaranteed {
+    // Look up the associated items so we can use them to emit better errors.
+    let trait_def_id = tcx.impl_trait_id(impl_def_id);
+    let assoc_items = tcx.associated_items(trait_def_id);
+    let missing_items = missing_items
+        .flat_map(|s| assoc_items.filter_by_name_unhygienic_and_kind(s, ty::AssocTag::Fn))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let (
+        missing_items_msg,
+        missing_trait_item,
+        missing_trait_item_none,
+        missing_trait_item_unstable,
+        missing_trait_item_label,
+    ) = missing_items_suggestions(tcx, impl_def_id, &missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingOneOfTraitItem {
-        span: impl_span,
+        span: tcx.def_span(impl_def_id),
         note: annotation_span,
         missing_items_msg,
-    });
+        missing_trait_item_label,
+        missing_trait_item,
+        missing_trait_item_unstable,
+        missing_trait_item_none,
+    })
 }
 
 fn default_body_is_unstable(
@@ -311,7 +377,7 @@ fn default_body_is_unstable(
     });
 
     let inject_span = item_did.is_local().then(|| tcx.crate_level_attribute_injection_span());
-    rustc_session::errors::add_feature_diagnostics_for_issue(
+    rustc_session::diagnostics::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess,
         feature,
@@ -323,19 +389,19 @@ fn default_body_is_unstable(
     err.emit();
 }
 
-/// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
-fn bounds_from_generic_predicates<'tcx>(
+/// Re-sugar `ty::GenericClauses` in a way suitable to be used in structured suggestions.
+fn bounds_from_generic_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
     assoc: ty::AssocItem,
 ) -> (String, String) {
     let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut regions: FxIndexMap<Region<'tcx>, Vec<Region<'tcx>>> = FxIndexMap::default();
     let mut projections = vec![];
-    for (predicate, _) in predicates {
-        debug!("predicate {:?}", predicate);
-        let bound_predicate = predicate.kind();
-        match bound_predicate.skip_binder() {
+    for (clause, _) in clauses {
+        debug!("clause {:?}", clause);
+        let bound_clause = clause.kind();
+        match bound_clause.skip_binder() {
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
@@ -345,9 +411,9 @@ fn bounds_from_generic_predicates<'tcx>(
                 }
             }
             ty::ClauseKind::Projection(projection_pred) => {
-                projections.push(bound_predicate.rebind(projection_pred));
+                projections.push(bound_clause.rebind(projection_pred));
             }
-            ty::ClauseKind::RegionOutlives(OutlivesPredicate(a, b)) => {
+            ty::ClauseKind::RegionOutlives(OutlivesClause(a, b)) => {
                 regions.entry(a).or_default().push(b);
             }
             _ => {}
@@ -441,7 +507,7 @@ fn fn_sig_suggestion<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: ty::FnSig<'tcx>,
     ident: Ident,
-    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
     assoc: ty::AssocItem,
 ) -> String {
     let splatted_arg_index = sig.splatted().map(usize::from);
@@ -450,7 +516,7 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
-            let splat = if splatted_arg_index == Some(i) { "#[splat] " } else { "" };
+            let splat = if splatted_arg_index == Some(i) { "#[rustc_splat] " } else { "" };
             let arg_ty = match ty.kind() {
                 ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
@@ -479,10 +545,9 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
             };
-            Some(format!("{splat}{arg_ty}"))
+            format!("{splat}{arg_ty}")
         })
-        .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
-        .flatten()
+        .chain(if sig.c_variadic() { Some("...".to_string()) } else { None })
         .collect::<Vec<String>>()
         .join(", ");
     let mut output = sig.output();
@@ -502,13 +567,14 @@ fn fn_sig_suggestion<'tcx>(
     let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
     let safety = sig.safety().prefix_str();
-    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates, assoc);
+    let (generics, where_clauses) = bounds_from_generic_clauses(tcx, clauses, assoc);
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
     // not be present in the `fn` definition, nor will we account for renamed
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
+    // ignore-tidy-todo
     format!("{safety}{asyncness}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}")
 }
 
@@ -534,15 +600,15 @@ fn suggestion_signature<'tcx>(
                 tcx.fn_sig(assoc.def_id).instantiate(tcx, args).skip_norm_wip(),
             ),
             assoc.ident(tcx),
-            tcx.predicates_of(assoc.def_id)
+            tcx.clauses_of(assoc.def_id)
                 .instantiate_own(tcx, args)
                 .map(|(c, s)| (c.skip_norm_wip(), s)),
             assoc,
         ),
         ty::AssocKind::Type { .. } => {
-            let (generics, where_clauses) = bounds_from_generic_predicates(
+            let (generics, where_clauses) = bounds_from_generic_clauses(
                 tcx,
-                tcx.predicates_of(assoc.def_id)
+                tcx.clauses_of(assoc.def_id)
                     .instantiate_own(tcx, args)
                     .map(|(c, s)| (c.skip_norm_wip(), s)),
                 assoc,
@@ -628,7 +694,7 @@ pub fn check_function_signature<'tcx>(
     match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
         Ok(()) => {
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if !errors.is_empty() {
+            if let TraitErrors::HasErrors(errors) = errors {
                 return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
             }
         }

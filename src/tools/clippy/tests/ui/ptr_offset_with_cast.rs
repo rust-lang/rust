@@ -1,4 +1,5 @@
-#![expect(clippy::unnecessary_cast, clippy::useless_vec, clippy::needless_borrow)]
+#![warn(clippy::ptr_offset_with_cast)]
+#![expect(clippy::needless_borrow, clippy::unnecessary_cast, clippy::useless_vec)]
 
 fn main() {
     let vec = vec![b'a', b'b', b'c'];

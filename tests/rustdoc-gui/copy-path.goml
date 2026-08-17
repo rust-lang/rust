@@ -1,6 +1,7 @@
 // Checks that the "copy path" button is not triggering JS error and its display
 // isn't broken and the copied path is as expected.
 go-to: "file://" + |DOC_PATH| + "/test_docs/foreign_impl_order/trait.Foo.html"
+permissions: ["clipboard-read"]
 
 // We ensure that the clipboard is empty.
 assert-clipboard: ""

@@ -1,7 +1,7 @@
 // This test ensures that the `doc_cfg` feature works on foreign types impl.
 // Regression test for <https://github.com/rust-lang/rust/issues/150268>.
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(doc_cfg)]
 #![crate_name = "foo"]

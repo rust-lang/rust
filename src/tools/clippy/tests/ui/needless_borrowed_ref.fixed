@@ -1,10 +1,8 @@
 #![warn(clippy::needless_borrowed_reference)]
-#![allow(
-    unused,
+#![expect(
     irrefutable_let_patterns,
     non_shorthand_field_patterns,
     clippy::needless_borrow,
-    clippy::needless_ifs,
     clippy::unneeded_wildcard_pattern
 )]
 

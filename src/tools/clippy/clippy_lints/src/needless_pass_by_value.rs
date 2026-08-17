@@ -1,20 +1,21 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{SpanExt, snippet};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
+use clippy_utils::source::{SpanExt as _, snippet};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Attribute, BindingMode, Body, ExprKind, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability,
-    Node, PatKind, QPath, TyKind,
+    Attribute, BindingMode, Body, ExprKind, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, Mutability, Node,
+    PatKind, QPath, TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
@@ -121,10 +122,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let meta_sized_trait = need!(cx.tcx.lang_items().meta_sized_trait());
 
         let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
-            .filter(|p| !p.is_global())
-            .filter_map(|pred| {
-                // Note that we do not want to deal with qualified predicates here.
-                match pred.kind().no_bound_vars() {
+            .filter(|c| !c.is_global())
+            .filter_map(|clause| {
+                // Note that we do not want to deal with qualified clauses here.
+                match clause.kind().no_bound_vars() {
                     Some(ty::ClauseKind::Trait(pred))
                         if pred.def_id() != sized_trait && pred.def_id() != meta_sized_trait =>
                     {

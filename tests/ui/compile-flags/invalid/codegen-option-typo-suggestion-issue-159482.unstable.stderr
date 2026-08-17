@@ -1,0 +1,4 @@
+error: unknown unstable option: `no-analysi`
+  |
+  = help: you might have meant to use `-Z no-analysis`
+

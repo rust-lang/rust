@@ -12,7 +12,7 @@ struct Bar;
 
 impl Foo for Bar {
     #[unsafe(force_target_feature(enable = "avx2"))]
-    //[default]~^ ERROR the `#[force_target_feature]` attribute is an experimental feature
+    //[default]~^ ERROR the `force_target_feature` attribute is an experimental feature
     fn foo(&self) {}
 }
 

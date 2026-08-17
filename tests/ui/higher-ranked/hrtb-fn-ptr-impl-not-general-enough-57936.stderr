@@ -1,0 +1,25 @@
+error[E0599]: no associated function or constant named `make_g` found for fn pointer `for<'a> fn(&'a ())` in the current scope
+  --> $DIR/hrtb-fn-ptr-impl-not-general-enough-57936.rs:31:24
+   |
+LL |     let x = <fn(&())>::make_g();
+   |                        ^^^^^^ associated function or constant not found in `for<'a> fn(&'a ())`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `X` defines an item `make_g`, perhaps you need to implement it
+  --> $DIR/hrtb-fn-ptr-impl-not-general-enough-57936.rs:8:1
+   |
+LL | trait X {
+   | ^^^^^^^
+
+error: implementation of `X` is not general enough
+  --> $DIR/hrtb-fn-ptr-impl-not-general-enough-57936.rs:26:5
+   |
+LL |     indirect::<fn(&())>();
+   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `X` is not general enough
+   |
+   = note: `X` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...but `X` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

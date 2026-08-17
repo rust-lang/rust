@@ -126,6 +126,14 @@ impl AssertLintKind {
 }
 
 #[derive(Diagnostic)]
+#[diag("this operation will panic at runtime")]
+pub(crate) struct ConstNIsZero {
+    #[label("const parameter `{$const_param_name}` is zero")]
+    pub const_param_span: Span,
+    pub const_param_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("call to inline assembly that may unwind")]
 pub(crate) struct AsmUnwindCall {
     #[label("call to inline assembly that may unwind")]
@@ -382,4 +390,29 @@ pub(crate) struct ForceInlineFailure {
 pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
     pub callee: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("field `{$name}` cannot be mutated outside `{$restriction_path}`")]
+pub(crate) struct MutOfRestrictedField {
+    #[primary_span]
+    pub mut_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub restriction_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`{$name}` cannot be constructed using a `{$descr}` expression outside `{$restriction_path}`"
+)]
+pub(crate) struct ConstructionOfTyWithMutRestrictedField {
+    #[primary_span]
+    pub construction_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub descr: &'static str,
+    pub restriction_path: String,
 }

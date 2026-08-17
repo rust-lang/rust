@@ -1,8 +1,8 @@
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/stability-attribute-non-staged.rs:1:1
+  --> $DIR/stability-attribute-non-staged.rs:1:3
    |
 LL | #[unstable()]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-non-staged.rs:1:1
@@ -17,10 +17,10 @@ LL | #[unstable()]
    | ^^^^^^^^^^^^^
 
 error[E0658]: stability attributes may not be used outside of the standard library
-  --> $DIR/stability-attribute-non-staged.rs:5:1
+  --> $DIR/stability-attribute-non-staged.rs:5:3
    |
 LL | #[stable()]
-   | ^^^^^^^^^^^
+   |   ^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-non-staged.rs:5:1

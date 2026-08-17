@@ -5,7 +5,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Symbol;
 use unicode_security::general_security_profile::IdentifierType;
 
-use crate::lints::{
+use crate::diagnostics::{
     ConfusableIdentifierPair, IdentifierNonAsciiChar, IdentifierUncommonCodepoints,
     MixedScriptConfusables,
 };

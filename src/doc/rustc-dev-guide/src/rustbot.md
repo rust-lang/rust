@@ -2,8 +2,8 @@
 
 `@rustbot` (also known as `triagebot`) is a utility robot that is mostly used to
 allow any contributor to achieve certain tasks that would normally require GitHub
-membership to the `rust-lang` organization. Its most interesting features for
-contributors to `rustc` are issue claiming and relabeling.
+membership to the `rust-lang` organization.
+Its most interesting features for contributors to `rustc` are issue claiming and relabeling.
 
 ## Issue claiming
 
@@ -24,29 +24,31 @@ If you want to unassign from an issue, `@rustbot` has a different command:
 
 ## Issue relabeling
 
-Changing labels for an issue or PR is also normally reserved for members of the
-organization. However, `@rustbot` allows you to relabel an issue yourself, only
-with a few restrictions. This is mostly useful in two cases:
+Changing labels for an issue or PR is also normally reserved for members of the organization.
+However, `@rustbot` allows you to relabel an issue yourself, only with a few restrictions.
+This is mostly useful in two cases:
 
 **Helping with issue triage**: Rust's issue tracker has more than 5,000 open
 issues at the time of this writing, so labels are the most powerful tool that we
-have to keep it as tidy as possible. You don't need to spend hours in the issue tracker
+have to keep it as tidy as possible.
+You don't need to spend hours in the issue tracker
 to triage issues, but if you open an issue, you should feel free to label it if
 you are comfortable with doing it yourself.
 
-**Updating the status of a PR**: We use "status labels" to reflect the status of
-PRs. For example, if your PR has merge conflicts, it will automatically be assigned
-the `S-waiting-on-author`, and reviewers might not review it until you rebase your
-PR. Once you do rebase your branch, you should change the labels yourself to remove
-the `S-waiting-on-author` label and add back `S-waiting-on-review`. In this case,
+**Updating the status of a PR**: We use "status labels" to reflect the status of PRs.
+For example, if your PR has merge conflicts, it will automatically be assigned
+the `S-waiting-on-author`, and reviewers might not review it until you rebase your PR.
+Once you do rebase your branch, you should change the labels yourself to remove
+the `S-waiting-on-author` label and add back `S-waiting-on-review`.
+In this case,
 the `@rustbot` command will look like this:
 
     @rustbot label -S-waiting-on-author +S-waiting-on-review
 
-The syntax for this command is pretty loose, so there are other variants of this
-command invocation. There are also some shortcuts to update labels,
+The syntax for this command is pretty loose, so there are other variants of this command invocation.
+There are also some shortcuts to update labels,
 for instance `@rustbot ready` will do the same thing with above command.
-For more details, see [the docs page about labeling][labeling] and [shortcuts][shortcuts].
+For more details, see [the docs page about labeling][labeling] and [shortcuts].
 
 [labeling]: https://forge.rust-lang.org/triagebot/labeling.html
 [shortcuts]: https://forge.rust-lang.org/triagebot/shortcuts.html
@@ -57,10 +59,11 @@ If you are interested in seeing what `@rustbot` is capable of, check out its [do
 which is meant as a reference for the bot and should be kept up to date every time the
 bot gets an upgrade.
 
-`@rustbot` is maintained by the Release team. If you have any feedback regarding
+`@rustbot` is maintained by the Release team.
+If you have any feedback regarding
 existing commands or suggestions for new commands, feel free to reach out
-[on Zulip][zulip] or file an issue in [the triagebot repository][repo]
+[on Zulip] or file an issue in [the triagebot repository].
 
 [documentation]: https://forge.rust-lang.org/triagebot/index.html
-[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/224082-t-release.2Ftriagebot
-[repo]: https://github.com/rust-lang/triagebot/
+[on zulip]: https://rust-lang.zulipchat.com/#narrow/stream/224082-t-release.2Ftriagebot
+[the triagebot repository]: https://github.com/rust-lang/triagebot/

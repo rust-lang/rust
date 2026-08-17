@@ -2,14 +2,13 @@
 //!
 //! For more information about delegation design, see the tracking issue #118212.
 
-use std::debug_assert_matches;
-
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{DelegationSelfTyPropagationKind, PathSegment};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, EarlyBinder, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
@@ -21,6 +20,7 @@ type RemapTable = FxHashMap<u32, u32>;
 struct ParamIndexRemapper<'tcx> {
     tcx: TyCtxt<'tcx>,
     remap_table: RemapTable,
+    delegation_parent_consts: FxHashSet<ty::ParamConst>,
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
@@ -102,14 +102,17 @@ enum FnKind {
 fn fn_kind<'tcx>(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> FnKind {
     let def_id = def_id.into();
 
-    debug_assert_matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
-
-    let parent = tcx.parent(def_id);
-    match tcx.def_kind(parent) {
-        DefKind::Trait => FnKind::AssocTrait,
-        DefKind::Impl { of_trait: true } => FnKind::AssocTraitImpl,
-        DefKind::Impl { of_trait: false } => FnKind::AssocInherentImpl,
-        _ => FnKind::Free,
+    match tcx.def_kind(def_id) {
+        DefKind::Fn => FnKind::Free,
+        DefKind::AssocFn => match tcx.def_kind(tcx.parent(def_id)) {
+            DefKind::Trait => FnKind::AssocTrait,
+            DefKind::Impl { of_trait } => match of_trait {
+                true => FnKind::AssocTraitImpl,
+                false => FnKind::AssocInherentImpl,
+            },
+            _ => unreachable!("associated function can only be in trait or impl"),
+        },
+        _ => unreachable!("delegation/signature can be either free or associated function"),
     }
 }
 
@@ -337,7 +340,7 @@ fn create_generic_args<'tcx>(
     delegation_id: LocalDefId,
     mut parent_args: &[ty::GenericArg<'tcx>],
     mut child_args: &[ty::GenericArg<'tcx>],
-) -> Vec<ty::GenericArg<'tcx>> {
+) -> (Vec<ty::GenericArg<'tcx>>, &'tcx [ty::GenericArg<'tcx>]) {
     let delegation_generics = tcx.generics_of(delegation_id);
     let delegation_args = ty::GenericArgs::identity_for_item(tcx, delegation_id);
 
@@ -389,7 +392,7 @@ fn create_generic_args<'tcx>(
     let zero_self = zero_self.as_ref().into_iter();
     let after_lifetimes_self = after_lifetimes_self.as_ref().into_iter();
 
-    zero_self
+    let args = zero_self
         .chain(delegation_parent_args)
         .chain(parent_args.iter().filter(|a| a.as_region().is_some()))
         .chain(child_args.iter().filter(|a| a.as_region().is_some()))
@@ -398,96 +401,134 @@ fn create_generic_args<'tcx>(
         .chain(child_args.iter().filter(|a| a.as_region().is_none()))
         .chain(synth_args)
         .copied()
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    (args, delegation_parent_args)
 }
 
-pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
+pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     sig_id: DefId,
-) -> ty::GenericPredicates<'tcx> {
-    struct PredicatesCollector<'tcx> {
+) -> ty::GenericClauses<'tcx> {
+    struct ClausesCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
-        preds: Vec<(ty::Clause<'tcx>, Span)>,
+        clauses: Vec<(ty::Clause<'tcx>, Span)>,
         args: Vec<ty::GenericArg<'tcx>>,
         folder: ParamIndexRemapper<'tcx>,
-        filter_self_preds: bool,
+        filter_self_clauses: bool,
     }
 
-    impl<'tcx> PredicatesCollector<'tcx> {
-        fn with_own_preds(
+    impl<'tcx> ClausesCollector<'tcx> {
+        fn with_own_clauses(
             mut self,
-            f: impl Fn(DefId) -> ty::GenericPredicates<'tcx>,
+            f: impl Fn(DefId) -> ty::GenericClauses<'tcx>,
             def_id: DefId,
         ) -> Self {
-            let preds = f(def_id);
+            let clauses = f(def_id);
             let args = self.args.as_slice();
 
-            for pred in preds.predicates {
+            for clause in clauses.clauses {
                 // If self ty is specified then there will be no generic param `Self`,
-                // so we do not need its predicates.
-                if self.filter_self_preds
-                    && let Some(trait_pred) = pred.0.as_trait_clause()
+                // so we do not need its clauses.
+                if self.filter_self_clauses
+                    && let Some(trait_clause) = clause.0.as_trait_clause()
                     // Rely that `Self` has zero index.
-                    && trait_pred.self_ty().skip_binder().is_param(0)
+                    && trait_clause.self_ty().skip_binder().is_param(0)
                 {
                     continue;
                 }
 
-                let new_pred = pred.0.fold_with(&mut self.folder);
-                self.preds.push((
-                    EarlyBinder::bind(self.tcx, new_pred)
+                // If we have a constant in parent or child args that came from delegation
+                // parent:
+                // ```rust
+                // trait Trait<T, const B: bool> { /* .. */}
+                // impl<const N: usize> S<N> {
+                //     reuse Trait::<S<N>, N>::foo;
+                // }
+                // ```
+                // Then if we inherit const clause from `Trait` then we end up with
+                // two `ConstArgHasType` for `N` constant:
+                // 1) ConstArgHasType(N/#0, bool) from `Trait`
+                // 2) ConstArgHasType(N/#0, usize) from delegation parent
+                // So in case the constant came from delegation parent we will not inherit
+                // ConstArgHasType from signature.
+                // The check is so complicated because we build generic args for signature
+                // and clauses inheritance, for the example above it will be
+                // `args = [S<N/#0>, N/#0, S<N/#0>, N/#0]`, where
+                // args[0] - Self type, args[1] - delegation parent const, args[2] - first
+                // arg of callee path, args[3] - second arg of callee path.
+                // When processing clause ConstArgHasType(B/#2, bool)
+                // from delegation signature (`Trait::foo`), we need to map `B/#2` into some
+                // arg from `args`. The mapping which is built by `create_mapping` function is:
+                // `{0: 0, 2: 3, 1: 2}`, so as `B/#2` has index `2` it is mapped into third
+                // arg from `args` - `N/#0`. After we obtained mapped const param, we check if
+                // it came from delegation parent, and if so we do not process its `ConstArgHasType`
+                // clause.
+                // (Issue #158675).
+                if let ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) =
+                    clause.0.as_predicate().fold_with(&mut self.folder).kind().skip_binder()
+                {
+                    let unnorm_const = EarlyBinder::bind(self.tcx, ct).instantiate(self.tcx, args);
+                    if let ty::ConstKind::Param(param) = unnorm_const.skip_norm_wip().kind()
+                        && self.folder.delegation_parent_consts.contains(&param)
+                    {
+                        continue;
+                    }
+                }
+
+                let new_clause = clause.0.fold_with(&mut self.folder);
+                self.clauses.push((
+                    EarlyBinder::bind(self.tcx, new_clause)
                         .instantiate(self.tcx, args)
                         .skip_norm_wip(),
-                    pred.1,
+                    clause.1,
                 ));
             }
 
             self
         }
 
-        fn with_preds(
+        fn with_clauses(
             mut self,
-            f: impl Fn(DefId) -> ty::GenericPredicates<'tcx> + Copy,
+            f: impl Fn(DefId) -> ty::GenericClauses<'tcx> + Copy,
             def_id: DefId,
         ) -> Self {
             let preds = f(def_id);
             if let Some(parent_def_id) = preds.parent {
-                self = self.with_own_preds(f, parent_def_id);
+                self = self.with_own_clauses(f, parent_def_id);
             }
 
-            self.with_own_preds(f, def_id)
+            self.with_own_clauses(f, def_id)
         }
     }
 
     let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
     let self_pos_kind = create_self_position_kind(tcx, def_id, sig_id);
-    let filter_self_preds = matches!(
+    let filter_self_clauses = matches!(
         self_pos_kind,
         SelfPositionKind::AfterLifetimes(Some(DelegationSelfTyPropagationKind::SelfTy(..)))
     );
 
-    let collector = PredicatesCollector { tcx, preds: vec![], args, folder, filter_self_preds };
+    let collector = ClausesCollector { tcx, clauses: vec![], args, folder, filter_self_clauses };
     let (parent, inh_kind) = get_parent_and_inheritance_kind(tcx, def_id, sig_id);
 
-    // `explicit_predicates_of` is used here to avoid copying `Self: Trait` predicate.
-    // Note: `predicates_of` query can also add inferred outlives predicates, but that
+    // `explicit_clauses_of` is used here to avoid copying `Self: Trait` clause.
+    // Note: `clauses_of` query can also add inferred outlives clauses, but that
     // is not the case here as `sig_id` is either a trait or a function.
-    let preds = match inh_kind {
+    let clauses = match inh_kind {
         InheritanceKind::WithParent(false) => {
-            collector.with_preds(|def_id| tcx.explicit_predicates_of(def_id), sig_id)
+            collector.with_clauses(|def_id| tcx.explicit_clauses_of(def_id), sig_id)
         }
         InheritanceKind::WithParent(true) => {
-            collector.with_preds(|def_id| tcx.predicates_of(def_id), sig_id)
+            collector.with_clauses(|def_id| tcx.clauses_of(def_id), sig_id)
         }
-        InheritanceKind::Own => {
-            collector.with_own_preds(|def_id| tcx.predicates_of(def_id), sig_id)
-        }
+        InheritanceKind::Own => collector.with_own_clauses(|def_id| tcx.clauses_of(def_id), sig_id),
     }
-    .preds;
+    .clauses;
 
-    ty::GenericPredicates { parent, predicates: tcx.arena.alloc_from_iter(preds) }
+    ty::GenericClauses { parent, clauses: tcx.arena.alloc_from_iter(clauses) }
 }
 
 fn create_folder_and_args<'tcx>(
@@ -497,10 +538,21 @@ fn create_folder_and_args<'tcx>(
     parent_args: &'tcx [ty::GenericArg<'tcx>],
     child_args: &'tcx [ty::GenericArg<'tcx>],
 ) -> (ParamIndexRemapper<'tcx>, Vec<ty::GenericArg<'tcx>>) {
-    let args = create_generic_args(tcx, sig_id, def_id, parent_args, child_args);
+    let (args, delegation_parent_args) =
+        create_generic_args(tcx, sig_id, def_id, parent_args, child_args);
+
     let remap_table = create_mapping(tcx, sig_id, def_id);
 
-    (ParamIndexRemapper { tcx, remap_table }, args)
+    let delegation_parent_consts = delegation_parent_args
+        .iter()
+        .filter_map(|a| {
+            a.as_const().and_then(|c| {
+                if let ty::ConstKind::Param(param) = c.kind() { Some(param) } else { None }
+            })
+        })
+        .collect();
+
+    (ParamIndexRemapper { tcx, remap_table, delegation_parent_consts }, args)
 }
 
 fn check_constraints<'tcx>(

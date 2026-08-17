@@ -2,7 +2,6 @@
 
 use crate::fmt::{self, Debug, Formatter};
 use crate::mem::{self, MaybeUninit};
-use crate::ptr;
 
 /// A borrowed buffer of initially uninitialized elements, which is incrementally filled.
 ///
@@ -94,7 +93,7 @@ impl<'data, T> BorrowedBuf<'data, T> {
     }
 
     /// Returns `true` if the buffer is initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn is_init(&self) -> bool {
         self.init
@@ -170,7 +169,7 @@ impl<'data, T: Copy> BorrowedBuf<'data, T> {
     /// # Safety
     ///
     /// All the elements of the buffer must be initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub unsafe fn set_init(&mut self) -> &mut Self {
         self.init = true;
@@ -240,7 +239,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     }
 
     /// Returns `true` if the buffer is initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn is_init(&self) -> bool {
         self.buf.init
@@ -251,7 +250,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     /// # Safety
     ///
     /// All the elements of the cursor must be initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub unsafe fn set_init(&mut self) {
         self.buf.init = true;
@@ -280,7 +279,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     /// # Panics
     ///
     /// Panics if there are less than `n` elements initialized.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn advance_checked(&mut self, n: usize) -> &mut Self {
         // The subtraction cannot underflow by invariant of this type.
@@ -357,24 +356,21 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     }
 }
 
-impl<'a> BorrowedCursor<'a, u8> {
-    /// Initializes all bytes in the cursor and returns them.
-    #[unstable(feature = "borrowed_buf_init", issue = "78485")]
+impl<'a, T: Default + Copy> BorrowedCursor<'a, T> {
+    /// Initializes all elements in the cursor with their default value and
+    /// returns them.
+    #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
-    pub fn ensure_init(&mut self) -> &mut [u8] {
-        // SAFETY: always in bounds and we never uninitialize these bytes.
+    pub fn ensure_init(&mut self) -> &mut [T] {
+        // SAFETY: always in bounds and we never uninitialize these elements.
         let unfilled = unsafe { self.buf.buf.get_unchecked_mut(self.buf.filled..) };
 
         if !self.buf.init {
-            // SAFETY: 0 is a valid value for MaybeUninit<u8> and the length matches the allocation
-            // since it is comes from a slice reference.
-            unsafe {
-                ptr::write_bytes(unfilled.as_mut_ptr(), 0, unfilled.len());
-            }
+            unfilled.write_default();
             self.buf.init = true;
         }
 
-        // SAFETY: these bytes have just been initialized if they weren't before
+        // SAFETY: these elements have just been initialized if they weren't before
         unsafe { unfilled.assume_init_mut() }
     }
 }

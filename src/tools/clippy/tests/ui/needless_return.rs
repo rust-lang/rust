@@ -1,15 +1,8 @@
 //@aux-build:proc_macros.rs
 #![feature(yeet_expr)]
-#![allow(unused)]
-#![allow(
-    clippy::if_same_then_else,
-    clippy::single_match,
-    clippy::needless_bool,
-    clippy::equatable_if_let,
-    clippy::needless_else,
-    clippy::missing_safety_doc
-)]
 #![warn(clippy::needless_return)]
+#![allow(clippy::single_match)]
+#![expect(clippy::if_same_then_else, clippy::missing_safety_doc, clippy::needless_bool)]
 
 extern crate proc_macros;
 use proc_macros::with_span;

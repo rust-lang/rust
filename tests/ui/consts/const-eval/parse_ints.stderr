@@ -1,4 +1,4 @@
-error[E0080]: evaluation panicked: from_ascii_radix: radix must lie in the range `[2, 36]`
+error[E0080]: evaluation panicked: from_ascii_bytes_radix: radix must lie in the range `[2, 36]`
   --> $DIR/parse_ints.rs:7:24
    |
 LL | const _TOO_LOW: () = { u64::from_str_radix("12345ABCD", 1); };
@@ -9,14 +9,14 @@ note: inside `core::num::<impl u64>::from_str_radix`
   ::: $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
    = note: in this macro invocation
-note: inside `core::num::<impl u64>::from_ascii_radix`
+note: inside `core::num::<impl u64>::from_ascii_bytes_radix_impl`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
   ::: $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
    = note: in this macro invocation
    = note: this error originates in the macro `from_str_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0080]: evaluation panicked: from_ascii_radix: radix must lie in the range `[2, 36]`
+error[E0080]: evaluation panicked: from_ascii_bytes_radix: radix must lie in the range `[2, 36]`
   --> $DIR/parse_ints.rs:8:25
    |
 LL | const _TOO_HIGH: () = { u64::from_str_radix("12345ABCD", 37); };
@@ -27,7 +27,7 @@ note: inside `core::num::<impl u64>::from_str_radix`
   ::: $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
    = note: in this macro invocation
-note: inside `core::num::<impl u64>::from_ascii_radix`
+note: inside `core::num::<impl u64>::from_ascii_bytes_radix_impl`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
   ::: $SRC_DIR/core/src/num/mod.rs:LL:COL
    |

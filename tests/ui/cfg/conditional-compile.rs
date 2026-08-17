@@ -47,7 +47,7 @@ struct r {
 
 #[cfg(false)]
 fn r(i: isize) -> r {
-    r { i: i }
+    r { i }
 }
 
 struct r {
@@ -55,7 +55,7 @@ struct r {
 }
 
 fn r(i: isize) -> r {
-    r { i: i }
+    r { i }
 }
 
 #[cfg(false)]
@@ -111,8 +111,8 @@ mod test_foreign_items {
     pub mod rustrt {
         extern "C" {
             #[cfg(false)]
-            pub fn write() -> String;
-            pub fn write() -> String;
+            pub fn foo() -> String;
+            pub fn foo() -> String;
         }
     }
 }

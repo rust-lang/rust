@@ -1,15 +1,15 @@
-error[E0369]: cannot add `(..., ..., ..., ...)` to `(..., ..., ..., ...)`
+error[E0369]: cannot add `((_, _, _, _), _, _, _)` to `((_, _, _, _), _, _, _)`
   --> $DIR/binop.rs:8:7
    |
 LL |     x + x;
-   |     - ^ - (..., ..., ..., ...)
+   |     - ^ - ((_, _, _, _), _, _, _)
    |     |
-   |     (..., ..., ..., ...)
+   |     ((_, _, _, _), _, _, _)
    |
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/binop.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
-error[E0600]: cannot apply unary operator `!` to type `(..., ..., ..., ...)`
+error[E0600]: cannot apply unary operator `!` to type `((_, _, _, _), _, _, _)`
   --> $DIR/binop.rs:12:5
    |
 LL |     !x;

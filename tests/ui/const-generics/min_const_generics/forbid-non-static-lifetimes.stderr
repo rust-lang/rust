@@ -6,6 +6,7 @@ LL |     test::<{ let _: &'a (); 3 },>();
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic parameters may not be used in const operations
   --> $DIR/forbid-non-static-lifetimes.rs:21:16
@@ -15,6 +16,7 @@ LL |     [(); (|_: &'a u8| (), 0).1];
    |
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: aborting due to 2 previous errors
 

@@ -23,7 +23,6 @@
 //! considering here as at that point, everything is monomorphic.
 
 use hir::def_id::LocalDefIdSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_hir::def::{DefKind, Res};
@@ -362,7 +361,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         // become recursive, are also not infinitely recursing, because of the
                         // `reachable_symbols` check above.
                         // We still need to protect against stack overflow due to deeply nested statics.
-                        ensure_sufficient_stack(|| self.propagate_from_alloc(alloc));
+                        self.propagate_from_alloc(alloc);
                     }
                 }
             }
@@ -444,6 +443,8 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
         // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
+        // Also note that Miri is relying on this to be able to find private `link_section` statics
+        // across all crates.
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         // Right now, the only way to get "foreign item symbol aliases" is by being an EII-implementation.

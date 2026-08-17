@@ -8,7 +8,7 @@ The way we prove `Projection` bounds directly relies on proving the correspondin
 It feels like it might make more sense to just have a single implementation which checks whether a trait is implemented and returns (a way to compute) its associated types.
 
 This is unfortunately quite difficult, as we may use a different candidate for norm than for the corresponding trait bound.
-See [alias-bound vs where-bound](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-always-consider-aliasbound-candidates) and [global where-bound vs impl](https://rustc-dev-guide.rust-lang.org/solve/candidate-preference.html#we-prefer-global-where-bounds-over-impls).
+See [alias-bound vs where-bound](../solve/candidate-preference.md#we-always-consider-aliasbound-candidates) and [global where-bound vs impl](../solve/candidate-preference.md#we-prefer-global-where-bounds-over-impls).
 
 There are also some other subtle reasons for why we can't do so.
 The most stupid is that for rigid aliases;

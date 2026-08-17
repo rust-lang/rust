@@ -33,13 +33,16 @@ on:
         description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   diff_check:
     runs-on: ubuntu-latest
 
     steps:
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Build check_diff binary
       working-directory: ./check_diff

@@ -5,6 +5,7 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use crate::PassPolicy;
 use crate::strip_debuginfo::drop_invalid_debuginfos;
 
 /// Various parts of MIR building introduce temporaries that are commonly not needed.
@@ -24,8 +25,8 @@ use crate::strip_debuginfo::drop_invalid_debuginfos;
 pub(super) struct SingleUseConsts;
 
 impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -86,10 +87,6 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
         }
 
         drop_invalid_debuginfos(body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

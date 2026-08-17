@@ -1,14 +1,25 @@
 error[E0277]: the trait bound `u32: [const] Plus` is not satisfied
-  --> $DIR/call-const-trait-method-fail.rs:25:5
+  --> $DIR/call-const-trait-method-fail.rs:44:5
    |
 LL |     a.plus(b)
    |     ^
    |
 help: make the `impl` of trait `Plus` `const`
    |
-LL | impl const Plus for u32 {
-   |      +++++
+LL | const impl Plus for u32 {
+   | +++++
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `u32: [const] Minus` is not satisfied
+  --> $DIR/call-const-trait-method-fail.rs:54:5
+   |
+LL |     a.minus(b)
+   |     ^
+   |
+help: make the `impl` of trait `Minus` `const`
+   |
+LL | const unsafe impl Minus for u32 {
+   | +++++
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

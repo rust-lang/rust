@@ -1,12 +1,12 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
 use rustc_abi::ExternAbi;
+use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
     MultiSpan, listify, msg,
 };
-use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Ident, Span, Symbol};
@@ -863,16 +863,6 @@ pub(crate) struct EnumDiscriminantOverflowed {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation"
-)]
-#[help("add `#![feature(unboxed_closures)]` to the crate attributes to use it")]
-pub(crate) struct ParenSugarAttribute {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("use of SIMD type{$snip} in FFI is highly experimental and may result in invalid code")]
 #[help("add `#![feature(simd_ffi)]` to the crate attributes to enable")]
 pub(crate) struct SIMDFFIHighlyExperimental {
@@ -929,6 +919,8 @@ pub(crate) struct MissingTraitItem {
     pub missing_trait_item: Vec<MissingTraitItemSuggestion>,
     #[subdiagnostic]
     pub missing_trait_item_none: Vec<MissingTraitItemSuggestionNone>,
+    #[subdiagnostic]
+    pub missing_trait_item_unstable: Vec<MissingTraitItemSuggestionUnstable>,
     pub missing_items_msg: String,
 }
 
@@ -956,6 +948,21 @@ pub(crate) struct MissingTraitItemSuggestion {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
+    "implement the missing item: `{$snippet}` (unstable, requires feature `{$feature}`)",
+    style = "hidden",
+    applicability = "has-placeholders",
+    code = "{code}"
+)]
+pub(crate) struct MissingTraitItemSuggestionUnstable {
+    #[primary_span]
+    pub span: Span,
+    pub code: String,
+    pub snippet: String,
+    pub feature: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
     "implement the missing item: `{$snippet}`",
     style = "hidden",
     applicability = "has-placeholders",
@@ -976,6 +983,14 @@ pub(crate) struct MissingOneOfTraitItem {
     pub span: Span,
     #[note("required because of this annotation")]
     pub note: Option<Span>,
+    #[subdiagnostic]
+    pub missing_trait_item_label: Vec<MissingTraitItemLabel>,
+    #[subdiagnostic]
+    pub missing_trait_item: Vec<MissingTraitItemSuggestion>,
+    #[subdiagnostic]
+    pub missing_trait_item_none: Vec<MissingTraitItemSuggestionNone>,
+    #[subdiagnostic]
+    pub missing_trait_item_unstable: Vec<MissingTraitItemSuggestionUnstable>,
     pub missing_items_msg: String,
 }
 
@@ -1347,11 +1362,126 @@ pub(crate) struct CoerceSharedNotSingleLifetimeParam {
 }
 
 #[derive(Diagnostic)]
-#[diag("implementing `{$trait_name}` does not allow multiple lifetimes or fields to be coerced")]
+#[diag(
+    "implementing `{$trait_name}` requires exactly one lifetime argument in the reborrowed type"
+)]
 pub(crate) struct CoerceSharedMulti {
     #[primary_span]
     pub span: Span,
     pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source and target to use the same reborrow lifetime \
+     argument"
+)]
+pub(crate) struct CoerceSharedLifetimeMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[label("source reborrow lifetime")]
+    pub source_lifetime_span: Option<Span>,
+    #[label("target reborrow lifetime")]
+    pub target_lifetime_span: Option<Span>,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires corresponding fields to match, \
+     be reborrowable with `CoerceShared`, or coerce a mutable reference field \
+     to a shared reference field"
+)]
+pub(crate) struct CoerceSharedFieldMismatch<'tcx> {
+    #[primary_span]
+    #[label("target field `{$target_name}` has type `{$target_ty}`")]
+    pub span: Span,
+    #[label("source field `{$source_name}` has type `{$source_ty}`")]
+    pub source_span: Span,
+    #[label("required by this `CoerceShared` implementation")]
+    pub impl_span: Span,
+    pub source_name: Symbol,
+    pub source_ty: Ty<'tcx>,
+    pub target_name: Symbol,
+    pub target_ty: Ty<'tcx>,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires every target field to have a corresponding source field"
+)]
+pub(crate) struct CoerceSharedMissingField {
+    #[primary_span]
+    #[label("target field `{$field_name}` has no corresponding source field")]
+    pub span: Span,
+    #[label("source type `{$source_ty_name}` does not contain field `{$field_name}`")]
+    pub source_ty_span: Span,
+    pub trait_name: &'static str,
+    pub source_ty_name: Symbol,
+    pub field_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source fields omitted from the target to be `Copy` or \
+     `Reborrow`"
+)]
+pub(crate) struct CoerceSharedOmittedSourceFieldNotCopyOrReborrow<'tcx> {
+    #[primary_span]
+    #[label("source field `{$field_name}` has type `{$field_ty}`")]
+    pub span: Span,
+    #[label("required by this `CoerceShared` implementation")]
+    pub impl_span: Span,
+    pub trait_name: &'static str,
+    pub field_name: Symbol,
+    pub field_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source and target structs to use the same field style"
+)]
+pub(crate) struct CoerceSharedFieldStyleMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires all {$role} type fields to be accessible from the impl"
+)]
+pub(crate) struct CoerceSharedInaccessibleField {
+    #[primary_span]
+    pub span: Span,
+    #[label("{$role} type `{$type_name}` has inaccessible reborrow data fields")]
+    pub type_span: Span,
+    pub trait_name: &'static str,
+    pub role: &'static str,
+    pub type_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` currently requires source and target to have at most one \
+     non-ZST reborrow data field"
+)]
+#[note(
+    "this is a temporary restriction until `CoerceShared` lowering supports non-trivially \
+     memcpy-compatible field layouts"
+)]
+pub(crate) struct CoerceSharedMultipleNonZstFields {
+    #[primary_span]
+    #[label("in this `CoerceShared` implementation")]
+    pub span: Span,
+    #[label("source type has {$source_count} non-ZST reborrow data fields")]
+    pub source_ty_span: Span,
+    #[label("target type has {$target_count} non-ZST reborrow data fields")]
+    pub target_ty_span: Span,
+    pub trait_name: &'static str,
+    pub source_count: usize,
+    pub target_count: usize,
 }
 
 #[derive(Diagnostic)]
@@ -1818,22 +1948,6 @@ pub(crate) struct DynTraitAssocItemBindingMentionsSelf {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "items with the \"custom\" ABI can only be declared externally or defined via naked functions"
-)]
-pub(crate) struct AbiCustomClothedFunction {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(
-        "convert this to an `#[unsafe(naked)]` function",
-        applicability = "maybe-incorrect",
-        code = "#[unsafe(naked)]\n",
-        style = "short"
-    )]
-    pub naked_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`AsyncDrop` impl without `Drop` impl")]
 #[help(
     "type implementing `AsyncDrop` trait must also implement `Drop` trait to be used in sync context and unwinds"
@@ -1999,4 +2113,34 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for UncoveredTyParam<'_> {
 
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("field `{$name}` is already part of the view")]
+pub(crate) struct ViewedFieldIsAlreadyPartOfTheView {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    #[label("field `{$name}` is declared as viewed here")]
+    pub previous_field_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("only structs can be viewed")]
+pub(crate) struct OnlyStructsCanBeViewedNonAdt<'tcx> {
+    #[primary_span]
+    #[label("type `{$ty}` cannot be viewed")]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag("only structs can be viewed")]
+pub(crate) struct OnlyStructsCanBeViewedAdt<'tcx> {
+    #[primary_span]
+    #[label("`{$ty}` is {$article} {$kind}, it cannot be viewed")]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub article: &'static str,
+    pub kind: &'static str,
 }

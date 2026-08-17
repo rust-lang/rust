@@ -6,7 +6,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
-use crate::{self as ty, Interner, Unnormalized, Upcast as _};
+use crate::{self as ty, Interner, Region, Unnormalized, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means
@@ -53,14 +53,16 @@ pub trait Elaboratable<I: Interner> {
 
 pub struct ClauseWithSupertraitSpan<I: Interner> {
     pub clause: I::Clause,
-    // Span of the supertrait predicatae that lead to this clause.
+    // Span of the supertrait predicate that lead to this clause.
     pub supertrait_span: I::Span,
 }
+
 impl<I: Interner> ClauseWithSupertraitSpan<I> {
     pub fn new(clause: I::Clause, span: I::Span) -> Self {
         ClauseWithSupertraitSpan { clause, supertrait_span: span }
     }
 }
+
 impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
     fn predicate(&self) -> <I as Interner>::Predicate {
         self.clause.as_predicate()
@@ -163,17 +165,18 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                         )
                     };
 
-                // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
+                // Get clauses implied by the trait, or only super clauses if we only care
+                // about self clauses.
                 match self.mode {
                     Filter::All => self.extend_deduped(
-                        cx.explicit_implied_predicates_of(data.def_id().into())
+                        cx.explicit_implied_clauses_of(data.def_id().into())
                             .iter_identity()
                             .map(Unnormalized::skip_norm_wip)
                             .enumerate()
                             .map(map_to_child_clause),
                     ),
                     Filter::OnlySelf => self.extend_deduped(
-                        cx.explicit_super_predicates_of(data.def_id())
+                        cx.explicit_super_clauses_of(data.def_id())
                             .iter_identity()
                             .map(Unnormalized::skip_norm_wip)
                             .enumerate()
@@ -194,7 +197,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     },
                 ),
             ),
-            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -249,34 +252,34 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
 fn elaborate_component_to_clause<I: Interner>(
     cx: I,
     component: Component<I>,
-    outlives_region: I::Region,
+    outlives_region: Region<I>,
 ) -> Option<ty::ClauseKind<I>> {
     match component {
         Component::Region(r) => {
             if r.is_bound() {
                 None
             } else {
-                Some(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r, outlives_region)))
+                Some(ty::ClauseKind::RegionOutlives(ty::OutlivesClause(r, outlives_region)))
             }
         }
 
         Component::Param(p) => {
             let ty = Ty::new_param(cx, p);
-            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, outlives_region)))
+            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, outlives_region)))
         }
 
         Component::Placeholder(p) => {
             let ty = Ty::new_placeholder(cx, p);
-            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, outlives_region)))
+            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, outlives_region)))
         }
 
         Component::UnresolvedInferenceVariable(_) => None,
 
-        Component::Alias(alias_ty) => {
+        Component::Alias(is_rigid, alias_ty) => {
             // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
             // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                alias_ty.to_ty(cx, ty::IsRigid::No),
+            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(
+                alias_ty.to_ty(cx, is_rigid),
                 outlives_region,
             )))
         }
@@ -327,12 +330,12 @@ pub fn supertrait_def_ids<I: Interner>(
     std::iter::from_fn(move || {
         let trait_def_id = stack.pop()?;
 
-        for (predicate, _) in cx
-            .explicit_super_predicates_of(trait_def_id)
+        for (clause, _) in cx
+            .explicit_super_clauses_of(trait_def_id)
             .iter_identity()
             .map(Unnormalized::skip_norm_wip)
         {
-            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder()
+            if let ty::ClauseKind::Trait(data) = clause.kind().skip_binder()
                 && set.insert(data.def_id())
             {
                 stack.push(data.def_id());
@@ -383,12 +386,12 @@ impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I,
 
 pub fn elaborate_outlives_assumptions<I: Interner>(
     cx: I,
-    assumptions: impl IntoIterator<Item = ty::OutlivesPredicate<I, I::GenericArg>>,
-) -> HashSet<ty::OutlivesPredicate<I, I::GenericArg>> {
+    assumptions: impl IntoIterator<Item = ty::OutlivesClause<I, I::GenericArg>>,
+) -> HashSet<ty::OutlivesClause<I, I::GenericArg>> {
     let mut collected = HashSet::default();
 
-    for ty::OutlivesPredicate(arg1, r2) in assumptions {
-        collected.insert(ty::OutlivesPredicate(arg1, r2));
+    for ty::OutlivesClause(arg1, r2) in assumptions {
+        collected.insert(ty::OutlivesClause(arg1, r2));
         match arg1.kind() {
             // Elaborate the components of an type, since we may have substituted a
             // generic coroutine with a more specific type.
@@ -399,23 +402,23 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
                     match c {
                         Component::Region(r1) => {
                             if !r1.is_bound() {
-                                collected.insert(ty::OutlivesPredicate(r1.into(), r2));
+                                collected.insert(ty::OutlivesClause(r1.into(), r2));
                             }
                         }
 
                         Component::Param(p) => {
                             let ty = Ty::new_param(cx, p);
-                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                            collected.insert(ty::OutlivesClause(ty.into(), r2));
                         }
 
                         Component::Placeholder(p) => {
                             let ty = Ty::new_placeholder(cx, p);
-                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                            collected.insert(ty::OutlivesClause(ty.into(), r2));
                         }
 
-                        Component::Alias(alias_ty) => {
-                            collected.insert(ty::OutlivesPredicate(
-                                alias_ty.to_ty(cx, ty::IsRigid::No).into(),
+                        Component::Alias(is_rigid, alias_ty) => {
+                            collected.insert(ty::OutlivesClause(
+                                alias_ty.to_ty(cx, is_rigid).into(),
                                 r2,
                             ));
                         }

@@ -1,8 +1,10 @@
+use std::cell::Cell;
 use std::mem;
 use std::rc::Rc;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, TyCtxt};
@@ -10,6 +12,7 @@ use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;
 
 use crate::consumers::BorrowckConsumer;
+use crate::diagnostics::BorrowckDiagnosticsBuffer;
 use crate::nll::compute_closure_requirements_modulo_opaques;
 use crate::region_infer::opaque_types::{
     UnexpectedHiddenRegion, apply_definition_site_hidden_types, clone_and_resolve_opaque_types,
@@ -24,7 +27,7 @@ use crate::{
 
 /// The shared context used by both the root as well as all its nested
 /// items.
-pub(super) struct BorrowCheckRootCtxt<'tcx> {
+pub(super) struct BorrowCheckRootCtxt<'diag, 'tcx: 'diag> {
     pub tcx: TyCtxt<'tcx>,
     root_def_id: LocalDefId,
     /// This contains fully resolved hidden types or `ty::Error`.
@@ -39,18 +42,19 @@ pub(super) struct BorrowCheckRootCtxt<'tcx> {
     collect_region_constraints_results:
         FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>>,
     propagated_borrowck_results: FxHashMap<LocalDefId, PropagatedBorrowCheckResults<'tcx>>,
-    tainted_by_errors: Option<ErrorGuaranteed>,
+    tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
     /// information on how this is used.
     pub consumer: Option<BorrowckConsumer<'tcx>>,
 }
 
-impl<'tcx> BorrowCheckRootCtxt<'tcx> {
+impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     pub(super) fn new(
         tcx: TyCtxt<'tcx>,
         root_def_id: LocalDefId,
         consumer: Option<BorrowckConsumer<'tcx>>,
-    ) -> BorrowCheckRootCtxt<'tcx> {
+        tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
+    ) -> BorrowCheckRootCtxt<'diag, 'tcx> {
         BorrowCheckRootCtxt {
             tcx,
             root_def_id,
@@ -58,7 +62,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             unconstrained_hidden_type_errors: Default::default(),
             collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
-            tainted_by_errors: None,
+            tainted_by_errors,
             consumer,
         }
     }
@@ -67,8 +71,12 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         self.root_def_id
     }
 
-    pub(super) fn set_tainted_by_errors(&mut self, guar: ErrorGuaranteed) {
-        self.tainted_by_errors = Some(guar);
+    pub(super) fn set_tainted_by_errors(&self, guar: ErrorGuaranteed) {
+        self.tainted_by_errors.set(Some(guar));
+    }
+
+    pub(super) fn dcx(&self) -> DiagCtxtHandle<'diag> {
+        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
     }
 
     pub(super) fn used_mut_upvars(
@@ -82,7 +90,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         self,
     ) -> Result<&'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>, ErrorGuaranteed>
     {
-        if let Some(guar) = self.tainted_by_errors {
+        if let Some(guar) = self.tainted_by_errors.get() {
             Err(guar)
         } else {
             Ok(self.tcx.arena.alloc(self.hidden_types))
@@ -157,7 +165,10 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
     /// which don't depend on opaque types. In this case they get removed from
     /// `collect_region_constraints_results` and the final result gets put into
     /// `propagated_borrowck_results`.
-    fn apply_closure_requirements_modulo_opaques(&mut self) {
+    fn apply_closure_requirements_modulo_opaques(
+        &mut self,
+        diags_buffer: &mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
+    ) {
         let mut closure_requirements_modulo_opaques = FxHashMap::default();
         // We need to `mem::take` both `self.collect_region_constraints_results` and
         // `input.deferred_closure_requirements` as we otherwise can't iterate over
@@ -215,7 +226,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
                 self.collect_region_constraints_results.insert(def_id, input);
             } else {
                 assert!(input.deferred_closure_requirements.is_empty());
-                let result = borrowck_check_region_constraints(self, input);
+                let result = borrowck_check_region_constraints(self, diags_buffer, input);
                 self.propagated_borrowck_results.insert(def_id, result);
             }
         }
@@ -270,6 +281,8 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             self.collect_region_constraints_results.insert(def_id, result);
         }
 
+        let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
+
         // We now apply the closure requirements of nested bodies modulo
         // opaques. In case a body does not depend on opaque types, we
         // eagerly check its region constraints and use the final closure
@@ -277,7 +290,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         //
         // We eagerly finish borrowck for bodies which don't depend on
         // opaques.
-        self.apply_closure_requirements_modulo_opaques();
+        self.apply_closure_requirements_modulo_opaques(diags_buffer);
 
         // We handle opaque type uses for all bodies together.
         self.handle_opaque_type_uses();
@@ -303,8 +316,9 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
                 );
             }
 
-            let result = borrowck_check_region_constraints(self, input);
+            let result = borrowck_check_region_constraints(self, diags_buffer, input);
             self.propagated_borrowck_results.insert(def_id, result);
         }
+        diags_buffer.emit_errors();
     }
 }

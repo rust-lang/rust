@@ -41,7 +41,7 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         Helper::new(&self.0)
-        //~^ ERROR overflow evaluating the requirement `&_: IntoIterator`
+        //~^ ERROR: overflow evaluating the requirement `&HashMap<_, _, _, _>: IntoIterator`
     }
 }
 

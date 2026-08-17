@@ -5,10 +5,10 @@ LL |     #[rustc_confusables()]
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `rustc_confusables` attribute input
-  --> $DIR/rustc_confusables.rs:34:5
+  --> $DIR/rustc_confusables.rs:34:7
    |
 LL |     #[rustc_confusables]
-   |     ^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^^^^^^^^^^ expected this to be a list
    |
 help: must be of the form
    |
@@ -16,10 +16,10 @@ LL |     #[rustc_confusables("name1", "name2", ...)]
    |                        +++++++++++++++++++++++
 
 error[E0539]: malformed `rustc_confusables` attribute input
-  --> $DIR/rustc_confusables.rs:39:5
+  --> $DIR/rustc_confusables.rs:39:7
    |
 LL |     #[rustc_confusables(invalid_meta_item)]
-   |     ^^^^^^^^^^^^^^^^^^^^-----------------^^
+   |       ^^^^^^^^^^^^^^^^^^-----------------^
    |                         |
    |                         expected a string literal here
    |
@@ -29,13 +29,13 @@ LL -     #[rustc_confusables(invalid_meta_item)]
 LL +     #[rustc_confusables("name1", "name2", ...)]
    |
 
-error: `#[rustc_confusables]` attribute cannot be used on functions
-  --> $DIR/rustc_confusables.rs:45:1
+error: the `rustc_confusables` attribute cannot be used on functions
+  --> $DIR/rustc_confusables.rs:45:3
    |
 LL | #[rustc_confusables("blah")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_confusables]` can only be applied to inherent methods
+   = help: the `rustc_confusables` attribute can only be applied to inherent methods
 
 error[E0599]: no method named `inser` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
   --> $DIR/rustc_confusables.rs:12:7

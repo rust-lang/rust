@@ -1,7 +1,8 @@
 use crate::intrinsics;
-use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
+use crate::range::RangeIter;
 
 /// An iterator for stepping iterators by a custom amount.
 ///
@@ -135,6 +136,11 @@ where
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 
+// StepBy stops yielding items once the underlying iterator does, so it is fused
+// whenever the underlying iterator is fused.
+#[stable(feature = "step_by_fused", since = "CURRENT_RUSTC_VERSION")]
+impl<I> FusedIterator for StepBy<I> where I: FusedIterator {}
+
 // SAFETY: This adapter is shortening. TrustedLen requires the upper bound to be calculated correctly.
 // These requirements can only be satisfied when the upper bound of the inner iterator's upper
 // bound is never `None`. I: TrustedRandomAccess happens to provide this guarantee while
@@ -253,9 +259,9 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
     default fn spec_nth(&mut self, mut n: usize) -> Option<I::Item> {
         if self.first_take {
             self.first_take = false;
-            let first = self.iter.next();
+            let first = self.iter.next()?;
             if n == 0 {
-                return first;
+                return Some(first);
             }
             n -= 1;
         }
@@ -265,7 +271,7 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
         // n + 1 could overflow
         // thus, if n is usize::MAX, instead of adding one, we call .nth(step)
         if n == usize::MAX {
-            self.iter.nth(step - 1);
+            self.iter.nth(step - 1)?;
         } else {
             n += 1;
         }
@@ -289,7 +295,8 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
                 n -= div_step;
                 nth_step
             };
-            self.iter.nth(nth - 1);
+
+            self.iter.nth(nth - 1)?;
         }
     }
 
@@ -418,37 +425,71 @@ unsafe impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for St
 /// and we must consistently specialize backwards and forwards iteration
 /// that makes the situation complicated enough that it's not covered
 /// for now.
+///
+/// After `SpecRangeSetup::setup`, both `Range<T>` and its new-range wrapper
+/// `RangeIter<T>` carry the cursor and countdown in the same underlying legacy
+/// `Range`. This accessor exposes that shared range so one specialization can
+/// serve both: it is an identity for `Range<T>` and unwraps the newtype for
+/// `RangeIter<T>`, so it compiles away.
+trait AsLegacyRange<T> {
+    fn as_legacy_range(&self) -> &Range<T>;
+    fn as_legacy_range_mut(&mut self) -> &mut Range<T>;
+}
+
+impl<T> AsLegacyRange<T> for Range<T> {
+    #[inline]
+    fn as_legacy_range(&self) -> &Range<T> {
+        self
+    }
+    #[inline]
+    fn as_legacy_range_mut(&mut self) -> &mut Range<T> {
+        self
+    }
+}
+
+impl<T> AsLegacyRange<T> for RangeIter<T> {
+    #[inline]
+    fn as_legacy_range(&self) -> &Range<T> {
+        &self.0
+    }
+    #[inline]
+    fn as_legacy_range_mut(&mut self) -> &mut Range<T> {
+        &mut self.0
+    }
+}
+
 macro_rules! spec_int_ranges {
-    ($($t:ty)*) => ($(
+    ($ctor:ident; $($t:ty)*) => ($(
 
         const _: () = assert!(usize::BITS >= <$t>::BITS);
 
-        impl SpecRangeSetup<Range<$t>> for Range<$t> {
+        impl SpecRangeSetup<$ctor<$t>> for $ctor<$t> {
             #[inline]
-            fn setup(mut r: Range<$t>, step: usize) -> Range<$t> {
+            fn setup(mut r: $ctor<$t>, step: usize) -> $ctor<$t> {
                 let inner_len = r.size_hint().0;
                 // If step exceeds $t::MAX, then the count will be at most 1 and
                 // thus always fit into $t.
                 let yield_count = inner_len.div_ceil(step);
                 // Turn the range end into an iteration counter
-                r.end = yield_count as $t;
+                r.as_legacy_range_mut().end = yield_count as $t;
                 r
             }
         }
 
-        unsafe impl StepByImpl<Range<$t>> for StepBy<Range<$t>> {
+        unsafe impl StepByImpl<$ctor<$t>> for StepBy<$ctor<$t>> {
             #[inline]
             fn spec_next(&mut self) -> Option<$t> {
                 // if a step size larger than the type has been specified fall back to
                 // t::MAX, in which case remaining will be at most 1.
                 let step = <$t>::try_from(self.original_step().get()).unwrap_or(<$t>::MAX);
-                let remaining = self.iter.end;
+                let r = self.iter.as_legacy_range_mut();
+                let remaining = r.end;
                 if remaining > 0 {
-                    let val = self.iter.start;
+                    let val = r.start;
                     // this can only overflow during the last step, after which the value
                     // will not be used
-                    self.iter.start = val.wrapping_add(step);
-                    self.iter.end = remaining - 1;
+                    r.start = val.wrapping_add(step);
+                    r.end = remaining - 1;
                     Some(val)
                 } else {
                     None
@@ -457,7 +498,7 @@ macro_rules! spec_int_ranges {
 
             #[inline]
             fn spec_size_hint(&self) -> (usize, Option<usize>) {
-                let remaining = self.iter.end as usize;
+                let remaining = self.iter.as_legacy_range().end as usize;
                 (remaining, Some(remaining))
             }
 
@@ -491,9 +532,10 @@ macro_rules! spec_int_ranges {
                 // if a step size larger than the type has been specified fall back to
                 // t::MAX, in which case remaining will be at most 1.
                 let step = <$t>::try_from(self.original_step().get()).unwrap_or(<$t>::MAX);
-                let remaining = self.iter.end;
+                let r = self.iter.as_legacy_range();
+                let remaining = r.end;
                 let mut acc = init;
-                let mut val = self.iter.start;
+                let mut val = r.start;
                 for _ in 0..remaining {
                     acc = f(acc, val);
                     // this can only overflow during the last step, after which the value
@@ -507,18 +549,19 @@ macro_rules! spec_int_ranges {
 }
 
 macro_rules! spec_int_ranges_r {
-    ($($t:ty)*) => ($(
+    ($ctor:ident; $($t:ty)*) => ($(
         const _: () = assert!(usize::BITS >= <$t>::BITS);
 
-        unsafe impl StepByBackImpl<Range<$t>> for StepBy<Range<$t>> {
+        unsafe impl StepByBackImpl<$ctor<$t>> for StepBy<$ctor<$t>> {
 
             #[inline]
             fn spec_next_back(&mut self) -> Option<Self::Item> {
                 let step = self.original_step().get() as $t;
-                let remaining = self.iter.end;
+                let r = self.iter.as_legacy_range_mut();
+                let remaining = r.end;
                 if remaining > 0 {
-                    let start = self.iter.start;
-                    self.iter.end = remaining - 1;
+                    let start = r.start;
+                    r.end = remaining - 1;
                     Some(start + step * (remaining - 1))
                 } else {
                     None
@@ -564,18 +607,37 @@ macro_rules! spec_int_ranges_r {
     )*)
 }
 
+// The same specialization covers `Range<{integer}>` and the new-range iterator
+// `RangeIter<{integer}>`, which wraps a `Range` (see `AsLegacyRange`).
+//
+// The backward (`_r`) specialization requires `ExactSizeIterator`. `RangeIter`
+// implements it only for `usize`/`u8`/`u16` (see `range_exact_iter_impl!` in
+// `range::iter`), narrower than `Range`, so `RangeIter`'s backward set omits
+// `u32` even where `Range` includes it; `Range<u64>` is likewise omitted on
+// 64-bit since its length can exceed `usize`.
 #[cfg(target_pointer_width = "64")]
-spec_int_ranges!(u8 u16 u32 u64 usize);
-// DoubleEndedIterator requires ExactSizeIterator, which isn't implemented for Range<u64>
-#[cfg(target_pointer_width = "64")]
-spec_int_ranges_r!(u8 u16 u32 usize);
+mod step_by_spec {
+    use super::*;
+    spec_int_ranges!(Range; u8 u16 u32 u64 usize);
+    spec_int_ranges!(RangeIter; u8 u16 u32 u64 usize);
+    spec_int_ranges_r!(Range; u8 u16 u32 usize);
+    spec_int_ranges_r!(RangeIter; u8 u16 usize);
+}
 
 #[cfg(target_pointer_width = "32")]
-spec_int_ranges!(u8 u16 u32 usize);
-#[cfg(target_pointer_width = "32")]
-spec_int_ranges_r!(u8 u16 u32 usize);
+mod step_by_spec {
+    use super::*;
+    spec_int_ranges!(Range; u8 u16 u32 usize);
+    spec_int_ranges!(RangeIter; u8 u16 u32 usize);
+    spec_int_ranges_r!(Range; u8 u16 u32 usize);
+    spec_int_ranges_r!(RangeIter; u8 u16 usize);
+}
 
 #[cfg(target_pointer_width = "16")]
-spec_int_ranges!(u8 u16 usize);
-#[cfg(target_pointer_width = "16")]
-spec_int_ranges_r!(u8 u16 usize);
+mod step_by_spec {
+    use super::*;
+    spec_int_ranges!(Range; u8 u16 usize);
+    spec_int_ranges!(RangeIter; u8 u16 usize);
+    spec_int_ranges_r!(Range; u8 u16 usize);
+    spec_int_ranges_r!(RangeIter; u8 u16 usize);
+}

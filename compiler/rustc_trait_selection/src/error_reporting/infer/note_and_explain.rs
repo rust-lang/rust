@@ -1,7 +1,8 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -621,9 +622,9 @@ impl<T> Trait<T> for X {
             TypeError::TargetFeatureCast(def_id) => {
                 let target_spans = find_attr!(tcx, def_id, TargetFeature{attr_span: span, was_forced: false, ..} => *span);
                 diag.note(
-                    "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
+                    "functions with `#[target_feature(..)]` can only be coerced to `unsafe` function pointers"
                 );
-                diag.span_labels(target_spans, "`#[target_feature]` added here");
+                diag.span_labels(target_spans, "`#[target_feature(..)]` added here");
             }
             _ => {}
         }

@@ -7,8 +7,9 @@ use std::hash::Hash;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hash::StableHash;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
-use rustc_hir::hir_id::OwnerId;
+use rustc_hir::OwnerId;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModId};
+use rustc_span::def_id::ModId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
 use crate::dep_graph::DepNodeIndex;
@@ -157,7 +158,25 @@ impl QueryKey for DefId {
     }
 }
 
-impl QueryKey for LocalModDefId {
+impl QueryKey for ModId {
+    type LocalQueryKey = LocalModId;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.to_def_id())
+    }
+
+    #[inline(always)]
+    fn key_as_def_id(&self) -> Option<DefId> {
+        Some(self.to_def_id())
+    }
+
+    #[inline(always)]
+    fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
+        self.as_local()
+    }
+}
+
+impl QueryKey for LocalModId {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(*self)
     }
@@ -271,6 +290,18 @@ impl<'tcx> QueryKey for ty::Clauses<'tcx> {
     }
 }
 
+impl<'tcx> QueryKey for ty::AliasTyKind<'tcx> {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        let def_id = match self {
+            ty::AliasTyKind::Projection { def_id }
+            | ty::AliasTyKind::Inherent { def_id }
+            | ty::AliasTyKind::Opaque { def_id }
+            | ty::AliasTyKind::Free { def_id } => def_id,
+        };
+        tcx.def_span(*def_id)
+    }
+}
+
 impl<'tcx, T: QueryKey> QueryKey for ty::PseudoCanonicalInput<'tcx, T> {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.value.default_span(tcx)
@@ -304,6 +335,12 @@ impl<'tcx, T: QueryKeyBounds> QueryKey for CanonicalQueryInput<'tcx, T> {
 }
 
 impl<'tcx, T: QueryKeyBounds> QueryKey for (CanonicalQueryInput<'tcx, T>, bool) {
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx, T: QueryKeyBounds> QueryKey for (CanonicalQueryInput<'tcx, T>, usize) {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }

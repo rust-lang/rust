@@ -7,7 +7,10 @@ mod common;
 #[test]
 // Process spawning not supported by Miri, Emscripten and wasi
 #[cfg_attr(any(miri, target_os = "emscripten", target_os = "wasi"), ignore)]
-#[cfg_attr(any(target_os = "tvos", target_os = "watchos"), ignore = "fork is prohibited")]
+#[cfg_attr(
+    any(target_os = "tvos", target_os = "watchos", target_os = "l4re"),
+    ignore = "fork is prohibited"
+)]
 fn issue_15149() {
     // If we're the parent, copy our own binary to a new directory.
     let my_path = env::current_exe().unwrap();
@@ -26,8 +29,16 @@ fn issue_15149() {
         env::join_paths(paths).unwrap()
     };
 
-    let child_output =
-        process::Command::new("mytest").env("PATH", &path).arg("child").output().unwrap();
+    // If a custom `runner` is set up for the current target, we'll be executing `./runner ./test`,
+    // not just `./test`. For such a case, use the same arguments for child to avoid executing
+    // `runner` without an actual executable.
+    let args = env::args();
+    let child_output = process::Command::new("mytest")
+        .args(args)
+        .env("PATH", &path)
+        .arg("child")
+        .output()
+        .unwrap();
 
     assert!(
         child_output.status.success(),

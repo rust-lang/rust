@@ -1,13 +1,7 @@
 //@aux-build:proc_macros.rs
-#![allow(
-    clippy::assign_op_pattern,
-    clippy::blocks_in_conditions,
-    clippy::let_and_return,
-    clippy::let_unit_value,
-    clippy::nonminimal_bool,
-    clippy::uninlined_format_args,
-    clippy::useless_vec
-)]
+#![warn(clippy::needless_late_init)]
+#![allow(clippy::let_and_return)]
+#![expect(clippy::blocks_in_conditions, clippy::let_unit_value, clippy::useless_vec)]
 
 extern crate proc_macros;
 

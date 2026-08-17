@@ -208,15 +208,15 @@
 use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{Lock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_hir::lang_items::LangItem;
-use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
@@ -231,8 +231,8 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::{DebugInfo, EntryFnType};
-use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan};
+use rustc_session::config::{DebugInfo, EntryFnType, Offload};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, dummy_spanned, respan};
 use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::{
@@ -471,26 +471,24 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
-                    // Normalization errors here are usually due to trait solving overflow.
-                    // FIXME: I assume that there are few type errors at post-analysis stage, but not
-                    // entirely sure.
-                    // We have to emit the error outside of `items_of_instance` to access the
-                    // span of the `starting_item`.
-                    let def_id = instance.def_id();
-                    let def_span = tcx.def_span(def_id);
-                    let def_path_str = tcx.def_path_str(def_id);
-                    tcx.dcx().emit_fatal(RecursionLimit {
-                        span: starting_item.span,
-                        instance,
-                        def_span,
-                        def_path_str,
-                    });
-                };
-                used_items.extend(used.into_iter().copied());
-                mentioned_items.extend(mentioned.into_iter().copied());
-            });
+            let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                // Normalization errors here are usually due to trait solving overflow.
+                // FIXME: I assume that there are few type errors at post-analysis stage, but not
+                // entirely sure.
+                // We have to emit the error outside of `items_of_instance` to access the
+                // span of the `starting_item`.
+                let def_id = instance.def_id();
+                let def_span = tcx.def_span(def_id);
+                let def_path_str = tcx.def_path_str(def_id);
+                tcx.dcx().emit_fatal(RecursionLimit {
+                    span: starting_item.span,
+                    instance,
+                    def_span,
+                    def_path_str,
+                });
+            };
+            used_items.extend(used.into_iter().copied());
+            mentioned_items.extend(mentioned.into_iter().copied());
         }
         MonoItem::GlobalAsm(item_id) => {
             assert!(
@@ -503,10 +501,18 @@ fn collect_items_rec<'tcx>(
             if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
                 for (op, op_sp) in asm.operands {
                     match *op {
-                        hir::InlineAsmOperand::Const { .. } => {
-                            // Only constants which resolve to a plain integer
-                            // are supported. Therefore the value should not
-                            // depend on any other items.
+                        hir::InlineAsmOperand::Const { anon_const } => {
+                            match tcx.const_eval_poly(anon_const.def_id.to_def_id()) {
+                                Ok(val) => {
+                                    collect_const_value(tcx, val, &mut used_items);
+                                }
+                                Err(ErrorHandled::TooGeneric(..)) => {
+                                    span_bug!(*op_sp, "asm const cannot be resolved; too generic")
+                                }
+                                Err(ErrorHandled::Reported(..)) => {
+                                    continue;
+                                }
+                            }
                         }
                         hir::InlineAsmOperand::SymFn { expr } => {
                             let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
@@ -825,8 +831,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, .. }
-            | mir::TerminatorKind::TailCall { ref func, .. } => {
+            mir::TerminatorKind::Call { ref func, ref args, .. }
+            | mir::TerminatorKind::TailCall { ref func, ref args, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
@@ -843,7 +849,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                             self.tcx,
                             ty::TypingEnv::fully_monomorphized(),
                             def_id,
-                            args,
+                            args.no_bound_vars().unwrap(),
                             source,
                         )
                         && instance.def.requires_caller_location(self.tcx)
@@ -859,7 +865,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     !force_indirect_call,
                     source,
                     &mut self.used_items,
-                )
+                );
+
+                if let ty::FnDef(def_id, _) = *callee_ty.kind()
+                    && self.tcx.is_intrinsic(def_id, rustc_span::sym::offload)
+                    && let Some(kernel) = args.first()
+                {
+                    let kernel_ty = kernel.node.ty(self.body, self.tcx);
+                    let kernel_ty = self.monomorphize(kernel_ty);
+                    visit_fn_use(self.tcx, kernel_ty, false, source, &mut self.used_items);
+                }
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -898,6 +913,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 }
                 mir::AssertKind::NullPointerDereference => {
                     push_mono_lang_item(self, LangItem::PanicNullPointerDereference);
+                }
+                mir::AssertKind::NullReferenceConstructed => {
+                    push_mono_lang_item(self, LangItem::PanicNullReferenceConstructed);
                 }
                 mir::AssertKind::InvalidEnumConstruction(_) => {
                     push_mono_lang_item(self, LangItem::PanicInvalidEnumConstruction);
@@ -949,6 +967,7 @@ fn visit_fn_use<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
+        let args = args.no_bound_vars().unwrap();
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(
                 tcx,
@@ -995,11 +1014,18 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
         } else if !intrinsic.must_be_overridden
-            && !tcx.sess.replaced_intrinsics.contains(&intrinsic.name)
+            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback
+                || !tcx.sess.replaced_intrinsics.contains(&intrinsic.name))
         {
             // Codegen the fallback body of intrinsics with fallback bodies.
             // We have to skip this otherwise as there's no body to codegen.
-            // We also skip intrinsics the backend handles, to reduce monomorphizations.
+            //
+            // We also skip `replaced_intrinsics` which are always replaced by the backend and hence
+            // monomorphizing the fallback body would be pointless.
+            //
+            // However, when -Zforce-intrinsic-fallback is set (e.g. to test the fallback
+            // implementations) we ignore the optimization hint and do monomorphize
+            // the fallback body.
             let instance = ty::Instance::new_raw(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));
@@ -1008,7 +1034,9 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceKind::Virtual(..) | ty::InstanceKind::Intrinsic(_) => {
+        ty::InstanceKind::Virtual(..)
+        | ty::InstanceKind::Intrinsic(_)
+        | ty::InstanceKind::LlvmIntrinsic(_) => {
             if !is_direct_call {
                 bug!("{:?} being reified", instance);
             }
@@ -1267,13 +1295,10 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             let ptrs = alloc.inner().provenance().ptrs();
-            // avoid `ensure_sufficient_stack` in the common case of "no pointers"
             if !ptrs.is_empty() {
-                rustc_data_structures::stack::ensure_sufficient_stack(move || {
-                    for &prov in ptrs.values() {
-                        collect_alloc(tcx, prov.alloc_id(), output);
-                    }
-                });
+                for &prov in ptrs.values() {
+                    collect_alloc(tcx, prov.alloc_id(), output);
+                }
             }
         }
         GlobalAlloc::Function { instance, .. } => {
@@ -1390,6 +1415,7 @@ fn visit_mentioned_item<'tcx>(
     match *item {
         MentionedItem::Fn(ty) => {
             if let ty::FnDef(def_id, args) = *ty.kind() {
+                let args = args.no_bound_vars().unwrap();
                 let instance = Instance::expect_resolve(
                     tcx,
                     ty::TypingEnv::fully_monomorphized(),
@@ -1458,6 +1484,34 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
     debug!("collecting roots");
     let mut roots = MonoItems::new();
 
+    // Read the manifest and add the recorded kernel instantiations as roots so they are codegened.
+    if let Some(manifest_path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
+        if let rustc_session::config::Offload::Device(p) = o
+            && !p.is_empty()
+        {
+            Some(p)
+        } else {
+            None
+        }
+    }) {
+        tcx.sess.file_depinfo.borrow_mut().insert(Symbol::intern(manifest_path));
+        match crate::offload::manifest::read_manifest(std::path::Path::new(manifest_path), tcx) {
+            Ok(instances) => {
+                for instance in instances {
+                    if instance.def_id().is_local() {
+                        roots.push(dummy_spanned(MonoItem::Fn(instance)));
+                    }
+                }
+            }
+            Err(e) => {
+                tcx.dcx().emit_err(crate::diagnostics::OffloadManifestReadError {
+                    path: manifest_path.clone(),
+                    err: e.to_string(),
+                });
+            }
+        }
+    }
+
     {
         let entry_fn = tcx.entry_fn(());
 
@@ -1480,6 +1534,50 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         }
 
         collector.push_extra_entry_roots();
+    }
+
+    let is_host_metadata = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::HostMetadata(_)));
+    if is_host_metadata {
+        let crate_items = tcx.hir_crate_items(());
+        for id in crate_items.free_items() {
+            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
+                continue;
+            }
+            let def_id = id.owner_id.to_def_id();
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
+            {
+                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
+            }
+        }
+        for id in crate_items.impl_items() {
+            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
+                continue;
+            }
+            let def_id = id.owner_id.to_def_id();
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
+            {
+                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
+            }
+        }
+        for id in crate_items.trait_items() {
+            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
+                continue;
+            }
+            let def_id = id.owner_id.to_def_id();
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
+            {
+                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
+            }
+        }
     }
 
     // We can only codegen items that are instantiable - items all of
@@ -1526,7 +1624,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                     // This type is impossible to instantiate, so we should not try to
                     // generate a `drop_glue` instance for it.
-                    if self.tcx.instantiate_and_check_impossible_predicates((
+                    if self.tcx.instantiate_and_check_impossible_clauses((
                         id.owner_id.to_def_id(),
                         id_args,
                     )) {
@@ -1655,6 +1753,15 @@ impl<'v> RootCollector<'_, 'v> {
             && match self.strategy {
                 MonoItemCollectionStrategy::Eager => {
                     !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+                    // comptime fns can't be codegenned, so we need to prevent collecting them even
+                    // with link-dead-code. Lazy mode prevents them by them not showing up in
+                    // `is_reachable_non_generic` (and `entry_fn` can't be comptime).
+                    && match self.tcx.def_kind(def_id) {
+                        DefKind::Fn | DefKind::AssocFn => {
+                            self.tcx.constness(def_id) != hir::Constness::Const { always: true }
+                        }
+                        _ => true,
+                    }
                 }
                 MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
@@ -1769,8 +1876,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     // Even though this impl has no type or const generic parameters, because we don't
     // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
     // be trivially false. We must now check that the impl has no impossible-to-satisfy
-    // predicates.
-    if tcx.instantiate_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_args)) {
+    // clauses.
+    if tcx.instantiate_and_check_impossible_clauses((item.owner_id.to_def_id(), impl_args)) {
         return;
     }
 
@@ -1834,6 +1941,17 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     let mono_items = tcx.with_stable_hashing_context(move |mut hcx| {
         state.visited.into_inner().into_sorted(&mut hcx, true)
     });
+
+    if tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, Offload::Device(p) if p.is_empty()))
+    {
+        crate::offload::check_offload_kernels_instantiated(tcx, &mono_items);
+    }
 
     (mono_items, state.usage_map.into_inner())
 }

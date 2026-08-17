@@ -21,6 +21,7 @@ pub enum SolverAdtLangItem {
     // tidy-alphabetical-start
     DynMetadata,
     Option,
+    OwnedBox,
     Poll,
     // tidy-alphabetical-end
 }
@@ -54,6 +55,7 @@ pub enum SolverTraitLangItem {
     Sized,
     TransmuteTrait,
     TrivialClone,
+    TryAsDyn,
     Tuple,
     Unpin,
     Unsize,

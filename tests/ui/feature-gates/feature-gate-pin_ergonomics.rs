@@ -2,7 +2,7 @@
 
 use std::pin::Pin;
 
-#[pin_v2] //~ ERROR the `#[pin_v2]` attribute is an experimental feature
+#[pin_v2] //~ ERROR the `pin_v2` attribute is an experimental feature
 struct Foo;
 
 impl Foo {

@@ -1,10 +1,10 @@
 #![warn(clippy::manual_range_contains)]
-#![allow(unused)]
-#![allow(clippy::no_effect)]
-#![allow(clippy::short_circuit_statement)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::impossible_comparisons)]
-#![allow(clippy::redundant_comparisons)]
+#![expect(clippy::impossible_comparisons, clippy::no_effect)]
+#![allow(
+    clippy::redundant_comparisons,
+    clippy::short_circuit_statement,
+    clippy::unnecessary_operation
+)]
 
 fn main() {
     let x = 9_i32;

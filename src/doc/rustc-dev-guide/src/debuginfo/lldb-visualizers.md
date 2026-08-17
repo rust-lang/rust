@@ -330,7 +330,7 @@ of the synthetic.
 By implementing an instance summary, we can retrieve the variant name via
 `self.variant.GetTypeName()` and some string manipulation.
 
-# Writing Visualizer Scripts
+# Writing visualizer scripts
 
 > IMPORTANT: Unlike GDB and CDB, LLDB can debug executables with either DWARF or PDB debug info.
 >Visualizers must be written to account for both formats whenever possible. See:
@@ -373,7 +373,7 @@ use depending on what version of LLDB the script detects.
 This is vital for backwards compatibility
 once we begin using recognizer functions, as recognizers were added in lldb 19.0.
 
-## Visualizer Resolution
+## Visualizer resolution
 
 The order that visualizers resolve in is listed [here][formatters_101].
 In short:

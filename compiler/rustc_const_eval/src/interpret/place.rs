@@ -13,9 +13,10 @@ use tracing::field::Empty;
 use tracing::{instrument, trace};
 
 use super::{
-    AllocInit, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, ImmTy, Immediate, InterpCx,
-    InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
-    Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types,
+    AllocInit, AllocRef, AllocRefMut, CheckAlignMsg, CheckInAllocMsg, CtfeProvenance, ImmTy,
+    Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
+    Operand, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, err_ub_format,
+    interp_ok, mir_assign_valid_types, throw_ub_format,
 };
 use crate::enter_trace_span;
 
@@ -462,22 +463,77 @@ where
 
     /// Take an operand, representing a pointer, and dereference it to a place.
     /// Corresponds to the `*` operator in Rust.
+    /// Unlike `imm_ptr_to_mplace`, this checks that the pointer is valid for its type.
     #[instrument(skip(self), level = "trace")]
     pub fn deref_pointer(
         &self,
         src: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        if src.layout().ty.is_box() {
-            // Derefer should have removed all Box derefs.
-            // Some `Box` are not immediates (if they have a custom allocator)
-            // so the code below would fail.
+        let ptr_ty = src.layout().ty;
+        if !(ptr_ty.is_ref() || ptr_ty.is_raw_ptr() || ptr_ty.is_box_global(*self.tcx)) {
             bug!("dereferencing {}", src.layout().ty);
         }
 
         let val = self.read_immediate(src)?;
+        // Construct a place for that pointer.
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-
         let mplace = self.imm_ptr_to_mplace(&val)?;
+
+        if M::enforce_validity(self, val.layout) {
+            // This is conceptually a typed load from `src` to get the pointer. Most of the time when
+            // we do typed loads for primitive operations, all relevant invariants are checked
+            // implicitly, e.g. when we call `to_bool()` on a Boolean.
+            // But here, we do need to specifically check for metadata validity, null, alignment, and
+            // dereferenceability, or they will not be checked anywhere at all.
+            // This duplicates some of the logic in the validity check, but so far we found no
+            // good way to share that logic.
+            if ptr_ty.is_ref() || ptr_ty.is_box() {
+                let kind = if ptr_ty.is_ref() { "reference" } else { "box" };
+
+                // Null check.
+                let scalar_ptr = Scalar::from_maybe_pointer(mplace.ptr(), self);
+                if self.scalar_may_be_null(scalar_ptr)? {
+                    let maybe =
+                        !M::Provenance::OFFSET_IS_ADDR && matches!(scalar_ptr, Scalar::Ptr(..));
+                    throw_ub_format!(
+                        "dereferencing a {maybe}null {kind}",
+                        maybe = if maybe { "maybe-" } else { "" }
+                    );
+                }
+
+                // Dereferencability and alignment check. This also implicitly checks metadata validity.
+                let (size, align) = self
+                    .size_and_align_of_val(&mplace)?
+                    .unwrap_or_else(|| (mplace.layout.size, mplace.layout.align.abi));
+                self.check_ptr_access(mplace.ptr(), size, CheckInAllocMsg::Dereferenceable(kind))?;
+                self.check_ptr_align(mplace.ptr(), align).map_err_kind(|err| {
+                let err_ub!(AlignmentCheckFailed(Misalignment { required, has }, _msg)) = err else { bug!() };
+                err_ub_format!(
+                    "encountered an unaligned {kind} (required {required_bytes} byte alignment but found {found_bytes})",
+                    required_bytes = required.bytes(),
+                    found_bytes = has.bytes()
+                )
+            })?;
+            } else {
+                assert!(ptr_ty.is_raw_ptr());
+                // For raw pointers, the validity invariant is pretty weak, but we do require the vtable
+                // to make sense, so we do have to check that if there is one.
+                if mplace.layout.is_unsized() {
+                    let tail = self.tcx.struct_tail_for_codegen(mplace.layout.ty, self.typing_env);
+                    match tail.kind() {
+                        ty::Dynamic(data, _) => {
+                            let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;
+                            self.get_ptr_vtable_ty(vtable, Some(data))?;
+                        }
+                        ty::Slice(..) | ty::Str | ty::Foreign(..) => {
+                            // Nothing to check (`read_immediate` already ensured initialization).
+                        }
+                        _ => bug!("Unexpected unsized type tail: {:?}", tail),
+                    }
+                }
+            }
+        }
+
         interp_ok(mplace)
     }
 
@@ -537,15 +593,27 @@ where
 
     /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_to_op`.
+    ///
+    /// If `skip_validity_for_simple_deref` is true, then we do not check validity of the inner
+    /// pointer for places of the form `*ptr`. The caller must justify why that is okay.
     #[instrument(skip(self), level = "trace")]
     pub fn eval_place(
         &self,
         mir_place: mir::Place<'tcx>,
+        skip_validity_for_simple_deref: bool,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         let _trace =
             enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
 
         let mut place = self.local_to_place(mir_place.local)?;
+        if skip_validity_for_simple_deref
+            && mir_place.projection.as_slice() == &[mir::ProjectionElem::Deref]
+        {
+            // We want to skip the checks in `deref_pointer`.
+            let val = self.read_immediate(&place)?;
+            let place = self.imm_ptr_to_mplace(&val)?;
+            return interp_ok(place.into());
+        }
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             place = self.project(&place, elem)?
@@ -626,7 +694,7 @@ where
         if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
             // Also needed to reset padding.
-            self.validate_operand(
+            self.validate_place(
                 &dest.to_place(),
                 M::enforce_validity_recursively(self, dest.layout()),
                 /*reset_provenance_and_padding*/ true,
@@ -713,7 +781,6 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        let tcx = *self.tcx;
         let will_later_validate = M::enforce_validity(self, layout);
         let Some(mut alloc) = self.get_place_alloc_mut(&MPlaceTy { mplace: dest, layout })? else {
             // zero-sized access
@@ -725,7 +792,7 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)?;
             }
             Immediate::ScalarPair(a_val, b_val) => {
-                let BackendRepr::ScalarPair(_a, b) = layout.backend_repr else {
+                let BackendRepr::ScalarPair { a: _, b: _, b_offset } = layout.backend_repr else {
                     span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
@@ -733,7 +800,7 @@ where
                     )
                 };
                 let a_size = a_val.size();
-                let b_offset = a_size.align_to(b.align(&tcx).abi);
+                let b_size = b_val.size();
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
@@ -744,12 +811,12 @@ where
                 // destination now to ensure that no stray pointer fragments are being
                 // preserved (see <https://github.com/rust-lang/rust/issues/148470>).
                 // We can skip this if there is no padding (e.g. for wide pointers).
-                if !will_later_validate && a_size + b_val.size() != layout.size {
+                if !will_later_validate && a_size + b_size != layout.size {
                     alloc.write_uninit_full();
                 }
 
                 alloc.write_scalar(alloc_range(Size::ZERO, a_size), a_val)?;
-                alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)?;
+                alloc.write_scalar(alloc_range(b_offset, b_size), b_val)?;
             }
             Immediate::Uninit => alloc.write_uninit_full(),
         }
@@ -832,8 +899,13 @@ where
         self.copy_op_inner(src, dest, /* allow_transmute */ false)
     }
 
-    /// Copies the data from an operand to a place.
-    /// `allow_transmute` indicates whether the layouts may disagree.
+    /// Perform a typed copy of the data from an operand to a place.
+    ///
+    /// `allow_transmute` indicates whether the layouts may disagree. In that case there are
+    /// technically *two* typed copies: `src` is a not-yet-loaded value, so we're doing a typed copy
+    /// at `src` type from there to some intermediate storage. And then we're doing a second typed
+    /// copy at `dest` type from that intermediate storage to `dest`. As an optimization, we only
+    /// make a single direct copy here, but we still have to ensure the data is valid at both types.
     #[inline(always)]
     #[instrument(skip(self), level = "trace")]
     fn copy_op_inner(
@@ -842,11 +914,6 @@ where
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
-        // These are technically *two* typed copies: `src` is a not-yet-loaded value,
-        // so we're doing a typed copy at `src` type from there to some intermediate storage.
-        // And then we're doing a second typed copy at `dest` type from that intermediate storage to
-        // `dest`. But as an optimization, we only make a single direct copy here.
-
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
@@ -859,13 +926,13 @@ where
             // shared reference.
             // But if the types are identical, that is strictly redundant so we only do one pass.
             if src.layout().ty != dest.layout().ty {
-                self.validate_operand(
+                self.validate_place(
                     &dest.transmute(src.layout(), self)?,
                     M::enforce_validity_recursively(self, src.layout()),
                     /*reset_provenance_and_padding*/ true,
                 )?;
             }
-            self.validate_operand(
+            self.validate_place(
                 &dest,
                 M::enforce_validity_recursively(self, dest.layout()),
                 /*reset_provenance_and_padding*/ true,
@@ -875,10 +942,10 @@ where
         interp_ok(())
     }
 
-    /// Copies the data from an operand to a place.
+    /// Perform an untyped copy of the data from an operand to a place.
+    /// You are responsible for validating that things get copied at the right type.
+    ///
     /// `allow_transmute` indicates whether the layouts may disagree.
-    /// Also, if you use this you are responsible for validating that things get copied at the
-    /// right type.
     #[instrument(skip(self), level = "trace")]
     pub(super) fn copy_op_no_validate(
         &mut self,
@@ -902,17 +969,19 @@ where
         // padding in the target independent of layout choices.
         let src_has_padding = match src.layout().backend_repr {
             BackendRepr::Scalar(_) => false,
-            BackendRepr::ScalarPair(left, right)
+            BackendRepr::ScalarPair { a: left, b: right, b_offset: _ }
                 if matches!(src.layout().ty.kind(), ty::Ref(..) | ty::RawPtr(..)) =>
             {
                 // Wide pointers never have padding, so we can avoid calling `size()`.
                 debug_assert_eq!(left.size(self) + right.size(self), src.layout().size);
                 false
             }
-            BackendRepr::ScalarPair(left, right) => {
+            BackendRepr::ScalarPair { a: left, b: right, b_offset: _ } => {
                 let left_size = left.size(self);
                 let right_size = right.size(self);
                 // We have padding if the sizes don't add up to the total.
+                // (Why don't we need to check the offset?  The scalars don't overlap so no padding
+                // implies `b_offset == left_size`, which would be superfluous to check explicitly.)
                 left_size + right_size != src.layout().size
             }
             // Everything else can only exist in memory anyway, so it doesn't matter.

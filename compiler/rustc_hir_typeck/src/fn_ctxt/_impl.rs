@@ -3,13 +3,14 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
@@ -21,6 +22,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
+use rustc_infer::traits::TraitErrors;
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
@@ -37,11 +39,11 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
+    self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt, TraitEngine,
 };
 use tracing::{debug, instrument};
 
-use crate::callee::{self, DeferredCallResolution};
+use crate::callee::{self, DeferredCallResolution, SplatLoweringInfo};
 use crate::diagnostics::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
@@ -142,8 +144,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
-    // FIXME(-Znext-solver): A lot of the calls to this method should
-    // probably be `resolve_vars_with_obligations` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // let it keep doing that and just ensure that compilation won't succeed.
                 self.dcx().span_delayed_bug(
                     self.tcx.hir_span(id),
-                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_id),
+                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_def_id),
                 );
             }
         }
@@ -240,7 +240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn write_splatted_resolution(
         &self,
         hir_id: HirId,
-        r: Result<SplattedDef, ErrorGuaranteed>,
+        r: Result<SplattedDef<'tcx>, ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().splatted_defs_mut().insert(hir_id, r);
     }
@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         hir_id: HirId,
         span: Span,
-        callee_def_id: Option<DefId>,
+        fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
         first_tupled_arg_index: u16,
         tupled_args_count: u16,
@@ -270,16 +270,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME(const_trait_impl): enforce constness using enforce_context_effects() and add
         // _and_enforce_effects to this method's name
 
-        self.write_splatted_resolution(
-            hir_id,
-            Ok(SplattedDef {
-                def_id: callee_def_id,
-                arg_index: first_tupled_arg_index,
-                arg_count: tupled_args_count,
-            }),
-        );
-        if let Some(callee_generic_args) = callee_generic_args {
-            self.write_args(hir_id, callee_generic_args);
+        match fn_id {
+            // We're splatting a FnDef based on its DefId
+            SplatLoweringInfo::FnDef(def_id) => {
+                self.write_splatted_resolution(
+                    hir_id,
+                    Ok(SplattedDef::FnDef {
+                        def_id,
+                        arg_index: first_tupled_arg_index,
+                        arg_count: tupled_args_count,
+                    }),
+                );
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
+            // We're splatting a FnPtr based on its type
+            SplatLoweringInfo::FnPtr(fn_ty) => {
+                // FIXME(splat): do we need to look up both these HirIds?
+                // They can be different (and are different in some UI tests)
+                self.write_splatted_resolution(
+                    hir_id,
+                    Ok(SplattedDef::FnPtr {
+                        fn_ptr_type: fn_ty,
+                        arg_index: first_tupled_arg_index,
+                        arg_count: tupled_args_count,
+                    }),
+                );
+                // FIXME(splat): is this actually populated and used correctly?
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
+            SplatLoweringInfo::Error(guar) => {
+                self.write_splatted_resolution(hir_id, Err(guar));
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
         }
     }
 
@@ -569,9 +597,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let mut clauses = CollectClauses { clauses: vec![], fcx: self };
-        clauses.visit_ty_unambig(hir_ty);
-        self.tcx.mk_clauses(&clauses.clauses)
+        let mut collect_clauses = CollectClauses { clauses: vec![], fcx: self };
+        collect_clauses.visit_ty_unambig(hir_ty);
+        self.tcx.mk_clauses(&collect_clauses.clauses)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -696,6 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 defining_opaque_types_and_generators
             }
             ty::TypingMode::Coherence
+            | ty::TypingMode::Reflection
             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
@@ -720,9 +749,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(crate) fn report_ambiguity_errors(&self) {
-        let mut errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors(self);
+        let errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors(self);
 
-        if !errors.is_empty() {
+        if let TraitErrors::HasErrors(mut errors) = errors {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
             self.err_ctxt().report_fulfillment_errors(errors);
         }
@@ -731,10 +760,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Select as many obligations as we can at present.
     pub(crate) fn select_obligations_where_possible(
         &self,
-        mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+        mutate_fulfillment_errors: impl Fn(&mut ThinVec<traits::FulfillmentError<'tcx>>),
     ) {
-        let mut result = self.fulfillment_cx.borrow_mut().try_evaluate_obligations(self);
-        if !result.is_empty() {
+        let result = self.fulfillment_cx.borrow_mut().try_evaluate_obligations(self);
+        if let TraitErrors::HasErrors(mut result) = result {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
             self.err_ctxt().report_fulfillment_errors(result);
@@ -755,14 +784,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
         let sized_did = self.tcx.lang_items().sized_trait();
-        self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
-            match obligation.predicate.kind().skip_binder() {
+
+        // NB: `T: Sized` implies that all subtypes and all supertypes of `T` are also sized,
+        //     so it's valid to use subtyping here. (subtyping has to preserve layout and
+        //     `T <: U => &T <: &U`, so subtyping can't change sizedness)
+        self.obligations_for_self_ty(self_ty, super::UseSubtyping::Yes).into_iter().any(
+            |obligation| match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                     Some(data.def_id()) == sized_did
                 }
                 _ => false,
-            }
-        })
+            },
+        )
     }
 
     pub(crate) fn err_args(&self, len: usize, guar: ErrorGuaranteed) -> Vec<Ty<'tcx>> {
@@ -1066,7 +1099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             arg_span,
                             span,
                             container_id,
-                            self.body_id.to_def_id(),
+                            self.body_def_id.to_def_id(),
                         ) {
                             self.set_tainted_by_errors(e);
                         }
@@ -1188,7 +1221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error in `validate_res_from_ribs` -- it's just difficult to tell whether the
             // self type has any generic types during rustc_resolve, which is what we use
             // to determine if this is a hard error or warning.
-            if std::iter::successors(Some(self.body_id.to_def_id()), |&def_id| {
+            if std::iter::successors(Some(self.body_def_id.to_def_id()), |&def_id| {
                 self.tcx.generics_of(def_id).parent
             })
             .all(|def_id| def_id != impl_def_id)
@@ -1467,11 +1500,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
+        let bounds = self.tcx.clauses_of(def_id).instantiate(self.tcx, args);
 
         for obligation in traits::predicates_for_generics(
-            |idx, predicate_span| self.cause(span, code(idx, predicate_span)),
-            |pred| self.normalize(span, pred),
+            |idx, clause_span| self.cause(span, code(idx, clause_span)),
+            |clause| self.normalize(span, clause),
             param_env,
             bounds,
         ) {
@@ -1495,7 +1528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in a reentrant borrow, causing an ICE.
             let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_const(
                 Unnormalized::new_wip(ct),
-                &mut **self.fulfillment_cx.borrow_mut(),
+                &mut *self.fulfillment_cx.borrow_mut(),
             );
             match result {
                 Ok(normalized_ct) => normalized_ct,
@@ -1530,7 +1563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let guar = self.tainted_by_errors().unwrap_or_else(|| {
             self.err_ctxt()
                 .emit_inference_failure_err(
-                    self.body_id,
+                    self.body_def_id,
                     sp,
                     ty.into(),
                     TypeAnnotationNeeded::E0282,
@@ -1556,7 +1589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let e = self.tainted_by_errors().unwrap_or_else(|| {
                 self.err_ctxt()
                     .emit_inference_failure_err(
-                        self.body_id,
+                        self.body_def_id,
                         sp,
                         ct.into(),
                         TypeAnnotationNeeded::E0282,

@@ -349,8 +349,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
             closing_brackets
                 .empty_alt
                 .then_some(" _ => {}".chars())
-                .into_iter()
-                .flatten()
+                .into_flat_iter()
                 .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));

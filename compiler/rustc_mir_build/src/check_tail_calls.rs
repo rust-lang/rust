@@ -1,7 +1,6 @@
 use rustc_abi::ExternAbi;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -27,8 +26,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         tcx,
         thir,
         found_errors: Ok(()),
-        // FIXME(#132279): we're clearly in a body here.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
         is_closure,
         caller_def_id: def,
     };
@@ -95,6 +93,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         }
 
         if let &ty::FnDef(did, args) = ty.kind() {
+            let args = args.no_bound_vars().unwrap();
             // Closures in thir look something akin to
             // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
             // So we have to check for them in this weird way...
@@ -444,14 +443,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for TailCallCkVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
-        ensure_sufficient_stack(|| {
-            if let ExprKind::Become { value } = expr.kind {
-                let call = &self.thir[value];
-                self.check_tail_call(call, expr);
-            }
+        if let ExprKind::Become { value } = expr.kind {
+            let call = &self.thir[value];
+            self.check_tail_call(call, expr);
+        }
 
-            visit::walk_expr(self, expr);
-        });
+        visit::walk_expr(self, expr);
     }
 }
 

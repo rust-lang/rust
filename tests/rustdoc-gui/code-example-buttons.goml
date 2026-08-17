@@ -1,5 +1,6 @@
 // This test ensures that code blocks buttons are displayed on hover and when you click on them.
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+permissions: ["clipboard-read"]
 include: "utils.goml"
 
 // First we check we "hover".

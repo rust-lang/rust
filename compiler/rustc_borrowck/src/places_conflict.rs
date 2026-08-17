@@ -520,7 +520,7 @@ fn place_projection_conflict<'tcx>(
         ),
 
         (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
-            todo!()
+            unimplemented!()
         }
     }
 }

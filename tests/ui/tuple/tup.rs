@@ -1,4 +1,6 @@
 //@ run-pass
+//@ reference: patterns.tuple.syntax
+//@ reference: type.tuple.constructor
 
 #![allow(non_camel_case_types)]
 

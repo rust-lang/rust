@@ -9,19 +9,20 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan, pluralize,
     struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{
-    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
-    PatExprKind, PatKind, expr_needs_parens,
+    self as hir, BindingMode, ByRef, ExprKind, HirId, Mutability, Pat, PatExpr, PatExprKind,
+    PatKind, expr_needs_parens,
 };
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -32,7 +33,6 @@ use tracing::{debug, instrument, trace};
 use ty::VariantDef;
 use ty::adjustment::{PatAdjust, PatAdjustment};
 
-use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
 use crate::{FnCtxt, diagnostics};
@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             self.register_bound(
                 expected,
-                self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
+                self.tcx.require_lang_item(LangItem::Unpin, pat.span),
                 self.misc(pat.span),
             )
         }
@@ -1585,7 +1585,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
-                let e = report_unexpected_variant_res(tcx, res, None, qpath, span, E0533, expected);
+                let e = self.report_unexpected_variant_res(
+                    res,
+                    None,
+                    &[],
+                    qpath,
+                    span,
+                    E0533,
+                    expected,
+                );
                 return Err(e);
             }
             Res::SelfCtor(def_id) => {
@@ -1595,10 +1603,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // Ok, we allow unit struct ctors in patterns only.
                 } else {
-                    let e = report_unexpected_variant_res(
-                        tcx,
+                    let e = self.report_unexpected_variant_res(
                         res,
                         None,
+                        &[],
                         qpath,
                         span,
                         E0533,
@@ -1761,7 +1769,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
+            let sub_pats = match pat.kind {
+                hir::PatKind::TupleStruct(_, sub_pats, _) => sub_pats,
+                _ => &[],
+            };
+            let e = self.report_unexpected_variant_res(
+                res, None, sub_pats, qpath, pat.span, E0164, expected,
+            );
             Err(e)
         };
 
@@ -2221,7 +2235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
-                let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
+                let path = rustc_hir_pretty::qpath_to_string(self, qpath);
                 let mut err = struct_span_code_err!(
                     self.dcx(),
                     pat.span,
@@ -2406,7 +2420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // we don't care to report errors for a struct if the struct itself is tainted
             variant.has_errors()?;
 
-            let path = rustc_hir_pretty::qpath_to_string(&self.tcx, qpath);
+            let path = rustc_hir_pretty::qpath_to_string(self, qpath);
             let mut err = struct_span_code_err!(
                 self.dcx(),
                 pat.span,
@@ -2456,7 +2470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             f
                         }
                     }
-                    Err(_) => rustc_hir_pretty::pat_to_string(&self.tcx, field.pat),
+                    Err(_) => rustc_hir_pretty::pat_to_string(self, field.pat),
                 }
             })
             .collect::<Vec<String>>()
@@ -2739,14 +2753,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         self.register_bound(
             source_ty,
-            tcx.require_lang_item(hir::LangItem::DerefPure, span),
+            tcx.require_lang_item(LangItem::DerefPure, span),
             self.misc(span),
         );
         // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
         let target_ty = Ty::new_projection(
             tcx,
             ty::IsRigid::No,
-            tcx.require_lang_item(hir::LangItem::DerefTarget, span),
+            tcx.require_lang_item(LangItem::DerefTarget, span),
             [source_ty],
         );
         let target_ty = self.normalize(span, Unnormalized::new_wip(target_ty));
@@ -2767,7 +2781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for mutably_derefed_ty in derefed_tys {
                 self.register_bound(
                     mutably_derefed_ty,
-                    self.tcx.require_lang_item(hir::LangItem::DerefMut, span),
+                    self.tcx.require_lang_item(LangItem::DerefMut, span),
                     self.misc(span),
                 );
             }

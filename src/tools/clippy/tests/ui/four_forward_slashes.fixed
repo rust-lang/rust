@@ -47,3 +47,10 @@ with_span! {
     //// don't lint me bozo
     fn f() {}
 }
+
+// Regression test for #16168: an inner doc comment (`//!`) inside the body must not
+// drag the `////` scan down into the body and flag a regular comment there.
+fn inner_doc() {
+    //// I am not a doc comment!
+    //! inner doc comment
+}

@@ -25,6 +25,6 @@ impl S {
     extern "x86-interrupt" fn im7(_p: *const u8) {} //~ ERROR "x86-interrupt" ABI is experimental
 }
 
-type A7 = extern "x86-interrupt" fn(); //~ ERROR "x86-interrupt" ABI is experimental
+type A7 = extern "x86-interrupt" fn(*const u8); //~ ERROR "x86-interrupt" ABI is experimental
 
 extern "x86-interrupt" {} //~ ERROR "x86-interrupt" ABI is experimental

@@ -19,7 +19,7 @@ Depending on what you're trying to measure, there are several different approach
 - If you want a nice visual representation of the compile times of your crate graph,
   you can use [cargo's `--timings` flag](https://doc.rust-lang.org/nightly/cargo/reference/timings.html),
   e.g. `cargo build --timings`.
-  You can use this flag on the compiler itself with `CARGOFLAGS="--timings" ./x build`
+  You can use this flag on the compiler itself with `./x build compiler --timings`
 
 - If you want to profile memory usage, you can use various tools depending on what operating system
   you are using.

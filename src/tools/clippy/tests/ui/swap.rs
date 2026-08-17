@@ -1,12 +1,11 @@
 //@aux-build: macro_rules.rs
 
-#![allow(
+#![warn(clippy::almost_swapped, clippy::manual_swap)]
+#![expect(
     clippy::disallowed_names,
-    clippy::no_effect,
-    clippy::redundant_clone,
     clippy::let_and_return,
-    clippy::useless_vec,
-    clippy::redundant_locals
+    clippy::redundant_locals,
+    clippy::useless_vec
 )]
 
 struct Foo(u32);

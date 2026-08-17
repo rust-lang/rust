@@ -3,7 +3,7 @@
 //! [`rustc`] module.
 
 // tidy-alphabetical-start
-#![allow(unused_crate_dependencies)]
+#![cfg_attr(test, allow(unused_crate_dependencies))] // Used for integration tests, not unit tests
 // tidy-alphabetical-end
 
 pub(crate) mod checks;

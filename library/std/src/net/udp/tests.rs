@@ -188,7 +188,13 @@ fn debug() {
 //        no longer has rounding errors.
 // VxWorks ignores SO_SNDTIMEO.
 #[cfg_attr(
-    any(target_os = "netbsd", target_os = "openbsd", target_os = "vxworks", target_os = "nto"),
+    any(
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "vxworks",
+        target_os = "nto",
+        target_os = "qnx"
+    ),
     ignore
 )]
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
@@ -367,4 +373,36 @@ fn set_nonblocking() {
             Err(e) => panic!("unexpected error {e}"),
         }
     })
+}
+
+// #115325: a datagram larger than `c_int::MAX` bytes can't be sent atomically
+// and must be rejected rather than truncated.
+#[test]
+#[cfg(all(target_pointer_width = "64", unix))]
+fn send_datagram_larger_than_c_int_max() {
+    // A read-only anonymous mapping rather than a 2 GiB `Vec`: the datagram is
+    // rejected before the kernel ever reads the pages, so this costs no
+    // physical memory.
+    let data = crate::net::tests::ZeroedMmap::new(crate::ffi::c_int::MAX as usize + 1);
+
+    let socket = t!(UdpSocket::bind("127.0.0.1:0"));
+    let addr = t!(socket.local_addr());
+    assert!(socket.send_to(&data, addr).is_err());
+    t!(socket.connect(addr));
+    assert!(socket.send(&data).is_err());
+}
+
+// Same as above, for the platforms where the `mmap` trick isn't available and
+// the buffer really has to be allocated.
+#[test]
+#[cfg(all(target_pointer_width = "64", not(unix)))]
+#[ignore = "requires ~2 GiB of memory"]
+fn send_datagram_larger_than_c_int_max() {
+    let data = vec![0u8; crate::ffi::c_int::MAX as usize + 1];
+
+    let socket = t!(UdpSocket::bind("127.0.0.1:0"));
+    let addr = t!(socket.local_addr());
+    assert!(socket.send_to(&data, addr).is_err());
+    t!(socket.connect(addr));
+    assert!(socket.send(&data).is_err());
 }

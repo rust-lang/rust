@@ -1,8 +1,6 @@
-use std::path::PathBuf;
-
 use tempfile::TempDir;
 
-use crate::{BuildStamp, Config, Flags};
+use crate::utils::build_stamp::BuildStamp;
 
 #[test]
 #[should_panic(expected = "prefix can not start or end with '.'")]

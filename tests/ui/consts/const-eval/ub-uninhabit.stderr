@@ -4,7 +4,7 @@ error[E0080]: constructing invalid value of type Bar: encountered a value of zer
 LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_BAD_BAD` failed here
 
-error[E0080]: constructing invalid value of type &Bar: encountered a reference pointing to uninhabited type Bar
+error[E0080]: constructing invalid value of type &Bar: encountered a reference pointing to uninhabited type `Bar`
   --> $DIR/ub-uninhabit.rs:23:1
    |
 LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
@@ -27,6 +27,56 @@ error[E0080]: constructing invalid value of type !: encountered a value of the n
 LL |     let _val = intrinsics::read_via_copy(ptr);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `READ_NEVER` failed here
 
-error: aborting due to 4 previous errors
+error[E0080]: constructing invalid value of type &&!: encountered a reference pointing to uninhabited type `&!`
+  --> $DIR/ub-uninhabit.rs:36:1
+   |
+LL | const BAD_NESTED_REF: &&! = unsafe { mem::transmute(&&0) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: constructing invalid value of type &&(!, [i32]): encountered a reference pointing to uninhabited type `&(!, [i32])`
+  --> $DIR/ub-uninhabit.rs:39:1
+   |
+LL | const BAD_NESTED_UNSIZED_REF: &&(!, [i32]) = unsafe { mem::transmute(&(&[0] as &[i32])) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: constructing invalid value of type &[!]: at .<deref>[0], encountered a value of the never type `!`
+  --> $DIR/ub-uninhabit.rs:42:1
+   |
+LL | const BAD_UNINHABITED_SLICE: &[!] = unsafe { mem::transmute(&[()] as &[()]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: constructing invalid value of type Wrap<Wrap<!>>: at .0.0, encountered a value of the never type `!`
+  --> $DIR/ub-uninhabit.rs:47:47
+   |
+LL | const WRAPPED_TWICE: Wrap<Wrap<!>> = unsafe { mem::transmute(()) };
+   |                                               ^^^^^^^^^^^^^^^^^^ evaluation of `WRAPPED_TWICE` failed here
+
+error[E0080]: constructing invalid value of type &Wrap<Wrap<!>>: encountered a reference pointing to uninhabited type `Wrap<Wrap<!>>`
+  --> $DIR/ub-uninhabit.rs:49:1
+   |
+LL | const WRAPPED_TWICE_REF: &Wrap<Wrap<!>> = unsafe { mem::transmute(&()) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

@@ -59,7 +59,7 @@ help: consider introducing lifetime `'a` here
 LL |     reuse foo'a, ::<"asdasd", asd, "askdn", 'static, 'a> as bar7;
    |              +++
 
-error[E0423]: expected value, found struct `String`
+error[E0423]: cannot find value `String` in this scope
   --> $DIR/generics-gen-args-errors.rs:13:33
    |
 LL |         bar::<String, String, { String }>();
@@ -68,6 +68,8 @@ LL |         bar::<String, String, { String }>();
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: `String` defined here
+   |
+   = note: a struct named `String` exists in another namespace
 
 error[E0425]: cannot find type `asd` in this scope
   --> $DIR/generics-gen-args-errors.rs:27:15

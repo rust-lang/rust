@@ -23,5 +23,5 @@ mod m1 {
 }
 
 fn main() {
-    foo(); //~ ERROR expected function, found module `foo`
+    foo(); //~ ERROR cannot find function `foo` in this scope
 }

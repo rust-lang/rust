@@ -1,38 +1,39 @@
-PRINT-ATTR INPUT (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #![rustfmt::skip] }
+PRINT-ATTR INPUT (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs{ #![rustfmt::skip] }
+PRINT-ATTR RE-COLLECTED (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #![rustfmt::skip] }
 PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[deny(unused_attributes)] mod module_with_attrs { #! [rustfmt :: skip] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+        span: $DIR/inner-attr-file-mod.rs:10:1: 10:2 (#0),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "deny",
-                span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                span: $DIR/inner-attr-file-mod.rs:10:3: 10:7 (#0),
             },
             Group {
                 delimiter: Parenthesis,
                 stream: TokenStream [
                     Ident {
                         ident: "unused_attributes",
-                        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                        span: $DIR/inner-attr-file-mod.rs:10:8: 10:25 (#0),
                     },
                 ],
-                span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                span: $DIR/inner-attr-file-mod.rs:10:7: 10:26 (#0),
             },
         ],
-        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+        span: $DIR/inner-attr-file-mod.rs:10:2: 10:27 (#0),
     },
     Ident {
         ident: "mod",
-        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+        span: $DIR/inner-attr-file-mod.rs:11:1: 11:4 (#0),
     },
     Ident {
         ident: "module_with_attrs",
-        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+        span: $DIR/inner-attr-file-mod.rs:11:5: 11:22 (#0),
     },
     Group {
         delimiter: Brace,
@@ -40,38 +41,38 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
             Punct {
                 ch: '#',
                 spacing: Joint,
-                span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                span: $DIR/module_with_attrs.rs:3:1: 3:2 (#0),
             },
             Punct {
                 ch: '!',
                 spacing: Alone,
-                span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                span: $DIR/module_with_attrs.rs:3:2: 3:3 (#0),
             },
             Group {
                 delimiter: Bracket,
                 stream: TokenStream [
                     Ident {
                         ident: "rustfmt",
-                        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                        span: $DIR/module_with_attrs.rs:3:4: 3:11 (#0),
                     },
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                        span: $DIR/module_with_attrs.rs:3:11: 3:12 (#0),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                        span: $DIR/module_with_attrs.rs:3:12: 3:13 (#0),
                     },
                     Ident {
                         ident: "skip",
-                        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                        span: $DIR/module_with_attrs.rs:3:13: 3:17 (#0),
                     },
                 ],
-                span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+                span: $DIR/module_with_attrs.rs:3:3: 3:18 (#0),
             },
         ],
-        span: $DIR/inner-attr-file-mod.rs:11:1: 11:23 (#0),
+        span: $DIR/inner-attr-file-mod.rs:11:22: 11:23 (#0),
     },
 ]

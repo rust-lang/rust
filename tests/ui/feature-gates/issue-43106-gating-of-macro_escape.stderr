@@ -6,13 +6,13 @@ LL | #![macro_escape]
    |
    = help: try an outer attribute: `#[macro_use]`
 
-warning: `#[macro_escape]` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-macro_escape.rs:8:1
+warning: the `macro_escape` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-macro_escape.rs:8:4
    |
 LL | #![macro_escape]
-   | ^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^
    |
-   = help: `#[macro_escape]` can be applied to extern crates and modules
+   = help: the `macro_escape` attribute can be applied to extern crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 

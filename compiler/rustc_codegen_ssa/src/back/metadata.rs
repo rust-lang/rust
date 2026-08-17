@@ -24,6 +24,7 @@ use rustc_target::spec::{CfgAbi, LlvmAbi, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 
 use super::apple;
+use crate::diagnostics;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -206,7 +207,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Big => Endianness::Big,
     };
     let Some((architecture, sub_architecture)) =
-        sess.target.object_architecture(&sess.unstable_target_features)
+        sess.target.object_architecture(&sess.internal_target_features)
     else {
         return None;
     };
@@ -327,12 +328,12 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             let mut e_flags: u32 = 0x0;
 
             // Check if compression is enabled
-            if sess.target_features.contains(&sym::zca) {
+            if sess.internal_target_features.contains(&sym::zca) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
 
             // Check if RVTSO is enabled
-            if sess.target_features.contains(&sym::ztso) {
+            if sess.internal_target_features.contains(&sym::ztso) {
                 e_flags |= elf::EF_RISCV_TSO;
             }
 
@@ -370,7 +371,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             if let Some(ref cpu) = sess.opts.cg.target_cpu {
                 ef_avr_arch(cpu)
             } else {
-                bug!("AVR CPU not explicitly specified")
+                sess.dcx().emit_fatal(diagnostics::CpuRequired)
             }
         }
         Architecture::Csky => {

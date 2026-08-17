@@ -71,11 +71,13 @@ LL -     let x = 5;
 LL +     const x: /* Type */ = 5;
    |
 
-error[E0423]: expected value, found builtin type `i32`
+error[E0423]: cannot find value `i32` in this scope
   --> $DIR/array-type-no-semi.rs:9:13
    |
 LL |     let a: [i32, ];
-   |             ^^^ not a value
+   |             ^^^ not found in this scope
+   |
+   = note: a builtin type named `i32` exists in another namespace
 
 error: aborting due to 7 previous errors
 

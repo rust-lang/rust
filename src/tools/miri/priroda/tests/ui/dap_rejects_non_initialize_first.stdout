@@ -1,0 +1,3 @@
+Content-Length: {CONTENT_LENGTH}
+
+{"seq":1,"type":"response","request_seq":2,"success":false,"message":"initialize must be sent first","command":"next","error":null}

@@ -1,8 +1,9 @@
 # Constant Evaluation
 
-Constant evaluation is the process of computing values at compile time. For a
-specific item (constant/static/array length) this happens after the MIR for the
-item is borrow-checked and optimized. In many cases trying to const evaluate an
+Constant evaluation is the process of computing values at compile time.
+For a specific item (constant/static/array length) this happens after the MIR for the
+item is borrow-checked and optimized.
+In many cases trying to const evaluate an
 item will trigger the computation of its MIR for the first time.
 
 Prominent examples are:
@@ -11,14 +12,12 @@ Prominent examples are:
 * Array length
     * needs to be known to reserve stack or heap space
 * Enum variant discriminants
-    * needs to be known to prevent two variants from having the same
-      discriminant
+    * needs to be known to prevent two variants from having the same discriminant
 * Patterns
     * need to be known to check for overlapping patterns
 
 Additionally constant evaluation can be used to reduce the workload or binary
-size at runtime by precomputing complex operations at compile time and only
-storing the result.
+size at runtime by precomputing complex operations at compile time and only storing the result.
 
 All uses of constant evaluation can either be categorized as "influencing the type system"
 (array lengths, enum variant discriminants, const generic parameters), or as solely being
@@ -37,7 +36,8 @@ They're the wrappers of the `const_eval` query.
 
 The `const_eval_*` functions use a [`ParamEnv`](./typing-parameter-envs.md) of environment
 in which the constant is evaluated (e.g. the function within which the constant is used)
-and a [`GlobalId`]. The `GlobalId` is made up of an `Instance` referring to a constant
+and a [`GlobalId`].
+The `GlobalId` is made up of an `Instance` referring to a constant
 or static or of an `Instance` of a function and an index into the function's `Promoted` table.
 
 Constant evaluation returns an [`EvalToValTreeResult`] for type system constants

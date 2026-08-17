@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock};
 
-use crate::common::{CompareMode, Config, Debugger};
+use crate::common::{CompareMode, Config};
 use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
@@ -9,9 +9,20 @@ const EXTRA_ARCHS: &[&str] = &["spirv"];
 const EXTERNAL_IGNORES_LIST: &[&str] = &[
     // tidy-alphabetical-start
     "ignore-backends",
+    "ignore-cdb",
+    "ignore-gdb",
     "ignore-gdb-version",
+    "ignore-lldb",
     "ignore-llvm-version",
     "ignore-parallel-frontend",
+    // tidy-alphabetical-end
+];
+
+const EXTERNAL_ONLY_LIST: &[&str] = &[
+    // tidy-alphabetical-start
+    "only-cdb",
+    "only-gdb",
+    "only-lldb",
     // tidy-alphabetical-end
 ];
 
@@ -19,6 +30,11 @@ const EXTERNAL_IGNORES_LIST: &[&str] = &[
 /// module because they are handled elsewhere.
 pub(crate) static EXTERNAL_IGNORES_SET: LazyLock<HashSet<&str>> =
     LazyLock::new(|| EXTERNAL_IGNORES_LIST.iter().copied().collect());
+
+/// Directive names that begin with `only-`, but are disregarded by this
+/// module because they are handled elsewhere.
+pub(crate) static EXTERNAL_ONLY_SET: LazyLock<HashSet<&str>> =
+    LazyLock::new(|| EXTERNAL_ONLY_LIST.iter().copied().collect());
 
 pub(super) fn handle_ignore(
     conditions: &PreparedConditions,
@@ -74,6 +90,8 @@ fn parse_cfg_name_directive<'a>(
     };
 
     if prefix == "ignore-" && EXTERNAL_IGNORES_SET.contains(line.name) {
+        return ParsedNameDirective::not_handled_here();
+    } else if prefix == "only-" && EXTERNAL_ONLY_SET.contains(line.name) {
         return ParsedNameDirective::not_handled_here();
     }
 
@@ -209,14 +227,6 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         "when std is built with remapping of debuginfo",
     );
 
-    for &debugger in Debugger::STR_VARIANTS {
-        builder.cond(
-            debugger,
-            Some(debugger) == config.debugger.as_ref().map(Debugger::to_str),
-            &format!("when the debugger is {debugger}"),
-        );
-    }
-
     for &compare_mode in CompareMode::STR_VARIANTS {
         builder.cond(
             &format!("compare-mode-{compare_mode}"),
@@ -224,6 +234,12 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
             &format!("when comparing with compare-mode-{compare_mode}"),
         );
     }
+
+    builder.cond(
+        "wasm-proc-macros",
+        config.wasm_proc_macros,
+        "when wasm-proc-macros is enabled in bootstrap.toml",
+    );
 
     // Coverage tests run the same test file in multiple modes.
     // If a particular test should not be run in one of the modes, ignore it

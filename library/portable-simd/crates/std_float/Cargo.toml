@@ -18,3 +18,11 @@ wasm-bindgen-test = "0.3"
 [features]
 default = ["as_crate"]
 as_crate = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # Internal features aren't marked known config by default, we use these to
+    # gate tests.
+    'cfg(target_has_reliable_f16_math)',
+]

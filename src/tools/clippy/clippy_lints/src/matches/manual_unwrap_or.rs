@@ -1,10 +1,11 @@
 use clippy_utils::consts::ConstEvalCtxt;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use rustc_ast::{BindingMode, ByRef};
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Res;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_span::sym;
@@ -13,7 +14,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::{is_default_equivalent, is_lint_allowed, peel_blocks, span_contains_comment};
+use clippy_utils::{is_default_equivalent, is_lint_allowed, is_none_pattern, peel_blocks, span_contains_comment};
 
 use super::{MANUAL_UNWRAP_OR, MANUAL_UNWRAP_OR_DEFAULT};
 
@@ -34,20 +35,15 @@ fn get_some(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<HirId> {
 }
 
 fn get_none<'tcx>(cx: &LateContext<'_>, arm: &Arm<'tcx>, allow_wildcard: bool) -> Option<&'tcx Expr<'tcx>> {
-    if let PatKind::Expr(PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. }) = arm.pat.kind
-        && let Some(def_id) = path.res.opt_def_id()
-        // Since it comes from a pattern binding, we need to get the parent to actually match
-        // against it.
-        && let Some(def_id) = cx.tcx.opt_parent(def_id)
-        && cx.tcx.lang_items().get(LangItem::OptionNone) == Some(def_id)
-    {
+    if is_none_pattern(cx, arm.pat) {
         Some(arm.body)
-    } else if let PatKind::TupleStruct(QPath::Resolved(_, path), _, _)= arm.pat.kind
-        && let Some(def_id) = path.res.opt_def_id()
-        // Since it comes from a pattern binding, we need to get the parent to actually match
-        // against it.
-        && let Some(def_id) = cx.tcx.opt_parent(def_id)
-        && cx.tcx.lang_items().get(LangItem::ResultErr) == Some(def_id)
+    } else if let PatKind::TupleStruct(QPath::Resolved(_, path), _, _) = arm.pat.kind
+        && (path.res)
+            .opt_def_id()
+            // Since it comes from a pattern binding, we need to get the parent to actually match
+            // against it.
+            .opt_parent(cx)
+            .is_lang_item(cx, LangItem::ResultErr)
     {
         Some(arm.body)
     } else if let PatKind::Wild = arm.pat.kind

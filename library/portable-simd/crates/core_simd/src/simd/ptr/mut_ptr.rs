@@ -1,8 +1,7 @@
-use super::sealed::Sealed;
 use crate::simd::{Mask, Simd, cmp::SimdPartialEq, num::SimdUint};
 
 /// Operations on SIMD vectors of mutable pointers.
-pub trait SimdMutPtr: Copy + Sealed {
+pub impl(self) trait SimdMutPtr: Copy {
     /// Vector of `usize` with the same number of elements.
     type Usize;
 
@@ -33,41 +32,21 @@ pub trait SimdMutPtr: Copy + Sealed {
 
     /// Gets the "address" portion of the pointer.
     ///
-    /// This method discards pointer semantic metadata, so the result cannot be
-    /// directly cast into a valid pointer.
-    ///
     /// Equivalent to calling [`pointer::addr`] on each element.
     fn addr(self) -> Self::Usize;
 
-    /// Converts an address to a pointer without giving it any provenance.
-    ///
-    /// Without provenance, this pointer is not associated with any actual allocation. Such a
-    /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
-    /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers
-    /// are little more than a usize address in disguise.
-    ///
-    /// This is different from [`Self::with_exposed_provenance`], which creates a pointer that picks up a
-    /// previously exposed provenance.
-    ///
-    /// Equivalent to calling [`core::ptr::without_provenance`] on each element.
-    fn without_provenance(addr: Self::Usize) -> Self;
-
     /// Creates a new pointer with the given address.
-    ///
-    /// This performs the same operation as a cast, but copies the *address-space* and
-    /// *provenance* of `self` to the new pointer.
     ///
     /// Equivalent to calling [`pointer::with_addr`] on each element.
     fn with_addr(self, addr: Self::Usize) -> Self;
 
     /// Exposes the "provenance" part of the pointer for future use in
-    /// [`Self::with_exposed_provenance`] and returns the "address" portion.
-    fn expose_provenance(self) -> Self::Usize;
-
-    /// Converts an address back to a pointer, picking up a previously "exposed" provenance.
+    /// [`super::with_exposed_provenance_mut`] and returns the "address" portion.
     ///
-    /// Equivalent to calling [`core::ptr::with_exposed_provenance_mut`] on each element.
-    fn with_exposed_provenance(addr: Self::Usize) -> Self;
+    /// Equivalent to calling [`pointer::expose_provenance`] on each element.
+    ///
+    /// See [`super::with_exposed_provenance_mut`] for the matching constructor.
+    fn expose_provenance(self) -> Self::Usize;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
@@ -84,8 +63,6 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// Equivalent to calling [`pointer::wrapping_sub`] on each element.
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
-
-impl<T, const N: usize> Sealed for Simd<*mut T, N> {}
 
 impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N> {
     type Usize = Simd<usize, N>;
@@ -126,14 +103,6 @@ impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N> {
     }
 
     #[inline]
-    fn without_provenance(addr: Self::Usize) -> Self {
-        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-        // SAFETY: Integer-to-pointer transmutes are valid (if you are okay with not getting any
-        // provenance).
-        unsafe { core::mem::transmute_copy(&addr) }
-    }
-
-    #[inline]
     fn with_addr(self, addr: Self::Usize) -> Self {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         //
@@ -149,12 +118,6 @@ impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N> {
     fn expose_provenance(self) -> Self::Usize {
         // Safety: `self` is a pointer vector
         unsafe { core::intrinsics::simd::simd_expose_provenance(self) }
-    }
-
-    #[inline]
-    fn with_exposed_provenance(addr: Self::Usize) -> Self {
-        // Safety: `self` is a pointer vector
-        unsafe { core::intrinsics::simd::simd_with_exposed_provenance(addr) }
     }
 
     #[inline]

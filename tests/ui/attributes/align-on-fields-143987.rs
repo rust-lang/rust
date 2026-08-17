@@ -7,19 +7,19 @@
 #![feature(fn_align)]
 
 struct Data {
-    #[rustc_align(8)] //~ ERROR `#[rustc_align]` attribute cannot be used on struct fields
+    #[rustc_align(8)] //~ ERROR the `rustc_align` attribute cannot be used on struct fields
     x: usize,
 }
 
 // Test with invalid type to match the original issue more closely
 struct DataInvalid {
-    #[rustc_align(8)] //~ ERROR `#[rustc_align]` attribute cannot be used on struct fields
+    #[rustc_align(8)] //~ ERROR the `rustc_align` attribute cannot be used on struct fields
     x: usize8, //~ ERROR cannot find type `usize8` in this scope
 }
 
 // Test with tuple struct
 struct TupleData(
-    #[rustc_align(32)] //~ ERROR `#[rustc_align]` attribute cannot be used on struct fields
+    #[rustc_align(32)] //~ ERROR `rustc_align` attribute cannot be used on struct fields
     u32
 );
 

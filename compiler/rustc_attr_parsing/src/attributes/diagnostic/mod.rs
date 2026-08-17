@@ -1,25 +1,30 @@
 use std::ops::Range;
 
-use rustc_hir::attrs::diagnostic::{
+use rustc_ast::PathSegment;
+use rustc_attr_ir::diagnostic::{
     Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
     NameValue, Piece, Predicate,
 };
+use rustc_errors::{Diagnostic, MultiSpan};
+use rustc_lint_defs::LintId;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
 use rustc_session::lint::builtin::{
-    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FILTERS,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
 };
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::AcceptContext;
 use crate::diagnostics::{
-    DupesNotAllowed, FormatWarning, IgnoredDiagnosticOption, InvalidOnClause,
-    MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
-    NonMetaItemDiagnosticAttribute, WrappedParserError,
+    FormatWarning, IgnoredDiagnosticOption, InvalidOnClause, MalFormedDiagnosticAttributeLint,
+    MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
+use crate::{EmitAttribute, diagnostics};
 
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
@@ -28,6 +33,68 @@ pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
 pub(crate) mod on_unmatched_args;
+pub(crate) mod opaque;
+
+impl<'sess> crate::AttributeParser<'sess> {
+    pub(crate) fn unknown_diagnostic_attr(
+        &self,
+        segment: &PathSegment,
+        mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
+    ) {
+        const DIAGNOSTIC_ATTRIBUTES: [(
+            Symbol,         /* name */
+            Option<Symbol>, /* feature gate */
+        ); 8] = [
+            (sym::on_unimplemented, None),
+            (sym::do_not_recommend, None),
+            (sym::on_move, Some(sym::diagnostic_on_move)),
+            (sym::on_const, Some(sym::diagnostic_on_const)),
+            (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
+            (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
+            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
+            (sym::opaque, Some(sym::diagnostic_opaque)),
+        ];
+        // No need to emit a lint if features aren't available.
+        let Some(features) = self.features else { return };
+        let span = segment.span();
+        let candidates = DIAGNOSTIC_ATTRIBUTES
+            .iter()
+            .filter_map(|(attr, feature)| {
+                feature.is_none_or(|f| features.enabled(f)).then_some(*attr)
+            })
+            .collect::<Vec<_>>();
+
+        let typo = find_best_match_for_name(&candidates, segment.ident.name, None)
+            .map(|typo_name| diagnostics::UnknownDiagnosticAttributeTypo { span, typo_name });
+        emit_lint(
+            LintId::of(UNKNOWN_DIAGNOSTIC_ATTRIBUTES),
+            span.into(),
+            EmitAttribute(Box::new(move |dcx, level, _| {
+                diagnostics::UnknownDiagnosticAttribute { typo }.into_diag(dcx, level)
+            })),
+        )
+    }
+}
+
+#[rustc_macro_transparency = "transparent"]
+macro gate_diagnostic_attr($feature:ident) {{
+    if let Some(features) = cx.features_option()
+        && !features.$feature()
+    {
+        args.ignore_args();
+        let nightly_build = cx.sess.is_nightly_build();
+        let span = cx.attr_span;
+        cx.emit_lint(
+            rustc_lint_defs::builtin::UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+            $crate::diagnostics::UnstableDiagnosticAttribute {
+                feature: sym::$feature,
+                nightly_build,
+            },
+            span,
+        );
+        return;
+    }
+}}
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -48,7 +115,7 @@ pub(crate) enum Mode {
 }
 
 impl Mode {
-    fn as_str(&self) -> &'static str {
+    fn as_str(self) -> &'static str {
         match self {
             Self::RustcOnUnimplemented => "rustc_on_unimplemented",
             Self::DiagnosticOnUnimplemented => "diagnostic::on_unimplemented",
@@ -60,7 +127,7 @@ impl Mode {
         }
     }
 
-    fn expected_options(&self) -> &'static str {
+    fn expected_options(self) -> &'static str {
         const DEFAULT: &str =
             "at least one of the `message`, `note` and `label` options are expected";
         const DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS: &str =
@@ -69,16 +136,16 @@ impl Mode {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
             }
-            Self::DiagnosticOnUnimplemented => DEFAULT,
-            Self::DiagnosticOnConst => DEFAULT,
-            Self::DiagnosticOnMove => DEFAULT,
-            Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnUnimplemented
+            | Self::DiagnosticOnConst
+            | Self::DiagnosticOnMove
+            | Self::DiagnosticOnUnknown
+            | Self::DiagnosticOnUnmatchedArgs => DEFAULT,
             Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS,
         }
     }
 
-    fn allowed_options(&self) -> &'static str {
+    fn allowed_options(self) -> &'static str {
         const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
         const DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS: &str =
             "only `note` is allowed as option for `diagnostic::on_type_error`";
@@ -86,16 +153,16 @@ impl Mode {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
             }
-            Self::DiagnosticOnUnimplemented => DEFAULT,
-            Self::DiagnosticOnConst => DEFAULT,
-            Self::DiagnosticOnMove => DEFAULT,
-            Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnUnimplemented
+            | Self::DiagnosticOnConst
+            | Self::DiagnosticOnMove
+            | Self::DiagnosticOnUnknown
+            | Self::DiagnosticOnUnmatchedArgs => DEFAULT,
             Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS,
         }
     }
 
-    fn allowed_format_arguments(&self) -> &'static str {
+    fn allowed_format_arguments(self) -> &'static str {
         match self {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented> for allowed format arguments"
@@ -128,13 +195,14 @@ fn merge_directives(
     later: (Span, Directive),
 ) {
     if let Some((_, first)) = first {
-        if first.is_rustc_attr || later.1.is_rustc_attr {
-            cx.emit_err(DupesNotAllowed);
-        }
+        let Directive { is_rustc_attr, filters, message, label, notes, parent_label } = later.1;
 
-        merge(cx, &mut first.message, later.1.message, sym::message);
-        merge(cx, &mut first.label, later.1.label, sym::label);
-        first.notes.extend(later.1.notes);
+        first.is_rustc_attr |= is_rustc_attr;
+        first.filters.extend(filters);
+        merge(cx, &mut first.message, message, sym::message);
+        merge(cx, &mut first.label, label, sym::label);
+        first.notes.extend(notes);
+        merge(cx, &mut first.parent_label, parent_label, sym::parent_label);
     } else {
         *first = Some(later);
     }
@@ -214,7 +282,7 @@ fn parse_directive_items<'p>(
     let mut message: Option<(Span, _)> = None;
     let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
-    let mut parent_label = None;
+    let mut parent_label: Option<(Span, FormatString)> = None;
     let mut filters = ThinVec::new();
 
     for item in items {
@@ -345,22 +413,26 @@ fn parse_directive_items<'p>(
             }
             (Mode::RustcOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
-                if parent_label.is_none() {
-                    parent_label = Some(parse_format(value));
+                if let Some(parent_label) = &parent_label {
+                    duplicate!(name, parent_label.0)
                 } else {
-                    duplicate!(name, span)
+                    let format = parse_format(value);
+                    parent_label = Some((format.span, format));
                 }
             }
             (Mode::RustcOnUnimplemented, sym::on) => {
                 if is_root {
                     let items = or_malformed!(item.args().as_list()?);
                     let mut iter = items.mixed();
-                    let filter: &MetaItemOrLitParser = match iter.next() {
-                        Some(c) => c,
-                        None => {
-                            cx.emit_err(InvalidOnClause::Empty { span });
-                            continue;
-                        }
+                    let filter = if let Some(c) = iter.next() {
+                        c
+                    } else {
+                        cx.emit_lint(
+                            MALFORMED_DIAGNOSTIC_FILTERS,
+                            InvalidOnClause::Empty { span },
+                            span,
+                        );
+                        continue;
                     };
 
                     let filter = parse_filter(filter);
@@ -378,7 +450,7 @@ fn parse_directive_items<'p>(
                             filters.push((filter, directive));
                         }
                         Err(e) => {
-                            cx.emit_err(e);
+                            cx.emit_lint(MALFORMED_DIAGNOSTIC_FILTERS, e, span);
                         }
                     }
                 } else {

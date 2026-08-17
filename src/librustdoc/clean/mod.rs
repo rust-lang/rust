@@ -39,15 +39,17 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{LangItem, PredicateOrigin, find_attr};
+use rustc_hir::{PredicateOrigin, find_attr};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+    self, AdtKind, GenericArgsRef, RegionExt, Ty, TyCtxt, TypeVisitableExt, TypingMode,
+    Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::ExpnKind;
@@ -424,19 +426,19 @@ fn clean_where_predicate<'tcx>(
     })
 }
 
-pub(crate) fn clean_predicate<'tcx>(
-    predicate: ty::Clause<'tcx>,
+pub(crate) fn clean_clause<'tcx>(
+    clause: ty::Clause<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    let bound_predicate = predicate.kind();
-    match bound_predicate.skip_binder() {
-        ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_predicate.rebind(pred), cx),
-        ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_predicate(pred, cx.tcx)),
+    let bound_clause = clause.kind();
+    match bound_clause.skip_binder() {
+        ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_clause.rebind(pred), cx),
+        ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_clause(pred, cx.tcx)),
         ty::ClauseKind::TypeOutlives(pred) => {
-            Some(clean_type_outlives_predicate(bound_predicate.rebind(pred), cx))
+            Some(clean_type_outlives_clause(bound_clause.rebind(pred), cx))
         }
         ty::ClauseKind::Projection(pred) => {
-            Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
+            Some(clean_projection_predicate(bound_clause.rebind(pred), cx))
         }
         // FIXME(generic_const_exprs): should this do something?
         ty::ClauseKind::ConstEvaluatable(..)
@@ -466,11 +468,11 @@ fn clean_poly_trait_predicate<'tcx>(
     })
 }
 
-fn clean_region_outlives_predicate<'tcx>(
-    pred: ty::RegionOutlivesPredicate<'tcx>,
+fn clean_region_outlives_clause<'tcx>(
+    clause: ty::RegionOutlivesClause<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> WherePredicate {
-    let ty::OutlivesPredicate(a, b) = pred;
+    let ty::OutlivesClause(a, b) = clause;
 
     WherePredicate::RegionPredicate {
         lifetime: clean_middle_region(a, tcx).expect("failed to clean lifetime"),
@@ -480,14 +482,14 @@ fn clean_region_outlives_predicate<'tcx>(
     }
 }
 
-fn clean_type_outlives_predicate<'tcx>(
-    pred: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
+fn clean_type_outlives_clause<'tcx>(
+    clause: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
-    let ty::OutlivesPredicate(ty, lt) = pred.skip_binder();
+    let ty::OutlivesClause(ty, lt) = clause.skip_binder();
 
     WherePredicate::BoundPredicate {
-        ty: clean_middle_ty(pred.rebind(ty), cx, None, None),
+        ty: clean_middle_ty(clause.rebind(ty), cx, None, None),
         bounds: vec![GenericBound::Outlives(
             clean_middle_region(lt, cx.tcx).expect("failed to clean lifetimes"),
         )],
@@ -854,13 +856,13 @@ pub(crate) fn clean_generics<'tcx>(
 }
 
 fn clean_ty_generics<'tcx>(cx: &mut DocContext<'tcx>, def_id: DefId) -> Generics {
-    clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id))
+    clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_clauses_of(def_id))
 }
 
 fn clean_ty_generics_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     gens: &ty::Generics,
-    preds: ty::GenericPredicates<'tcx>,
+    gen_clauses: ty::GenericClauses<'tcx>,
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before cleaning where clauses,
     // since `clean_predicate` would consume them.
@@ -891,18 +893,18 @@ fn clean_ty_generics_inner<'tcx>(
     let mut impl_trait_proj =
         FxHashMap::<u32, Vec<(DefId, PathSegment, ty::Binder<'_, ty::Term<'_>>)>>::default();
 
-    let where_predicates = preds
-        .predicates
+    let where_clauses = gen_clauses
+        .clauses
         .iter()
-        .flat_map(|(pred, _)| {
+        .flat_map(|(clause, _)| {
             let mut proj_pred = None;
             let param_idx = {
-                let bound_p = pred.kind();
-                match bound_p.skip_binder() {
+                let bound_c = clause.kind();
+                match bound_c.skip_binder() {
                     ty::ClauseKind::Trait(pred) if let ty::Param(param) = pred.self_ty().kind() => {
                         Some(param.index)
                     }
-                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg))
+                    ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, _reg))
                         if let ty::Param(param) = ty.kind() =>
                     {
                         Some(param.index)
@@ -910,7 +912,7 @@ fn clean_ty_generics_inner<'tcx>(
                     ty::ClauseKind::Projection(p)
                         if let ty::Param(param) = p.projection_term.self_ty().kind() =>
                     {
-                        proj_pred = Some(bound_p.rebind(p));
+                        proj_pred = Some(bound_c.rebind(p));
                         Some(param.index)
                     }
                     _ => None,
@@ -920,9 +922,9 @@ fn clean_ty_generics_inner<'tcx>(
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx)
             {
-                let pred = clean_predicate(*pred, cx)?;
+                let clause = clean_clause(*clause, cx)?;
 
-                bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
+                bounds.extend(clause.get_bounds().into_iter().flatten().cloned());
 
                 if let Some(pred) = proj_pred {
                     let lhs = clean_projection(pred.map_bound(|p| p.projection_term), cx, None);
@@ -936,7 +938,7 @@ fn clean_ty_generics_inner<'tcx>(
                 return None;
             }
 
-            Some(pred)
+            Some(clause)
         })
         .collect::<Vec<_>>();
 
@@ -979,8 +981,7 @@ fn clean_ty_generics_inner<'tcx>(
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
-    let where_predicates =
-        where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect();
+    let where_predicates = where_clauses.into_iter().flat_map(|c| clean_clause(*c, cx)).collect();
 
     let mut generics = Generics { params, where_predicates };
     simplify::sizedness_bounds(cx, &mut generics);
@@ -1109,9 +1110,10 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
     for (pos, (index, _)) in indexes.iter().enumerate() {
         let GenericParamDef { name, kind, .. } = func.generics.params.remove(0);
         if let GenericParamDefKind::Const { ty, .. } = kind {
-            func.decl
-                .inputs
-                .insert(*index, Parameter { name: Some(name), type_: *ty, is_const: true });
+            func.decl.inputs.insert(
+                *index,
+                Parameter { name: Some(name), type_: *ty, is_const: true, is_splat: false },
+            );
         } else {
             panic!("unexpected non const in position {pos}");
         }
@@ -1144,9 +1146,9 @@ fn clean_function<'tcx>(
             clean_poly_fn_sig(cx, Some(def_id), sig)
         } else {
             let params = match params {
-                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
+                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl, body_id),
                 // Let's not perpetuate anon params from Rust 2015; use `_` for them.
-                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
+                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl, idents, |ident| {
                     Some(ident.map_or(kw::Underscore, |ident| ident.name))
                 }),
             };
@@ -1159,33 +1161,36 @@ fn clean_function<'tcx>(
 
 fn clean_params<'tcx>(
     cx: &mut DocContext<'tcx>,
-    types: &[hir::Ty<'tcx>],
+    decl: &hir::FnDecl<'tcx>,
     idents: &[Option<Ident>],
     postprocess: impl Fn(Option<Ident>) -> Option<Symbol>,
 ) -> Vec<Parameter> {
-    types
+    decl.inputs
         .iter()
         .enumerate()
         .map(|(i, ty)| Parameter {
             name: postprocess(idents[i]),
             type_: clean_ty(ty, cx),
             is_const: false,
+            is_splat: decl.splatted().is_some_and(|j| j as usize == i),
         })
         .collect()
 }
 
 fn clean_params_via_body<'tcx>(
     cx: &mut DocContext<'tcx>,
-    types: &[hir::Ty<'tcx>],
+    decl: &hir::FnDecl<'tcx>,
     body_id: hir::BodyId,
 ) -> Vec<Parameter> {
-    types
+    decl.inputs
         .iter()
         .zip(cx.tcx.hir_body(body_id).params)
-        .map(|(ty, param)| Parameter {
+        .enumerate()
+        .map(|(i, (ty, param))| Parameter {
             name: Some(name_from_pat(param.pat)),
             type_: clean_ty(ty, cx),
             is_const: false,
+            is_splat: decl.splatted().is_some_and(|j| j as usize == i),
         })
         .collect()
 }
@@ -1236,10 +1241,12 @@ fn clean_poly_fn_sig<'tcx>(
     let params = sig
         .inputs()
         .iter()
-        .map(|ty| Parameter {
+        .enumerate()
+        .map(|(i, ty)| Parameter {
             name: idents.next().flatten().map(|ident| ident.name).or(fallback),
             type_: clean_middle_ty(ty.map_bound(|ty| *ty), cx, None, None),
             is_const: false,
+            is_splat: sig.splatted().is_some_and(|j| j as usize == i),
         })
         .collect();
 
@@ -1468,18 +1475,18 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
 
-            let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
+            let mut clauses = tcx.explicit_clauses_of(assoc_item.def_id).clauses;
             if let ty::AssocContainer::Trait = assoc_item.container {
                 let bounds = tcx
                     .explicit_item_bounds(assoc_item.def_id)
                     .iter_identity_copied()
                     .map(Unnormalized::skip_norm_wip);
-                predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
+                clauses = tcx.arena.alloc_from_iter(bounds.chain(clauses.iter().copied()));
             }
             let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
-                ty::GenericPredicates { parent: None, predicates },
+                ty::GenericClauses { parent: None, clauses },
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
@@ -1953,6 +1960,10 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::UnsafeBinder(unsafe_binder_ty) => {
             UnsafeBinder(Box::new(clean_unsafe_binder_ty(unsafe_binder_ty, cx)))
         }
+        TyKind::View(ty, _) => {
+            // FIXME(scrabsha): propagate view types to `rustdoc`.
+            clean_ty(ty, cx)
+        }
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer(())
         | TyKind::Err(_)
@@ -2318,7 +2329,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
-            if cx.tcx.features().lazy_type_alias() {
+            if cx.tcx.features().checked_type_aliases() {
                 // Free type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
                 let path =
@@ -2397,7 +2408,7 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bound_predicate = bound.kind();
             let trait_ref = match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
-                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(_ty, reg)) => {
                     return clean_middle_region(reg, cx.tcx).map(GenericBound::Outlives);
                 }
                 _ => return None,
@@ -2714,7 +2725,7 @@ fn clean_bare_fn_ty<'tcx>(
         };
         let fallback =
             bare_fn.param_idents.iter().copied().find_map(filter).map(|_| kw::Underscore);
-        let params = clean_params(cx, bare_fn.decl.inputs, bare_fn.param_idents, |ident| {
+        let params = clean_params(cx, bare_fn.decl, bare_fn.param_idents, |ident| {
             filter(ident).or(fallback)
         });
         let decl = clean_fn_decl_with_params(cx, bare_fn.decl, None, params);

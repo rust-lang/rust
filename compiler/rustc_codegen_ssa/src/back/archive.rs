@@ -26,8 +26,8 @@ use super::rmeta_link::{self, RmetaLinkCache};
 use super::symbol_edit::{apply_edits, collect_internal_names};
 use crate::common;
 // Public for ArchiveBuilderBuilder::extract_bundled_libs
-pub use crate::errors::ExtractBundledLibsError;
-use crate::errors::{
+pub use crate::diagnostics::ExtractBundledLibsError;
+use crate::diagnostics::{
     ArchiveBuildFailure, DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary,
     ErrorWritingDEFFile, UnknownArchiveKind,
 };
@@ -502,7 +502,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         {
             let actual_kind = archive.kind();
             if !archive_kinds_compatible(actual_kind, expected_kind) {
-                self.sess.dcx().emit_warn(crate::errors::IncompatibleArchiveFormat {
+                self.sess.dcx().emit_warn(crate::diagnostics::IncompatibleArchiveFormat {
                     path: archive_path.clone(),
                     actual: archive_kind_display_name(actual_kind),
                     expected: archive_kind_display_name(expected_kind),

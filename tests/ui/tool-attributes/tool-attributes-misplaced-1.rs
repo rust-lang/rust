@@ -1,5 +1,5 @@
 type A = rustfmt; //~ ERROR expected type, found tool module `rustfmt`
-type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::skip`
+type B = rustfmt::skip; //~ ERROR cannot find type `skip` in `rustfmt`
 
 #[derive(rustfmt)] //~ ERROR cannot find derive macro `rustfmt` in this scope
                    //~| ERROR cannot find derive macro `rustfmt` in this scope
@@ -11,8 +11,8 @@ fn check() {}
 
 #[rustfmt::skip] // OK
 fn main() {
-    rustfmt; //~ ERROR expected value, found tool module `rustfmt`
+    rustfmt; //~ ERROR cannot find value `rustfmt` in this scope
     rustfmt!(); //~ ERROR cannot find macro `rustfmt` in this scope
 
-    rustfmt::skip; //~ ERROR expected value, found tool attribute `rustfmt::skip`
+    rustfmt::skip; //~ ERROR cannot find value `skip` in `rustfmt`
 }

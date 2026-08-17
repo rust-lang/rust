@@ -58,7 +58,7 @@
 /// assert_eq!(false as i32, 0);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_bool {}
+const _: () = ();
 
 #[rustc_doc_primitive = "never"]
 #[doc(alias = "!")]
@@ -146,7 +146,7 @@ mod prim_bool {}
 ///
 /// ```ignore (hypothetical-example)
 /// loop {
-///     let (client, request) = get_request().expect("disconnected");
+///     let (client, request) = get_request().expect("server should stay connected");
 ///     let response = request.process();
 ///     response.send(client);
 /// }
@@ -312,7 +312,7 @@ mod prim_bool {}
 /// [2024 edition]: <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
 ///
 #[unstable(feature = "never_type", issue = "35121")]
-mod prim_never {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
@@ -448,7 +448,7 @@ impl ! {}
 /// assert_eq!(32, size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_char {}
+const _: () = ();
 
 #[rustc_doc_primitive = "unit"]
 #[doc(alias = "(")]
@@ -489,7 +489,7 @@ mod prim_char {}
 /// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_unit {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
@@ -616,7 +616,7 @@ impl () {}
 /// [`write`]: ptr::write
 /// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_pointer {}
+const _: () = ();
 
 #[rustc_doc_primitive = "array"]
 #[doc(alias = "[]")]
@@ -828,7 +828,7 @@ mod prim_pointer {}
 /// [slice pattern]: ../reference/patterns.html#slice-patterns
 /// [`From<Tuple>`]: convert::From
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_array {}
+const _: () = ();
 
 #[rustc_doc_primitive = "slice"]
 #[doc(alias = "[")]
@@ -942,7 +942,7 @@ mod prim_array {}
 /// [`.chunks`]: slice::chunks
 /// [`.windows`]: slice::windows
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_slice {}
+const _: () = ();
 
 #[rustc_doc_primitive = "str"]
 /// String slices.
@@ -1015,7 +1015,7 @@ mod prim_slice {}
 /// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
 /// slice can lead to undefined behavior down the road.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_str {}
+const _: () = ();
 
 #[rustc_doc_primitive = "tuple"]
 #[doc(alias = "(")]
@@ -1142,7 +1142,7 @@ mod prim_str {}
 /// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_tuple {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
@@ -1167,7 +1167,7 @@ impl<T> (T,) {}
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Half-precision_floating-point_format
 #[unstable(feature = "f16", issue = "116909")]
-mod prim_f16 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "f32"]
 #[doc(alias = "single")]
@@ -1333,10 +1333,12 @@ mod prim_f16 {}
 /// such as NaN, +/-Inf, or -0.0 may behave in unexpected ways, but these operations
 /// will never cause undefined behavior.
 ///
-/// Because of the unpredictable nature of compiler optimizations, the same inputs may produce
-/// different results even within a single program run. **Unsafe code must not rely on any property
-/// of the return value for soundness.** However, implementations will generally do their best to
-/// pick a reasonable tradeoff between performance and accuracy of the result.
+/// Algebraic operations are non-deterministic. This means that two invocations of such an operation
+/// with the same inputs may produce different results even within a single program run. No
+/// guarantees are made about the results of individual operations, except that they produce *some*
+/// valid floating-point value. **Unsafe code must not rely on any property of the return value for
+/// soundness.** However, implementations will generally do their best to pick a reasonable tradeoff
+/// between performance and accuracy of the result.
 ///
 /// For example:
 ///
@@ -1362,8 +1364,23 @@ mod prim_f16 {}
 /// x = ((a + b) + c) + d; // As written
 /// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
 /// ```
+///
+/// The following example demonstrates the non-determinism:
+///
+/// ```
+/// # #![allow(unused_assignments)]
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// let x1 = a.algebraic_add(b);
+/// let x2 = a.algebraic_add(b);
+/// assert_eq!(x1.to_bits(), x1.to_bits()); // this is guaranteed
+/// # if false {
+/// assert_eq!(x1.to_bits(), x2.to_bits()); // but this may fail
+/// assert!(!x2.is_nan()); // this may also fail, even if there was no NaN input
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_f32 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "f64"]
 #[doc(alias = "double")]
@@ -1377,7 +1394,7 @@ mod prim_f32 {}
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_f64 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "f128"]
 #[doc(alias = "quad")]
@@ -1400,31 +1417,31 @@ mod prim_f64 {}
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format
 #[unstable(feature = "f128", issue = "116909")]
-mod prim_f128 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i8"]
 //
 /// The 8-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i8 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i16"]
 //
 /// The 16-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i16 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i32"]
 //
 /// The 32-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i32 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i64"]
 //
 /// The 64-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i64 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i128"]
 //
@@ -1442,31 +1459,31 @@ mod prim_i64 {}
 /// do not use the same alignment. `i128` is intended to always match `__int128` and does not
 /// attempt to match `_BitInt(128)` on platforms without `__int128`.
 #[stable(feature = "i128", since = "1.26.0")]
-mod prim_i128 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u8"]
 //
 /// The 8-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u8 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u16"]
 //
 /// The 16-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u16 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u32"]
 //
 /// The 32-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u32 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u64"]
 //
 /// The 64-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u64 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u128"]
 //
@@ -1474,7 +1491,7 @@ mod prim_u64 {}
 ///
 /// Please see [the documentation for `i128`](prim@i128) for information on ABI compatibility.
 #[stable(feature = "i128", since = "1.26.0")]
-mod prim_u128 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "isize"]
 //
@@ -1484,7 +1501,7 @@ mod prim_u128 {}
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_isize {}
+const _: () = ();
 
 #[rustc_doc_primitive = "usize"]
 //
@@ -1494,7 +1511,7 @@ mod prim_isize {}
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_usize {}
+const _: () = ();
 
 #[rustc_doc_primitive = "reference"]
 #[doc(alias = "&")]
@@ -1655,7 +1672,7 @@ mod prim_usize {}
 ///
 /// [allocation]: ptr#allocation
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_ref {}
+const _: () = ();
 
 #[rustc_doc_primitive = "fn"]
 //
@@ -1930,7 +1947,7 @@ mod prim_ref {}
 /// In addition, all *safe* function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`], because
 /// these traits are specially known to the compiler.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_fn {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls

@@ -15,8 +15,6 @@ pub mod compat;
 pub mod api;
 
 pub mod c;
-#[cfg(not(target_vendor = "win7"))]
-pub mod futex;
 pub mod handle;
 pub mod time;
 cfg_select! {
@@ -54,7 +52,9 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
-// NOTE: this is not guaranteed to run, for example when the program aborts.
+// NOTE: this is not guaranteed to run, for example when the program aborts, and
+//       is not guaranteed to run on the main thread (#161018 was caused by that
+//       mistaken assumption).
 pub unsafe fn cleanup() {
     winsock::cleanup();
 }

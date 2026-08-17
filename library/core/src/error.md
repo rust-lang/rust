@@ -34,7 +34,7 @@ responsibilities they cover:
 
 ## Converting Errors into Panics
 
-The panic and error systems are not entirely distinct. Often times errors
+The panic and error systems are not entirely distinct. Oftentimes errors
 that are anticipated runtime failures in an API might instead represent bugs
 to a caller. For these situations the standard library provides APIs for
 constructing panics with an `Error` as its source.

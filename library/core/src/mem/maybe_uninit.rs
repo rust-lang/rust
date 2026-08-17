@@ -1286,8 +1286,8 @@ impl<T> [MaybeUninit<T>] {
     /// Fills a slice with elements returned by calling a closure for each index.
     ///
     /// This method uses a closure to create new values. If you'd rather `Clone` a given value, use
-    /// [slice::write_filled]. If you want to use the `Default` trait to generate values, you can
-    /// pass [`|_| Default::default()`][Default::default] as the argument.
+    /// [`slice::write_filled`]. If you want to use the `Default` trait to generate values, use
+    /// [`slice::write_default`].
     ///
     /// # Panics
     ///
@@ -1322,6 +1322,73 @@ impl<T> [MaybeUninit<T>] {
 
         // SAFETY: Valid elements have just been written into `this` so it is initialized
         unsafe { self.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements returned by calling [`Default::default`] for each index.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any call to [`Default::default`] panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::<usize>::uninit() }; 5];
+    /// let initialized = buf.write_default();
+    /// assert_eq!(initialized, &mut [0, 0, 0, 0, 0]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn write_default(&mut self) -> &mut [T]
+    where
+        T: Default,
+    {
+        trait DefaultSpec: Default {
+            fn write_default(buf: &mut [MaybeUninit<Self>]) -> &mut [Self];
+        }
+
+        impl<T: Default> DefaultSpec for T {
+            default fn write_default(buf: &mut [MaybeUninit<Self>]) -> &mut [Self] {
+                buf.write_with(|_| T::default())
+            }
+        }
+
+        macro_rules! spec_default_zero {
+            ($ty:ty) => {
+                impl DefaultSpec for $ty {
+                    fn write_default(buf: &mut [MaybeUninit<Self>]) -> &mut [Self] {
+                        // SAFETY:
+                        // `Default::default` is equivalent to zero-initialization
+                        // for all these types, and this initializes the entire
+                        // slice.
+                        unsafe {
+                            buf.as_mut_ptr().write_bytes(0, buf.len());
+                            buf.assume_init_mut()
+                        }
+                    }
+                }
+            };
+        }
+
+        spec_default_zero!(i8);
+        spec_default_zero!(u8);
+        spec_default_zero!(i16);
+        spec_default_zero!(u16);
+        spec_default_zero!(i32);
+        spec_default_zero!(u32);
+        spec_default_zero!(i64);
+        spec_default_zero!(u64);
+        spec_default_zero!(i128);
+        spec_default_zero!(u128);
+        spec_default_zero!(isize);
+        spec_default_zero!(usize);
+
+        T::write_default(self)
     }
 
     /// Fills a slice with elements yielded by an iterator until either all elements have been
@@ -1572,7 +1639,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
 impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>] {
-        &*AsRef::<[MaybeUninit<T>; N]>::as_ref(self)
+        AsRef::<[MaybeUninit<T>; N]>::as_ref(self)
     }
 }
 

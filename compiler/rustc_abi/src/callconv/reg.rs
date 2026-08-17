@@ -69,7 +69,7 @@ impl Reg {
                 128 => dl.f128_align,
                 _ => panic!("unsupported float: {self:?}"),
             },
-            RegKind::Vector { .. } => dl.llvmlike_vector_align(self.size),
+            RegKind::Vector { .. } => dl.rust_vector_align(self.size),
         }
     }
 }

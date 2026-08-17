@@ -14,34 +14,37 @@ LL |     assert_eq { 1, 1 };
    |     |
    |     while parsing this struct
 
-error[E0574]: expected struct, variant or union type, found macro `assert_eq`
+error[E0574]: cannot find struct, variant or union type `assert_eq` in this scope
   --> $DIR/resolve-hint-macro.rs:5:5
    |
 LL |     assert_eq { 1, 1 };
-   |     ^^^^^^^^^ not a struct, variant or union type
+   |     ^^^^^^^^^ not found in this scope
    |
+   = note: a macro named `assert_eq` exists in another namespace
 help: use `!` to invoke the macro
    |
 LL |     assert_eq! { 1, 1 };
    |              +
 
-error[E0423]: expected value, found macro `assert`
+error[E0423]: cannot find value `assert` in this scope
   --> $DIR/resolve-hint-macro.rs:9:5
    |
 LL |     assert[true];
-   |     ^^^^^^ not a value
+   |     ^^^^^^ not found in this scope
    |
+   = note: a macro named `assert` exists in another namespace
 help: use `!` to invoke the macro
    |
 LL |     assert![true];
    |           +
 
-error[E0423]: expected function, found macro `assert_eq`
+error[E0423]: cannot find function `assert_eq` in this scope
   --> $DIR/resolve-hint-macro.rs:3:5
    |
 LL |     assert_eq(1, 1);
-   |     ^^^^^^^^^ not a function
+   |     ^^^^^^^^^ not found in this scope
    |
+   = note: a macro named `assert_eq` exists in another namespace
 help: use `!` to invoke the macro
    |
 LL |     assert_eq!(1, 1);

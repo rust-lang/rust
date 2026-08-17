@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-
+#![warn(clippy::partialeq_ne_impl)]
 struct Foo;
 
 impl PartialEq for Foo {

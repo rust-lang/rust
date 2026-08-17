@@ -111,6 +111,7 @@ fn lang_items(tcx: TyCtxt<'_>) -> Vec<(LocalDefId, Vec<ty::Variance>)> {
     let all = [
         (lang_items.phantom_data(), vec![ty::Covariant]),
         (lang_items.unsafe_cell_type(), vec![ty::Invariant]),
+        (lang_items.covariant_unsafe_cell_type(), vec![ty::Covariant]),
     ];
 
     all.into_iter() // iterating over (Option<DefId>, Variance)

@@ -52,7 +52,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, TypeFlags};
+use crate::{self as ty, Interner, Region, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -104,7 +104,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
 
     // `Region` is non-recursive so the default region visitor has no
     // `super_visit_with` method to call.
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         if let ty::ReError(guar) = r.kind() {
             self.visit_error(guar)
         } else {
@@ -167,7 +167,7 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &T {
+impl<I: Interner, T: TypeVisitable<I> + ?Sized> TypeVisitable<I> for &T {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
     }
@@ -179,7 +179,7 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
+impl<I: Interner, T: TypeVisitable<I> + ?Sized> TypeVisitable<I> for Box<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
     }
@@ -209,14 +209,14 @@ impl<I: Interner, T: TypeVisitable<I>, const N: usize> TypeVisitable<I> for Smal
 // `TypeFoldable` isn't impl'd for `&[T]`. It doesn't make sense in the general
 // case, because we can't return a new slice. But note that there are a couple
 // of trivial impls of `TypeFoldable` for specific slice types elsewhere.
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
+impl<const N: usize, I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T; N] {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()
@@ -465,7 +465,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         // Note: no `super_visit_with` call, as usual for `Region`.
         if r.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
@@ -572,7 +572,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     }
 
     #[inline]
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         // If the region is bound by `outer_index` or anything outside
         // of outer index, then it escapes the binders we have
         // visited.

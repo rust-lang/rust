@@ -1,17 +1,18 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt as _, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, IndexEntry};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    AmbigArg, BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment,
-    PredicateOrigin, QPath, TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
+    AmbigArg, BoundPolarity, GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath,
+    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -100,7 +101,7 @@ impl TraitBounds {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             max_trait_bounds: conf.max_trait_bounds,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

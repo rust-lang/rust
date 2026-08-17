@@ -10,6 +10,5 @@ fn main() {
     for i in 1..4 {
         println!("{:?}", take_array_from_mut(&mut arr, i));
         //~^ ERROR type annotations needed
-        //~| ERROR type annotations needed
     }
 }

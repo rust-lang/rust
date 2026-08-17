@@ -9,6 +9,7 @@
 //@ ignore-vxworks no 'ps'
 //@ ignore-fuchsia no 'ps'
 //@ ignore-nto no 'ps'
+//@ ignore-qnx no 'ps'
 //@ ignore-ios no 'ps'
 //@ ignore-tvos no 'ps'
 //@ ignore-watchos no 'ps'
@@ -38,7 +39,7 @@ fn find_zombies() {
     extern crate libc;
     let my_pid = unsafe { libc::getpid() };
 
-    // https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
+    // https://pubs.opengroup.org/onlinepubs/9799919799/utilities/ps.html
     let ps_cmd_output = Command::new("ps").args(&["-A", "-o", "pid,ppid,args"]).output().unwrap();
     let ps_output = String::from_utf8_lossy(&ps_cmd_output.stdout);
     // On AIX, the PPID is not always present, such as when a process is blocked

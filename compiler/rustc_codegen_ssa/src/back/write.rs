@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -15,19 +16,17 @@ use rustc_errors::{
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::find_attr;
-use rustc_incremental::{
-    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
-};
+use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use rustc_session::config::{
     self, CrateType, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
     SwitchWithOptPath,
 };
+use rustc_session::{IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, InnerSpan, Span, SpanData};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
@@ -35,11 +34,11 @@ use tracing::debug;
 
 use crate::back::link::ensure_removed;
 use crate::back::lto::{self, SerializedModule, check_lto_allowed};
-use crate::errors::ErrorCreatingRemarkDir;
+use crate::diagnostics::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, ModuleKind,
-    errors,
+    diagnostics,
 };
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
@@ -84,6 +83,8 @@ pub struct ModuleConfig {
     pub instrument_coverage: bool,
 
     pub sanitizer: SanitizerSet,
+    pub sanitizer_cfi_diag: Option<bool>,
+    pub sanitizer_cfi_recover: Option<bool>,
     pub sanitizer_recover: SanitizerSet,
     pub sanitizer_dataflow_abilist: Vec<String>,
     pub sanitizer_memory_track_origins: usize,
@@ -108,6 +109,7 @@ pub struct ModuleConfig {
     pub emit_lifetime_markers: bool,
     pub llvm_plugins: Vec<String>,
     pub autodiff: Vec<config::AutoDiff>,
+    pub autodiff_post_passes: Option<String>,
     pub offload: Vec<config::Offload>,
 }
 
@@ -183,6 +185,8 @@ impl ModuleConfig {
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
 
             sanitizer: if_regular!(sess.sanitizers(), SanitizerSet::empty()),
+            sanitizer_cfi_diag: if_regular!(sess.opts.unstable_opts.sanitizer_cfi_diag, None),
+            sanitizer_cfi_recover: if_regular!(sess.opts.unstable_opts.sanitizer_cfi_recover, None),
             sanitizer_dataflow_abilist: if_regular!(
                 sess.opts.unstable_opts.sanitizer_dataflow_abilist.clone(),
                 Vec::new()
@@ -259,6 +263,10 @@ impl ModuleConfig {
             emit_lifetime_markers: sess.emit_lifetime_markers(),
             llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
             autodiff: if_regular!(sess.opts.unstable_opts.autodiff.clone(), vec![]),
+            autodiff_post_passes: if_regular!(
+                sess.opts.unstable_opts.autodiff_post_passes.clone(),
+                None
+            ),
             offload: if_regular!(sess.opts.unstable_opts.offload.clone(), vec![]),
         }
     }
@@ -349,10 +357,10 @@ pub struct CodegenContext {
     /// The incremental compilation session directory, or None if we are not
     /// compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
-    /// `true` if the codegen should be run in parallel.
+    /// `Some(limit)` if the codegen should be run in parallel.
     ///
-    /// Depends on [`WriteBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
-    pub parallel: bool,
+    /// Depends on [`WriteBackendMethods::supports_parallel()`] and `--jobs-backend`.
+    pub parallel: Option<NonZero<usize>>,
 }
 
 fn generate_thin_lto_work<B: WriteBackendMethods>(
@@ -458,6 +466,7 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
 
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
+    incr_comp_session: Option<&IncrCompSession>,
     compiled_modules: &CompiledModules,
 ) -> WorkProductMap {
     let mut work_products = WorkProductMap::default();
@@ -491,6 +500,7 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         }
         let (id, product) = copy_cgu_workproduct_to_incr_comp_cache_dir(
             sess,
+            incr_comp_session.unwrap(),
             &module.name,
             files.as_slice(),
             &module.links_from_incr_cache,
@@ -512,10 +522,10 @@ pub fn produce_final_output_artifacts(
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &OutFileName| match to {
         OutFileName::Stdout if let Err(e) = copy_to_stdout(from) => {
-            sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
+            sess.dcx().emit_err(diagnostics::CopyPath::new(from, to.as_path(), e));
         }
         OutFileName::Real(path) if let Err(e) = fs::copy(from, path) => {
-            sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
+            sess.dcx().emit_err(diagnostics::CopyPath::new(from, path, e));
         }
         _ => {}
     };
@@ -527,8 +537,9 @@ pub fn produce_final_output_artifacts(
             let path = crate_output.temp_path_for_cgu(output_type, &module.name);
             let output = crate_output.path(output_type);
             if !output_type.is_text_output() && output.is_tty() {
-                sess.dcx()
-                    .emit_err(errors::BinaryOutputToTty { shorthand: output_type.shorthand() });
+                sess.dcx().emit_err(diagnostics::BinaryOutputToTty {
+                    shorthand: output_type.shorthand(),
+                });
             } else {
                 copy_gracefully(&path, &output);
             }
@@ -540,12 +551,14 @@ pub fn produce_final_output_artifacts(
             if crate_output.outputs.contains_explicit_name(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx()
-                    .emit_warn(errors::IgnoringEmitPath { extension: output_type.extension() });
+                sess.dcx().emit_warn(diagnostics::IgnoringEmitPath {
+                    extension: output_type.extension(),
+                });
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx().emit_warn(errors::IgnoringOutput { extension: output_type.extension() });
+                sess.dcx()
+                    .emit_warn(diagnostics::IgnoringOutput { extension: output_type.extension() });
             } else {
                 // 4) Multiple codegen units, but no explicit name. We
                 //    just leave the `foo.0.x` files in place.
@@ -884,20 +897,24 @@ fn execute_copy_from_cache_work_item(
     let mut links_from_incr_cache = Vec::new();
 
     let mut load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
-        let source_file = in_incr_comp_dir(incr_comp_session_dir, saved_path);
+        let source_file_in_incr_comp_dir = incr_comp_session_dir.join(saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
             module.name,
-            source_file,
+            source_file_in_incr_comp_dir,
             output_path.display()
         );
-        match link_or_copy(&source_file, &output_path) {
+        match link_or_copy(&source_file_in_incr_comp_dir, &output_path) {
             Ok(_) => {
-                links_from_incr_cache.push(source_file);
+                links_from_incr_cache.push(source_file_in_incr_comp_dir);
                 Some(output_path)
             }
             Err(error) => {
-                dcx.emit_err(errors::CopyPathBuf { source_file, output_path, error });
+                dcx.emit_err(diagnostics::CopyPathBuf {
+                    source_file: source_file_in_incr_comp_dir,
+                    output_path,
+                    error,
+                });
                 None
             }
         }
@@ -938,7 +955,7 @@ fn execute_copy_from_cache_work_item(
             None
         };
     if should_emit_obj && object.is_none() {
-        dcx.emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
+        dcx.emit_fatal(diagnostics::NoSavedObjectFile { cgu_name: &module.name })
     }
 
     CompiledModule {
@@ -1004,12 +1021,17 @@ fn do_thin_lto<B: WriteBackendMethods>(
     // After we've requested tokens then we'll, when we can,
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
-    let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver::client()
-        .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
-        })
-        .expect("failed to spawn helper thread");
+    // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
+    // tokens before releasing them, so we can never accidentally release the last token
+    // permanently held by rustc process.
+    let jobserver_helper = cgcx.parallel.map(|_| {
+        let coordinator_send2 = coordinator_send.clone();
+        jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
+            })
+            .expect("failed to spawn helper thread")
+    });
 
     let mut work_items = vec![];
 
@@ -1018,18 +1040,23 @@ fn do_thin_lto<B: WriteBackendMethods>(
     // bunch of work items onto our queue to do LTO. This all
     // happens on the coordinator thread but it's very quick so
     // we don't worry about tokens.
-    for (work, cost) in generate_thin_lto_work::<B>(
+    for (i, (work, cost)) in generate_thin_lto_work::<B>(
         cgcx,
         prof,
         dcx,
         &exported_symbols_for_lto,
         &each_linked_rlib_for_lto,
         needs_thin_lto,
-    ) {
+    )
+    .into_iter()
+    .enumerate()
+    {
         let insertion_index =
             work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
         work_items.insert(insertion_index, (work, cost));
-        if cgcx.parallel {
+        if let Some(helper) = &jobserver_helper
+            && i < cgcx.parallel.unwrap().get()
+        {
             helper.request_token();
         }
     }
@@ -1233,12 +1260,21 @@ fn start_executing_work<B: WriteBackendMethods>(
     // After we've requested tokens then we'll, when we can,
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
-    let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver::client()
-        .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(Message::Token::<B>(token)));
-        })
-        .expect("failed to spawn helper thread");
+    // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
+    // tokens before releasing them, so we can never accidentally release the last token
+    // permanently held by rustc process.
+    let parallel = match sess.opts.jobs.backend {
+        Some(n) if backend.supports_parallel() => Some(n),
+        _ => None,
+    };
+    let jobserver_helper = parallel.map(|_| {
+        let coordinator_send2 = coordinator_send.clone();
+        jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(coordinator_send2.send(Message::Token::<B>(token)));
+            })
+            .expect("failed to spawn helper thread")
+    });
 
     let opt_level = tcx.backend_optimization_level(());
     let backend_features = tcx.global_backend_features(()).clone();
@@ -1265,7 +1301,10 @@ fn start_executing_work<B: WriteBackendMethods>(
         time_trace: sess.opts.unstable_opts.llvm_time_trace,
         remark: sess.opts.cg.remark.clone(),
         remark_dir,
-        incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
+        incr_comp_session_dir: tcx
+            .incr_comp_session
+            .as_ref()
+            .map(|incr_comp_session| incr_comp_session.session_directory.clone()),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
         opt_level,
@@ -1279,7 +1318,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         target_is_like_gpu: tcx.sess.target.is_like_gpu,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
-        parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
+        parallel,
         pointer_size: tcx.data_layout.pointer_size(),
     };
 
@@ -1626,7 +1665,10 @@ fn start_executing_work<B: WriteBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if cgcx.parallel {
+                    if let Some(helper) = &jobserver_helper
+                        && running_with_any_token(main_thread_state, running_with_own_token)
+                            < cgcx.parallel.unwrap().get()
+                    {
                         helper.request_token();
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
@@ -1709,7 +1751,7 @@ fn start_executing_work<B: WriteBackendMethods>(
 
         drop(codegen_state);
         drop(tokens);
-        drop(helper);
+        drop(jobserver_helper);
         assert!(work_items.is_empty());
 
         if !needs_fat_lto.is_empty() {
@@ -2097,7 +2139,12 @@ pub struct OngoingCodegen<B: WriteBackendMethods> {
 }
 
 impl<B: WriteBackendMethods> OngoingCodegen<B> {
-    pub fn join(self, sess: &Session, crate_info: &CrateInfo) -> (CompiledModules, WorkProductMap) {
+    pub fn join(
+        self,
+        sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
+        crate_info: &CrateInfo,
+    ) -> (CompiledModules, WorkProductMap) {
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
@@ -2175,8 +2222,11 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         // out deterministic results.
         compiled_modules.modules.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let work_products =
-            copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);
+        let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+            sess,
+            incr_comp_session,
+            &compiled_modules,
+        );
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         (compiled_modules, work_products)
@@ -2228,7 +2278,7 @@ pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
-    let bitcode_path = in_incr_comp_dir_sess(tcx.sess, &filename);
+    let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
     // Schedule the module to be loaded
     drop(
         coordinator
