@@ -1,7 +1,5 @@
 //@ check-pass
-//@ revisions: next globally
-//@[next] compile-flags: -Znext-solver
-//@[globally] compile-flags: -Znext-solver=globally
+//@ compile-flags: -Znext-solver
 //! https://github.com/rust-lang/rust/pull/160443 reworked how normalization works in type
 //! relations. Initially, that PR left out normalization in NllTypeRelating, as it seemed to be
 //! unused. However, upon doing a stage 2 build with -Znext-solver, turns out it *is* used. This is

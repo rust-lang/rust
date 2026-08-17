@@ -479,15 +479,6 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let return_ty = fn_sig.output();
-    let coroutine = match tcx.type_of(fn_def).instantiate_identity().skip_norm_wip().kind() {
-        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
-            tcx.coroutine_kind(fn_def).unwrap(),
-            args.as_coroutine().yield_ty(),
-            args.as_coroutine().resume_ty(),
-        ))),
-        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
-        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
-    };
 
     if let Some((dialect, phase)) =
         find_attr!(tcx, fn_id, CustomMir(dialect, phase) => (dialect, phase))
@@ -517,19 +508,20 @@ fn construct_fn<'tcx>(
 
     let infcx = tcx.infer_ctxt().build(typing_mode);
 
-    // Writeback may leave `yield_ty` as a non-rigid alias
-    // (`<impl Iterator as Iterator>::Item`). Normalize so the alias is rigid;
-    // NLL relating span-bugs on `IsRigid::No`. Dumps may still print the
-    // projection. The yielded operand and `defining_ty` are normalized in
-    // borrowck.
-    let coroutine = match coroutine {
-        Some(mut info) => {
-            if let Some(yield_ty) = info.yield_ty {
-                info.yield_ty = Some(normalize_coroutine_yield_ty(&infcx, fn_def, span, yield_ty));
-            }
-            Some(info)
-        }
-        None => None,
+    // `instantiate_identity` yields an `Unnormalized` type. Normalize it
+    // instead of `skip_norm_wip`, so coroutine yield/resume types are rigid.
+    let ty = normalize_type_of(&infcx, fn_def, span, tcx.type_of(fn_def).instantiate_identity());
+    if let Err(guar) = ty.error_reported() {
+        return construct_error(tcx, fn_def, guar);
+    }
+    let coroutine = match ty.kind() {
+        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
+            tcx.coroutine_kind(fn_def).unwrap(),
+            args.as_coroutine().yield_ty(),
+            args.as_coroutine().resume_ty(),
+        ))),
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
+        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
     let mut builder = Builder::new(
@@ -580,33 +572,27 @@ fn construct_fn<'tcx>(
     body
 }
 
-/// Normalize `yield_ty` for storage on the MIR body.
-///
-/// HIR typeck writeback can leave this as a non-rigid alias under the new
-/// solver. Normalization makes that alias rigid so NLL relating does not
-/// span-bug; the printed type may still be a projection. Failure must not
-/// keep a non-rigid alias.
-fn normalize_coroutine_yield_ty<'tcx>(
+fn normalize_type_of<'tcx>(
     infcx: &InferCtxt<'tcx>,
     def_id: LocalDefId,
     span: Span,
-    ty: Ty<'tcx>,
+    ty: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
     if !infcx.next_trait_solver() {
-        return ty;
+        return ty.skip_norm_wip();
     }
 
     let ocx = ObligationCtxt::new(infcx);
     let cause = ObligationCause::misc(span, def_id);
     let param_env = infcx.tcx.param_env(def_id);
-    match ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(ty)) {
+    match ocx.deeply_normalize(&cause, param_env, ty) {
         Ok(normalized) => normalized,
         Err(_) => {
-            let guar = infcx.dcx().span_delayed_bug(
-                span,
-                format!("failed to normalize coroutine yield type `{ty:?}`"),
-            );
-            Ty::new_error(infcx.tcx, guar)
+            infcx.dcx().span_delayed_bug(span, format!("failed to normalize type of `{def_id:?}`"));
+            // Preserve the outer type constructor for the caller. Returning
+            // `Ty::Error` here would make it hit the catch-all `span_bug!`
+            // below, instead of recovering from the normalization failure.
+            ty::set_aliases_to_rigid(infcx.tcx, ty.skip_norm_wip())
         }
     }
 }
