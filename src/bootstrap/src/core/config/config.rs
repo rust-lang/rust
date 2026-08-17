@@ -288,7 +288,6 @@ pub struct Config {
     pub windows_rc: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
-    pub configure_args: Vec<String>,
     pub out: PathBuf,
     pub rust_info: channel::GitInfo,
 
@@ -517,7 +516,10 @@ impl Config {
             profiler: build_profiler,
             cargo_native_static: build_cargo_native_static,
             low_priority: build_low_priority,
-            configure_args: build_configure_args,
+            // Our `./configure` script saves a copy of its command-line arguments as
+            // `build.configure-args` when generating `bootstrap.toml`.
+            // This is for debugging only, and bootstrap itself doesn't use these values.
+            configure_args: _,
             local_rebuild: build_local_rebuild,
             print_step_timings: build_print_step_timings,
             print_step_rusage: build_print_step_rusage,
@@ -1430,7 +1432,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             compiletest_allow_stage0: build_compiletest_allow_stage0.unwrap_or(false),
             compiletest_diff_tool: build_compiletest_diff_tool,
             config: toml_path,
-            configure_args: build_configure_args.unwrap_or_default(),
             control_flow_guard: rust_control_flow_guard.unwrap_or(false),
             datadir: install_datadir.map(PathBuf::from),
             deny_warnings,
