@@ -703,12 +703,13 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
         .map(|(segment, def_id)| {
             let parent = tcx.parent(def_id);
 
-            let parent_args = if matches!(tcx.def_kind(parent), DefKind::Impl { of_trait: false }) {
+            let parent_args = if matches!(
+                tcx.def_kind(parent),
+                DefKind::Impl { of_trait: false } | DefKind::Trait
+            ) {
                 ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
             } else if let Some(parent_args) = parent_args {
                 parent_args
-            } else if matches!(tcx.def_kind(parent), DefKind::Trait) {
-                ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
             } else {
                 &[]
             };
