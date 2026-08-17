@@ -24,10 +24,10 @@ use rustc_resolve::rustdoc::{
     MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
 };
-use rustc_session::config::CrateType;
 use rustc_span::BytePos;
 use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
