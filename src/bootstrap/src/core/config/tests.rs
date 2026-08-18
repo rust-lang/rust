@@ -12,7 +12,6 @@ use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
 use super::toml::rust::parse_codegen_backends;
 use super::{Config, DebuggerPath, LlvmCiMode, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
-use crate::Build;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::{LLVM_INVALIDATION_PATHS, LlvmKind, get_llvm_build_status};
 use crate::core::builder::Builder;
@@ -20,6 +19,7 @@ use crate::core::config::flags::Subcommand;
 use crate::core::config::{
     BootstrapOverrideLld, ChangeId, CompilerBuiltins, Target, TargetSelection,
 };
+use crate::core::session::Session;
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
@@ -45,7 +45,7 @@ fn download_ci_llvm() {
         .with_default_toml_config("llvm.download-ci-llvm = \"if-unchanged\"")
         .create_config();
     if if_unchanged_config.is_running_on_ci() {
-        let build = Build::new(config.clone());
+        let build = Session::new(config.clone());
         let builder = Builder::new(&build);
 
         let llvm = get_llvm_build_status(&builder, builder.config.host_target);
