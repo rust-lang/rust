@@ -26,7 +26,6 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
       trap "$on_err" ERR
       bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
       PING_LOOP_PID=$!
-      "$@" &> /tmp/build.log
       trap - ERR
       kill $PING_LOOP_PID
       set -x
