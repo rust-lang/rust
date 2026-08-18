@@ -340,7 +340,7 @@ impl Duration {
         // SAFETY: x % 1_000_000_000 < 1_000_000_000 also, subsec_nanos >= 0 since u128 >=0 and u32 >=0
         let subsec_nanos = unsafe { Nanoseconds::new_unchecked(subsec_nanos) };
 
-        Duration { secs: secs as u64, nanos: subsec_nanos }
+        Duration { secs, nanos: subsec_nanos }
     }
 
     /// Creates a new `Duration` from the specified number of weeks.
