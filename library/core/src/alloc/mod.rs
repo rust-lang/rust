@@ -51,8 +51,9 @@ impl fmt::Display for AllocError {
 ///
 /// `Allocator` is mostly designed to be implemented on ZSTs, references, or smart pointers,
 /// but can also be implemented directly on the underlying memory-owning type so long as it
-/// upholds the necessary guarantees. In general, an allocator for `MyAlloc([u8; N])` cannot be
-/// moved, without updating the pointers to the allocated memory.
+/// upholds the necessary guarantees. In general, an allocator of the type `MyAlloc([u8; N])`
+/// cannot be soundly created without being pinned or otherwise immovable in order to be
+/// correct.
 ///
 /// In contrast to [`GlobalAlloc`][], `Allocator` allows zero-sized allocations. If an underlying
 /// allocator does not support this (like jemalloc) or responds by returning a null pointer
