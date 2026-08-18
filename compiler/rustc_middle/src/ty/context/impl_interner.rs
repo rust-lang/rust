@@ -23,7 +23,7 @@ use crate::traits::solve::{
 };
 use crate::ty::{
     self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
-    Region, RegionKind, Ty, TyCtxt,
+    Region, RegionKind, RequiredDepth, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -668,7 +668,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         canonical_goal: CanonicalInput<'tcx>,
         root_depth: usize,
-    ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>) {
+    ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>, RequiredDepth) {
         self.evaluate_root_goal_for_proof_tree_raw((canonical_goal, root_depth))
     }
 

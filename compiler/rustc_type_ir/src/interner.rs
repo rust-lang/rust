@@ -15,6 +15,7 @@ use crate::intern::Interned;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
+use crate::search_graph::RequiredDepth;
 use crate::solve::{
     AccessedOpaques, CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
@@ -500,7 +501,7 @@ pub trait Interner:
         self,
         canonical_goal: CanonicalInput<Self>,
         root_depth: usize,
-    ) -> (QueryResult<Self>, Self::Probe);
+    ) -> (QueryResult<Self>, Self::Probe, RequiredDepth);
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 

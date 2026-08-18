@@ -311,10 +311,13 @@ impl AvailableDepth {
 
     /// Whether we're allowed to use a global cache entry which required
     /// the given depth.
-    fn cache_entry_is_applicable(self, additional_depth: usize) -> bool {
-        self.0 >= additional_depth
+    fn cache_entry_is_applicable(self, required_depth: RequiredDepth) -> bool {
+        self.0 >= required_depth.0
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RequiredDepth(pub usize);
 
 #[derive(Clone, Copy, Debug)]
 struct CycleHead {
@@ -569,7 +572,7 @@ struct ProvisionalCacheEntry<X: Cx> {
 #[derive_where(Debug; X: Cx)]
 struct EvaluationResult<X: Cx> {
     encountered_overflow: bool,
-    required_depth: usize,
+    required_depth: RequiredDepth,
     heads: CycleHeads,
     nested_goals: NestedGoals<X>,
     result: X::Result,
@@ -750,7 +753,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         root_depth: usize,
         input: X::Input,
         inspect: &mut D::ProofTreeBuilder,
-    ) -> X::Result {
+    ) -> (X::Result, RequiredDepth) {
         let mut this = SearchGraph::<D>::new(root_depth);
         let available_depth = AvailableDepth(root_depth);
         let step_kind_from_parent = PathKind::Inductive; // is never used
@@ -767,7 +770,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             nested_goals: Default::default(),
         });
         let evaluation_result = this.evaluate_goal_in_task(cx, input, inspect);
-        evaluation_result.result
+        (evaluation_result.result, evaluation_result.required_depth)
     }
 
     /// Probably the most involved method of the whole solver.
@@ -865,7 +868,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             UpdateParentGoalCtxt::Ordinary {
                 nested_goals: &evaluation_result.nested_goals,
                 min_reachable_available_depth: AvailableDepth(
-                    available_depth.0 - evaluation_result.required_depth,
+                    available_depth.0 - evaluation_result.required_depth.0,
                 ),
             },
         );
@@ -1271,7 +1274,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 UpdateParentGoalCtxt::Ordinary {
                     nested_goals,
                     min_reachable_available_depth: AvailableDepth(
-                        available_depth.0 - required_depth,
+                        available_depth.0 - required_depth.0,
                     ),
                 },
             );
