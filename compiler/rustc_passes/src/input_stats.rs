@@ -448,7 +448,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, tree: &'v hir::UseTree<'v>, _hir_id: HirId) {
+    fn visit_use(&mut self, tree: &'v hir::UseTree<'v>, _hir_id: HirId, _def_id: LocalDefId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", None, tree);
         // Don't call `hir_visit::walk_use(self, p, hir_id)`: it calls
@@ -461,8 +461,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         match tree.kind {
             hir::UseKind::Single(_) | hir::UseKind::Glob => {}
             hir::UseKind::Nested { items } => {
-                for (tree, id) in items {
-                    self.visit_use(tree, *id);
+                for (tree, id, def_id) in items {
+                    self.visit_use(tree, *id, *def_id);
                 }
             }
         }

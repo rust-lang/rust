@@ -890,7 +890,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
         intravisit::walk_poly_trait_ref(self, t);
     }
 
-    fn visit_use(&mut self, tree: &'tcx hir::UseTree<'tcx>, hir_id: HirId) {
+    fn visit_use(&mut self, tree: &'tcx hir::UseTree<'tcx>, hir_id: HirId, def_id: LocalDefId) {
         let mut v = vec![];
 
         #[instrument(skip(visitor))]
@@ -898,6 +898,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             visitor: &mut Checker<'tcx>,
             tree: &'tcx hir::UseTree<'tcx>,
             hir_id: HirId,
+            def_id: LocalDefId,
             stack: &mut Vec<&'tcx [hir::PathSegment<'tcx>]>,
         ) {
             let UsePath { segments, res, span } = *tree.prefix;
@@ -940,15 +941,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             stack,
                         );
                     } else {
-                        for (tree, id) in items {
-                            recurse(visitor, tree, *id, stack);
+                        for (tree, id, def_id) in items {
+                            recurse(visitor, tree, *id, *def_id, stack);
                         }
                     }
                     stack.pop();
                 }
             }
         }
-        recurse(self, tree, hir_id, &mut v);
+        recurse(self, tree, hir_id, def_id, &mut v);
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, id: hir::HirId) {

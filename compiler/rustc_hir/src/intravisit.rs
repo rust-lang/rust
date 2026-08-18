@@ -421,7 +421,12 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_fn(self, fk, fd, b, id)
     }
-    fn visit_use(&mut self, tree: &'v UseTree<'v>, hir_id: HirId) -> Self::Result {
+    fn visit_use(
+        &mut self,
+        tree: &'v UseTree<'v>,
+        hir_id: HirId,
+        _def_id: LocalDefId,
+    ) -> Self::Result {
         walk_use(self, tree, hir_id)
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) -> Self::Result {
@@ -551,7 +556,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ident(ident));
         }
         ItemKind::Use(ref tree) => {
-            try_visit!(visitor.visit_use(tree, item.hir_id()));
+            try_visit!(visitor.visit_use(tree, item.hir_id(), item.owner_id.def_id));
         }
         ItemKind::Static(_, ident, ref typ, body) => {
             try_visit!(visitor.visit_ident(ident));
@@ -1274,8 +1279,8 @@ pub fn walk_use<'v, V: Visitor<'v>>(
         UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
         UseKind::Glob => {}
         UseKind::Nested { items } => {
-            for (tree, id) in items {
-                try_visit!(visitor.visit_use(tree, *id));
+            for (tree, id, def_id) in items {
+                try_visit!(visitor.visit_use(tree, *id, *def_id));
             }
         }
     }
