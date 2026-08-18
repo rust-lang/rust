@@ -180,6 +180,7 @@ pub fn format_code(
     input: impl std::fmt::Display,
 ) -> std::io::Result<()> {
     let proc = Command::new("rustfmt")
+        // Ensure that we generate the same file contents on both Linux and Windows.
         .arg("--config")
         .arg("newline_style=Unix")
         .stdin(Stdio::piped())
