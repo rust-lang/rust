@@ -136,15 +136,4 @@ macro_rules! define_config {
     }
 }
 
-macro_rules! check_ci_llvm {
-    ($name:expr) => {
-        assert!(
-            $name.is_none(),
-            "setting {} is incompatible with download-ci-llvm.",
-            stringify!($name).replace("_", "-")
-        );
-    };
-}
-
-pub(crate) use check_ci_llvm;
 pub(crate) use define_config;
