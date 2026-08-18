@@ -8,6 +8,7 @@ members = [
     "crates/musl-math-sys",
     "crates/panic-handler",
     "crates/symcheck",
+    "crates/sysbench",
     "crates/update-api-list",
     "crates/util",
     "libm",

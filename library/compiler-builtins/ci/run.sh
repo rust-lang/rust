@@ -58,6 +58,9 @@ fi
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     echo "no tests to run for build-only targets"
 else
+    # Get a quick performance score
+    cargo run -p sysbench --target "$target" --release
+
     test_builtins=(
         "${test_runner[@]}"
         --package builtins-test
@@ -138,7 +141,7 @@ echo "::endgroup"
 # Test libm
 
 # Make sure a simple build works
-cargo check -p libm --no-default-features --target "$target"
+asgroup cargo check -p libm --no-default-features --target "$target"
 
 if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
     echo "skipping libm PR CI"
