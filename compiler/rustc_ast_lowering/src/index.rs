@@ -150,7 +150,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.visit_body(body);
     }
 
-    fn visit_use(&mut self, tree: &'hir UseTree<'hir>, hir_id: HirId) {
+    fn visit_use(&mut self, tree: &'hir UseTree<'hir>, hir_id: HirId, _def_id: LocalDefId) {
         if !hir_id.is_owner() {
             self.insert(tree.prefix.span, hir_id, Node::NestedUseTree(tree));
         }

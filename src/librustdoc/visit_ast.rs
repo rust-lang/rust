@@ -648,7 +648,7 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Handled in `visit_item_inner`
     }
 
-    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId) {
+    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId, _: LocalDefid) {
         // Handled in `visit_item_inner`
     }
 

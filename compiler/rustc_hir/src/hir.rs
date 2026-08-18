@@ -4085,7 +4085,7 @@ impl UseTree<'_> {
                 UseKind::Glob => yield self.prefix.res,
                 UseKind::Single(_) => yield self.prefix.res,
                 UseKind::Nested { items } => {
-                    for (item, _) in items {
+                    for (item, _, _) in items {
                         for res in item.resolutions() {
                             yield res;
                         }
@@ -4110,7 +4110,7 @@ pub enum UseKind<'hir> {
     Glob,
 
     /// `use prefix::{...}`
-    Nested { items: &'hir [(UseTree<'hir>, HirId)] },
+    Nested { items: &'hir [(UseTree<'hir>, HirId, LocalDefId)] },
 }
 
 /// References to traits in impls.
