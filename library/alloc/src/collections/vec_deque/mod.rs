@@ -3991,7 +3991,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// any additional memory.
     #[inline]
     fn from(other: Vec<T, A>) -> Self {
-        let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
+        let (ptr, len, cap, alloc) = other.into_raw_parts_with_allocator();
         Self {
             head: WrappedIndex::zero(),
             len,
