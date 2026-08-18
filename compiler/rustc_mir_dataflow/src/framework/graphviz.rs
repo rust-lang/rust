@@ -12,7 +12,7 @@ use rustc_hir::attrs::{BorrowckGraphvizFormatKind, RustcMirKind};
 use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, Location, MirDumper, graphviz_safe_def_name, traversal,
+    self, BasicBlock, Body, Location, MirDumper, TerminatorEdges, graphviz_safe_def_name, traversal,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -20,9 +20,7 @@ use rustc_span::def_id::DefId;
 use tracing::debug;
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
-use super::{
-    Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor, visit_results,
-};
+use super::{Analysis, Direction, Results, ResultsCursor, ResultsVisitor, visit_results};
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
 /// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
@@ -357,16 +355,20 @@ where
         // FIXME: These should really be printed as part of each outgoing edge rather than the node
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
-        match terminator.kind {
-            mir::TerminatorKind::Call { destination, .. } => {
-                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.cursor.get().clone();
+
+        match terminator.edges() {
+            TerminatorEdges::AssignOnReturn { return_, place, .. } if !return_.is_empty() => {
+                let label = match place {
+                    mir::CallReturnPlaces::Call(_) | mir::CallReturnPlaces::InlineAsm(_) => {
+                        "(on successful return)"
+                    }
+                    mir::CallReturnPlaces::Yield(_) => "(on yield resume)",
+                };
+
+                self.write_row(w, "", label, |this, w, fmt| {
+                    let state_before_effect = this.cursor.get().clone();
                     this.cursor.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(
-                            state,
-                            block,
-                            CallReturnPlaces::Call(destination),
-                        );
+                        analysis.apply_call_return_effect(state, block, place);
                     });
 
                     write!(
@@ -376,59 +378,7 @@ where
                         fmt = fmt,
                         diff = diff_pretty(
                             this.cursor.get(),
-                            &state_on_unwind,
-                            this.cursor.analysis()
-                        ),
-                    )
-                })?;
-            }
-
-            mir::TerminatorKind::Yield { resume_arg, .. } => {
-                self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
-                    let state_on_coroutine_drop = this.cursor.get().clone();
-                    this.cursor.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(
-                            state,
-                            block,
-                            CallReturnPlaces::Yield(resume_arg),
-                        );
-                    });
-
-                    write!(
-                        w,
-                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">{diff}</td>"#,
-                        colspan = this.style.num_state_columns(),
-                        fmt = fmt,
-                        diff = diff_pretty(
-                            this.cursor.get(),
-                            &state_on_coroutine_drop,
-                            this.cursor.analysis()
-                        ),
-                    )
-                })?;
-            }
-
-            mir::TerminatorKind::InlineAsm { ref targets, ref operands, .. }
-                if !targets.is_empty() =>
-            {
-                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.cursor.get().clone();
-                    this.cursor.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(
-                            state,
-                            block,
-                            CallReturnPlaces::InlineAsm(operands),
-                        );
-                    });
-
-                    write!(
-                        w,
-                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">{diff}</td>"#,
-                        colspan = this.style.num_state_columns(),
-                        fmt = fmt,
-                        diff = diff_pretty(
-                            this.cursor.get(),
-                            &state_on_unwind,
+                            &state_before_effect,
                             this.cursor.analysis()
                         ),
                     )
@@ -436,7 +386,7 @@ where
             }
 
             _ => {}
-        };
+        }
 
         write!(w, "</table>")?;
 
