@@ -632,7 +632,7 @@ const _: () = ();
 /// For more information, see the Reference on [the `non_exhaustive` attribute].
 ///
 /// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
-mod non_exhaustive_attribute {}
+const _: () = ();
 
 #[doc(attribute = "cfg_attr")]
 //
@@ -679,5 +679,4 @@ mod non_exhaustive_attribute {}
 ///
 /// [`cfg`]: ./attribute.cfg.html
 /// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
-mod cfg_attr_attribute {}
 const _: () = ();
