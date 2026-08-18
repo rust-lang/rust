@@ -90,12 +90,16 @@ pub mod mitigation_coverage;
 
 mod target_modifier_consistency_check {
     use super::*;
-    pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
-        let mut lparsed: SanitizerSet = Default::default();
+    pub(super) fn sanitizer(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        let mut lparsed: SanitizerSet = sess.target.options.default_sanitizers;
         let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
         parse::parse_sanitizers(&mut lparsed, lval);
 
-        let mut rparsed: SanitizerSet = Default::default();
+        let mut rparsed: SanitizerSet = sess.target.options.default_sanitizers;
         let rval = r.filter(|v| !v.value_name.is_empty()).map(|v| v.value_name.as_str());
         parse::parse_sanitizers(&mut rparsed, rval);
 
@@ -166,7 +170,7 @@ impl TargetModifier {
         match self.opt {
             OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
                 UnstableOptionsTargetModifiers::Sanitizer => {
-                    return target_modifier_consistency_check::sanitizer(self, other);
+                    return target_modifier_consistency_check::sanitizer(sess, self, other);
                 }
                 UnstableOptionsTargetModifiers::SanitizerCfiNormalizeIntegers => {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
