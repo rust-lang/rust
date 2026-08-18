@@ -297,7 +297,7 @@ where
         //   +-+----------------------------------+------------+
         // B |                MIR                 |   STATE    |
         //   +-+----------------------------------+------------+
-        // C | | (on entry)                       | {_0,_2,_3} |
+        // C | | (on start)                       | {_0,_2,_3} |
         //   +-+----------------------------------+------------+
         // D |0| StorageLive(_7)                  |            |
         //   +-+----------------------------------+------------+
@@ -581,7 +581,7 @@ where
         f: impl FnOnce(&mut Self, &mut W, &str) -> io::Result<()>,
     ) -> io::Result<()> {
         let bg = self.toggle_background();
-        let valign = if mir.starts_with("(on ") && mir != "(on entry)" { "bottom" } else { "top" };
+        let valign = if mir.starts_with("(on ") && mir != "(on start)" { "bottom" } else { "top" };
 
         let fmt = format!("valign=\"{}\" sides=\"tl\" {}", valign, bg.attr());
 
