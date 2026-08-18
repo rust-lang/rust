@@ -364,7 +364,9 @@ pub mod primitive;
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
     deprecated_in_future,
-    unreachable_pub
+    unreachable_pub,
+    // FIXME: stdach is a submodule so clippy lints should be fixed (and ideally enforced) there
+    clippy::all,
 )]
 #[allow(rustdoc::bare_urls)]
 mod core_arch;
