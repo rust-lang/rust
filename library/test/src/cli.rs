@@ -87,7 +87,7 @@ fn optgroups() -> getopts::Options {
              Alias to --format=terse",
         )
         .optflag("", "exact", "Exactly match filters rather than by substring")
-        .optopt(
+        .optmulti(
             "",
             "color",
             "Configure coloring of output:
@@ -433,20 +433,21 @@ fn get_format(
 }
 
 fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
-    let color = match matches.opt_str("color").as_deref() {
-        Some("auto") | None => ColorConfig::AutoColor,
-        Some("always") => ColorConfig::AlwaysColor,
-        Some("never") => ColorConfig::NeverColor,
+    let mut last_color = ColorConfig::AutoColor;
+    for color in matches.opt_strs("color") {
+        last_color = match color.as_str() {
+            "auto" => ColorConfig::AutoColor,
+            "always" => ColorConfig::AlwaysColor,
+            "never" => ColorConfig::NeverColor,
+            v => {
+                return Err(format!(
+                    "argument for --color must be auto, always, or never (was {v})"
+                ));
+            }
+        };
+    }
 
-        Some(v) => {
-            return Err(format!(
-                "argument for --color must be auto, always, or never (was \
-                 {v})"
-            ));
-        }
-    };
-
-    Ok(color)
+    Ok(last_color)
 }
 
 fn get_nocapture(matches: &getopts::Matches) -> OptPartRes<bool> {
