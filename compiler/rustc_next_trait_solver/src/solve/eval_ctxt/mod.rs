@@ -1282,9 +1282,14 @@ where
         Ok(())
     }
 
-    // Try to evaluate a const, or return `None` if the const is too generic.
-    // This doesn't mean the const isn't evaluatable, though, and should be treated
-    // as an ambiguity rather than no-solution.
+    // Try to evaluate a const, returning `(Option<Const>, Certainty)`, this returns
+    // `NoSolution` when concrete const fails to prove well-formedness in empty env.
+    //
+    // `(None, Maybe(_))` means we couldn't fully check const's well-formedness, and
+    // bailed without evaluation.
+    //
+    // `(None, Certainty::Yes)` means const is too generic, and doesn't indicate the
+    // const isn't evaluatable, should be treated as an ambiguity rather than no-solution.
     pub(super) fn evaluate_const(
         &mut self,
         param_env: I::ParamEnv,
@@ -1294,12 +1299,27 @@ where
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
         let cx = self.cx();
-        let certainty = if cx.features().generic_const_exprs() {
+
+        // Checking in empty env to be sure const is WF without relying on assumptions from env,
+        // preventing ill-formed consts from reaching CTFE.
+        //
+        // For example without this check const with `[u8]: Sized` bound could get to be evaluated
+        // in environment with the same assumption, pass and ICE later in CTFE.
+        let certainty = if alias_const.has_non_region_infer()
+            || alias_const.has_non_region_param()
+            || alias_const.has_non_region_placeholders()
+        {
+            // Skip proving for not fully concrete consts as they either won't reach CTFE or
+            // can't depend on generics even if they have them to pass CTFE.
             Certainty::Yes
-        } else {
+        }
+        // We do this only for GCA consts. Doing this check for GCE introduces cycles with anon
+        // consts in impl blocks.
+        else if cx.features().generic_const_args() {
+            // FIXME(zedddie): we should check this in `fully_monomorphized()` Typing mode.
             let goal = Goal::new(
                 cx,
-                param_env,
+                ParamEnv::empty(),
                 ty::ClauseKind::WellFormed(alias_const.to_const(cx, ty::IsRigid::Yes).into()),
             );
             self.add_goal(GoalSource::AliasWellFormed, goal)?;
@@ -1309,6 +1329,8 @@ where
                 return Ok((None, certainty));
             }
             certainty
+        } else {
+            Certainty::Yes
         };
 
         Ok((self.delegate.evaluate_const(param_env, alias_const), certainty))

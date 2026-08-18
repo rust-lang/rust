@@ -212,6 +212,9 @@ where
                 // error in that case is unnecessary noise. This may change in the future once
                 // evaluation failures are allowed to impact selection, e.g. generic const
                 // expressions in impl headers or `where`-clauses.
+                //
+                // `evaluate_const` itself can return `NoSolution` if alias' WF doesn't hold in
+                // empty environment.
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
