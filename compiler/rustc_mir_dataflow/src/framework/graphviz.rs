@@ -43,28 +43,22 @@ where
     let def_id = body.source.def_id();
     let attrs = RustcMirAttrs::parse(tcx, def_id);
 
-    let file = try {
-        match attrs.output_path(A::NAME) {
-            Some(path) => {
-                debug!("printing dataflow results for {:?} to {}", def_id, path.display());
-                if let Some(parent) = path.parent() {
-                    fs::create_dir_all(parent)?;
-                }
-                fs::File::create_buffered(&path)?
+    let mut file = match attrs.output_path(A::NAME) {
+        Some(path) => {
+            debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
             }
-
-            None => {
-                let Some(dumper) = MirDumper::new(tcx, A::NAME, body) else {
-                    return Ok(());
-                };
-                let disambiguator = &pass_name.unwrap_or("-----");
-                dumper.set_disambiguator(disambiguator).create_dump_file("dot", body)?
-            }
+            fs::File::create_buffered(&path)?
         }
-    };
-    let mut file = match file {
-        Ok(f) => f,
-        Err(e) => return Err(e),
+
+        None => {
+            let Some(dumper) = MirDumper::new(tcx, A::NAME, body) else {
+                return Ok(());
+            };
+            let disambiguator = &pass_name.unwrap_or("-----");
+            dumper.set_disambiguator(disambiguator).create_dump_file("dot", body)?
+        }
     };
 
     let style = attrs.formatter.unwrap_or(OutputStyle::AfterOnly);
@@ -77,14 +71,8 @@ where
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
-    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
-
-    let lhs = try {
-        r?;
-        file.write_all(&buf)?;
-    };
-
-    lhs
+    with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts))?;
+    file.write_all(&buf)
 }
 
 #[derive(Default)]
