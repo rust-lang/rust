@@ -38,12 +38,9 @@
 ///
 /// A quick overview of attributes supported right now are:
 ///
+// FIXME: Add missing attributes.
 /// * `maybe_use_optimized_c_shim` - indicates that the Rust implementation is
 ///   ignored if an optimized C version was compiled.
-/// * `aapcs_on_arm` - forces the ABI of the function to be `"aapcs"` on ARM and
-///   the specified ABI everywhere else.
-/// * `unadjusted_on_win64` - like `aapcs_on_arm` this switches to the
-///   `"unadjusted"` abi on Win64 and the specified abi elsewhere.
 /// * `arm_aeabi_alias` - handles the "aliasing" of various intrinsics on ARM
 ///   their otherwise typical names to other prefixed ones.
 /// * `ppc_name` - changes the name of the symbol on PowerPC platforms without
@@ -170,38 +167,7 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // We recognize the `#[aapcs_on_arm]` attribute here and generate the
-    // same intrinsic but force it to have the `"aapcs"` calling convention on
-    // ARM and `"C"` elsewhere.
-    (
-        #[aapcs_on_arm]
-        $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        #[cfg(target_arch = "arm")]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern "aapcs" fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        #[cfg(not(target_arch = "arm"))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // `arm_aeabi_alias` would conflict with `f16_apple_{arg,ret}_abi` not handled here. Avoid macro ambiguity by combining in a
+    // `arm_aeabi_alias` would conflict with `apple_f16_{arg,ret}_abi` not handled here. Avoid macro ambiguity by combining in a
     // single `#[]`.
     (
         #[apple_f16_arg_abi]
