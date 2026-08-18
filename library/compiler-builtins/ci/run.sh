@@ -61,7 +61,6 @@ else
     "${test_builtins[@]}" --release
     "${test_builtins[@]}" --features c
     "${test_builtins[@]}" --features c --release
-    "${test_builtins[@]}" --benches
     "${test_builtins[@]}" --benches --release
     "${test_builtins[@]}" --no-default-features
     "${test_builtins[@]}" --no-default-features --release
@@ -201,7 +200,6 @@ else
 
     # Test once with intrinsics enabled
     "${cmd[@]}" --features arch,unstable-intrinsics
-    "${cmd[@]}" --features arch,unstable-intrinsics --benches
 
     # Test the same in release mode, which also increases coverage. Also ensure
     # the soft float routines are checked.
