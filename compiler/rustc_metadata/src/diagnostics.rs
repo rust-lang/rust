@@ -664,8 +664,6 @@ pub(crate) struct UnusedCrateDependency {
     "it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z deny-partial-mitigations={$mitigation_name}`"
 )]
 pub(crate) struct MitigationLessStrictInDependency {
-    #[primary_span]
-    pub span: Span,
     pub mitigation_name: String,
     pub mitigation_level: String,
     pub extern_crate: Symbol,
