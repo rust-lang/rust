@@ -29,7 +29,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
 use rustc_structures::CrateType;
-use rustc_target::spec::Target;
+use rustc_target::spec::{Arch, Target};
 use tracing::info;
 
 use crate::diagnostics;
@@ -107,16 +107,36 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
         );
     }
 
+    // Make this a hard error on ARM since starting with LLVM24, the backend will otherwise
+    // emit a (less friendly) hard error.
+    let hard_error = matches!(sess.target.arch, Arch::Arm);
+
     for feature in abi_feature_constraints.required {
         if !sess.internal_target_features.contains(&Symbol::intern(feature)) {
-            sess.dcx()
-                .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "enabled" });
+            let diag = diagnostics::AbiRequiredTargetFeature {
+                feature,
+                enabled: "enabled",
+                fcw: !hard_error,
+            };
+            if hard_error {
+                sess.dcx().emit_err(diag);
+            } else {
+                sess.dcx().emit_warn(diag);
+            }
         }
     }
     for feature in abi_feature_constraints.incompatible {
         if sess.internal_target_features.contains(&Symbol::intern(feature)) {
-            sess.dcx()
-                .emit_warn(diagnostics::AbiRequiredTargetFeature { feature, enabled: "disabled" });
+            let diag = diagnostics::AbiRequiredTargetFeature {
+                feature,
+                enabled: "disabled",
+                fcw: !hard_error,
+            };
+            if hard_error {
+                sess.dcx().emit_err(diag);
+            } else {
+                sess.dcx().emit_warn(diag);
+            }
         }
     }
 }
