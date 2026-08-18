@@ -1199,10 +1199,10 @@ const _: () = ();
 /// # `&` vs `ref`
 ///
 /// - `&` denotes that your pattern expects a reference to an object. Hence `&`
-/// is a part of said pattern: `&Foo` matches different objects than `Foo` does.
+///   is a part of said pattern: `&Foo` matches different objects than `Foo` does.
 ///
 /// - `ref` indicates that you want a reference to an unpacked value. It is not
-/// matched against: `Foo(ref foo)` matches the same objects as `Foo(foo)`.
+///   matched against: `Foo(ref foo)` matches the same objects as `Foo(foo)`.
 ///
 /// See also the [Reference] for more information.
 ///
@@ -2079,13 +2079,13 @@ const _: () = ();
 /// here is a summary of the main points:
 ///
 /// - `unsafe fn`: calling this function means abiding by a contract the
-/// compiler cannot enforce.
+///   compiler cannot enforce.
 /// - `unsafe trait`: implementing the [`trait`] means abiding by a
-/// contract the compiler cannot enforce.
+///   contract the compiler cannot enforce.
 /// - `unsafe {}`: the contract necessary to call the operations inside the
-/// block has been checked by the programmer and is guaranteed to be respected.
+///   block has been checked by the programmer and is guaranteed to be respected.
 /// - `unsafe impl`: the contract necessary to implement the trait has been
-/// checked by the programmer and is guaranteed to be respected.
+///   checked by the programmer and is guaranteed to be respected.
 ///
 /// On old editions, `unsafe fn` also acts like an `unsafe {}` block around the code inside the
 /// function. This means it is not just a signal to the caller, but also promises that the
