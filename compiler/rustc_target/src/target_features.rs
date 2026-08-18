@@ -1099,7 +1099,8 @@ pub fn feature_to_arch_names(feature: &str) -> Vec<&'static str> {
 }
 
 // These arrays represent the least-constraining feature that is required for vector types up to a
-// certain size to have their "proper" ABI on each architecture.
+// certain size to have their "proper" ABI on each architecture. An empty feature name means
+// that the given length is unconditionally available.
 // Note that they must be kept sorted by vector size.
 const X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "sse"), (256, "avx"), (512, "avx512f")]; // FIXME: might need changes for AVX10.
