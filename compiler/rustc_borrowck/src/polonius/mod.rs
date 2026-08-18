@@ -45,6 +45,7 @@ use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
+use tracing::debug;
 
 pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
@@ -184,6 +185,8 @@ impl LocalizedConstraintGraphVisitor for LoanLivenessVisitor<'_> {
         // implementation in a-mir-formality, fuzzing, or manually crafting counter-examples.
         if self.liveness.is_live_at_point(node.region, node.point) {
             self.live_loans.insert(node.point, loan);
+        } else {
+            debug!("Region not live at {node:?}; marking loan {loan:?} as not live!")
         }
     }
 }

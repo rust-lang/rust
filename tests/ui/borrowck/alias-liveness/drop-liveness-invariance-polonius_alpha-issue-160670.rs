@@ -21,7 +21,5 @@ fn main() {
     let b = Box::new(vec![vec![1]]);
     let d;
     d = mk(&*b);
-    drop(b);
-    // D::drop prints *(&*b) after the Box was freed. Note that
-    // manually moving out of `d` correctly errors.
+    drop(b); //~ ERROR cannot move out of `b` because it is borrowed
 }

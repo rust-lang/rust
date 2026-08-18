@@ -130,6 +130,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     }
 
     fn compute_for_all_locals(&mut self, relevant_live_locals: Vec<Local>) {
+        debug!(?relevant_live_locals);
         for local in relevant_live_locals {
             self.reset_local_state();
             self.add_defs_for(local);
@@ -586,9 +587,20 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             dropped_ty,
         );
 
+        // When using `-Zpolonius=next`, we record the variance of the type being dropped.
+        if let Some(polonius_context) = self.typeck.polonius_context.as_mut() {
+            debug!("Recording variance for dropped type {dropped_ty:?}");
+            polonius_context.record_live_region_variance(
+                self.typeck.infcx.tcx,
+                self.typeck.universal_regions,
+                dropped_ty,
+            );
+        }
+
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
+            debug!("Drop-liveness is making the following type live: {kind:?}");
             Self::make_all_regions_live(self.location_map, self.typeck, kind, live_at);
             polonius::legacy::emit_drop_facts(
                 self.typeck.tcx(),
@@ -617,7 +629,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             param_env: typeck.infcx.param_env,
             op: |r| {
                 let live_region_vid = typeck.universal_regions.to_region_vid(r);
-
+                debug!(?live_region_vid);
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });

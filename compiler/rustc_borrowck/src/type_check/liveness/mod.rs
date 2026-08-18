@@ -169,6 +169,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
     /// We sometimes have `region`s within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_region(&mut self, region: Region<'tcx>, location: Location) {
+        debug!("Visiting region {region:?} at {location:?}");
         self.record_regions_live_at(region, location);
         self.super_region(region);
     }
