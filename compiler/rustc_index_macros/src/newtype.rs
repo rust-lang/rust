@@ -138,14 +138,12 @@ impl Parse for Newtype {
                     }
 
                     #[inline]
-                    #[cfg(not(bootstrap))]
                     fn forward_overflowing(start: Self, u: usize) -> (Self, bool) {
                         let (s, o) = Self::index(start).overflowing_add(u);
                         (Self::from_usize(s), o)
                     }
 
                     #[inline]
-                    #[cfg(not(bootstrap))]
                     fn backward_overflowing(start: Self, u: usize) -> (Self, bool) {
                         let (s, o) = Self::index(start).overflowing_sub(u);
                         (Self::from_usize(s), o)
