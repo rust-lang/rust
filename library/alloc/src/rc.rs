@@ -342,9 +342,12 @@ impl<T: ?Sized, A: Allocator> !Send for Rc<T, A> {}
 impl<T: ?Sized, A: Allocator> !Sync for Rc<T, A> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized, A: Allocator + UnwindSafe> UnwindSafe for Rc<T, A> {}
+impl<T: RefUnwindSafe + ?Sized, A: Allocator + UnwindSafe + RefUnwindSafe> UnwindSafe for Rc<T, A> {}
 #[stable(feature = "rc_ref_unwind_safe", since = "1.58.0")]
-impl<T: RefUnwindSafe + ?Sized, A: Allocator + UnwindSafe> RefUnwindSafe for Rc<T, A> {}
+impl<T: RefUnwindSafe + ?Sized, A: Allocator + UnwindSafe + RefUnwindSafe> RefUnwindSafe
+    for Rc<T, A>
+{
+}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Rc<U, A>> for Rc<T, A> {}

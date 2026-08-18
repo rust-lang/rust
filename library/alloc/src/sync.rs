@@ -286,7 +286,10 @@ unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for Arc<T,
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Sync> Sync for Arc<T, A> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized, A: Allocator + UnwindSafe> UnwindSafe for Arc<T, A> {}
+impl<T: RefUnwindSafe + ?Sized, A: Allocator + UnwindSafe + RefUnwindSafe> UnwindSafe
+    for Arc<T, A>
+{
+}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Arc<U, A>> for Arc<T, A> {}
