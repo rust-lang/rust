@@ -659,7 +659,7 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+        if (self.proc_macro_clients.len() < self.workspaces.len() || !same_workspaces)
             && self.config.expand_proc_macros()
         {
             info!("Spawning proc-macro servers");
@@ -901,6 +901,7 @@ impl GlobalState {
                     self.config.default_root_path().clone(),
                     None,
                     None,
+                    None,
                 )]
             }
             crate::flycheck::InvocationStrategy::PerWorkspace => {
@@ -942,21 +943,30 @@ impl GlobalState {
                                 ProjectWorkspaceKind::DetachedFile { .. } => return None,
                             },
                             ws.sysroot.root().map(ToOwned::to_owned),
+                            ws.toolchain.clone(),
                         ))
                     })
-                    .map(|(id, (config_json, root, manifest_path, target_dir), sysroot_root)| {
-                        FlycheckHandle::spawn(
+                    .map(
+                        |(
                             id,
-                            generation.clone(),
-                            sender.clone(),
-                            config.clone(),
-                            config_json,
+                            (config_json, root, manifest_path, target_dir),
                             sysroot_root,
-                            root.to_path_buf(),
-                            manifest_path.map(|it| it.to_path_buf()),
-                            target_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
-                        )
-                    })
+                            toolchain,
+                        )| {
+                            FlycheckHandle::spawn(
+                                id,
+                                generation.clone(),
+                                sender.clone(),
+                                config.clone(),
+                                config_json,
+                                sysroot_root,
+                                root.to_path_buf(),
+                                manifest_path.map(|it| it.to_path_buf()),
+                                target_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
+                                toolchain,
+                            )
+                        },
+                    )
                     .collect()
             }
         }

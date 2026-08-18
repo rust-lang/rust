@@ -12,7 +12,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
 
-use crate::lints::{
+use crate::diagnostics::{
     AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,
     ImplicitSysrootCrateImportDiag, LintPassByHand, NonGlobImportTypeIrInherent, QueryInstability,
     QueryUntracked, RustcMustMatchExhaustivelyNotExhaustive, SpanUseEqCtxtDiag,

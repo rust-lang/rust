@@ -562,9 +562,9 @@ config_data! {
         ///
         /// **Warning**: This format is provisional and subject to change.
         ///
-        /// The discover command should output JSON objects, one per
-        /// line (JSONL format). These objects should correspond to
-        /// this Rust data type:
+        /// The discover command should output JSON objects to stdout,
+        /// one per line (JSONL format). These objects should correspond
+        /// to this Rust data type:
         ///
         /// ```norun
         /// #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -604,6 +604,9 @@ config_data! {
         /// Only the finished event is required, but the other
         /// variants are encouraged to give users more feedback about
         /// progress or errors.
+        ///
+        /// Stderr is not parsed as JSONL. It is treated as command log
+        /// output and forwarded to rust-analyzer's own logs.
         workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
     }
 }
@@ -619,10 +622,6 @@ config_data! {
 
         /// Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
         assist_preferSelf: bool = false,
-
-        /// Enable borrow checking for term search code assists. If set to false, also there will be
-        /// more suggestions, but some of them may not borrow-check.
-        assist_termSearch_borrowcheck: bool = true,
 
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
@@ -1552,6 +1551,9 @@ pub struct LensConfig {
     pub refs_trait: bool, // for Struct, Enum, Union and Trait
     pub enum_variant_refs: bool,
 
+    pub refs_exclude_imports: bool,
+    pub refs_exclude_tests: bool,
+
     // annotations
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
@@ -1595,10 +1597,6 @@ impl LensConfig {
         self.run || self.debug || self.update_test
     }
 
-    pub fn references(&self) -> bool {
-        self.method_refs || self.refs_adt || self.refs_trait || self.enum_variant_refs
-    }
-
     pub fn into_annotation_config<'a>(
         self,
         binary_target: bool,
@@ -1611,6 +1609,8 @@ impl LensConfig {
             annotate_references: self.refs_adt,
             annotate_method_references: self.method_refs,
             annotate_enum_variant_references: self.enum_variant_refs,
+            references_exclude_imports: self.refs_exclude_imports,
+            references_exclude_tests: self.refs_exclude_tests,
             location: self.location.into(),
             ra_fixture: RaFixtureConfig { minicore, disable_ra_fixture: self.disable_ra_fixture },
             filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
@@ -1864,7 +1864,6 @@ impl Config {
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
-            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             code_action_grouping: self.code_action_group(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
@@ -1994,7 +1993,6 @@ impl Config {
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
-            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
@@ -2703,18 +2701,19 @@ impl Config {
     }
 
     pub fn lens(&self) -> LensConfig {
+        let enable = *self.lens_enable();
         LensConfig {
-            run: *self.lens_enable() && *self.lens_run_enable(),
-            debug: *self.lens_enable() && *self.lens_debug_enable(),
-            update_test: *self.lens_enable()
-                && *self.lens_updateTest_enable()
-                && *self.lens_run_enable(),
-            interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
-            implementations: *self.lens_enable() && *self.lens_implementations_enable(),
-            method_refs: *self.lens_enable() && *self.lens_references_method_enable(),
-            refs_adt: *self.lens_enable() && *self.lens_references_adt_enable(),
-            refs_trait: *self.lens_enable() && *self.lens_references_trait_enable(),
-            enum_variant_refs: *self.lens_enable() && *self.lens_references_enumVariant_enable(),
+            run: enable && *self.lens_run_enable(),
+            debug: enable && *self.lens_debug_enable(),
+            update_test: enable && *self.lens_updateTest_enable() && *self.lens_run_enable(),
+            interpret: enable && *self.lens_run_enable() && *self.interpret_tests(),
+            implementations: enable && *self.lens_implementations_enable(),
+            method_refs: enable && *self.lens_references_method_enable(),
+            refs_adt: enable && *self.lens_references_adt_enable(),
+            refs_trait: enable && *self.lens_references_trait_enable(),
+            enum_variant_refs: enable && *self.lens_references_enumVariant_enable(),
+            refs_exclude_imports: *self.references_excludeImports(),
+            refs_exclude_tests: *self.references_excludeTests(),
             location: *self.lens_location(),
             filter_adjacent_derive_implementations: *self
                 .gotoImplementations_filterAdjacentDerives(),
@@ -2903,6 +2902,7 @@ enum SnippetScopeDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(default)]
+#[serde(try_from = "SnippetDefRepr")]
 pub(crate) struct SnippetDef {
     #[serde(with = "single_or_array")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -2924,6 +2924,46 @@ pub(crate) struct SnippetDef {
     description: Option<String>,
 
     scope: SnippetScopeDef,
+}
+
+/// Plain deserialization target for [`SnippetDef`]. Both the client JSON
+/// config and `rust-analyzer.toml` configs deserialize a `SnippetDef` per
+/// map entry, so validating the field combination here (via `TryFrom`)
+/// covers both config sources instead of only one.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct SnippetDefRepr {
+    #[serde(with = "single_or_array")]
+    prefix: Vec<String>,
+    #[serde(with = "single_or_array")]
+    postfix: Vec<String>,
+    #[serde(with = "single_or_array")]
+    body: Vec<String>,
+    #[serde(with = "single_or_array")]
+    requires: Vec<String>,
+    description: Option<String>,
+    scope: SnippetScopeDef,
+}
+
+impl TryFrom<SnippetDefRepr> for SnippetDef {
+    type Error = String;
+
+    fn try_from(repr: SnippetDefRepr) -> Result<Self, Self::Error> {
+        if repr.scope == SnippetScopeDef::Item && !repr.postfix.is_empty() {
+            return Err(
+                "'postfix' is not supported together with '\"scope\": \"item\"'; postfix snippets are not supported in item scope"
+                    .to_owned(),
+            );
+        }
+        Ok(SnippetDef {
+            prefix: repr.prefix,
+            postfix: repr.postfix,
+            body: repr.body,
+            requires: repr.requires,
+            description: repr.description,
+            scope: repr.scope,
+        })
+    }
 }
 
 mod single_or_array {
@@ -3988,7 +4028,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
                 "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                "The command will be executed once with the opened project as the working directory."
+                "The command will be executed once with the opened project as the working directory.\
+                \n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different \
+                or even only different than the default. Enabling this is not recommended."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {
@@ -4422,5 +4464,31 @@ mod tests {
             } if target_dir_config.target_dir(None).map(Cow::into_owned)
                 == Some(Utf8PathBuf::from("other_folder"))
         ));
+    }
+    #[test]
+    fn postfix_snippet_item_scope_is_invalid() {
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
+        let mut change = ConfigChange::default();
+        change.change_client_config(serde_json::json!({
+            "completion":{
+                "snippets": {
+                    "custom":{
+                        "foo": {
+                            "postfix": "foo",
+                            "body": "foo",
+                            "scope": "item"
+                        }
+                    }
+                }
+            }
+        }));
+        let errors;
+        (config, errors, _) = config.apply_change(change);
+        assert!(!errors.0.is_empty(), "expected a config error for postfix+item scope");
+        assert!(
+            config.snippets.iter().all(|s| s.postfix_triggers.iter().all(|t| &**t != "foo")),
+            "invalid snippet should not have been registered"
+        );
     }
 }

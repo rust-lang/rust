@@ -1,8 +1,14 @@
-error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-field-lifetime-swap.rs:18:10
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-field-lifetime-swap.rs:14:5
    |
+LL |     x: &'static (),
+   |     -------------- source field `x` has type `&'static ()`
+...
+LL |     x: &'a (),
+   |     ^^^^^^^^^ target field `x` has type `&'a ()`
+...
 LL | impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
-   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   | ------------------------------------------------- required by this `CoerceShared` implementation
 
 error: aborting due to 1 previous error
 

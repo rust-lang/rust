@@ -5,11 +5,10 @@ use std::{assert_matches, iter};
 
 use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::{ErrorGuaranteed, Ident, RemapPathScopeComponents, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
@@ -538,30 +537,12 @@ fn check_test_signature(
         }));
     }
 
-    if let Some(coroutine_kind) = f.sig.header.coroutine_kind {
-        match coroutine_kind {
-            ast::CoroutineKind::Async { span, .. } => {
-                return Err(dcx.emit_err(diagnostics::TestBadFn {
-                    span: i.span,
-                    cause: span,
-                    kind: "async",
-                }));
-            }
-            ast::CoroutineKind::Gen { span, .. } => {
-                return Err(dcx.emit_err(diagnostics::TestBadFn {
-                    span: i.span,
-                    cause: span,
-                    kind: "gen",
-                }));
-            }
-            ast::CoroutineKind::AsyncGen { span, .. } => {
-                return Err(dcx.emit_err(diagnostics::TestBadFn {
-                    span: i.span,
-                    cause: span,
-                    kind: "async gen",
-                }));
-            }
-        }
+    if let Some(coroutine_marker) = f.sig.header.coroutine_marker {
+        return Err(dcx.emit_err(diagnostics::TestBadFn {
+            span: i.span,
+            cause: coroutine_marker.span,
+            kind: coroutine_marker.kind.as_str(),
+        }));
     }
 
     // If the termination trait is active, the compiler will check that the output

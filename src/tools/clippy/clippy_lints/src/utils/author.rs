@@ -1,6 +1,6 @@
 use clippy_utils::res::MaybeQPath;
 use clippy_utils::{get_builtin_attr, higher, sym};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;

@@ -28,7 +28,6 @@ declare_clippy_lint = { path = "declare_clippy_lint" }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
 tempfile = { version = "3.20", optional = true }
-termize = "0.2"
 color-print = "0.3.4"
 anstream = "0.6.18"
 
@@ -39,13 +38,12 @@ regex = "1.5.5"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.122"
 walkdir = "2.3"
-filetime = "0.2.9"
 itertools = "0.15"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
 askama = { version = "0.16.0", default-features = false, features = ["alloc", "config", "derive"] }
 
 [dev-dependencies.toml]
-version = "0.9.7"
+version = "1.1"
 default-features = false
 # preserve_order keeps diagnostic output in file order
 features = ["parse", "preserve_order"]
@@ -56,7 +54,6 @@ rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 [features]
 integration = ["dep:tempfile"]
 internal = ["dep:clippy_lints_internal", "dep:tempfile"]
-jemalloc = []
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]

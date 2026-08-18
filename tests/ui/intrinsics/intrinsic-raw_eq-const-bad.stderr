@@ -17,11 +17,11 @@ LL |     std::intrinsics::raw_eq(&(&0), &(&1))
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: encountered an unaligned reference (required 4 byte alignment but found 1)
-  --> $DIR/intrinsic-raw_eq-const-bad.rs:17:29
+error[E0080]: accessing memory with alignment 1, but alignment 4 is required
+  --> $DIR/intrinsic-raw_eq-const-bad.rs:17:5
    |
 LL |     std::intrinsics::raw_eq(aref, aref)
-   |                             ^^^^ evaluation of `RAW_EQ_NOT_ALIGNED` failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_EQ_NOT_ALIGNED` failed here
 
 error: aborting due to 3 previous errors
 

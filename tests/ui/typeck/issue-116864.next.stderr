@@ -2,7 +2,8 @@ error[E0277]: expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnM
   --> $DIR/issue-116864.rs:28:1
    |
 LL | / async fn foo<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
-...  |
+LL | |
+LL | |
 LL | | where
 LL | |     BAZ: Baz<Param = i32>,
    | |__________________________^ expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`

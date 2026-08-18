@@ -127,7 +127,7 @@ impl<'db> MatchFinder<'db> {
         usage_cache.find(&definition).unwrap()
     }
 
-    /// Returns the scope within which we want to search. We don't want un unrestricted search
+    /// Returns the scope within which we want to search. We don't want an unrestricted search
     /// scope, since we don't want to find references in external dependencies.
     fn search_scope(&self) -> SearchScope {
         // FIXME: We should ideally have a test that checks that we edit local roots and not library

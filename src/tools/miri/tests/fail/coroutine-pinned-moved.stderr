@@ -1,4 +1,4 @@
-error: Undefined Behavior: reference not dereferenceable: ALLOC has been freed, so this pointer is dangling
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
   --> tests/fail/coroutine-pinned-moved.rs:LL:CC
    |
 LL |         *num += 1;

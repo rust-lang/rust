@@ -74,7 +74,7 @@ impl ExprOrPatId {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, salsa::Update)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, salsa::SalsaValue)]
 pub struct ExprOrPatIdPacked(u32);
 
 const _: () = assert!(mem::size_of::<ExprOrPatIdPacked>() == mem::size_of::<u32>());
@@ -370,11 +370,6 @@ pub enum Expr {
         target: PatId,
         value: ExprId,
     },
-    Range {
-        lhs: Option<ExprId>,
-        rhs: Option<ExprId>,
-        range_type: RangeOp,
-    },
     Index {
         base: ExprId,
         index: ExprId,
@@ -459,8 +454,6 @@ impl Expr {
             | Expr::Yield { .. } => ExprPrecedence::Jump,
 
             Expr::Continue { .. } => ExprPrecedence::Unambiguous,
-
-            Expr::Range { .. } => ExprPrecedence::Range,
         }
     }
 }

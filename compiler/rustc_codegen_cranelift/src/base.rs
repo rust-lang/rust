@@ -8,6 +8,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -206,7 +207,8 @@ pub(crate) fn compile_fn(
                     Some(Box::new(&clif_comments)),
                     err,
                 );
-                dcx.fatal(format!("cranelift verify error:\n{pretty_error}"));
+                eprintln!("{pretty_error}");
+                bug!("cranelift verify error");
             }
             Err(err) => {
                 let mut clif = format_clif_ir_header(module.isa(), &codegened_func.symbol_name);
@@ -217,8 +219,9 @@ pub(crate) fn compile_fn(
                 )
                 .unwrap();
 
-                panic!(
-                    "Error while defining {name}: {err:?}\n\nPost-optimization Cranelift IR:\n{clif}",
+                bug!(
+                    "Error while defining {name}: {err:?}\n\n
+                    Post-optimization Cranelift IR:\n{clif}",
                     name = codegened_func.symbol_name
                 );
             }
@@ -273,7 +276,8 @@ fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.dcx().fatal(format!("cranelift verify error:\n{}", pretty_error));
+                eprintln!("{pretty_error}");
+                bug!("cranelift verify error");
             }
         }
     });
@@ -390,7 +394,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicBoundsCheck,
+                            LangItem::PanicBoundsCheck,
                             &[index, len, location],
                             *unwind,
                             source_info.span,
@@ -403,7 +407,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicMisalignedPointerDereference,
+                            LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
                             *unwind,
                             source_info.span,
@@ -414,7 +418,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicNullPointerDereference,
+                            LangItem::PanicNullPointerDereference,
                             &[location],
                             *unwind,
                             source_info.span,
@@ -425,7 +429,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicNullReferenceConstructed,
+                            LangItem::PanicNullReferenceConstructed,
                             &[location],
                             *unwind,
                             source_info.span,
@@ -437,7 +441,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicInvalidEnumConstruction,
+                            LangItem::PanicInvalidEnumConstruction,
                             &[source, location],
                             *unwind,
                             source_info.span,
@@ -1082,7 +1086,7 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
 
     codegen_panic_inner(
         fx,
-        rustc_hir::LangItem::PanicNounwind,
+        LangItem::PanicNounwind,
         &args,
         UnwindAction::Terminate(UnwindTerminateReason::Abi),
         span,
@@ -1099,7 +1103,7 @@ pub(crate) fn codegen_unwind_terminate<'tcx>(
 
 fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    lang_item: rustc_hir::LangItem,
+    lang_item: LangItem,
     args: &[Value],
     unwind: UnwindAction,
     span: Span,

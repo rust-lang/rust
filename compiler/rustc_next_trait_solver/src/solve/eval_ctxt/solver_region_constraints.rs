@@ -9,9 +9,10 @@ use rustc_type_ir::outlives::{Component, push_outlives_components};
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
     Assumptions, RegionConstraint, eagerly_handle_placeholders_in_universe,
+    evaluate_solver_constraint,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesPredicate, Region, TypeVisitable,
+    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesClause, Region, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UniverseIndex, max_universe,
 };
 use tracing::{debug, instrument};
@@ -108,7 +109,7 @@ where
 
         clauses.filter(move |clause| max_universe(&**self.delegate, *clause) == u).for_each(
             |clause| match clause.kind().skip_binder() {
-                RegionOutlives(OutlivesPredicate(r1, r2)) => {
+                RegionOutlives(OutlivesClause(r1, r2)) => {
                     assert!(clause.kind().no_bound_vars().is_some());
                     region_outlives_builder.add(r1, r2);
                 }
@@ -136,6 +137,7 @@ where
             .fold(constraint, |constraint, u| {
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
+        let constraint = evaluate_solver_constraint(&constraint.canonical_form());
 
         self.delegate.overwrite_solver_region_constraint(constraint.clone());
 

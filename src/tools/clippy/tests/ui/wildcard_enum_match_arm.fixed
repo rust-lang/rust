@@ -1,13 +1,6 @@
 //@aux-build:non-exhaustive-enum.rs
-#![deny(clippy::wildcard_enum_match_arm)]
-#![allow(dead_code, unreachable_code, unused_variables)]
-#![allow(
-    clippy::diverging_sub_expression,
-    clippy::single_match,
-    clippy::uninlined_format_args,
-    clippy::unnested_or_patterns,
-    clippy::wildcard_in_or_patterns
-)]
+#![warn(clippy::wildcard_enum_match_arm)]
+#![expect(clippy::diverging_sub_expression, clippy::single_match)]
 
 extern crate non_exhaustive_enum;
 

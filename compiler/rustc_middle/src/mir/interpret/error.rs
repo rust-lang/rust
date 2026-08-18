@@ -13,7 +13,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-use crate::error;
+use crate::diagnostics;
 use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
@@ -47,7 +47,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.allowed_in_infallible && !span.is_dummy() {
-                    tcx.dcx().emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(diagnostics::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}
@@ -217,6 +217,17 @@ impl<'tcx> InterpErrorInfo<'tcx> {
     #[inline]
     pub fn kind(&self) -> &InterpErrorKind<'tcx> {
         &self.0.kind
+    }
+
+    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
+    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+    /// triggered the error.
+    ///
+    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+    /// However, this is useful when error messages appear in ICEs.
+    pub fn to_string(&self) -> String {
+        self.0.backtrace.print_backtrace();
+        self.0.kind.to_string()
     }
 }
 
@@ -1045,14 +1056,6 @@ impl<'tcx, T> InterpResult<'tcx, T> {
     }
 
     #[inline]
-    pub fn map_err_info(
-        self,
-        f: impl FnOnce(InterpErrorInfo<'tcx>) -> InterpErrorInfo<'tcx>,
-    ) -> InterpResult<'tcx, T> {
-        InterpResult::new(self.disarm().map_err(f))
-    }
-
-    #[inline]
     pub fn map_err_kind(
         self,
         f: impl FnOnce(InterpErrorKind<'tcx>) -> InterpErrorKind<'tcx>,
@@ -1064,8 +1067,8 @@ impl<'tcx, T> InterpResult<'tcx, T> {
     }
 
     #[inline]
-    pub fn inspect_err_kind(self, f: impl FnOnce(&InterpErrorKind<'tcx>)) -> InterpResult<'tcx, T> {
-        InterpResult::new(self.disarm().inspect_err(|e| f(&e.0.kind)))
+    pub fn inspect_err_info(self, f: impl FnOnce(&InterpErrorInfo<'tcx>)) -> InterpResult<'tcx, T> {
+        InterpResult::new(self.disarm().inspect_err(f))
     }
 
     #[inline]

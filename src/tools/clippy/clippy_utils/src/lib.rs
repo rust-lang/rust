@@ -3,11 +3,11 @@
 #![feature(rustc_private)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
+#![expect(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal
@@ -77,7 +77,7 @@ use std::collections::hash_map::Entry;
 use std::iter::{once, repeat_n, zip};
 use std::sync::{Mutex, OnceLock};
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::{LitIntType, join_path_syms};
@@ -85,44 +85,43 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::attrs::CfgEntry;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, AnonConst, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, CRATE_HIR_ID,
-    Closure, ConstArg, ConstArgKind, CoroutineDesugaring, CoroutineKind, CoroutineSource,
-    Destination, Expr, ExprField, ExprKind, FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs,
-    HirId, HirIdMap, HirIdSet, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt,
-    MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind,
-    Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind,
-    UnOp, Variant, def, find_attr,
+    self as hir, AnonConst, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, CRATE_HIR_ID, Closure, ConstArg,
+    ConstArgKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind,
+    FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, HirIdSet, Impl, ImplItem, ImplItemKind, Item,
+    ItemKind, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind,
+    Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp, Variant, def,
+    find_attr,
 };
-
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use rustc_lint::{LateContext, Level, Lint, LintContext};
+use rustc_lint::{LateContext, Level, Lint, LintContext as _};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind, PointerCoercion};
-use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::layout::IntegerExt as _;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
-    TypeFlags, TypeVisitableExt, TypeckResults, UintTy, UpvarCapture,
+    TypeFlags, TypeVisitableExt as _, TypeckResults, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, SyntaxContext};
-use source::{SpanExt, walk_span_to_context};
+use source::{SpanExt as _, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::ast_utils::unordered_over;
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use crate::res::{MaybeDef as _, MaybeResPath as _};
 use crate::source::HasSourceMap;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
@@ -300,13 +299,13 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
 
 /// Checks is `expr` is `None`
 pub fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+    expr.basic_res().ctor_parent(cx).is_lang_item(cx, OptionNone)
 }
 
 /// If `expr` is `Some(inner)`, returns `inner`
 pub fn as_some_expr<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Call(e, [arg]) = expr.kind
-        && e.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+        && e.basic_res().ctor_parent(cx).is_lang_item(cx, OptionSome)
     {
         Some(arg)
     } else {
@@ -2100,7 +2099,7 @@ pub fn fn_has_unsatisfiable_clauses(cx: &LateContext<'_>, did: DefId) -> bool {
         .clauses_of(did)
         .clauses
         .iter()
-        .filter_map(|(c, _)| if c.is_global() { Some(*c) } else { None });
+        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     traits::impossible_clauses(cx.tcx, traits::elaborate(cx.tcx, clauses).collect::<Vec<_>>())
 }
 
@@ -3409,6 +3408,19 @@ pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'t
                 .walk()
                 .any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(re) if !re.is_static()))
         {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_break()
+}
+
+/// Returns true if `expr` creates any temporary that has a significant drop and does not consume
+/// it.
+pub fn leaks_droppable_temporary<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    for_each_unconsumed_temporary(cx, expr, |temporary_ty| {
+        if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env()) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())

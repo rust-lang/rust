@@ -67,9 +67,7 @@ fn get_projection_pred<'tcx>(
 ) -> Option<ProjectionPredicate<'tcx>> {
     generics.clauses.iter().find_map(|(clause, _)| {
         if let ClauseKind::Projection(pred) = clause.kind().skip_binder() {
-            let projection_pred = cx
-                .tcx
-                .instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
+            let projection_pred = cx.tcx.instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
             if projection_pred.projection_term.args == trait_pred.trait_ref.args {
                 return Some(projection_pred);
             }

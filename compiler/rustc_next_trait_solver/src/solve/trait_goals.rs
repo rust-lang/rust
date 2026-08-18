@@ -60,6 +60,7 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, TraitPredicate<I>>,
+        goal_trait_ref: TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
@@ -67,7 +68,7 @@ where
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
-            .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
+            .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
         {
             return Err(NoSolution.into());
         }
@@ -109,7 +110,7 @@ where
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
-            ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
+            ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
                 .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
@@ -899,7 +900,7 @@ where
                     }
                     ecx.add_goal(
                         GoalSource::Misc,
-                        goal.with(cx, ty::OutlivesPredicate(ty_lifetime, lifetime)),
+                        goal.with(cx, ty::OutlivesClause(ty_lifetime, lifetime)),
                     )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
@@ -1084,7 +1085,7 @@ where
             )?;
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesPredicate(a_ty, b_region)))?;
+            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesClause(a_ty, b_region)))?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1120,23 +1121,28 @@ where
         let projection_may_match =
             |ecx: &mut EvalCtxt<'_, D>,
              source_projection: ty::Binder<I, ty::ExistentialProjection<I>>,
-             target_projection: ty::Binder<I, ty::ExistentialProjection<I>>| {
-                source_projection.item_def_id() == target_projection.item_def_id()
-                    && ecx
-                        .probe(|_| ProbeKind::ProjectionCompatibility)
-                        .enter(|ecx| {
-                            ecx.enter_forall_with_assumptions(
-                                target_projection,
-                                param_env,
-                                |ecx, target_projection| {
-                                    let source_projection =
-                                        ecx.instantiate_binder_with_infer(source_projection);
-                                    ecx.eq(param_env, source_projection, target_projection)?;
-                                    ecx.try_evaluate_added_goals()
-                                },
-                            )
-                        })
-                        .is_ok()
+             target_projection: ty::Binder<I, ty::ExistentialProjection<I>>|
+             -> Result<bool, RerunNonErased> {
+                if source_projection.item_def_id() != target_projection.item_def_id() {
+                    return Ok(false);
+                }
+                match ecx.probe(|_| ProbeKind::ProjectionCompatibility).enter(|ecx| {
+                    let target_projection = ecx.resolve_vars_if_possible(target_projection);
+                    ecx.enter_forall_with_assumptions(
+                        target_projection,
+                        param_env,
+                        |ecx, target_projection| {
+                            let source_projection =
+                                ecx.instantiate_binder_with_infer(source_projection);
+                            ecx.eq(param_env, source_projection, target_projection)?;
+                            ecx.try_evaluate_added_goals()
+                        },
+                    )
+                }) {
+                    Ok(_) => Ok(true),
+                    Err(NoSolutionOrRerunNonErased::NoSolution(_)) => Ok(false),
+                    Err(NoSolutionOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun),
+                }
             };
 
         self.probe_trait_candidate(source).enter(|ecx| {
@@ -1147,6 +1153,8 @@ where
                     ty::ExistentialPredicate::Trait(target_principal) => {
                         let source_principal = upcast_principal.unwrap();
                         let target_principal = bound.rebind(target_principal);
+                        // We might unify infer vars in previous iterations.
+                        let target_principal = ecx.resolve_vars_if_possible(target_principal);
                         ecx.enter_forall_with_assumptions(
                             target_principal,
                             param_env,
@@ -1165,24 +1173,28 @@ where
                     // it with b_ty's projection.
                     ty::ExistentialPredicate::Projection(target_projection) => {
                         let target_projection = bound.rebind(target_projection);
-                        let mut matching_projections =
-                            a_data.projection_bounds().into_iter().filter(|source_projection| {
-                                projection_may_match(ecx, *source_projection, target_projection)
-                            });
-                        let Some(source_projection) = matching_projections.next() else {
+                        let mut matching_projection = None;
+                        for source_projection in a_data.projection_bounds() {
+                            if projection_may_match(ecx, source_projection, target_projection)? {
+                                if matching_projection.is_some() {
+                                    return ecx.evaluate_added_goals_and_make_canonical_response(
+                                        Certainty::AMBIGUOUS,
+                                    );
+                                }
+                                matching_projection = Some(source_projection);
+                            }
+                        }
+                        let Some(matching) = matching_projection else {
                             return Err(NoSolution.into());
                         };
-                        if matching_projections.next().is_some() {
-                            return ecx.evaluate_added_goals_and_make_canonical_response(
-                                Certainty::AMBIGUOUS,
-                            );
-                        }
+
+                        // We might unify infer vars in previous iterations.
+                        let target_projection = ecx.resolve_vars_if_possible(target_projection);
                         ecx.enter_forall_with_assumptions(
                             target_projection,
                             param_env,
                             |ecx, target_projection| {
-                                let source_projection =
-                                    ecx.instantiate_binder_with_infer(source_projection);
+                                let source_projection = ecx.instantiate_binder_with_infer(matching);
                                 ecx.eq(param_env, source_projection, target_projection)?;
                                 ecx.try_evaluate_added_goals()
                             },
@@ -1200,7 +1212,7 @@ where
             // Also require that a_ty's lifetime outlives b_ty's lifetime.
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
-                Goal::new(ecx.cx(), param_env, ty::OutlivesPredicate(a_region, b_region)),
+                Goal::new(ecx.cx(), param_env, ty::OutlivesClause(a_region, b_region)),
             )?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

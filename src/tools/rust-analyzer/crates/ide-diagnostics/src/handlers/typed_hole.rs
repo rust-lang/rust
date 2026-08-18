@@ -54,12 +54,7 @@ fn fixes<'db>(ctx: &DiagnosticsContext<'_, 'db>, d: &hir::TypedHole<'db>) -> Opt
         sema: &ctx.sema,
         scope: &scope,
         goal: d.expected.clone(),
-        config: TermSearchConfig {
-            fuel: ctx.config.term_search_fuel,
-            enable_borrowcheck: ctx.config.term_search_borrowck,
-
-            ..Default::default()
-        },
+        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
     };
     let paths = term_search(&term_search_ctx);
 

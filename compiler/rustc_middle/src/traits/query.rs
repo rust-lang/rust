@@ -8,7 +8,7 @@
 use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
-use crate::error::DropCheckOverflow;
+use crate::diagnostics::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
 use crate::traits::solve;
 pub use crate::traits::solve::NoSolution;
@@ -90,6 +90,16 @@ pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
 
 pub type CanonicalDropckOutlivesGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DropckOutlives<'tcx>>>;
+
+/// The implied bounds and normalized MIR signature used by borrowck.
+#[derive(Clone, Debug, StableHash, TypeFoldable, TypeVisitable)]
+pub struct MirBorrowckImpliedOutlivesBounds<'tcx> {
+    pub outlives_bounds: Vec<OutlivesBound<'tcx>>,
+
+    /// The normalized function signature. We need to return this from implied
+    /// bounds computation to deal with #136547.
+    pub normalized_inputs_and_output: Vec<Ty<'tcx>>,
+}
 
 #[derive(Clone, Debug, Default, StableHash, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {

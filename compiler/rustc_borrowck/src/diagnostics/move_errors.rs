@@ -716,7 +716,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             return CloneSuggestion::NotEmitted;
         };
 
-        if !errors.is_empty() {
+        if errors.has_errors() {
             return CloneSuggestion::NotEmitted;
         }
         let sugg = vec![

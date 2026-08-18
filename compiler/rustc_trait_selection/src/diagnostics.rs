@@ -739,13 +739,12 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             }
             if introduce_new {
-                let new_param_suggestion = if let Some(first) =
-                    generics.params.iter().find(|p| !p.name.ident().span.is_empty())
-                {
-                    (first.span.shrink_to_lo(), format!("{suggestion_param_name}, "))
-                } else {
-                    (generics.span, format!("<{suggestion_param_name}>"))
-                };
+                let new_param_suggestion =
+                    if let Some(span) = generics.span_for_lifetime_suggestion() {
+                        (span, format!("{suggestion_param_name}, "))
+                    } else {
+                        (generics.span, format!("<{suggestion_param_name}>"))
+                    };
 
                 visitor.suggestions.push(new_param_suggestion);
             }
@@ -1425,6 +1424,18 @@ pub(crate) enum ConsiderAddingAwait {
     FutureSuggMultiple {
         #[suggestion_part(code = ".await")]
         spans: Vec<Span>,
+    },
+    #[multipart_suggestion(
+        "consider making the function `async` and `await`ing on the `Future`",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    MakeFunctionAsync {
+        #[suggestion_part(code = "{async_prefix}")]
+        async_span: Span,
+        async_prefix: String,
+        #[suggestion_part(code = ".await")]
+        await_span: Span,
     },
 }
 

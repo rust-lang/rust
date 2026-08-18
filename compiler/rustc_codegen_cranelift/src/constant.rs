@@ -241,7 +241,7 @@ fn pointer_for_allocation<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, alloc_id: All
     fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
 }
 
-fn data_id_for_alloc_id(
+pub(crate) fn data_id_for_alloc_id(
     cx: &mut ConstantCx,
     module: &mut dyn Module,
     alloc_id: AllocId,

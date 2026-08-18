@@ -9,11 +9,11 @@ use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::visit::Visitor;
 use rustc_ast::{ModKind, attr};
+use rustc_attr_ir::AttributeKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
-use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
@@ -347,7 +347,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         contract: None,
         body: Some(main_body),
         define_opaque: None,
-        eii_impls: ThinVec::new(),
+        eii_impl: None,
     }));
 
     let main = Box::new(ast::Item {
@@ -392,7 +392,7 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
 
 fn get_test_runner(sess: &Session, krate: &ast::Crate) -> Option<ast::Path> {
     match AttributeParser::parse_limited_sym(sess, &krate.attrs, &[sym::test_runner]) {
-        Some(rustc_hir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
+        Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
         _ => None,
     }
 }

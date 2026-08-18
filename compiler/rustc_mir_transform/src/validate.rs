@@ -2,8 +2,8 @@
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::LangItem;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -622,7 +622,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 }
 
@@ -707,7 +707,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
 
-                        if adt_def.repr().simd() {
+                        if adt_def.repr().simd() || adt_def.repr().scalable() {
                             self.fail(
                                 location,
                                 format!(

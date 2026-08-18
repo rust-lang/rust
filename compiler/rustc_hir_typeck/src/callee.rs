@@ -4,9 +4,10 @@ use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, msg};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem, find_attr};
+use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
@@ -30,6 +31,18 @@ use crate::diagnostics;
 use crate::method::TreatNotYetDefinedOpaques;
 use crate::method::confirm::ConfirmContext;
 use crate::method::probe::{IsSuggestion, Mode};
+
+/// Side-table info for lowering splatted function arguments.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) enum SplatLoweringInfo<'tcx> {
+    /// The DefId of the FnDef being called, used to look up the function type.
+    /// Also used during argument suggestion for non-splatted function calls.
+    FnDef(DefId),
+    /// The type of the FnPtr being called.
+    FnPtr(Ty<'tcx>),
+    /// Type resolution errored.
+    Error(ErrorGuaranteed),
+}
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -600,13 +613,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let fn_sig = self.normalize(call_expr.span, Unnormalized::new_wip(fn_sig));
 
+        // Splatted FnDefs use the DefId to look up the type, FnPtrs need it directly
+        let fn_id = match def_id {
+            Some(x) => SplatLoweringInfo::FnDef(x),
+            None => SplatLoweringInfo::FnPtr(callee_ty),
+        };
+
         self.check_argument_types_maybe_method_like(
             &fn_sig,
             call_expr,
             arg_exprs,
             expected,
             TupleArgumentsFlag::with_fn_sig_kind(fn_sig.fn_sig_kind, false),
-            def_id,
+            fn_id,
             callee_generic_args,
         );
 
@@ -618,7 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 self.register_bound(
                     ty,
-                    self.tcx.require_lang_item(hir::LangItem::Tuple, sp),
+                    self.tcx.require_lang_item(LangItem::Tuple, sp),
                     self.cause(sp, ObligationCauseCode::RustCall),
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
@@ -643,7 +662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         tuple_arguments_flag: TupleArgumentsFlag,
-        def_id: Option<DefId>,
+        fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
     ) {
         let do_check = || {
@@ -656,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg_exprs,
                 fn_sig.c_variadic(),
                 tuple_arguments_flag,
-                def_id,
+                fn_id,
                 callee_generic_args,
             );
         };
@@ -903,7 +922,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
             unit_variant =
-                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(&self.tcx, qpath)));
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(self, qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -1074,7 +1093,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.fn_sig_kind.c_variadic(),
             TupleArgumentsFlag::rust_fn_trait_call(),
-            Some(closure_def_id.to_def_id()),
+            SplatLoweringInfo::FnDef(closure_def_id.to_def_id()),
             None,
         );
 
@@ -1172,7 +1191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             method.sig.fn_sig_kind.c_variadic(),
             TupleArgumentsFlag::rust_fn_trait_call(),
-            Some(method.def_id),
+            SplatLoweringInfo::FnDef(method.def_id),
             None,
         );
 

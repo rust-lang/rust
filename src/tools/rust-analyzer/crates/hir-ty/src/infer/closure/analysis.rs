@@ -515,7 +515,7 @@ impl<'db> InferenceContext<'db> {
 
         let fake_reads = delegate.fake_reads;
 
-        self.result.closures_data.entry(closure_expr_id).or_default().fake_reads =
+        self.result.closures_data.get_mut(&closure_expr_id).unwrap().fake_reads =
             fake_reads.into_boxed_slice();
 
         // If we are also inferred the closure kind here,
@@ -730,8 +730,7 @@ impl<'db> InferenceContext<'db> {
             return;
         }
 
-        let mut closure_data =
-            self.result.closures_data.remove(&closure_def_id).unwrap_or_default();
+        let mut closure_data = self.result.closures_data.remove(&closure_def_id).unwrap();
         let root_var_min_capture_list = &mut closure_data.min_captures;
         let mut dedup_sources_scratch = FxHashMap::default();
 

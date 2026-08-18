@@ -1,7 +1,8 @@
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    self as hir, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
+    self as hir, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -339,6 +340,8 @@ impl<'tcx, T: Copy + MaybeQPath<'tcx>> MaybeQPath<'tcx> for &Option<T> {
 /// A resolved path and the explicit `Self` type if there is one.
 type OptResPath<'tcx> = (Option<&'tcx hir::Ty<'tcx>>, Option<&'tcx Path<'tcx>>);
 
+type OptTyRelPath<'tcx> = Option<(&'tcx hir::Ty<'tcx>, &'tcx PathSegment<'tcx>)>;
+
 /// A HIR node which might be a `QPath::Resolved`.
 ///
 /// The following are resolved paths:
@@ -353,6 +356,10 @@ pub trait MaybeResPath<'a>: Copy {
     /// If this node is a resolved path gets both the contained path and the
     /// type associated with it.
     fn opt_res_path(self) -> OptResPath<'a>;
+
+    /// If this node is a type relative path gets both the type and the final
+    /// segments of the path.
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a>;
 
     /// If this node is a resolved path gets it's resolution. Returns `Res::Err`
     /// otherwise.
@@ -392,6 +399,11 @@ impl<'a> MaybeResPath<'a> for &'a Path<'a> {
     }
 
     #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        None
+    }
+
+    #[inline]
     fn basic_res(self) -> &'a Res {
         &self.res
     }
@@ -404,6 +416,14 @@ impl<'a> MaybeResPath<'a> for &QPath<'a> {
             QPath::TypeRelative(..) => (None, None),
         }
     }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match *self {
+            QPath::TypeRelative(ty, seg) => Some((ty, seg)),
+            QPath::Resolved(..) => None,
+        }
+    }
 }
 impl<'a> MaybeResPath<'a> for &Expr<'a> {
     #[inline]
@@ -411,6 +431,14 @@ impl<'a> MaybeResPath<'a> for &Expr<'a> {
         match &self.kind {
             ExprKind::Path(qpath) => qpath.opt_res_path(),
             _ => (None, None),
+        }
+    }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match &self.kind {
+            ExprKind::Path(qpath) => qpath.opt_ty_rel_path(),
+            _ => None,
         }
     }
 }
@@ -422,6 +450,14 @@ impl<'a> MaybeResPath<'a> for &PatExpr<'a> {
             PatExprKind::Lit { .. } => (None, None),
         }
     }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match &self.kind {
+            PatExprKind::Path(qpath) => qpath.opt_ty_rel_path(),
+            PatExprKind::Lit { .. } => None,
+        }
+    }
 }
 impl<'a, AmbigArg> MaybeResPath<'a> for &hir::Ty<'a, AmbigArg> {
     #[inline]
@@ -429,6 +465,14 @@ impl<'a, AmbigArg> MaybeResPath<'a> for &hir::Ty<'a, AmbigArg> {
         match &self.kind {
             TyKind::Path(qpath) => qpath.opt_res_path(),
             _ => (None, None),
+        }
+    }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match &self.kind {
+            TyKind::Path(qpath) => qpath.opt_ty_rel_path(),
+            _ => None,
         }
     }
 }
@@ -440,6 +484,14 @@ impl<'a> MaybeResPath<'a> for &Pat<'a> {
             _ => (None, None),
         }
     }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match self.kind {
+            PatKind::Expr(e) => e.opt_ty_rel_path(),
+            _ => None,
+        }
+    }
 }
 impl<'a, T: MaybeResPath<'a>> MaybeResPath<'a> for Option<T> {
     #[inline]
@@ -448,6 +500,11 @@ impl<'a, T: MaybeResPath<'a>> MaybeResPath<'a> for Option<T> {
             Some(x) => T::opt_res_path(x),
             None => (None, None),
         }
+    }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        self.and_then(T::opt_ty_rel_path)
     }
 
     #[inline]

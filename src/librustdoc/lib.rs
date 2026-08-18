@@ -58,15 +58,6 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate test;
 
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-/// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
-///
-/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
-/// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
-/// https://github.com/rust-lang/cc-rs/issues/1613.
-#[cfg(feature = "jemalloc")]
-extern crate tikv_jemalloc_sys as _;
-
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::path::Path;
@@ -77,7 +68,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
+use rustc_session::config::{ErrorOutputType, Input, RustcOptGroup, make_crate_type_option};
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use tracing::info;
@@ -773,25 +764,40 @@ fn run_renderer<
 /// Renders and writes cross-crate info files, like the search index. This function exists so that
 /// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
 /// discovered via `--read-doc-meta-dir` are combined and written to the doc root.
-fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
+fn run_merge_finalize(
+    render_options: config::RenderOptions,
+    compiler: &interface::Compiler,
+) -> Result<(), error::Error> {
     assert!(
-        opt.should_merge.write_rendered_cci,
+        render_options.should_merge.write_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
     assert!(
-        !opt.should_merge.read_rendered_cci,
+        !render_options.should_merge.read_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
-    let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
-    let include_sources = !opt.html_no_source;
+    let crates = html::render::CrateInfo::read_many(&render_options.include_parts_dir)?;
+    let include_sources = !render_options.html_no_source;
+
     html::render::write_not_crate_specific(
         &crates,
-        &opt.output,
-        &opt,
-        &opt.themes,
-        opt.extension_css.as_deref(),
-        &opt.resource_suffix,
+        &render_options.output,
+        &render_options,
+        &render_options.themes,
+        render_options.extension_css.as_deref(),
+        &render_options.resource_suffix,
         include_sources,
+        &crate::html::layout::Layout {
+            logo: String::new(),
+            favicon: String::new(),
+            external_html: render_options.external_html.clone(),
+            default_settings: render_options.default_settings.clone(),
+            krate: String::new(),
+            krate_version: String::new(),
+            css_file_extension: render_options.extension_css.clone(),
+            scrape_examples_extension: false,
+        },
+        &compiler.sess,
     )?;
     Ok(())
 }
@@ -835,10 +841,18 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let input = match input {
         config::InputMode::HasFile(input) => input,
         config::InputMode::NoInputMergeFinalize => {
+            let config = core::create_config(
+                Input::Str {
+                    name: rustc_span::FileName::Custom(String::new()),
+                    input: String::new(),
+                },
+                options,
+                &render_options,
+            );
             return wrap_return(
                 dcx,
-                rustc_span::create_session_globals_then(options.edition, &[], None, || {
-                    run_merge_finalize(render_options)
+                interface::run_compiler(config, |compiler| {
+                    run_merge_finalize(render_options, compiler)
                         .map_err(|e| format!("could not write merged cross-crate info: {e}"))
                 }),
             );
@@ -883,21 +897,24 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         id: ast::DUMMY_NODE_ID,
                         is_placeholder: false,
                     };
-                    rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
-                        let has_dep_info = render_options.dep_info().is_some();
-                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles) {
-                            markdown::render_and_write(file, render_options, edition)?;
-                        }
-                        if has_dep_info {
-                            // Register the loaded external files in the source map so they show up in depinfo.
-                            // We can't load them via the source map because it gets created after we process the options.
-                            for external_path in &loaded_paths {
-                                let _ = compiler.sess.source_map().load_binary_file(external_path);
+                    let (res, _incr_comp_session) =
+                        rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+                            let has_dep_info = render_options.dep_info().is_some();
+                            if render_options.emit.contains(&EmitType::HtmlNonStaticFiles) {
+                                markdown::render_and_write(file, render_options, edition)?;
                             }
-                            rustc_interface::passes::write_dep_info(tcx);
-                        }
-                        Ok(())
-                    })
+                            if has_dep_info {
+                                // Register the loaded external files in the source map so they show up in depinfo.
+                                // We can't load them via the source map because it gets created after we process the options.
+                                for external_path in &loaded_paths {
+                                    let _ =
+                                        compiler.sess.source_map().load_binary_file(external_path);
+                                }
+                                rustc_interface::passes::write_dep_info(tcx);
+                            }
+                            Ok(())
+                        });
+                    res
                 }),
             );
         }
@@ -1006,7 +1023,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     unreachable!()
                 }
             }
-        })
+        });
     })
 }
 

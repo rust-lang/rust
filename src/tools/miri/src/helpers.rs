@@ -132,15 +132,7 @@ pub fn iter_exported_symbols<'tcx>(
         if !(used || codegen_attrs.contains_extern_indicator()) {
             continue;
         }
-        // FIXME: `#[no_mangle]` makes no sense on a generic item, but still causes it to be
-        // considered "extern". Remove this once `no_mangle_generic_items` is a hard error.
-        let mono = {
-            let generics = tcx.generics_of(def_id);
-            !generics.requires_monomorphization(tcx)
-        };
-        if mono {
-            f(LOCAL_CRATE, def_id.into(), used)?;
-        }
+        f(LOCAL_CRATE, def_id.into(), used)?;
     }
 
     // Next, all our dependencies.
@@ -945,7 +937,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_feature: &str,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_ref();
-        if !this.tcx.sess.unstable_target_features.contains(&Symbol::intern(target_feature)) {
+        if !this.tcx.sess.internal_target_features.contains(&Symbol::intern(target_feature)) {
             throw_ub_format!(
                 "attempted to call intrinsic `{intrinsic}` that requires missing target feature {target_feature}"
             );

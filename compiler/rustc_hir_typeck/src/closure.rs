@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
@@ -136,12 +136,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         Ty::new_adt(
                             tcx,
-                            tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, expr_span)),
+                            tcx.adt_def(tcx.require_lang_item(LangItem::Poll, expr_span)),
                             tcx.mk_args(&[Ty::new_adt(
                                 tcx,
-                                tcx.adt_def(
-                                    tcx.require_lang_item(hir::LangItem::Option, expr_span),
-                                ),
+                                tcx.adt_def(tcx.require_lang_item(LangItem::Option, expr_span)),
                                 tcx.mk_args(&[yield_ty.into()]),
                             )
                             .into()]),

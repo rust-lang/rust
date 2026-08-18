@@ -83,7 +83,7 @@ pub fn structurally_normalize_ty<'db>(
     ty.replace_infer_with_error(infcx.interner)
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Update)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::SalsaValue)]
 pub enum FnTrait {
     // Warning: Order is important. If something implements `x` it should also implement
     // `y` if `y <= x`.
@@ -346,6 +346,14 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
         // trait to be implemented is local
         return true;
     }
+
+    let interner = DbInterner::new_with(db, local_crate);
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    let param_env = db.trait_environment(impl_.into());
+    let trait_ref = infcx
+        .at(&ObligationCause::dummy(), param_env)
+        .deeply_normalize(trait_ref)
+        .unwrap_or(trait_ref);
 
     let unwrap_fundamental = |mut ty: Ty<'db>| {
         // Unwrap all layers of fundamental types with a loop.

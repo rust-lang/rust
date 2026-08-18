@@ -600,7 +600,7 @@ fn main() {
             false,
             false,
             expect![[r#"
-                Some Variant FileId(1) 6734..6766 6759..6763
+                Some Variant FileId(1) 6735..6767 6760..6764
 
                 FileId(0) 46..50
             "#]],
@@ -3355,6 +3355,24 @@ fn foo<'r#fn$0>(s: &'r#fn str) {
                 FileId(0) 18..23
                 FileId(0) 44..49
                 FileId(0) 72..77
+            "#]],
+        );
+    }
+
+    #[test]
+    fn pub_macro_2_scope() {
+        check(
+            r#"
+//- /foo.rs crate:foo
+pub macro m$0() {}
+
+//- /bar.rs new_source_root:local crate:bar deps:foo
+foo::m!();
+        "#,
+            expect![[r#"
+                m Macro FileId(0) 0..16 10..11
+
+                FileId(1) 5..6
             "#]],
         );
     }

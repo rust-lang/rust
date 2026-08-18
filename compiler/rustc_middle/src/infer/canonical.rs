@@ -80,7 +80,7 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
-    pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 }
 
 impl QueryRegionConstraints<'_> {

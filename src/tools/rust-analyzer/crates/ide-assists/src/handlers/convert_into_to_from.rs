@@ -109,7 +109,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_, '_
             editor.replace(into_fn_name.syntax(), make.name("from").syntax());
 
             for s in selfs {
-                match s.text().as_ref() {
+                match s.text() {
                     "self" => editor.replace(s.syntax(), make.name_ref("val").syntax()),
                     "Self" => {
                         if let Some(path_segment) =

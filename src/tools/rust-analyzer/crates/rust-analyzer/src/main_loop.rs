@@ -632,15 +632,15 @@ impl GlobalState {
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
             tracing::warn!(
-                "overly long loop turn took {loop_duration:?}:\n\
-                (event handling took {event_handling_duration:?}): {event_dbg_msg}\n\
-                (cancellation took {cancellation_time:?})
+                "overly long loop turn took {loop_duration:?}: \
+                (event handling took {event_handling_duration:?}): {event_dbg_msg} \
+                (cancellation took {cancellation_time:?}) \
                 (garbage collection took {gc_elapsed:?})"
             );
             self.poke_rust_analyzer_developer(format!(
-                "overly long loop turn took {loop_duration:?}:\n\
-                (event handling took {event_handling_duration:?}): {event_dbg_msg}\n\
-                (cancellation took {cancellation_time:?})
+                "overly long loop turn took {loop_duration:?}: \
+                (event handling took {event_handling_duration:?}): {event_dbg_msg} \
+                (cancellation took {cancellation_time:?}) \
                 (garbage collection took {gc_elapsed:?})"
             ));
         }
@@ -998,7 +998,7 @@ impl GlobalState {
 
                     let path = VfsPath::from(path);
                     // If the file is in mem docs, it's managed by the client via
-                    // notifications so only set it if its not in there. Library files are
+                    // notifications so only set it if it's not in there. Library files are
                     // exempt from that authority as they are considered immutable, for
                     // them disk is always the source of truth.
                     let is_library = self.source_root_config.path_is_library(&path);

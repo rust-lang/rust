@@ -387,9 +387,9 @@ impl SerializedDepGraph {
 
         // Read the number of nodes of each dep kind, and perform
         // counting sort for `LazyNodeIndex`.
-        let mut kinds = Vec::with_capacity(DepKind::MAX as usize + 1);
+        let mut kinds = Vec::with_capacity(DepKind::NUM_VARIANTS);
         let mut offset = 0u32;
-        for _ in 0..(DepKind::MAX + 1) {
+        for _ in 0..(DepKind::NUM_VARIANTS) {
             let len = d.read_u32();
             kinds.push(LazyKindIndex { start: offset, len, map: OnceLock::new() });
             offset += len;
@@ -654,7 +654,7 @@ impl EncoderState {
                     edge_count: 0,
                     node_count: 0,
                     encoder: MemEncoder::new(),
-                    kind_stats: iter::repeat_n(0, DepKind::MAX as usize + 1).collect(),
+                    kind_stats: iter::repeat_n(0, DepKind::NUM_VARIANTS).collect(),
                 })
             }),
         }
@@ -792,7 +792,7 @@ impl EncoderState {
 
         let mut encoder = self.file.lock().take().unwrap();
 
-        let mut kind_stats: Vec<u32> = iter::repeat_n(0, DepKind::MAX as usize + 1).collect();
+        let mut kind_stats: Vec<u32> = iter::repeat_n(0, DepKind::NUM_VARIANTS).collect();
 
         let mut node_max = 0;
         let mut node_count = 0;

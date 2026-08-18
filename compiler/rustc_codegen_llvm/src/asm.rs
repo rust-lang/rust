@@ -1,7 +1,7 @@
 use std::assert_matches;
 use std::fmt::Write;
 
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar, Size};
+use rustc_abi::{BackendRepr, Endian, Float, Integer, Primitive, Scalar, Size};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
@@ -12,6 +12,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Pos, Span, Symbol, sym};
 use rustc_target::asm::*;
+use rustc_target::spec::HasTargetSpec;
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -970,14 +971,14 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Hexagon(HexagonInlineAsmRegClass::vreg) => {
             // HVX vector register size depends on the HVX mode.
             // LLVM's "v" constraint requires the exact vector width.
-            if cx.tcx.sess.unstable_target_features.contains(&sym::hvx_length128b) {
+            if cx.tcx.sess.internal_target_features.contains(&sym::hvx_length128b) {
                 cx.type_vector(cx.type_i32(), 32) // 1024-bit for 128B mode
             } else {
                 cx.type_vector(cx.type_i32(), 16) // 512-bit for 64B mode
             }
         }
         Hexagon(HexagonInlineAsmRegClass::vreg_pair) => {
-            if cx.tcx.sess.unstable_target_features.contains(&sym::hvx_length128b) {
+            if cx.tcx.sess.internal_target_features.contains(&sym::hvx_length128b) {
                 cx.type_vector(cx.type_i32(), 64) // 2048-bit for 128B mode
             } else {
                 cx.type_vector(cx.type_i32(), 32) // 1024-bit for 64B mode
@@ -1244,24 +1245,16 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if s.primitive() == Primitive::Float(Float::F32) => {
-            let value = bx.insert_element(
-                bx.const_undef(bx.type_vector(bx.type_f32(), 4)),
+        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+            let num_lanes = 16 / float.size().bytes();
+            bx.insert_element(
+                bx.const_undef(bx.type_vector(bx.type_from_float(float), num_lanes)),
                 value,
-                bx.const_usize(0),
-            );
-            bx.bitcast(value, bx.type_vector(bx.type_f32(), 4))
-        }
-        (
-            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
-            BackendRepr::Scalar(s),
-        ) if s.primitive() == Primitive::Float(Float::F64) => {
-            let value = bx.insert_element(
-                bx.const_undef(bx.type_vector(bx.type_f64(), 2)),
-                value,
-                bx.const_usize(0),
-            );
-            bx.bitcast(value, bx.type_vector(bx.type_f64(), 2))
+                bx.const_usize(match bx.target_spec().endian {
+                    Endian::Little => num_lanes - 1,
+                    Endian::Big => 0,
+                }),
+            )
         }
         _ => value,
     }
@@ -1416,16 +1409,15 @@ fn llvm_fixup_output<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if s.primitive() == Primitive::Float(Float::F32) => {
-            let value = bx.bitcast(value, bx.type_vector(bx.type_f32(), 4));
-            bx.extract_element(value, bx.const_usize(0))
-        }
-        (
-            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
-            BackendRepr::Scalar(s),
-        ) if s.primitive() == Primitive::Float(Float::F64) => {
-            let value = bx.bitcast(value, bx.type_vector(bx.type_f64(), 2));
-            bx.extract_element(value, bx.const_usize(0))
+        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+            let num_lanes = 16 / float.size().bytes();
+            bx.extract_element(
+                value,
+                bx.const_usize(match bx.target_spec().endian {
+                    Endian::Little => num_lanes - 1,
+                    Endian::Big => 0,
+                }),
+            )
         }
         _ => value,
     }
@@ -1566,11 +1558,9 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if s.primitive() == Primitive::Float(Float::F32) => cx.type_vector(cx.type_f32(), 4),
-        (
-            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
-            BackendRepr::Scalar(s),
-        ) if s.primitive() == Primitive::Float(Float::F64) => cx.type_vector(cx.type_f64(), 2),
+        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+            cx.type_vector(cx.type_from_float(float), 16 / float.size().bytes())
+        }
         _ => layout.llvm_type(cx),
     }
 }

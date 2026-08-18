@@ -24,6 +24,7 @@ pub(super) fn check<'tcx>(
         && !is_lint_allowed(cx, BORROW_AS_PTR, expr.hir_id)
         // Fix #9884
         && !is_expr_temporary_value(cx, e)
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
         && !is_from_proc_macro(cx, expr)
     {
         let mut app = Applicability::MachineApplicable;

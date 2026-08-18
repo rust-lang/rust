@@ -74,22 +74,22 @@ pub mod wfcheck;
 use std::borrow::Cow;
 use std::num::NonZero;
 
-pub use check::{check_abi, check_custom_abi};
+pub use check::check_abi;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, TraitErrors};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, RegionExt, Ty, TyCtxt, TypingMode,
+    self, GenericArgs, GenericArgsRef, OutlivesClause, Region, RegionExt, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
@@ -413,7 +413,7 @@ fn bounds_from_generic_clauses<'tcx>(
             ty::ClauseKind::Projection(projection_pred) => {
                 projections.push(bound_clause.rebind(projection_pred));
             }
-            ty::ClauseKind::RegionOutlives(OutlivesPredicate(a, b)) => {
+            ty::ClauseKind::RegionOutlives(OutlivesClause(a, b)) => {
                 regions.entry(a).or_default().push(b);
             }
             _ => {}
@@ -694,7 +694,7 @@ pub fn check_function_signature<'tcx>(
     match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
         Ok(()) => {
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if !errors.is_empty() {
+            if let TraitErrors::HasErrors(errors) = errors {
                 return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
             }
         }

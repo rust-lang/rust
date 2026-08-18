@@ -1,5 +1,5 @@
 #![warn(clippy::some_filter)]
-#![allow(clippy::const_is_empty)]
+#![expect(clippy::const_is_empty)]
 
 macro_rules! unchanged {
     ($result:expr) => {

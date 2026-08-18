@@ -357,7 +357,7 @@ impl<'db> HirDisplay<'db> for Adt {
 impl<'db> HirDisplay<'db> for Struct {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         let module_id = self.module(f.db).id;
-        // FIXME: Render repr if its set explicitly?
+        // FIXME: Render repr if it's set explicitly?
         write_visibility(module_id, self.visibility(f.db), f)?;
         f.write_str("struct ")?;
         write!(f, "{}", self.name(f.db).display(f.db, f.edition()))?;

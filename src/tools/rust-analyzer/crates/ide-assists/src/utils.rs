@@ -13,6 +13,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
+    traits::IsRequiredAssocItem,
 };
 use itertools::Itertools;
 use syntax::{
@@ -162,14 +163,14 @@ pub enum DefaultMethods {
 
 pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
-    items: &[hir::AssocItem],
+    items: &[(hir::AssocItem, IsRequiredAssocItem)],
     default_methods: DefaultMethods,
     ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
-    return items
+    items
         .iter()
         .copied()
-        .filter(|assoc_item| {
+        .filter(|(assoc_item, is_required)| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).is_doc_hidden()
             {
@@ -181,10 +182,10 @@ pub fn filter_assoc_items(
                 return false;
             }
 
-            true
+            is_required.0 == (default_methods == DefaultMethods::No)
         })
         // Note: This throws away items with no source.
-        .filter_map(|assoc_item| {
+        .filter_map(|(assoc_item, _)| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
                 hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
@@ -192,33 +193,7 @@ pub fn filter_assoc_items(
             };
             Some(item)
         })
-        .filter(has_def_name)
-        .filter(|it| match &it.value {
-            ast::AssocItem::Fn(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::Const(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::TypeAlias(def) => matches!(
-                (default_methods, def.ty()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::MacroCall(_) => unreachable!(),
-        })
-        .collect();
-
-    fn has_def_name(item: &InFile<ast::AssocItem>) -> bool {
-        match &item.value {
-            ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::Const(def) => def.name(),
-            ast::AssocItem::MacroCall(_) => None,
-        }
-        .is_some()
-    }
+        .collect()
 }
 
 /// Given `original_items` retrieved from the trait definition (usually by
@@ -344,7 +319,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             let method = mce.name_ref()?;
             let arg_list = mce.arg_list()?;
 
-            let method = match method.text().as_str() {
+            let method = match method.text() {
                 "is_some" => "is_none",
                 "is_none" => "is_some",
                 "is_ok" => "is_err",
@@ -550,7 +525,7 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
         for item in il.assoc_items() {
             if let ast::AssocItem::Fn(f) = item
                 && let Some(name) = f.name()
-                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+                && names.iter().any(|n| n.eq_ignore_ascii_case(name.text()))
             {
                 return true;
             }
@@ -664,7 +639,7 @@ fn generate_impl_inner(
         .zip(generic_params.as_ref())
         .and_then(|(trait_, params)| generic_param_associated_bounds(make, adt, trait_, params));
 
-    let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
+    let ty: ast::Type = make.ty_path(make.ident_path(adt.name().unwrap().text())).into();
 
     let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {

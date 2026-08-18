@@ -164,7 +164,7 @@ mod m {
 fn desugar_for_loop() {
     pretty_print(
         r#"
-//- minicore: iterator
+//- minicore: iterator, range
 fn main() {
     for ident in 0..10 {
         foo();
@@ -173,23 +173,26 @@ fn main() {
 }
 "#,
         expect![[r#"
-        fn main() {
-            match builtin#lang(into_iter)(
-                0..10,
-            ) {
-                mut <ra@gennew>0 => loop {
-                    match builtin#lang(next)(
-                        &mut <ra@gennew>0,
-                    ) {
-                        builtin#lang(None) => break,
-                        builtin#lang(Some)(ident) => {
-                            foo();
-                            bar()
-                        },
-                    }
-                },
-            }
-        }"#]],
+            fn main() {
+                match builtin#lang(into_iter)(
+                    builtin#lang(Range){
+                        start: 0,
+                        end: 10,
+                    },
+                ) {
+                    mut <ra@gennew>0 => loop {
+                        match builtin#lang(next)(
+                            &mut <ra@gennew>0,
+                        ) {
+                            builtin#lang(None) => break,
+                            builtin#lang(Some)(ident) => {
+                                foo();
+                                bar()
+                            },
+                        }
+                    },
+                }
+            }"#]],
     );
 }
 
@@ -376,6 +379,32 @@ fn f() {
         body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
         "B",
         "should have a binding for `B`",
+    );
+}
+
+#[test]
+fn shadowing_tuple_struct_with_invisible_ctor() {
+    let (db, def) = lower(
+        r#"
+mod x {
+    pub struct CrateNum(u32);
+}
+
+use x::CrateNum;
+
+pub struct CrateNumVal(CrateNum);
+
+fn main() {
+    let CrateNumVal(CrateNum) = loop {};
+}
+    "#,
+    );
+    let body = Body::of(&db, def);
+    assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `CrateNum`");
+    assert_eq!(
+        body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        "CrateNum",
+        "should have a binding for `CrateNum`",
     );
 }
 

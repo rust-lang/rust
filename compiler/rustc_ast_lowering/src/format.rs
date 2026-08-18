@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_session::config::FmtDebug;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 
@@ -239,7 +240,7 @@ fn make_argument<'hir>(
     use FormatTrait::*;
     let new_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
         sp,
-        hir::LangItem::FormatArgument,
+        LangItem::FormatArgument,
         match ty {
             Format(Display) => sym::new_display,
             Format(Debug) => match ctx.tcx.sess.opts.unstable_opts.fmt_debug {
@@ -331,7 +332,7 @@ fn expand_format_args<'hir>(
                     //     <core::fmt::Arguments>::from_str("meow")
                     let from_str = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
                         macsp,
-                        hir::LangItem::FormatArguments,
+                        LangItem::FormatArguments,
                         if allow_const { sym::from_str } else { sym::from_str_nonconst },
                     ));
                     let sym = if incomplete_lit.is_empty() { sym } else { Symbol::intern(s) };
@@ -501,7 +502,7 @@ fn expand_format_args<'hir>(
     let call = {
         let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
             macsp,
-            hir::LangItem::FormatArguments,
+            LangItem::FormatArguments,
             sym::new,
         ));
         let args = ctx.expr_ref(macsp, args);

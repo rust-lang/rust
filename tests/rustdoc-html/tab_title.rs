@@ -36,10 +36,10 @@ pub mod blah {
 
 //@ has foo/keyword.continue.html '//head/title' 'continue - Rust'
 #[doc(keyword = "continue")]
-mod continue_keyword {}
+const _: () = ();
 
 //@ has foo/primitive.u8.html '//head/title' 'u8 - Rust'
 //@ !has - '//head/title' 'foo'
 #[rustc_doc_primitive = "u8"]
 /// `u8` docs
-mod u8 {}
+const _: () = ();

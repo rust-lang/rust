@@ -143,6 +143,8 @@ pub(crate) struct LockfileCopy {
 }
 
 pub(crate) enum LockfileUsage {
+    /// Rust [1.82.0, 1.95.0). `cargo <subcmd> --lockfile-path <lockfile path>`
+    WithFlag,
     /// Rust [1.95.0, 1.97.0). `CARGO_RESOLVER_LOCKFILE_PATH=<lockfile path> cargo -Zlockfile-path <subcmd>`
     WithEnvVarUnstable,
     /// Rust >= 1.97.0. `CARGO_RESOLVER_LOCKFILE_PATH=<lockfile path> cargo <subcmd>`
@@ -153,6 +155,15 @@ pub(crate) fn make_lockfile_copy(
     toolchain_version: &semver::Version,
     lockfile_path: &Utf8Path,
 ) -> Option<LockfileCopy> {
+    const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_FLAG: semver::Version =
+        semver::Version {
+            major: 1,
+            minor: 82,
+            patch: 0,
+            pre: semver::Prerelease::EMPTY,
+            build: semver::BuildMetadata::EMPTY,
+        };
+
     const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV_UNSTABLE: semver::Version =
         semver::Version {
             major: 1,
@@ -176,6 +187,8 @@ pub(crate) fn make_lockfile_copy(
     } else if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV_UNSTABLE
     {
         LockfileUsage::WithEnvVarUnstable
+    } else if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_FLAG {
+        LockfileUsage::WithFlag
     } else {
         return None;
     };

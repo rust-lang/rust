@@ -781,14 +781,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             let mut imports_to_resolve = mem::take(&mut self.indeterminate_imports);
 
-            self.assert_speculative = true;
+            // SAFETY: This is a "top-level" function used by the macro expansion code, unless some
+            // weird thing is done, all `tracked` borrows done in the previous call of
+            // `resolve_imports` are dropped when that call ended.
+            unsafe { self.speculative_flag.set(true) };
             rustc_data_structures::sync::par_for_each_slice(
                 &mut imports_to_resolve,
                 |(import, resolution, indeterminate_count)| {
                     (*resolution, *indeterminate_count) = self.resolve_import(*import);
                 },
             );
-            self.assert_speculative = false;
+            // SAFETY: All `untracked` borrows are dropped after the `par_for_each_slice` call,
+            // as they cannot escape since they are tied to the `CmRefCell` they borrowed from.
+            //
+            // Note: Some `CmRefCell`s are arena allocated and thus have the `'ra` lifetime,
+            // allowing these borrows to escape, but that does not and should not happen.
+            unsafe { self.speculative_flag.set(false) };
 
             self.write_import_resolutions(&imports_to_resolve);
 
@@ -1003,7 +1011,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<Decl<'ra>>) {
         for module in &self.local_modules {
             for (key, resolution) in self.resolutions(module.to_module()).iter() {
-                let resolution = resolution.borrow();
+                let resolution = resolution.borrow(self);
                 let Some(binding) = resolution.best_decl() else { continue };
 
                 // Report "cannot reexport" errors for exotic cases involving macros 2.0
@@ -1490,7 +1498,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     return None;
                                 } // `use _` is never valid
 
-                                let resolution = resolution.borrow();
+                                let resolution = resolution.borrow(self);
                                 if let Some(name_binding) = resolution.best_decl() {
                                     match name_binding.kind {
                                         DeclKind::Import { source_decl, .. } => {
@@ -1800,7 +1808,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .resolutions(module)
                 .iter()
                 .filter_map(|(key, resolution)| {
-                    let res = resolution.borrow();
+                    let res = resolution.borrow(self);
                     let decl = res.determined_decl()?;
                     let mut key = *key;
                     let scope = match key.ident.ctxt.update_unchecked(|ctxt| {

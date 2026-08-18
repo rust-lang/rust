@@ -4201,8 +4201,6 @@ fn foo() {
             248..282 'LazyLo..._LOCK)': &'? [u32; 0]
             264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; 0]>
             265..281 'VALUES...Y_LOCK': LazyLock<[u32; 0]>
-            197..202 '{ 0 }': usize
-            199..200 '0': usize
         "#]],
     );
 }
@@ -4308,9 +4306,8 @@ enum Enum {
 }
     "#,
         expect![[r#"
-            29..34 '{ 2 }': usize
-            31..32 '2': usize
-        "#]],
+
+"#]],
     );
 }
 

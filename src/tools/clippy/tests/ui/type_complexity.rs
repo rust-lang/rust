@@ -1,5 +1,5 @@
 #![feature(associated_type_defaults)]
-#![allow(clippy::needless_pass_by_value, clippy::vec_box, clippy::useless_vec)]
+#![warn(clippy::type_complexity)]
 
 type Alias = Vec<Vec<Box<(u32, u32, u32, u32)>>>; // no warning here
 

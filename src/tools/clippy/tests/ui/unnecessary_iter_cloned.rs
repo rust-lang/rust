@@ -1,7 +1,6 @@
-#![allow(unused_assignments, clippy::uninlined_format_args)]
 #![warn(clippy::unnecessary_to_owned)]
+#![expect(clippy::uninlined_format_args)]
 
-#[allow(dead_code)]
 #[derive(Clone, Copy)]
 enum FileType {
     Account,
@@ -74,7 +73,6 @@ fn check_files_ref(files: &[(FileType, &std::path::Path)]) -> bool {
     true
 }
 
-#[allow(unused_assignments)]
 fn check_files_mut(files: &[(FileType, &std::path::Path)]) -> bool {
     for (mut t, path) in files.iter().copied() {
         t = FileType::PrivateKey;
@@ -122,7 +120,6 @@ fn check_files_self_and_arg(files: &[(FileType, &std::path::Path)]) -> bool {
     true
 }
 
-#[allow(unused_assignments)]
 fn check_files_mut_path_buf(files: &[(FileType, std::path::PathBuf)]) -> bool {
     for (mut t, path) in files.iter().cloned() {
         t = FileType::PrivateKey;

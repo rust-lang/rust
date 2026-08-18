@@ -30,12 +30,11 @@ fn main() {
     rustdoc().input("dep_missing.rs").out_dir(&out_dir).run();
     assert!(parts_out_dir.join("dep2.json").exists());
 
-    let output = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .run();
-    output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     htmldocck().arg(&out_dir).arg("dep1.rs").run();
     htmldocck().arg(&out_dir).arg("dep2.rs").run();

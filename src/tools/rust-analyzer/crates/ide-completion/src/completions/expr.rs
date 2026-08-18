@@ -484,7 +484,6 @@ pub(crate) fn complete_expr(
             scope: &ctx.scope,
             goal: ty.clone(),
             config: hir::term_search::TermSearchConfig {
-                enable_borrowcheck: false,
                 many_alternatives_threshold: 1,
                 fuel: 200,
             },

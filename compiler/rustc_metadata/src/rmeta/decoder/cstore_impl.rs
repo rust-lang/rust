@@ -2,6 +2,8 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
+use rustc_crate_store::{CrateStore, ExternCrate};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
@@ -18,7 +20,6 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
-use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
@@ -472,7 +473,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // the former.
             // This is a rudimentary check that does not catch all cases,
             // just the easiest.
-            let mut fallback_map: Vec<(DefId, DefId)> = Default::default();
+            let mut fallback_map: FxHashMap<DefId, DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -533,14 +534,24 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                             }
                         }
                         Entry::Vacant(entry) => {
+                            if !fallback {
+                                entry.insert(parent);
+                            }
+
+                            // Make sure that we have not already explored this child
+                            // through a previous fallback entry further up the BFS,
+                            // in which case we do not want to put it back into the BFS queue,
+                            // nor record a new fallback parent.
+                            if fallback_map.contains_key(&def_id) {
+                                return;
+                            }
+
                             if fallback {
                                 // We do all of the same steps to fallback entries as to
                                 // preferred entries, except for recording them in a separate map.
                                 // It is important to not return early in the fallback cases to
                                 // ensure that we extend the BFS to the children of fallback items.
-                                fallback_map.push((def_id, parent));
-                            } else {
-                                entry.insert(parent);
+                                fallback_map.insert(def_id, parent);
                             }
 
                             if child.res.module_like_def_id().is_some() {
@@ -560,7 +571,14 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // Fill in any missing entries with the less preferable path.
             // If this path re-exports the child as `_`, we still use this
             // path in a diagnostic that suggests importing `::*`.
-
+            // We must extend the fallback map with items from the visible parent map
+            // as the extend call overrides existing entries from the latter map,
+            // which we prefer over fallback entries.
+            // FIXME: The Unord* APIs lack an efficient way of merging
+            //        the values of one map for only the missing keys of the other map,
+            //        which is required to merge the fallback map into the visible parent map.
+            //        In the meantime, use an "ordered" map internally for fallback entries.
+            #[allow(rustc::potential_query_instability)]
             for (child, parent) in fallback_map {
                 visible_parent_map.entry(child).or_insert(parent);
             }

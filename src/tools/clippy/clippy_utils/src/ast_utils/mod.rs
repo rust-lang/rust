@@ -2,7 +2,7 @@
 //!
 //! - The `eq_foobar` functions test for semantic equality but ignores `NodeId`s and `Span`s.
 
-#![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
+#![allow(clippy::enum_glob_use, clippy::wildcard_imports)]
 
 use crate::{both, over};
 use rustc_ast::attr::data_structures::CfgEntry;
@@ -107,7 +107,7 @@ fn eq_generic_args(l: &GenericArgs, r: &GenericArgs) -> bool {
     match (l, r) {
         (AngleBracketed(l), AngleBracketed(r)) => over(&l.args, &r.args, eq_angle_arg),
         (Parenthesized(l), Parenthesized(r)) => {
-            over(&l.inputs, &r.inputs, |l, r| eq_ty(l, r)) && eq_fn_ret_ty(&l.output, &r.output)
+            over(&l.inputs, &r.inputs, eq_param) && eq_fn_ret_ty(&l.output, &r.output)
         },
         _ => false,
     }
@@ -209,7 +209,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: lb,
                 capture_clause: lc,
-                coroutine_kind: la,
+                coroutine_marker: lcm,
                 movability: lm,
                 fn_decl: lf,
                 body: le,
@@ -218,7 +218,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: rb,
                 capture_clause: rc,
-                coroutine_kind: ra,
+                coroutine_marker: rcm,
                 movability: rm,
                 fn_decl: rf,
                 body: re,
@@ -227,7 +227,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
-                && eq_coroutine_kind(*la, *ra)
+                && eq_opt_coroutine_marker(*lcm, *rcm)
                 && lm == rm
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
@@ -247,19 +247,6 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         },
         _ => false,
     }
-}
-
-fn eq_coroutine_kind(a: Option<CoroutineKind>, b: Option<CoroutineKind>) -> bool {
-    matches!(
-        (a, b),
-        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-            | (
-                Some(CoroutineKind::AsyncGen { .. }),
-                Some(CoroutineKind::AsyncGen { .. })
-            )
-            | (None, None)
-    )
 }
 
 fn eq_field(l: &ExprField, r: &ExprField) -> bool {
@@ -332,7 +319,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -341,7 +328,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => eq_id(*li, *ri) && lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_deref(), re.as_deref()),
         (
@@ -381,7 +368,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -391,7 +378,7 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -539,7 +526,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -548,7 +535,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => eq_id(*li, *ri) && eq_ty(lt, rt) && lm == rm && eq_expr_opt(le.as_deref(), re.as_deref()) && ls == rs,
         (
@@ -560,7 +547,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -570,7 +557,7 @@ fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -649,7 +636,7 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: lc,
                 body: lb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
@@ -659,7 +646,7 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 contract: rc,
                 body: rb,
                 define_opaque: _,
-                eii_impls: _,
+                eii_impl: _,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -734,22 +721,17 @@ fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
     eq_fn_decl(&l.decl, &r.decl) && eq_fn_header(&l.header, &r.header)
 }
 
-fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
-    matches!(
-        (l, r),
-        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-            | (
-                Some(CoroutineKind::AsyncGen { .. }),
-                Some(CoroutineKind::AsyncGen { .. })
-            )
-            | (None, None)
-    )
+fn eq_opt_coroutine_marker(l: Option<CoroutineMarker>, r: Option<CoroutineMarker>) -> bool {
+    match (l, r) {
+        (Some(lcm), Some(rcm)) => lcm.kind == rcm.kind,
+        (None, None) => true,
+        (Some(_), None) | (None, Some(_)) => false,
+    }
 }
 
 fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
     matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
-        && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
+        && eq_opt_coroutine_marker(l.coroutine_marker, r.coroutine_marker)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
 }
@@ -855,12 +837,14 @@ fn eq_restriction_kind(l: &RestrictionKind, r: &RestrictionKind) -> bool {
 
 fn eq_fn_decl(l: &FnDecl, r: &FnDecl) -> bool {
     eq_fn_ret_ty(&l.output, &r.output)
-        && over(&l.inputs, &r.inputs, |l, r| {
-            l.is_placeholder == r.is_placeholder
-                && eq_pat(&l.pat, &r.pat)
-                && eq_ty(&l.ty, &r.ty)
-                && over(&l.attrs, &r.attrs, eq_attr)
-        })
+        && over(&l.inputs, &r.inputs, eq_param)
+}
+
+fn eq_param(l: &Param, r: &Param) -> bool {
+    l.is_placeholder == r.is_placeholder
+        && eq_pat(&l.pat, &r.pat)
+        && eq_ty(&l.ty, &r.ty)
+        && over(&l.attrs, &r.attrs, eq_attr)
 }
 
 fn eq_closure_binder(l: &ClosureBinder, r: &ClosureBinder) -> bool {

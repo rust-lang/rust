@@ -140,7 +140,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // This has some implications for how we get the clauses available to the anon const
                     // see `explicit_clauses_of` for more information on this
-                    let generics = tcx.generics_of(parent_did);
+                    let parent_def_id = tcx.local_parent(param_id);
+                    let generics = tcx.generics_of(parent_def_id);
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
@@ -218,7 +219,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
-        Node::ConstArg(..) => {
+        Node::ConstArg(..) | Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. }) => {
             // These can show up in mGCA when representing "direct" const arguments. The
             // DefCollector cannot know whether an anon const will be represented by an actual HIR
             // Node::AnonConst, or whether it will be represented directly, so it must generate a

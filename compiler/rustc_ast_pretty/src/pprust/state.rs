@@ -1212,7 +1212,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
             ast::GenericArgs::Parenthesized(data) => {
                 self.word("(");
-                self.commasep(Inconsistent, &data.inputs, |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, &data.inputs, |s, param| s.print_param(param, false));
                 self.word(")");
                 self.print_fn_ret_ty(&data.output);
             }
@@ -2111,15 +2111,15 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_coroutine_kind(&mut self, coroutine_kind: ast::CoroutineKind) {
-        match coroutine_kind {
-            ast::CoroutineKind::Gen { .. } => {
+    fn print_coroutine_marker(&mut self, coroutine_marker: ast::CoroutineMarker) {
+        match coroutine_marker.kind {
+            ast::CoroutineKind::Gen => {
                 self.word_nbsp("gen");
             }
-            ast::CoroutineKind::Async { .. } => {
+            ast::CoroutineKind::Async => {
                 self.word_nbsp("async");
             }
-            ast::CoroutineKind::AsyncGen { .. } => {
+            ast::CoroutineKind::AsyncGen => {
                 self.word_nbsp("async");
                 self.word_nbsp("gen");
             }
@@ -2294,7 +2294,9 @@ impl<'a> State<'a> {
 
     fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
-        header.coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
+        header
+            .coroutine_marker
+            .map(|coroutine_marker| self.print_coroutine_marker(coroutine_marker));
         self.print_safety(header.safety);
 
         match header.ext {

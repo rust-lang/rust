@@ -4,4 +4,4 @@ expression: build llvm
 ---
 [Build] llvm::Llvm
     targets: [x86_64-unknown-linux-gnu]
-    - Set({build::src/llvm-project/llvm})
+    - Set({src/llvm-project/llvm})

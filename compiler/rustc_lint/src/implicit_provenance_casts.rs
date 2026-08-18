@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 
-use crate::lints::{
+use crate::diagnostics::{
     ImplicitProvenanceCastsInt2Ptr, ImplicitProvenanceCastsPtr2Int, Int2PtrSuggestion,
     Ptr2IntSuggestion,
 };

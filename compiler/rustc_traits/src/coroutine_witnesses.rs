@@ -54,7 +54,7 @@ fn compute_assumptions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     bound_tys: &'tcx ty::List<Ty<'tcx>>,
-) -> &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> {
+) -> &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> {
     if tcx.next_trait_solver_globally() || !tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
         return &ty::List::empty();
     }

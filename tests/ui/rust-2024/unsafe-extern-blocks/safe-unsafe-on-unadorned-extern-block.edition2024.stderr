@@ -1,7 +1,11 @@
 error: extern blocks must be unsafe
   --> $DIR/safe-unsafe-on-unadorned-extern-block.rs:5:1
    |
-LL | / extern "C" {
+LL |   extern "C" {
+   |   ^
+   |   |
+   |  _help: needs `unsafe` before the extern keyword: `unsafe`
+   | |
 LL | |
 LL | |     safe static TEST1: i32;
 ...  |

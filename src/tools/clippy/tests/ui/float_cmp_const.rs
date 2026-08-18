@@ -47,6 +47,17 @@ fn main() {
     ONE != f32::INFINITY;
     ONE == f32::NEG_INFINITY;
 
+    // assert_eq with const floats
+    assert_eq!(ONE, 1.0);
+    //~^ float_cmp_const
+
+    assert_ne!(ONE, 2.0);
+    //~^ float_cmp_const
+
+    let local = 0.9;
+    assert_eq!(local, ONE);
+    //~^ float_cmp_const
+
     // no errors, but will warn clippy::float_cmp if '#![allow(float_cmp)]' above is removed
     let w = 1.1;
     v == w;

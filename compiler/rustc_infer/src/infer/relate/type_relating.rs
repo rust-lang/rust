@@ -379,8 +379,4 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx>
             )
         }))
     }
-
-    fn ambient_variance(&self) -> ty::Variance {
-        self.ambient_variance
-    }
 }

@@ -2,7 +2,7 @@
 
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::solve::Certainty;

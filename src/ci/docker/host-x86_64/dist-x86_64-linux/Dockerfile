@@ -65,7 +65,7 @@ RUN ./cmake.sh
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
 COPY scripts/build-clang.sh /tmp/
-ENV LLVM_BUILD_TARGETS=X86
+ENV LLVM_BUILD_TARGETS="X86;AMDGPU;NVPTX"
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
@@ -91,6 +91,7 @@ ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --set llvm.ninja=false \
       --set llvm.libzstd=true \
       --set build.allocator=jemalloc \
+      --set llvm.offload-clang-dir="/rustroot/lib/cmake/clang" \
       --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1"

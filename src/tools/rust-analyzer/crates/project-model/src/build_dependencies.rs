@@ -462,9 +462,7 @@ impl WorkspaceBuildScripts {
                     cmd.arg(target_dir.as_ref());
                 }
 
-                if let Some(target) = &config.target {
-                    cmd.args(["--target", target]);
-                }
+                toolchain::cargo_use_targets(toolchain, &mut cmd, config.target.as_slice());
                 let mut lockfile_copy = None;
                 if let Some(toolchain) = toolchain {
                     let lockfile_path =
@@ -473,6 +471,10 @@ impl WorkspaceBuildScripts {
                     if let Some(lockfile_copy) = &lockfile_copy {
                         requires_unstable_options = true;
                         match lockfile_copy.usage {
+                            LockfileUsage::WithFlag => {
+                                cmd.arg("--lockfile-path");
+                                cmd.arg(lockfile_copy.path.as_str());
+                            }
                             LockfileUsage::WithEnvVarUnstable => {
                                 cmd.arg("-Zlockfile-path");
                                 cmd.env(

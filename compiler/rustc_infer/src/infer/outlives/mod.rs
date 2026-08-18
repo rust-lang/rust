@@ -29,7 +29,7 @@ pub fn explicit_outlives_bounds<'tcx>(
         .into_iter()
         .filter_map(ty::Clause::as_region_outlives_clause)
         .filter_map(ty::Binder::no_bound_vars)
-        .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a))
+        .map(|ty::OutlivesClause(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a))
 }
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -75,7 +75,7 @@ impl<'tcx> InferCtxt<'tcx> {
             storage.data.constraints.retain(|(c, _)| match c.kind {
                 ConstraintKind::RegSubReg => !outlives_env
                     .higher_ranked_assumptions()
-                    .contains(&ty::OutlivesPredicate(c.sup.into(), c.sub)),
+                    .contains(&ty::OutlivesClause(c.sup.into(), c.sub)),
 
                 ConstraintKind::VarSubVar
                 | ConstraintKind::RegSubVar

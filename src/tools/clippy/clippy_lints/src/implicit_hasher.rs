@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_body, walk_expr, walk_ty};
+use rustc_hir::intravisit::{Visitor, VisitorExt as _, walk_body, walk_expr, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -13,7 +13,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{IntoSpan, SpanExt, snippet, snippet_with_context};
+use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet, snippet_with_context};
 use clippy_utils::sym;
 
 declare_clippy_lint! {

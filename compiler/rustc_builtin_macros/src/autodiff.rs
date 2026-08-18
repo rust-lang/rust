@@ -18,8 +18,8 @@ mod llvm_enzyme {
         FnRetTy, FnSig, GenericArg, GenericArgs, GenericParamKind, Generics, ItemKind,
         MetaItemInner, PatKind, Path, PathSegment, TyKind, Visibility,
     };
+    use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
-    use rustc_hir::attrs::RustcAutodiff;
     use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
@@ -344,7 +344,7 @@ mod llvm_enzyme {
             contract: None,
             body: Some(d_body),
             define_opaque: None,
-            eii_impls: ThinVec::new(),
+            eii_impl: None,
         });
         let mut rustc_ad_attr =
             Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));

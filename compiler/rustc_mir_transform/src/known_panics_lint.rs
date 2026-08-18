@@ -6,9 +6,7 @@ use std::fmt::Debug;
 
 use rustc_abi::{BackendRepr, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
-use rustc_const_eval::interpret::{
-    ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error, interp_ok,
-};
+use rustc_const_eval::interpret::{ImmTy, InterpCx, InterpResult, Projectable, Scalar, interp_ok};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::{HirId, find_attr};
@@ -237,7 +235,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         f(self)
-            .map_err_info(|err| {
+            .inspect_err_info(|err| {
                 trace!("InterpCx operation failed: {:?}", err);
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
@@ -245,9 +243,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 assert!(
                     !err.kind().formatted_string(),
                     "known panics lint encountered formatting error: {}",
-                    format_interp_error(err),
+                    err.to_string(),
                 );
-                err
             })
             .discard_err()
     }
@@ -978,7 +975,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // whether they'd be fine right now.
             MutatingUse(MutatingUseContext::Yield)
             | MutatingUse(MutatingUseContext::Drop)
-            | MutatingUse(MutatingUseContext::Retag)
             // These can't ever be propagated under any scheme, as we can't reason about indirect
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)

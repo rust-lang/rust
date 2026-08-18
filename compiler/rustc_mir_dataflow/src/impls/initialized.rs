@@ -1,16 +1,20 @@
 use std::assert_matches;
 
 use rustc_abi::VariantIdx;
-use rustc_index::Idx;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, Body, CallReturnPlaces, Local, Location, StatementKind, TerminatorEdges,
+};
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::SmallVec;
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use crate::drop_flag_effects::{DropFlagState, InactiveVariants};
-use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
+use crate::move_paths::{
+    HasMoveData, Init, InitKind, InitLocation, LookupResult, MoveData, MovePathIndex,
+};
 use crate::{
     Analysis, GenKill, MaybeReachable, SwitchTargetIndex, drop_flag_effects,
     drop_flag_effects_for_function_entry, drop_flag_effects_for_location, on_all_children_bits,
@@ -267,36 +271,34 @@ impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-/// `EverInitializedPlaces` tracks all initializations that may have occurred
-/// upon reaching a particular point in the control flow for a function,
-/// without an intervening `StorageDead`.
+/// `EverInitializedPlaces` tracks all initializations of locals that may have
+/// occurred upon reaching a particular point in the control flow for a
+/// function, without an intervening `StorageDead`.
 ///
 /// This dataflow is used to determine if an immutable local variable may
 /// be assigned to.
 ///
 /// For example, in code like the following, we have corresponding
-/// dataflow information shown in the right-hand comments. Underscored indices
-/// are used to distinguish between multiple initializations of the same local
-/// variable, e.g. `b_0` and `b_1`.
+/// dataflow information shown in the right-hand comments.
 ///
 /// ```rust
 /// struct S;
 /// #[rustfmt::skip]
 /// fn foo(p: bool) {                           // ever-init:
-///                                             // {p,                  }
-///     let a = S; let mut b = S; let c; let d; // {p, a, b_0,          }
+///                                             // {p,           }
+///     let a = S; let mut b = S; let c; let d; // {p, a, b,     }
 ///
 ///     if p {
-///         drop(a);                            // {p, a, b_0,          }
-///         b = S;                              // {p, a, b_0, b_1,     }
+///         drop(a);                            // {p, a, b,     }
+///         b = S;                              // {p, a, b,     }
 ///
 ///     } else {
-///         drop(b);                            // {p, a, b_0, b_1,     }
-///         d = S;                              // {p, a, b_0, b_1,    d}
+///         drop(b);                            // {p, a, b,     }
+///         d = S;                              // {p, a, b,    d}
 ///
-///     }                                       // {p, a, b_0, b_1,    d}
+///     }                                       // {p, a, b,    d}
 ///
-///     c = S;                                  // {p, a, b_0, b_1, c, d}
+///     c = S;                                  // {p, a, b, c, d}
 /// }
 /// ```
 pub struct EverInitializedPlaces<'a, 'tcx> {
@@ -389,14 +391,15 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn get_terminator_edges<'mir>(
         &self,
-        state: &mut Self::Domain,
+        state: &Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
-        location: Location,
+        _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        // Note: `edges` must be computed first because `drop_flag_effects_for_location` can change
-        // the result of `is_unwind_dead`.
+        // Note: this relies on `get_terminator_edges` being called before
+        // `apply_primary_terminator_effect` because the result of `is_unwind_dead` is affected by
+        // the `drop_flag_effects_for_location` in `apply_primary_terminator_effect`.
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
             && let mir::TerminatorKind::Drop { target, unwind, place, replace: _, drop: _ } =
@@ -406,10 +409,18 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         {
             edges = TerminatorEdges::Single(target);
         }
+        edges
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        location: Location,
+    ) {
         drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
             Self::update_bits(state, path, s)
         });
-        edges
     }
 
     fn apply_call_return_effect(
@@ -447,7 +458,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         state: &mut Self::Domain,
-        data: &mut Self::SwitchIntData,
+        data: &Self::SwitchIntData,
         target_idx: SwitchTargetIndex,
     ) {
         let inactive_variants = match target_idx {
@@ -512,15 +523,12 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         // mutable borrow occurs. Places cannot become uninitialized through a mutable reference.
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn get_terminator_edges<'mir>(
         &self,
-        state: &mut Self::Domain,
+        _state: &Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(state, path, s)
-        });
         if self.skip_unreachable_unwind.contains(location.block) {
             let mir::TerminatorKind::Drop { target, unwind, .. } = terminator.kind else { bug!() };
             assert_matches!(unwind, mir::UnwindAction::Cleanup(_));
@@ -528,6 +536,17 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         } else {
             terminator.edges()
         }
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        location: Location,
+    ) {
+        drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
+            Self::update_bits(state, path, s)
+        });
     }
 
     fn apply_call_return_effect(
@@ -569,7 +588,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         state: &mut Self::Domain,
-        data: &mut Self::SwitchIntData,
+        data: &Self::SwitchIntData,
         target_idx: SwitchTargetIndex,
     ) {
         let inactive_variants = match target_idx {
@@ -590,23 +609,21 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-/// There can be many more `InitIndex` than there are locals in a MIR body.
-/// We use a mixed bitset to avoid paying too high a memory footprint.
-pub type EverInitializedPlacesDomain = MixedBitSet<InitIndex>;
+pub type EverInitializedPlacesDomain = DenseBitSet<Local>;
 
 impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     type Domain = EverInitializedPlacesDomain;
 
     const NAME: &'static str = "ever_init";
 
-    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
-        // bottom = no initialized variables by default
-        MixedBitSet::new_empty(self.move_data().inits.len())
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = no initialized locals by default
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
-        for arg_init in 0..body.arg_count {
-            state.insert(InitIndex::new(arg_init));
+        for arg in body.args_iter() {
+            state.insert(arg);
         }
     }
 
@@ -618,43 +635,40 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         location: Location,
     ) {
         let move_data = self.move_data();
-        let init_path_map = &move_data.init_path_map;
         let init_loc_map = &move_data.init_loc_map;
-        let rev_lookup = &move_data.rev_lookup;
 
-        debug!("initializes move_indexes {:?}", init_loc_map[location]);
-        state.gen_all(init_loc_map[location].iter().copied());
+        // Record inits of locals. Projections can be ignored.
+        state.gen_all(init_loc_map[location].iter().copied().filter_map(|ii| {
+            let init_mpi = move_data.inits[ii].path;
+            move_data.move_paths[init_mpi].place.as_local()
+        }));
 
-        if let mir::StatementKind::StorageDead(local) = stmt.kind
-            // End inits for StorageDead, so that an immutable variable can
-            // be reinitialized on the next iteration of the loop.
-            && let Some(move_path_index) = rev_lookup.find_local(local)
-        {
-            debug!("clears the ever initialized status of {:?}", init_path_map[move_path_index]);
-            state.kill_all(init_path_map[move_path_index].iter().copied());
+        // Kill on StorageDead, so that an immutable variable can
+        // be reinitialized on the next iteration of the loop.
+        if let mir::StatementKind::StorageDead(local) = stmt.kind {
+            state.kill(local);
         }
     }
 
-    #[instrument(skip(self, state, terminator), level = "debug")]
-    fn apply_primary_terminator_effect<'mir>(
+    #[instrument(skip(self, state, _terminator), level = "debug")]
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         let move_data = self.move_data();
         let init_loc_map = &move_data.init_loc_map;
-        debug!(?terminator);
-        debug!("initializes move_indexes {:?}", init_loc_map[location]);
-        state.gen_all(
-            init_loc_map[location]
-                .iter()
-                .filter(|init_index| {
-                    move_data.inits[**init_index].kind != InitKind::NonPanicPathOnly
-                })
-                .copied(),
-        );
-        terminator.edges()
+
+        // Record inits of locals. Projections can be ignored.
+        state.gen_all(init_loc_map[location].iter().copied().filter_map(|ii| {
+            let init = &move_data.inits[ii];
+            if init.kind != InitKind::NonPanicPathOnly {
+                move_data.move_paths[init.path].place.as_local()
+            } else {
+                None
+            }
+        }));
     }
 
     fn apply_call_return_effect(
@@ -666,9 +680,77 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let move_data = self.move_data();
         let init_loc_map = &move_data.init_loc_map;
 
+        // Record inits of locals. Projections can be ignored.
         let call_loc = self.body.terminator_loc(block);
-        for init_index in &init_loc_map[call_loc] {
-            state.gen_(*init_index);
+        state.gen_all(init_loc_map[call_loc].iter().copied().filter_map(|ii| {
+            let init = &move_data.inits[ii];
+            if init.kind == InitKind::NonPanicPathOnly {
+                move_data.move_paths[init.path].place.as_local()
+            } else {
+                None
+            }
+        }));
+    }
+}
+
+impl EverInitializedPlaces<'_, '_> {
+    /// Whether the init of `local` at `init` can reach `target` via a path that doesn't pass
+    /// through a `StorageDead(local)`. Mirrors the gen/kill structure of `EverInitializedPlaces`.
+    pub fn init_reaches_location(
+        body: &Body<'_>,
+        local: Local,
+        init: Init,
+        target: Location,
+    ) -> bool {
+        let init_loc = match init.location {
+            // Arguments are initialized on entry, and `StorageDead` is never emitted for them, so
+            // they reach every location.
+            InitLocation::Argument(_) => return true,
+            InitLocation::Statement(init_loc) => init_loc,
+        };
+
+        // Worklist of locations to walk forward from, seeded with the location(s) following `init`.
+        let mut queue = vec![];
+
+        let basic_blocks = &body.basic_blocks;
+        let init_block_data = &basic_blocks[init_loc.block];
+        if init_loc.statement_index < init_block_data.statements.len() {
+            // This case mirrors `apply_primary_statement_effect`.
+            queue.push(init_loc.successor_within_block());
+        } else if init.kind == InitKind::NonPanicPathOnly {
+            // This case mirrors `apply_call_return_effect`.
+            let TerminatorEdges::AssignOnReturn { return_, .. } =
+                init_block_data.terminator().edges()
+            else {
+                bug!("`NonPanicPathOnly` should only be seen on terminators with return edges");
+            };
+            queue.extend(return_.into_iter().map(BasicBlock::start_location));
+        } else {
+            // This case mirrors `apply_primary_terminator_effect`.
+            queue.extend(init_block_data.terminator().successors().map(BasicBlock::start_location));
         }
+
+        let mut visited = FxIndexSet::default();
+        'outer: while let Some(loc) = queue.pop() {
+            if !visited.insert(loc) {
+                continue;
+            }
+            // Walk from `loc` to the end of its block, looking for `target` or a kill.
+            let block_data = &basic_blocks[loc.block];
+            for statement_index in loc.statement_index..=block_data.statements.len() {
+                if target == (Location { block: loc.block, statement_index }) {
+                    return true;
+                }
+                if let Some(stmt) = block_data.statements.get(statement_index)
+                    && let StatementKind::StorageDead(dead) = stmt.kind
+                    && dead == local
+                {
+                    continue 'outer;
+                }
+            }
+
+            queue.extend(block_data.terminator().successors().map(BasicBlock::start_location));
+        }
+        false
     }
 }

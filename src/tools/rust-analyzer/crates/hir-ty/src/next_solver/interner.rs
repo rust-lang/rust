@@ -12,8 +12,8 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, CallableDefId, EnumId, HasModule, ItemContainerId, StructId, TraitId, TypeAliasId,
-    UnionId, VariantId,
+    AdtId, CallableDefId, EnumId, GenericParamId, HasModule, ItemContainerId, StructId, TraitId,
+    TypeAliasId, UnionId, VariantId,
     attrs::AttrFlags,
     expr_store::{ExpressionStore, StoreVisitor},
     hir::{ClosureKind as HirClosureKind, CoroutineKind as HirCoroutineKind, ExprId, PatId},
@@ -29,13 +29,14 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTy, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     FnSigKind, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeFlags, TypeVisitableExt, Upcast, Variance,
+    TypeFlags, TypeVisitableExt, Upcast, Variance, VisitorResult,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
     inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem},
     solve::{AdtDestructorKind, SizedTraitKind},
+    try_visit,
 };
 
 use crate::{
@@ -210,12 +211,7 @@ macro_rules! impl_stored_interned_slice {
         }
 
         // SAFETY: It is safe to store this type in queries (but not `$name`).
-        unsafe impl salsa::Update for $stored_name {
-            unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-                // SAFETY: Comparing by (pointer) equality is safe.
-                unsafe { salsa::update_fallback(old_pointer, new_value) }
-            }
-        }
+        unsafe impl salsa::SalsaValue for $stored_name {}
 
         impl std::fmt::Debug for $stored_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -264,9 +260,38 @@ macro_rules! impl_foldable_for_interned_slice {
 }
 pub(crate) use impl_foldable_for_interned_slice;
 
+macro_rules! impl_foldable_for_stored_type {
+    ($name:ident) => {
+        impl<'db> ::rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name {
+            fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+                &self,
+                visitor: &mut V,
+            ) -> V::Result {
+                self.as_ref().visit_with(visitor)
+            }
+        }
+
+        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name {
+            fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Result<Self, F::Error> {
+                Ok(self.as_ref().try_fold_with(folder)?.store())
+            }
+            fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Self {
+                self.as_ref().fold_with(folder).store()
+            }
+        }
+    };
+}
+pub(crate) use impl_foldable_for_stored_type;
+
 macro_rules! impl_stored_interned {
     ( $storage:ident, $name:ident, $stored_name:ident $(,)? ) => {
-        #[derive(Clone, PartialEq, Eq, Hash)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::salsa::SalsaValue)]
         pub struct $stored_name {
             interned: ::intern::Interned<$storage>,
         }
@@ -281,12 +306,6 @@ macro_rules! impl_stored_interned {
             pub fn as_ref<'a, 'db>(&'a self) -> $name<'db> {
                 let it = $name { interned: self.interned.as_ref() };
                 unsafe { std::mem::transmute::<$name<'a>, $name<'db>>(it) }
-            }
-        }
-
-        unsafe impl salsa::Update for $stored_name {
-            unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-                unsafe { salsa::update_fallback(old_pointer, new_value) }
             }
         }
 
@@ -1150,9 +1169,17 @@ impl<'db> Interner for DbInterner<'db> {
         (TraitRef::new_from_args(self, trait_def_id.into(), trait_args), alias_args)
     }
 
-    fn check_args_compatible(self, _def_id: Self::DefId, _args: Self::GenericArgs) -> bool {
-        // FIXME
-        true
+    fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool {
+        let generics = self.generics_of(def_id);
+        generics.count() == args.len()
+            && std::iter::zip(generics.iter(), args).all(|((param, _), arg)| {
+                matches!(
+                    (param, arg.kind()),
+                    (GenericParamId::LifetimeParamId(_), GenericArgKind::Lifetime(_))
+                        | (GenericParamId::TypeParamId(_), GenericArgKind::Type(_))
+                        | (GenericParamId::ConstParamId(_), GenericArgKind::Const(_))
+                )
+            })
     }
 
     fn debug_assert_args_compatible(self, _def_id: Self::DefId, _args: Self::GenericArgs) {}
@@ -1601,12 +1628,12 @@ impl<'db> Interner for DbInterner<'db> {
         def_id.0.trait_items(self.db()).associated_types().map(|id| id.into())
     }
 
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        mut f: impl FnMut(Self::ImplId),
-    ) {
+        mut f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
         let krate = self.krate.expect("trait solving requires setting `DbInterner::krate`");
         let trait_block = trait_def_id.0.loc(self.db).container.block(self.db);
         let mut consider_impls_for_simplified_type = |simp: SimplifiedType<'_>| {
@@ -1641,13 +1668,14 @@ impl<'db> Interner for DbInterner<'db> {
                     let (regular_impls, builtin_derive_impls) =
                         impls.for_trait_and_self_ty(trait_def_id.0, &simp);
                     for &impl_ in regular_impls {
-                        f(impl_.into());
+                        try_visit!(f(impl_.into()));
                     }
                     for &impl_ in builtin_derive_impls {
-                        f(impl_.into());
+                        try_visit!(f(impl_.into()));
                     }
+                    R::output()
                 },
-            );
+            )
         };
 
         match self_ty.kind() {
@@ -1676,7 +1704,7 @@ impl<'db> Interner for DbInterner<'db> {
                 let simp =
                     fast_reject::simplify_type(self, self_ty, fast_reject::TreatParams::AsRigid)
                         .unwrap();
-                consider_impls_for_simplified_type(simp);
+                try_visit!(consider_impls_for_simplified_type(simp));
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -1704,7 +1732,7 @@ impl<'db> Interner for DbInterner<'db> {
                     SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1719,7 +1747,7 @@ impl<'db> Interner for DbInterner<'db> {
                 ];
 
                 for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
+                    try_visit!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1748,15 +1776,22 @@ impl<'db> Interner for DbInterner<'db> {
         self.for_each_blanket_impl(trait_def_id, f)
     }
 
-    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, mut f: impl FnMut(Self::ImplId)) {
-        let Some(krate) = self.krate else { return };
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: Self::TraitId,
+        mut f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
+        let Some(krate) = self.krate else {
+            return R::output();
+        };
         let block = trait_def_id.0.loc(self.db).container.block(self.db);
 
         TraitImpls::for_each_crate_and_block(self.db, krate, block, &mut |impls| {
             for &impl_ in impls.blanket_impls(trait_def_id.0) {
-                f(impl_.into());
+                try_visit!(f(impl_.into()));
             }
-        });
+            R::output()
+        })
     }
 
     fn has_item_definition(self, _def_id: Self::ImplOrTraitAssocTermId) -> bool {
@@ -1825,8 +1860,8 @@ impl<'db> Interner for DbInterner<'db> {
         false
     }
 
-    fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed {
-        panic!("Bug encountered in next-trait-solver: {}", msg.to_string())
+    fn delay_bug(self, _msg: impl ToString) -> Self::ErrorGuaranteed {
+        ErrorGuaranteed
     }
 
     fn is_general_coroutine(self, def_id: Self::CoroutineId) -> bool {
@@ -2047,13 +2082,19 @@ impl<'db> Interner for DbInterner<'db> {
         opaque: Self::LocalOpaqueTyId,
     ) -> EarlyBinder<Self, Self::Ty> {
         let impl_trait_id = opaque.0.loc(self.db);
-        match impl_trait_id {
+        // The entry is missing when this call cycles back into the still-running inference
+        // of the defining body, as the cycle fallback is an empty result.
+        let hidden_type = match impl_trait_id {
             crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                crate::opaques::rpit_hidden_types(self.db, func)[idx].get()
+                crate::opaques::rpit_hidden_types(self.db, func).get(idx)
             }
             crate::ImplTraitId::TypeAliasImplTrait(type_alias, idx) => {
-                crate::opaques::tait_hidden_types(self.db, type_alias)[idx].get()
+                crate::opaques::tait_hidden_types(self.db, type_alias).get(idx)
             }
+        };
+        match hidden_type {
+            Some(hidden_type) => hidden_type.get(),
+            None => EarlyBinder::bind(Ty::new_error(self, ErrorGuaranteed)),
         }
     }
 

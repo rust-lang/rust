@@ -75,12 +75,12 @@ pub(crate) fn generate_blanket_trait_impl(
         |builder| {
             let editor = builder.make_editor(traitd.syntax());
             let make = editor.make();
-            let namety = make.ty_path(make.path_from_text(&name.text()));
+            let namety = make.ty_path(make.path_from_text(name.text()));
             let trait_where_clause = traitd.where_clause().map(|it| it.reset_indent());
             let bounds = traitd.type_bound_list().and_then(|list| exclude_sized(make, list));
             let is_unsafe = traitd.unsafe_token().is_some();
             let thisname = this_name(make, &traitd);
-            let thisty = make.ty_path(make.path_from_text(&thisname.text()));
+            let thisty = make.ty_path(make.path_from_text(thisname.text()));
             let indent = traitd.indent_level();
 
             let gendecl = make.generic_param_list([GenericParam::TypeParam(make.type_param(
@@ -141,7 +141,7 @@ pub(crate) fn generate_blanket_trait_impl(
             if let Some(cap) = ctx.config.snippet_cap
                 && let Some(self_ty) = impl_.self_ty()
             {
-                builder.add_tabstop_before(cap, self_ty);
+                editor.add_annotation(self_ty.syntax(), builder.make_tabstop_before(cap));
             }
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },

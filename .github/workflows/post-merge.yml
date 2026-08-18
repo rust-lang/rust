@@ -15,7 +15,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Make sure that we have enough commits to find the parent merge commit.
           # Since all merges should be through merge commits, fetching two commits
@@ -46,7 +46,7 @@ jobs:
           printf "This is an experimental post-merge analysis report that shows differences in test outcomes between the merged PR and its parent PR.\n" >> output.log
           printf "</details>\n\n" >> output.log
 
-          cargo run --release post-merge-report ${PARENT_COMMIT} ${{ github.sha }} >> output.log
+          cargo run --locked --release post-merge-report ${PARENT_COMMIT} ${{ github.sha }} >> output.log
 
           cat output.log
 

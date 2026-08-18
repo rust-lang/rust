@@ -9,23 +9,20 @@ use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Se
 use ide_db::{base_db::SourceDatabase, line_index};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
-use crate::cli::{flags, progress_report::ProgressReport};
+use crate::cli::{Verbosity, flags, progress_report::ProgressReport};
 
 impl flags::Diagnostics {
-    pub fn run(self) -> anyhow::Result<()> {
-        const STACK_SIZE: usize = 1024 * 1024 * 8;
-
+    pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
         let handle = stdx::thread::Builder::new(
             stdx::thread::ThreadIntent::LatencySensitive,
             "BIG_STACK_THREAD",
         )
-        .stack_size(STACK_SIZE)
-        .spawn(|| self.run_())
+        .spawn(move || self.run_(verbosity))
         .unwrap();
 
         handle.join()
     }
-    fn run_(self) -> anyhow::Result<()> {
+    fn run_(self, verbosity: Verbosity) -> anyhow::Result<()> {
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
@@ -64,7 +61,11 @@ impl flags::Diagnostics {
             })
             .collect::<Vec<_>>();
 
-        let mut bar = ProgressReport::new(work.len());
+        let mut bar = if verbosity.is_quiet() {
+            ProgressReport::hidden()
+        } else {
+            ProgressReport::new(work.len())
+        };
         for module in work {
             let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {

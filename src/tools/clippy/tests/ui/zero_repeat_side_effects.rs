@@ -1,9 +1,11 @@
 #![warn(clippy::zero_repeat_side_effects)]
-#![allow(
-    clippy::unnecessary_operation,
-    clippy::useless_vec,
+#![expect(
     clippy::needless_late_init,
     clippy::single_match,
+    clippy::unnecessary_operation,
+    clippy::useless_vec
+)]
+#![allow(
     clippy::no_effect // only fires _after_ the fix
 )]
 

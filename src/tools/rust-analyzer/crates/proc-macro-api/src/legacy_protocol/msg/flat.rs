@@ -31,7 +31,7 @@
 //! ```
 //!
 //! We probably should replace most of the code here with bincode someday, but,
-//! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
+//! as we don't have bincode in Cargo.toml yet, let's stick with serde_json for
 //! the time being.
 
 #[cfg(feature = "in-rust-tree")]

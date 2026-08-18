@@ -7,16 +7,15 @@ use std::{debug_assert_matches, iter};
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
     struct_span_code_err,
 };
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::attrs::lang_items::{self, LangItem};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
     expr_needs_parens,
@@ -822,7 +821,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs)
             && let trait_pred = predicate.unwrap_or(trait_pred)
             // Only run this code on binary operators
-            && hir::lang_items::BINARY_OPERATORS
+            && lang_items::BINARY_OPERATORS
                 .iter()
                 .filter_map(|&op| self.tcx.lang_items().get(op))
                 .any(|op| {
@@ -1643,81 +1642,198 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.predicate_must_hold_modulo_regions(&obligation)
         };
 
+        let trait_pred_and_imm_ref = poly_trait_pred.map_bound(|p| {
+            (p, Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, p.self_ty()))
+        });
+        let trait_pred_and_mut_ref = poly_trait_pred.map_bound(|p| {
+            (p, Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, p.self_ty()))
+        });
+
+        let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
+        let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
+
+        let mut point_at_relevant_args =
+            |pred_ty: Ty<'tcx>, args_and_inputs: Vec<(hir::Expr<'_>, Ty<'tcx>)>| {
+                let Some(typeck_results) = &self.typeck_results else { return false };
+
+                let erased_self_ty =
+                    self.tcx.instantiate_bound_regions_with_erased(poly_trait_pred.self_ty());
+                let mut spans = vec![];
+                for (arg, input) in args_and_inputs {
+                    let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(&arg) else { continue };
+                    let pred_has_arg_type = self.infcx.can_eq(param_env, arg_ty, erased_self_ty);
+                    let arg_is_type_param = self.infcx.can_eq(param_env, pred_ty, input);
+                    if pred_has_arg_type && arg_is_type_param {
+                        err.span_label(
+                            arg.span,
+                            format!("`{arg_ty}` doesn't satisfy the trait bound"),
+                        );
+                        spans.push(arg.span);
+                    }
+                }
+                let this = pluralize!("this", spans.len());
+                if !spans.is_empty() {
+                    if imm_ref_self_ty_satisfies_pred {
+                        err.multipart_suggestion(
+                            format!("consider borrowing {this} argument"),
+                            spans.iter().map(|sp| (sp.shrink_to_lo(), "&".into())).collect(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    if mut_ref_self_ty_satisfies_pred {
+                        err.multipart_suggestion(
+                            format!("consider mutably borrowing {this} argument"),
+                            spans.iter().map(|sp| (sp.shrink_to_lo(), "&mut ".into())).collect(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                !spans.is_empty()
+            };
         let code = match obligation.cause.code() {
             ObligationCauseCode::FunctionArg { parent_code, .. } => parent_code,
             // FIXME(compiler-errors): This is kind of a mess, but required for obligations
             // that come from a path expr to affect the *call* expr.
-            c @ ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
+            c @ ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx)
                 if self.tcx.hir_span(*hir_id).lo() == span.lo() =>
             {
                 // `hir_id` corresponds to the HIR node that introduced a `where`-clause obligation.
-                // If that obligation comes from a type in an associated method call, we need
-                // special handling here.
-                if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(*hir_id)
-                    && let hir::ExprKind::Call(base, _) = expr.kind
-                    && let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, segment)) = base.kind
-                    && let hir::Node::Expr(outer) = self.tcx.parent_hir_node(expr.hir_id)
-                    && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mtbl, _) = outer.kind
-                    && ty.span == span
-                {
-                    // We've encountered something like `&str::from("")`, where the intended code
-                    // was likely `<&str>::from("")`. The former is interpreted as "call method
-                    // `from` on `str` and borrow the result", while the latter means "call method
-                    // `from` on `&str`".
+                if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(*hir_id) {
+                    // If that obligation comes from a type in an associated method call, we need
+                    // special handling here.
+                    if let hir::ExprKind::Call(base, _) = expr.kind
+                        && let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, segment)) =
+                            base.kind
+                        && let hir::Node::Expr(outer) = self.tcx.parent_hir_node(expr.hir_id)
+                        && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mtbl, _) = outer.kind
+                        && ty.span == span
+                    {
+                        // We've encountered something like `&str::from("")`, where the intended code
+                        // was likely `<&str>::from("")`. The former is interpreted as "call method
+                        // `from` on `str` and borrow the result", while the latter means "call method
+                        // `from` on `&str`".
 
-                    let trait_pred_and_imm_ref = poly_trait_pred.map_bound(|p| {
-                        (p, Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, p.self_ty()))
-                    });
-                    let trait_pred_and_mut_ref = poly_trait_pred.map_bound(|p| {
-                        (p, Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_static, p.self_ty()))
-                    });
-
-                    let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
-                    let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
-                    let sugg_msg = |pre: &str| {
-                        format!(
-                            "you likely meant to call the associated function `{FN}` for type \
-                             `&{pre}{TY}`, but the code as written calls associated function `{FN}` on \
-                             type `{TY}`",
-                            FN = segment.ident,
-                            TY = poly_trait_pred.self_ty(),
-                        )
-                    };
-                    match (imm_ref_self_ty_satisfies_pred, mut_ref_self_ty_satisfies_pred, mtbl) {
-                        (true, _, hir::Mutability::Not) | (_, true, hir::Mutability::Mut) => {
-                            err.multipart_suggestion(
-                                sugg_msg(mtbl.prefix_str()),
-                                vec![
-                                    (outer.span.shrink_to_lo(), "<".to_string()),
-                                    (span.shrink_to_hi(), ">".to_string()),
-                                ],
-                                Applicability::MachineApplicable,
-                            );
+                        let sugg_msg = |pre: &str| {
+                            format!(
+                                "you likely meant to call the associated function `{FN}` for type \
+                                 `&{pre}{TY}`, but the code as written calls associated function `{FN}` on \
+                                 type `{TY}`",
+                                FN = segment.ident,
+                                TY = poly_trait_pred.self_ty(),
+                            )
+                        };
+                        match (imm_ref_self_ty_satisfies_pred, mut_ref_self_ty_satisfies_pred, mtbl)
+                        {
+                            (true, _, hir::Mutability::Not) | (_, true, hir::Mutability::Mut) => {
+                                err.multipart_suggestion(
+                                    sugg_msg(mtbl.prefix_str()),
+                                    vec![
+                                        (outer.span.shrink_to_lo(), "<".to_string()),
+                                        (span.shrink_to_hi(), ">".to_string()),
+                                    ],
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            (true, _, hir::Mutability::Mut) => {
+                                // There's an associated function found on the immutable borrow of the
+                                err.multipart_suggestion(
+                                    sugg_msg("mut "),
+                                    vec![
+                                        (outer.span.shrink_to_lo().until(span), "<&".to_string()),
+                                        (span.shrink_to_hi(), ">".to_string()),
+                                    ],
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            (_, true, hir::Mutability::Not) => {
+                                err.multipart_suggestion(
+                                    sugg_msg(""),
+                                    vec![
+                                        (
+                                            outer.span.shrink_to_lo().until(span),
+                                            "<&mut ".to_string(),
+                                        ),
+                                        (span.shrink_to_hi(), ">".to_string()),
+                                    ],
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            _ => {}
                         }
-                        (true, _, hir::Mutability::Mut) => {
-                            // There's an associated function found on the immutable borrow of the
-                            err.multipart_suggestion(
-                                sugg_msg("mut "),
-                                vec![
-                                    (outer.span.shrink_to_lo().until(span), "<&".to_string()),
-                                    (span.shrink_to_hi(), ">".to_string()),
-                                ],
-                                Applicability::MachineApplicable,
+                        // If we didn't return early here, we would instead suggest `&&str::from("")`.
+                        return false;
+                    } else if let hir::ExprKind::Call(_, args) = expr.kind {
+                        // The `def_id` can point at a struct, which has no fn sig.
+                        if matches!(
+                            self.tcx.def_kind(*def_id),
+                            DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+                        ) && let Some(pred) = self
+                                .tcx
+                                .clauses_of(*def_id)
+                                .instantiate_identity(self.tcx)
+                                .clauses
+                                .into_iter()
+                                .nth(*idx)
+                            && let Some(pred) = pred.as_trait_clause()
+                            // This feature allows for `for<T> T: Trait`, which fails
+                            // `instantiate_bound_regions_with_erased`. Avoid suggesting for now.
+                            && !self.tcx.features().non_lifetime_binders()
+                        {
+                            let pred_ty = self.tcx.instantiate_bound_regions_with_erased(
+                                pred.self_ty().skip_norm_wip(),
                             );
-                        }
-                        (_, true, hir::Mutability::Not) => {
-                            err.multipart_suggestion(
-                                sugg_msg(""),
-                                vec![
-                                    (outer.span.shrink_to_lo().until(span), "<&mut ".to_string()),
-                                    (span.shrink_to_hi(), ">".to_string()),
-                                ],
-                                Applicability::MachineApplicable,
+                            let fn_sig = self.tcx.instantiate_bound_regions_with_erased(
+                                self.tcx.fn_sig(*def_id).instantiate_identity().skip_norm_wip(),
                             );
+                            if point_at_relevant_args(
+                                pred_ty,
+                                args.into_iter()
+                                    .zip(fn_sig.inputs())
+                                    .map(|(e, t)| (*e, *t))
+                                    .collect(),
+                            ) {
+                                return false;
+                            }
                         }
-                        _ => {}
                     }
-                    // If we didn't return early here, we would instead suggest `&&str::from("")`.
+                }
+                c
+            }
+            c @ ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx)
+                if let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
+                    && let hir::ExprKind::MethodCall(_segment, rcvr, args, ..) = expr.kind
+                    // The `def_id` can also point at the impl, which has no fn sig.
+                    && matches!(
+                        self.tcx.def_kind(*def_id),
+                        DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+                    )
+                    && let Some(pred) = self
+                        .tcx
+                        .clauses_of(*def_id)
+                        .instantiate_identity(self.tcx)
+                        .clauses
+                        .into_iter()
+                        .nth(*idx)
+                    && let Some(pred) = pred.as_trait_clause()
+                    // This feature allows for `for<T> T: Trait`, which fails
+                    // `instantiate_bound_regions_with_erased`. Avoid suggesting for now.
+                    && !self.tcx.features().non_lifetime_binders() =>
+            {
+                let fn_sig = self.tcx.instantiate_bound_regions_with_erased(
+                    self.tcx.fn_sig(*def_id).instantiate_identity().skip_norm_wip(),
+                );
+                // We've got a method call where likely one of the arguments didn't meet a bound.
+                let pred_ty =
+                    self.tcx.instantiate_bound_regions_with_erased(pred.self_ty().skip_norm_wip());
+                if point_at_relevant_args(
+                    pred_ty,
+                    [rcvr]
+                        .into_iter()
+                        .chain(args.into_iter())
+                        .zip(fn_sig.inputs())
+                        .map(|(e, t)| (*e, *t))
+                        .collect(),
+                ) {
                     return false;
                 }
                 c
@@ -4130,30 +4246,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 let parent_predicate = parent_trait_ref;
                 if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
-                    // #74711: avoid a stack overflow
-                    ensure_sufficient_stack(|| {
-                        self.note_obligation_cause_code(
-                            body_def_id,
-                            err,
-                            parent_predicate,
-                            param_env,
-                            &data.parent_code,
-                            obligated_types,
-                            seen_requirements,
-                        )
-                    });
+                    self.note_obligation_cause_code(
+                        body_def_id,
+                        err,
+                        parent_predicate,
+                        param_env,
+                        &data.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    );
                 } else {
-                    ensure_sufficient_stack(|| {
-                        self.note_obligation_cause_code(
-                            body_def_id,
-                            err,
-                            parent_predicate,
-                            param_env,
-                            cause_code.peel_derives(),
-                            obligated_types,
-                            seen_requirements,
-                        )
-                    });
+                    self.note_obligation_cause_code(
+                        body_def_id,
+                        err,
+                        parent_predicate,
+                        param_env,
+                        cause_code.peel_derives(),
+                        obligated_types,
+                        seen_requirements,
+                    );
                 }
             }
             ObligationCauseCode::ImplDerived(ref data) => {
@@ -4173,17 +4284,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.resolve_vars_if_possible(data.derived.parent_trait_pred);
 
                     // Skip PinDerefMutHelper in suggestions, but still show downstream suggestions.
-                    ensure_sufficient_stack(|| {
-                        self.note_obligation_cause_code(
-                            body_def_id,
-                            err,
-                            parent_predicate,
-                            param_env,
-                            &data.derived.parent_code,
-                            obligated_types,
-                            seen_requirements,
-                        )
-                    });
+
+                    self.note_obligation_cause_code(
+                        body_def_id,
+                        err,
+                        parent_predicate,
+                        param_env,
+                        &data.derived.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    );
                     return;
                 }
                 let self_ty_str =
@@ -4328,34 +4438,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                     err.note(format!("required for `{self_ty}` to implement `{trait_path}`"));
                 }
-                // #74711: avoid a stack overflow
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        parent_predicate,
-                        param_env,
-                        &data.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    parent_predicate,
+                    param_env,
+                    &data.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                )
             }
             ObligationCauseCode::ImplDerivedHost(ref data) => {
                 let self_ty = tcx.short_string(
-                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty()),
+                    self.resolve_vars_if_possible(data.derived.parent_host_clause.self_ty()),
                     err.long_ty_path(),
                 );
                 let trait_path = tcx.short_string(
                     data.derived
-                        .parent_host_pred
-                        .map_bound(|pred| pred.trait_ref)
+                        .parent_host_clause
+                        .map_bound(|clause| clause.trait_ref)
                         .print_only_trait_path(),
                     err.long_ty_path(),
                 );
                 let msg = format!(
                     "required for `{self_ty}` to implement `{} {trait_path}`",
-                    data.derived.parent_host_pred.skip_binder().constness,
+                    data.derived.parent_host_clause.skip_binder().constness,
                 );
                 match tcx.hir_get_if_local(data.impl_def_id) {
                     Some(Node::Item(hir::Item {
@@ -4372,60 +4479,52 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.note(msg);
                     }
                 }
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        data.derived.parent_host_pred,
-                        param_env,
-                        &data.derived.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    data.derived.parent_host_clause,
+                    param_env,
+                    &data.derived.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             ObligationCauseCode::BuiltinDerivedHost(ref data) => {
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        data.parent_host_pred,
-                        param_env,
-                        &data.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    data.parent_host_clause,
+                    param_env,
+                    &data.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             ObligationCauseCode::WellFormedDerived(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
-                // #74711: avoid a stack overflow
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        parent_predicate,
-                        param_env,
-                        &data.parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    parent_predicate,
+                    param_env,
+                    &data.parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
             ObligationCauseCode::TypeAlias(ref nested, span, def_id) => {
-                // #74711: avoid a stack overflow
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        predicate,
-                        param_env,
-                        nested,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    predicate,
+                    param_env,
+                    nested,
+                    obligated_types,
+                    seen_requirements,
+                );
                 let mut multispan = MultiSpan::from(span);
                 multispan.push_span_label(span, "required by this bound");
                 err.span_note(
@@ -4445,19 +4544,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     predicate,
                     call_hir_id,
                 );
-                ensure_sufficient_stack(|| {
-                    self.note_obligation_cause_code(
-                        body_def_id,
-                        err,
-                        predicate,
-                        param_env,
-                        parent_code,
-                        obligated_types,
-                        seen_requirements,
-                    )
-                });
+
+                self.note_obligation_cause_code(
+                    body_def_id,
+                    err,
+                    predicate,
+                    param_env,
+                    parent_code,
+                    obligated_types,
+                    seen_requirements,
+                );
             }
-            // Suppress `compare_type_predicate_entailment` errors for RPITITs, since they
+            // Suppress `compare_type_clause_entailment` errors for RPITITs, since they
             // should be implied by the parent method.
             ObligationCauseCode::CompareImplItem { trait_item_def_id, .. }
                 if tcx.is_impl_trait_in_trait(trait_item_def_id) => {}
@@ -5445,7 +5543,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 param_env,
                 projection,
             ));
-            if ocx.try_evaluate_obligations().is_empty()
+            if ocx.try_evaluate_obligations().no_errors()
                 && let ty = self.resolve_vars_if_possible(ty)
                 && !ty.is_ty_var()
             {
@@ -5778,7 +5876,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         pred,
                     ));
                 });
-                if !ocx.try_evaluate_obligations().is_empty() {
+                if !ocx.try_evaluate_obligations().no_errors() {
                     // encountered errors.
                     return;
                 }

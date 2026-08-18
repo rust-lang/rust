@@ -2397,12 +2397,13 @@ fn test() {
 }
 "#,
         expect![[r#"
+            46..49 'Foo': Foo<_>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
             139..157 '{     ...= N; }': ()
-            149..150 '_': Foo<N>
-            153..154 'N': Foo<N>
+            149..150 '_': Foo<_>
+            153..154 'N': Foo<_>
         "#]],
     );
 }
@@ -3013,6 +3014,182 @@ impl T for Self::Self {}
 struct S;
 impl T for S { fn m(&self) {} }
 fn f(s: S) { s.m(); }
+    "#,
+    );
+}
+
+#[test]
+fn regression_22799() {
+    check_no_mismatches(
+        r#"
+struct S;
+fn f() {
+    <S as S>::S;
+}
+    "#,
+    );
+}
+
+#[test]
+fn braced_const_path() {
+    check_types(
+        r#"
+//- minicore: default, builtin_impls
+trait ToNum {
+    type Num;
+}
+trait Bar {
+    type Ty;
+}
+struct Gen<const B: bool>;
+struct Int<const B: bool>;
+
+impl<const B: bool> ToNum for Gen<{ B }> {
+    type Num = Int<B>;
+}
+
+impl Bar for Int<true> {
+    type Ty = i32;
+}
+impl Bar for Int<false> {
+    type Ty = f32;
+}
+
+type A = <<Gen<true> as ToNum>::Num as Bar>::Ty;
+
+fn main() {
+    let x = A::default();
+     // ^ i32
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_22820() {
+    check_no_mismatches(
+        r#"
+//- minicore: copy
+trait MyTrait: Copy {
+    const ASSOC: usize;
+}
+
+const fn output<T: MyTrait>(_: T) -> usize {
+    <T as MyTrait>::ASSOC
+}
+
+const fn yeet() -> impl Clone {
+    let x = [0u8; output(yeet())];
+}
+    "#,
+    );
+}
+
+#[test]
+fn rpit_function_with_non_trivial_anon_const() {
+    check_no_mismatches(
+        r#"
+fn f() -> impl Sized {
+    let x = [0u8; 1 + 2];
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_22836() {
+    check(
+        r#"
+fn main() {
+  match () {
+    const {
+      async | v | ()
+   // ^^^^^^^^^^^^^^ expected (), got impl AsyncFn({unknown})
+    }
+  }
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_22986() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    let _: &[u8; 0] = b"\
+        ";
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_23065() {
+    check_no_mismatches(
+        r#"
+trait Trait {
+    type Assoc<const N: usize>;
+}
+
+struct Struct;
+struct GenericStruct<'a>(&'a ());
+
+impl<const X: usize> Trait for Struct {
+    type Assoc<'a, const N: usize> = GenericStruct<'a>;
+
+    fn g(&self) -> Self::Assoc<{ X }> {
+        loop {}
+    }
+}
+
+struct OtherStruct;
+
+impl Trait for OtherStruct {
+    type Assoc<'a> = &'a ();
+}
+
+fn other() -> <OtherStruct as Trait>::Assoc<0> {
+    loop {}
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_23083() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    match 2 {
+        x if let true = return => {
+            x;
+        }
+        _ => {}
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn dyn_trait_binder_inside_fn_ptr() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+fn f<'a>(_: fn() -> &'a dyn Trait<'a>) {}
+    "#,
+    );
+}
+
+#[test]
+fn regression_23113() {
+    check_no_mismatches(
+        r#"
+//- minicore: range
+fn main() {
+    0..loop {};
+}
     "#,
     );
 }

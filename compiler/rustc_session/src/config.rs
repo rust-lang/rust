@@ -196,12 +196,20 @@ pub enum CoverageLevel {
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
-    /// Entry point for `std::offload`, enables kernel compilation for a gpu device
-    Device,
-    /// Second step in the offload pipeline, generates the host code to call kernels.
+    /// Second step in the offload pipeline, enables kernel compilation for a gpu device
+    /// Reads a manifest of required generic kernel instantiations
+    /// produced by a previous `HostMetadata` pass. An empty manifest
+    /// means there are no generic kernels at all, or that generic kernels are only
+    /// called from non-generic device entry points and never from the host, so we
+    /// don't need to track their instantiations.
+    Device(String),
+    /// Third step in the offload pipeline, generates the host code to call kernels.
     Host(String),
     /// Test is similar to Host, but allows testing without a device artifact.
     Test,
+    /// First step in the offload pipeline: compile for the host but only emit a manifest of
+    /// kernel instantiations required by the host code.
+    HostMetadata(String),
 }
 
 /// The different settings that the `-Z codegen-emit-retag` flag can have.
@@ -259,15 +267,23 @@ pub enum AnnotateMoves {
     Enabled(Option<u64>),
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct InstrumentMcountOpts {
+    // Insert a nop which could be replaced by an mcount call.
+    pub no_call: bool,
+    // Record the location of the call instrument in a special linker section.
+    pub record: bool,
+}
+
 /// The different settings that the `-Z Instrument-mcount` flag can have.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum InstrumentMcount {
     /// `-Z instrument-mcount=no`
     Disabled,
     /// `-Z instrument-mcount=yes`
-    Mcount,
+    Mcount(InstrumentMcountOpts),
     /// `-Z instrument-mcount=fentry`
-    Fentry,
+    Fentry(InstrumentMcountOpts),
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -1563,7 +1579,7 @@ pub enum EntryFnType {
     },
 }
 
-pub use rustc_hir::attrs::CrateType;
+pub use rustc_attr_ir::CrateType;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq, Encodable, Decodable)]
 pub enum Passes {
@@ -1650,26 +1666,6 @@ impl PointerAuthOption {
 }
 
 #[derive(Clone, Copy)]
-pub enum BackendJobs {
-    /// The number of backend jobs has a static limit.
-    Limited(NonZero<usize>),
-    /// The number of backend jobs is either unlimited if there's an inherited jobserver,
-    /// or limited to 32 if there's no inherited jobserver.
-    /// This variant exists only to preserve the historical behavior.
-    /// FIXME: Just use `thread::available_parallelism` as the default static limit.
-    UnlimitedOr32,
-}
-
-impl BackendJobs {
-    pub fn value(self) -> NonZero<usize> {
-        match self {
-            BackendJobs::Limited(n) => n,
-            BackendJobs::UnlimitedOr32 => NonZero::new(32).unwrap(),
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
 pub enum LinkerJobs {
     /// Do not pass anything to the linker, use it's default behavior.
     Default,
@@ -1677,12 +1673,21 @@ pub enum LinkerJobs {
     Explicit(NonZero<usize>),
 }
 
+impl LinkerJobs {
+    pub fn limit(self) -> Option<NonZero<usize>> {
+        match self {
+            LinkerJobs::Default => None,
+            LinkerJobs::Explicit(n) => Some(n),
+        }
+    }
+}
+
 /// `None` for frontend and backend means everything is single-threaded
 /// and synchronization can be disabled.
 #[derive(Clone, Copy)]
 pub struct Jobs {
     pub frontend: Option<NonZero<usize>>,
-    pub backend: Option<BackendJobs>,
+    pub backend: Option<NonZero<usize>>,
     pub linker: LinkerJobs,
 }
 
@@ -1735,11 +1740,12 @@ fn parse_jobs_all(
             let backend =
                 parse_jobs_one(early_dcx, opt_name, &jobs_backend, unstable, &mut available);
             check_upper_limit(backend, opt_name);
-            backend.map(BackendJobs::Limited)
+            backend
         }
         None => match jobs {
-            Some(n) => n.map(BackendJobs::Limited),
-            None => Some(BackendJobs::UnlimitedOr32),
+            Some(n) => n,
+            // Use all available parallelism as the default.
+            None => parse_jobs_one(early_dcx, "", "0", unstable, &mut available),
         },
     };
     let linker = match matches.opt_str("jobs-linker") {
@@ -2698,6 +2704,21 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
+    // `-Zassumptions-on-binders` requires the next trait solver globally. Normalize after
+    // parsing so the effective config is independent of flag order and so consumers that
+    // read `next_solver.globally` directly (e.g. feature-gate checks) see the right value.
+    if unstable_opts.assumptions_on_binders {
+        // `NextSolverConfig::default()` has `coherence: true`; the only way `coherence` is
+        // false here is an explicit `-Znext-solver=no`.
+        if !unstable_opts.next_solver.coherence {
+            early_dcx.early_warn(
+                "-Zassumptions-on-binders unconditionally enables the next trait solver; \
+                 `-Znext-solver=no` is ignored",
+            );
+        }
+        unstable_opts.next_solver = NextSolverConfig { coherence: true, globally: true };
+    }
+
     if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
     {
         early_dcx.early_warn(
@@ -2742,11 +2763,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");
     }
 
-    if unstable_opts.profile_sample_use.is_some()
+    if cg.profile_sample_use.is_some()
         && (cg.profile_generate.enabled() || cg.profile_use.is_some())
     {
         early_dcx.early_fatal(
-            "option `-Z profile-sample-use` cannot be used with `-C profile-generate` or `-C profile-use`",
+            "option `-C profile-sample-use` cannot be used with `-C profile-generate` or `-C profile-use`",
         );
     }
 
@@ -3297,12 +3318,12 @@ pub(crate) mod dep_tracking {
 
     use rustc_abi::Align;
     use rustc_ast::attr::version::RustcVersion;
+    use rustc_attr_ir::CollapseMacroDebuginfo;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
-    use rustc_hir::attrs::CollapseMacroDebuginfo;
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
     use rustc_target::spec::{
@@ -3314,11 +3335,12 @@ pub(crate) mod dep_tracking {
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
-        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
+        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3381,6 +3403,7 @@ pub(crate) mod dep_tracking {
         InstrumentCoverage,
         CoverageOptions,
         InstrumentMcount,
+        InstrumentMcountOpts,
         InstrumentXRay,
         CrateType,
         MergeFunctions,
@@ -3599,10 +3622,9 @@ impl PatchableFunctionEntry {
 
 /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
 /// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Polonius {
-    /// The default value: disabled.
-    #[default]
+    /// Polonius is disabled, only use NLL.
     Off,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
@@ -3610,6 +3632,12 @@ pub enum Polonius {
 
     /// In-tree prototype, extending the NLL infrastructure.
     Next,
+}
+
+impl Default for Polonius {
+    fn default() -> Self {
+        if option_env!("CFG_DEFAULT_POLONIUS_NEXT").is_some() { Self::Next } else { Self::Off }
+    }
 }
 
 impl Polonius {

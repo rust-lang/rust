@@ -1428,7 +1428,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // anywhere so we don't need to encode it for other crates.
             // FIXME(mgca): This probably isn't true, they probably are accessed, but, test case?
             if def_kind == DefKind::AnonConst
-                && matches!(tcx.hir_node_by_def_id(local_id), hir::Node::ConstArg(_))
+                && matches!(
+                    tcx.hir_node_by_def_id(local_id),
+                    hir::Node::ConstArg(_)
+                        | hir::Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. })
+                )
             {
                 continue;
             }
@@ -2480,7 +2484,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         && tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some()
     {
         let saved_path = &work_product.saved_files["rmeta"];
-        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
+        let incr_comp_session_dir = &tcx.incr_comp_session.unwrap().session_directory;
         let source_file_in_incr_dir = &incr_comp_session_dir.join(saved_path);
         debug!("copying preexisting metadata from {source_file_in_incr_dir:?} to {path:?}");
         match rustc_fs_util::link_or_copy(&source_file_in_incr_dir, path) {

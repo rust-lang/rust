@@ -97,16 +97,16 @@ impl<T: [const] Clone> Foo for Vec<T> {
 }
 ```
 
-These checks are done in [`compare_method_predicate_entailment`].
+These checks are done in [`compare_method_clause_entailment`].
 A similar function that does the same check for associated types is called
-[`compare_type_predicate_entailment`].
+[`compare_type_clause_entailment`].
 Both of these need to consider `const_conditions` when in const contexts.
 
 In MIR, as part of const checking, `const_conditions` of items that are called
 are revalidated again in [`Checker::revalidate_conditional_constness`].
 
-[`compare_method_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
-[`compare_type_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_type_predicate_entailment.html
+[`compare_method_clause_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_clause_entailment.html
+[`compare_type_clause_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_type_clause_entailment.html
 [`FnCtxt::enforce_context_effects`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.enforce_context_effects
 [`wfcheck::check_impl`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/wfcheck/fn.check_impl.html
 [`Checker::revalidate_conditional_constness`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/check_consts/check/struct.Checker.html#method.revalidate_conditional_constness

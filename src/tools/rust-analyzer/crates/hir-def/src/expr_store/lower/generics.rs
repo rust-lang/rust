@@ -181,7 +181,7 @@ impl GenericParamsCollector {
                             .map(|lifetime_param| {
                                 lifetime_param
                                     .lifetime()
-                                    .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
+                                    .map_or_else(Name::missing, |lt| Name::new_lifetime(lt.text()))
                             })
                             .collect()
                     });

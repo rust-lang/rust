@@ -4,4 +4,4 @@
 
 #[doc(attribute = "diagnostic::do_not_recommend")] //~ ERROR
 /// bla
-mod yup {}
+const _: () = ();

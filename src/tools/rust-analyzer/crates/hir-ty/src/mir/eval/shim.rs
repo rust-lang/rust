@@ -13,8 +13,8 @@ use crate::{
     drop::{DropGlue, has_drop_glue},
     mir::eval::{
         Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay, Interval,
-        IntervalAndTy, IntervalOrOwned, ItemContainerId, Layout, Locals, Lookup, MirEvalError,
-        MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported, pad16,
+        IntervalAndTy, IntervalOrOwned, IsSigned, ItemContainerId, Layout, Locals, Lookup,
+        MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported, pad16,
     },
     next_solver::Region,
 };
@@ -426,7 +426,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "libc::write args are not provided".into(),
                     ));
                 };
-                let fd = u128::from_le_bytes(pad16(fd.get(self)?, false));
+                let fd = u128::from_le_bytes(pad16(fd.get(self)?, IsSigned::No));
                 let interval = Interval {
                     addr: Address::from_bytes(ptr.get(self)?)?,
                     size: from_bytes!(usize, len.get(self)?),
@@ -473,7 +473,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "pthread_getspecific arg0 is not provided".into(),
                     ));
                 };
-                let key = from_bytes!(usize, &pad16(arg0.get(self)?, false)[0..8]);
+                let key = from_bytes!(usize, &pad16(arg0.get(self)?, IsSigned::No)[0..8]);
                 let value = self.thread_local_storage.get_key(key)?;
                 destination.write_from_bytes(self, &value.to_le_bytes()[0..destination.size])?;
                 Ok(())
@@ -484,13 +484,13 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "pthread_setspecific arg0 is not provided".into(),
                     ));
                 };
-                let key = from_bytes!(usize, &pad16(arg0.get(self)?, false)[0..8]);
+                let key = from_bytes!(usize, &pad16(arg0.get(self)?, IsSigned::No)[0..8]);
                 let Some(arg1) = args.get(1) else {
                     return Err(MirEvalError::InternalError(
                         "pthread_setspecific arg1 is not provided".into(),
                     ));
                 };
-                let value = from_bytes!(u128, pad16(arg1.get(self)?, false));
+                let value = from_bytes!(u128, pad16(arg1.get(self)?, IsSigned::No));
                 self.thread_local_storage.set_key(key, value)?;
                 // return 0 as success
                 destination.write_from_bytes(self, &0u64.to_le_bytes()[0..destination.size])?;
@@ -840,8 +840,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "saturating_add args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = match name {
                     "saturating_add" => lhs.saturating_add(rhs),
                     "saturating_sub" => lhs.saturating_sub(rhs),
@@ -862,8 +862,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "wrapping_add args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.wrapping_add(rhs);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
@@ -873,8 +873,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "wrapping_sub args are not provided".into(),
                     ));
                 };
-                let lhs = i128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = i128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = i128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = i128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.wrapping_sub(rhs);
                 let Some(ty) = generic_args.as_slice().first().and_then(|it| it.ty()) else {
                     return Err(MirEvalError::InternalError(
@@ -891,8 +891,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "wrapping_sub args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.wrapping_sub(rhs);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
@@ -902,8 +902,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "wrapping_mul args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.wrapping_mul(rhs);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
@@ -914,8 +914,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "unchecked_shl args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.wrapping_shl(rhs as u32);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
@@ -926,8 +926,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "unchecked_shr args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.wrapping_shr(rhs as u32);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
@@ -938,8 +938,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "unchecked_rem args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.checked_rem(rhs).ok_or_else(|| {
                     MirEvalError::UndefinedBehavior("unchecked_rem with bad inputs".to_owned())
                 })?;
@@ -952,8 +952,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "unchecked_div args are not provided".into(),
                     ));
                 };
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let ans = lhs.checked_div(rhs).ok_or_else(|| {
                     MirEvalError::UndefinedBehavior("unchecked_rem with bad inputs".to_owned())
                 })?;
@@ -970,8 +970,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                     [lhs.ty, Ty::new_bool(self.interner())].into_iter(),
                 );
                 let op_size = self.size_of_sized(lhs.ty, locals, "operand of add_with_overflow")?;
-                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
-                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, IsSigned::No));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, IsSigned::No));
                 let (ans, u128overflow) = match name {
                     "add_with_overflow" => lhs.overflowing_add(rhs),
                     "sub_with_overflow" => lhs.overflowing_sub(rhs),
@@ -1011,6 +1011,43 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 let src = Interval { addr: src, size };
                 let dst = Interval { addr: dst, size };
                 dst.write_from_interval(self, src)
+            }
+            "slice_get_unchecked" => {
+                let [slice_ptr, index] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked args are not provided".into(),
+                    ));
+                };
+                let Some(ty) = generic_args.as_slice().get(2).and_then(|it| it.ty()) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked item type is not provided".into(),
+                    ));
+                };
+                let slice_ptr = slice_ptr.get(self)?;
+                let ptr_size = self.ptr_size();
+                let Some(data) = slice_ptr.get(..ptr_size) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked slice pointer is too small".into(),
+                    ));
+                };
+                let Some(len) = slice_ptr.get(ptr_size..2 * ptr_size) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked slice metadata is missing".into(),
+                    ));
+                };
+                let slice_ptr = Address::from_bytes(data)?;
+                let len = from_bytes!(usize, len);
+                let index = from_bytes!(usize, index.get(self)?);
+                if index >= len {
+                    return Err(MirEvalError::UndefinedBehavior(format!(
+                        "slice_get_unchecked index {index} is out of bounds for slice of length {len}"
+                    )));
+                }
+                let size = self.size_of_sized(ty, locals, "slice_get_unchecked item type")?;
+                let offset = index* size;
+                let addr = slice_ptr.to_usize() + offset;
+                let addr = Address::from_usize(addr);
+                destination.write_from_bytes(self, &addr.to_bytes()[..destination.size])
             }
             "offset" | "arith_offset" => {
                 let [ptr, offset] = args else {
@@ -1052,8 +1089,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                     };
                     ty
                 };
-                let ptr = u128::from_le_bytes(pad16(ptr.get(self)?, false));
-                let offset = u128::from_le_bytes(pad16(offset.get(self)?, false));
+                let ptr = u128::from_le_bytes(pad16(ptr.get(self)?, IsSigned::No));
+                let offset = u128::from_le_bytes(pad16(offset.get(self)?, IsSigned::No));
                 let size = self.size_of_sized(ty, locals, "offset ptr type")? as u128;
                 let ans = ptr + offset * size;
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
@@ -1081,7 +1118,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError("ctpop arg is not provided".into()));
                 };
-                let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).count_ones();
+                let result = u128::from_le_bytes(pad16(arg.get(self)?, IsSigned::No)).count_ones();
                 destination
                     .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
             }
@@ -1090,7 +1127,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                     return Err(MirEvalError::InternalError("ctlz arg is not provided".into()));
                 };
                 let result =
-                    u128::from_le_bytes(pad16(arg.get(self)?, false)).leading_zeros() as usize;
+                    u128::from_le_bytes(pad16(arg.get(self)?, IsSigned::No)).leading_zeros() as usize;
                 let result = result - (128 - arg.interval.size * 8);
                 destination
                     .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
@@ -1101,7 +1138,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 };
                 let arg: &[u8] = arg.get(self)?;
                 let bit_count = arg.len() as u32 * 8;
-                let result = u128::from_le_bytes(pad16(arg, false)).trailing_zeros().min(bit_count);
+                let result = u128::from_le_bytes(pad16(arg, IsSigned::No)).trailing_zeros().min(bit_count);
                 destination
                     .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
             }
@@ -1532,43 +1569,43 @@ impl<'a, 'db> Evaluator<'a, 'db> {
         }
         if name.starts_with("xadd_") {
             destination.write_from_interval(self, arg0_interval)?;
-            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, false));
-            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, false));
+            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, IsSigned::No));
+            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, IsSigned::No));
             let ans = lhs.wrapping_add(rhs);
             return arg0_interval.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size]);
         }
         if name.starts_with("xsub_") {
             destination.write_from_interval(self, arg0_interval)?;
-            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, false));
-            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, false));
+            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, IsSigned::No));
+            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, IsSigned::No));
             let ans = lhs.wrapping_sub(rhs);
             return arg0_interval.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size]);
         }
         if name.starts_with("and_") {
             destination.write_from_interval(self, arg0_interval)?;
-            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, false));
-            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, false));
+            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, IsSigned::No));
+            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, IsSigned::No));
             let ans = lhs & rhs;
             return arg0_interval.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size]);
         }
         if name.starts_with("or_") {
             destination.write_from_interval(self, arg0_interval)?;
-            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, false));
-            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, false));
+            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, IsSigned::No));
+            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, IsSigned::No));
             let ans = lhs | rhs;
             return arg0_interval.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size]);
         }
         if name.starts_with("xor_") {
             destination.write_from_interval(self, arg0_interval)?;
-            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, false));
-            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, false));
+            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, IsSigned::No));
+            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, IsSigned::No));
             let ans = lhs ^ rhs;
             return arg0_interval.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size]);
         }
         if name.starts_with("nand_") {
             destination.write_from_interval(self, arg0_interval)?;
-            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, false));
-            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, false));
+            let lhs = u128::from_le_bytes(pad16(arg0_interval.get(self)?, IsSigned::No));
+            let rhs = u128::from_le_bytes(pad16(arg1.get(self)?, IsSigned::No));
             let ans = !(lhs & rhs);
             return arg0_interval.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size]);
         }

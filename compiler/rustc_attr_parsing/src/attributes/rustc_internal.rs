@@ -1,21 +1,22 @@
 use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-use rustc_feature::AttributeStability;
-use rustc_hir::LangItem;
-use rustc_hir::attrs::{
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::GenericParamKind;
+use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
     DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
-use rustc_hir::target::GenericParamKind;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_feature::AttributeStability;
 use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::diagnostics;
-use crate::diagnostics::UnknownExternLangItem;
-use crate::session_diagnostics::{
-    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
+use crate::diagnostics::{
+    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange,
+    UnknownExternLangItem, UnknownLangItem,
 };
 
 pub(crate) struct RustcMainParser;
@@ -70,6 +71,18 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
         }
         if errored {
             return None;
+        }
+
+        if cx.target == Target::Trait {
+            // Check for duplicates
+            let mut seen: FxHashMap<Symbol, Span> = FxHashMap::default();
+            for ident in &fn_names {
+                if let Some(dup) = seen.insert(ident.name, ident.span) {
+                    cx.emit_err(diagnostics::FunctionNamesDuplicated {
+                        spans: vec![dup, ident.span],
+                    });
+                }
+            }
         }
 
         Some(AttributeKind::RustcMustImplementOneOf { attr_span: cx.attr_span, fn_names })
@@ -1119,7 +1132,7 @@ pub(crate) struct RustcDocPrimitiveParser;
 
 impl SingleAttributeParser for RustcDocPrimitiveParser {
     const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Mod)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Const)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,

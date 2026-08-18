@@ -33,7 +33,8 @@ use crate::{
         CoroutineClosureIdWrapper, CoroutineIdWrapper, FnSig, GenericArgKind, PolyFnSig, Predicate,
         Region, TraitRef, TypeAliasIdWrapper, Unnormalized,
         abi::Safety,
-        impl_foldable_for_interned_slice, impl_stored_interned, interned_slice,
+        impl_foldable_for_interned_slice, impl_foldable_for_stored_type, impl_stored_interned,
+        interned_slice,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
@@ -61,6 +62,7 @@ pub(super) struct TyInterned(WithCachedTypeInfo<TyKind<'static>>);
 
 impl_internable!(gc; TyInterned);
 impl_stored_interned!(TyInterned, Ty, StoredTy);
+impl_foldable_for_stored_type!(StoredTy);
 
 const _: () = {
     const fn is_copy<T: Copy>() {}
@@ -186,14 +188,8 @@ impl<'db> Ty<'db> {
     }
 
     /// Note: this needs an interner with crate.
-    pub fn new_array(interner: DbInterner<'db>, ty: Ty<'db>, n: u128) -> Ty<'db> {
-        Ty::new(
-            interner,
-            TyKind::Array(
-                ty,
-                crate::consteval::usize_const(interner.db, Some(n), interner.expect_crate()),
-            ),
-        )
+    pub fn new_array(interner: DbInterner<'db>, ty: Ty<'db>, n: u64) -> Ty<'db> {
+        Ty::new(interner, TyKind::Array(ty, Const::from_target_usize(interner, n)))
     }
 
     pub fn new_array_opt(interner: DbInterner<'db>, ty: Ty<'db>, n: Option<u128>) -> Ty<'db> {
@@ -426,6 +422,12 @@ impl<'db> Ty<'db> {
     #[inline]
     pub fn is_bool(self) -> bool {
         matches!(self.kind(), TyKind::Bool)
+    }
+
+    /// Check if type is an `usize`.
+    #[inline]
+    pub fn is_usize(self) -> bool {
+        matches!(self.kind(), TyKind::Uint(UintTy::Usize))
     }
 
     #[inline]
@@ -894,15 +896,6 @@ impl<'db> TypeVisitable<DbInterner<'db>> for Ty<'db> {
     }
 }
 
-impl<'db> TypeVisitable<DbInterner<'db>> for StoredTy {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        self.as_ref().visit_with(visitor)
-    }
-}
-
 impl<'db> TypeSuperVisitable<DbInterner<'db>> for Ty<'db> {
     fn super_visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
         &self,
@@ -966,18 +959,6 @@ impl<'db> TypeFoldable<DbInterner<'db>> for Ty<'db> {
     }
     fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
         folder.fold_ty(self)
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for StoredTy {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self.as_ref().try_fold_with(folder)?.store())
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        self.as_ref().fold_with(folder).store()
     }
 }
 
@@ -1422,6 +1403,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
 interned_slice!(TysStorage, Tys, StoredTys, tys, Ty<'db>, Ty<'static>);
 impl_foldable_for_interned_slice!(Tys);
+impl_foldable_for_stored_type!(StoredTys);
 
 impl<'db> Tys<'db> {
     #[inline]

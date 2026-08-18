@@ -13,7 +13,7 @@ on:
     branches:
       - automation/bors/auto
       - automation/bors/try
-      - try-perf
+      - automation/bors/try-perf
   pull_request:
     branches:
       - "**"
@@ -32,9 +32,9 @@ defaults:
 concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
   # We add an exception for try builds (automation/bors/try branch) and unrolled rollup builds
-  # (try-perf), which are all triggered on the same branch, but which should be able to run
-  # concurrently.
-  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try') && github.sha) || github.ref }}
+  # (automation/bors/try-perf), which are all triggered on the same branch, but which should be able
+  # to run concurrently.
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/automation/bors/try-perf' || github.ref == 'refs/heads/automation/bors/try') && github.sha) || github.ref }}
   cancel-in-progress: true
 env:
   TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -52,20 +52,20 @@ jobs:
       run_type: ${{ steps.jobs.outputs.run_type }}
     steps:
       - name: Checkout the source code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.
         if: ${{ github.ref == 'refs/heads/automation/bors/auto' }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo test
+          CARGO_INCREMENTAL=0 cargo test --locked
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
+          CARGO_INCREMENTAL=0 cargo run --locked calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.full_name }}
@@ -79,7 +79,7 @@ jobs:
     # access the environment.
     #
     # We only enable the environment for the rust-lang/rust repository, so that CI works on forks.
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/automation/bors/try-perf' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
     env:
       CI_JOB_NAME: ${{ matrix.name }}
       CI_JOB_DOC_URL: ${{ matrix.doc_url }}
@@ -117,7 +117,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
 
@@ -222,7 +222,7 @@ jobs:
       - name: build citool
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
+          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build --locked
 
       - name: run the build
         run: |
@@ -254,7 +254,7 @@ jobs:
           df -h
 
       - name: upload artifacts to github
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           # name is set in previous step
           name: ${{ env.DOC_ARTIFACT_NAME }}
@@ -315,7 +315,7 @@ jobs:
     environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}
     steps:
       - name: checkout the source code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
       # Publish the toolstate if an auto build succeeds (just before push to the default branch)

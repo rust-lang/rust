@@ -23,6 +23,29 @@ fn issue_11174_edge_cases<T>(boolean: bool, boolean2: bool, maybe_some: Option<T
     };
 }
 
+fn issue_17286(a: bool, b: bool, opt: Option<i32>) {
+    let _ = !(opt.is_none() && a);
+    //~^ redundant_pattern_matching
+    let _ = &(opt.is_none() && a);
+    //~^ redundant_pattern_matching
+    let _ = (opt.is_none() && a) as u8;
+    //~^ redundant_pattern_matching
+    let _ = (opt.is_none() && a) == b;
+    //~^ redundant_pattern_matching
+    let _ = (opt.is_none() && a).then_some(1);
+    //~^ redundant_pattern_matching
+    let _ = opt.is_none() && a;
+    //~^ redundant_pattern_matching
+    if opt.is_none() && a {}
+    //~^ redundant_pattern_matching
+    let _ = opt.is_none() && a && b;
+    //~^ redundant_pattern_matching
+    let _ = opt.is_none() && a || b;
+    //~^ redundant_pattern_matching
+    let _ = b.then_some(opt.is_none() && a);
+    //~^ redundant_pattern_matching
+}
+
 fn main() {
     if None::<()>.is_none() {}
     //~^ redundant_pattern_matching

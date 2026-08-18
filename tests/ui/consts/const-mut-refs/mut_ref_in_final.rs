@@ -84,8 +84,8 @@ fn dangling() {
         // Undefined behaviour (integer as pointer), who doesn't love tests like this.
         Some(&mut *(42 as *mut i32))
     } }
-    const INT2PTR: Option<&mut i32> = helper_int2ptr(); //~ ERROR reference not dereferenceable
-    static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr(); //~ ERROR reference not dereferenceable
+    const INT2PTR: Option<&mut i32> = helper_int2ptr(); //~ ERROR encountered a dangling reference
+    static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr(); //~ ERROR encountered a dangling reference
 
     const fn helper_dangling() -> Option<&'static mut i32> { unsafe {
         // Undefined behaviour (dangling pointer), who doesn't love tests like this.

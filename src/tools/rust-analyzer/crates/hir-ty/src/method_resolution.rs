@@ -11,11 +11,11 @@ mod probe;
 
 use either::Either;
 use hir_expand::name::Name;
-use salsa::Update;
+use salsa::SalsaValue;
 use span::Edition;
 use tracing::{debug, instrument};
 
-use base_db::{Crate, salsa::update_fallback_db};
+use base_db::Crate;
 use hir_def::{
     AssocItemId, BlockIdLt, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
     ImplId, ItemContainerId, ModuleId, TraitId,
@@ -31,9 +31,10 @@ use hir_def::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    TypeVisitableExt,
+    TypeFoldable, TypeVisitableExt, VisitorResult,
     fast_reject::{TreatParams, simplify_type},
     inherent::{BoundExistentialPredicates, IntoKind},
+    try_visit,
 };
 use stdx::impl_from;
 use triomphe::Arc;
@@ -48,6 +49,7 @@ use crate::{
         SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode, Unnormalized,
         infer::{
             BoundRegionConversionTime, DbInternerInferExt, InferCtxt, InferOk,
+            resolve::ReplaceInferWithError,
             select::ImplSource,
             traits::{Obligation, ObligationCause, PredicateObligations},
         },
@@ -72,7 +74,7 @@ pub struct MethodResolutionContext<'a, 'db> {
     pub receiver_span: Span,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum CandidateId {
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -509,8 +511,15 @@ pub(crate) fn find_matching_impl<'db>(
         return None;
     }
 
+    // Selection may leave region inference variables unresolved; replace them before they escape
+    // this inference context.
+    //
+    // FIXME: decide whether inferred regions should be replaced with error or erased.
     match impl_source {
-        ImplSource::UserDefined(impl_source) => Some((impl_source.impl_def_id, impl_source.args)),
+        ImplSource::UserDefined(impl_source) => Some((
+            impl_source.impl_def_id,
+            impl_source.args.fold_with(&mut ReplaceInferWithError::new(infcx.interner)),
+        )),
         ImplSource::Param(_) | ImplSource::Builtin(..) => None,
     }
 }
@@ -557,9 +566,12 @@ pub fn simplified_type_module(db: &dyn HirDatabase, ty: &SimplifiedType<'_>) -> 
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Update)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct InherentImpls<'db> {
-    #[update(bounds(SolverDefId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    // SAFETY: necessary due to `SimplifiedType<'db>`.
+    // It's safe to retain, as it only contains `SolverDefId<'db>` (which is `SalsaValue`),
+    // and no `&'db` references.
+    #[salsa_value(unsafe(prove(SolverDefId<'db>: SalsaValue)))]
     map: FxHashMap<SimplifiedType<'db>, Box<[ImplId]>>,
 }
 
@@ -643,9 +655,12 @@ impl<'db> InherentImpls<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Update)]
+#[derive(Debug, PartialEq, SalsaValue)]
 struct OneTraitImpls<'db> {
-    #[update(bounds(SolverDefId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    // SAFETY: necessary due to `SimplifiedType<'db>`.
+    // It's safe to retain, as it only contains `SolverDefId<'db>` (which is `SalsaValue`),
+    // and no `&'db` references.
+    #[salsa_value(unsafe(prove(SolverDefId<'db>: SalsaValue)))]
     non_blanket_impls: FxHashMap<SimplifiedType<'db>, (Box<[ImplId]>, Box<[BuiltinDeriveImplId]>)>,
     blanket_impls: Box<[ImplId]>,
 }
@@ -671,7 +686,7 @@ impl<'db> OneTraitImplsBuilder<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Update)]
+#[derive(Debug, PartialEq, SalsaValue)]
 pub struct TraitImpls<'db> {
     map: FxHashMap<TraitId, OneTraitImpls<'db>>,
 }
@@ -835,27 +850,34 @@ impl<'db> TraitImpls<'db> {
         }
     }
 
-    pub fn for_each_crate_and_block(
+    pub fn for_each_crate_and_block<R: VisitorResult>(
         db: &'db dyn HirDatabase,
         krate: Crate,
         block: Option<BlockIdLt<'db>>,
-        for_each: &mut dyn FnMut(&TraitImpls<'db>),
-    ) {
+        for_each: &mut dyn FnMut(&TraitImpls<'db>) -> R,
+    ) -> R {
         let blocks = std::iter::successors(block, |block| block.module(db).block(db));
-        blocks.filter_map(|block| Self::for_block(db, block)).for_each(&mut *for_each);
-        Self::for_crate_and_deps(db, krate).iter().map(|it| &**it).for_each(for_each);
+        for impl_ in blocks.filter_map(|block| Self::for_block(db, block)) {
+            try_visit!(for_each(impl_));
+        }
+        for impl_ in Self::for_crate_and_deps(db, krate) {
+            try_visit!(for_each(impl_));
+        }
+        R::output()
     }
 
     /// Like [`Self::for_each_crate_and_block()`], but takes in account two blocks, one for a trait and one for a self type.
-    pub fn for_each_crate_and_block_trait_and_type(
+    pub fn for_each_crate_and_block_trait_and_type<R: VisitorResult>(
         db: &'db dyn HirDatabase,
         krate: Crate,
         type_block: Option<BlockIdLt<'db>>,
         trait_block: Option<BlockIdLt<'db>>,
-        for_each: &mut dyn FnMut(&TraitImpls<'db>),
-    ) {
+        for_each: &mut dyn FnMut(&TraitImpls<'db>) -> R,
+    ) -> R {
         let in_self_and_deps = TraitImpls::for_crate_and_deps(db, krate);
-        in_self_and_deps.iter().for_each(|impls| for_each(impls));
+        for impl_ in in_self_and_deps {
+            try_visit!(for_each(impl_));
+        }
 
         // We must not provide duplicate impls to the solver. Therefore we work with the following strategy:
         // start from each block, and walk ancestors until you meet the other block. If they never meet,
@@ -874,13 +896,20 @@ impl<'db> TraitImpls<'db> {
                 .filter_map(move |block| TraitImpls::for_block(db, block))
         };
         if trait_block == type_block {
-            blocks_iter(trait_block)
-                .filter_map(|block| TraitImpls::for_block(db, block))
-                .for_each(for_each);
+            for impl_ in
+                blocks_iter(trait_block).filter_map(|block| TraitImpls::for_block(db, block))
+            {
+                try_visit!(for_each(impl_));
+            }
         } else {
-            for_each_block(trait_block, type_block).for_each(&mut *for_each);
-            for_each_block(type_block, trait_block).for_each(for_each);
+            for impl_ in for_each_block(trait_block, type_block) {
+                try_visit!(for_each(impl_));
+            }
+            for impl_ in for_each_block(type_block, trait_block) {
+                try_visit!(for_each(impl_));
+            }
         }
+        R::output()
     }
 }
 

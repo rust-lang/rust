@@ -32,16 +32,13 @@ use tracing::{debug, instrument};
 use crate::builtin::MISSING_DOCS;
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::diagnostics::{
-    CheckNameUnknownTool, MalformedAttribute, MalformedAttributeSub, OverruledAttribute,
-    OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
+    CheckNameUnknownTool, DeprecatedLintName, DeprecatedLintNameFromCommandLine,
+    IgnoredUnlessCrateSpecified, MalformedAttribute, MalformedAttributeSub, OverruledAttribute,
+    OverruledAttributeLint, OverruledAttributeSub, RemovedLint, RemovedLintFromCommandLine,
+    RenamedLint, RenamedLintFromCommandLine, RenamedLintSuggestion, RequestedLevel, UnknownLint,
+    UnknownLintFromCommandLine, UnknownLintSuggestion, UnknownToolInScopedLint, UnsupportedGroup,
 };
 use crate::late::unerased_lint_store;
-use crate::lints::{
-    DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
-    OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
-    RenamedLintFromCommandLine, RenamedLintSuggestion, UnknownLint, UnknownLintFromCommandLine,
-    UnknownLintSuggestion,
-};
 
 /// Collection of lint levels for the whole crate.
 /// This is used by AST-based lints, which do not

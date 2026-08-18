@@ -1,0 +1,32 @@
+error: unexpected parentheses surrounding `for` loop head
+  --> $DIR/missing-cases.rs:15:9
+   |
+LL |     for (_ in #[rustc_dummy] (0..10)) {}
+   |         ^                           ^
+   |
+help: remove parentheses in `for` loop
+   |
+LL -     for (_ in #[rustc_dummy] (0..10)) {}
+LL +     for _ in #[rustc_dummy] (0..10) {}
+   |
+
+error: attributes cannot be applied to generic arguments
+  --> $DIR/missing-cases.rs:17:11
+   |
+LL |     foo::<#[rustc_dummy] 10>();
+   |           ^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: expected expression, found `#`
+  --> $DIR/missing-cases.rs:19:24
+   |
+LL |     cfg_select! { _ => #[rustc_dummy] 10 }
+   |                        ^ expected expression
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/missing-cases.rs:5:8
+   |
+LL | fn foo<const N: u8 = #[rustc_dummy] 11>() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

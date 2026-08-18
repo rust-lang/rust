@@ -8,9 +8,8 @@
 fn main() {
     // Bug #158603 regression test variants
     #[rustfmt::skip]
-    let _x: fn(#[rustc_splat] (f32,)) = None.unwrap();
-    // FIXME(splat): causes an ICE until #158603 is fixed
-    //x(1.0);
+    let x: fn(#[rustc_splat] (f32,)) = None.unwrap();
+    x(1.0);
 
     let x: fn((i32,)) = None.unwrap();
     x((1,));

@@ -11,8 +11,9 @@
 //@ ignore-backends: gcc
 
 #![feature(no_core)]
-//[error_generated]~^ ERROR mixing `-Zfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`
 #![crate_type = "rlib"]
 #![no_core]
 
 extern crate fixed_x18;
+
+//[error_generated]~? ERROR mixing `-Zfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`

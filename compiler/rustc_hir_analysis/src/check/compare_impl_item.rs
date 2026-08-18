@@ -11,7 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, RegionExt, Ty, TyCtxt,
@@ -23,8 +23,9 @@ use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
+use rustc_trait_selection::solve::NextSolverError;
 use rustc_trait_selection::traits::{
-    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    self, FromSolverError, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use tracing::{debug, instrument};
 
@@ -382,7 +383,7 @@ fn compare_method_clause_entailment<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -691,7 +692,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // RPITs.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         if let Err(guar) = try_report_async_mismatch(tcx, infcx, &errors, trait_m, impl_m, impl_sig)
         {
             return Err(guar);
@@ -802,7 +803,8 @@ struct ImplTraitInTraitCollector<'a, 'tcx, E> {
 
 impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E>
 where
-    E: 'tcx,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>
+        + FromSolverError<'tcx, traits::OldSolverError<'tcx>>,
 {
     fn new(
         ocx: &'a ObligationCtxt<'a, 'tcx, E>,
@@ -816,7 +818,8 @@ where
 
 impl<'tcx, E> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx, E>
 where
-    E: 'tcx,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>
+        + FromSolverError<'tcx, traits::OldSolverError<'tcx>>,
 {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx
@@ -1277,7 +1280,7 @@ fn check_region_late_boundedness<'tcx>(
     };
 
     let errors = ocx.try_evaluate_obligations();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         return None;
     }
 
@@ -2294,7 +2297,7 @@ fn compare_const_clause_entailment<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
@@ -2429,7 +2432,7 @@ fn compare_type_clause_entailment<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }
@@ -2560,7 +2563,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // version.
     ocx.register_obligations(obligations);
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
     }

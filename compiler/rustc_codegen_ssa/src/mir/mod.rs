@@ -301,6 +301,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
 
             let block = &mir.basic_blocks[next];
+            let successors = block.mono_successors(tcx, instance);
+
             if let Some(mir::UnwindAction::Cleanup(target)) = block.terminator().unwind()
                 && fx.nop_landing_pads.contains(*target)
             {
@@ -309,9 +311,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // It's guaranteed that the cleanup block (`target`) occurs only in
                 // UnwindAction::Cleanup(...) -- i.e., we can't incorrectly filter too much here --
                 // because cleanup transitions must happen via UnwindAction::Cleanup.
-                to_visit.extend(block.terminator().successors().filter(|s| s != target));
+                to_visit.extend(successors.filter(|s| s != target));
             } else {
-                to_visit.extend(block.terminator().successors());
+                to_visit.extend(successors);
             }
         }
 

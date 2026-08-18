@@ -14,7 +14,7 @@ use crate::SyntaxKind;
 #[derive(Default)]
 pub struct Output {
     /// 32-bit encoding of events. If LSB is zero, then that's an index into the
-    /// error vector. Otherwise, it's one of the thee other variants, with data encoded as
+    /// error vector. Otherwise, it's one of the three other variants, with data encoded as
     ///
     /// ```text
     /// |16 bit kind|8 bit n_input_tokens|4 bit tag|4 bit leftover|

@@ -4,7 +4,7 @@ use std::fmt;
 use crate::{AliasConst, ClosureKind};
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate, PatternKind, Placeholder,
+    HostEffectClause, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
     ProjectionPredicate, Region, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
@@ -46,7 +46,7 @@ define_display_via_print!(
     NormalizesTo,
     SubtypePredicate,
     CoercePredicate,
-    HostEffectPredicate,
+    HostEffectClause,
     AliasTy,
     AliasTerm,
     FnSig,
@@ -64,12 +64,12 @@ where
     }
 }
 
-impl<I: Interner, T> fmt::Display for OutlivesPredicate<I, T>
+impl<I: Interner, T> fmt::Display for OutlivesClause<I, T>
 where
-    I: IrPrint<OutlivesPredicate<I, T>>,
+    I: IrPrint<OutlivesClause<I, T>>,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <I as IrPrint<OutlivesPredicate<I, T>>>::print(self, fmt)
+        <I as IrPrint<OutlivesClause<I, T>>>::print(self, fmt)
     }
 }
 

@@ -141,6 +141,7 @@ impl<T> Poll<Option<T>> {
 
 /// Converts something into an async iterator
 #[unstable(feature = "async_iterator", issue = "79024")]
+#[rustc_diagnostic_item = "IntoAsyncIterator"]
 pub trait IntoAsyncIterator {
     /// The type of the item yielded by the iterator
     type Item;

@@ -1,18 +1,16 @@
 warning: `regex::Regex::new_` does not refer to a reachable function
-  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:3:1
+  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:4:8
    |
-LL | / [[disallowed-methods]]
-LL | | path = "regex::Regex::new_"
-   | |___________________________^
+LL | path = "regex::Regex::new_"
+   |        ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `allow-invalid = true` to the entry to suppress this warning
 
 warning: `regex::Regex_::new` does not refer to a reachable function
-  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:6:1
+  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:7:8
    |
-LL | / [[disallowed-methods]]
-LL | | path = "regex::Regex_::new"
-   | |___________________________^
+LL | path = "regex::Regex_::new"
+   |        ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `allow-invalid = true` to the entry to suppress this warning
 

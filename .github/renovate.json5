@@ -19,8 +19,13 @@
     "src/doc/book",
     "src/doc/reference"
   ],
-  // Require manual approval from the Dependency Dashboard before opening PRs
+  // Require manual approval from the Dependency Dashboard before opening PRs,
+  // except for the update types explicitly configured below.
   "dependencyDashboardApproval": true,
+  // No dashboard approval necessary for security updates
+  "vulnerabilityAlerts": {
+    "dependencyDashboardApproval": false
+  },
   // Renovate shouldn't update a PR if it is in the bors merge queue.
   "stopUpdatingLabel": "S-waiting-on-bors",
   "packageRules": [
@@ -35,11 +40,16 @@
       "dependencyDashboardApproval": false
     },
     {
-      // Update all Cargo.lock files except library/Cargo.lock in one PR.
+      // Set defaults for all Cargo.lock files.
+      // library/Cargo.lock is grouped into a dedicated PR by the more
+      // specific rule below.
       "matchManagers": ["cargo"],
       "matchUpdateTypes": ["lockFileMaintenance"],
       "groupName": "Cargo lock file maintenance",
-      "commitMessageAction": "Cargo lock file maintenance"
+      "commitMessageAction": "Compiler and tools lock file update",
+      // Renovate merges all matching rules, so the lockfiles rules below
+      // also inherits this note and asks Triagebot for a dep-bumps reviewer.
+      "prBodyNotes": ["r? dep-bumps"]
     },
     {
       // Update library/Cargo.lock in a dedicated PR.
@@ -47,7 +57,7 @@
       "matchUpdateTypes": ["lockFileMaintenance"],
       "matchFileNames": ["library/Cargo.lock"],
       "groupName": "library lock file maintenance",
-      "commitMessageAction": "Library lock file maintenance"
+      "commitMessageAction": "Library lock file update"
     },
     {
       // These packages don't have a committed Cargo.lock file.
@@ -59,11 +69,12 @@
       "enabled": false
     },
     {
-      // Update yarn.lock in a dedicated PR.
-      "matchManagers": ["npm"],
+      // Do not update npm/yarn lockfile, we only use it for internal tests.
+      "matchManagers": [
+        "npm"
+      ],
       "matchUpdateTypes": ["lockFileMaintenance"],
-      "groupName": "Yarn lock file maintenance",
-      "commitMessageAction": "Yarn lock file maintenance"
+      "enabled": false,
     }
   ],
   "ignorePaths": [

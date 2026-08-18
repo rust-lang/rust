@@ -1,16 +1,20 @@
 use std::ops::Range;
 
-use rustc_hir::attrs::diagnostic::{
+use rustc_ast::PathSegment;
+use rustc_attr_ir::diagnostic::{
     Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
     NameValue, Piece, Predicate,
 };
+use rustc_errors::{Diagnostic, MultiSpan};
+use rustc_lint_defs::LintId;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
 use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FILTERS,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
 };
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -20,6 +24,7 @@ use crate::diagnostics::{
     MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
+use crate::{EmitAttribute, diagnostics};
 
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
@@ -29,6 +34,67 @@ pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
 pub(crate) mod on_unmatched_args;
 pub(crate) mod opaque;
+
+impl<'sess> crate::AttributeParser<'sess> {
+    pub(crate) fn unknown_diagnostic_attr(
+        &self,
+        segment: &PathSegment,
+        mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
+    ) {
+        const DIAGNOSTIC_ATTRIBUTES: [(
+            Symbol,         /* name */
+            Option<Symbol>, /* feature gate */
+        ); 8] = [
+            (sym::on_unimplemented, None),
+            (sym::do_not_recommend, None),
+            (sym::on_move, Some(sym::diagnostic_on_move)),
+            (sym::on_const, Some(sym::diagnostic_on_const)),
+            (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
+            (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
+            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
+            (sym::opaque, Some(sym::diagnostic_opaque)),
+        ];
+        // No need to emit a lint if features aren't available.
+        let Some(features) = self.features else { return };
+        let span = segment.span();
+        let candidates = DIAGNOSTIC_ATTRIBUTES
+            .iter()
+            .filter_map(|(attr, feature)| {
+                feature.is_none_or(|f| features.enabled(f)).then_some(*attr)
+            })
+            .collect::<Vec<_>>();
+
+        let typo = find_best_match_for_name(&candidates, segment.ident.name, None)
+            .map(|typo_name| diagnostics::UnknownDiagnosticAttributeTypo { span, typo_name });
+        emit_lint(
+            LintId::of(UNKNOWN_DIAGNOSTIC_ATTRIBUTES),
+            span.into(),
+            EmitAttribute(Box::new(move |dcx, level, _| {
+                diagnostics::UnknownDiagnosticAttribute { typo }.into_diag(dcx, level)
+            })),
+        )
+    }
+}
+
+#[rustc_macro_transparency = "transparent"]
+macro gate_diagnostic_attr($feature:ident) {{
+    if let Some(features) = cx.features_option()
+        && !features.$feature()
+    {
+        args.ignore_args();
+        let nightly_build = cx.sess.is_nightly_build();
+        let span = cx.attr_span;
+        cx.emit_lint(
+            rustc_lint_defs::builtin::UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+            $crate::diagnostics::UnstableDiagnosticAttribute {
+                feature: sym::$feature,
+                nightly_build,
+            },
+            span,
+        );
+        return;
+    }
+}}
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {

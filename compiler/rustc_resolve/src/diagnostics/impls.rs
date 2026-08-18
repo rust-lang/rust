@@ -256,9 +256,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             for note in notes {
                 diag.note(note);
             }
-        } else if let Some((_, UnresolvedImportError { note: Some(note), .. })) =
-            errors.iter().last()
-        {
+        } else if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.last() {
             diag.note(note.clone());
         }
 
@@ -1873,7 +1871,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.resolutions(parent_scope.module).iter().any(|(key, name_resolution)| {
                         if key.ns == TypeNS
                             && key.ident == *ident
-                            && let Some(decl) = name_resolution.borrow().best_decl()
+                            && let Some(decl) = name_resolution.borrow(self).best_decl()
                         {
                             match decl.res() {
                                 // No disambiguation needed if the identically named item we
@@ -2032,8 +2030,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Don't confuse the user with tool modules or open modules.
                     continue;
                 }
-                Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
-                    "only a trait, without a derive macro".to_string()
+                Res::Def(DefKind::Trait, trait_def_id) if macro_kind == MacroKind::Derive => {
+                    if let crate::DeclKind::Import { import, .. } = binding.kind
+                        && !import.span.is_dummy()
+                    {
+                        self.record_use(ident, binding, Used::Other);
+                    }
+                    let trait_span = self.def_span(trait_def_id);
+                    err.span_note(trait_span, format!("`{ident}` is a trait, not a derive macro"));
+                    err.help(format!("consider implementing `{ident}` for your type manually"));
+                    return;
                 }
                 res => format!(
                     "{} {}, not {} {}",
@@ -2063,6 +2069,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             err.subdiagnostic(note);
             return;
+        }
+
+        // Not in scope: check if the name refers to a trait importable from elsewhere.
+        if macro_kind == MacroKind::Derive {
+            let trait_candidates =
+                self.lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
+                    matches!(res, Res::Def(DefKind::Trait, _))
+                });
+            let mut seen = FxHashSet::default();
+            for candidate in &trait_candidates {
+                if let Some(def_id) = candidate.did
+                    && seen.insert(def_id)
+                {
+                    err.span_note(
+                        self.def_span(def_id),
+                        format!("`{ident}` is a trait, not a derive macro"),
+                    );
+                }
+            }
+            if !seen.is_empty() {
+                err.help(format!("consider implementing `{ident}` for your type manually"));
+                return;
+            }
         }
 
         if self.macro_names.contains(&IdentKey::new(ident)) {
@@ -2845,7 +2874,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if struct_expr.fields.is_empty() {
             return;
         }
-        let last_span = struct_expr.fields.iter().last().unwrap().span;
+        let last_span = struct_expr.fields.last().unwrap().span;
         let mut iter = struct_expr.fields.iter().peekable();
         let mut prev: Option<Span> = None;
         while let Some(field) = iter.next() {
@@ -2942,7 +2971,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let scope = match &path[..failed_segment_idx] {
             [.., prev] => {
-                if prev.ident.name == kw::PathRoot {
+                if prev.ident.name == kw::PathRoot && self.tcx.sess.edition() > Edition::Edition2015
+                {
+                    format!("the list of imported crates")
+                } else if prev.ident.name == kw::PathRoot || prev.ident.name == kw::Crate {
                     format!("the crate root")
                 } else {
                     format!("`{}`", prev.ident)
@@ -3603,7 +3635,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut res = false;
                 let m = r.expect_module(parent_module);
                 if m.is_local() {
-                    for importer in m.glob_importers.borrow().iter() {
+                    for importer in m.glob_importers.borrow(r).iter() {
                         if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
                         {
                             if next_parent_module == module

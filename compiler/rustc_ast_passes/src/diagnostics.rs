@@ -737,6 +737,13 @@ pub(crate) struct UnsafeItem {
 pub(crate) struct MissingUnsafeOnExtern {
     #[primary_span]
     pub span: Span,
+
+    #[suggestion(
+        "needs `unsafe` before the extern keyword",
+        code = "unsafe ",
+        applicability = "machine-applicable"
+    )]
+    pub unsafe_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1244,4 +1251,50 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
         #[primary_span]
         span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag("missing pattern for `...` argument")]
+pub(crate) struct VarargsWithoutPattern {
+    #[suggestion(
+        "add a pattern for this argument",
+        applicability = "machine-applicable",
+        code = "_: ..."
+    )]
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "an `extern \"custom\"` function can only be declared externally or defined via naked functions"
+)]
+pub(crate) struct AbiCustomMustBeNaked {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        "convert this to an `#[unsafe(naked)]` function",
+        applicability = "maybe-incorrect",
+        code = "#[unsafe(naked)]\n",
+        style = "short"
+    )]
+    pub naked_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("an `extern \"custom\"` function cannot be marked `#[cold]`")]
+pub(crate) struct AbiCustomCannotBeCold {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        "remove the `#[cold]` attribute",
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "short"
+    )]
+    pub cold_span: Span,
+
+    #[label("`extern \"custom\"` because of this")]
+    pub abi_span: Span,
 }

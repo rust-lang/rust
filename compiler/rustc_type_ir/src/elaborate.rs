@@ -197,7 +197,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     },
                 ),
             ),
-            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -259,18 +259,18 @@ fn elaborate_component_to_clause<I: Interner>(
             if r.is_bound() {
                 None
             } else {
-                Some(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r, outlives_region)))
+                Some(ty::ClauseKind::RegionOutlives(ty::OutlivesClause(r, outlives_region)))
             }
         }
 
         Component::Param(p) => {
             let ty = Ty::new_param(cx, p);
-            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, outlives_region)))
+            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, outlives_region)))
         }
 
         Component::Placeholder(p) => {
             let ty = Ty::new_placeholder(cx, p);
-            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, outlives_region)))
+            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, outlives_region)))
         }
 
         Component::UnresolvedInferenceVariable(_) => None,
@@ -278,7 +278,7 @@ fn elaborate_component_to_clause<I: Interner>(
         Component::Alias(is_rigid, alias_ty) => {
             // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
             // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+            Some(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(
                 alias_ty.to_ty(cx, is_rigid),
                 outlives_region,
             )))
@@ -386,12 +386,12 @@ impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I,
 
 pub fn elaborate_outlives_assumptions<I: Interner>(
     cx: I,
-    assumptions: impl IntoIterator<Item = ty::OutlivesPredicate<I, I::GenericArg>>,
-) -> HashSet<ty::OutlivesPredicate<I, I::GenericArg>> {
+    assumptions: impl IntoIterator<Item = ty::OutlivesClause<I, I::GenericArg>>,
+) -> HashSet<ty::OutlivesClause<I, I::GenericArg>> {
     let mut collected = HashSet::default();
 
-    for ty::OutlivesPredicate(arg1, r2) in assumptions {
-        collected.insert(ty::OutlivesPredicate(arg1, r2));
+    for ty::OutlivesClause(arg1, r2) in assumptions {
+        collected.insert(ty::OutlivesClause(arg1, r2));
         match arg1.kind() {
             // Elaborate the components of an type, since we may have substituted a
             // generic coroutine with a more specific type.
@@ -402,22 +402,22 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
                     match c {
                         Component::Region(r1) => {
                             if !r1.is_bound() {
-                                collected.insert(ty::OutlivesPredicate(r1.into(), r2));
+                                collected.insert(ty::OutlivesClause(r1.into(), r2));
                             }
                         }
 
                         Component::Param(p) => {
                             let ty = Ty::new_param(cx, p);
-                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                            collected.insert(ty::OutlivesClause(ty.into(), r2));
                         }
 
                         Component::Placeholder(p) => {
                             let ty = Ty::new_placeholder(cx, p);
-                            collected.insert(ty::OutlivesPredicate(ty.into(), r2));
+                            collected.insert(ty::OutlivesClause(ty.into(), r2));
                         }
 
                         Component::Alias(is_rigid, alias_ty) => {
-                            collected.insert(ty::OutlivesPredicate(
+                            collected.insert(ty::OutlivesClause(
                                 alias_ty.to_ty(cx, is_rigid).into(),
                                 r2,
                             ));

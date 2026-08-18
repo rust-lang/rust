@@ -217,10 +217,12 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/153629
     sym::rustc_splat,
 
-    // The `#[unroll]` attribute.
+    // The `#[rustc_unroll]` attribute.
     //
     // - https://github.com/rust-lang/rust/pull/156816
-    sym::unroll,
+    //
+    // FIXME(#159429): temporarily renamed to mitigate `#[unroll]` nameres ambiguity
+    sym::rustc_unroll,
 
     // `#[instrument_fn = "on|off"]` to insert or inhibit instrumentation function
     // calls inside a function, usually around the prologue.
@@ -365,7 +367,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_reservation_impl,
     sym::rustc_test_entrypoint_marker,
     sym::rustc_test_marker,
-    sym::rustc_unsafe_specialization_marker,
+    sym::rustc_allow_lifetime_dependent_specialization,
     sym::rustc_specialization_trait,
     sym::rustc_main,
     sym::rustc_skip_during_method_dispatch,
@@ -409,7 +411,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_mir,
     sym::custom_mir,
     sym::rustc_dump_item_bounds,
-    sym::rustc_dump_predicates,
+    sym::rustc_dump_clauses,
     sym::rustc_dump_def_parents,
     sym::rustc_dump_object_lifetime_defaults,
     sym::rustc_dump_vtable,

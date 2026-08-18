@@ -8,7 +8,7 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, AliasTy, Interner, OutlivesPredicate, Region, Unnormalized};
+use crate::{self as ty, AliasTy, Interner, OutlivesClause, Region, Unnormalized};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
@@ -279,7 +279,7 @@ pub fn declared_bounds_from_definition<I: Interner>(
     bounds
         .iter_instantiated(cx, alias_ty.args)
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|p| p.as_type_outlives_clause())
-        .filter_map(|p| p.no_bound_vars())
-        .map(|OutlivesPredicate(_, r)| r)
+        .filter_map(|c| c.as_type_outlives_clause())
+        .filter_map(|c| c.no_bound_vars())
+        .map(|OutlivesClause(_, r)| r)
 }

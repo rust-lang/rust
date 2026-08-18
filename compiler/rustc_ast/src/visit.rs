@@ -320,7 +320,12 @@ macro_rules! common_visitor_and_walkers {
             Fn(FnCtxt, &'a $($mut)? Visibility, &'a $($mut)? Fn),
 
             /// E.g., `|x, y| body`.
-            Closure(&'a $($mut)? ClosureBinder, &'a $($mut)? Option<CoroutineKind>, &'a $($mut)? Box<FnDecl>, &'a $($mut)? Box<Expr>),
+            Closure(
+                &'a $($mut)? ClosureBinder,
+                &'a $($mut)? Option<CoroutineMarker>,
+                &'a $($mut)? Box<FnDecl>,
+                &'a $($mut)? Box<Expr>
+            ),
         }
 
         impl<'a> FnKind<'_> {
@@ -413,7 +418,7 @@ macro_rules! common_visitor_and_walkers {
             AttrStyle,
             FnPtrTy,
             BindingMode,
-            GenBlockKind,
+            CoroutineKind,
             RangeLimits,
             UnsafeBinderCastKind,
             BinOpKind,
@@ -564,7 +569,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_capture_by(CaptureBy);
                 fn visit_closure_binder(ClosureBinder);
                 fn visit_contract(FnContract);
-                fn visit_coroutine_kind(CoroutineKind);
+                fn visit_coroutine_marker(CoroutineMarker);
                 fn visit_crate(Crate);
                 fn visit_expr(Expr);
                 fn visit_expr_field(ExprField);
@@ -933,16 +938,16 @@ macro_rules! common_visitor_and_walkers {
                     _ctxt,
                     // Visibility is visited as a part of the item.
                     _vis,
-                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impls },
+                    Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impl },
                 ) => {
                     let FnSig { header, decl, span } = sig;
                     visit_visitable!($($mut)? vis,
                         defaultness, ident, header, generics, decl,
-                        contract, body, span, define_opaque, eii_impls
+                        contract, body, span, define_opaque, eii_impl
                     );
                 }
-                FnKind::Closure(binder, coroutine_kind, decl, body) =>
-                    visit_visitable!($($mut)? vis, binder, coroutine_kind, decl, body),
+                FnKind::Closure(binder, coroutine_marker, decl, body) =>
+                    visit_visitable!($($mut)? vis, binder, coroutine_marker, decl, body),
             }
             V::Result::output()
         }
@@ -1008,7 +1013,7 @@ macro_rules! common_visitor_and_walkers {
                 ExprKind::Closure(Closure {
                     binder,
                     capture_clause,
-                    coroutine_kind,
+                    coroutine_marker,
                     constness,
                     movability,
                     fn_decl,
@@ -1017,7 +1022,7 @@ macro_rules! common_visitor_and_walkers {
                     fn_arg_span,
                 }) => {
                     visit_visitable!($($mut)? vis, constness, movability, capture_clause);
-                    let kind = FnKind::Closure(binder, coroutine_kind, fn_decl, body);
+                    let kind = FnKind::Closure(binder, coroutine_marker, fn_decl, body);
                     try_visit!(vis.visit_fn(kind, attrs, *span, *id));
                     visit_visitable!($($mut)? vis, fn_decl_span, fn_arg_span);
                 }
@@ -1092,7 +1097,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_capture_by(CaptureBy);
             pub fn walk_closure_binder(ClosureBinder);
             pub fn walk_contract(FnContract);
-            pub fn walk_coroutine_kind(CoroutineKind);
+            pub fn walk_coroutine_marker(CoroutineMarker);
             pub fn walk_crate(Crate);
             pub fn walk_expr(Expr);
             pub fn walk_expr_field(ExprField);

@@ -5377,3 +5377,37 @@ fn run_dyn<'b>(val: &dyn for<'a> Trait<'a, 'b>) {}
         "#]],
     );
 }
+
+#[test]
+fn recursive_auto_trait() {
+    check_types(
+        r#"
+auto trait Send {}
+impl<T> !Send for *const T {}
+
+struct Vec<T>(*const T);
+impl<T: Send> Send for Vec<T> {}
+
+struct Node {
+    children: Vec<Node>,
+}
+
+struct Holder<T>(T);
+
+trait Lock<T> {
+    fn get(&self) -> &T;
+}
+
+impl<T: Send> Lock<T> for Holder<T> {
+    fn get(&self) -> &T {
+        &self.0
+    }
+}
+
+fn probe(h: &Holder<Node>) {
+    h.get();
+ // ^^^^^^^ &'? Node
+}
+    "#,
+    );
+}

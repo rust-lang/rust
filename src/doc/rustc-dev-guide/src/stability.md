@@ -113,7 +113,7 @@ its corresponding `#![feature]`.
 
 To stabilize a feature, follow these steps:
 
-1. Ask a **@T-libs-api** member to start an FCP on the tracking issue and wait for
+1. Ask a **@T-libs** member to start an FCP on the tracking issue and wait for
    the FCP to complete (with `disposition-merge`).
 2. Change `#[unstable(...)]` to `#[stable(since = "CURRENT_RUSTC_VERSION")]`.
 3. Remove `#![feature(...)]` from any test or doc-test for this API.
@@ -123,7 +123,7 @@ To stabilize a feature, follow these steps:
    Alternatively, if this is not supposed to be const-stabilized yet,
    add `#[rustc_const_unstable(...)]` for some new feature gate (with a new tracking issue).
 5. Open a PR against `rust-lang/rust`.
-   - Add the appropriate labels: `@rustbot modify labels: +T-libs-api`.
+   - Add the appropriate labels: `@rustbot modify labels: +T-libs`.
    - Link to the tracking issue and say "Closes #XXXXX".
 
 You can see an example of stabilizing a feature with
@@ -217,7 +217,7 @@ Currently, the items that can be annotated with `#[unstable_feature_bound]` are:
 ## renamed and removed features
 Unstable features can get renamed and removed.
 If you rename a feature, you can add `old_name = "old_name"` to the `#[unstable]` attribute.
-If you remove a feature, the `#!unstable_removed(feature = "foo", reason = "brief description", link = "link", since = "1.90.0")`
+If you remove a feature, the `#![unstable_removed(feature = "foo", reason = "brief description", link = "link", since = "1.90.0")]`
 attribute should be used to produce a good error message for users of the removed feature.
 
 The `link` field can be used to link to the most relevant information on the removal of the feature such as a GitHub issue, comment or PR.

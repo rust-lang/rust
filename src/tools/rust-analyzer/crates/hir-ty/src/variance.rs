@@ -49,7 +49,9 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
                 let types = || crate::next_solver::default_types(db);
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return types().one_invariant.store();
-                } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
+                } else if flags.intersects(
+                    StructFlags::IS_PHANTOM_DATA | StructFlags::IS_COVARIANT_UNSAFE_CELL,
+                ) {
                     return types().one_covariant.store();
                 }
             }
@@ -433,6 +435,7 @@ struct Covariant<A> {
         check(
             r#"
 //- minicore: cell
+#![feature(lang_items)]
 
 use core::cell::UnsafeCell;
 
@@ -461,6 +464,10 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
     Bar(Contravariant<B>),`
     Zed(Covariant<C>,Contravariant<C>)
 }
+
+#[repr(transparent)]
+#[lang = "covariant_unsafe_cell"]
+pub struct CovariantUnsafeCell<T: ?Sized>(UnsafeCell<T>); //~ ERROR [T: +]
 "#,
             expect![[r#"
                 InvariantMut['a: covariant, A: invariant, B: invariant]
@@ -469,6 +476,7 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
                 Covariant[A: covariant]
                 Contravariant[A: contravariant]
                 Enum[A: covariant, B: contravariant, C: invariant]
+                CovariantUnsafeCell[T: covariant]
             "#]],
         );
     }

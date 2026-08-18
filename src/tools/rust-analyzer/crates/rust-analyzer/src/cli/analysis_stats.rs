@@ -53,6 +53,14 @@ use crate::cli::{
 
 impl flags::AnalysisStats {
     pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
+        let mut rayon_pool = rayon::ThreadPoolBuilder::new()
+            .thread_name(|ix| format!("RayonWorker{}", ix))
+            .stack_size(stdx::thread::DEFAULT_STACK_SIZE);
+        if !self.parallel {
+            rayon_pool = rayon_pool.num_threads(1);
+        }
+        rayon_pool.build_global().unwrap();
+
         let mut rng = {
             let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
             Rand32::new(seed)
@@ -576,10 +584,7 @@ impl flags::AnalysisStats {
                     sema: &sema,
                     scope: &scope,
                     goal: target_ty,
-                    config: hir::term_search::TermSearchConfig {
-                        enable_borrowcheck: true,
-                        ..Default::default()
-                    },
+                    config: hir::term_search::TermSearchConfig::default(),
                 };
                 let found_terms = hir::term_search::term_search(&ctx);
 
@@ -1367,7 +1372,6 @@ impl flags::AnalysisStats {
                     prefer_absolute: false,
                     style_lints: false,
                     term_search_fuel: 400,
-                    term_search_borrowck: true,
                     show_rename_conflicts: true,
                 },
                 ide::AssistResolveStrategy::All,
@@ -1433,6 +1437,8 @@ impl flags::AnalysisStats {
             annotate_references: false,
             annotate_method_references: false,
             annotate_enum_variant_references: false,
+            references_exclude_imports: false,
+            references_exclude_tests: false,
             location: ide::AnnotationLocation::AboveName,
             filter_adjacent_derive_implementations: false,
             ra_fixture: RaFixtureConfig::default(),

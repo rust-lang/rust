@@ -53,6 +53,9 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_crate_store::{
+    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -60,19 +63,16 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::{LangItem, LanguageItems};
 use rustc_hir::attrs::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
-use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
-use rustc_session::cstore::{
-    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
-};
 use rustc_session::lint::StableLintExpectationId;
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
@@ -103,8 +103,8 @@ use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, DropckConstraint,
-    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
-    OutlivesBound,
+    DropckOutlivesResult, MethodAutoderefStepsResult, MirBorrowckImpliedOutlivesBounds, NoSolution,
+    NormalizationResult, OutlivesBound,
 };
 use crate::traits::{
     CodegenObligationError, DynCompatibilityViolation, EvaluationResult, ImplSource,
@@ -422,7 +422,7 @@ rustc_queries! {
     ///
     /// This is almost always *the* predicates/clauses query that you want.
     ///
-    /// **Tip**: You can use `#[rustc_dump_predicates]` on an item to basically print
+    /// **Tip**: You can use `#[rustc_dump_clauses]` on an item to basically print
     /// the result of this query for use in UI tests or for debugging purposes.
     query clauses_of(key: DefId) -> ty::GenericClauses<'tcx> {
         desc { "computing clauses of `{}`", tcx.def_path_str(key) }
@@ -805,14 +805,14 @@ rustc_queries! {
         feedable
     }
 
-    /// Returns the *inferred outlives-predicates* of the item given by `DefId`.
+    /// Returns the *inferred outlives-clauses* of the item given by `DefId`.
     ///
     /// E.g., for `struct Foo<'a, T> { x: &'a T }`, this would return `[T: 'a]`.
     ///
     /// **Tip**: You can use `#[rustc_dump_inferred_outlives]` on an item to basically
     /// print the result of this query for use in UI tests or for debugging purposes.
     query inferred_outlives_of(key: DefId) -> &'tcx [(ty::Clause<'tcx>, Span)] {
-        desc { "computing inferred outlives-predicates of `{}`", tcx.def_path_str(key) }
+        desc { "computing inferred outlives-clauses of `{}`", tcx.def_path_str(key) }
         cache_on_disk
         separate_provide_extern
         feedable
@@ -1026,16 +1026,16 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Gets a map with the inferred outlives-predicates of every item in the local crate.
+    /// Gets a map with the inferred outlives-clauses of every item in the local crate.
     ///
     /// <div class="warning">
     ///
     /// **Do not call this query** directly, use [`Self::inferred_outlives_of`] instead.
     ///
     /// </div>
-    query inferred_outlives_crate(_: ()) -> &'tcx ty::CratePredicatesMap<'tcx> {
+    query inferred_outlives_crate(_: ()) -> &'tcx ty::CrateClausesMap<'tcx> {
         arena_cache
-        desc { "computing the inferred outlives-predicates for items in this crate" }
+        desc { "computing the inferred outlives-clauses for items in this crate" }
     }
 
     /// Maps from an impl/trait or struct/variant `DefId`
@@ -1135,7 +1135,7 @@ rustc_queries! {
         desc { "check transmute calls inside `{}`", tcx.def_path_str(key) }
     }
 
-    /// Unsafety-check this `LocalDefId`.
+    /// Type-check offloads calls given a typeck root
     query check_offloads(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "check offload calls inside `{}`", tcx.def_path_str(key) }
     }
@@ -2027,10 +2027,10 @@ rustc_queries! {
     // The hash should not be calculated before the `analysis` pass is complete, specifically
     // until `tcx.untracked().definitions.freeze()` has been called, otherwise if incremental
     // compilation is enabled calculating this hash can freeze this structure too early in
-    // compilation and cause subsequent crashes when attempting to write to `definitions`
+    // compilation and cause subsequent crashes when attempting to write to `definitions`.
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
-        desc { "looking up the hash a crate" }
+        desc { "looking up the hash of a crate" }
         separate_provide_extern
     }
 
@@ -2274,7 +2274,7 @@ rustc_queries! {
     }
 
     /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
+    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
         arena_cache
         eval_always
         desc { "calculating the diagnostic items map" }
@@ -2294,7 +2294,7 @@ rustc_queries! {
     }
 
     /// Returns the diagnostic items defined in a crate.
-    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
+    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
         arena_cache
         desc { "calculating the diagnostic items map in a crate" }
         separate_provide_extern
@@ -2530,6 +2530,15 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "computing implied outlives bounds for `{}` (hack disabled = {:?})", key.0.canonical.value.value.ty, key.1 }
+    }
+
+    query mir_borrowck_implied_outlives_bounds(
+        mir_def: LocalDefId
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, MirBorrowckImpliedOutlivesBounds<'tcx> >>,
+        NoSolution,
+    > {
+        desc { "computing implied outlives bounds for borrowck for `{}`", tcx.def_path_str(mir_def) }
     }
 
     /// Do not call this query directly:

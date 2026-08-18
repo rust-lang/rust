@@ -65,17 +65,16 @@ use std::time::Duration;
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
-use ide_db::base_db::relevant_crates;
-use ide_db::base_db::salsa::Durability;
-use ide_db::line_index;
-use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
     FxHashMap, FxIndexSet,
     base_db::{
         AbsPathBuf, CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
-        salsa::{Cancelled, Database},
+        relevant_crates,
+        salsa::{Cancelled, Database, Durability},
     },
-    prime_caches, symbol_index,
+    line_index, prime_caches,
+    ra_fixture::RaFixtureAnalysis,
+    symbol_index,
 };
 use macros::UpmapFromRaFixture;
 use syntax::{AstNode, SourceFile, ast};

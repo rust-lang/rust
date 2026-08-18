@@ -10,7 +10,7 @@ use crate::*;
 fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let [f] = check_intrinsic_arg_count(args)?;
     math::sqrt_op::<F>(this, f, dest)
@@ -45,7 +45,7 @@ fn is_host_unary_float_op(intrinsic_name: &str) -> Option<(FloatTy, HostUnaryFlo
 fn pow_intrinsic<'tcx, S: Semantics>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
 where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
@@ -69,7 +69,7 @@ where
 fn powi_intrinsic<'tcx, S: Semantics>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
-    dest: &MPlaceTy<'tcx>,
+    dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
 where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
@@ -98,7 +98,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         intrinsic_name: &str,
         _generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 

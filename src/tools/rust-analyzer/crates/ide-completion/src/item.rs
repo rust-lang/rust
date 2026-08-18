@@ -320,7 +320,7 @@ impl CompletionRelevance {
         }
 
         if let Some(trait_) = trait_ {
-            // lower rank trait methods unless its notable
+            // lower rank trait methods unless it's notable
             if !trait_.notable_trait {
                 score -= 5;
             }

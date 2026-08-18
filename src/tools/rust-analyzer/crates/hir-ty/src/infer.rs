@@ -59,13 +59,14 @@ use hir_expand::{mod_path::ModPath, name::Name};
 use indexmap::IndexSet;
 use la_arena::ArenaMap;
 use macros::{TypeFoldable, TypeVisitable};
+use rustc_abi::TargetDataLayout;
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     AliasTyKind, TypeFoldable, TypeVisitableExt,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
@@ -99,7 +100,7 @@ use crate::{
     },
     method_resolution::CandidateId,
     next_solver::{
-        AliasTy, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, Region,
+        AliasTy, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, Region, StoredFnSig,
         StoredGenericArg, StoredGenericArgs, StoredTy, StoredTys, Term, Ty, TyKind, Tys,
         abi::Safety,
         infer::{InferCtxt, ObligationInspector, traits::ObligationCause},
@@ -307,9 +308,9 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         pat: PatId,
         #[type_visitable(ignore)]
-        expected: u128,
+        expected: u64,
         #[type_visitable(ignore)]
-        found: u128,
+        found: u64,
         #[type_visitable(ignore)]
         has_rest: bool,
     },
@@ -410,6 +411,11 @@ pub enum InferenceDiagnostic {
         expected: usize,
         #[type_visitable(ignore)]
         found: usize,
+        /// True when the call goes through the `Fn`/`FnMut`/`FnOnce` trait
+        /// (i.e. arguments were bundled into a tuple). Determines whether the
+        /// diagnostic surface uses E0057 (Fn-trait call) or E0061 (regular call).
+        #[type_visitable(ignore)]
+        is_fn_trait_call: bool,
     },
     MismatchedTupleStructPatArgCount {
         #[type_visitable(ignore)]
@@ -752,7 +758,7 @@ pub enum PatAdjust {
 /// When you add a field that stores types (including `Substitution` and the like), don't forget
 /// `resolve_completely()`'ing  them in `InferenceContext::resolve_all()`. Inference variables must
 /// not appear in the final inference result.
-#[derive(Clone, PartialEq, Eq, Debug, Update)]
+#[derive(Clone, PartialEq, Eq, Debug, SalsaValue)]
 pub struct InferenceResult<'db> {
     /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, (FunctionId, StoredGenericArgs)>,
@@ -820,7 +826,7 @@ pub struct InferenceResult<'db> {
     defined_anon_consts: ThinVec<AnonConstId<'db>>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ClosureData {
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -849,6 +855,42 @@ pub struct ClosureData {
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
     pub fake_reads: Box<[(Place, FakeReadCause, SmallVec<[CaptureSourceStack; 2]>)]>,
+
+    /// For each fn, records the "liberated" types of its arguments
+    /// and return type. Liberated means that all bound regions
+    /// (including late-bound regions) are replaced with free
+    /// equivalents. This table is not used in codegen (since regions
+    /// are erased there) and hence is not serialized to metadata.
+    ///
+    /// This table also contains the "revealed" values for any `impl Trait`
+    /// that appear in the signature and whose values are being inferred
+    /// by this function.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::fmt::Debug;
+    /// fn foo(x: &u32) -> impl Debug { *x }
+    /// ```
+    ///
+    /// The function signature here would be:
+    ///
+    /// ```ignore (illustrative)
+    /// for<'a> fn(&'a u32) -> Foo
+    /// ```
+    ///
+    /// where `Foo` is an opaque type created for this function.
+    ///
+    ///
+    /// The *liberated* form of this would be
+    ///
+    /// ```ignore (illustrative)
+    /// fn(&'a u32) -> u32
+    /// ```
+    ///
+    /// Note that `'a` is not bound (it would be an `ReLateParam`) and
+    /// that the `Foo` opaque type is replaced by its hidden type.
+    pub liberated_sig: StoredFnSig,
 }
 
 /// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
@@ -1044,10 +1086,7 @@ impl<'db> InferenceResult<'db> {
     fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'_> {
         infer_query(db, def)
     }
-}
 
-#[salsa::tracked]
-impl<'db> InferenceResult<'db> {
     /// Infer types for all const expressions in an item's signature.
     ///
     /// Returns an `InferenceResult` containing type information for array lengths,
@@ -1302,6 +1341,7 @@ pub(crate) struct InferenceContext<'db> {
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
     target_features: OnceCell<(TargetFeatures<'db>, TargetFeatureIsSafeInTarget)>,
+    data_layout: OnceCell<&'db TargetDataLayout>,
     pub(crate) edition: Edition,
     allow_using_generic_params: bool,
     generics: OnceCell<Generics<'db>>,
@@ -1329,9 +1369,6 @@ pub(crate) struct InferenceContext<'db> {
     diverges: Diverges,
     breakables: Vec<BreakableContext<'db>>,
     types: &'db crate::next_solver::DefaultAny<'db>,
-
-    /// Whether we are inside the pattern of a destructuring assignment.
-    inside_assignment: bool,
 
     deferred_cast_checks: Vec<CastCheck<'db>>,
 
@@ -1364,28 +1401,22 @@ enum BreakableKind {
     Border,
 }
 
-fn find_breakable<'a, 'db>(
-    ctxs: &'a mut [BreakableContext<'db>],
-    label: Option<LabelId>,
-) -> Option<&'a mut BreakableContext<'db>> {
+fn find_breakable(ctxs: &[BreakableContext<'_>], label: Option<LabelId>) -> Option<usize> {
     let mut ctxs = ctxs
-        .iter_mut()
+        .iter()
+        .enumerate()
         .rev()
-        .take_while(|it| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
-    match label {
-        Some(_) => ctxs.find(|ctx| ctx.label == label),
-        None => ctxs.find(|ctx| matches!(ctx.kind, BreakableKind::Loop)),
-    }
+        .take_while(|(_, it)| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
+    let result = match label {
+        Some(_) => ctxs.find(|(_, ctx)| ctx.label == label),
+        None => ctxs.find(|(_, ctx)| matches!(ctx.kind, BreakableKind::Loop)),
+    };
+    result.map(|(idx, _)| idx)
 }
 
-fn find_continuable<'a, 'db>(
-    ctxs: &'a mut [BreakableContext<'db>],
-    label: Option<LabelId>,
-) -> Option<&'a mut BreakableContext<'db>> {
-    match label {
-        Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
-        None => find_breakable(ctxs, label),
-    }
+fn find_continuable(ctxs: &[BreakableContext<'_>], label: Option<LabelId>) -> Option<usize> {
+    find_breakable(ctxs, label)
+        .filter(|&idx| label.is_none() || matches!(ctxs[idx].kind, BreakableKind::Loop))
 }
 
 impl<'db> InferenceContext<'db> {
@@ -1400,13 +1431,14 @@ impl<'db> InferenceContext<'db> {
         lowering_mode: LoweringMode,
     ) -> Self {
         let trait_env = db.trait_environment(generic_def);
-        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), store_owner);
+        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), owner);
         let types = crate::next_solver::default_types(db);
         InferenceContext {
             result: InferenceResult::new(types.types.error),
             return_ty: types.types.error, // set in collect_* calls
             types,
             target_features: OnceCell::new(),
+            data_layout: OnceCell::new(),
             lang_items: table.interner().lang_items(),
             features: resolver.top_level_def_map().features(),
             edition: resolver.krate().data(db).edition,
@@ -1427,7 +1459,6 @@ impl<'db> InferenceContext<'db> {
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
             deferred_cast_checks: Vec::new(),
-            inside_assignment: false,
             diagnostics: Diagnostics::default(),
             vars_emitted_type_must_be_known_for: FxHashSet::default(),
             deferred_call_resolutions: FxHashMap::default(),
@@ -1546,6 +1577,10 @@ impl<'db> InferenceContext<'db> {
             (target_features, target_feature_is_safe)
         });
         (target_features, *target_feature_is_safe)
+    }
+
+    fn data_layout(&self) -> &'db TargetDataLayout {
+        self.data_layout.get_or_init(|| self.db.target_data_layout_or_default(self.krate()))
     }
 
     /// How should a deref pattern find the place for its inner pattern to match on?
@@ -1677,7 +1712,7 @@ impl<'db> InferenceContext<'db> {
         }
         pat_adjustments.shrink_to_fit();
         for closure_data in closures_data.values_mut() {
-            let ClosureData { min_captures, fake_reads } = closure_data;
+            let ClosureData { min_captures, fake_reads, liberated_sig } = closure_data;
             let dummy_place = || Place {
                 base_ty: types.types.error.store(),
                 base: closure::analysis::expr_use_visitor::PlaceBase::Rvalue,
@@ -1706,6 +1741,8 @@ impl<'db> InferenceContext<'db> {
                 min_capture.shrink_to_fit();
             }
             min_captures.shrink_to_fit();
+
+            resolver.resolve_completely(liberated_sig);
         }
         closures_data.shrink_to_fit();
         *tuple_field_access_types = tuple_field_accesses_rev
@@ -2635,56 +2672,6 @@ impl<'db> InferenceContext<'db> {
                 (self.err_ty(), None)
             }
         }
-    }
-
-    fn resolve_range_full(&self) -> Option<AdtId> {
-        let struct_ = self.lang_items.RangeFull?;
-        Some(struct_.into())
-    }
-
-    fn has_new_range_feature(&self) -> bool {
-        self.features.new_range
-    }
-
-    fn resolve_range(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeCopy?
-        } else {
-            self.lang_items.Range?
-        };
-        Some(struct_.into())
-    }
-
-    fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeInclusiveCopy?
-        } else {
-            self.lang_items.RangeInclusiveStruct?
-        };
-        Some(struct_.into())
-    }
-
-    fn resolve_range_from(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeFromCopy?
-        } else {
-            self.lang_items.RangeFrom?
-        };
-        Some(struct_.into())
-    }
-
-    fn resolve_range_to(&self) -> Option<AdtId> {
-        let struct_ = self.lang_items.RangeTo?;
-        Some(struct_.into())
-    }
-
-    fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let struct_ = if self.has_new_range_feature() {
-            self.lang_items.RangeToInclusiveCopy?
-        } else {
-            self.lang_items.RangeToInclusive?
-        };
-        Some(struct_.into())
     }
 
     fn resolve_va_list(&self) -> Option<AdtId> {

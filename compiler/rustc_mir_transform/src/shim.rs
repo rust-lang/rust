@@ -3,8 +3,8 @@ use std::{assert_matches, fmt, iter};
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
@@ -325,7 +325,6 @@ pub fn build_drop_shim<'tcx>(
         start.terminator = Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(
                     tcx,
                     def_id,
@@ -624,7 +623,6 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
         let func_ty = tcx.type_of(self.def_id).instantiate(tcx, &[ty.into()]).skip_norm_wip();
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,

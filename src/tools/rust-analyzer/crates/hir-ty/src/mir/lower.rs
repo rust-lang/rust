@@ -4,7 +4,7 @@ use std::{fmt::Write, iter, mem};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
+    DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
     ItemContainerId, LocalFieldId, Lookup, TraitId,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{
@@ -23,7 +23,7 @@ use la_arena::{ArenaMap, RawIdx};
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
-use salsa::Update;
+use salsa::SalsaValue;
 use span::{Edition, FileId};
 use syntax::TextRange;
 
@@ -53,7 +53,6 @@ use crate::{
     next_solver::{
         Const, DbInterner, ParamConst, ParamEnv, Region, StoredGenericArgs, StoredTy, TyKind,
         TypingMode, UnevaluatedConst,
-        abi::Safety,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -98,7 +97,7 @@ struct MirLowerCtx<'a, 'db> {
 }
 
 // FIXME: Make this smaller, its stored in database queries
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub enum MirLowerError<'db> {
     ConstEvalError(Box<str>, Box<ConstEvalError<'db>>),
     LayoutError(LayoutError),
@@ -1178,56 +1177,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 self.resolver.reset_to_guard(resolver_guard);
                 Ok(Some(current))
             }
-            &Expr::Range { lhs, rhs, range_type: _ } => {
-                let ty = self.expr_ty_without_adjust(expr_id);
-                let Some((adt, subst)) = ty.as_adt() else {
-                    return Err(MirLowerError::TypeError("Range type is not adt"));
-                };
-                let AdtId::StructId(st) = adt else {
-                    return Err(MirLowerError::TypeError("Range type is not struct"));
-                };
-                let mut lp = None;
-                let mut rp = None;
-                if let Some(it) = lhs {
-                    let Some((o, c)) = self.lower_expr_to_some_operand(it, current)? else {
-                        return Ok(None);
-                    };
-                    lp = Some(o);
-                    current = c;
-                }
-                if let Some(it) = rhs {
-                    let Some((o, c)) = self.lower_expr_to_some_operand(it, current)? else {
-                        return Ok(None);
-                    };
-                    rp = Some(o);
-                    current = c;
-                }
-                self.push_assignment(
-                    current,
-                    place,
-                    Rvalue::Aggregate(
-                        AggregateKind::Adt(st.into(), subst.store()),
-                        st.fields(self.db)
-                            .fields()
-                            .iter()
-                            .map(|it| {
-                                let o = match it.1.name.as_str() {
-                                    "start" => lp.take(),
-                                    "end" => rp.take(),
-                                    "exhausted" => Some(Operand::from_bytes(
-                                        Box::new([0]),
-                                        Ty::new_bool(self.interner()),
-                                    )),
-                                    _ => None,
-                                };
-                                o.ok_or(MirLowerError::UnresolvedField)
-                            })
-                            .collect::<Result<'_, _>>()?,
-                    ),
-                    expr_id.into(),
-                );
-                Ok(Some(current))
-            }
             Expr::Closure { closure_kind: ClosureKind::Closure, .. } => {
                 let ty = self.expr_ty_without_adjust(expr_id);
                 let TyKind::Closure(id, _) = ty.kind() else {
@@ -2147,11 +2096,10 @@ pub fn mir_body_for_closure_query<'db>(
         .store(),
     });
     ctx.result.param_locals.push(closure_local);
-
-    let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
+    let sig = infer.closures_data[&expr].liberated_sig.get();
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, ctx.store_owner, expr);
     let current = ctx.lower_params_and_bindings(
-        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, *y)),
+        args.iter().zip(sig.inputs().iter()).map(|(it, y)| (*it, *y)),
         None,
         |_| true,
     )?;

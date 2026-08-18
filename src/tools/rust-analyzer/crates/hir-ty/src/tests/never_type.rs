@@ -888,6 +888,17 @@ fn foo() {
 }
 
 #[test]
+fn diverging_destructuring_assignment_coerces_rhs() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    if (() = return) {}
+}
+"#,
+    );
+}
+
+#[test]
 fn never_coercion_in_struct_update_syntax() {
     check_no_mismatches(
         r#"
@@ -913,6 +924,17 @@ async fn test() -> ! {
 
 pub async fn test1() -> ! {
     test().await;
+}
+    "#,
+    );
+}
+
+#[test]
+fn break_diverge() {
+    check_no_mismatches(
+        r#"
+fn test() -> i32 {
+    let loop_value = loop { break (return 5); };
 }
     "#,
     );

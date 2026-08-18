@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `x`
-  --> $DIR/gat-hide-lifetime-for-swap.rs:33:5
+  --> $DIR/gat-hide-lifetime-for-swap.rs:35:5
    |
 LL |     h.hide_ref(&mut res).swap(h.hide_ref(&mut &x));
    |                                               -- `x` is borrowed here

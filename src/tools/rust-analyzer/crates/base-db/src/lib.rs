@@ -6,41 +6,7 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
-pub mod salsa {
-    pub use salsa::*;
-
-    // Adjusted from `salsa::update_fallback` to work with database owned T
-    /// "Fallback" for maybe-update that is suitable for database owned T
-    /// that implement `Eq`. In this version, we update only if the new value
-    /// is not `Eq` to the old one. Note that given `Eq` impls that are not just
-    /// structurally comparing fields, this may cause us not to update even if
-    /// the value has changed (presumably because this change is not semantically
-    /// significant).
-    ///
-    /// # Safety
-    ///
-    /// See `Update::maybe_update`, additionally, `'db` is required to be `'static` or the lifetime
-    /// of the database `T` belongs to.
-    pub unsafe fn update_fallback_db<'db, T>(old_pointer: *mut T, new_value: T) -> bool
-    where
-        T: 'db + PartialEq,
-    {
-        // SAFETY: Because everything is owned, this ref is simply a valid `&mut`
-        let old_ref: &mut T = unsafe { &mut *old_pointer };
-
-        if *old_ref != new_value {
-            *old_ref = new_value;
-            true
-        } else {
-            // Subtle but important: Eq impls can be buggy or define equality
-            // in surprising ways. If it says that the value has not changed,
-            // we do not modify the existing value, and thus do not have to
-            // update the revision, as downstream code will not see the new value.
-            false
-        }
-    }
-}
-pub use salsa_macros;
+pub use salsa;
 use span::TextSize;
 
 mod change;
@@ -79,7 +45,7 @@ pub type FxIndexMap<K, V> =
 #[macro_export]
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {
-        #[salsa::interned(no_lifetime, revisions = usize::MAX)]
+        #[salsa::interned(unsafe(no_lifetime), revisions = usize::MAX)]
         #[derive(PartialOrd, Ord)]
         pub struct $id {
             #[returns(ref)]
@@ -255,11 +221,13 @@ pub struct FileText {
 
 #[salsa::input(debug)]
 pub struct FileSourceRootInput {
+    #[returns(copy)]
     pub source_root_id: SourceRootId,
 }
 
 #[salsa::input(debug)]
 pub struct SourceRootInput {
+    #[returns(clone)]
     pub source_root: Arc<SourceRoot>,
 }
 
@@ -363,6 +331,7 @@ pub fn toolchain_channel(db: &dyn salsa::Database, krate: Crate) -> Option<Relea
 
 #[salsa::input(singleton, debug)]
 struct AllCrates {
+    #[returns(clone)]
     crates: std::sync::Arc<[Crate]>,
 }
 
@@ -389,6 +358,7 @@ pub fn all_crates(db: &dyn salsa::Database) -> std::sync::Arc<[Crate]> {
 #[doc(hidden)]
 #[salsa::interned]
 pub struct InternedSourceRootId {
+    #[returns(copy)]
     pub id: SourceRootId,
 }
 

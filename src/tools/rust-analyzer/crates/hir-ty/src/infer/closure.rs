@@ -9,6 +9,7 @@ use hir_def::{
     hir::{ClosureKind, CoroutineKind, CoroutineSource, ExprId, PatId},
     type_ref::TypeRefId,
 };
+use indexmap::IndexMap;
 use rustc_abi::ExternAbi;
 use rustc_type_ir::{
     AliasTyKind, ClosureArgs, ClosureArgsParts, CoroutineArgs, CoroutineArgsParts,
@@ -21,11 +22,11 @@ use tracing::{debug, instrument};
 use crate::{
     Span,
     db::{InternedClosure, InternedClosureId, InternedCoroutineClosureId, InternedCoroutineId},
-    infer::{BreakableKind, Diverges, coerce::CoerceMany, pat::PatOrigin},
+    infer::{BreakableKind, ClosureData, Diverges, coerce::CoerceMany, pat::PatOrigin},
     next_solver::{
         AliasTy, Binder, ClauseKind, DbInterner, ErrorGuaranteed, FnSig, GenericArg, PolyFnSig,
-        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, TermId, Ty, TyKind,
-        Unnormalized,
+        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, StoredFnSig, TermId, Ty,
+        TyKind, Unnormalized,
         abi::Safety,
         infer::{
             BoundRegionConversionTime, InferOk, InferResult,
@@ -302,6 +303,15 @@ impl<'db> InferenceContext<'db> {
                 )
             }
         };
+
+        self.result.closures_data.insert(
+            closure_expr,
+            ClosureData {
+                liberated_sig: StoredFnSig::new(liberated_sig),
+                fake_reads: Box::default(),
+                min_captures: IndexMap::default(),
+            },
+        );
 
         // Now go through the argument patterns
         for (arg_pat, arg_ty) in args.iter().zip(liberated_sig.inputs()) {

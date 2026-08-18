@@ -509,7 +509,7 @@ pub(super) fn definition(
                         Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
                     }
                     Err(err) => {
-                        let res = it.value(db).map(|it| format!("{it:?}"));
+                        let res = it.value(db).map(|it| it.to_string());
                         if env::var_os("RA_DEV").is_some() {
                             let res = res.as_deref().unwrap_or("");
                             Some(format!(

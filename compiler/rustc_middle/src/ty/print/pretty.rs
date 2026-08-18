@@ -6,16 +6,16 @@ use std::ops::{Deref, DerefMut};
 use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
-use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
@@ -2984,7 +2984,7 @@ where
     }
 }
 
-impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<P> for ty::OutlivesPredicate<'tcx, T>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<P> for ty::OutlivesClause<'tcx, T>
 where
     T: Print<P>,
 {
@@ -3223,7 +3223,7 @@ define_print! {
         self.trait_ref.print_trait_sugared().print(p)?;
     }
 
-    ty::HostEffectPredicate<'tcx> {
+    ty::HostEffectClause<'tcx> {
         let constness = match self.constness {
             ty::BoundConstness::Const => { "const" }
             ty::BoundConstness::Maybe => { "[const]" }
@@ -3241,10 +3241,10 @@ define_print! {
     ty::ClauseKind<'tcx> {
         match *self {
             ty::ClauseKind::Trait(ref data) => data.print(p)?,
-            ty::ClauseKind::RegionOutlives(predicate) => predicate.print(p)?,
-            ty::ClauseKind::TypeOutlives(predicate) => predicate.print(p)?,
+            ty::ClauseKind::RegionOutlives(clause) => clause.print(p)?,
+            ty::ClauseKind::TypeOutlives(clause) => clause.print(p)?,
             ty::ClauseKind::Projection(predicate) => predicate.print(p)?,
-            ty::ClauseKind::HostEffect(predicate) => predicate.print(p)?,
+            ty::ClauseKind::HostEffect(clause) => clause.print(p)?,
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 write!(p, "the constant `")?;
                 ct.print(p)?;

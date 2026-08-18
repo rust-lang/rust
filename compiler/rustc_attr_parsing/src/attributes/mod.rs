@@ -20,15 +20,15 @@
 
 use std::marker::PhantomData;
 
+use rustc_attr_ir::AttributeKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext};
+use crate::diagnostics::UnusedMultiple;
 use crate::parser::ArgParser;
-use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeTemplate, template};
 
@@ -223,13 +223,6 @@ pub(crate) enum OnDuplicate {
 
     /// Ignore duplicates
     Ignore,
-
-    /// Custom function called when a duplicate attribute is found.
-    ///
-    /// - `unused` is the span of the attribute that was unused or bad because of some
-    ///   duplicate reason
-    /// - `used` is the span of the attribute that was used in favor of the unused attribute
-    Custom(fn(cx: &AcceptContext<'_, '_>, used: Span, unused: Span)),
 }
 
 impl OnDuplicate {
@@ -252,7 +245,6 @@ impl OnDuplicate {
                 });
             }
             OnDuplicate::Ignore => {}
-            OnDuplicate::Custom(f) => f(cx, used, unused),
         }
     }
 }

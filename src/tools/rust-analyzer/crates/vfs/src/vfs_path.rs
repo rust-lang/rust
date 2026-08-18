@@ -337,9 +337,9 @@ impl PartialEq<VfsPath> for AbsPath {
 struct VirtualPath(String);
 
 impl VirtualPath {
-    /// Returns `true` if `other` is a prefix of `self` (as strings).
+    /// Returns `true` if `other` is a prefix of `self`.
     fn starts_with(&self, other: &VirtualPath) -> bool {
-        self.0.starts_with(&other.0)
+        <_ as AsRef<paths::Utf8Path>>::as_ref(&self.0).starts_with(&other.0)
     }
 
     fn strip_prefix(&self, base: &VirtualPath) -> Option<&RelPath> {

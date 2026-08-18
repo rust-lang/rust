@@ -1,7 +1,7 @@
+use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
-use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
-use rustc_hir::attrs::*;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
@@ -13,7 +13,7 @@ use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
     ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
     InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,

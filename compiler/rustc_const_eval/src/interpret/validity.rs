@@ -21,7 +21,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
-    InterpErrorKind, InvalidMetaKind, Misalignment, Provenance, alloc_range, interp_ok,
+    InterpErrorKind, InvalidMetaKind, Misalignment, PointerArithmetic, Provenance, alloc_range,
+    interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -32,7 +33,6 @@ use super::machine::AllocMap;
 use super::{
     AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
     Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
-    format_interp_error,
 };
 use crate::enter_trace_span;
 
@@ -648,6 +648,29 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 None
             }
         } else {
+            // We are not checking dereferenceability, but we still want to ensure that the pointer
+            // *could* be dereferenceable in *some* memory: we have to be able to compute the
+            // address at the end of this range without overflowing..
+            let scalar = Scalar::from_maybe_pointer(place.ptr(), self.ecx);
+            // Skip this if we don't know the absolute address (during CTFE).
+            if let Ok(addr) = scalar.try_to_scalar_int() {
+                // Try to compute the end address. Cannot use `Size` addition as that also applies
+                // the "max obj size" bound.
+                let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx)).bytes();
+                if addr
+                    .checked_add(size.bytes())
+                    .is_none_or(|result| result >= self.ecx.target_usize_max())
+                {
+                    throw_validation_failure!(
+                        self.path,
+                        format!(
+                            "encountered a {ptr_kind} that is too close to the end of the address space for a pointee of {} bytes",
+                            size.bytes(),
+                        )
+                    )
+                }
+            }
+
             // Pointer remains unchanged.
             None
         };
@@ -658,20 +681,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         } else if self.reset_provenance_and_padding {
             self.reset_pointer_provenance(value, &ptr)?;
         }
-
-        // Check alignment after dereferenceable (if both are violated, trigger the error above).
-        try_validation!(
-            self.ecx.check_ptr_align(
-                place.ptr(),
-                align,
-            ),
-            self.path,
-            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => format!(
-                "encountered an unaligned {ptr_kind} (required {required_bytes} byte alignment but found {found_bytes})",
-                required_bytes = required.bytes(),
-                found_bytes = has.bytes()
-            ),
-        );
 
         // Make sure this is non-null. This is obviously needed when `may_dangle` is set,
         // but even if we did check dereferenceability above that would still allow null
@@ -687,6 +696,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 )
             )
         }
+
         // Do not allow references to uninhabited types.
         if !place.layout.ty.is_opsem_inhabited(*self.ecx.tcx, self.ecx.typing_env) {
             let ty = place.layout.ty;
@@ -695,6 +705,20 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 format!("encountered a {ptr_kind} pointing to uninhabited type `{ty}`")
             )
         }
+
+        // Check alignment after dereferenceable (if both are violated, trigger the error above).
+        try_validation!(
+            self.ecx.check_ptr_align(
+                place.ptr(),
+                align,
+            ),
+            self.path,
+            Ub(AlignmentCheckFailed(Misalignment { required, has }, _msg)) => format!(
+                "encountered an unaligned {ptr_kind} (required {required_bytes} byte alignment but found {found_bytes})",
+                required_bytes = required.bytes(),
+                found_bytes = has.bytes()
+            ),
+        );
 
         // Recursive checking (but not inside `MaybeDangling` of course).
         if let Some(ref_tracking) = self.ref_tracking.as_deref_mut()
@@ -1606,7 +1630,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             v.reset_padding(val)?;
             interp_ok(())
         })
-        .map_err_info(|err| {
+        .inspect_err_info(|err| {
             if !matches!(
                 err.kind(),
                 InterpErrorKind::UndefinedBehavior(ValidationError { .. })
@@ -1616,9 +1640,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // during validation.
                 | InterpErrorKind::MachineStop(_)
             ) {
-                bug!("Unexpected error during validation: {}", format_interp_error(err));
+                bug!("Unexpected error during validation: {}", err.to_string());
             }
-            err
         })
     }
 

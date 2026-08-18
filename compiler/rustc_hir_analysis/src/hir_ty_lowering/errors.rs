@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -884,7 +885,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         name: Ident,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-        fulfillment_errors: Vec<FulfillmentError<'tcx>>,
+        fulfillment_errors: ThinVec<FulfillmentError<'tcx>>,
         span: Span,
         assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {
@@ -1561,6 +1562,16 @@ pub fn prohibit_assoc_item_constraint(
             None
         },
     });
+
+    if let hir::AssocItemConstraintKind::Bound {
+        bounds: [hir::GenericBound::Trait(poly_trait_ref)],
+    } = constraint.kind
+        && let Res::Err = poly_trait_ref.trait_ref.path.res
+    {
+        // This was likely a `Vec<foo::Bar>` to `Vec<foo:Bar>` typo. A prior error will have been
+        // emitted during resolve, with better context.
+        err.downgrade_to_delayed_bug();
+    }
 
     // Emit a suggestion to turn the assoc item binding into a generic arg
     // if the relevant item has a generic param whose name matches the binding name;

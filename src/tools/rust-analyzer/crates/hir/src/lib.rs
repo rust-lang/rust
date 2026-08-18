@@ -2098,121 +2098,6 @@ impl DefWithBody {
             }
         }
 
-        if let Ok(borrowck_results) = InferBodyId::from(id).borrowck(db) {
-            for borrowck_result in borrowck_results {
-                let mir_body = borrowck_result.mir_body(db);
-                for moof in &borrowck_result.moved_out_of_ref {
-                    let span: InFile<SyntaxNodePtr> = match moof.span {
-                        mir::MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
-                            Ok(s) => s.map(|it| it.into()),
-                            Err(_) => continue,
-                        },
-                        mir::MirSpan::PatId(p) => match source_map.pat_syntax(p) {
-                            Ok(s) => s.map(|it| it.into()),
-                            Err(_) => continue,
-                        },
-                        mir::MirSpan::SelfParam => match source_map.self_param_syntax() {
-                            Some(s) => s.map(|it| it.into()),
-                            None => continue,
-                        },
-                        mir::MirSpan::BindingId(b) => {
-                            match source_map
-                                .patterns_for_binding(b)
-                                .iter()
-                                .find_map(|p| source_map.pat_syntax(*p).ok())
-                            {
-                                Some(s) => s.map(|it| it.into()),
-                                None => continue,
-                            }
-                        }
-                        mir::MirSpan::Unknown => continue,
-                    };
-                    acc.push(
-                        MovedOutOfRef {
-                            ty: Type { owner: type_owner, ty: EarlyBinder::bind(moof.ty.as_ref()) },
-                            span,
-                        }
-                        .into(),
-                    )
-                }
-                let mol = &borrowck_result.mutability_of_locals;
-                for (binding_id, binding_data) in body.bindings() {
-                    if binding_data.problems.is_some() {
-                        // We should report specific diagnostics for these problems, not `need-mut` and `unused-mut`.
-                        continue;
-                    }
-                    let Some(&local) = mir_body.binding_locals.get(binding_id) else {
-                        continue;
-                    };
-                    if source_map
-                        .patterns_for_binding(binding_id)
-                        .iter()
-                        .any(|&pat| source_map.pat_syntax(pat).is_err())
-                    {
-                        // Skip synthetic bindings
-                        continue;
-                    }
-                    let mut need_mut = &mol[local];
-                    if body[binding_id].name == sym::self_
-                        && need_mut == &mir::MutabilityReason::Unused
-                    {
-                        need_mut = &mir::MutabilityReason::Not;
-                    }
-                    let local =
-                        Local { parent: id.into(), parent_infer: mir_body.owner, binding_id };
-                    let is_mut = body[binding_id].mode == BindingAnnotation::Mutable;
-
-                    match (need_mut, is_mut) {
-                        (mir::MutabilityReason::Unused, _) => {
-                            let should_ignore = body[binding_id].name.as_str().starts_with('_');
-                            if !should_ignore {
-                                acc.push(UnusedVariable { local }.into())
-                            }
-                        }
-                        (mir::MutabilityReason::Mut { .. }, true)
-                        | (mir::MutabilityReason::Not, false) => (),
-                        (mir::MutabilityReason::Mut { spans }, false) => {
-                            for span in spans {
-                                let span: InFile<SyntaxNodePtr> = match span {
-                                    mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
-                                        Ok(s) => s.map(|it| it.into()),
-                                        Err(_) => continue,
-                                    },
-                                    mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                                        Ok(s) => s.map(|it| it.into()),
-                                        Err(_) => continue,
-                                    },
-                                    mir::MirSpan::BindingId(b) => {
-                                        match source_map
-                                            .patterns_for_binding(*b)
-                                            .iter()
-                                            .find_map(|p| source_map.pat_syntax(*p).ok())
-                                        {
-                                            Some(s) => s.map(|it| it.into()),
-                                            None => continue,
-                                        }
-                                    }
-                                    mir::MirSpan::SelfParam => match source_map.self_param_syntax()
-                                    {
-                                        Some(s) => s.map(|it| it.into()),
-                                        None => continue,
-                                    },
-                                    mir::MirSpan::Unknown => continue,
-                                };
-                                acc.push(NeedMut { local, span }.into());
-                            }
-                        }
-                        (mir::MutabilityReason::Not, true) => {
-                            let should_ignore = body[binding_id].name.as_str().starts_with('_');
-                            if !should_ignore {
-                                acc.push(UnusedMut { local }.into())
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         for diagnostic in BodyValidationDiagnostic::collect(db, id, style_lints) {
             acc.extend(AnyDiagnostic::body_validation_diagnostic(db, diagnostic, source_map));
         }
@@ -2717,6 +2602,9 @@ impl<'db> Param<'db> {
     pub fn parent_fn(&self) -> Option<Function> {
         match self.func {
             Callee::Def(CallableDefId::FunctionId(f)) => Some(f.into()),
+            Callee::BuiltinDeriveImplMethod { method, impl_ } => {
+                Some(Function { id: AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } })
+            }
             _ => None,
         }
     }
@@ -2923,6 +2811,10 @@ impl Const {
         Type::from_value_def(db, self.id)
     }
 
+    pub fn has_body(self, db: &dyn HirDatabase) -> bool {
+        ConstSignature::of(db, self.id).has_body()
+    }
+
     /// Evaluate the constant.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
         let interner = DbInterner::new_no_crate(db);
@@ -2956,8 +2848,9 @@ impl<'db> EvaluatedConst<'db> {
         let ty = self.allocation.ty.kind();
         if let TyKind::Int(_) | TyKind::Uint(_) = ty {
             let b = &self.allocation.memory;
-            let value = u128::from_le_bytes(mir::pad16(b, false));
-            let value_signed = i128::from_le_bytes(mir::pad16(b, matches!(ty, TyKind::Int(_))));
+            let value = u128::from_le_bytes(mir::pad16(b, mir::IsSigned::No));
+            let is_signed = matches!(ty, TyKind::Int(_)).into();
+            let value_signed = i128::from_le_bytes(mir::pad16(b, is_signed));
             let mut result =
                 if let TyKind::Int(_) = ty { value_signed.to_string() } else { value.to_string() };
             if value >= 10 {
@@ -3132,6 +3025,10 @@ impl Trait {
     pub fn prefer_underscore_import(self, db: &dyn HirDatabase) -> bool {
         AttrFlags::query(db, self.id.into()).contains(AttrFlags::PREFER_UNDERSCORE_IMPORT)
     }
+
+    pub fn must_implement_one_of(self, db: &dyn HirDatabase) -> Option<&[Name]> {
+        AttrFlags::must_implement_one_of(db, self.id)
+    }
 }
 
 impl HasVisibility for Trait {
@@ -3162,6 +3059,10 @@ impl TypeAlias {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         TypeAliasSignature::of(db, self.id).name.clone()
+    }
+
+    pub fn has_type(self, db: &dyn HirDatabase) -> bool {
+        TypeAliasSignature::of(db, self.id).ty.is_some()
     }
 }
 
@@ -3310,10 +3211,6 @@ impl Macro {
         }
     }
 
-    pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::MacroRulesId(_) if AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_MACRO_EXPORT))
-    }
-
     pub fn is_proc_macro(self) -> bool {
         matches!(self.id, MacroId::ProcMacroId(_))
     }
@@ -3454,7 +3351,13 @@ impl HasVisibility for Macro {
                 let source = loc.source(db);
                 visibility_from_ast(db, id, source.map(|src| src.visibility()))
             }
-            MacroId::MacroRulesId(_) => Visibility::Public,
+            MacroId::MacroRulesId(id) => {
+                if AttrFlags::query(db, id.into()).contains(AttrFlags::IS_MACRO_EXPORT) {
+                    Visibility::Public
+                } else {
+                    Visibility::PubCrate(self.krate(db).id)
+                }
+            }
             MacroId::ProcMacroId(_) => Visibility::Public,
         }
     }

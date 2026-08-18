@@ -142,6 +142,18 @@ impl AssocItem {
         matches!(self.kind, ty::AssocKind::Const { is_type_const: true, .. })
     }
 
+    /// Whether this associated item can be constrained with an equality binding.
+    pub fn can_have_equality_constraint(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind {
+            ty::AssocKind::Type { .. } => true,
+            ty::AssocKind::Const { is_type_const: true, .. } => true,
+            ty::AssocKind::Const { is_type_const: false, .. } => {
+                tcx.features().generic_const_args()
+            }
+            ty::AssocKind::Fn { .. } => false,
+        }
+    }
+
     pub fn is_fn(&self) -> bool {
         matches!(self.kind, ty::AssocKind::Fn { .. })
     }

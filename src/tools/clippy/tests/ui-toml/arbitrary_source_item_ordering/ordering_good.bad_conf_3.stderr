@@ -1,4 +1,4 @@
-error: error reading Clippy's configuration file: The category "Struct" was enabled more than once in the source ordering configuration.
+error: The category "struct" was enabled more than once in the source ordering configuration.
   --> $DIR/tests/ui-toml/arbitrary_source_item_ordering/bad_conf_3/clippy.toml:1:24
    |
 LL | source-item-ordering = ["enum", "impl", "module", "struct", "trait", "struct"]

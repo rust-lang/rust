@@ -666,7 +666,9 @@ impl u128 {
             (mod_1e16, U128_MAX_DEC_N)
         } else {
             // Write digits at buf[23..39].
-            enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16);
+            //
+            // SAFETY: `mod_1e16 < 1e16` (remainder), and `U128_MAX_DEC_N - 16 + 16 == buf.len()`.
+            unsafe { enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16) };
 
             // Take another 16 decimals.
             let (quot2, mod2) = div_rem_1e16(quot_1e16);
@@ -674,7 +676,10 @@ impl u128 {
                 (mod2, U128_MAX_DEC_N - 16)
             } else {
                 // Write digits at buf[7..23].
-                enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2);
+                //
+                // SAFETY: `mod2 < 1e16` (remainder), and `U128_MAX_DEC_N - 32 + 16 <= buf.len()`.
+                unsafe { enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2) };
+
                 // Quot2 has at most 7 decimals remaining after two 1e16 divisions.
                 (quot2 as u64, U128_MAX_DEC_N - 32)
             }
@@ -690,15 +695,14 @@ impl u128 {
             unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
             offset -= 4;
 
-            // pull two pairs
             let quad = remain % 1_00_00;
             remain /= 1_00_00;
-            let pair1 = (quad / 100) as usize;
-            let pair2 = (quad % 100) as usize;
-            buf[offset + 0].write(DECIMAL_PAIRS[pair1 * 2 + 0]);
-            buf[offset + 1].write(DECIMAL_PAIRS[pair1 * 2 + 1]);
-            buf[offset + 2].write(DECIMAL_PAIRS[pair2 * 2 + 0]);
-            buf[offset + 3].write(DECIMAL_PAIRS[pair2 * 2 + 1]);
+
+            // SAFETY: quad is a remainder modulo 10_000. The offset checks
+            // above reserve exactly four bytes in buf.
+            unsafe {
+                write_quad(buf.get_unchecked_mut(offset..offset + 4), quad);
+            }
         }
 
         // Format per two digits from the lookup table.
@@ -814,32 +818,70 @@ impl i128 {
     }
 }
 
-/// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
-/// 16 ]`.
-fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
-    // Consume the least-significant decimals from a working copy.
-    let mut remain = n;
-
-    // Format per four digits from the lookup table.
-    for quad_index in (1..4).rev() {
-        // pull two pairs
-        let quad = remain % 1_00_00;
-        remain /= 1_00_00;
-        let pair1 = (quad / 100) as usize;
-        let pair2 = (quad % 100) as usize;
-        buf[quad_index * 4 + OFFSET + 0].write(DECIMAL_PAIRS[pair1 * 2 + 0]);
-        buf[quad_index * 4 + OFFSET + 1].write(DECIMAL_PAIRS[pair1 * 2 + 1]);
-        buf[quad_index * 4 + OFFSET + 2].write(DECIMAL_PAIRS[pair2 * 2 + 0]);
-        buf[quad_index * 4 + OFFSET + 3].write(DECIMAL_PAIRS[pair2 * 2 + 1]);
+/// Writes `quad` as exactly four digits (for example: `42` becomes `"0042"`).
+///
+/// # Safety
+///
+/// `quad` must be below 10_000 and `buf` must contain exactly four bytes.
+#[inline(always)]
+unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
+    // SAFETY: These are this function's caller-provided invariants.
+    unsafe {
+        core::hint::assert_unchecked(quad < 10_000);
+        core::hint::assert_unchecked(buf.len() == 4);
     }
 
-    // final two pairs
-    let pair1 = (remain / 100) as usize;
-    let pair2 = (remain % 100) as usize;
-    buf[OFFSET + 0].write(DECIMAL_PAIRS[pair1 * 2 + 0]);
-    buf[OFFSET + 1].write(DECIMAL_PAIRS[pair1 * 2 + 1]);
-    buf[OFFSET + 2].write(DECIMAL_PAIRS[pair2 * 2 + 0]);
-    buf[OFFSET + 3].write(DECIMAL_PAIRS[pair2 * 2 + 1]);
+    let quad = quad as u32;
+
+    // Note: this is equivalent to `quad / 100`, but contains no division instructions.
+    let high = (quad * const { (1 << 19) / 100 + 1 }) >> 19;
+    let low = quad - high * 100;
+    let high = high as usize;
+    let low = low as usize;
+
+    // SAFETY: `high` and `low` are below 100 because `quad` is below 10_000.
+    unsafe { core::hint::assert_unchecked(high < 100 && low < 100) }
+
+    buf[0..2].write_copy_of_slice(&DECIMAL_PAIRS[high * 2..high * 2 + 2]);
+    buf[2..4].write_copy_of_slice(&DECIMAL_PAIRS[low * 2..low * 2 + 2]);
+}
+
+/// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
+/// 16 ]`.
+///
+/// # Safety
+///
+/// `n` must be below 1e16, and `buf` must be at least `OFFSET + 16` bytes long.
+unsafe fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
+    // SAFETY: Every caller passes a remainder produced by division by 10^16,
+    // and every used `OFFSET` specialization reserves sixteen bytes in `buf`.
+    unsafe {
+        core::hint::assert_unchecked(n < 10_000_000_000_000_000);
+        core::hint::assert_unchecked(OFFSET + 16 <= buf.len());
+    }
+
+    // Peel four digits at a time from right to left (12345678 -> 1234 | 5678).
+    // Since 10_000 is constant, LLVM replaces each division with multiply or shift.
+    let mut remain = n;
+
+    for quad_index in (1..4).rev() {
+        let quad = remain % 1_00_00;
+        remain /= 1_00_00;
+
+        // SAFETY: `OFFSET + quad_index * 4` starts one of the four
+        // non-overlapping four-byte regions proven in bounds above.
+        unsafe {
+            write_quad(
+                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4),
+                quad,
+            );
+        }
+    }
+
+    // SAFETY: OFFSET starts the first four-byte region proven in bounds above.
+    unsafe {
+        write_quad(buf.get_unchecked_mut(OFFSET..OFFSET + 4), remain);
+    }
 }
 
 /// Euclidean division plus remainder with constant 1E16 basically consumes 16

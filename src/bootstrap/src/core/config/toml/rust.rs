@@ -1,12 +1,17 @@
 //! This module defines the `Rust` struct, which represents the `[rust]` table
 //! in the `bootstrap.toml` configuration file.
 
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+
 use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
+use crate::core::backend::CodegenBackendKind;
+use crate::core::config::macros::define_config;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
-use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, StringOrBool, TargetSelection};
+use crate::utils::helpers;
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -74,6 +79,8 @@ define_config! {
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
+        stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
+        wasm_proc_macros: Option<bool> = "wasm-proc-macros",
     }
 }
 
@@ -391,6 +398,8 @@ pub fn check_incompatible_options_for_ci_rustc(
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
         rustflags: _,
+        stdlib_semver_baseline: _,
+        wasm_proc_macros: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
@@ -421,6 +430,7 @@ pub fn check_incompatible_options_for_ci_rustc(
 
 pub(crate) const BUILTIN_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
 
+/// FIXME(Zalathar): This is partly redundant with the parsing code in [`CodegenBackendKind`].
 pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
     section: &str,
@@ -454,7 +464,7 @@ pub(crate) fn parse_codegen_backends(
         if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {
             if CiEnv::is_rust_lang_managed_ci_job() {
                 eprintln!("Unknown codegen backend {}", backend.name());
-                exit!(1);
+                helpers::exit_process(1);
             }
 
             println!(
@@ -467,7 +477,7 @@ pub(crate) fn parse_codegen_backends(
     }
     if found_backends.is_empty() {
         eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
-        exit!(1);
+        helpers::exit_process(1);
     }
     found_backends
 }

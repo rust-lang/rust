@@ -155,6 +155,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(simd_ffi)]
+#![feature(splat)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
@@ -237,12 +238,10 @@ mod internal_macros;
 #[path = "num/shells/legacy_int_modules.rs"]
 mod legacy_int_modules;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
-#[allow(deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use legacy_int_modules::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
-#[allow(deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use legacy_int_modules::{i128, u128};
 
 #[path = "num/f128.rs"]

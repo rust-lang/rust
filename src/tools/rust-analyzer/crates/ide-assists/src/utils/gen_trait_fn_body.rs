@@ -21,7 +21,7 @@ pub(crate) fn gen_trait_fn_body(
     trait_ref: Option<TraitRef<'_>>,
 ) -> Option<ast::BlockExpr> {
     let _ = func.body()?;
-    match trait_path.segment()?.name_ref()?.text().as_str() {
+    match trait_path.segment()?.name_ref()?.text() {
         "Clone" => {
             stdx::always!(func.name().is_some_and(|name| name.text() == "clone"));
             gen_clone_impl(make, adt)

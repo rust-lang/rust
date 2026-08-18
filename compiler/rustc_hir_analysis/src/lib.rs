@@ -60,7 +60,6 @@ This API is completely unstable and subject to change.
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
-#![feature(option_into_flat_iter)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
@@ -82,7 +81,6 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
-pub use diagnostics::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;

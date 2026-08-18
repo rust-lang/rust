@@ -1,20 +1,20 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
-use std::ops::ControlFlow;
 use std::{debug_assert_matches, fmt};
 
 use rustc_data_structures::Limit;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::CRATE_HIR_ID;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{CRATE_HIR_ID, LangItem};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{
     BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, Unnormalized, VisitorResult,
-    search_graph,
+    search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -121,9 +121,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ScalarInt = ty::ScalarInt;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
-    type LateParamRegion = ty::LateParamRegion;
+    type LateParamRegionKind = ty::LateParamRegionKind;
 
-    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
+    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
@@ -147,15 +147,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         f(&mut *self.new_solver_evaluation_cache.lock())
     }
 
-    fn canonical_param_env_cache_get_or_insert<R>(
+    fn with_canonical_param_env_cache<R>(
         self,
-        param_env: ty::ParamEnv<'tcx>,
-        f: impl FnOnce() -> ty::CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&ty::CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce(&mut ty::CanonicalParamEnvCache<Self>) -> R,
     ) -> R {
-        let mut cache = self.new_solver_canonical_param_env_cache.lock();
-        let entry = cache.entry(param_env).or_insert_with(f);
-        from_entry(entry)
+        f(&mut *self.new_solver_canonical_param_env_cache.lock())
     }
 
     fn assert_evaluation_is_concurrent(&self) {
@@ -560,10 +556,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> R {
         let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
-            match f(impl_def_id).branch() {
-                ControlFlow::Break(b) => return R::from_residual(b),
-                ControlFlow::Continue(()) => {}
-            }
+            try_visit!(f(impl_def_id));
         }
 
         R::output()

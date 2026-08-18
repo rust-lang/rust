@@ -5,6 +5,8 @@ use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
 use rustc_ast_ir::visit::VisitorResult;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_index::bit_set::DenseBitSet;
 
 use crate::fold::TypeFoldable;
@@ -18,8 +20,8 @@ use crate::solve::{
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCacheEntry, DebruijnIndex, Region,
-    RegionKind, TraitRef, search_graph,
+    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex, Region, RegionKind,
+    TraitRef, search_graph,
 };
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
@@ -30,7 +32,7 @@ pub trait Interner:
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
     + IrPrint<ty::TraitPredicate<Self>>
-    + IrPrint<ty::HostEffectPredicate<Self>>
+    + IrPrint<ty::HostEffectClause<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionPredicate<Self>>
@@ -184,8 +186,20 @@ pub trait Interner:
     type ScalarInt: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
+    /// (2026/08/13)
+    /// Do not uplift, the underlying types differ between r-a and rustc.
+    ///
+    /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
     type EarlyParamRegion: ParamLike;
-    type LateParamRegion: Copy + Debug + Hash + Eq;
+    /// (2026/08/13)
+    /// Do not uplift, the underlying types differ between r-a and rustc.
+    ///
+    /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
+    #[cfg(feature = "nightly")]
+    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash + StableHash;
+
+    #[cfg(not(feature = "nightly"))]
+    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
 
@@ -193,7 +207,7 @@ pub trait Interner:
         + Debug
         + Hash
         + Eq
-        + SliceLike<Item = ty::OutlivesPredicate<Self, Self::GenericArg>>
+        + SliceLike<Item = ty::OutlivesClause<Self, Self::GenericArg>>
         + TypeFoldable<Self>;
 
     // Predicates
@@ -204,11 +218,9 @@ pub trait Interner:
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
-    fn canonical_param_env_cache_get_or_insert<R>(
+    fn with_canonical_param_env_cache<R>(
         self,
-        param_env: Self::ParamEnv,
-        f: impl FnOnce() -> CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce(&mut CanonicalParamEnvCache<Self>) -> R,
     ) -> R;
 
     /// Useful for testing. If a cache entry is replaced, this should
@@ -340,8 +352,8 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
-    /// This is equivalent to computing the super-predicates of the trait for this impl
-    /// and filtering them to the outlives predicates. This is purely for performance.
+    /// This is equivalent to computing the super-clauses of the trait for this impl
+    /// and filtering them to the outlives clauses. This is purely for performance.
     fn impl_super_outlives(
         self,
         impl_def_id: Self::ImplId,
@@ -524,7 +536,6 @@ declare_lift_into! {
     InherentAssocConstId,
     InherentAssocTyId,
     InternedRegionKind,
-    LateParamRegion,
     OpaqueTyId,
     ParamEnv,
     PatList,

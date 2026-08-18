@@ -9,11 +9,11 @@ use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrPath, Attribute};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
@@ -66,13 +66,13 @@ use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
+use crate::diagnostics::{
+    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
+    ParsedDescription, UnusedDuplicate,
+};
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
     RefPathParser,
-};
-use crate::session_diagnostics::{
-    AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription, UnusedDuplicate,
 };
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeParser, AttributeTemplate, EmitAttribute};
@@ -295,6 +295,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcAllocatorParser>>,
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcAllowIncoherentImplParser>>,
+        Single<WithoutArgs<RustcAllowLifetimeDependentSpecializationParser>>,
         Single<WithoutArgs<RustcAsPtrParser>>,
         Single<WithoutArgs<RustcCanonicalSymbolParser>>,
         Single<WithoutArgs<RustcCaptureAnalysisParser>>,
@@ -306,13 +307,13 @@ attribute_parsers!(
         Single<WithoutArgs<RustcDelayedBugFromInsideQueryParser>>,
         Single<WithoutArgs<RustcDenyExplicitImplParser>>,
         Single<WithoutArgs<RustcDoNotConstCheckParser>>,
+        Single<WithoutArgs<RustcDumpClausesParser>>,
         Single<WithoutArgs<RustcDumpDefParentsParser>>,
         Single<WithoutArgs<RustcDumpGenericsParser>>,
         Single<WithoutArgs<RustcDumpHiddenTypeOfOpaquesParser>>,
         Single<WithoutArgs<RustcDumpInferredOutlivesParser>>,
         Single<WithoutArgs<RustcDumpItemBoundsParser>>,
         Single<WithoutArgs<RustcDumpObjectLifetimeDefaultsParser>>,
-        Single<WithoutArgs<RustcDumpPredicatesParser>>,
         Single<WithoutArgs<RustcDumpUserArgsParser>>,
         Single<WithoutArgs<RustcDumpVariancesOfOpaquesParser>>,
         Single<WithoutArgs<RustcDumpVariancesParser>>,
@@ -355,7 +356,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
         Single<WithoutArgs<RustcTestEntrypointMarkerParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
-        Single<WithoutArgs<RustcUnsafeSpecializationMarkerParser>>,
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
@@ -775,7 +775,7 @@ pub struct SharedContext<'p, 'sess> {
     pub(crate) cx: &'p mut AttributeParser<'sess>,
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
-    pub(crate) target: rustc_hir::Target,
+    pub(crate) target: Target,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 

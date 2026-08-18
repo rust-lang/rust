@@ -662,10 +662,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             p.def_id.to_def_id(),
         );
 
-        self.create_resolved_path(res, p.name.ident(), p.span)
+        self.create_resolved_qpath(res, p.name.ident(), p.span)
     }
 
-    pub(super) fn create_resolved_path(
+    pub(super) fn create_resolved_qpath(
         &mut self,
         res: Res,
         ident: Ident,

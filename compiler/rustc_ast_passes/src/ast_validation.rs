@@ -38,7 +38,7 @@ use rustc_session::lint::builtin::{
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 
-use crate::diagnostics::{self, TildeConstReason};
+use crate::diagnostics::{self, AbiCustomCannotBeCold, AbiCustomMustBeNaked, TildeConstReason};
 
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
@@ -368,7 +368,8 @@ impl<'a> AstValidator<'a> {
     fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrImpl) {
         let Some(const_keyword) = parent.constness() else { return };
 
-        let Some(CoroutineKind::Async { span: async_keyword, .. }) = sig.header.coroutine_kind
+        let Some(CoroutineMarker { kind: CoroutineKind::Async, span: async_keyword, .. }) =
+            sig.header.coroutine_marker
         else {
             return;
         };
@@ -657,18 +658,18 @@ impl<'a> AstValidator<'a> {
     }
 
     fn reject_coroutine(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
-        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+        if let Some(coroutine_marker) = sig.header.coroutine_marker {
             let coroutine_kind_span = self
                 .sess
                 .psess
                 .source_map()
-                .span_until_non_whitespace(coroutine_kind.span().to(sig.span));
+                .span_until_non_whitespace(coroutine_marker.span.to(sig.span));
 
             self.dcx().emit_err(diagnostics::AbiCannotBeCoroutine {
                 span: sig.span,
                 abi,
                 coroutine_kind_span,
-                coroutine_kind_str: coroutine_kind.as_str(),
+                coroutine_kind_str: coroutine_marker.kind.as_str(),
             });
         }
     }
@@ -866,7 +867,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_fn_headerless(
         &self,
         // Deconstruct to ensure exhaustiveness
-        FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
+        FnHeader { safety: _, coroutine_marker, constness, ext }: FnHeader,
     ) {
         let report_err = |span, kw| {
             self.dcx().emit_err(diagnostics::FnQualifierInExtern {
@@ -875,8 +876,8 @@ impl<'a> AstValidator<'a> {
                 block: self.current_extern_span(),
             });
         };
-        match coroutine_kind {
-            Some(kind) => report_err(kind.span(), kind.as_str()),
+        match coroutine_marker {
+            Some(marker) => report_err(marker.span, marker.kind.as_str()),
             None => (),
         }
         match constness {
@@ -895,6 +896,44 @@ impl<'a> AstValidator<'a> {
             self.dcx().emit_err(diagnostics::ExternItemAscii {
                 span: ident.span,
                 block: self.current_extern_span(),
+            });
+        }
+    }
+
+    /// Check the attributes on an `extern "custom"` function:
+    ///
+    /// - require `#[naked]`
+    /// - reject `#[cold]` (these functions cannot be called so `#[cold]` is meaningless)
+    fn check_extern_custom(&self, fk: FnKind<'_>, attrs: &AttrVec) {
+        let FnKind::Fn(fn_ctxt, _, Fn { sig, body: Some(_), .. }) = fk else {
+            return;
+        };
+
+        match fn_ctxt {
+            FnCtxt::Foreign => return,
+            FnCtxt::Free | FnCtxt::Assoc(_) => { /* fall through */ }
+        }
+
+        let Extern::Explicit(StrLit { symbol_unescaped, .. }, ext_span) = sig.header.ext else {
+            return;
+        };
+
+        let Ok(ExternAbi::Custom) = ExternAbi::from_str(symbol_unescaped.as_str()) else {
+            return;
+        };
+
+        if !attr::contains_name(attrs, sym::naked) {
+            self.dcx().emit_err(AbiCustomMustBeNaked {
+                span: sig.span,
+                naked_span: sig.span.shrink_to_lo(),
+            });
+        }
+
+        if let Some(cold) = attr::find_by_name(attrs, sym::cold) {
+            self.dcx().emit_err(AbiCustomCannotBeCold {
+                span: sig.span,
+                abi_span: ext_span,
+                cold_span: cold.span,
             });
         }
     }
@@ -923,11 +962,11 @@ impl<'a> AstValidator<'a> {
             feature_err(&self.sess, sym::const_c_variadic, sig.span, msg).emit();
         }
 
-        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+        if let Some(coroutine_marker) = sig.header.coroutine_marker {
             self.dcx().emit_err(diagnostics::CoroutineAndCVariadic {
-                spans: vec![coroutine_kind.span(), variadic_param.span],
-                coroutine_kind: coroutine_kind.as_str(),
-                coroutine_span: coroutine_kind.span(),
+                spans: vec![coroutine_marker.span, variadic_param.span],
+                coroutine_kind: coroutine_marker.kind.as_str(),
+                coroutine_span: coroutine_marker.span,
                 variadic_span: variadic_param.span,
             });
         }
@@ -935,6 +974,13 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
+                // Reject `...` without a pattern post-expansion. The varargs_without_pattern
+                // FCW is already triggered pre-expansion.
+                if let PatKind::Missing = variadic_param.pat.kind {
+                    self.dcx()
+                        .emit_err(diagnostics::VarargsWithoutPattern { span: variadic_param.span });
+                }
+
                 match self.sess.target.supports_c_variadic_definitions() {
                     CVariadicStatus::NotSupported => {
                         self.dcx().emit_err(diagnostics::CVariadicNotSupported {
@@ -994,29 +1040,14 @@ impl<'a> AstValidator<'a> {
         dotdotdot_span: Span,
         sig: &FnSig,
     ) {
-        // For naked functions we accept any ABI that is accepted on c-variadic
-        // foreign functions, if the c_variadic_naked_functions feature is enabled.
         if attr::contains_name(attrs, sym::naked) {
             match abi.supports_c_variadic() {
-                CVariadicStatus::Stable if let ExternAbi::C { .. } = abi => {
-                    // With `c_variadic` naked c-variadic `extern "C"` functions are allowed.
-                }
                 CVariadicStatus::Stable => {
-                    // For e.g. aapcs or sysv64 `c_variadic_naked_functions` must also be enabled.
-                    if !self.features.enabled(sym::c_variadic_naked_functions) {
-                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
-                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
-                            .emit();
-                    }
+                    // For naked functions we accept any ABI that is accepted
+                    // on c-variadic foreign functions.
                 }
                 CVariadicStatus::Unstable { feature } => {
-                    // Some ABIs need additional features.
-                    if !self.features.enabled(sym::c_variadic_naked_functions) {
-                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
-                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
-                            .emit();
-                    }
-
+                    // Some ABIs need additional features to be enabled.
                     if !self.features.enabled(feature) {
                         let msg = format!(
                             "C-variadic functions with the {abi} calling convention are unstable"
@@ -1150,7 +1181,7 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(diagnostics::ArgsBeforeConstraint {
             arg_spans: arg_spans.clone(),
             constraints: constraint_spans[0],
-            args: *arg_spans.iter().last().unwrap(),
+            args: *arg_spans.last().unwrap(),
             data: data.span,
             constraint_spans: diagnostics::EmptyLabelManySpans(constraint_spans),
             arg_spans2: diagnostics::EmptyLabelManySpans(arg_spans),
@@ -1259,10 +1290,10 @@ impl<'a> AstValidator<'a> {
     }
 
     // Check EII implementation attributes against an allowlist.
-    fn check_eii_impl_attrs(&self, attrs: &[Attribute], eii_impls: &[EiiImpl]) {
-        if eii_impls.is_empty() {
+    fn check_eii_impl_attrs(&self, attrs: &[Attribute], eii_impl: &Option<Box<EiiImpl>>) {
+        let Some(eii_impl) = eii_impl else {
             return;
-        }
+        };
 
         let allowed_attrs: &[Symbol] = &[
             sym::allow,
@@ -1289,14 +1320,12 @@ impl<'a> AstValidator<'a> {
             }
 
             let attr_name = pprust::path_to_string(&normal.item.path);
-            for eii_impl in eii_impls {
-                self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
-                    attr_span: attr.span,
-                    attr_name: &attr_name,
-                    eii_span: eii_impl.span,
-                    eii_name: pprust::path_to_string(&eii_impl.eii_macro_path),
-                });
-            }
+            self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
+                attr_span: attr.span,
+                attr_name: &attr_name,
+                eii_span: eii_impl.span,
+                eii_name: pprust::path_to_string(&eii_impl.eii_macro_path),
+            });
         }
     }
 }
@@ -1479,16 +1508,16 @@ impl Visitor<'_> for AstValidator<'_> {
                     contract: _,
                     body,
                     define_opaque: _,
-                    eii_impls,
+                    eii_impl,
                 },
             ) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 self.check_defaultness(item.span, *defaultness, AllowDefault::No, AllowFinal::No);
 
-                for EiiImpl { eii_macro_path, .. } in eii_impls {
+                if let Some(EiiImpl { eii_macro_path, .. }) = eii_impl {
                     self.visit_path(eii_macro_path);
                 }
-                self.check_eii_impl_attrs(&item.attrs, eii_impls);
+                self.check_eii_impl_attrs(&item.attrs, eii_impl);
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
                 if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
@@ -1526,7 +1555,10 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 if &Safety::Default == safety {
                     if item.span.at_least_rust_2024() {
-                        self.dcx().emit_err(diagnostics::MissingUnsafeOnExtern { span: item.span });
+                        self.dcx().emit_err(diagnostics::MissingUnsafeOnExtern {
+                            span: item.span,
+                            unsafe_span: item.span.shrink_to_lo(),
+                        });
                     } else {
                         self.lint_buffer.buffer_lint(
                             MISSING_UNSAFE_ON_EXTERN,
@@ -1664,9 +1696,9 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 visit::walk_item(self, item);
             }
-            ItemKind::Static(StaticItem { expr, safety, eii_impls, .. }) => {
+            ItemKind::Static(StaticItem { expr, safety, eii_impl, .. }) => {
                 self.check_item_safety(item.span, *safety);
-                self.check_eii_impl_attrs(&item.attrs, eii_impls);
+                self.check_eii_impl_attrs(&item.attrs, eii_impl);
                 if matches!(safety, Safety::Unsafe(_)) {
                     self.dcx().emit_err(diagnostics::UnsafeStatic { span: item.span });
                 }
@@ -1778,7 +1810,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
             }
             GenericArgs::Parenthesized(data) => {
-                walk_list!(self, visit_ty, &data.inputs);
+                walk_list!(self, visit_param, &data.inputs);
                 if let FnRetTy::Ty(ty) = &data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
@@ -1944,20 +1976,21 @@ impl Visitor<'_> for AstValidator<'_> {
             }
         }
 
+        self.check_extern_custom(fk, attrs);
         self.check_c_variadic_type(fk, attrs);
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
             constness: Const::Yes(const_span),
-            coroutine_kind: Some(coroutine_kind),
+            coroutine_marker: Some(coroutine_marker),
             ..
         }) = fk.header()
         {
             self.dcx().emit_err(diagnostics::ConstAndCoroutine {
-                spans: vec![coroutine_kind.span(), const_span],
+                spans: vec![coroutine_marker.span, const_span],
                 const_span,
-                coroutine_span: coroutine_kind.span(),
-                coroutine_kind: coroutine_kind.as_str(),
+                coroutine_span: coroutine_marker.span,
+                coroutine_kind: coroutine_marker.kind.as_str(),
                 span,
             });
         }

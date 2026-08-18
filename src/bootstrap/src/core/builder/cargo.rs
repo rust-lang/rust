@@ -1,19 +1,35 @@
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::{env, fs};
 
 use super::{Builder, Kind};
+use crate::core::build_steps::llvm::prebuilt_llvm_output;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
+use crate::core::compiler::Compiler;
 use crate::core::config::flags::Color;
 use crate::core::config::toml::pgo::PgoConfig;
-use crate::core::config::{CompressDebuginfo, SplitDebuginfo};
+use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
-use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags};
-use crate::{
-    BootstrapCommand, CLang, Compiler, Config, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
-    RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
-};
+use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
+use crate::{CLang, GitRepo, Mode, RemapScheme};
+
+/// Extra `--check-cfg` to add when building the compiler or tools
+/// (Mode restriction, config name, config values (if any))
+#[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
+const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
+    (Some(Mode::Rustc), "bootstrap", None),
+    (Some(Mode::Codegen), "bootstrap", None),
+    (Some(Mode::ToolRustcPrivate), "bootstrap", None),
+    (Some(Mode::ToolStd), "bootstrap", None),
+    (Some(Mode::ToolRustcPrivate), "rust_analyzer", None),
+    (Some(Mode::ToolStd), "rust_analyzer", None),
+    // Any library specific cfgs like `target_os`, `target_arch` should be put in
+    // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
+    // in the appropriate `library/{std,alloc,core}/Cargo.toml`
+];
 
 /// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.
 ///
@@ -42,7 +58,7 @@ impl Rustflags {
         self.env(prefix);
 
         // ... and also handle target-specific env RUSTFLAGS if they're configured.
-        let target_specific = format!("CARGO_TARGET_{}_{}", crate::envify(&self.1.triple), prefix);
+        let target_specific = format!("CARGO_TARGET_{}_{}", envify(&self.1.triple), prefix);
         self.env(&target_specific);
     }
 
@@ -123,7 +139,7 @@ impl HostFlags {
 }
 
 #[derive(Debug)]
-pub struct Cargo {
+pub(crate) struct Cargo {
     command: BootstrapCommand,
     args: Vec<OsString>,
     compiler: Compiler,
@@ -142,7 +158,7 @@ impl Cargo {
     /// Calls [`Builder::cargo`] and [`Cargo::configure_linker`] to prepare an invocation of `cargo`
     /// to be run.
     #[track_caller]
-    pub fn new(
+    pub(crate) fn new(
         builder: &Builder<'_>,
         compiler: Compiler,
         mode: Mode,
@@ -166,30 +182,31 @@ impl Cargo {
         cargo
     }
 
-    pub fn release_build(&mut self, release_build: bool) {
+    pub(crate) fn release_build(&mut self, release_build: bool) {
         self.profile = if release_build { Some("release") } else { None };
     }
 
-    pub fn profile(&mut self, profile: &'static str) {
+    #[expect(dead_code, reason = "general-purpose, currently unused")]
+    pub(crate) fn profile(&mut self, profile: &'static str) {
         self.profile = Some(profile);
     }
 
-    pub fn compiler(&self) -> Compiler {
+    pub(crate) fn compiler(&self) -> Compiler {
         self.compiler
     }
 
-    pub fn mode(&self) -> Mode {
+    pub(crate) fn mode(&self) -> Mode {
         self.mode
     }
 
-    pub fn into_cmd(self) -> BootstrapCommand {
+    pub(crate) fn into_cmd(self) -> BootstrapCommand {
         self.into()
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
     /// [`Cargo::configure_linker`].
     #[track_caller]
-    pub fn new_for_mir_opt_tests(
+    pub(crate) fn new_for_mir_opt_tests(
         builder: &Builder<'_>,
         compiler: Compiler,
         mode: Mode,
@@ -204,22 +221,22 @@ impl Cargo {
         cargo
     }
 
-    pub fn rustdocflag(&mut self, arg: &str) -> &mut Cargo {
+    pub(crate) fn rustdocflag(&mut self, arg: &str) -> &mut Cargo {
         self.rustdocflags.arg(arg);
         self
     }
 
-    pub fn rustflag(&mut self, arg: &str) -> &mut Cargo {
+    pub(crate) fn rustflag(&mut self, arg: &str) -> &mut Cargo {
         self.rustflags.arg(arg);
         self
     }
 
-    pub fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Cargo {
+    pub(crate) fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Cargo {
         self.args.push(arg.as_ref().into());
         self
     }
 
-    pub fn args<I, S>(&mut self, args: I) -> &mut Cargo
+    pub(crate) fn args<I, S>(&mut self, args: I) -> &mut Cargo
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -233,7 +250,7 @@ impl Cargo {
     /// Add an env var to the cargo command instance. Note that `RUSTFLAGS`/`RUSTDOCFLAGS` must go
     /// through [`Cargo::rustdocflags`] and [`Cargo::rustflags`] because inconsistent `RUSTFLAGS`
     /// and `RUSTDOCFLAGS` usages will trigger spurious rebuilds.
-    pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
+    pub(crate) fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
         assert_ne!(key.as_ref(), "RUSTFLAGS");
         assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
@@ -246,7 +263,7 @@ impl Cargo {
     ///
     /// Note that this only considers the existence of the env. var. configured on this `Cargo`
     /// instance. It does not look at the environment of this process.
-    pub fn append_to_env(
+    pub(crate) fn append_to_env(
         &mut self,
         key: impl AsRef<OsStr>,
         value: impl AsRef<OsStr>,
@@ -266,11 +283,11 @@ impl Cargo {
         }
     }
 
-    pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
+    pub(crate) fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
         builder.add_rustc_lib_path(self.compiler, &mut self.command);
     }
 
-    pub fn current_dir(&mut self, dir: &Path) -> &mut Cargo {
+    pub(crate) fn current_dir(&mut self, dir: &Path) -> &mut Cargo {
         self.command.current_dir(dir);
         self
     }
@@ -279,7 +296,7 @@ impl Cargo {
     ///
     /// By default, all nightly features are allowed. Once this is called, it will be restricted to
     /// the given set.
-    pub fn allow_features(&mut self, features: &str) -> &mut Cargo {
+    pub(crate) fn allow_features(&mut self, features: &str) -> &mut Cargo {
         if !self.allow_features.is_empty() {
             self.allow_features.push(',');
         }
@@ -349,7 +366,7 @@ impl Cargo {
         // any fingerprint difference between host==target versus cross-compiled targets
         // when it comes to those host build artifacts.
         if let Some(host_linker) = builder.linker(compiler.host) {
-            let host = crate::envify(&compiler.host.triple);
+            let host = envify(&compiler.host.triple);
             self.command.env(format!("CARGO_TARGET_{host}_LINKER"), host_linker);
         }
         for arg in linker_flags(builder, compiler.host, LldThreads::Yes) {
@@ -357,7 +374,7 @@ impl Cargo {
         }
 
         if let Some(target_linker) = builder.linker(target) {
-            let target = crate::envify(&target.triple);
+            let target = envify(&target.triple);
             self.command.env(format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
@@ -538,7 +555,7 @@ impl From<Cargo> for BootstrapCommand {
 impl Builder<'_> {
     /// Like [`Builder::cargo`], but only passes flags that are valid for all commands.
     #[track_caller]
-    pub fn bare_cargo(
+    pub(crate) fn bare_cargo(
         &self,
         compiler: Compiler,
         mode: Mode,
@@ -699,9 +716,7 @@ impl Builder<'_> {
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
-            if crate::core::build_steps::llvm::prebuilt_llvm_config(self, target, false)
-                .should_build()
-            {
+            if prebuilt_llvm_output(self, target).is_none() {
                 cargo.env("RUST_CHECK", "1");
             }
         }
@@ -1206,7 +1221,7 @@ impl Builder<'_> {
         }
 
         if self.config.dump_bootstrap_shims {
-            prepare_behaviour_dump_dir(self.build);
+            prepare_shims_dump_dir(self);
 
             cargo
                 .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
@@ -1524,7 +1539,7 @@ impl Builder<'_> {
     }
 }
 
-pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
+pub(crate) fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
     let profile = match (mode, config.rust_optimize.is_release()) {
         // Some std configuration exists in its own profile
         (Mode::Std, _) => "DIST",
@@ -1536,7 +1551,7 @@ pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
 
 /// Applies PGO compile flags to the given Cargo invocation based on the given PGO config.
 /// PGO flags are only applied when compiling a stage2 component.
-pub fn apply_pgo(
+pub(crate) fn apply_pgo(
     builder: &Builder<'_>,
     cargo: &mut Cargo,
     build_compiler: Compiler,
@@ -1572,5 +1587,24 @@ pub fn apply_pgo(
             "-Cllvm-args=-static-func-strip-dirname-prefix={}",
             builder.config.src.components().count()
         ));
+    }
+}
+
+/// Ensures that the behavior dump directory is properly initialized.
+fn prepare_shims_dump_dir(builder: &Builder<'_>) {
+    static INITIALIZED: OnceLock<bool> = OnceLock::new();
+
+    let dump_path = builder.out.join("bootstrap-shims-dump");
+
+    let initialized = INITIALIZED.get().unwrap_or(&false);
+    if !initialized {
+        // clear old dumps
+        if dump_path.exists() {
+            t!(fs::remove_dir_all(&dump_path));
+        }
+
+        t!(fs::create_dir_all(&dump_path));
+
+        t!(INITIALIZED.set(true));
     }
 }

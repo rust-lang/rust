@@ -13,11 +13,11 @@ use rustc_session::config::{
     AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
     CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
     Externs, FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
-    InstrumentCoverage, InstrumentMcount, InstrumentXRay, LinkSelfContained, LinkerPluginLto,
-    LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName,
-    OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
-    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
-    build_configuration, build_session_options, rustc_optgroups,
+    InstrumentCoverage, InstrumentMcount, InstrumentMcountOpts, InstrumentXRay, LinkSelfContained,
+    LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options,
+    OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry,
+    Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
+    WasiExecModel, build_configuration, build_session_options, rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -656,6 +656,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(passes, vec![String::from("1"), String::from("2")]);
     tracked!(prefer_dynamic, true);
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
+    tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
@@ -834,7 +835,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
-    tracked!(instrument_mcount, InstrumentMcount::Mcount);
+    tracked!(instrument_mcount, InstrumentMcount::Mcount(InstrumentMcountOpts::default()));
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_directives, false);
     tracked!(link_only, true);
@@ -857,7 +858,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(no_trait_vptr, true);
     tracked!(no_unique_section_names, true);
-    tracked!(offload, vec![Offload::Device]);
+    tracked!(offload, vec![Offload::Device(String::new())]);
     tracked!(on_broken_pipe, OnBrokenPipe::Kill);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
@@ -871,7 +872,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(plt, Some(true));
     tracked!(polonius, Polonius::Legacy);
     tracked!(precise_enum_drop_elaboration, false);
-    tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
     tracked!(reg_struct_return, true);
     tracked!(regparm, Some(3));
@@ -910,6 +910,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(verify_llvm_ir, true);
     tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+    tracked!(wasm_proc_macros, true);
     // tidy-alphabetical-end
 
     macro_rules! tracked_no_crate_hash {
@@ -935,4 +936,41 @@ fn test_edition_parsing() {
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
     assert!(sessopts.edition == Edition::Edition2018)
+}
+
+#[test]
+fn test_assumptions_on_binders_enables_next_solver_globally() {
+    let globally = NextSolverConfig { coherence: true, globally: true };
+    let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
+
+    // `-Zassumptions-on-binders` alone enables the next solver globally.
+    let matches = optgroups().parse(&["-Zassumptions-on-binders".to_string()]).unwrap();
+    let opts = build_session_options(&mut early_dcx, &matches);
+    assert!(opts.unstable_opts.assumptions_on_binders);
+    assert_eq!(opts.unstable_opts.next_solver, globally);
+
+    // Flag order must not matter when both `-Zassumptions-on-binders` and `-Znext-solver`
+    // are present.
+    for args in [
+        ["-Zassumptions-on-binders".to_string(), "-Znext-solver=coherence".to_string()],
+        ["-Znext-solver=coherence".to_string(), "-Zassumptions-on-binders".to_string()],
+    ] {
+        let matches = optgroups().parse(&args).unwrap();
+        let opts = build_session_options(&mut early_dcx, &matches);
+        assert!(opts.unstable_opts.assumptions_on_binders);
+        assert_eq!(opts.unstable_opts.next_solver, globally);
+    }
+
+    // `-Zassumptions-on-binders` overrides `-Znext-solver=no` regardless of order, since
+    // the assumptions implementation requires the next solver. This also emits an early
+    // warning (covered by the UI test `next-solver-no-overridden`).
+    for args in [
+        ["-Zassumptions-on-binders".to_string(), "-Znext-solver=no".to_string()],
+        ["-Znext-solver=no".to_string(), "-Zassumptions-on-binders".to_string()],
+    ] {
+        let matches = optgroups().parse(&args).unwrap();
+        let opts = build_session_options(&mut early_dcx, &matches);
+        assert!(opts.unstable_opts.assumptions_on_binders);
+        assert_eq!(opts.unstable_opts.next_solver, globally);
+    }
 }

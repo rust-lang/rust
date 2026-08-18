@@ -613,7 +613,10 @@ impl Options {
             Ok(include_parts_dir) => include_parts_dir,
             Err(e) => dcx.fatal(e),
         };
-        let mut should_merge = compute_should_merge(matches);
+        let mut should_merge = match compute_should_merge(matches) {
+            Ok(should_merge) => should_merge,
+            Err(e) => dcx.fatal(e),
+        };
         if parts_out_dir.is_none() && include_parts_dir.is_empty() {
             // we'll need to get rid of this stuff once Cargo stops using them
             parts_out_dir =
@@ -1121,15 +1124,16 @@ pub(crate) struct ShouldMerge {
 
 /// Extracts read_rendered_cci and write_rendered_cci from command line arguments, or
 /// reports an error if an invalid option was provided
-fn compute_should_merge(m: &getopts::Matches) -> ShouldMerge {
+fn compute_should_merge(m: &getopts::Matches) -> Result<ShouldMerge, &'static str> {
     match (m.opt_present("read-doc-meta-dir"), m.opt_present("write-doc-meta-dir")) {
         // shared mode
-        (false, false) => ShouldMerge { read_rendered_cci: true, write_rendered_cci: true },
+        (false, false) => Ok(ShouldMerge { read_rendered_cci: true, write_rendered_cci: true }),
         // intermediate mode
-        (false, true) => ShouldMerge { read_rendered_cci: false, write_rendered_cci: false },
+        (false, true) => Ok(ShouldMerge { read_rendered_cci: false, write_rendered_cci: false }),
         // finalize mode
-        (true, false) => ShouldMerge { read_rendered_cci: false, write_rendered_cci: true },
-        (true, true) => ShouldMerge { read_rendered_cci: false, write_rendered_cci: true },
+        (true, false) => Ok(ShouldMerge { read_rendered_cci: false, write_rendered_cci: true }),
+        // not valid
+        (true, true) => Err("cannot pass both --read-doc-meta-dir and --write-doc-meta-dir"),
     }
 }
 

@@ -1070,7 +1070,7 @@ fn match_failure_reasons() {
 #[test]
 fn overlapping_possible_matches() {
     // There are three possible matches here, however the middle one, `foo(foo(foo(42)))` shouldn't
-    // match because it overlaps with the outer match. The inner match is permitted since it's is
+    // match because it overlaps with the outer match. The inner match is permitted since it is
     // contained entirely within the placeholder of the outer match.
     assert_matches(
         "foo(foo($a))",

@@ -61,6 +61,19 @@ pub(crate) struct AutoDiffWithoutLto;
 pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
+#[diag("failed to load our rust offload backend: {$err}")]
+pub(crate) struct RustOffloadComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("rust offload backend not found in the sysroot: {$err}")]
+#[note("it will be distributed via rustup in the future")]
+pub(crate) struct RustOffloadComponentMissing {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>"
 )]
@@ -244,4 +257,11 @@ pub(crate) struct IntrinsicWrongArch<'a> {
     pub target_arch: &'a str,
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("ignoring feature with missing prefix in `-Zllvm-target-feature`: `{$feature}`")]
+#[note("features must begin with a `+` to enable or `-` to disable it")]
+pub(crate) struct UnknownLlvmTargetFeaturePrefix<'a> {
+    pub feature: &'a str,
 }

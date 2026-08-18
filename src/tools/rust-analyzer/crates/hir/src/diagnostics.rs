@@ -32,7 +32,7 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::{AssocItem, Field, Function, GenericDef, Local, Trait, Type, TypeOwnerId, Variant};
+use crate::{AssocItem, Field, Function, GenericDef, Trait, Type, TypeOwnerId, Variant};
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
@@ -134,10 +134,8 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
-    MovedOutOfRef<'db>,
     MutRefInImmRefPat,
     MutableRefBinding,
-    NeedMut<'db>,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
     NonExhaustiveRecordPat,
@@ -168,8 +166,6 @@ diagnostics![AnyDiagnostic<'db> ->
     UnresolvedMethodCall<'db>,
     UnresolvedModule,
     UnresolvedIdent,
-    UnusedMut<'db>,
-    UnusedVariable<'db>,
     GenericArgsProhibited,
     ParenthesizedGenericArgsWithoutFnTrait,
     BadRtn,
@@ -309,8 +305,8 @@ pub struct MismatchedTupleStructPatArgCount {
 #[derive(Debug)]
 pub struct MismatchedArrayPatLen {
     pub pat: InFile<ExprOrPatPtr>,
-    pub expected: u128,
-    pub found: u128,
+    pub expected: u64,
+    pub found: u64,
     pub has_rest: bool,
 }
 
@@ -441,6 +437,9 @@ pub struct MismatchedArgCount {
     pub call_expr: InFile<ExprOrPatPtr>,
     pub expected: usize,
     pub found: usize,
+    /// True when the call is through a `Fn`/`FnMut`/`FnOnce` trait (E0057)
+    /// rather than a regular function call (E0061).
+    pub is_fn_trait_call: bool,
 }
 
 #[derive(Debug)]
@@ -471,28 +470,6 @@ pub struct TypeMismatch<'db> {
     pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub expected: Type<'db>,
     pub actual: Type<'db>,
-}
-
-#[derive(Debug)]
-pub struct NeedMut<'db> {
-    pub local: Local<'db>,
-    pub span: InFile<SyntaxNodePtr>,
-}
-
-#[derive(Debug)]
-pub struct UnusedMut<'db> {
-    pub local: Local<'db>,
-}
-
-#[derive(Debug)]
-pub struct UnusedVariable<'db> {
-    pub local: Local<'db>,
-}
-
-#[derive(Debug)]
-pub struct MovedOutOfRef<'db> {
-    pub ty: Type<'db>,
-    pub span: InFile<SyntaxNodePtr>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -885,9 +862,18 @@ impl<'db> AnyDiagnostic<'db> {
                 };
                 DuplicateField { field: expr_or_pat, variant: variant.into() }.into()
             }
-            &InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                MismatchedArgCount { call_expr: expr_syntax(call_expr)?, expected, found }.into()
+            &InferenceDiagnostic::MismatchedArgCount {
+                call_expr,
+                expected,
+                found,
+                is_fn_trait_call,
+            } => MismatchedArgCount {
+                call_expr: expr_syntax(call_expr)?,
+                expected,
+                found,
+                is_fn_trait_call,
             }
+            .into(),
             &InferenceDiagnostic::PrivateField { expr, field } => {
                 let expr = expr_syntax(expr)?;
                 let field = field.into();

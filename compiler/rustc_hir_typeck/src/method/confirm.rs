@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use rustc_hir as hir;
 use rustc_hir::GenericArg;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_value_path, lower_generic_args,
@@ -257,7 +258,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
 
                 target = match target.kind() {
-                    ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
+                    ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), LangItem::Pin) => {
                         let inner_ty = match args[0].expect_ty().kind() {
                             ty::Ref(_, ty, _) => *ty,
                             _ => bug!("Expected a reference type for argument to Pin"),

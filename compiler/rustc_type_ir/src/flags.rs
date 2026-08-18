@@ -389,20 +389,17 @@ impl<I: Interner> FlagComputation<I> {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 self.add_args(trait_pred.trait_ref.args.as_slice());
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref,
                 constness: _,
             })) => {
                 self.add_args(trait_ref.args.as_slice());
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
-                a,
-                b,
-            ))) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesClause(a, b))) => {
                 self.add_region(a);
                 self.add_region(b);
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(
                 ty,
                 region,
             ))) => {

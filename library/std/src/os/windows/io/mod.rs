@@ -83,7 +83,8 @@ pub impl(self) trait StdioExt {
     /// (e.g. C stdio) or libraries that acquire a clone of the file handle
     /// will not be aware of this change.
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(stdio_swap)]
     /// use std::io::{self, Read, Write};
     /// use std::os::windows::io::StdioExt;

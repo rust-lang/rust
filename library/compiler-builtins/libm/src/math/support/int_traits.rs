@@ -110,6 +110,7 @@ pub trait Int:
     fn borrowing_sub(self, other: Self, borrow: bool) -> (Self, bool);
     fn leading_zeros(self) -> u32;
     fn trailing_zeros(self) -> u32;
+    fn count_ones(self) -> u32;
     fn ilog2(self) -> u32;
 }
 
@@ -177,6 +178,10 @@ macro_rules! int_impl_common {
 
         fn trailing_zeros(self) -> u32 {
             <Self>::trailing_zeros(self)
+        }
+
+        fn count_ones(self) -> u32 {
+            <Self>::count_ones(self)
         }
 
         fn ilog2(self) -> u32 {

@@ -73,16 +73,8 @@ pub(crate) struct DocAliasNotAnAlias {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on empty modules")]
-pub(crate) struct DocKeywordAttributeEmptyMod {
-    #[primary_span]
-    pub span: Span,
-    pub attr_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on modules")]
-pub(crate) struct DocKeywordAttributeNotMod {
+#[diag("`#[doc({$attr_name} = \"...\")]` should be used on anonymous constants")]
+pub(crate) struct DocKeywordAttributeNotAnonConst {
     #[primary_span]
     pub span: Span,
     pub attr_name: &'static str,
@@ -263,6 +255,8 @@ pub(crate) enum UnusedNote {
     LinkerMessagesBinaryCrateOnly,
     #[note("the `dead_code_pub_in_binary` lint has no effect in library crates")]
     NoEffectDeadCodePubInBinary,
+    #[note("`#[path]` is unused on this inline module")]
+    PathOnInlineModule,
 }
 
 #[derive(Diagnostic)]
@@ -1028,13 +1022,6 @@ pub(crate) enum UnexportableItem<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`eii_macro_for` is only valid on functions and statics")]
-pub(crate) struct EiiImplTarget {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$name}]` is unsafe to implement")]
 pub(crate) struct EiiImplRequiresUnsafe {
     #[primary_span]
@@ -1116,14 +1103,6 @@ pub(crate) struct MustImplementNotFunctionNote {}
 pub(crate) struct FunctionNotFoundInTrait {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("functions names are duplicated")]
-#[note("all `#[rustc_must_implement_one_of]` arguments must be unique")]
-pub(crate) struct FunctionNamesDuplicated {
-    #[primary_span]
-    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

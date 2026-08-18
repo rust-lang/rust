@@ -26,18 +26,8 @@ fn build_ptr_tys<'tcx>(
     (unique_ty, nonnull_ty, ptr_ty)
 }
 
-/// Constructs the projection needed to access a Box's pointer
-pub(super) fn build_projection<'tcx>(
-    unique_ty: Ty<'tcx>,
-    nonnull_ty: Ty<'tcx>,
-) -> [PlaceElem<'tcx>; 2] {
-    [PlaceElem::Field(FieldIdx::ZERO, unique_ty), PlaceElem::Field(FieldIdx::ZERO, nonnull_ty)]
-}
-
 struct ElaborateBoxDerefVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    unique_def: ty::AdtDef<'tcx>,
-    nonnull_def: ty::AdtDef<'tcx>,
     local_decls: &'a mut LocalDecls<'tcx>,
     patch: MirPatch<'tcx>,
 }
@@ -63,22 +53,18 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
         {
             let source_info = self.local_decls[place.local].source_info;
 
-            let (unique_ty, nonnull_ty, ptr_ty) =
-                build_ptr_tys(tcx, boxed_ty, self.unique_def, self.nonnull_def);
+            let ptr_ty = Ty::new_imm_ptr(tcx, boxed_ty);
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
 
+            // Project to the first field (a `Unique`), then transmute that. We could project one
+            // further but in the end we'd hit a pattern type so we'd always have to transmute.
+            let field_place =
+                Place::from(place.local).project_to_field(FieldIdx::ZERO, &*self.local_decls, tcx);
             self.patch.add_assign(
                 location,
                 Place::from(ptr_local),
-                Rvalue::Cast(
-                    CastKind::BoxDerefTransmute,
-                    Operand::Copy(
-                        Place::from(place.local)
-                            .project_deeper(&build_projection(unique_ty, nonnull_ty), tcx),
-                    ),
-                    ptr_ty,
-                ),
+                Rvalue::Cast(CastKind::BoxDerefTransmute, Operand::Copy(field_place), ptr_ty),
             );
 
             place.local = ptr_local;
@@ -115,8 +101,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
         let local_decls = &mut body.local_decls;
 
-        let mut visitor =
-            ElaborateBoxDerefVisitor { tcx, unique_def, nonnull_def, local_decls, patch };
+        let mut visitor = ElaborateBoxDerefVisitor { tcx, local_decls, patch };
 
         for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
             visitor.visit_basic_block_data(block, data);
@@ -141,7 +126,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                         let (unique_ty, nonnull_ty, ptr_ty) =
                             build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
 
-                        new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
+                        new_projections.extend_from_slice(&[
+                            PlaceElem::Field(FieldIdx::ZERO, unique_ty),
+                            PlaceElem::Field(FieldIdx::ZERO, nonnull_ty),
+                        ]);
                         // While we can't project into a pattern type in a basic block,
                         // this is debug info where it's fine.
                         let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));

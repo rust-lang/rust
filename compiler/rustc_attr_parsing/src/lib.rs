@@ -2,12 +2,12 @@
 //!
 //! ## Architecture
 //! This crate is part of a series of crates and modules that handle attribute processing.
-//! - [`rustc_hir::attrs`]: Defines the data structures that store parsed attributes
+//! - [`rustc_attr_ir`]: Defines the data structures that store parsed attributes
 //! - `rustc_attr_parsing`: This crate, handles the parsing of attributes
 //! - [`rustc_passes::check_attr`] handles attribute validation that cannot be done in this crate
 //!
 //! The separation between data structures and parsing follows the principle of separation of concerns.
-//! Data structures (`rustc_hir::attrs`) define what attributes look like after parsing.
+//! Data structures (`rustc_attr_ir`) define what attributes look like after parsing.
 //! This crate (`rustc_attr_parsing`) handles how to convert raw tokens into those structures.
 //! This split allows other parts of the compiler to use the data structures without needing
 //! the parsing logic, making the codebase more modular and maintainable.
@@ -62,7 +62,7 @@
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
 //! and `#[unstable()]` syntactic attributes, and at the end produces a single
-//! [`AttributeKind::Stability`](rustc_hir::attrs::AttributeKind::Stability).
+//! [`AttributeKind::Stability`](rustc_attr_ir::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
 //! semantic attribute. For example:
@@ -87,9 +87,11 @@
 //! [`rustc_passes::check_attr`]: ../rustc_passes/check_attr/index.html
 
 // tidy-alphabetical-start
+#![expect(internal_features, reason = "rustc_attrs")]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
+#![feature(rustc_attrs)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
@@ -102,7 +104,6 @@ mod diagnostics;
 mod interface;
 pub mod parser;
 mod safety;
-mod session_diagnostics;
 mod stability;
 mod synthetic;
 mod target_checking;
@@ -116,7 +117,7 @@ pub use attributes::cfg::{
 pub use attributes::cfg_select::*;
 pub use attributes::util::{is_builtin_attr, parse_version};
 pub use context::{OmitDoc, ShouldEmit};
+pub use diagnostics::ParsedDescription;
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
-pub use session_diagnostics::ParsedDescription;
 pub use template::AttributeTemplate;

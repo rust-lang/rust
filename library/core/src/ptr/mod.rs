@@ -1331,7 +1331,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///     assert_eq!([1, 0, 1, 2], array);
 /// }
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "ptr_swap"]
@@ -1573,7 +1573,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, bytes: NonZero<usize
 /// assert_eq!(b, 'b');
 /// assert_eq!(rust, &['r', 'u', 's', 't']);
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_replace"]
@@ -1708,7 +1708,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 /// ```
 ///
 /// [valid]: self#safety
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
@@ -1826,7 +1826,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///     unsafe { ptr.read_unaligned() }
 /// }
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
@@ -1932,7 +1932,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// assert_eq!(foo, "bar");
 /// assert_eq!(bar, "foo");
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write"]
@@ -2036,7 +2036,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///     unsafe { ptr.write_unaligned(val) }
 /// }
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
@@ -2141,7 +2141,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///     assert_eq!(std::ptr::read_volatile(y), 12);
 /// }
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "volatile", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
 #[track_caller]
@@ -2247,7 +2247,7 @@ pub const unsafe fn read_volatile<T>(src: *const T) -> T {
 ///     assert_eq!(std::ptr::read_volatile(y), 12);
 /// }
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "volatile", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
 #[rustc_diagnostic_item = "ptr_write_volatile"]

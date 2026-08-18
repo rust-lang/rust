@@ -21,7 +21,7 @@ pub struct SyntaxMapping {
 
 impl SyntaxMapping {
     /// Like [`SyntaxMapping::upmap_child`] but for syntax elements.
-    pub fn upmap_child_element(
+    pub(super) fn upmap_child_element(
         &self,
         child: &SyntaxElement,
         input_ancestor: &SyntaxNode,
@@ -48,7 +48,7 @@ impl SyntaxMapping {
 
     /// Maps a child node of the input ancestor to the corresponding node in
     /// the output ancestor.
-    pub fn upmap_child(
+    pub(super) fn upmap_child(
         &self,
         child: &SyntaxNode,
         input_ancestor: &SyntaxNode,
@@ -127,55 +127,22 @@ impl SyntaxMapping {
         Err(MissingMapping(current))
     }
 
-    pub fn upmap_element(
-        &self,
-        input: &SyntaxElement,
-        output_root: &SyntaxNode,
-    ) -> Option<Result<SyntaxElement, MissingMapping>> {
-        match input {
-            SyntaxElement::Node(node) => {
-                Some(self.upmap_node(node, output_root)?.map(SyntaxElement::Node))
-            }
-            SyntaxElement::Token(token) => {
-                let upmap_parent = match self.upmap_node(&token.parent().unwrap(), output_root)? {
-                    Ok(it) => it,
-                    Err(err) => return Some(Err(err)),
-                };
+    pub(super) fn upmap_element(&self, input: &SyntaxElement) -> SyntaxElement {
+        let mut current = input.clone();
 
-                let element = upmap_parent.children_with_tokens().nth(token.index()).unwrap();
-                debug_assert!(
-                    element.as_token().is_some_and(|it| it.kind() == token.kind()),
-                    "token upmapping mapped to the wrong node ({token:?} -> {element:?})"
-                );
-
-                Some(Ok(element))
-            }
-        }
-    }
-
-    pub fn upmap_node(
-        &self,
-        input: &SyntaxNode,
-        output_root: &SyntaxNode,
-    ) -> Option<Result<SyntaxNode, MissingMapping>> {
-        // Try to follow the mapping tree, if it exists
-        let input_mapping = self.upmap_node_single(input);
-        let input_ancestor =
-            input.ancestors().find(|ancestor| self.upmap_node_single(ancestor).is_some());
-
-        match (input_mapping, input_ancestor) {
-            (Some(input_mapping), _) => {
-                // A mapping exists at the input, follow along the tree
-                Some(self.upmap_child(&input_mapping, &input_mapping, output_root))
-            }
-            (None, Some(input_ancestor)) => {
-                // A mapping exists at an ancestor, follow along the tree
-                Some(self.upmap_child(input, &input_ancestor, output_root))
-            }
-            (None, None) => {
-                // No mapping exists at all, is the same position in the final tree
-                None
-            }
+        loop {
+            let node = match &current {
+                SyntaxElement::Node(node) => node.clone(),
+                SyntaxElement::Token(token) => token.parent().unwrap(),
+            };
+            let Some((input_ancestor, output_ancestor)) = node.ancestors().find_map(|ancestor| {
+                self.upmap_node_single(&ancestor).map(|output_ancestor| (ancestor, output_ancestor))
+            }) else {
+                return current;
+            };
+            current = self
+                .upmap_child_element(&current, &input_ancestor, &output_ancestor.parent().unwrap())
+                .expect("the nearest mapped ancestor must map its descendants");
         }
     }
 
@@ -257,7 +224,7 @@ impl SyntaxMappingBuilder {
 }
 
 #[derive(Debug)]
-pub struct MissingMapping(pub SyntaxNode);
+pub(super) struct MissingMapping(pub SyntaxNode);
 
 #[derive(Debug, Clone, Copy)]
 struct MappingEntry {

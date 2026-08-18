@@ -66,7 +66,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::generics => self.write_generics(field_place, generics)?,
+                sym::generics => self.write_generics(&field_place, generics)?,
                 sym::fields => {
                     self.write_variant_fields(field_place, struct_def, struct_layout, generics)?
                 }
@@ -96,7 +96,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::generics => self.write_generics(field_place, generics)?,
+                sym::generics => self.write_generics(&field_place, generics)?,
                 sym::fields => {
                     self.write_variant_fields(field_place, union_def, union_layout, generics)?
                 }
@@ -126,10 +126,10 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::generics => self.write_generics(field_place, generics)?,
+                sym::generics => self.write_generics(&field_place, generics)?,
                 sym::variants => {
                     self.allocate_fill_and_write_slice_ptr(
-                        field_place,
+                        &field_place,
                         enum_def.variants().len() as u64,
                         |this, i, place| {
                             let variant_idx = VariantIdx::from_usize(i as usize);
@@ -190,7 +190,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         generics: &'tcx GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
         self.allocate_fill_and_write_slice_ptr(
-            place,
+            &place,
             variant_def.fields.len() as u64,
             |this, i, place| {
                 let field_def = &variant_def.fields[FieldIdx::from_usize(i as usize)];
@@ -200,9 +200,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         )
     }
 
-    fn write_generics(
+    pub(super) fn write_generics(
         &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
         generics: &'tcx GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
         self.allocate_fill_and_write_slice_ptr(place, generics.len() as u64, |this, i, place| {

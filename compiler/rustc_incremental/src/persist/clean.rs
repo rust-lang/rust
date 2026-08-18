@@ -27,7 +27,7 @@ use rustc_hir::{
     Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, find_attr,
     intravisit,
 };
-use rustc_middle::dep_graph::{DepNode, dep_kind_from_label, label_strs};
+use rustc_middle::dep_graph::{DepKind, DepNode, dep_kind_from_label};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol};
@@ -38,81 +38,78 @@ use crate::diagnostics;
 // Base and Extra labels to build up the labels
 
 /// For typedef, constants, and statics
-const BASE_CONST: &[&str] = &[label_strs::type_of];
+const BASE_CONST: &[DepKind] = &[DepKind::type_of];
 
 /// DepNodes for functions + methods
-const BASE_FN: &[&str] = &[
+const BASE_FN: &[DepKind] = &[
     // Callers will depend on the signature of these items, so we better test
-    label_strs::fn_sig,
-    label_strs::generics_of,
-    label_strs::clauses_of,
-    label_strs::type_of,
+    DepKind::fn_sig,
+    DepKind::generics_of,
+    DepKind::clauses_of,
+    DepKind::type_of,
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
-    label_strs::typeck_root,
+    DepKind::typeck_root,
 ];
 
 /// DepNodes for Hir, which is pretty much everything
-const BASE_HIR: &[&str] = &[
+const BASE_HIR: &[DepKind] = &[
     // hir_owner should be computed for all nodes
-    label_strs::hir_owner,
+    DepKind::hir_owner,
 ];
 
 /// `impl` implementation of struct/trait
-const BASE_IMPL: &[&str] =
-    &[label_strs::associated_item_def_ids, label_strs::generics_of, label_strs::impl_trait_header];
+const BASE_IMPL: &[DepKind] =
+    &[DepKind::associated_item_def_ids, DepKind::generics_of, DepKind::impl_trait_header];
 
 /// DepNodes for exported mir bodies, which is relevant in "executable"
 /// code, i.e., functions+methods
-const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir];
+const BASE_MIR: &[DepKind] = &[DepKind::optimized_mir, DepKind::promoted_mir];
 
 /// Struct, Enum and Union DepNodes
 ///
 /// Note that changing the type of a field does not change the type of the struct or enum, but
 /// adding/removing fields or changing a fields name or visibility does.
-const BASE_STRUCT: &[&str] =
-    &[label_strs::generics_of, label_strs::clauses_of, label_strs::type_of];
+const BASE_STRUCT: &[DepKind] = &[DepKind::generics_of, DepKind::clauses_of, DepKind::type_of];
 
 /// Trait definition `DepNode`s.
 /// Extra `DepNode`s for functions and methods.
-const EXTRA_ASSOCIATED: &[&str] = &[label_strs::associated_item];
+const EXTRA_ASSOCIATED: &[DepKind] = &[DepKind::associated_item];
 
-const EXTRA_TRAIT: &[&str] = &[];
+const EXTRA_TRAIT: &[DepKind] = &[];
 
 // Fully Built Labels
 
-const LABELS_CONST: &[&[&str]] = &[BASE_HIR, BASE_CONST];
+const LABELS_CONST: &[&[DepKind]] = &[BASE_HIR, BASE_CONST];
 
 /// Constant/Typedef in an impl
-const LABELS_CONST_IN_IMPL: &[&[&str]] = &[BASE_HIR, BASE_CONST, EXTRA_ASSOCIATED];
+const LABELS_CONST_IN_IMPL: &[&[DepKind]] = &[BASE_HIR, BASE_CONST, EXTRA_ASSOCIATED];
 
 /// Trait-Const/Typedef DepNodes
-const LABELS_CONST_IN_TRAIT: &[&[&str]] = &[BASE_HIR, BASE_CONST, EXTRA_ASSOCIATED, EXTRA_TRAIT];
+const LABELS_CONST_IN_TRAIT: &[&[DepKind]] = &[BASE_HIR, BASE_CONST, EXTRA_ASSOCIATED, EXTRA_TRAIT];
 
 /// Function `DepNode`s.
-const LABELS_FN: &[&[&str]] = &[BASE_HIR, BASE_MIR, BASE_FN];
+const LABELS_FN: &[&[DepKind]] = &[BASE_HIR, BASE_MIR, BASE_FN];
 
 /// Method `DepNode`s.
-const LABELS_FN_IN_IMPL: &[&[&str]] = &[BASE_HIR, BASE_MIR, BASE_FN, EXTRA_ASSOCIATED];
+const LABELS_FN_IN_IMPL: &[&[DepKind]] = &[BASE_HIR, BASE_MIR, BASE_FN, EXTRA_ASSOCIATED];
 
 /// Trait method `DepNode`s.
-const LABELS_FN_IN_TRAIT: &[&[&str]] =
+const LABELS_FN_IN_TRAIT: &[&[DepKind]] =
     &[BASE_HIR, BASE_MIR, BASE_FN, EXTRA_ASSOCIATED, EXTRA_TRAIT];
 
 /// For generic cases like inline-assembly, modules, etc.
-const LABELS_HIR_ONLY: &[&[&str]] = &[BASE_HIR];
+const LABELS_HIR_ONLY: &[&[DepKind]] = &[BASE_HIR];
 
 /// Impl `DepNode`s.
-const LABELS_TRAIT: &[&[&str]] = &[
-    BASE_HIR,
-    &[label_strs::associated_item_def_ids, label_strs::clauses_of, label_strs::generics_of],
-];
+const LABELS_TRAIT: &[&[DepKind]] =
+    &[BASE_HIR, &[DepKind::associated_item_def_ids, DepKind::clauses_of, DepKind::generics_of]];
 
 /// Impl `DepNode`s.
-const LABELS_IMPL: &[&[&str]] = &[BASE_HIR, BASE_IMPL];
+const LABELS_IMPL: &[&[DepKind]] = &[BASE_HIR, BASE_IMPL];
 
 /// Abstract data type (struct, enum, union) `DepNode`s.
-const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
+const LABELS_ADT: &[&[DepKind]] = &[BASE_HIR, BASE_STRUCT];
 
 // FIXME: Struct/Enum/Unions Fields (there is currently no way to attach these)
 //
@@ -289,7 +286,7 @@ impl<'tcx> CleanVisitor<'tcx> {
                 .emit_fatal(diagnostics::UndefinedCleanDirty { span, kind: format!("{node:?}") }),
         };
         let labels =
-            Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| (*l).to_string())));
+            Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| format!("{l:?}"))));
         (name, labels)
     }
 

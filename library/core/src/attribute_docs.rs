@@ -82,7 +82,7 @@
 ///
 /// [`unused_must_use`]: ../rustc/lints/listing/warn-by-default.html#unused-must-use
 /// [the `must_use` attribute]: ../reference/attributes/diagnostics.html#the-must_use-attribute
-mod must_use_attribute {}
+const _: () = ();
 
 #[doc(attribute = "allow")]
 //
@@ -144,7 +144,7 @@ mod must_use_attribute {}
 /// [`forbid`]: ./attribute.forbid.html
 /// [`warn`]: ./attribute.warn.html
 /// [`deny`]: ./attribute.deny.html
-mod allow_attribute {}
+const _: () = ();
 
 #[doc(attribute = "cfg")]
 //
@@ -192,7 +192,7 @@ mod allow_attribute {}
 /// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 /// [`if`]: ./keyword.if.html
-mod cfg_attribute {}
+const _: () = ();
 
 #[doc(attribute = "deny")]
 //
@@ -240,7 +240,7 @@ mod cfg_attribute {}
 /// [`allow`]: ./attribute.allow.html
 /// [`warn`]: ./attribute.warn.html
 /// [`deny`]: ./attribute.deny.html
-mod deny_attribute {}
+const _: () = ();
 
 #[doc(attribute = "forbid")]
 //
@@ -276,7 +276,7 @@ mod deny_attribute {}
 /// [the `forbid` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
 /// [`allow`]: ./attribute.allow.html
 /// [`warn`]: ./attribute.warn.html
-mod forbid_attribute {}
+const _: () = ();
 
 #[doc(attribute = "deprecated")]
 //
@@ -302,7 +302,7 @@ mod forbid_attribute {}
 /// For more information, see the Reference on [the `deprecated` attribute].
 ///
 /// [the `deprecated` attribute]: ../reference/attributes/diagnostics.html#the-deprecated-attribute
-mod deprecated_attribute {}
+const _: () = ();
 
 #[doc(attribute = "warn")]
 //
@@ -348,7 +348,7 @@ mod deprecated_attribute {}
 /// [`allow`]: ./attribute.allow.html
 /// [`deny`]: ./attribute.deny.html
 /// [`forbid`]: ./attribute.forbid.html
-mod warn_attribute {}
+const _: () = ();
 
 #[doc(attribute = "no_std")]
 //
@@ -404,7 +404,7 @@ mod warn_attribute {}
 /// [`Option`]: option::Option
 /// [`Result`]: result::Result
 /// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
-mod no_std_attribute {}
+const _: () = ();
 
 #[doc(attribute = "inline")]
 //
@@ -444,7 +444,7 @@ mod no_std_attribute {}
 /// For more information, see the Reference on [the `inline` attribute].
 ///
 /// [the `inline` attribute]: ../reference/attributes/codegen.html#the-inline-attribute
-mod inline_attribute {}
+const _: () = ();
 
 #[doc(attribute = "cold")]
 //
@@ -474,7 +474,7 @@ mod inline_attribute {}
 /// For more information, see the Reference on [the `cold` attribute].
 ///
 /// [the `cold` attribute]: ../reference/attributes/codegen.html#the-cold-attribute
-mod cold_attribute {}
+const _: () = ();
 
 #[doc(attribute = "track_caller")]
 //
@@ -505,7 +505,7 @@ mod cold_attribute {}
 /// [`Location::caller`]: panic::Location::caller
 /// [`Option::unwrap`]: Option::unwrap
 /// [the `track_caller` attribute]: ../reference/attributes/codegen.html#the-track_caller-attribute
-mod track_caller_attribute {}
+const _: () = ();
 
 #[doc(attribute = "proc_macro")]
 //
@@ -554,7 +554,7 @@ mod track_caller_attribute {}
 /// [`TokenStream`]: ../proc_macro/struct.TokenStream.html
 /// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
 /// [`proc_macro`]: ../proc_macro/index.html
-mod proc_macro_attribute {}
+const _: () = ();
 
 #[doc(attribute = "link_section")]
 //
@@ -580,7 +580,7 @@ mod proc_macro_attribute {}
 /// For more information, see the Reference on [the `link_section` attribute].
 ///
 /// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
-mod link_section_attribute {}
+const _: () = ();
 
 #[doc(attribute = "non_exhaustive")]
 //
@@ -680,3 +680,4 @@ mod non_exhaustive_attribute {}
 /// [`cfg`]: ./attribute.cfg.html
 /// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 mod cfg_attr_attribute {}
+const _: () = ();

@@ -65,7 +65,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sse2.pause" => {
                 let [] = this.check_shim_sig_unadjusted(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
-                if this.tcx.sess.unstable_target_features.contains(&Symbol::intern("sse2")) {
+                if this.tcx.sess.internal_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
                 }
             }

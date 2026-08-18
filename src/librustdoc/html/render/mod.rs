@@ -663,7 +663,7 @@ impl AllTypes {
     }
 }
 
-fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
+fn scrape_examples_help() -> String {
     let mut content = SCRAPE_EXAMPLES_HELP_MD.to_owned();
     content.push_str(&format!(
         "## More information\n\n\
@@ -680,9 +680,10 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             content: &content,
             links: &[],
             ids: &mut IdMap::default(),
-            error_codes: shared.codes,
-            edition: shared.edition(),
-            playground: &shared.playground,
+            // code snippets come from Rust itself, not the crate
+            error_codes: crate::html::markdown::ErrorCodes::No,
+            edition: rustc_span::edition::LATEST_STABLE_EDITION,
+            playground: &Default::default(),
             heading_offset: HeadingOffset::H1,
         }
         .write_into(f))

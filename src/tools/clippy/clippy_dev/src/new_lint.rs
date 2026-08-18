@@ -266,13 +266,9 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         Pass::Early => ("EarlyLintPass", "", "use rustc_ast::ast::*;", "EarlyContext"),
         Pass::Late => ("LateLintPass", "<'_>", "use rustc_hir::*;", "LateContext"),
     };
-    let (msrv_ty, msrv_ctor, extract_msrv) = match lint.pass {
-        Pass::Early => (
-            "MsrvStack",
-            "MsrvStack::new(conf.msrv)",
-            "\n    extract_msrv_attr!();\n",
-        ),
-        Pass::Late => ("Msrv", "conf.msrv", ""),
+    let (msrv_ty, extract_msrv) = match lint.pass {
+        Pass::Early => ("MsrvStack", "\n    extract_msrv_attr!();\n"),
+        Pass::Late => ("Msrv", ""),
     };
 
     let lint_name = lint.name;
@@ -320,7 +316,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
             impl {name_camel} {{
                 pub fn new(conf: &'static Conf) -> Self {{
-                    Self {{ msrv: {msrv_ctor} }}
+                    Self {{ msrv: conf.msrv.into() }}
                 }}
             }}
 

@@ -211,8 +211,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
             }
 
             PlaceContext::NonUse(_)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention)
-            | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention) => {}
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy

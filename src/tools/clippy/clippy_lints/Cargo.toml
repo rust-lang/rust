@@ -15,6 +15,7 @@ clippy_config = { path = "../clippy_config" }
 clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
 itertools = "0.15"
+memchr = "2"
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.8"
 serde = { version = "1.0", features = ["derive"] }
@@ -24,13 +25,10 @@ semver = "1.0"
 url = "2.2"
 
 [dependencies.toml]
-version = "0.9.7"
+version = "1.1"
 default-features = false
 # preserve_order keeps diagnostic output in file order
 features = ["parse", "preserve_order"]
-
-[dev-dependencies]
-walkdir = "2.3"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

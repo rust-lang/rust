@@ -65,8 +65,8 @@ use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, RegionExt, RegionVid,
-    Ty, TyCtxt, TypeVisitableExt, eager_resolve_vars,
+    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionExt, RegionVid, Ty,
+    TyCtxt, TypeVisitableExt, eager_resolve_vars,
 };
 use rustc_span::Span;
 use smallvec::smallvec;
@@ -84,13 +84,13 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 impl<'tcx> InferCtxt<'tcx> {
     pub fn register_outlives_constraint(
         &self,
-        ty::OutlivesPredicate(arg, r2): ty::ArgOutlivesPredicate<'tcx>,
+        ty::OutlivesClause(arg, r2): ty::ArgOutlivesClause<'tcx>,
         vis: ty::VisibleForLeakCheck,
         cause: &ObligationCause<'tcx>,
     ) {
         match arg.kind() {
             ty::GenericArgKind::Lifetime(r1) => {
-                self.register_region_outlives_constraint(ty::OutlivesPredicate(r1, r2), vis, cause);
+                self.register_region_outlives_constraint(ty::OutlivesClause(r1, r2), vis, cause);
             }
             ty::GenericArgKind::Type(ty1) => {
                 self.register_type_outlives_constraint(ty1, r2, cause);
@@ -113,7 +113,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn register_region_outlives_constraint(
         &self,
-        ty::OutlivesPredicate(r_a, r_b): ty::RegionOutlivesPredicate<'tcx>,
+        ty::OutlivesClause(r_a, r_b): ty::RegionOutlivesClause<'tcx>,
         vis: ty::VisibleForLeakCheck,
         cause: &ObligationCause<'tcx>,
     ) {
@@ -186,17 +186,28 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    pub fn num_registered_region_obligations(&self) -> usize {
+        self.inner.borrow().region_obligations.len()
+    }
+
+    pub fn registered_region_obligations_since(
+        &self,
+        prev: usize,
+    ) -> Vec<TypeOutlivesConstraint<'tcx>> {
+        self.inner.borrow().region_obligations.iter().skip(prev).cloned().collect()
+    }
+
     pub fn clone_registered_region_obligations(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
         self.inner.borrow().region_obligations.clone()
     }
 
-    pub fn register_region_assumption(&self, assumption: ty::ArgOutlivesPredicate<'tcx>) {
+    pub fn register_region_assumption(&self, assumption: ty::ArgOutlivesClause<'tcx>) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushRegionAssumption);
         inner.region_assumptions.push(assumption);
     }
 
-    pub fn take_registered_region_assumptions(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
+    pub fn take_registered_region_assumptions(&self) -> Vec<ty::ArgOutlivesClause<'tcx>> {
         assert!(!self.in_snapshot(), "cannot take registered region assumptions in a snapshot");
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
@@ -217,7 +228,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         // this is always ConstraintConversion but lol
         conversion: impl TypeOutlivesDelegate<'tcx>,
-        known_type_outlives: &[PolyTypeOutlivesPredicate<'tcx>],
+        known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
         region_outlives: TransitiveRelation<RegionVid>,
         span: Span,
     ) {
@@ -323,7 +334,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
                     && outlives_env
                         .higher_ranked_assumptions()
-                        .contains(&ty::OutlivesPredicate(sup_type.into(), sub_region))
+                        .contains(&ty::OutlivesClause(sup_type.into(), sub_region))
                 {
                     continue;
                 }
@@ -388,7 +399,7 @@ where
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
+        caller_bounds: &'cx [ty::PolyTypeOutlivesClause<'tcx>],
     ) -> Self {
         Self {
             delegate,

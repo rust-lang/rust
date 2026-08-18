@@ -2,6 +2,7 @@
 //@ revisions: a b c d e f g
 //@ ignore-parallel-frontend option conflicts
 //@ compile-flags: -Z unstable-options
+//@ rustc-env:RUST_MIN_STACK=4194304
 
 //@[a] compile-flags: -j 0
 //@[b] compile-flags: -j 1

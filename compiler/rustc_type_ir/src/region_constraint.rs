@@ -51,7 +51,7 @@ use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
-    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind,
+    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind,
     TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
     Variance, VisitorResult, max_universe, set_aliases_to_non_rigid, try_visit,
     walk_visitable_list,
@@ -59,7 +59,7 @@ use crate::{
 
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct Assumptions<I: Interner> {
-    pub type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
+    pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
     pub region_outlives: TransitiveRelation<Region<I>>,
     pub inverse_region_outlives: TransitiveRelation<Region<I>>,
 }
@@ -74,7 +74,7 @@ impl<I: Interner> Assumptions<I> {
     }
 
     pub fn new(
-        type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
+        type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
         region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
         Self {
@@ -340,10 +340,11 @@ impl<I: Interner> RegionConstraint<I> {
                 [or1, rest_ors @ ..] => {
                     let mut choices = vec![];
                     for choice in or1 {
-                        choices.extend(permutations(rest_ors).into_iter().map(|mut and| {
-                            and.push(choice.clone());
-                            and
-                        }));
+                        choices.extend(
+                            permutations(rest_ors)
+                                .into_iter()
+                                .map(|and| std::iter::once(choice.clone()).chain(and).collect()),
+                        );
                     }
                     choices
                 }
@@ -969,7 +970,7 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
     }
 
     assumptions.type_outlives.iter().flat_map(move |binder| match binder.no_bound_vars() {
-        Some(OutlivesPredicate(ty, r)) => (ty == t).then_some(r),
+        Some(OutlivesClause(ty, r)) => (ty == t).then_some(r),
         None => Some(Region::new_static(cx)),
     })
 }
@@ -1026,7 +1027,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
     infcx.enter_forall_with_empty_assumptions(bound_outlives, |(alias, r)| {
         for bound_type_outlives in assumptions.type_outlives.iter() {
-            let OutlivesPredicate(alias2, r2) =
+            let OutlivesClause(alias2, r2) =
                 infcx.instantiate_binder_with_infer(*bound_type_outlives);
 
             let mut relation = HigherRankedAliasMatcher {

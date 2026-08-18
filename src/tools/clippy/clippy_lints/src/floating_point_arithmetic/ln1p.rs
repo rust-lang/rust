@@ -33,7 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
             "ln(1 + x) can be computed more accurately",
             |diag| {
                 let mut app = Applicability::MachineApplicable;
-                let recv = super::lib::prepare_receiver_sugg(cx, recv, &mut app);
+                let (recv, _) = super::lib::prepare_receiver_sugg(cx, recv, &mut app);
                 diag.span_suggestion(expr.span, "consider using", format!("{recv}.ln_1p()"), app);
             },
         );

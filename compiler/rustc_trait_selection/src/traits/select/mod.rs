@@ -9,10 +9,10 @@ use std::ops::ControlFlow;
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
@@ -619,408 +619,387 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(EvaluatedToOk);
         }
 
-        ensure_sufficient_stack(|| {
-            let bound_predicate = obligation.predicate.kind();
-            match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
-                    let t = bound_predicate.rebind(t);
-                    debug_assert!(!t.has_escaping_bound_vars());
-                    let obligation = obligation.with(self.tcx(), t);
-                    self.evaluate_trait_predicate_recursively(previous_stack, obligation)
-                }
+        let bound_predicate = obligation.predicate.kind();
+        match bound_predicate.skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
+                let t = bound_predicate.rebind(t);
+                debug_assert!(!t.has_escaping_bound_vars());
+                let obligation = obligation.with(self.tcx(), t);
+                self.evaluate_trait_predicate_recursively(previous_stack, obligation)
+            }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
-                    self.infcx.enter_forall(bound_predicate.rebind(data), |data| {
-                        match effects::evaluate_host_effect_obligation(
-                            self,
-                            &obligation.with(self.tcx(), data),
-                        ) {
-                            Ok(nested) => {
-                                self.evaluate_predicates_recursively(previous_stack, nested)
-                            }
-                            Err(effects::EvaluationFailure::Ambiguous) => Ok(EvaluatedToAmbig),
-                            Err(effects::EvaluationFailure::NoSolution) => Ok(EvaluatedToErr),
-                        }
-                    })
-                }
-
-                ty::PredicateKind::Subtype(p) => {
-                    let p = bound_predicate.rebind(p);
-                    // Does this code ever run?
-                    match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
-                        Ok(Ok(InferOk { obligations, .. })) => {
-                            self.evaluate_predicates_recursively(previous_stack, obligations)
-                        }
-                        Ok(Err(_)) => Ok(EvaluatedToErr),
-                        Err(..) => Ok(EvaluatedToAmbig),
-                    }
-                }
-
-                ty::PredicateKind::Coerce(p) => {
-                    let p = bound_predicate.rebind(p);
-                    // Does this code ever run?
-                    match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
-                        Ok(Ok(InferOk { obligations, .. })) => {
-                            self.evaluate_predicates_recursively(previous_stack, obligations)
-                        }
-                        Ok(Err(_)) => Ok(EvaluatedToErr),
-                        Err(..) => Ok(EvaluatedToAmbig),
-                    }
-                }
-
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
-                    if term.is_trivially_wf(self.tcx()) {
-                        return Ok(EvaluatedToOk);
-                    }
-
-                    // So, there is a bit going on here. First, `WellFormed` predicates
-                    // are coinductive, like trait predicates with auto traits.
-                    // This means that we need to detect if we have recursively
-                    // evaluated `WellFormed(X)`. Otherwise, we would run into
-                    // a "natural" overflow error.
-                    //
-                    // Now, the next question is whether we need to do anything
-                    // special with caching. Considering the following tree:
-                    // - `WF(Foo<T>)`
-                    //   - `Bar<T>: Send`
-                    //     - `WF(Foo<T>)`
-                    //   - `Foo<T>: Trait`
-                    // In this case, the innermost `WF(Foo<T>)` should return
-                    // `EvaluatedToOk`, since it's coinductive. Then if
-                    // `Bar<T>: Send` is resolved to `EvaluatedToOk`, it can be
-                    // inserted into a cache (because without thinking about `WF`
-                    // goals, it isn't in a cycle). If `Foo<T>: Trait` later doesn't
-                    // hold, then `Bar<T>: Send` shouldn't hold. Therefore, we
-                    // *do* need to keep track of coinductive cycles.
-
-                    let cache = previous_stack.cache;
-                    let dfn = cache.next_dfn();
-
-                    for stack_term in previous_stack.cache.wf_args.borrow().iter().rev() {
-                        if stack_term.0 != term {
-                            continue;
-                        }
-                        debug!("WellFormed({:?}) on stack", term);
-                        if let Some(stack) = previous_stack.head {
-                            // Okay, let's imagine we have two different stacks:
-                            //   `T: NonAutoTrait -> WF(T) -> T: NonAutoTrait`
-                            //   `WF(T) -> T: NonAutoTrait -> WF(T)`
-                            // Because of this, we need to check that all
-                            // predicates between the WF goals are coinductive.
-                            // Otherwise, we can say that `T: NonAutoTrait` is
-                            // true.
-                            // Let's imagine we have a predicate stack like
-                            //         `Foo: Bar -> WF(T) -> T: NonAutoTrait -> T: Auto`
-                            // depth   ^1                    ^2                 ^3
-                            // and the current predicate is `WF(T)`. `wf_args`
-                            // would contain `(T, 1)`. We want to check all
-                            // trait predicates greater than `1`. The previous
-                            // stack would be `T: Auto`.
-                            let cycle = stack.iter().take_while(|s| s.depth > stack_term.1);
-                            let tcx = self.tcx();
-                            let cycle = cycle.map(|stack| stack.obligation.predicate.upcast(tcx));
-                            if self.coinductive_match(cycle) {
-                                stack.update_reached_depth(stack_term.1);
-                                return Ok(EvaluatedToOk);
-                            } else {
-                                return Ok(EvaluatedToAmbigStackDependent);
-                            }
-                        }
-                        return Ok(EvaluatedToOk);
-                    }
-
-                    match wf::obligations(
-                        self.infcx,
-                        obligation.param_env,
-                        obligation.cause.body_def_id,
-                        obligation.recursion_depth + 1,
-                        term,
-                        obligation.cause.span,
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
+                self.infcx.enter_forall(bound_predicate.rebind(data), |data| {
+                    match effects::evaluate_host_effect_obligation(
+                        self,
+                        &obligation.with(self.tcx(), data),
                     ) {
-                        Some(obligations) => {
-                            cache.wf_args.borrow_mut().push((term, previous_stack.depth()));
-                            let result =
-                                self.evaluate_predicates_recursively(previous_stack, obligations);
-                            cache.wf_args.borrow_mut().pop();
+                        Ok(nested) => self.evaluate_predicates_recursively(previous_stack, nested),
+                        Err(effects::EvaluationFailure::Ambiguous) => Ok(EvaluatedToAmbig),
+                        Err(effects::EvaluationFailure::NoSolution) => Ok(EvaluatedToErr),
+                    }
+                })
+            }
 
-                            let result = result?;
+            ty::PredicateKind::Subtype(p) => {
+                let p = bound_predicate.rebind(p);
+                // Does this code ever run?
+                match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
+                    Ok(Ok(InferOk { obligations, .. })) => {
+                        self.evaluate_predicates_recursively(previous_stack, obligations)
+                    }
+                    Ok(Err(_)) => Ok(EvaluatedToErr),
+                    Err(..) => Ok(EvaluatedToAmbig),
+                }
+            }
 
-                            if !result.must_apply_modulo_regions() {
-                                cache.on_failure(dfn);
+            ty::PredicateKind::Coerce(p) => {
+                let p = bound_predicate.rebind(p);
+                // Does this code ever run?
+                match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
+                    Ok(Ok(InferOk { obligations, .. })) => {
+                        self.evaluate_predicates_recursively(previous_stack, obligations)
+                    }
+                    Ok(Err(_)) => Ok(EvaluatedToErr),
+                    Err(..) => Ok(EvaluatedToAmbig),
+                }
+            }
+
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                if term.is_trivially_wf(self.tcx()) {
+                    return Ok(EvaluatedToOk);
+                }
+
+                // So, there is a bit going on here. First, `WellFormed` predicates
+                // are coinductive, like trait predicates with auto traits.
+                // This means that we need to detect if we have recursively
+                // evaluated `WellFormed(X)`. Otherwise, we would run into
+                // a "natural" overflow error.
+                //
+                // Now, the next question is whether we need to do anything
+                // special with caching. Considering the following tree:
+                // - `WF(Foo<T>)`
+                //   - `Bar<T>: Send`
+                //     - `WF(Foo<T>)`
+                //   - `Foo<T>: Trait`
+                // In this case, the innermost `WF(Foo<T>)` should return
+                // `EvaluatedToOk`, since it's coinductive. Then if
+                // `Bar<T>: Send` is resolved to `EvaluatedToOk`, it can be
+                // inserted into a cache (because without thinking about `WF`
+                // goals, it isn't in a cycle). If `Foo<T>: Trait` later doesn't
+                // hold, then `Bar<T>: Send` shouldn't hold. Therefore, we
+                // *do* need to keep track of coinductive cycles.
+
+                let cache = previous_stack.cache;
+                let dfn = cache.next_dfn();
+
+                for stack_term in previous_stack.cache.wf_args.borrow().iter().rev() {
+                    if stack_term.0 != term {
+                        continue;
+                    }
+                    debug!("WellFormed({:?}) on stack", term);
+                    if let Some(stack) = previous_stack.head {
+                        // Okay, let's imagine we have two different stacks:
+                        //   `T: NonAutoTrait -> WF(T) -> T: NonAutoTrait`
+                        //   `WF(T) -> T: NonAutoTrait -> WF(T)`
+                        // Because of this, we need to check that all
+                        // predicates between the WF goals are coinductive.
+                        // Otherwise, we can say that `T: NonAutoTrait` is
+                        // true.
+                        // Let's imagine we have a predicate stack like
+                        //         `Foo: Bar -> WF(T) -> T: NonAutoTrait -> T: Auto`
+                        // depth   ^1                    ^2                 ^3
+                        // and the current predicate is `WF(T)`. `wf_args`
+                        // would contain `(T, 1)`. We want to check all
+                        // trait predicates greater than `1`. The previous
+                        // stack would be `T: Auto`.
+                        let cycle = stack.iter().take_while(|s| s.depth > stack_term.1);
+                        let tcx = self.tcx();
+                        let cycle = cycle.map(|stack| stack.obligation.predicate.upcast(tcx));
+                        if self.coinductive_match(cycle) {
+                            stack.update_reached_depth(stack_term.1);
+                            return Ok(EvaluatedToOk);
+                        } else {
+                            return Ok(EvaluatedToAmbigStackDependent);
+                        }
+                    }
+                    return Ok(EvaluatedToOk);
+                }
+
+                match wf::obligations(
+                    self.infcx,
+                    obligation.param_env,
+                    obligation.cause.body_def_id,
+                    obligation.recursion_depth + 1,
+                    term,
+                    obligation.cause.span,
+                ) {
+                    Some(obligations) => {
+                        cache.wf_args.borrow_mut().push((term, previous_stack.depth()));
+                        let result =
+                            self.evaluate_predicates_recursively(previous_stack, obligations);
+                        cache.wf_args.borrow_mut().pop();
+
+                        let result = result?;
+
+                        if !result.must_apply_modulo_regions() {
+                            cache.on_failure(dfn);
+                        }
+
+                        cache.on_completion(dfn);
+
+                        Ok(result)
+                    }
+                    None => Ok(EvaluatedToAmbig),
+                }
+            }
+
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(pred)) => {
+                // A global type with no free lifetimes or generic parameters
+                // outlives anything.
+                if pred.0.has_free_regions()
+                    || pred.0.has_bound_regions()
+                    || pred.0.has_non_region_infer()
+                    || pred.0.has_non_region_param()
+                {
+                    Ok(EvaluatedToOkModuloRegions)
+                } else {
+                    Ok(EvaluatedToOk)
+                }
+            }
+
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) => {
+                // We do not consider region relationships when evaluating trait matches.
+                Ok(EvaluatedToOkModuloRegions)
+            }
+
+            ty::PredicateKind::DynCompatible(trait_def_id) => {
+                // `DynCompatible` obligations are only emitted as
+                // nested obligations of `WellFormed` goals. It is quite
+                // rare, but possible, that we encounter them during
+                // evaluation. See #158665 for more details here.
+                if self.tcx().is_dyn_compatible(trait_def_id) {
+                    Ok(EvaluatedToOk)
+                } else {
+                    Ok(EvaluatedToErr)
+                }
+            }
+
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
+                let data = bound_predicate.rebind(data);
+                let project_obligation = obligation.with(self.tcx(), data);
+                match project::poly_project_and_unify_term(self, &project_obligation) {
+                    ProjectAndUnifyResult::Holds(mut subobligations) => {
+                        'compute_res: {
+                            // If we've previously marked this projection as 'complete', then
+                            // use the final cached result (either `EvaluatedToOk` or
+                            // `EvaluatedToOkModuloRegions`), and skip re-evaluating the
+                            // sub-obligations.
+                            if let Some(key) = ProjectionCacheKey::from_poly_projection_obligation(
+                                self,
+                                &project_obligation,
+                            ) && let Some(cached_res) =
+                                self.infcx.inner.borrow_mut().projection_cache().is_complete(key)
+                            {
+                                break 'compute_res Ok(cached_res);
                             }
 
-                            cache.on_completion(dfn);
-
-                            Ok(result)
-                        }
-                        None => Ok(EvaluatedToAmbig),
-                    }
-                }
-
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(pred)) => {
-                    // A global type with no free lifetimes or generic parameters
-                    // outlives anything.
-                    if pred.0.has_free_regions()
-                        || pred.0.has_bound_regions()
-                        || pred.0.has_non_region_infer()
-                        || pred.0.has_non_region_param()
-                    {
-                        Ok(EvaluatedToOkModuloRegions)
-                    } else {
-                        Ok(EvaluatedToOk)
-                    }
-                }
-
-                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) => {
-                    // We do not consider region relationships when evaluating trait matches.
-                    Ok(EvaluatedToOkModuloRegions)
-                }
-
-                ty::PredicateKind::DynCompatible(trait_def_id) => {
-                    // `DynCompatible` obligations are only emitted as
-                    // nested obligations of `WellFormed` goals. It is quite
-                    // rare, but possible, that we encounter them during
-                    // evaluation. See #158665 for more details here.
-                    if self.tcx().is_dyn_compatible(trait_def_id) {
-                        Ok(EvaluatedToOk)
-                    } else {
-                        Ok(EvaluatedToErr)
-                    }
-                }
-
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                    let data = bound_predicate.rebind(data);
-                    let project_obligation = obligation.with(self.tcx(), data);
-                    match project::poly_project_and_unify_term(self, &project_obligation) {
-                        ProjectAndUnifyResult::Holds(mut subobligations) => {
-                            'compute_res: {
-                                // If we've previously marked this projection as 'complete', then
-                                // use the final cached result (either `EvaluatedToOk` or
-                                // `EvaluatedToOkModuloRegions`), and skip re-evaluating the
-                                // sub-obligations.
-                                if let Some(key) =
+                            // Need to explicitly set the depth of nested goals here as
+                            // projection obligations can cycle by themselves and in
+                            // `evaluate_predicates_recursively` we only add the depth
+                            // for parent trait goals because only these get added to the
+                            // `TraitObligationStackList`.
+                            for subobligation in subobligations.iter_mut() {
+                                subobligation.set_depth_from_parent(obligation.recursion_depth);
+                            }
+                            let res = self
+                                .evaluate_predicates_recursively(previous_stack, subobligations);
+                            if let Ok(eval_rslt) = res
+                                && (eval_rslt == EvaluatedToOk
+                                    || eval_rslt == EvaluatedToOkModuloRegions)
+                                && let Some(key) =
                                     ProjectionCacheKey::from_poly_projection_obligation(
                                         self,
                                         &project_obligation,
                                     )
-                                    && let Some(cached_res) = self
-                                        .infcx
-                                        .inner
-                                        .borrow_mut()
-                                        .projection_cache()
-                                        .is_complete(key)
-                                {
-                                    break 'compute_res Ok(cached_res);
-                                }
-
-                                // Need to explicitly set the depth of nested goals here as
-                                // projection obligations can cycle by themselves and in
-                                // `evaluate_predicates_recursively` we only add the depth
-                                // for parent trait goals because only these get added to the
-                                // `TraitObligationStackList`.
-                                for subobligation in subobligations.iter_mut() {
-                                    subobligation.set_depth_from_parent(obligation.recursion_depth);
-                                }
-                                let res = self.evaluate_predicates_recursively(
-                                    previous_stack,
-                                    subobligations,
-                                );
-                                if let Ok(eval_rslt) = res
-                                    && (eval_rslt == EvaluatedToOk
-                                        || eval_rslt == EvaluatedToOkModuloRegions)
-                                    && let Some(key) =
-                                        ProjectionCacheKey::from_poly_projection_obligation(
-                                            self,
-                                            &project_obligation,
-                                        )
-                                {
-                                    // If the result is something that we can cache, then mark this
-                                    // entry as 'complete'. This will allow us to skip evaluating the
-                                    // subobligations at all the next time we evaluate the projection
-                                    // predicate.
-                                    self.infcx
-                                        .inner
-                                        .borrow_mut()
-                                        .projection_cache()
-                                        .complete(key, eval_rslt);
-                                }
-                                res
+                            {
+                                // If the result is something that we can cache, then mark this
+                                // entry as 'complete'. This will allow us to skip evaluating the
+                                // subobligations at all the next time we evaluate the projection
+                                // predicate.
+                                self.infcx
+                                    .inner
+                                    .borrow_mut()
+                                    .projection_cache()
+                                    .complete(key, eval_rslt);
                             }
+                            res
                         }
-                        ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
-                        ProjectAndUnifyResult::Recursive => Ok(EvaluatedToAmbigStackDependent),
-                        ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
                     }
+                    ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
+                    ProjectAndUnifyResult::Recursive => Ok(EvaluatedToAmbigStackDependent),
+                    ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
                 }
+            }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    if may_use_unstable_feature(self.infcx, obligation.param_env, symbol) {
-                        Ok(EvaluatedToOk)
-                    } else {
-                        Ok(EvaluatedToAmbig)
-                    }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                if may_use_unstable_feature(self.infcx, obligation.param_env, symbol) {
+                    Ok(EvaluatedToOk)
+                } else {
+                    Ok(EvaluatedToAmbig)
                 }
+            }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
-                    match const_evaluatable::is_const_evaluatable(
-                        self.infcx,
-                        alias_const,
-                        obligation.param_env,
-                        obligation.cause.span,
-                    ) {
-                        Ok(()) => Ok(EvaluatedToOk),
-                        Err(NotConstEvaluatable::MentionsInfer) => Ok(EvaluatedToAmbig),
-                        Err(NotConstEvaluatable::MentionsParam) => Ok(EvaluatedToErr),
-                        Err(_) => Ok(EvaluatedToErr),
-                    }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
+                match const_evaluatable::is_const_evaluatable(
+                    self.infcx,
+                    alias_const,
+                    obligation.param_env,
+                    obligation.cause.span,
+                ) {
+                    Ok(()) => Ok(EvaluatedToOk),
+                    Err(NotConstEvaluatable::MentionsInfer) => Ok(EvaluatedToAmbig),
+                    Err(NotConstEvaluatable::MentionsParam) => Ok(EvaluatedToErr),
+                    Err(_) => Ok(EvaluatedToErr),
                 }
+            }
 
-                ty::PredicateKind::ConstEquate(c1, c2) => {
-                    let tcx = self.tcx();
-                    assert!(
-                        tcx.features().generic_const_exprs(),
-                        "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
+            ty::PredicateKind::ConstEquate(c1, c2) => {
+                let tcx = self.tcx();
+                assert!(
+                    tcx.features().generic_const_exprs(),
+                    "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
+                );
+
+                {
+                    let c1 = tcx.expand_abstract_consts(c1);
+                    let c2 = tcx.expand_abstract_consts(c2);
+                    debug!(
+                        "evaluate_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
+                        c1, c2
                     );
 
-                    {
-                        let c1 = tcx.expand_abstract_consts(c1);
-                        let c2 = tcx.expand_abstract_consts(c2);
-                        debug!(
-                            "evaluate_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
-                            c1, c2
-                        );
-
-                        match (c1.kind(), c2.kind()) {
-                            (ty::ConstKind::Alias(_, a), ty::ConstKind::Alias(_, b))
-                                if a.kind == b.kind
-                                    && matches!(
-                                        a.kind,
-                                        ty::AliasConstKind::Projection { .. }
-                                            | ty::AliasConstKind::Inherent { .. }
-                                    ) =>
-                            {
-                                if let Ok(InferOk { obligations, value: () }) = self
-                                    .infcx
-                                    .at(&obligation.cause, obligation.param_env)
-                                    // Can define opaque types as this is only reachable with
-                                    // `generic_const_exprs`
-                                    .eq(
-                                        DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from(a),
-                                        ty::AliasTerm::from(b),
-                                    )
-                                {
-                                    return self.evaluate_predicates_recursively(
-                                        previous_stack,
-                                        obligations,
-                                    );
-                                }
-                            }
-                            (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
-                            (_, _) => {
-                                if let Ok(InferOk { obligations, value: () }) = self
-                                    .infcx
-                                    .at(&obligation.cause, obligation.param_env)
-                                    // Can define opaque types as this is only reachable with
-                                    // `generic_const_exprs`
-                                    .eq(DefineOpaqueTypes::Yes, c1, c2)
-                                {
-                                    return self.evaluate_predicates_recursively(
-                                        previous_stack,
-                                        obligations,
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Alias(_, _) = c.kind() {
-                            match crate::traits::try_evaluate_const(
-                                self.infcx,
-                                c,
-                                obligation.param_env,
-                            ) {
-                                Ok(val) => Ok(val),
-                                Err(e) => Err(e),
-                            }
-                        } else {
-                            Ok(c)
-                        }
-                    };
-
-                    match (evaluate(c1), evaluate(c2)) {
-                        (Ok(c1), Ok(c2)) => {
-                            match self.infcx.at(&obligation.cause, obligation.param_env).eq(
+                    match (c1.kind(), c2.kind()) {
+                        (ty::ConstKind::Alias(_, a), ty::ConstKind::Alias(_, b))
+                            if a.kind == b.kind
+                                && matches!(
+                                    a.kind,
+                                    ty::AliasConstKind::Projection { .. }
+                                        | ty::AliasConstKind::Inherent { .. }
+                                ) =>
+                        {
+                            if let Ok(InferOk { obligations, value: () }) = self
+                                .infcx
+                                .at(&obligation.cause, obligation.param_env)
                                 // Can define opaque types as this is only reachable with
                                 // `generic_const_exprs`
-                                DefineOpaqueTypes::Yes,
-                                c1,
-                                c2,
-                            ) {
-                                Ok(inf_ok) => self.evaluate_predicates_recursively(
-                                    previous_stack,
-                                    inf_ok.into_obligations(),
-                                ),
-                                Err(_) => Ok(EvaluatedToErr),
+                                .eq(
+                                    DefineOpaqueTypes::Yes,
+                                    ty::AliasTerm::from(a),
+                                    ty::AliasTerm::from(b),
+                                )
+                            {
+                                return self
+                                    .evaluate_predicates_recursively(previous_stack, obligations);
                             }
                         }
-                        (Err(EvaluateConstErr::InvalidConstParamTy(..)), _)
-                        | (_, Err(EvaluateConstErr::InvalidConstParamTy(..))) => Ok(EvaluatedToErr),
-                        (Err(EvaluateConstErr::EvaluationFailure(..)), _)
-                        | (_, Err(EvaluateConstErr::EvaluationFailure(..))) => Ok(EvaluatedToErr),
-                        (Err(EvaluateConstErr::HasGenericsOrInfers), _)
-                        | (_, Err(EvaluateConstErr::HasGenericsOrInfers)) => {
-                            if c1.has_non_region_infer() || c2.has_non_region_infer() {
-                                Ok(EvaluatedToAmbig)
-                            } else {
-                                // Two different constants using generic parameters ~> error.
-                                Ok(EvaluatedToErr)
+                        (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
+                        (_, _) => {
+                            if let Ok(InferOk { obligations, value: () }) = self
+                                .infcx
+                                .at(&obligation.cause, obligation.param_env)
+                                // Can define opaque types as this is only reachable with
+                                // `generic_const_exprs`
+                                .eq(DefineOpaqueTypes::Yes, c1, c2)
+                            {
+                                return self
+                                    .evaluate_predicates_recursively(previous_stack, obligations);
                             }
                         }
                     }
                 }
-                ty::PredicateKind::NormalizesTo(..) => {
-                    bug!("NormalizesTo is only used by the new solver")
-                }
-                ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                    let ct = self.infcx.shallow_resolve_const(ct);
-                    let ct_ty = match ct.kind() {
-                        ty::ConstKind::Infer(_) => {
-                            return Ok(EvaluatedToAmbig);
-                        }
-                        ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
-                        ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Alias(_, alias_const) => {
-                            alias_const.type_of(self.tcx()).skip_norm_wip()
-                        }
-                        // FIXME(generic_const_exprs): See comment in `fulfill.rs`
-                        ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
-                        ty::ConstKind::Placeholder(_) => {
-                            bug!("placeholder const {:?} in old solver", ct)
-                        }
-                        ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
-                        ty::ConstKind::Param(param_ct) => {
-                            param_ct.find_const_ty_from_env(obligation.param_env)
-                        }
-                    };
 
-                    match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        // Only really exercised by generic_const_exprs
-                        DefineOpaqueTypes::Yes,
-                        ct_ty,
-                        ty,
-                    ) {
-                        Ok(inf_ok) => self.evaluate_predicates_recursively(
-                            previous_stack,
-                            inf_ok.into_obligations(),
-                        ),
-                        Err(_) => Ok(EvaluatedToErr),
+                let evaluate = |c: ty::Const<'tcx>| {
+                    if let ty::ConstKind::Alias(_, _) = c.kind() {
+                        match crate::traits::try_evaluate_const(self.infcx, c, obligation.param_env)
+                        {
+                            Ok(val) => Ok(val),
+                            Err(e) => Err(e),
+                        }
+                    } else {
+                        Ok(c)
+                    }
+                };
+
+                match (evaluate(c1), evaluate(c2)) {
+                    (Ok(c1), Ok(c2)) => {
+                        match self.infcx.at(&obligation.cause, obligation.param_env).eq(
+                            // Can define opaque types as this is only reachable with
+                            // `generic_const_exprs`
+                            DefineOpaqueTypes::Yes,
+                            c1,
+                            c2,
+                        ) {
+                            Ok(inf_ok) => self.evaluate_predicates_recursively(
+                                previous_stack,
+                                inf_ok.into_obligations(),
+                            ),
+                            Err(_) => Ok(EvaluatedToErr),
+                        }
+                    }
+                    (Err(EvaluateConstErr::InvalidConstParamTy(..)), _)
+                    | (_, Err(EvaluateConstErr::InvalidConstParamTy(..))) => Ok(EvaluatedToErr),
+                    (Err(EvaluateConstErr::EvaluationFailure(..)), _)
+                    | (_, Err(EvaluateConstErr::EvaluationFailure(..))) => Ok(EvaluatedToErr),
+                    (Err(EvaluateConstErr::HasGenericsOrInfers), _)
+                    | (_, Err(EvaluateConstErr::HasGenericsOrInfers)) => {
+                        if c1.has_non_region_infer() || c2.has_non_region_infer() {
+                            Ok(EvaluatedToAmbig)
+                        } else {
+                            // Two different constants using generic parameters ~> error.
+                            Ok(EvaluatedToErr)
+                        }
                     }
                 }
             }
-        })
+            ty::PredicateKind::NormalizesTo(..) => {
+                bug!("NormalizesTo is only used by the new solver")
+            }
+            ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                let ct = self.infcx.shallow_resolve_const(ct);
+                let ct_ty = match ct.kind() {
+                    ty::ConstKind::Infer(_) => {
+                        return Ok(EvaluatedToAmbig);
+                    }
+                    ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
+                    ty::ConstKind::Value(cv) => cv.ty,
+                    ty::ConstKind::Alias(_, alias_const) => {
+                        alias_const.type_of(self.tcx()).skip_norm_wip()
+                    }
+                    // FIXME(generic_const_exprs): See comment in `fulfill.rs`
+                    ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
+                    ty::ConstKind::Placeholder(_) => {
+                        bug!("placeholder const {:?} in old solver", ct)
+                    }
+                    ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
+                    ty::ConstKind::Param(param_ct) => {
+                        param_ct.find_const_ty_from_env(obligation.param_env)
+                    }
+                };
+
+                match self.infcx.at(&obligation.cause, obligation.param_env).eq(
+                    // Only really exercised by generic_const_exprs
+                    DefineOpaqueTypes::Yes,
+                    ct_ty,
+                    ty,
+                ) {
+                    Ok(inf_ok) => self
+                        .evaluate_predicates_recursively(previous_stack, inf_ok.into_obligations()),
+                    Err(_) => Ok(EvaluatedToErr),
+                }
+            }
+        }
     }
 
     #[instrument(skip(self, previous_stack), level = "debug", ret)]
@@ -1738,15 +1717,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             HigherRankedType,
             trait_bound,
         );
-        let Normalized { value: trait_bound, obligations: _ } = ensure_sufficient_stack(|| {
-            normalize_with_depth(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                ty::Unnormalized::new_wip(trait_bound),
-            )
-        });
+        let Normalized { value: trait_bound, obligations: _ } = normalize_with_depth(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            ty::Unnormalized::new_wip(trait_bound),
+        );
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, placeholder_trait_ref, trait_bound)
@@ -1798,16 +1775,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
         let mut infer_projection = infer_predicate.projection_term;
         if potentially_unnormalized_candidates {
-            infer_projection = ensure_sufficient_stack(|| {
-                normalize_with_depth_to(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    ty::Unnormalized::new_wip(infer_projection),
-                    &mut nested_obligations,
-                )
-            })
+            infer_projection = normalize_with_depth_to(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                ty::Unnormalized::new_wip(infer_projection),
+                &mut nested_obligations,
+            )
         }
 
         let is_match = self
@@ -2482,16 +2457,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         types
             .into_iter()
             .flat_map(|placeholder_ty| {
-                let Normalized { value: normalized_ty, mut obligations } =
-                    ensure_sufficient_stack(|| {
-                        normalize_with_depth(
-                            self,
-                            param_env,
-                            cause.clone(),
-                            recursion_depth,
-                            Unnormalized::new_wip(placeholder_ty),
-                        )
-                    });
+                let Normalized { value: normalized_ty, mut obligations } = normalize_with_depth(
+                    self,
+                    param_env,
+                    cause.clone(),
+                    recursion_depth,
+                    Unnormalized::new_wip(placeholder_ty),
+                );
 
                 let tcx = self.tcx();
                 let trait_ref = if tcx.generics_of(trait_def_id).own_params.len() == 1 {
@@ -2556,16 +2528,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         debug!(?impl_trait_header);
 
         let mut nested_obligations = PredicateObligations::new();
-        let impl_trait_ref = ensure_sufficient_stack(|| {
-            normalize_with_depth_to(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                trait_ref,
-                &mut nested_obligations,
-            )
-        });
+        let impl_trait_ref = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            trait_ref,
+            &mut nested_obligations,
+        );
 
         debug!(?impl_trait_ref, ?placeholder_obligation_trait_ref);
 
@@ -2764,7 +2734,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
             obligation.param_env,
-            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
+            ty::Binder::dummy(ty::OutlivesClause(a_region, b_region)),
         ));
 
         Ok(Some(nested))
@@ -3267,5 +3237,5 @@ pub(crate) enum ProjectionMatchesProjection {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct AutoImplConstituents<'tcx> {
     pub types: Vec<Ty<'tcx>>,
-    pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 }

@@ -235,7 +235,7 @@ impl<'db> InferenceContext<'db> {
 
         // We have to replace the operator with the mutable variant for the
         // program to compile, so we don't really have a choice here and want
-        // to just try using `DerefMut` even if its not in the item bounds
+        // to just try using `DerefMut` even if it's not in the item bounds
         // of the opaque.
         let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
         table.lookup_method_for_operator(

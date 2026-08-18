@@ -186,7 +186,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             ty,
         );
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             // We shouldn't have errors here in the old solver, except for
             // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             debug!(?errors, "encountered errors while fulfilling");

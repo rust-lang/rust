@@ -7,7 +7,7 @@
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{
-    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques,
+    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques, MaybeInfo,
     SucceededInErased,
 };
 use rustc_type_ir::{InferCtxtLike, Interner};
@@ -18,7 +18,7 @@ use crate::solve::{GoalEvaluation, HasChanged};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum RerunStalled {
-    WontMakeProgress(Certainty),
+    WontMakeProgress(MaybeInfo),
     MayMakeProgress,
 }
 
@@ -26,8 +26,21 @@ pub(super) enum RerunStalled {
 /// args have changed. This is a cheap way to determine that if we were to rerun this goal now,
 /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
 /// Therefore, we can skip this rerun
-#[inline]
+#[inline(never)]
 pub(super) fn rerunning_stalled_goal_may_make_progress<D, I>(
+    delegate: &D,
+    stalled_on: Option<&GoalStalledOn<I>>,
+) -> RerunStalled
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    inlined_rerunning_stalled_goal_may_make_progress(delegate, stalled_on)
+}
+
+// Always-inlined variant for the one hot call site.
+#[inline(always)]
+pub(super) fn inlined_rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
     stalled_on: Option<&GoalStalledOn<I>>,
 ) -> RerunStalled
@@ -43,7 +56,7 @@ where
     }
 
     // If the goal isn't stalled, we should definitely run it.
-    let Some(&GoalStalledOn { ref opaques, ref stalled_vars, ref sub_roots, stalled_certainty }) =
+    let Some(&GoalStalledOn { ref opaques, ref stalled_vars, ref sub_roots, stalled_maybe_info }) =
         stalled_on
     else {
         return MayMakeProgress;
@@ -51,13 +64,13 @@ where
 
     // If any of the stalled goal's generic arguments changed,
     // rerunning might make progress so we should rerun.
-    if stalled_vars.iter().any(|value| delegate.is_changed_arg(*value)) {
+    if stalled_vars.iter().any(|value| delegate.ty_or_const_infer_var_changed(*value)) {
         return MayMakeProgress;
     }
 
     // If some inference took place in any of the sub roots,
     // rerunning might make progress so we should rerun.
-    if sub_roots.iter().any(|&vid| delegate.sub_unification_table_root_var(vid) != vid) {
+    if sub_roots.iter().any(|&vid| !delegate.is_sub_unification_table_root_var(vid)) {
         return MayMakeProgress;
     }
 
@@ -105,7 +118,7 @@ where
 
     // Otherwise, we can be sure that this stalled goal cannot make any progress
     // and we can exit early.
-    WontMakeProgress(stalled_certainty)
+    WontMakeProgress(stalled_maybe_info)
 }
 
 /// `compute_goal_fast_path` is complicated enough that outling helps, so it gets optimized

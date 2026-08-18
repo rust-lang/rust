@@ -704,9 +704,18 @@ impl FetchMetadata {
         }
 
         if !config.targets.is_empty() {
-            other_options.extend(
-                config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
-            );
+            let mut has_json_target = false;
+            other_options.extend(config.targets.iter().flat_map(|target| {
+                has_json_target |= target.ends_with(".json");
+                ["--filter-platform".to_owned(), target.clone()]
+            }));
+            if has_json_target
+                && config.toolchain_version.as_ref().is_some_and(|version| {
+                    *version >= toolchain::MINIMUM_TOOLCHAIN_VERSION_REQUIRING_JSON_TARGET_SPEC_FLAG
+                })
+            {
+                other_options.push("-Zjson-target-spec".to_owned());
+            }
         }
 
         command.other_options(other_options.clone());
@@ -767,6 +776,10 @@ impl FetchMetadata {
         let mut using_lockfile_copy = false;
         if let Some(lockfile_copy) = &lockfile_copy {
             match lockfile_copy.usage {
+                LockfileUsage::WithFlag => {
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(lockfile_copy.path.to_string());
+                }
                 LockfileUsage::WithEnvVarUnstable => {
                     other_options.push("-Zlockfile-path".to_owned());
                     command.env("CARGO_RESOLVER_LOCKFILE_PATH", lockfile_copy.path.as_os_str());

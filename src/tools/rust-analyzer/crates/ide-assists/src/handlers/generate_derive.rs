@@ -42,9 +42,9 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_, '_>) ->
     };
 
     acc.add(AssistId::generate("generate_derive"), "Add `#[derive]`", target, |edit| {
+        let editor = edit.make_editor(nominal.syntax());
         match derive_attr {
             None => {
-                let editor = edit.make_editor(nominal.syntax());
                 let make = editor.make();
                 let derive =
                     make.attr_outer(make.meta_token_tree(
@@ -79,16 +79,15 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_, '_>) ->
                 let tabstop_before = edit.make_tabstop_before(cap);
 
                 editor.add_annotation(delimiter, tabstop_before);
-                edit.add_file_edits(ctx.vfs_file_id(), editor);
             }
             Some(_) => {
+                let delimiter = delimiter.expect("Right delim token could not be found.");
+                let tabstop_before = edit.make_tabstop_before(cap);
                 // Just move the cursor.
-                edit.add_tabstop_before_token(
-                    cap,
-                    delimiter.expect("Right delim token could not be found."),
-                );
+                editor.add_annotation(delimiter, tabstop_before);
             }
         };
+        edit.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 

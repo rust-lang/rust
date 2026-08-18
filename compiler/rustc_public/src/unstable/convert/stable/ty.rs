@@ -772,8 +772,8 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 crate::ty::ClauseKind::RegionOutlives(region_outlives.stable(tables, cx))
             }
             ClauseKind::TypeOutlives(type_outlives) => {
-                let ty::OutlivesPredicate::<_, _>(a, b) = type_outlives;
-                crate::ty::ClauseKind::TypeOutlives(crate::ty::OutlivesPredicate(
+                let ty::OutlivesClause::<_, _>(a, b) = type_outlives;
+                crate::ty::ClauseKind::TypeOutlives(crate::ty::OutlivesClause(
                     a.stable(tables, cx),
                     b.stable(tables, cx),
                 ))
@@ -856,19 +856,19 @@ impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx, T> Stable<'tcx> for ty::OutlivesPredicate<'tcx, T>
+impl<'tcx, T> Stable<'tcx> for ty::OutlivesClause<'tcx, T>
 where
     T: Stable<'tcx>,
 {
-    type T = crate::ty::OutlivesPredicate<T::T, Region>;
+    type T = crate::ty::OutlivesClause<T::T, Region>;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::OutlivesPredicate(a, b) = self;
-        crate::ty::OutlivesPredicate(a.stable(tables, cx), b.stable(tables, cx))
+        let ty::OutlivesClause(a, b) = self;
+        crate::ty::OutlivesClause(a.stable(tables, cx), b.stable(tables, cx))
     }
 }
 
@@ -1047,7 +1047,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
+impl<'tcx> Stable<'tcx> for rustc_crate_store::ForeignModule {
     type T = crate::ty::ForeignModule;
 
     fn stable<'cx>(

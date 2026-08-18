@@ -12,10 +12,12 @@ use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
 use super::toml::rust::parse_codegen_backends;
 use super::{Config, DebuggerPath, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
-use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
-use crate::core::config::{BootstrapOverrideLld, CompilerBuiltins, Target, TargetSelection};
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{
+    BootstrapOverrideLld, ChangeId, CompilerBuiltins, Target, TargetSelection,
+};
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
@@ -33,14 +35,15 @@ fn modified(upstream: impl Into<String>, changes: &[&str]) -> PathFreshness {
 #[test]
 fn download_ci_llvm() {
     let config = TestCtx::new().config("check").create_config();
-    assert!(!config.llvm_from_ci);
+    assert!(!config.llvm_ci_mode.download_from_ci());
 
     // this doesn't make sense, as we are overriding it later.
     let if_unchanged_config = TestCtx::new()
         .config("check")
         .with_default_toml_config("llvm.download-ci-llvm = \"if-unchanged\"")
         .create_config();
-    if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci() {
+    if if_unchanged_config.llvm_ci_mode.download_from_ci() && if_unchanged_config.is_running_on_ci()
+    {
         let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
         assert!(
@@ -160,7 +163,7 @@ fn override_toml() {
             .collect(),
         "setting dictionary value"
     );
-    assert!(!config.llvm_from_ci);
+    assert!(!config.llvm_ci_mode.download_from_ci());
     assert!(!config.download_rustc());
 }
 
@@ -286,7 +289,7 @@ fn order_of_clippy_rules() {
     let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
-        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+        Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
             let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
             get_clippy_rules_in_order(&args_vec, &cfg)
@@ -310,7 +313,7 @@ fn clippy_rule_separate_prefix() {
     let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
-        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+        Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
             let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
             get_clippy_rules_in_order(&args_vec, &cfg)

@@ -24,7 +24,7 @@ impl Trait for S {
 struct W(S);
 impl Trait for W {
     #[attr = Inline(Hint)]
-    fn method(self: _) -> _ { Self { 0: Trait::method(self.0) } }
+    fn method(self: _) -> _ { from(Self { 0: Trait::method(self.0) }) }
     #[attr = Inline(Hint)]
     fn r#static() -> _ { Trait::r#static() }
     //~^ WARN: function cannot return without recursing [unconditional_recursion]
@@ -34,7 +34,7 @@ impl Trait for W {
 
 impl W {
     #[attr = Inline(Hint)]
-    fn method(self: _) -> _ { Self { 0: Trait::method(self.0) } }
+    fn method(self: _) -> _ { from(Self { 0: Trait::method(self.0) }) }
     #[attr = Inline(Hint)]
     fn r#static() -> _ { Trait::r#static() }
     #[attr = Inline(Hint)]

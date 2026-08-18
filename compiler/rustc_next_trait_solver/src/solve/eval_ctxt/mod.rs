@@ -5,14 +5,14 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::RegionConstraint;
+use rustc_type_ir::region_constraint::{RegionConstraint, evaluate_solver_constraint};
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -32,7 +32,8 @@ use crate::delegate::SolverDelegate;
 use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::solve::eval_ctxt::fast_path::{
-    RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
+    RerunStalled, compute_goal_fast_path, inlined_rerunning_stalled_goal_may_make_progress,
+    rerunning_stalled_goal_may_make_progress,
 };
 use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
@@ -179,6 +180,10 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
+    /// Checks whether a stalled goal would remain stalled if re-evaluated, without consuming
+    /// `stalled_on`.
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool;
+
     /// Checks whether evaluating `goal` may hold while treating not-yet-defined
     /// opaque types as being kind of rigid.
     ///
@@ -226,12 +231,12 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+        if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
-                certainty: stalled_certainty,
+                certainty: Certainty::Maybe(stalled_maybe_info),
                 has_changed: HasChanged::No,
                 stalled_on,
             });
@@ -257,6 +262,15 @@ where
             Err(NoSolutionOrRerunNonErased::RerunNonErased(_)) => {
                 unreachable!("this never happens at the root, we're never in erased mode here");
             }
+        }
+    }
+
+    // This function is very hot and has a single call site.
+    #[inline(always)]
+    fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
+        match inlined_rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
+            RerunStalled::WontMakeProgress(_) => true,
+            RerunStalled::MayMakeProgress => false,
         }
     }
 
@@ -338,18 +352,6 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
         Ok(goal_evaluation) => goal_evaluation.goal.predicate,
     };
 
-    // Some goals no longer overflow after the stalled infers are resolved.
-    // Thus we don't have to rerun eagerly here.
-    let has_stalled_infers = match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) => {
-            projection.projection_term.has_non_region_infer()
-        }
-        _ => predicate.has_non_region_infer(),
-    };
-    if has_stalled_infers {
-        return;
-    }
-
     let rerun_result = delegate.commit_if_ok(|| {
         let rerun_result =
             EvalCtxt::enter_root(delegate, delegate.cx().recursion_limit() * 2, span, |ecx| {
@@ -397,19 +399,6 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
         Ok(_) => {}
     }
 
-    // Some goals no longer overflow after the stalled infers are resolved.
-    // Thus we don't have to rerun eagerly here.
-    let predicate: I::Predicate = goal_evaluation.uncanonicalized_goal.predicate;
-    let has_stalled_infers = match predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) => {
-            projection.projection_term.has_non_region_infer()
-        }
-        _ => predicate.has_non_region_infer(),
-    };
-    if has_stalled_infers {
-        return;
-    }
-
     let rerun_result = delegate.commit_if_ok(|| {
         let (new_result, new_goal_evaluation) = evaluate_root_goal_for_proof_tree(
             delegate,
@@ -426,6 +415,7 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
         }
     });
     if let Ok(rerun_result) = rerun_result {
+        let predicate: I::Predicate = goal_evaluation.uncanonicalized_goal.predicate;
         delegate.cx().emit_next_solver_overflow_fcw(predicate, span);
         *initial_result = rerun_result;
     }
@@ -617,12 +607,12 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+        if let RerunStalled::WontMakeProgress(stalled_maybe_info) =
             rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
         {
             return Ok(GoalEvaluation {
                 goal,
-                certainty: stalled_certainty,
+                certainty: Certainty::Maybe(stalled_maybe_info),
                 has_changed: HasChanged::No,
                 stalled_on,
             });
@@ -823,7 +813,7 @@ where
 
         let stalled_on = match certainty {
             Certainty::Yes => None,
-            Certainty::Maybe { .. } => match has_changed {
+            Certainty::Maybe(maybe_info) => match has_changed {
                 // FIXME: We could recompute a *new* set of stalled variables by walking
                 // through the orig values, resolving, and computing the root vars of anything
                 // that is not resolved. Only when *these* have changed is it meaningful
@@ -831,7 +821,7 @@ where
                 HasChanged::Yes => None,
                 HasChanged::No => Some(self.build_stalled_on(
                     canonical_goal,
-                    certainty,
+                    maybe_info,
                     orig_values,
                     succeeded_in_erased,
                 )),
@@ -847,35 +837,41 @@ where
     fn build_stalled_on(
         &self,
         canonical_goal: CanonicalInput<I>,
-        certainty: Certainty,
-        mut stalled_vars: ThinVec<I::GenericArg>,
+        maybe_info: MaybeInfo,
+        stalled_vars: ThinVec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.
         let mut sub_roots = ThinVec::new();
-        stalled_vars.retain(|arg| match arg.kind() {
-            // Lifetimes can never stall goals.
-            ty::GenericArgKind::Lifetime(_) => false,
-            ty::GenericArgKind::Type(ty) => match ty.kind() {
-                ty::Infer(ty::TyVar(vid)) => {
-                    sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
-                    true
-                }
-                ty::Infer(_) => true,
-                ty::Param(_) | ty::Placeholder(_) => false,
-                _ => unreachable!("unexpected orig_value: {ty:?}"),
-            },
-            ty::GenericArgKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Infer(_) => true,
-                ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
-                _ => unreachable!("unexpected orig_value: {ct:?}"),
-            },
-        });
+        let stalled_vars = stalled_vars
+            .into_iter()
+            .filter_map(|arg| match arg.kind() {
+                // Lifetimes can never stall goals.
+                ty::GenericArgKind::Lifetime(_) => None,
+                ty::GenericArgKind::Type(ty) => match ty.kind() {
+                    ty::Infer(ty::TyVar(vid)) => {
+                        sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
+                        Some(TyOrConstInferVar::Ty(vid))
+                    }
+                    ty::Infer(ty::IntVar(vid)) => Some(TyOrConstInferVar::TyInt(vid)),
+                    ty::Infer(ty::FloatVar(vid)) => Some(TyOrConstInferVar::TyFloat(vid)),
+                    ty::Param(_) | ty::Placeholder(_) => None,
+                    _ => unreachable!("unexpected orig_value: {ty:?}"),
+                },
+                ty::GenericArgKind::Const(ct) => match ct.kind() {
+                    ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
+                        Some(TyOrConstInferVar::Const(v))
+                    }
+                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => None,
+                    _ => unreachable!("unexpected orig_value: {ct:?}"),
+                },
+            })
+            .collect();
 
         GoalStalledOn {
             stalled_vars,
             sub_roots,
-            stalled_certainty: certainty,
+            stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: canonical_goal
                     .canonical
@@ -1665,7 +1661,12 @@ where
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
         let region_constraints = if self.cx().assumptions_on_binders() {
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
-                self.delegate.get_solver_region_constraint()
+                let constraint = self.delegate.get_solver_region_constraint();
+                debug_assert_eq!(
+                    constraint,
+                    evaluate_solver_constraint(&constraint.clone().canonical_form())
+                );
+                constraint
             } else {
                 RegionConstraint::new_true()
             })
@@ -1741,7 +1742,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
     parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
 ) -> RerunDecision {
     let parent_opaque_def_ids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
-    let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopyList<_>| {
+    let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopySet<_>| {
         if def_ids.as_ref().is_empty() {
             RerunDecision::No
         } else if opaques

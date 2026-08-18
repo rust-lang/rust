@@ -108,6 +108,25 @@ macro_rules! intrinsics {
 
         intrinsics!($($rest)*);
     );
+    // Support cfg:
+    (
+        #[cfg($e:meta)]
+        $(#[$($attrs:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident: $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+        $($rest:tt)*
+    ) => (
+        #[cfg($e)]
+        intrinsics! {
+            $(#[$($attrs)*])*
+            pub extern $abi fn $name($($argname: $ty),*) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
 
     // Right now there's a bunch of architecture-optimized intrinsics in the
     // stock compiler-rt implementation. Not all of these have been ported over
@@ -172,36 +191,6 @@ macro_rules! intrinsics {
         }
 
         #[cfg(not(target_arch = "arm"))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // Like aapcs above we recognize an attribute for the "unadjusted" abi on
-    // win64 for some methods.
-    (
-        #[unadjusted_on_win64]
-        $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        #[cfg(all(any(windows, target_os = "cygwin", all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64"))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern "unadjusted" fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        #[cfg(not(all(any(windows, target_os = "cygwin", all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {

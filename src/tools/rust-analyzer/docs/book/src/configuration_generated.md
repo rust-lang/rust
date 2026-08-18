@@ -19,14 +19,6 @@ Default: `false`
 Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
 
 
-## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
-
-Default: `true`
-
-Enable borrow checking for term search code assists. If set to false, also there will be
-more suggestions, but some of them may not borrow-check.
-
-
 ## rust-analyzer.assist.termSearch.fuel {#assist.termSearch.fuel}
 
 Default: `1800`
@@ -1769,9 +1761,9 @@ will likely be useful:
 
 **Warning**: This format is provisional and subject to change.
 
-The discover command should output JSON objects, one per
-line (JSONL format). These objects should correspond to
-this Rust data type:
+The discover command should output JSON objects to stdout,
+one per line (JSONL format). These objects should correspond
+to this Rust data type:
 
 ```norun
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -1811,6 +1803,9 @@ commented for readability):
 Only the finished event is required, but the other
 variants are encouraged to give users more feedback about
 progress or errors.
+
+Stderr is not parsed as JSONL. It is treated as command log
+output and forwarded to rust-analyzer's own logs.
 
 
 ## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}
