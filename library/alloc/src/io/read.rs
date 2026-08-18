@@ -488,6 +488,14 @@ pub trait Read {
     /// which can be very inefficient for data that's not in memory,
     /// such as `File`. Consider using a `BufReader` in such cases.
     ///
+    /// # Errors
+    ///
+    /// When the returned iterator calls [`Iterator::next`],
+    /// if it encounters an error of the kind [`ErrorKind::Interrupted`]
+    /// then the error is ignored and it will try to read the byte again.
+    ///
+    /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
+    ///
     /// # Examples
     ///
     /// `File`s implement `Read`:
