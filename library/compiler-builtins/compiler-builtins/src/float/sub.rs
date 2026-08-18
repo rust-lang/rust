@@ -16,7 +16,7 @@ intrinsics! {
         crate::float::add::__adddf3(a, f64::from_bits(b.to_bits() ^ f64::SIGN_MASK))
     }
 
-    #[ppc_alias = __subkf3]
+    #[ppc_name = __subkf3]
     #[cfg(f128_enabled)]
     pub extern "C" fn __subtf3(a: f128, b: f128) -> f128 {
         #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]

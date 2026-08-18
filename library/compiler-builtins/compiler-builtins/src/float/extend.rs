@@ -100,21 +100,21 @@ intrinsics! {
     }
 
     #[aapcs_on_arm]
-    #[ppc_alias = __extendhfkf2]
+    #[ppc_name = __extendhfkf2]
     #[cfg(all(f16_enabled, f128_enabled))]
     pub extern "C" fn __extendhftf2(a: f16) -> f128 {
         extend(a)
     }
 
     #[aapcs_on_arm]
-    #[ppc_alias = __extendsfkf2]
+    #[ppc_name = __extendsfkf2]
     #[cfg(f128_enabled)]
     pub extern "C" fn __extendsftf2(a: f32) -> f128 {
         extend(a)
     }
 
     #[aapcs_on_arm]
-    #[ppc_alias = __extenddfkf2]
+    #[ppc_name = __extenddfkf2]
     #[cfg(f128_enabled)]
     pub extern "C" fn __extenddftf2(a: f64) -> f128 {
         extend(a)

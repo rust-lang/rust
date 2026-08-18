@@ -146,21 +146,21 @@ intrinsics! {
     }
 
     #[aapcs_on_arm]
-    #[ppc_alias = __trunckfhf2]
+    #[ppc_name = __trunckfhf2]
     #[cfg(all(f16_enabled, f128_enabled))]
     pub extern "C" fn __trunctfhf2(a: f128) -> f16 {
         trunc(a)
     }
 
     #[aapcs_on_arm]
-    #[ppc_alias = __trunckfsf2]
+    #[ppc_name = __trunckfsf2]
     #[cfg(f128_enabled)]
     pub extern "C" fn __trunctfsf2(a: f128) -> f32 {
         trunc(a)
     }
 
     #[aapcs_on_arm]
-    #[ppc_alias = __trunckfdf2]
+    #[ppc_name = __trunckfdf2]
     #[cfg(f128_enabled)]
     pub extern "C" fn __trunctfdf2(a: f128) -> f64 {
         trunc(a)
