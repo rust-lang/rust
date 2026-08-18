@@ -369,7 +369,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
             // Fix the head ptr of the second part
             self.head = Some(split_node);
-            self.len = self.len - at;
+            self.len -= at;
 
             first_part
         } else {
