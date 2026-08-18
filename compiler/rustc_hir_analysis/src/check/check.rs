@@ -818,6 +818,23 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().clauses_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
             tcx.ensure_ok().codegen_fn_attrs(def_id);
+            let clauses = tcx.clauses_of(def_id);
+            let param_env = tcx.param_env(def_id);
+            res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                for (clause, span) in clauses.clauses {
+                    wfcx.register_obligation(Obligation::new(
+                        tcx,
+                        ObligationCause::new(
+                            *span,
+                            def_id,
+                            ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id))),
+                        ),
+                        param_env,
+                        *clause,
+                    ));
+                }
+                Ok(())
+            }));
             if let Some(i) = tcx.intrinsic(def_id) {
                 intrinsic::check_intrinsic_type(
                     tcx,
