@@ -290,12 +290,12 @@ macro_rules! define_cleanup {
     }
 }
 cfg_select! {
-   target_arch = "x86" => {
-       define_cleanup!("thiscall" "thiscall-unwind");
-   }
-   _ => {
-       define_cleanup!("C" "C-unwind");
-   }
+    target_arch = "x86" => {
+        define_cleanup!("thiscall" "thiscall-unwind");
+    }
+    _ => {
+        define_cleanup!("C" "C-unwind");
+    }
 }
 
 pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {

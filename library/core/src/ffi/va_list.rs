@@ -39,12 +39,8 @@ use crate::marker::PhantomCovariantLifetime;
 // derive `Copy`. However, in the future we might want to support a target where `va_copy`
 // allocates, or otherwise violates the requirements of `Copy`. Therefore `VaList` is only `Clone`.
 crate::cfg_select! {
-    all(
-        target_arch = "aarch64",
-        not(target_vendor = "apple"),
-        not(target_os = "uefi"),
-        not(windows),
-    ) => {
+    all(target_arch = "aarch64", not(target_vendor = "apple"), not(target_os = "uefi"), not(windows)) =>
+    {
         /// AArch64 ABI implementation of a `va_list`.
         ///
         /// See the [AArch64 Procedure Call Standard] for more details.

@@ -23,22 +23,18 @@ pub fn pipe() -> io::Result<(Pipe, Pipe)> {
             target_os = "openbsd",
             target_os = "cygwin",
             target_os = "redox"
-        ) => {
-            unsafe {
-                cvt(libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC))?;
-                Ok((Pipe::from_raw_fd(fds[0]), Pipe::from_raw_fd(fds[1])))
-            }
-        }
-        _ => {
-            unsafe {
-                cvt(libc::pipe(fds.as_mut_ptr()))?;
+        ) => unsafe {
+            cvt(libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC))?;
+            Ok((Pipe::from_raw_fd(fds[0]), Pipe::from_raw_fd(fds[1])))
+        },
+        _ => unsafe {
+            cvt(libc::pipe(fds.as_mut_ptr()))?;
 
-                let fd0 = Pipe::from_raw_fd(fds[0]);
-                let fd1 = Pipe::from_raw_fd(fds[1]);
-                fd0.set_cloexec()?;
-                fd1.set_cloexec()?;
-                Ok((fd0, fd1))
-            }
-        }
+            let fd0 = Pipe::from_raw_fd(fds[0]);
+            let fd1 = Pipe::from_raw_fd(fds[1]);
+            fd0.set_cloexec()?;
+            fd1.set_cloexec()?;
+            Ok((fd0, fd1))
+        },
     }
 }

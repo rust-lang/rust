@@ -784,8 +784,8 @@ pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub const DEFAULT_BUF_SIZE: usize = cfg_select! {
-    target_os = "espidf" => { 512 },
-    _ => { 8 * 1024 }
+    target_os = "espidf" => 512,
+    _ => 8 * 1024,
 };
 
 /// Several `read_to_string` and `read_line` methods in the standard library will

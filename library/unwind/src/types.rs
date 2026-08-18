@@ -19,27 +19,28 @@ pub use _Unwind_Reason_Code::*;
 pub type _Unwind_Exception_Class = u64;
 pub type _Unwind_Word = *const u8;
 
-pub const unwinder_private_data_size: usize = cfg_select! {
-    target_arch = "x86" => 5,
-    all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))) => 2,
-    all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")) => 6,
-    all(target_arch = "arm", not(target_vendor = "apple")) => 20,
-    all(target_arch = "arm", target_vendor = "apple") => 5,
-    all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")) => 2,
-    all(target_arch = "aarch64", target_pointer_width = "64", target_os = "windows") => 6,
-    all(target_arch = "aarch64", target_pointer_width = "32") => 5,
-    target_arch = "m68k" => 2,
-    any(target_arch = "mips", target_arch = "mips32r6") => 2,
-    target_arch = "csky" => 2,
-    any(target_arch = "mips64", target_arch = "mips64r6") => 2,
-    any(target_arch = "powerpc", target_arch = "powerpc64") => 2,
-    target_arch = "s390x" => 2,
-    any(target_arch = "sparc", target_arch = "sparc64") => 2,
-    any(target_arch = "riscv64", target_arch = "riscv32") => 2,
-    target_family = "wasm" => 2,
-    target_arch = "hexagon" => 5,
-    any(target_arch = "loongarch32", target_arch = "loongarch64") => 2,
-};
+pub const unwinder_private_data_size: usize =
+    cfg_select! {
+        target_arch = "x86" => 5,
+        all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))) => 2,
+        all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")) => 6,
+        all(target_arch = "arm", not(target_vendor = "apple")) => 20,
+        all(target_arch = "arm", target_vendor = "apple") => 5,
+        all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")) => 2,
+        all(target_arch = "aarch64", target_pointer_width = "64", target_os = "windows") => 6,
+        all(target_arch = "aarch64", target_pointer_width = "32") => 5,
+        target_arch = "m68k" => 2,
+        any(target_arch = "mips", target_arch = "mips32r6") => 2,
+        target_arch = "csky" => 2,
+        any(target_arch = "mips64", target_arch = "mips64r6") => 2,
+        any(target_arch = "powerpc", target_arch = "powerpc64") => 2,
+        target_arch = "s390x" => 2,
+        any(target_arch = "sparc", target_arch = "sparc64") => 2,
+        any(target_arch = "riscv64", target_arch = "riscv32") => 2,
+        target_family = "wasm" => 2,
+        target_arch = "hexagon" => 5,
+        any(target_arch = "loongarch32", target_arch = "loongarch64") => 2,
+    };
 
 #[repr(C)]
 pub struct _Unwind_Exception {
