@@ -43,7 +43,7 @@ where
     let def_id = body.source.def_id();
     let attrs = RustcMirAttrs::parse(tcx, def_id);
 
-    let file = try {
+    let mut file = try {
         match attrs.output_path(A::NAME) {
             Some(path) => {
                 debug!("printing dataflow results for {:?} to {}", def_id, path.display());
@@ -61,11 +61,7 @@ where
                 dumper.set_disambiguator(disambiguator).create_dump_file("dot", body)?
             }
         }
-    };
-    let mut file = match file {
-        Ok(f) => f,
-        Err(e) => return Err(e),
-    };
+    }?;
 
     let style = attrs.formatter.unwrap_or(OutputStyle::AfterOnly);
 
@@ -77,14 +73,8 @@ where
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
-    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
-
-    let lhs = try {
-        r?;
-        file.write_all(&buf)?;
-    };
-
-    lhs
+    with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts))?;
+    file.write_all(&buf)
 }
 
 #[derive(Default)]
