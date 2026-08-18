@@ -713,11 +713,11 @@ pub mod arch {
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
     #[allow(clippy::useless_attribute)]
-    #[allow(unused_attributes)] // FIXME(#161153)
+    #[allow(ineffective_unstable_reexport)] // FIXME(#161153)
     #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
     pub use std_detect::is_loongarch_feature_detected;
     #[allow(clippy::useless_attribute)]
-    #[allow(unused_attributes)] // FIXME(#161153)
+    #[allow(ineffective_unstable_reexport)] // FIXME(#161153)
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
@@ -755,7 +755,7 @@ pub use core::cfg_select;
 )]
 pub use core::concat_bytes;
 #[allow(clippy::useless_attribute)]
-#[allow(unused_attributes)] // FIXME(#161153)
+#[allow(ineffective_unstable_reexport)] // FIXME(#161153)
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
 #[stable(feature = "matches_macro", since = "1.42.0")]

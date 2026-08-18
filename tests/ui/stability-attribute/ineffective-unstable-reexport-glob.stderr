@@ -1,9 +1,9 @@
-warning: `#[unstable]` does not make this re-exported path unstable
-  --> $DIR/ineffective-unstable-reexport-glob.rs:15:1
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexport-glob.rs:15:9
    |
-LL | #[unstable(feature = "stable_glob_reexport", issue = "none")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub use stable_glob_source::*;
+   |         ^^^^^^^^^^^^^^^^^^
    |
-   = note: requested on the command line with `-W unused-attributes`
+   = note: `#[deny(ineffective_unstable_reexport)]` on by default
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error

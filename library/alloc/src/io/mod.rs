@@ -194,7 +194,6 @@ pub use core::io::SimpleMessage;
 pub use core::io::const_error;
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub use core::io::{BorrowedBuf, BorrowedCursor};
-#[unstable(feature = "alloc_io", issue = "154046")]
 pub use core::io::{
     Chain, Cursor, Empty, Error, ErrorKind, IoSlice, IoSliceMut, Repeat, Result, Seek, SeekFrom,
     Sink, Take, Write, empty, repeat, sink,
@@ -207,16 +206,13 @@ use core::io::{
     slice_write_vectored, take,
 };
 
+pub use self::buf_read::BufRead;
+pub use self::buffered::{BufReader, BufWriter, IntoInnerError, LineWriter, WriterPanicked};
+pub use self::copy::copy;
+pub use self::read::{Read, read_to_string};
 use self::read::{append_to_string, default_read_buf_exact, default_read_exact};
+pub use self::util::{Bytes, Lines, Split};
 use self::util::{bytes, lines, split, uninlined_slow_read_byte};
-#[unstable(feature = "alloc_io", issue = "154046")]
-pub use self::{
-    buf_read::BufRead,
-    buffered::{BufReader, BufWriter, IntoInnerError, LineWriter, WriterPanicked},
-    copy::copy,
-    read::{Read, read_to_string},
-    util::{Bytes, Lines, Split},
-};
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{

@@ -1,5 +1,4 @@
 //@ aux-build:lint-stability.rs
-//@ check-pass
 //@ normalize-stderr: "(\n)\n$" -> "$1"
 
 #![crate_type = "lib"]
@@ -9,11 +8,10 @@
 extern crate lint_stability;
 
 // Both targets are stable.
-// This should produce exactly one warning for the shared attribute.
+// This should produce exactly one error for the shared attribute.
 #[unstable(feature = "grouped_stable", issue = "none")]
-//~^ WARN `#[unstable]` does not make this re-exported path unstable
 pub use lint_stability::{
-    stable as grouped_stable_a,
+    stable as grouped_stable_a, //~ ERROR `#[unstable]` does not make this re-exported path unstable
     stable_text as grouped_stable_b,
 };
 

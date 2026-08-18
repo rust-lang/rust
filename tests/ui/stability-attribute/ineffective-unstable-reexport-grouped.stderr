@@ -1,9 +1,9 @@
-warning: `#[unstable]` does not make this re-exported path unstable
-  --> $DIR/ineffective-unstable-reexport-grouped.rs:13:1
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexport-grouped.rs:14:5
    |
-LL | #[unstable(feature = "grouped_stable", issue = "none")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     stable as grouped_stable_a,
+   |     ^^^^^^
    |
-   = note: requested on the command line with `-W unused-attributes`
+   = note: `#[deny(ineffective_unstable_reexport)]` on by default
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error

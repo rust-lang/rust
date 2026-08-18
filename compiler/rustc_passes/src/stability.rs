@@ -18,8 +18,8 @@ use rustc_hir::{
 };
 use rustc_lint_defs as lint;
 use rustc_lint_defs::builtin::{
-    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
-    UNUSED_ATTRIBUTES,
+    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_REEXPORT,
+    INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::metadata::Reexport;
@@ -559,6 +559,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 struct UnstableReexport {
     hir_id: HirId,
+    span: Span,
     has_target: bool,
     all_targets_stable: bool,
 }
@@ -586,17 +587,23 @@ impl<'tcx> Checker<'tcx> {
         let mut all_targets_stable = true;
 
         for res in targets {
-            let Some(def_id) = res.opt_def_id() else {
-                // Do not emit the lint if resolution is incomplete or the
-                // target cannot be classified.
-                all_targets_stable = false;
-                continue;
-            };
+            match res {
+                Res::Def(_, def_id) => {
+                    has_target = true;
 
-            has_target = true;
+                    if self.tcx.lookup_stability(def_id).is_some_and(|stab| !stab.level.is_stable())
+                    {
+                        all_targets_stable = false;
+                    }
+                }
 
-            if self.tcx.lookup_stability(def_id).is_some_and(|stab| !stab.level.is_stable()) {
-                all_targets_stable = false;
+                Res::PrimTy(_) => {
+                    has_target = true;
+                }
+
+                _ => {
+                    all_targets_stable = false;
+                }
             }
         }
 
@@ -606,12 +613,14 @@ impl<'tcx> Checker<'tcx> {
     fn record_unstable_reexport(
         &mut self,
         item: &'tcx hir::Item<'tcx>,
+        attr_span: Span,
         span: Span,
         has_target: bool,
         all_targets_stable: bool,
     ) {
-        let entry = self.unstable_reexports.entry(span).or_insert(UnstableReexport {
+        let entry = self.unstable_reexports.entry(attr_span).or_insert(UnstableReexport {
             hir_id: item.hir_id(),
+            span,
             has_target: false,
             all_targets_stable: true,
         });
@@ -625,19 +634,22 @@ impl<'tcx> Checker<'tcx> {
         item: &'tcx hir::Item<'tcx>,
         path: &'tcx UsePath<'tcx>,
     ) {
-        let Some(span) = self.unstable_reexport_span(item) else {
+        let Some(attr_span) = self.unstable_reexport_span(item) else {
             return;
         };
 
-        let (has_target, all_targets_stable) = self.classify_reexport_targets(
-            [path.res.type_ns, path.res.value_ns, path.res.macro_ns].into_iter().flatten(),
-        );
+        let (has_target, all_targets_stable) =
+            self.classify_reexport_targets(path.res.present_items());
 
-        self.record_unstable_reexport(item, span, has_target, all_targets_stable);
+        self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
     }
 
-    fn check_glob_unstable_reexport(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let Some(span) = self.unstable_reexport_span(item) else {
+    fn check_glob_unstable_reexport(
+        &mut self,
+        item: &'tcx hir::Item<'tcx>,
+        path: &'tcx UsePath<'tcx>,
+    ) {
+        let Some(attr_span) = self.unstable_reexport_span(item) else {
             return;
         };
 
@@ -659,16 +671,16 @@ impl<'tcx> Checker<'tcx> {
 
         let (has_target, all_targets_stable) = self.classify_reexport_targets(targets);
 
-        self.record_unstable_reexport(item, span, has_target, all_targets_stable);
+        self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
     }
 
     fn emit_ineffective_unstable_reexports(&self) {
-        for (span, reexport) in &self.unstable_reexports {
+        for reexport in self.unstable_reexports.values() {
             if reexport.has_target && reexport.all_targets_stable {
                 self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
+                    INEFFECTIVE_UNSTABLE_REEXPORT,
                     reexport.hir_id,
-                    *span,
+                    reexport.span,
                     diagnostics::IneffectiveUnstableReexport,
                 );
             }
@@ -709,11 +721,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 self.check_single_unstable_reexport(item, path);
             }
 
-            hir::ItemKind::Use(_, hir::UseKind::Glob)
+            hir::ItemKind::Use(path, hir::UseKind::Glob)
                 if self.tcx.features().staged_api()
                     && self.tcx.local_visibility(item.owner_id.def_id).is_public() =>
             {
-                self.check_glob_unstable_reexport(item);
+                self.check_glob_unstable_reexport(item, path);
             }
 
             // For implementations of traits, check the stability of each item

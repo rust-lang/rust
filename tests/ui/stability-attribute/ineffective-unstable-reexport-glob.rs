@@ -1,6 +1,5 @@
 //@ aux-build:lint-stability.rs
 //@ aux-build:stable-glob-source.rs
-//@ check-pass
 //@ normalize-stderr: "(\n)\n$" -> "$1"
 
 #![crate_type = "lib"]
@@ -13,8 +12,7 @@ extern crate stable_glob_source;
 // Every item introduced by this glob is stable, so the unstable annotation
 // cannot make the exported paths unstable.
 #[unstable(feature = "stable_glob_reexport", issue = "none")]
-//~^ WARN `#[unstable]` does not make this re-exported path unstable
-pub use stable_glob_source::*;
+pub use stable_glob_source::*; //~ ERROR `#[unstable]` does not make this re-exported path unstable
 
 // This glob contains unstable items, so #94972 makes the annotation
 // relevant when checking the import itself.
