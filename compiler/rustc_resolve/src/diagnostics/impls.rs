@@ -763,16 +763,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn add_module_candidates(
         &self,
         module: Module<'ra>,
+        redirect_span: Span,
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
         ctxt: Option<SyntaxContext>,
     ) {
-        module.for_each_child(self, |_this, ident, orig_ident_span, _ns, binding| {
-            let res = binding.res();
-            if filter_fn(res) && ctxt.is_none_or(|ctxt| ctxt == *ident.ctxt) {
-                names.push(TypoSuggestion::new(ident.name, orig_ident_span, res));
-            }
-        });
+        module.for_each_child_redir(
+            self,
+            redirect_span,
+            |_this, ident, orig_ident_span, _ns, binding| {
+                let res = binding.res();
+                if filter_fn(res) && ctxt.is_none_or(|ctxt| ctxt == *ident.ctxt) {
+                    names.push(TypoSuggestion::new(ident.name, orig_ident_span, res));
+                }
+            },
+        );
     }
 
     /// Combines an error with provided span and emits it.
@@ -1007,6 +1012,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let mut local_names = vec![];
                         self.add_module_candidates(
                             parent_scope.module,
+                            name.span,
                             &mut local_names,
                             &|res| matches!(res, Res::Def(_, _)),
                             None,
@@ -1493,7 +1499,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::ModuleNonGlobs(module, _) => {
-                    this.add_module_candidates(module, suggestions, filter_fn, None);
+                    this.add_module_candidates(module, sp, suggestions, filter_fn, None);
                 }
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs`.
@@ -1535,7 +1541,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::StdLibPrelude => {
                     if let Some(prelude) = this.prelude {
                         let mut tmp_suggestions = Vec::new();
-                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn, None);
+                        this.add_module_candidates(
+                            prelude,
+                            sp,
+                            &mut tmp_suggestions,
+                            filter_fn,
+                            None,
+                        );
                         suggestions.extend(
                             tmp_suggestions
                                 .into_iter()
@@ -1619,174 +1631,180 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         {
             let in_module_is_extern = !in_module.def_id().is_local();
-            in_module.for_each_child(self, |this, ident, orig_ident_span, ns, name_binding| {
-                // Avoid non-importable candidates.
-                if name_binding.is_assoc_item()
-                    && !this.features.import_trait_associated_functions()
-                {
-                    return;
-                }
+            in_module.for_each_child_redir(
+                self,
+                lookup_ident.span,
+                |this, ident, orig_ident_span, ns, name_binding| {
+                    // Avoid non-importable candidates.
+                    if name_binding.is_assoc_item()
+                        && !this.features.import_trait_associated_functions()
+                    {
+                        return;
+                    }
 
-                if ident.name == kw::Underscore {
-                    return;
-                }
+                    if ident.name == kw::Underscore {
+                        return;
+                    }
 
-                let child_accessible =
-                    accessible && this.is_accessible_from(name_binding.vis(), parent_scope.module);
+                    let child_accessible = accessible
+                        && this.is_accessible_from(name_binding.vis(), parent_scope.module);
 
-                // do not venture inside inaccessible items of other crates
-                if in_module_is_extern && !child_accessible {
-                    return;
-                }
+                    // do not venture inside inaccessible items of other crates
+                    if in_module_is_extern && !child_accessible {
+                        return;
+                    }
 
-                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
+                    let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
 
-                // There is an assumption elsewhere that paths of variants are in the enum's
-                // declaration and not imported. With this assumption, the variant component is
-                // chopped and the rest of the path is assumed to be the enum's own path. For
-                // errors where a variant is used as the type instead of the enum, this causes
-                // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
-                if via_import && name_binding.is_possibly_imported_variant() {
-                    return;
-                }
+                    // There is an assumption elsewhere that paths of variants are in the enum's
+                    // declaration and not imported. With this assumption, the variant component is
+                    // chopped and the rest of the path is assumed to be the enum's own path. For
+                    // errors where a variant is used as the type instead of the enum, this causes
+                    // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
+                    if via_import && name_binding.is_possibly_imported_variant() {
+                        return;
+                    }
 
-                // #90113: Do not count an inaccessible reexported item as a candidate.
-                if let DeclKind::Import { source_decl, .. } = name_binding.kind
-                    && this.is_accessible_from(source_decl.vis(), parent_scope.module)
-                    && !this.is_accessible_from(name_binding.vis(), parent_scope.module)
-                {
-                    return;
-                }
+                    // #90113: Do not count an inaccessible reexported item as a candidate.
+                    if let DeclKind::Import { source_decl, .. } = name_binding.kind
+                        && this.is_accessible_from(source_decl.vis(), parent_scope.module)
+                        && !this.is_accessible_from(name_binding.vis(), parent_scope.module)
+                    {
+                        return;
+                    }
 
-                let res = name_binding.res();
-                let did = match res {
-                    Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
-                    _ => res.opt_def_id(),
-                };
-                let child_doc_visible = doc_visible
-                    && did.is_none_or(|did| did.is_local() || !this.tcx.is_doc_hidden(did));
-
-                // collect results based on the filter function
-                // avoid suggesting anything from the same module in which we are resolving
-                // avoid suggesting anything with a hygienic name
-                if ident.name == lookup_ident.name
-                    && ns == namespace
-                    && in_module != parent_scope.module
-                    && ident.ctxt.is_root()
-                    && filter_fn(res)
-                {
-                    // create the path
-                    let mut segms = if lookup_ident.span.at_least_rust_2018() {
-                        // crate-local absolute paths start with `crate::` in edition 2018
-                        // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                        crate_path.clone()
-                    } else {
-                        ThinVec::new()
+                    let res = name_binding.res();
+                    let did = match res {
+                        Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
+                        _ => res.opt_def_id(),
                     };
-                    segms.append(&mut path_segments.clone());
+                    let child_doc_visible = doc_visible
+                        && did.is_none_or(|did| did.is_local() || !this.tcx.is_doc_hidden(did));
 
-                    segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path { span: name_binding.span, segments: segms };
+                    // collect results based on the filter function
+                    // avoid suggesting anything from the same module in which we are resolving
+                    // avoid suggesting anything with a hygienic name
+                    if ident.name == lookup_ident.name
+                        && ns == namespace
+                        && in_module != parent_scope.module
+                        && ident.ctxt.is_root()
+                        && filter_fn(res)
+                    {
+                        // create the path
+                        let mut segms = if lookup_ident.span.at_least_rust_2018() {
+                            // crate-local absolute paths start with `crate::` in edition 2018
+                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
+                            crate_path.clone()
+                        } else {
+                            ThinVec::new()
+                        };
+                        segms.append(&mut path_segments.clone());
 
-                    if child_accessible
+                        segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
+                        let path = Path { span: name_binding.span, segments: segms };
+
+                        if child_accessible
                         // Remove invisible match if exists
                         && let Some(idx) = candidates
                             .iter()
                             .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
-                    {
-                        candidates.remove(idx);
-                    }
+                        {
+                            candidates.remove(idx);
+                        }
 
-                    let is_stable = if is_stable
-                        && let Some(did) = did
-                        && this.is_stable(did, path.span)
-                    {
-                        true
-                    } else {
-                        false
-                    };
-
-                    // Rreplace unstable suggestions if we meet a new stable one,
-                    // and do nothing if any other situation. For example, if we
-                    // meet `std::ops::Range` after `std::range::legacy::Range`,
-                    // we will remove the latter and then insert the former.
-                    if is_stable
-                        && let Some(idx) = candidates
-                            .iter()
-                            .position(|v: &ImportSuggestion| v.did == did && !v.is_stable)
-                    {
-                        candidates.remove(idx);
-                    }
-
-                    if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
-                        // See if we're recommending TryFrom, TryInto, or FromIterator and add
-                        // a note about editions
-                        let note = if let Some(did) = did {
-                            let requires_note = !did.is_local()
-                                && find_attr!(
-                                    this.tcx,
-                                    did,
-                                    RustcDiagnosticItem(
-                                        sym::TryInto | sym::TryFrom | sym::FromIterator
-                                    )
-                                );
-                            requires_note.then(|| {
-                                format!(
-                                    "'{}' is included in the prelude starting in Edition 2021",
-                                    path_names_to_string(&path)
-                                )
-                            })
+                        let is_stable = if is_stable
+                            && let Some(did) = did
+                            && this.is_stable(did, path.span)
+                        {
+                            true
                         } else {
-                            None
+                            false
                         };
 
-                        candidates.push(ImportSuggestion {
-                            did,
-                            descr: res.descr(),
-                            path,
-                            accessible: child_accessible,
-                            doc_visible: child_doc_visible,
-                            note,
-                            via_import,
-                            is_stable,
-                        });
-                    }
-                }
+                        // Rreplace unstable suggestions if we meet a new stable one,
+                        // and do nothing if any other situation. For example, if we
+                        // meet `std::ops::Range` after `std::range::legacy::Range`,
+                        // we will remove the latter and then insert the former.
+                        if is_stable
+                            && let Some(idx) = candidates
+                                .iter()
+                                .position(|v: &ImportSuggestion| v.did == did && !v.is_stable)
+                        {
+                            candidates.remove(idx);
+                        }
 
-                // collect submodules to explore
-                if let Some(def_id) = name_binding.res().module_like_def_id() {
-                    // form the path
-                    let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
+                        if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                            // See if we're recommending TryFrom, TryInto, or FromIterator and add
+                            // a note about editions
+                            let note = if let Some(did) = did {
+                                let requires_note = !did.is_local()
+                                    && find_attr!(
+                                        this.tcx,
+                                        did,
+                                        RustcDiagnosticItem(
+                                            sym::TryInto | sym::TryFrom | sym::FromIterator
+                                        )
+                                    );
+                                requires_note.then(|| {
+                                    format!(
+                                        "'{}' is included in the prelude starting in Edition 2021",
+                                        path_names_to_string(&path)
+                                    )
+                                })
+                            } else {
+                                None
+                            };
 
-                    let alias_import = if let DeclKind::Import { import, .. } = name_binding.kind
-                        && let ImportKind::ExternCrate { source: Some(_), .. } = import.kind
-                        && import.parent_scope.expansion == parent_scope.expansion
-                    {
-                        true
-                    } else {
-                        false
-                    };
-
-                    let is_extern_crate_that_also_appears_in_prelude =
-                        name_binding.is_extern_crate() && lookup_ident.span.at_least_rust_2018();
-
-                    if !is_extern_crate_that_also_appears_in_prelude || alias_import {
-                        // add the module to the lookup
-                        if seen_modules.insert(def_id) {
-                            if via_import { &mut worklist_via_import } else { &mut worklist }.push(
-                                (
-                                    this.expect_module(def_id),
-                                    path_segments,
-                                    child_accessible,
-                                    child_doc_visible,
-                                    is_stable && this.is_stable(def_id, name_binding.span),
-                                ),
-                            );
+                            candidates.push(ImportSuggestion {
+                                did,
+                                descr: res.descr(),
+                                path,
+                                accessible: child_accessible,
+                                doc_visible: child_doc_visible,
+                                note,
+                                via_import,
+                                is_stable,
+                            });
                         }
                     }
-                }
-            })
+
+                    // collect submodules to explore
+                    if let Some(def_id) = name_binding.res().module_like_def_id() {
+                        // form the path
+                        let mut path_segments = path_segments.clone();
+                        path_segments
+                            .push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
+
+                        let alias_import = if let DeclKind::Import { import, .. } =
+                            name_binding.kind
+                            && let ImportKind::ExternCrate { source: Some(_), .. } = import.kind
+                            && import.parent_scope.expansion == parent_scope.expansion
+                        {
+                            true
+                        } else {
+                            false
+                        };
+
+                        let is_extern_crate_that_also_appears_in_prelude = name_binding
+                            .is_extern_crate()
+                            && lookup_ident.span.at_least_rust_2018();
+
+                        if !is_extern_crate_that_also_appears_in_prelude || alias_import {
+                            // add the module to the lookup
+                            if seen_modules.insert(def_id) {
+                                if via_import { &mut worklist_via_import } else { &mut worklist }
+                                    .push((
+                                        this.expect_module(def_id),
+                                        path_segments,
+                                        child_accessible,
+                                        child_doc_visible,
+                                        is_stable && this.is_stable(def_id, name_binding.span),
+                                    ));
+                            }
+                        }
+                    }
+                },
+            );
         }
 
         candidates
@@ -3475,7 +3493,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let binding_key = BindingKey::new(IdentKey::new(ident), MacroNS);
-        let binding = self.resolution(crate_module, binding_key)?.best_decl()?;
+        let binding = self.resolution(crate_module, binding_key)?.best_decl_redir(ident.span)?;
         let Res::Def(DefKind::Macro(kinds), _) = binding.res() else {
             return None;
         };

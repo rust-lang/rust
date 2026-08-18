@@ -13,6 +13,7 @@ use rustc_ast_pretty::pp::Printer;
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::def_id::DefId;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
@@ -191,7 +192,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed, AttrId);
-print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
+print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Edition, Limit);
 print_debug!(
     Symbol,
     Ident,

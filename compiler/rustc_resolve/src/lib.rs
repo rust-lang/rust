@@ -72,6 +72,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::def_id::{LocalModId, ModId};
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -684,8 +685,14 @@ struct ModuleData<'ra> {
     globs: CmRefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
+    ///
+    /// The cache is tagged with the edition it was generated with, since redirected trait
+    /// declarations can select different traits in each edition.
     traits: CmRefCell<
-        Option<Box<[(Symbol, Decl<'ra>, Option<Module<'ra>>, bool /* lint ambiguous */)]>>,
+        Option<(
+            Edition,
+            Box<[(Symbol, Decl<'ra>, Option<Module<'ra>>, bool /* lint ambiguous */)]>,
+        )>,
     >,
 
     /// Span of the module itself. Used for error reporting.
@@ -788,6 +795,7 @@ impl<'ra> ModuleData<'ra> {
 }
 
 impl<'ra> Module<'ra> {
+    /// Visits children without applying edition redirects.
     fn for_each_child<'tcx, R: AsRef<Resolver<'ra, 'tcx>>>(
         self,
         resolver: &R,
@@ -801,25 +809,49 @@ impl<'ra> Module<'ra> {
         }
     }
 
-    fn for_each_child_mut<'tcx, R: AsMut<Resolver<'ra, 'tcx>>>(
+    /// Visits children after applying edition redirects for `redirect_span`.
+    fn for_each_child_redir<'tcx, R: AsRef<Resolver<'ra, 'tcx>>>(
+        self,
+        resolver: &R,
+        redirect_span: Span,
+        mut f: impl FnMut(&R, IdentKey, Span, Namespace, Decl<'ra>),
+    ) {
+        for (key, name_resolution) in resolver.as_ref().resolutions(self).iter() {
+            let name_resolution = name_resolution.borrow(resolver.as_ref());
+            if let Some(decl) = name_resolution.best_decl_redir(redirect_span) {
+                f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
+            }
+        }
+    }
+
+    /// Mutable variant of `for_each_child_redir`.
+    fn for_each_child_redir_mut<'tcx, R: AsMut<Resolver<'ra, 'tcx>>>(
         self,
         resolver: &mut R,
+        redirect_span: Span,
         mut f: impl FnMut(&mut R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).iter() {
             let name_resolution = name_resolution.borrow(resolver.as_mut());
-            if let Some(decl) = name_resolution.best_decl() {
+            if let Some(decl) = name_resolution.best_decl_redir(redirect_span) {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
         }
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>) {
+    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>, redirect_span: Span) {
+        let edition = redirect_span.edition();
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
-        if traits.is_none() {
+        // Macro expansion can cause the same module to be queried with spans from different
+        // editions. Cache the most recently requested edition and recompute when it changes.
+        let needs_update = match traits.as_ref() {
+            Some((cached_edition, _)) => *cached_edition != edition,
+            None => true,
+        };
+        if needs_update {
             let mut collected_traits = Vec::new();
-            self.for_each_child(resolver, |r, ident, _, ns, mut decl| {
+            self.for_each_child_redir(resolver, redirect_span, |r, ident, _, ns, mut decl| {
                 if ns != TypeNS {
                     return;
                 }
@@ -847,7 +879,7 @@ impl<'ra> Module<'ra> {
                     decl = ambig_decl;
                 }
             });
-            *traits = Some(collected_traits.into_boxed_slice());
+            *traits = Some((edition, collected_traits.into_boxed_slice()));
         }
     }
 
@@ -1017,6 +1049,25 @@ struct DeclData<'ra> {
     /// declaration from the set, if its visibility is different from `initial_vis`.
     ambiguity_vis_min: CmCell<Option<Decl<'ra>>>,
     parent_module: Option<Module<'ra>>,
+    /// Fully resolved cross-crate redirects attached to this declaration.
+    edition_redirects: &'ra [EditionRedirectDecl<'ra>],
+}
+
+#[derive(Clone, Copy, Debug)]
+struct EditionRedirectDecl<'ra> {
+    before: Edition,
+    target: Decl<'ra>,
+}
+
+/// A resolved redirect import waiting to be attached to the default item with the same name.
+#[derive(Clone)]
+struct LocalEditionRedirect<'ra> {
+    module: LocalModule<'ra>,
+    key: BindingKey,
+    before: Edition,
+    import_decl: Decl<'ra>,
+    default_decl: Option<Decl<'ra>>,
+    span: Span,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -1370,6 +1421,8 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
+    /// Resolved redirect imports waiting to be combined with their default module children.
+    local_edition_redirects: Vec<LocalEditionRedirect<'ra>> = Vec::new(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1580,6 +1633,7 @@ impl<'ra> ResolverArenas<'ra> {
             span,
             expansion,
             parent_module,
+            edition_redirects: &[],
         })
     }
 
@@ -1590,6 +1644,12 @@ impl<'ra> ResolverArenas<'ra> {
     fn alloc_decl(&'ra self, data: DeclData<'ra>) -> Decl<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
         Interned::new_unchecked(self.dropless.alloc(data))
+    }
+    fn alloc_edition_redirects(
+        &'ra self,
+        redirects: &[EditionRedirectDecl<'ra>],
+    ) -> &'ra [EditionRedirectDecl<'ra>] {
+        if redirects.is_empty() { &[] } else { self.dropless.alloc_slice(redirects) }
     }
     fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
@@ -2104,14 +2164,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         cmr.visit_scopes(scope_set, parent_scope, ctxt, sp, None, |mut this, scope, _, _| {
             match scope {
                 Scope::ModuleNonGlobs(module, _) => {
-                    this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
+                    this.get_mut().traits_in_module(module, sp, assoc_item, &mut found_traits);
                 }
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs` (but see #144993).
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
-                        this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
+                        this.get_mut().traits_in_module(module, sp, assoc_item, &mut found_traits);
                     }
                 }
                 Scope::ExternPreludeItems
@@ -2129,14 +2189,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn traits_in_module(
         &mut self,
         module: Module<'ra>,
+        redirect_span: Span,
         assoc_item: Option<(Symbol, Namespace)>,
         found_traits: &mut Vec<TraitCandidate<'tcx>>,
     ) {
-        module.ensure_traits(self);
+        module.ensure_traits(self, redirect_span);
         let traits = module.traits.borrow(self);
-        for &(trait_name, trait_binding, trait_module, lint_ambiguous) in
-            traits.as_ref().unwrap().iter()
-        {
+        let (_, traits) = traits.as_ref().unwrap();
+        for &(trait_name, trait_binding, trait_module, lint_ambiguous) in traits.iter() {
             if self.trait_may_have_item(trait_module, assoc_item) {
                 let def_id = trait_binding.res().def_id();
                 let import_ids = self.find_transitive_imports(&trait_binding.kind, trait_name);
@@ -2224,7 +2284,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident_span: Span,
     ) -> NameResolutionRef<'ra> {
         *self.resolutions_mut(module).entry(key).or_insert_with(|| {
-            self.arenas.alloc_name_resolution(NameResolution::new(orig_ident_span))
+            self.arenas.alloc_name_resolution(NameResolution::new(None, orig_ident_span))
         })
     }
 

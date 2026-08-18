@@ -1,0 +1,78 @@
+error[E0432]: unresolved import `macro_source::nested::redirected_macro`
+  --> $DIR/diagnostic.rs:10:5
+   |
+LL | use macro_source::nested::redirected_macro;
+   |     ^^^^^^^^^^^^^^^^^^^^^^----------------
+   |                           |
+   |                           no `redirected_macro` in `nested`
+   |
+   = note: this could be because a macro annotated with `#[macro_export]` will be exported at the root of the crate instead of the module where it is defined
+help: a macro with this name exists at the root of the crate
+   |
+LL - use macro_source::nested::redirected_macro;
+LL + use macro_source::redirected_macro;
+   |
+
+error[E0432]: unresolved import `macro_source::NoSuchImport`
+  --> $DIR/diagnostic.rs:19:5
+   |
+LL | use macro_source::NoSuchImport;
+   |     ^^^^^^^^^^^^^^------------
+   |                   |
+   |                   no `NoSuchImport` in the root
+
+error[E0405]: cannot find trait `Candidate` in this scope
+  --> $DIR/diagnostic.rs:25:24
+   |
+LL | fn import_candidate<T: Candidate>() {}
+   |                        ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this trait
+   |
+LL + use macro_source::Candidate;
+   |
+
+error[E0405]: cannot find trait `Canddate` in crate `macro_source`
+  --> $DIR/diagnostic.rs:30:36
+   |
+LL | fn typo_candidate<T: macro_source::Canddate>() {}
+   |                                    ^^^^^^^^
+   |
+  ::: $DIR/auxiliary/macro-source.rs:17:5
+   |
+LL |     pub trait Candidate {}
+   |     ------------------- similarly named trait `Candidate` defined here
+   |
+help: a trait with a similar name exists
+   |
+LL | fn typo_candidate<T: macro_source::Candidate>() {}
+   |                                        +
+
+error[E0425]: cannot find type `OldAlias` in crate `macro_source`
+  --> $DIR/diagnostic.rs:37:31
+   |
+LL | fn doc_alias(_: macro_source::OldAlias) {}
+   |                               ^^^^^^^^
+   |
+help: `AliasCarrier` has a name defined in the doc alias attribute as `OldAlias`
+   |
+LL - fn doc_alias(_: macro_source::OldAlias) {}
+LL + fn doc_alias(_: macro_source::AliasCarrier) {}
+   |
+
+error[E0423]: cannot find function, tuple struct or tuple variant `DiagnosticEnum` in module `macro_source::diagnostic_module`
+  --> $DIR/diagnostic.rs:45:38
+   |
+LL |     macro_source::diagnostic_module::DiagnosticEnum(0)
+   |                                      ^^^^^^^^^^^^^^
+   |
+   = note: an enum named `macro_source::diagnostic_module::DiagnosticEnum` exists in another namespace
+help: try to construct the enum's variant
+   |
+LL |     macro_source::diagnostic_module::DiagnosticEnum::Variant(0)
+   |                                                    +++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0405, E0423, E0425, E0432.
+For more information about an error, try `rustc --explain E0405`.
