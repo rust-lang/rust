@@ -2158,6 +2158,7 @@ impl<T> Option<&T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[expect(clippy::map_clone, reason = "implements Option::cloned")]
     pub fn cloned(self) -> Option<T>
     where
         T: Clone,
@@ -2210,7 +2211,7 @@ impl<T> Option<&mut T> {
     where
         T: Clone,
     {
-        self.as_deref().map(T::clone)
+        self.as_deref().cloned()
     }
 }
 
