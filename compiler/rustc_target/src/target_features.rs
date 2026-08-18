@@ -1101,51 +1101,54 @@ pub fn feature_to_arch_names(feature: &str) -> Vec<&'static str> {
 // These arrays represent the least-constraining feature that is required for vector types up to a
 // certain size to have their "proper" ABI on each architecture.
 // Note that they must be kept sorted by vector size.
-const X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "sse"), (256, "avx"), (512, "avx512f")]; // FIXME: might need changes for AVX10.
-const AARCH64_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "neon")];
+type FeaturesForCorrectFixedLengthVectorAbi = &'static [(u64, &'static [&'static str])];
+const X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["sse"]), (256, &["avx"]), (512, &["avx512f"])]; // FIXME: might need changes for AVX10.
+const AARCH64_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["neon"])];
 
-const ARM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "neon"), (128, "mve")];
+const ARM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["neon", "mve"])];
 
-const AMDGPU_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(1024, "")];
-const POWERPC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "altivec")];
-const WASM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "simd128")];
-const S390X_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "vector")];
-const RISCV_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] = &[
-    (32, "zvl32b"),
-    (64, "zvl64b"),
-    (128, "zvl128b"),
-    (256, "zvl256b"),
-    (512, "zvl512b"),
-    (1024, "zvl1024b"),
-    (2048, "zvl2048b"),
-    (4096, "zvl4096b"),
-    (8192, "zvl8192b"),
-    (16384, "zvl16384b"),
-    (32768, "zvl32768b"),
-    (65536, "zvl65536b"),
-];
+const AMDGPU_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(1024, &[])];
+const POWERPC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["altivec"])];
+const WASM_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["simd128"])];
+const S390X_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["vector"])];
+const RISCV_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[
+        (32, &["zvl32b"]),
+        (64, &["zvl64b"]),
+        (128, &["zvl128b"]),
+        (256, &["zvl256b"]),
+        (512, &["zvl512b"]),
+        (1024, &["zvl1024b"]),
+        (2048, &["zvl2048b"]),
+        (4096, &["zvl4096b"]),
+        (8192, &["zvl8192b"]),
+        (16384, &["zvl16384b"]),
+        (32768, &["zvl32768b"]),
+        (65536, &["zvl65536b"]),
+    ];
 // Always error on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
-const SPARC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[/*(64, "vis")*/];
+const SPARC_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[/*(64, &["vis"])*/];
 
-const HEXAGON_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] = &[
-    (512, "hvx-length64b"),   // HvxVector in 64-byte mode
-    (1024, "hvx-length128b"), // HvxVector in 128-byte mode, or HvxVectorPair in 64-byte mode
-    (2048, "hvx-length128b"), // HvxVectorPair in 128-byte mode
-];
-const MIPS_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "msa")];
-const CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "vdspv1")];
-const LOONGARCH_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "lsx"), (256, "lasx")];
+const HEXAGON_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[
+        (512, &["hvx-length64b"]),   // HvxVector in 64-byte mode
+        (1024, &["hvx-length128b"]), // HvxVector in 128-byte mode, or HvxVectorPair in 64-byte mode
+        (2048, &["hvx-length128b"]), // HvxVectorPair in 128-byte mode
+    ];
+const MIPS_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["msa"])];
+const CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: FeaturesForCorrectFixedLengthVectorAbi =
+    &[(128, &["vdspv1"])];
+const LOONGARCH_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI:
+    FeaturesForCorrectFixedLengthVectorAbi = &[(128, &["lsx"]), (256, &["lasx"])];
 
 #[derive(Copy, Clone, Debug)]
 pub struct FeatureConstraints {
@@ -1189,7 +1192,9 @@ impl Target {
             .collect::<FxHashMap<_, _>>()
     }
 
-    pub fn features_for_correct_fixed_length_vector_abi(&self) -> &'static [(u64, &'static str)] {
+    pub fn features_for_correct_fixed_length_vector_abi(
+        &self,
+    ) -> FeaturesForCorrectFixedLengthVectorAbi {
         match &self.arch {
             Arch::X86 | Arch::X86_64 => X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
             Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
