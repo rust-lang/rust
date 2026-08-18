@@ -7,7 +7,6 @@ use either::{Either, Left, Right};
 use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
-use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
@@ -342,12 +341,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn to_scalar_int(&self) -> InterpResult<'tcx, ScalarInt> {
         let s = self.to_scalar().to_scalar_int()?;
-        if s.size() != self.layout.size {
-            throw_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
-                target_size: self.layout.size.bytes(),
-                data_size: s.size().bytes(),
-            }));
-        }
+        assert_eq!(s.size(), self.layout.size, "scalar immediate size does not match layout");
         interp_ok(s)
     }
 
@@ -703,7 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        self.read_scalar(op)?.to_pointer(self)
+        interp_ok(self.read_scalar(op)?.to_pointer(self))
     }
     /// Read a pointer-sized unsigned integer from a place.
     pub fn read_target_usize(
