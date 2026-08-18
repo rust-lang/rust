@@ -1,26 +1,3 @@
-//! Implementation of bootstrap, the Rust build system.
-//!
-//! This module, and its descendants, are the implementation of the Rust build
-//! system. Most of this build system is backed by Cargo but the outer layer
-//! here serves as the ability to orchestrate calling Cargo, sequencing Cargo
-//! builds, building artifacts like LLVM, etc. The goals of bootstrap are:
-//!
-//! * To be an easily understandable, easily extensible, and maintainable build
-//!   system.
-//! * Leverage standard tools in the Rust ecosystem to build the compiler, aka
-//!   crates.io and Cargo.
-//! * A standard interface to build across all platforms, including MSVC
-//!
-//! ## Further information
-//!
-//! More documentation can be found in each respective module below, and you can
-//! also check out the `src/bootstrap/README.md` file for more information.
-
-// tidy-alphabetical-start
-#![allow(clippy::assertions_on_constants, reason = "false positive for `assert!(cfg!(..))`")]
-#![allow(clippy::map_clone, reason = "false positive for `|x: &&Foo| Foo::clone(x)`")]
-// tidy-alphabetical-end
-
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
@@ -42,16 +19,15 @@ use crate::core::compiler::Compiler;
 use crate::core::config::flags::{self, Subcommand};
 use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
 use crate::core::metadata::Crate;
+#[cfg(feature = "tracing")]
+use crate::trace_io;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir, t,
 };
-
-pub mod cli_main;
-mod core;
-mod utils;
+use crate::{debug, trace};
 
 pub(crate) enum GitRepo {
     Rustc,
