@@ -656,7 +656,7 @@ impl<'a, 'tcx, A: Analysis<'tcx>> StateDiffCollector<'a, 'tcx, A> {
     }
 }
 
-impl<'a, 'tcx, A: Analysis<'tcx>> ResultsVisitor<'tcx, A> for StateDiffCollector<'a, 'tcx, A>
+impl<'a, 'tcx, A> ResultsVisitor<'tcx, A> for StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
