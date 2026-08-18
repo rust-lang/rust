@@ -16,6 +16,22 @@ python3 ../x.py build --set rust.debug=true opt-dist
 # Use GCC for building GCC components, as it seems to behave badly when built with Clang
 # Only build GCC on full builds, not try builds
 if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
+    function hide_output {
+      { set +x; } 2>/dev/null
+      on_err="
+    echo ERROR: An error was encountered with the build.
+    cat /tmp/build.log
+    exit 1
+    "
+      trap "$on_err" ERR
+      bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+      PING_LOOP_PID=$!
+      "$@" &> /tmp/build.log
+      trap - ERR
+      kill $PING_LOOP_PID
+      set -x
+    }
+
     # We have to build our own binutils for the GCC build, because the default CentOS 7 binutils are
     # too old, and they do not support `SHF_GNU_RETAIN`.
     BINUTILS="2.47"
@@ -25,6 +41,7 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     mkdir binutils-build
     mkdir "$BINUTILS_ROOT_PATH"
     cd binutils-build
+
     hide_output ../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH"
     hide_output make -j$(nproc)
     hide_output make install
