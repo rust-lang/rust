@@ -1749,7 +1749,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
-    #[must_use]
     pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
         if self.len() == N {
             // SAFETY: `Box::into_array` is guaranteed to return `Ok` if the
