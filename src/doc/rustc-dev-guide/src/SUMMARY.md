@@ -228,6 +228,7 @@
         - [Closure constraints](./borrow-check/region-inference/closure-constraints.md)
         - [Error reporting (stub)](./borrow-check/region-inference/error-reporting.md)
     - [Two-phase-borrows](./borrow-check/two-phase-borrows.md)
+    - [Debugging the borrow checker](./borrow-check/debugging.md)
 - [Closure capture inference](./closure.md)
 - [Async closures/"coroutine-closures"](coroutine-closures.md)
 

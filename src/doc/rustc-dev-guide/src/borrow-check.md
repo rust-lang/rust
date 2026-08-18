@@ -24,7 +24,7 @@ HIR. Doing borrow checking on MIR has several advantages:
 [47366]: https://github.com/rust-lang/rust/issues/47366
 [nll]: https://rust-lang.github.io/rfcs/2094-nll.html
 
-### Major phases of the borrow checker
+## Major phases of the borrow checker
 
 The borrow checker source is found in
 [the `rustc_borrowck` crate][b_c]. The main entry point is
@@ -57,3 +57,8 @@ the [`mir_borrowck`] query.
   the previous analyses.
 
 [`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/nll/fn.replace_regions_in_mir.html
+
+
+## Debugging the borrow checker
+
+See [Debugging the borrow checker](borrow-check/debugging.md) and [MIR Debugging](mir/debugging.md).
