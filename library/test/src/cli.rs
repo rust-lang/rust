@@ -66,7 +66,7 @@ fn optgroups() -> getopts::Options {
             "don't capture stdout/stderr of each \
              task, allow printing directly",
         )
-        .optopt(
+        .optmulti(
             "",
             "test-threads",
             "Number of threads used for running tests \
@@ -383,8 +383,9 @@ fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPart
 }
 
 fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
-    let test_threads = match matches.opt_str("test-threads") {
-        Some(n_str) => match n_str.parse::<usize>() {
+    let mut last_test_threads = None;
+    for n_str in matches.opt_strs("test-threads") {
+        last_test_threads = match n_str.parse::<usize>() {
             Ok(0) => return Err("argument for --test-threads must not be 0".to_string()),
             Ok(n) => Some(n),
             Err(e) => {
@@ -393,11 +394,10 @@ fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
                      (error: {e})"
                 ));
             }
-        },
-        None => None,
-    };
+        };
+    }
 
-    Ok(test_threads)
+    Ok(last_test_threads)
 }
 
 fn get_format(
