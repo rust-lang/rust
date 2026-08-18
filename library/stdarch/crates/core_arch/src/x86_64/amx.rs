@@ -11,22 +11,22 @@ use stdarch_test::assert_instr;
 /// Any invalid configurations will result in #GP fault.
 ///
 /// ```intel
-/// //	format of memory payload. each field is a byte.
-///		 0: palette
-///		 1: start_row
-///	  2-15: reserved, must be zero
-///	 16-17: tile0.colsb
-///	 18-19: tile1.colsb
-///	 20-21: tile2.colsb
-///			...
-///	 30-31: tile7.colsb
-///	 32-47: reserved, must be zero
-///		48: tile0.rows
-///		49: tile1.rows
-///		50: tile2.rows
-///			 ...
-///		55: tile7.rows
-///	 56-63: reserved, must be zero
+/// //    format of memory payload. each field is a byte.
+///         0: palette
+///         1: start_row
+///      2-15: reserved, must be zero
+///     16-17: tile0.colsb
+///     18-19: tile1.colsb
+///     20-21: tile2.colsb
+///            ...
+///     30-31: tile7.colsb
+///     32-47: reserved, must be zero
+///        48: tile0.rows
+///        49: tile1.rows
+///        50: tile2.rows
+///             ...
+///        55: tile7.rows
+///     56-63: reserved, must be zero
 /// ```
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_loadconfig&ig_expand=6875)
