@@ -3319,6 +3319,7 @@ fn run_cargo_test<'a>(
 
     // FIXME(#160895): While the new solver is enabled by default on nightly,
     // we don't want to use it in our tests for now.
+    cargo.rustflag("-Znext-solver=coherence");
     cargo.rustdocflag("-Znext-solver=coherence");
 
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
