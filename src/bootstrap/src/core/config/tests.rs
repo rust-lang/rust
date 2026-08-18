@@ -11,9 +11,11 @@ use clap::CommandFactory;
 use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
 use super::toml::rust::parse_codegen_backends;
-use super::{Config, DebuggerPath, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
+use super::{Config, DebuggerPath, LlvmCiMode, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
+use crate::Build;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
-use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
+use crate::core::build_steps::llvm::{LLVM_INVALIDATION_PATHS, LlvmKind, get_llvm_build_status};
+use crate::core::builder::Builder;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{
     BootstrapOverrideLld, ChangeId, CompilerBuiltins, Target, TargetSelection,
@@ -35,21 +37,28 @@ fn modified(upstream: impl Into<String>, changes: &[&str]) -> PathFreshness {
 #[test]
 fn download_ci_llvm() {
     let config = TestCtx::new().config("check").create_config();
-    assert!(!config.llvm_ci_mode.download_from_ci());
+    assert_eq!(config.llvm_ci_mode, LlvmCiMode::BuildLocally);
 
     // this doesn't make sense, as we are overriding it later.
     let if_unchanged_config = TestCtx::new()
         .config("check")
         .with_default_toml_config("llvm.download-ci-llvm = \"if-unchanged\"")
         .create_config();
-    if if_unchanged_config.llvm_ci_mode.download_from_ci() && if_unchanged_config.is_running_on_ci()
-    {
-        let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+    if if_unchanged_config.is_running_on_ci() {
+        let build = Build::new(config.clone());
+        let builder = Builder::new(&build);
 
-        assert!(
-            !has_changes,
-            "CI LLVM can't be enabled with 'if-unchanged' while there are changes in LLVM submodule."
-        );
+        let llvm = get_llvm_build_status(&builder, builder.config.host_target);
+        let llvm = llvm.llvm_output();
+        if llvm.kind() == LlvmKind::DownloadedFromCi {
+            let has_changes =
+                if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+
+            assert!(
+                !has_changes,
+                "CI LLVM can't be enabled with 'if-unchanged' while there are changes in LLVM submodule."
+            );
+        }
     }
 }
 
@@ -163,7 +172,7 @@ fn override_toml() {
             .collect(),
         "setting dictionary value"
     );
-    assert!(!config.llvm_ci_mode.download_from_ci());
+    assert!(matches!(config.llvm_ci_mode, LlvmCiMode::BuildLocally));
     assert!(!config.download_rustc());
 }
 

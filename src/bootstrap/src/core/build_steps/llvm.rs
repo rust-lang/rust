@@ -32,7 +32,7 @@ use crate::utils::helpers::{
 /// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
 pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum LlvmKind {
     /// The LLVM was built from in-tree sources
     BuiltLocally,
