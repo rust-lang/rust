@@ -654,6 +654,38 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
     }
 }
 
+/// An assortment of global caches used by various parts of the compiler.
+///
+/// The individual fields are mostly unrelated to each other, but have been grouped together to
+/// reduce the number of top-level fields in [`GlobalCtxt`].
+#[derive(Default)]
+pub struct GlobalCaches<'tcx> {
+    // Internal caches for metadata decoding. No need to track deps on this.
+    pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that do not have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache<'tcx, ty::TypingEnv<'tcx>>,
+
+    /// Caches the results of trait evaluation. This cache is used
+    /// for things that do not have to do with the parameters in scope.
+    /// Merge this with `selection_cache`?
+    pub evaluation_cache: traits::EvaluationCache<'tcx, ty::TypingEnv<'tcx>>,
+
+    /// Caches the results of goal evaluation in the new solver.
+    new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
+    new_solver_canonical_param_env_cache: Lock<ty::CanonicalParamEnvCache<TyCtxt<'tcx>>>,
+
+    pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
+
+    /// Caches the index of the highest bound var in clauses in a canonical binder.
+    pub highest_var_in_clauses_cache: Lock<FxHashMap<ty::Clauses<'tcx>, usize>>,
+
+    /// Caches the instantiation of a canonical binder given a set of args.
+    pub clauses_cache:
+        Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
+}
+
 /// The central data structure of the compiler. It stores references
 /// to the various **arenas** and also houses the results of the
 /// various **compiler queries** that have been performed. See the
@@ -734,29 +766,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub query_system: QuerySystem<'tcx>,
 
-    // Internal caches for metadata decoding. No need to track deps on this.
-    pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
-
-    /// Caches the results of trait selection. This cache is used
-    /// for things that do not have to do with the parameters in scope.
-    pub selection_cache: traits::SelectionCache<'tcx, ty::TypingEnv<'tcx>>,
-
-    /// Caches the results of trait evaluation. This cache is used
-    /// for things that do not have to do with the parameters in scope.
-    /// Merge this with `selection_cache`?
-    pub evaluation_cache: traits::EvaluationCache<'tcx, ty::TypingEnv<'tcx>>,
-
-    /// Caches the results of goal evaluation in the new solver.
-    pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
-    pub new_solver_canonical_param_env_cache: Lock<ty::CanonicalParamEnvCache<TyCtxt<'tcx>>>,
-
-    pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
-
-    /// Caches the index of the highest bound var in clauses in a canonical binder.
-    pub highest_var_in_clauses_cache: Lock<FxHashMap<ty::Clauses<'tcx>, usize>>,
-    /// Caches the instantiation of a canonical binder given a set of args.
-    pub clauses_cache:
-        Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
+    pub caches: GlobalCaches<'tcx>,
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
@@ -965,14 +975,7 @@ impl<'tcx> TyCtxt<'tcx> {
             consts: common_consts,
             untracked,
             query_system,
-            ty_rcache: Default::default(),
-            selection_cache: Default::default(),
-            evaluation_cache: Default::default(),
-            new_solver_evaluation_cache: Default::default(),
-            new_solver_canonical_param_env_cache: Default::default(),
-            canonical_param_env_cache: Default::default(),
-            highest_var_in_clauses_cache: Default::default(),
-            clauses_cache: Default::default(),
+            caches: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
