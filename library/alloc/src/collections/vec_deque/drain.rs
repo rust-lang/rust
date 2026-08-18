@@ -1,4 +1,4 @@
-use core::iter::FusedIterator;
+use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
 use core::mem::{self, SizedTypeProperties};
 use core::ptr::NonNull;
@@ -270,6 +270,9 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, A: Allocator> TrustedLen for Drain<'_, T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
