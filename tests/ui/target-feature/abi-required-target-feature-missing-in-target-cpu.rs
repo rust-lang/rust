@@ -9,6 +9,10 @@
 //@[arm] compile-flags: --target=armv8r-none-eabihf -Ctarget-cpu=cortex-r4
 //@[arm] needs-llvm-components: arm
 
+// LLVM 24 refuses to compile ARM minicore due to mismatched target features.
+// FIXME(#161276): With LLVM rejecting this, we should make Rust's own warning an error.
+//@[arm] max-llvm-major-version: 23
+
 // For now this is just a warning.
 //@ build-pass
 //@ ignore-backends: gcc
