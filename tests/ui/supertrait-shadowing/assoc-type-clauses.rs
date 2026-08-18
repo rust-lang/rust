@@ -24,22 +24,22 @@ impl<T> C for T {}
 #[rustc_dump_clauses]
 fn a_bound<T: A<Assoc = i8>>() {}
 //~^ ERROR rustc_dump_clauses
-//~| NOTE TraitPredicate(<T as std::marker::Sized>
-//~| NOTE TraitPredicate(<T as A>
+//~| NOTE TraitClause(<T as std::marker::Sized>
+//~| NOTE TraitClause(<T as A>
 //~| NOTE A::Assoc
 
 #[rustc_dump_clauses]
 fn b_bound<T: B<Assoc = i16>>() {}
 //~^ ERROR rustc_dump_clauses
-//~| NOTE TraitPredicate(<T as std::marker::Sized>
-//~| NOTE TraitPredicate(<T as B>
+//~| NOTE TraitClause(<T as std::marker::Sized>
+//~| NOTE TraitClause(<T as B>
 //~| NOTE B::Assoc
 
 #[rustc_dump_clauses]
 fn c_bound<T: C<Assoc = i16>>() {}
 //~^ ERROR rustc_dump_clauses
-//~| NOTE TraitPredicate(<T as std::marker::Sized>
-//~| NOTE TraitPredicate(<T as C>
+//~| NOTE TraitClause(<T as std::marker::Sized>
+//~| NOTE TraitClause(<T as C>
 //~| NOTE B::Assoc
 
 fn main() {}

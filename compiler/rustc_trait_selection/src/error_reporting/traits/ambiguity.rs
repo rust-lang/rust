@@ -11,7 +11,7 @@ use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{
     Obligation, ObligationCause, ObligationCauseCode, PolyTraitObligation, PredicateObligation,
 };
-use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
+use rustc_middle::ty::print::PrintPolyTraitClauseExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _, Unnormalized};
 use rustc_session::diagnostics::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
@@ -67,8 +67,8 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             let impl_polarity = impl_trait_header.polarity;
 
             match (impl_polarity, predicate_polarity) {
-                (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
-                | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {}
+                (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
+                | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => {}
                 _ => return false,
             }
 
@@ -99,7 +99,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
         })
     };
 
-    let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
+    let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitClause<'tcx>| {
         let ocx = ObligationCtxt::new(infcx);
         infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
             let obligation_trait_ref = ocx.normalize(
@@ -791,7 +791,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn applicable_impls_to_mention(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Option<Vec<CandidateSource>> {
         let mut ambiguities = compute_applicable_impls_for_diagnostics(
             self.infcx,

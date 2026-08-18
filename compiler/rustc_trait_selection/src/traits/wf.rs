@@ -127,7 +127,7 @@ pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_def_id: LocalDefId,
-    trait_pred: ty::TraitPredicate<'tcx>,
+    trait_pred: ty::TraitClause<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
 ) -> PredicateObligations<'tcx> {
@@ -374,7 +374,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
     fn add_wf_preds_for_trait_pred(
         &mut self,
-        trait_pred: ty::TraitPredicate<'tcx>,
+        trait_pred: ty::TraitClause<'tcx>,
         elaborate: Elaborate,
     ) {
         let tcx = self.tcx();
@@ -382,7 +382,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         // Negative trait predicates don't require supertraits to hold, just
         // that their args are WF.
-        if trait_pred.polarity == ty::PredicatePolarity::Negative {
+        if trait_pred.polarity == ty::ClausePolarity::Negative {
             self.add_wf_preds_for_negative_trait_pred(trait_ref);
             return;
         }

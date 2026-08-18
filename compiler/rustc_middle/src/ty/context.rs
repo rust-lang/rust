@@ -66,11 +66,11 @@ use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, Predefi
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::region::RegionExt;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FnSigKind, GenericArg,
-    GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
-    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, FnSigKind,
+    GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo,
+    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree,
+    ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -2073,7 +2073,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return false;
             };
             trait_predicate.trait_ref.def_id == future_trait
-                && trait_predicate.polarity == PredicatePolarity::Positive
+                && trait_predicate.polarity == ClausePolarity::Positive
         })
     }
 
