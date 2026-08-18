@@ -97,6 +97,9 @@ impl JobInfoResolver {
             self.get_job_data(metadata, job_name).and_then(|job| {
                 let start = job.started_at?;
                 let end = job.completed_at?;
+
+                // If `end` is for whatever reason earlier than `start`, then we assume that the
+                // duration is zero, because we do not want negative durations.
                 let duration = Duration::try_from(end - start).unwrap_or(Duration::ZERO);
                 Some(duration)
             })

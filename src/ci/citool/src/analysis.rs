@@ -237,7 +237,9 @@ pub fn output_largest_job_duration_changes(
     let mut changes: Vec<Entry> = vec![];
     for (job, metrics) in job_metrics {
         if let Some(parent) = &metrics.parent {
-            // Try to get duration from GitHub, if it fails, compute it from bootstrap metrics.
+            // Try to get duration from GitHub.
+            // If it fails, treat the duration as zero - it should be obvious in the post-merge
+            // report that something failed in that case.
             let duration_before =
                 job_info_resolver.get_job_duration(job, parent).unwrap_or(Duration::ZERO);
             let duration_after =
