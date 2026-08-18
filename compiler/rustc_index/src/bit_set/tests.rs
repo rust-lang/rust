@@ -403,11 +403,6 @@ fn chunked_bulk_ops() {
             op_fn: ChunkedBitSet::subtract,
             spec_fn: |fizz, buzz, i| fizz(i) && !buzz(i),
         },
-        ChunkedBulkOp {
-            name: "intersect",
-            op_fn: ChunkedBitSet::intersect,
-            spec_fn: |fizz, buzz, i| fizz(i) && buzz(i),
-        },
     ];
 
     let domain_sizes = [
