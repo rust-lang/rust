@@ -1410,19 +1410,14 @@ where
         &mut self,
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
-    ) -> Result<Option<I::Const>, RerunNonErased> {
+    ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
-        let delegate = self.delegate;
-        match delegate.evaluate_const(param_env, alias_const, |ty| {
+        self.delegate.evaluate_const(param_env, alias_const, |ty| {
             self.normalize(GoalSource::Misc, param_env, ty)
-        }) {
-            Ok(ct) => Ok(ct),
-            Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution)) => Ok(None),
-            Err(NoSolutionOrRerunNonErased::RerunNonErased(e)) => Err(e),
-        }
+        })
     }
 
     pub(super) fn evaluate_const_and_instantiate_projection_term(
