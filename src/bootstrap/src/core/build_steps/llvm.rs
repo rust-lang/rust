@@ -236,22 +236,48 @@ fn llvm_output_dir(builder: &Builder<'_>, target: TargetSelection) -> PathBuf {
 }
 
 fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Option<DownloadedLlvm> {
+    if builder.config.llvm_ci_mode.requests_download_from_ci()
+        && let Some(config) = builder.config.target_config.get(&target)
+    {
+        if config.llvm_config.is_some() {
+            panic!(
+                "Cannot configure `llvm-config` for {target} when using `llvm.download-ci-llvm`",
+            );
+        }
+        if config.llvm_filecheck.is_some() {
+            panic!(
+                "Cannot configure `llvm-filecheck` for {target} when using `llvm.download-ci-llvm`"
+            );
+        }
+    }
+
     match builder.config.llvm_ci_mode {
         LlvmCiMode::BuildLocally => return None,
-        LlvmCiMode::DownloadFromCi => {}
+        LlvmCiMode::Download => {}
+        LlvmCiMode::DownloadIfUnchanged => {
+            builder.config.update_submodule("src/llvm-project");
+
+            // Check for untracked changes in `src/llvm-project` and other important places.
+            let has_changes = builder.config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+            if has_changes {
+                builder.info("Warning: LLVM will not be downloaded because of local changes");
+                return None;
+            }
+        }
     }
 
     // FIXME: this should eventually be relaxed
     if target != builder.host_target {
-        crate::debug!("LLVM not available on CI for non-host target {target}");
+        builder
+            .info(&format!("Warning: LLVM will not be downloaded for a non-host target {target}"));
         return None;
     }
 
     if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
-        crate::debug!(
-            "LLVM not available on CI for target={target} and assertions={}",
+        builder.info(&format!(
+            "Warning: LLVM not available on CI for target={target} and assertions={}",
             builder.config.llvm_assertions
-        );
+        ));
         return None;
     }
 

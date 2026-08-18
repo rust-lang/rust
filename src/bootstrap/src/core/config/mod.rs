@@ -373,10 +373,13 @@ pub enum GccCiMode {
 pub enum LlvmCiMode {
     /// Build LLVM from the local `src/llvm-project` submodule.
     BuildLocally,
+    /// Try to download LLVM from CI if the `src/llvm-project` submodule
+    /// (and some other files that affect LLVM's build) are not modified in git.
+    DownloadIfUnchanged,
     /// Try to download LLVM from CI.
     /// If it is not available on CI, it will be built locally instead.
     #[default]
-    DownloadFromCi,
+    Download,
 }
 
 impl LlvmCiMode {
@@ -385,7 +388,7 @@ impl LlvmCiMode {
     pub fn requests_download_from_ci(&self) -> bool {
         match self {
             LlvmCiMode::BuildLocally => false,
-            LlvmCiMode::DownloadFromCi => true,
+            LlvmCiMode::Download | LlvmCiMode::DownloadIfUnchanged => true,
         }
     }
 }
