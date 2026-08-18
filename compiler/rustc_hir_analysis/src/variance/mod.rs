@@ -206,7 +206,7 @@ fn variance_of_opaque(
                     arg.visit_with(&mut collector);
                 }
             }
-            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+            ty::ClauseKind::Projection(ty::ProjectionClause {
                 projection_term: ty::AliasTerm { args, .. },
                 term,
             }) => {

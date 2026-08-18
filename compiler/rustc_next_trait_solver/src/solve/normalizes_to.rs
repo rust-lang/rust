@@ -536,7 +536,7 @@ where
         let output_is_sized_pred =
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
 
-        let pred = ty::ProjectionPredicate {
+        let pred = ty::ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 cx,
                 goal.predicate.alias.kind,
@@ -625,7 +625,7 @@ where
         } else {
             panic!("no such associated type in `AsyncFn*`: {:?}", def_id)
         };
-        let pred = ty::ProjectionPredicate { projection_term, term }.upcast(cx);
+        let pred = ty::ProjectionClause { projection_term, term }.upcast(cx);
 
         Self::probe_and_consider_implied_clause(
             ecx,
@@ -821,7 +821,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     cx.alias_term_kind_from_def_id(
@@ -859,7 +859,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     cx.alias_term_kind_from_def_id(
@@ -950,7 +950,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     goal.predicate.alias.kind,

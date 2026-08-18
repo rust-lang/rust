@@ -302,7 +302,7 @@ impl<'tcx> BestObligation<'tcx> {
         if let ty::Alias(_, alias) = *self_ty.kind() {
             let infer_term = goal.infcx().next_ty_var(self.obligation.cause.span);
             let pred =
-                ty::ProjectionPredicate { projection_term: alias.into(), term: infer_term.into() };
+                ty::ProjectionClause { projection_term: alias.into(), term: infer_term.into() };
             let obligation =
                 Obligation::new(tcx, self.obligation.cause.clone(), goal.goal().param_env, pred);
             self.with_derived_obligation(obligation, |this| {
