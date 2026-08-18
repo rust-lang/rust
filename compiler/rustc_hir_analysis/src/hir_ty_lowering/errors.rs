@@ -120,7 +120,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
-        constraint: Option<&hir::AssocItemConstraint<'tcx>>,
+        constraint: Option<&hir::AssocItemConstraint<'_>>,
     ) -> ErrorGuaranteed
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -349,7 +349,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_tag: ty::AssocTag,
         ident: Ident,
         span: Span,
-        constraint: Option<&hir::AssocItemConstraint<'tcx>>,
+        constraint: Option<&hir::AssocItemConstraint<'_>>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
@@ -415,7 +415,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
-        constraint: Option<&hir::AssocItemConstraint<'tcx>>,
+        constraint: Option<&hir::AssocItemConstraint<'_>>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
@@ -544,7 +544,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_def_id: DefId,
         span: Span,
-        item_segment: &hir::PathSegment<'tcx>,
+        item_segment: &hir::PathSegment<'_>,
         assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
