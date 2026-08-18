@@ -1588,6 +1588,33 @@ impl f16 {
     pub const fn algebraic_rem(self, rhs: f16) -> f16 {
         intrinsics::frem_algebraic(self, rhs)
     }
+
+    /// Returns `self` if the value is not NaN, otherwise returns `replacement`
+    /// if `self` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_nan_to)]
+    /// # #[cfg(target_has_reliable_f16)] {
+    ///
+    /// let n = f16::NAN;
+    /// let x = 2.0f16;
+    /// let y = f16::INFINITY;
+    ///
+    /// assert_eq!(n.nan_to(0.0f16), 0.0f16);
+    /// assert_eq!(x.nan_to(0.0f16), 2.0f16);
+    /// assert_eq!(y.nan_to(0.0f16), f16::INFINITY);
+    /// # }
+    /// ```
+    #[must_use = "method returns a new float and does not mutate the original value"]
+    #[unstable(feature = "float_nan_to", issue = "161248")]
+    #[rustc_const_unstable(feature = "float_nan_to", issue = "161248")]
+    #[inline]
+    pub const fn nan_to(self, replacement: f16) -> f16 {
+        if self.is_nan() { replacement } else { self }
+    }
 }
 
 // Functions in this module fall into `core_float_math`

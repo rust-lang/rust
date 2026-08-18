@@ -449,7 +449,7 @@ impl CStore {
 
     pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         self.report_incompatible_target_modifiers(tcx);
-        self.report_incompatible_partial_mitigations(tcx, krate);
+        self.report_incompatible_partial_mitigations(tcx);
         self.report_incompatible_async_drop_feature(tcx, krate);
     }
 
@@ -473,7 +473,7 @@ impl CStore {
         }
     }
 
-    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>) {
         let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
         let mut my_mitigations: BTreeMap<_, _> =
             my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
@@ -500,7 +500,6 @@ impl CStore {
                     *errors += 1;
 
                     tcx.dcx().emit_err(diagnostics::MitigationLessStrictInDependency {
-                        span: krate.spans.inner_span.shrink_to_lo(),
                         mitigation_name: my_mitigation.kind.to_string(),
                         mitigation_level: my_mitigation.level.level_str().to_string(),
                         extern_crate: data.name(),
