@@ -55,8 +55,9 @@ pub enum PassMode {
     Pair(ArgAttributes, ArgAttributes),
     /// Pass the argument after casting it. See the `CastTarget` docs for details.
     ///
-    /// `pad_i32` indicates if a `Reg::i32()` dummy argument is emitted before the real argument.
-    Cast { pad_i32: bool, cast: Box<CastTarget> },
+    /// `pad_i32` indicates how many `Reg::i32()` dummy arguments are emitted before the real
+    /// argument.
+    Cast { pad_i32: u8, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
     ///
     /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
@@ -507,12 +508,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: false };
+        self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32: 0 };
     }
 
     pub fn cast_to_with_attrs<T: Into<CastTarget>>(&mut self, target: T, attrs: ArgAttributes) {
-        self.mode =
-            PassMode::Cast { cast: Box::new(target.into().with_attrs(attrs)), pad_i32: false };
+        self.mode = PassMode::Cast { cast: Box::new(target.into().with_attrs(attrs)), pad_i32: 0 };
     }
 
     /// Cast to `target`, forwarding `NoUndef` only when the layout provably has no uninit
@@ -535,7 +535,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         self.cast_to_with_attrs(target, attr.into());
     }
 
-    pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
+    pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: u8) {
         self.mode = PassMode::Cast { cast: Box::new(target.into()), pad_i32 };
     }
 

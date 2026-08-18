@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ revisions: i686-linux i686-freebsd x64-linux x64-apple
+//@ revisions: i686-linux i686-freebsd x64-linux x64-apple sparc
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
@@ -10,6 +10,8 @@
 //@[x64-linux] needs-llvm-components: x86
 //@[x64-apple] compile-flags: --target x86_64-apple-darwin
 //@[x64-apple] needs-llvm-components: x86
+//@[sparc] compile-flags: --target sparc-unknown-linux-gnu
+//@[sparc] needs-llvm-components: sparc
 
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR

@@ -1,16 +1,36 @@
-use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{Float, HasDataLayout, Integer, Numeric, Reg, RegKind, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
 
-fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(32);
-    } else {
+    let dl = cx.data_layout();
+    let size = ret.layout.size;
+
+    if let Some(component) = ret.layout.complex_number(cx) {
+        match component {
+            Numeric::Float(Float::F128) => {
+                // Same as an aggregate.
+                ret.make_indirect();
+                *offset += dl.pointer_size();
+            }
+            Numeric::Int(Integer::I8 | Integer::I16, _) => {
+                // Pack Complex<{integer}> into a single register if that fits.
+                ret.cast_to(Reg { kind: RegKind::Integer, size });
+            }
+            _ => {
+                let reg = Reg { kind: component.reg_kind(), size: ret.layout.field(cx, 0).size };
+                ret.cast_to(CastTarget::pair(reg, reg));
+            }
+        }
+    } else if ret.layout.is_aggregate() {
         ret.make_indirect();
-        *offset += cx.data_layout().pointer_size();
+        *offset += dl.pointer_size();
+    } else {
+        ret.extend_integer_width_to(32);
     }
 }
 
@@ -35,7 +55,7 @@ where
 
     let size = arg.layout.size;
     if arg.layout.is_aggregate() {
-        let pad_i32 = !offset.is_aligned(align);
+        let pad_i32 = u8::from(!offset.is_aligned(align));
         arg.cast_to_and_pad_i32(Uniform::new(Reg::i32(), size), pad_i32);
     } else {
         arg.extend_integer_width_to(32);

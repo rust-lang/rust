@@ -7,7 +7,7 @@ use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric,
     PointeeInfo, Primitive, Size, Variants,
 };
 
@@ -299,7 +299,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         found
     }
 
-    pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
+    pub fn complex_number<C>(&self, cx: &C) -> Option<Numeric>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -314,7 +314,18 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         debug_assert_eq!(a, b);
 
         match a.primitive() {
-            Primitive::Float(f) => Some(f),
+            Primitive::Int(i, sign) => Some(Numeric::Int(i, sign)),
+            Primitive::Float(f) => Some(Numeric::Float(f)),
+            Primitive::Pointer(_) => None,
+        }
+    }
+
+    pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        match self.complex_number(cx) {
+            Some(Numeric::Float(f)) => Some(f),
             _ => None,
         }
     }

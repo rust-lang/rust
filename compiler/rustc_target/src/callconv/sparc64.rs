@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg,
+    RegKind, Size, TyAbiInterface, TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
@@ -143,6 +143,13 @@ fn classify_arg<'a, Ty, C>(
 
     *total_double_word_count = start_double_word_count + double_word_count;
 
+    // Clang treats `_Complex` like a struct, GCC like a big scalar. That changes how the bits get
+    // packed. We follow GCC here. See also https://github.com/llvm/llvm-project/pull/212340.
+    if let Some(Numeric::Int(Integer::I8 | Integer::I16, _)) = arg.layout.complex_number(cx) {
+        arg.cast_to(Reg { kind: RegKind::Integer, size: total });
+        return;
+    }
+
     const ARGUMENT_REGISTERS: usize = 8;
 
     let mut double_words = [DoubleWord::Words([Word::Integer; 2]); ARGUMENT_REGISTERS / 2];
@@ -190,7 +197,7 @@ fn classify_arg<'a, Ty, C>(
         _ => CastTarget::prefixed(regs, Uniform::new(Reg::i8(), Size::ZERO)),
     };
 
-    arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), pad);
+    arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), u8::from(pad));
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
