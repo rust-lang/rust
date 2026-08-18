@@ -1450,14 +1450,6 @@ impl Builder<'_> {
         if matches!(mode, Mode::Std) {
             rustflags.arg("-Cprefer-dynamic");
         }
-        if matches!(mode, Mode::Rustc) && !self.link_std_into_rustc_driver(target) {
-            rustflags.arg("-Cprefer-dynamic");
-        }
-
-        cargo.env(
-            "RUSTC_LINK_STD_INTO_RUSTC_DRIVER",
-            if self.link_std_into_rustc_driver(target) { "1" } else { "0" },
-        );
 
         // When building incrementally we default to a lower ThinLTO import limit
         // (unless explicitly specified otherwise). This will produce a somewhat

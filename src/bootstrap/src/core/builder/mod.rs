@@ -1149,12 +1149,6 @@ impl<'a> Builder<'a> {
         cli_paths::match_paths_to_steps_and_run(self, v, paths);
     }
 
-    /// Returns if `std` should be statically linked into `rustc_driver`.
-    /// It's currently not done on `windows-gnu` due to linker bugs.
-    pub fn link_std_into_rustc_driver(&self, target: TargetSelection) -> bool {
-        !target.triple.ends_with("-windows-gnu")
-    }
-
     /// Obtain a compiler at a given stage and for a given host (i.e., this is the target that the
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
