@@ -1609,19 +1609,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         self.enter_forall(error, |error| {
-            error.projection_term.kind.is_trait_projection()
-                && elaborate(self.tcx, std::iter::once(cond.predicate))
-                    .filter_map(|implied| implied.as_trait_clause())
-                    .any(|implied| {
-                        self.can_match_trait(
-                            cond.param_env,
-                            ty::TraitPredicate {
-                                trait_ref: error.projection_term.trait_ref(self.tcx),
-                                polarity: ty::PredicatePolarity::Positive,
-                            },
-                            implied,
-                        )
-                    })
+            if !error.projection_term.kind.is_trait_projection() {
+                return false;
+            }
+            let trait_pred = ty::TraitPredicate {
+                trait_ref: error.projection_term.trait_ref(self.tcx),
+                polarity: ty::PredicatePolarity::Positive,
+            };
+            // Elaborating is what pairs a failing `C: FnMut(..)` with the
+            // `<C as FnOnce<..>>::Output` projection resting on it. A supertrait can hold
+            // while `cond` fails though, so the projection is only covered if its own trait
+            // goal is unproven too, otherwise it failed for its own reasons.
+            elaborate(self.tcx, std::iter::once(cond.predicate))
+                .filter_map(|implied| implied.as_trait_clause())
+                .any(|implied| self.can_match_trait(cond.param_env, trait_pred, implied))
+                && !self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    self.tcx,
+                    ObligationCause::dummy(),
+                    cond.param_env,
+                    trait_pred,
+                ))
         })
     }
 
