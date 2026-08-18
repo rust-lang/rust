@@ -266,13 +266,6 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
         }
     }
 
-    // FIXME: this should eventually be relaxed
-    if target != builder.host_target {
-        builder
-            .info(&format!("Warning: LLVM will not be downloaded for a non-host target {target}"));
-        return None;
-    }
-
     if !is_ci_llvm_available_for_target(&target, builder.config.llvm_assertions) {
         builder.info(&format!(
             "Warning: LLVM not available on CI for target={target} and assertions={}",
@@ -281,7 +274,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
         return None;
     }
 
-    let ci_llvm = builder.config.maybe_download_host_ci_llvm()?;
+    let ci_llvm = builder.config.maybe_download_ci_llvm(target)?;
     let link_shared = if !builder.config.dry_run() {
         let link_type = t!(
             std::fs::read_to_string(ci_llvm.join(LLVM_CI_LINK_TYPE_PATH)),
@@ -294,7 +287,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
 
     Some(DownloadedLlvm {
         output: LlvmOutput {
-            llvm_config: ci_llvm.join("bin").join("llvm-config"),
+            llvm_config: ci_llvm.join("bin").join(exe("llvm-config", target)),
             link_shared,
             llvm_root_dir: ci_llvm,
             kind: LlvmKind::DownloadedFromCi,
@@ -414,8 +407,12 @@ impl Step for LlvmFromCi {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let llvm_ci = try_download_ci_llvm(builder, self.target)?;
+
         // Sanity check
-        check_llvm_version(builder, llvm_ci.output.llvm_config());
+        if builder.host_target == self.target {
+            check_llvm_version(builder, llvm_ci.output.llvm_config());
+        }
+
         Some(llvm_ci)
     }
 }
