@@ -281,7 +281,7 @@ pub struct Arc<
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send> Send for Arc<T, A> {}
+unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for Arc<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Sync> Sync for Arc<T, A> {}
 
@@ -364,7 +364,7 @@ pub struct Weak<
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
-unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send> Send for Weak<T, A> {}
+unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for Weak<T, A> {}
 #[stable(feature = "arc_weak", since = "1.4.0")]
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Sync> Sync for Weak<T, A> {}
 
@@ -4423,7 +4423,7 @@ pub struct UniqueArc<
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send> Send for UniqueArc<T, A> {}
+unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Send + Sync> Send for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Sync> Sync for UniqueArc<T, A> {}
