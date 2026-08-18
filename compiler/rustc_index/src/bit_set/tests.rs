@@ -687,17 +687,6 @@ fn sparse_matrix_operations() {
     matrix.insert(2, 99);
     matrix.insert(4, 0);
 
-    let mut disjoint: DenseBitSet<usize> = DenseBitSet::new_empty(100);
-    disjoint.insert(33);
-
-    let mut superset = DenseBitSet::new_empty(100);
-    superset.insert(22);
-    superset.insert(75);
-    superset.insert(33);
-
-    let mut subset = DenseBitSet::new_empty(100);
-    subset.insert(22);
-
     // SparseBitMatrix::remove
     {
         let mut matrix = matrix.clone();
@@ -714,34 +703,6 @@ fn sparse_matrix_operations() {
         assert!(!matrix.row(3).unwrap().contains(75));
         matrix.clear(0);
         assert!(matrix.row(0).is_none());
-    }
-
-    // SparseBitMatrix::intersect_row
-    {
-        let mut matrix = matrix.clone();
-        assert!(!matrix.intersect_row(3, &superset));
-        assert!(matrix.intersect_row(3, &subset));
-        matrix.intersect_row(0, &disjoint);
-        assert!(matrix.row(0).is_none());
-    }
-
-    // SparseBitMatrix::subtract_row
-    {
-        let mut matrix = matrix.clone();
-        assert!(!matrix.subtract_row(3, &disjoint));
-        assert!(matrix.subtract_row(3, &subset));
-        assert!(matrix.subtract_row(3, &superset));
-        matrix.intersect_row(0, &disjoint);
-        assert!(matrix.row(0).is_none());
-    }
-
-    // SparseBitMatrix::union_row
-    {
-        let mut matrix = matrix.clone();
-        assert!(!matrix.union_row(3, &subset));
-        assert!(matrix.union_row(3, &disjoint));
-        matrix.union_row(0, &disjoint);
-        assert!(matrix.row(0).is_some());
     }
 }
 

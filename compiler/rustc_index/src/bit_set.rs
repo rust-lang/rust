@@ -1701,45 +1701,6 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     pub fn row(&self, row: R) -> Option<&DenseBitSet<C>> {
         self.rows.get(row)?.as_ref()
     }
-
-    /// Intersects `row` with `set`. `set` can be either `DenseBitSet` or
-    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
-    ///
-    /// Returns true if the row was changed.
-    pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
-    where
-        DenseBitSet<C>: BitRelations<Set>,
-    {
-        match self.rows.get_mut(row) {
-            Some(Some(row)) => row.intersect(set),
-            _ => false,
-        }
-    }
-
-    /// Subtracts `set` from `row`. `set` can be either `DenseBitSet` or
-    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
-    ///
-    /// Returns true if the row was changed.
-    pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
-    where
-        DenseBitSet<C>: BitRelations<Set>,
-    {
-        match self.rows.get_mut(row) {
-            Some(Some(row)) => row.subtract(set),
-            _ => false,
-        }
-    }
-
-    /// Unions `row` with `set`. `set` can be either `DenseBitSet` or
-    /// `ChunkedBitSet`.
-    ///
-    /// Returns true if the row was changed.
-    pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
-    where
-        DenseBitSet<C>: BitRelations<Set>,
-    {
-        self.ensure_row(row).union(set)
-    }
 }
 
 #[inline]
