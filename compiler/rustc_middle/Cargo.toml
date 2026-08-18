@@ -17,7 +17,6 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_error_messages = { path = "../rustc_error_messages" }          # Used for intra-doc links
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_graphviz = { path = "../rustc_graphviz" }
