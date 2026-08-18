@@ -334,6 +334,15 @@ fn sleep_ms_smoke() {
 }
 
 #[test]
+fn sleep_until_elapsed() {
+    // UNIX's `clock_nanosleep` doesn't like timeouts that are too far back.
+    // Test that `sleep_until` returns immediately instead of panicking.
+    // Going 10 years back should be enough to trigger any errors.
+    let earlier = Instant::now() - Duration::from_secs(10 * 365 * 24 * 3600);
+    thread::sleep_until(earlier);
+}
+
+#[test]
 fn test_size_of_option_thread_id() {
     assert_eq!(size_of::<Option<ThreadId>>(), size_of::<ThreadId>());
 }
