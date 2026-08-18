@@ -18,7 +18,7 @@ where
 {
     pub(super) fn normalize_inherent_associated_term(
         &mut self,
-        goal: Goal<I, ty::ProjectionPredicate<I>>,
+        goal: Goal<I, ty::ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let inherent = goal.predicate.projection_term;

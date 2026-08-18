@@ -257,7 +257,7 @@ fn set_projection_term_to_non_rigid<'tcx>(
         if let ty::ClauseKind::Projection(projection_pred) = clause.kind().skip_binder() {
             clause
                 .kind()
-                .rebind(ty::ProjectionPredicate {
+                .rebind(ty::ProjectionClause {
                     projection_term: projection_pred.projection_term,
                     term: ty::set_aliases_to_non_rigid(tcx, projection_pred.term).skip_norm_wip(),
                 })

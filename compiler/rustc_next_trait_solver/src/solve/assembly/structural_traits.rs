@@ -964,7 +964,7 @@ struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
     self_ty: I::Ty,
-    mapping: &'a HashMap<I::TraitAssocTermId, Vec<ty::Binder<I, ty::ProjectionPredicate<I>>>>,
+    mapping: &'a HashMap<I::TraitAssocTermId, Vec<ty::Binder<I, ty::ProjectionClause<I>>>>,
     nested: Vec<Goal<I, I::Predicate>>,
 }
 
@@ -975,7 +975,7 @@ where
 {
     fn projection_may_match(
         &mut self,
-        source_projection: ty::Binder<I, ty::ProjectionPredicate<I>>,
+        source_projection: ty::Binder<I, ty::ProjectionClause<I>>,
         target_projection: ty::AliasTerm<I>,
     ) -> Result<bool, RerunNonErased> {
         if source_projection.item_def_id() != target_projection.expect_projection_def_id() {

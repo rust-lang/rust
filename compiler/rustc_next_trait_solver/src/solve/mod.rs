@@ -394,7 +394,7 @@ where
             let projection_goal = Goal::new(
                 self.cx(),
                 param_env,
-                ty::ProjectionPredicate { projection_term: alias, term: normalized_term },
+                ty::ProjectionClause { projection_term: alias, term: normalized_term },
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
