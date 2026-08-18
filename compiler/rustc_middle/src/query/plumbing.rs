@@ -10,7 +10,9 @@ use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
-use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
+use crate::dep_graph::{
+    DepKind, DepKindVTable, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex,
+};
 use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
@@ -144,6 +146,7 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
 
 pub struct QuerySystem<'tcx> {
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
+    pub dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
     pub query_vtables: QueryVTables<'tcx>,
 
     /// Side-effect associated with each [`DepKind::SideEffect`] node in the
