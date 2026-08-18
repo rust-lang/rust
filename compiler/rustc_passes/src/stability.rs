@@ -784,7 +784,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             stack,
                         );
                     } else {
-                        for (tree, id) in items {
+                        for (tree, id, _) in items {
                             recurse(visitor, tree, *id, stack);
                         }
                     }
