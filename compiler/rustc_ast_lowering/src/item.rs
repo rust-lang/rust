@@ -641,10 +641,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let items = self.arena.alloc_from_iter(trees.iter().map(|use_tree| {
                     let id = use_tree.id;
                     let hir_id = self.lower_node_id(id);
+                    let def_id = self.curr_owner.owner.node_id_to_def_id[&id];
                     if !attrs.is_empty() {
                         self.curr_owner.attrs.insert(hir_id.local_id, attrs);
                     }
-                    (self.lower_use_tree(&use_tree.inner, id, vis_span, attrs), hir_id)
+                    (self.lower_use_tree(&use_tree.inner, id, vis_span, attrs), hir_id, def_id)
                 }));
 
                 hir::UseTree { prefix, kind: hir::UseKind::Nested { items } }
