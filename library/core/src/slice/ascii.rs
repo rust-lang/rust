@@ -666,10 +666,9 @@ const fn is_ascii(bytes: &[u8]) -> bool {
         } else {
             // For small inputs, use usize-at-a-time processing to avoid SSE2 call overhead.
             if bytes.len() < SIMD_MIN_LEN {
-                let chunks = bytes.chunks_exact(USIZE_SIZE);
-                let remainder = chunks.remainder();
+                let (chunks, remainder) = bytes.as_chunks::<USIZE_SIZE>();
                 for chunk in chunks {
-                    let word = usize::from_ne_bytes(chunk.try_into().unwrap());
+                    let word = usize::from_ne_bytes(*chunk);
                     if (word & NONASCII_MASK) != 0 {
                         return false;
                     }
