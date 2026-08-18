@@ -3148,6 +3148,7 @@ impl CommandLineStep for ReproducibleArtifacts {
             &builder.config.llvm_pgo.use_profile,
             &builder.config.rustdoc_pgo.use_profile,
             &builder.config.cargo_pgo.use_profile,
+            &builder.config.clippy_pgo.use_profile,
         ];
         for profile in pgo_profiles {
             if let Some(path) = profile.as_ref() {
