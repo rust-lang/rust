@@ -815,7 +815,7 @@ impl<'a> State<'a> {
             hir::UseKind::Glob => self.word("::*;"),
             hir::UseKind::Nested { items } => {
                 self.word("::{");
-                for (item, _) in items {
+                for (item, _, _) in items {
                     self.print_use_tree(item)
                 }
                 self.word("};");

@@ -1255,7 +1255,7 @@ pub fn walk_use<'v, V: Visitor<'v>>(
         UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
         UseKind::Glob => {}
         UseKind::Nested { items } => {
-            for (tree, id) in items {
+            for (tree, id, _) in items {
                 try_visit!(visitor.visit_use(tree, *id));
             }
         }

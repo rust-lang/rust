@@ -461,7 +461,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         match tree.kind {
             rustc_hir::UseKind::Single(_) | rustc_hir::UseKind::Glob => {}
             rustc_hir::UseKind::Nested { items } => {
-                for (tree, id) in items {
+                for (tree, id, _) in items {
                     self.visit_use(tree, *id);
                 }
             }
