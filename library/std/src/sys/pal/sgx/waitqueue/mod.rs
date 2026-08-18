@@ -14,17 +14,16 @@
 mod tests;
 
 mod spin_mutex;
-mod unsafe_list;
 
 use fortanix_sgx_abi::{EV_UNPARK, Tcs, WAIT_INDEFINITE};
 
 pub use self::spin_mutex::{SpinMutex, SpinMutexGuard};
-use self::unsafe_list::{UnsafeList, UnsafeListEntry};
 use super::abi::{thread, usercalls};
 use crate::num::NonZero;
 use crate::ops::{Deref, DerefMut};
 use crate::panic::{self, AssertUnwindSafe};
 use crate::pin::Pin;
+use crate::sys::sync::unsafe_list::{UnsafeList, UnsafeListEntry};
 use crate::time::Duration;
 
 /// An queue entry in a `WaitQueue`.
@@ -61,6 +60,19 @@ impl<T> WaitVariable<T> {
         // SAFETY: `queue` is structurally pinned: a pinned `WaitVariable`
         // pins it, and it is never moved out of it.
         unsafe { self.map_unchecked_mut(|this| &mut this.queue) }
+    }
+
+    /// Creates a mutex-protected `WaitVariable` on the heap, with its queue's
+    /// list initialized. Initialization makes the list self-referential and
+    /// happens before pinning: only the `Box` pointer is moved into the
+    /// `Pin`, the heap allocation itself never moves.
+    pub fn new(value: T) -> Pin<Box<SpinMutex<WaitVariable<T>>>> {
+        // SAFETY: `init` is called below, before the queue is otherwise used
+        // or dropped.
+        let queue = unsafe { WaitQueue::new() };
+        let result = Box::new(SpinMutex::new(WaitVariable { queue, lock: value }));
+        result.lock().queue.inner.init();
+        Box::into_pin(result)
     }
 }
 

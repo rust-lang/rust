@@ -71,7 +71,6 @@
 #[cfg(test)]
 mod tests;
 
-use super::{SpinMutex, WaitQueue, WaitVariable};
 use crate::pin::{Pin, UnsafePinned};
 use crate::ptr::{self, NonNull};
 
@@ -83,7 +82,7 @@ use crate::ptr::{self, NonNull};
 /// returns a reference borrowing the entry, and `UnsafeList::remove`
 /// reborrows it exclusively, so the borrow checker enforces this for safe
 /// accesses.
-pub struct UnsafeListEntry<T> {
+pub(crate) struct UnsafeListEntry<T> {
     next: NonNull<UnsafeListEntry<T>>,
     prev: NonNull<UnsafeListEntry<T>>,
     value: Option<T>,
@@ -94,14 +93,14 @@ impl<T> UnsafeListEntry<T> {
         UnsafeListEntry { next: NonNull::dangling(), prev: NonNull::dangling(), value: None }
     }
 
-    pub fn new(value: T) -> Self {
+    pub(crate) fn new(value: T) -> Self {
         UnsafeListEntry { value: Some(value), ..Self::dummy() }
     }
 }
 
 // WARNING: self-referential struct! Must not be moved once initialized, see
 // the `Pinning` explanation at the top of the file.
-pub struct UnsafeList<T> {
+pub(crate) struct UnsafeList<T> {
     // UnsafePinned isn't required to implement this code, but it makes it a lot
     // simpler. Without UnsafePinned, the provenance of each entry link pointer
     // would need to be re-established prior to dereferencing, whenever it points
@@ -122,7 +121,7 @@ impl<T> UnsafeList<T> {
     ///
     /// The caller must initialize the list with `init` before any other use,
     /// including dropping it.
-    pub(super) const unsafe fn new() -> Self {
+    pub(crate) const unsafe fn new() -> Self {
         UnsafeList { head_tail: UnsafePinned::new(UnsafeListEntry::dummy()) }
     }
 
@@ -136,7 +135,7 @@ impl<T> UnsafeList<T> {
     /// location and must never be moved afterwards. Called exactly once per
     /// list, during construction (`WaitVariable::new`), so lists
     /// are always initialized before use.
-    fn init(&mut self) {
+    pub(crate) fn init(&mut self) {
         let head_tail = self.head_tail();
         // SAFETY: `head_tail` is valid to dereference (see point 1 of the
         // `Pointer dereferencing` explanation at the top of the file).
@@ -144,7 +143,7 @@ impl<T> UnsafeList<T> {
         unsafe { (*head_tail.as_ptr()).prev = head_tail };
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         // SAFETY: `get` returns the address of `head_tail`, which is
         // non-null.
         let head_tail = unsafe { NonNull::new_unchecked(self.head_tail.get()) };
@@ -174,7 +173,10 @@ impl<T> UnsafeList<T> {
     /// not destroy the stack frame containing the entry. While the entry is
     /// in the list, it must not be accessed except through the reference
     /// returned here or by passing the entry to `remove`.
-    pub unsafe fn push<'a>(self: Pin<&mut Self>, entry: &'a mut UnsafeListEntry<T>) -> &'a T {
+    pub(crate) unsafe fn push<'a>(
+        self: Pin<&mut Self>,
+        entry: &'a mut UnsafeListEntry<T>,
+    ) -> &'a T {
         // SAFETY: the list is not moved out of the pinned reference.
         let this = unsafe { self.get_unchecked_mut() };
 
@@ -211,7 +213,7 @@ impl<T> UnsafeList<T> {
     ///
     /// The caller must make sure to synchronize ending the borrow of the
     /// return value and deallocation of the containing entry.
-    pub unsafe fn pop<'a>(self: Pin<&mut Self>) -> Option<&'a T> {
+    pub(crate) unsafe fn pop<'a>(self: Pin<&mut Self>) -> Option<&'a T> {
         if self.is_empty() {
             None
         } else {
@@ -256,7 +258,7 @@ impl<T> UnsafeList<T> {
     /// The caller must ensure that `entry` has been pushed onto `self`
     /// prior to this call, has not been removed from the list since then
     /// (by `pop` or `remove`), and has not moved since it was pushed.
-    pub unsafe fn remove(self: Pin<&mut Self>, entry: &mut UnsafeListEntry<T>) {
+    pub(crate) unsafe fn remove(self: Pin<&mut Self>, entry: &mut UnsafeListEntry<T>) {
         rtassert!(!self.is_empty());
 
         // BEFORE:
@@ -292,20 +294,5 @@ impl<T> Drop for UnsafeList<T> {
         // list's storage (including in-place replacement via `Pin::set`)
         // through this check.
         rtassert!(self.is_empty());
-    }
-}
-
-impl<T> super::WaitVariable<T> {
-    /// Creates a mutex-protected `WaitVariable` on the heap, with its queue's
-    /// list initialized. Initialization makes the list self-referential and
-    /// happens before pinning: only the `Box` pointer is moved into the
-    /// `Pin`, the heap allocation itself never moves.
-    pub fn new(value: T) -> Pin<Box<SpinMutex<WaitVariable<T>>>> {
-        // SAFETY: `init` is called below, before the queue is otherwise used
-        // or dropped.
-        let queue = unsafe { WaitQueue::new() };
-        let result = Box::new(SpinMutex::new(WaitVariable { queue, lock: value }));
-        result.lock().queue.inner.init();
-        Box::into_pin(result)
     }
 }
