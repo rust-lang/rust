@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionPredicate, TraitPredicate};
+use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionClause, TraitPredicate};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span, Symbol, sym};
 
@@ -64,7 +64,7 @@ fn get_projection_pred<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericClauses<'tcx>,
     trait_pred: TraitPredicate<'tcx>,
-) -> Option<ProjectionPredicate<'tcx>> {
+) -> Option<ProjectionClause<'tcx>> {
     generics.clauses.iter().find_map(|(clause, _)| {
         if let ClauseKind::Projection(pred) = clause.kind().skip_binder() {
             let projection_pred = cx.tcx.instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
