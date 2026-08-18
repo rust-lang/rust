@@ -72,6 +72,7 @@ pub(crate) enum OnceExclusiveState {
     note = "the `Once::new()` function is now preferred",
     suggestion = "Once::new()"
 )]
+#[expect(clippy::declare_interior_mutable_const, reason = "legacy Once initializer")]
 pub const ONCE_INIT: Once = Once::new();
 
 impl Once {
