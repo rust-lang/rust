@@ -1405,6 +1405,7 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     pub const fn clamp(mut self, min: f128, max: f128) -> f128 {
         const_assert!(
             min <= max,

@@ -1580,6 +1580,7 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     #[inline]
     pub const fn clamp(mut self, min: f64, max: f64) -> f64 {
         const_assert!(
