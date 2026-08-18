@@ -106,7 +106,9 @@ impl<T: Idx> DenseBitSet<T> {
         result.clear_excess_bits();
         result
     }
+}
 
+impl<T: Idx> DenseBitSet<T> {
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
