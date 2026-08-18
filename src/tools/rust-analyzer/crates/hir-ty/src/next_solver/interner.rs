@@ -350,7 +350,7 @@ pub trait WorldExposer {
 
 #[derive(Debug, Copy, Clone)]
 pub struct DbInterner<'db> {
-    pub(crate) db: &'db dyn HirDatabase,
+    pub db: &'db dyn HirDatabase,
     krate: Option<Crate>,
     lang_items: Option<&'db LangItems>,
 }

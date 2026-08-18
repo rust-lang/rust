@@ -39,6 +39,7 @@ use std::ops::ControlFlow;
 
 use hir_def::{
     CallableDefId, TraitId, attrs::AttrFlags, hir::ExprId, signatures::FunctionSignature,
+    upvars::upvars_mentioned,
 };
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
@@ -70,7 +71,6 @@ use crate::{
         inspect::{InspectGoal, ProofTreeVisitor},
         obligation_ctxt::ObligationCtxt,
     },
-    upvars::upvars_mentioned,
     utils::TargetFeatureIsSafeInTarget,
 };
 

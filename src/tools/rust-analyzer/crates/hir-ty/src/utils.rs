@@ -19,7 +19,7 @@ use crate::{
     mir::{IsSigned, pad16},
 };
 
-pub(crate) fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
+pub fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
     [lang_items.Fn, lang_items.FnMut, lang_items.FnOnce].into_iter().flatten()
 }
 
@@ -93,7 +93,7 @@ pub fn is_fn_unsafe_to_call(
     }
 }
 
-pub(crate) fn detect_variant_from_bytes<'a>(
+pub fn detect_variant_from_bytes<'a>(
     layout: &'a Layout,
     db: &dyn HirDatabase,
     target_data_layout: &TargetDataLayout,

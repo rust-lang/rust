@@ -215,7 +215,7 @@ macro_rules! size_and_align_expr {
             {
                 $($s)*
                 let val = { $($t)* };
-                $crate::layout::tests::check_size_and_align_expr(
+                $crate::tests::layout::check_size_and_align_expr(
                     &format!("{{ {} let val = {{ {} }}; val }}", stringify!($($s)*), stringify!($($t)*)),
                     &format!("//- minicore: {}\n", stringify!($($x),*)),
                     ::std::mem::size_of_val(&val) as u64,
@@ -229,7 +229,7 @@ macro_rules! size_and_align_expr {
             #[allow(dead_code)]
             {
                 let val = { $($t)* };
-                $crate::layout::tests::check_size_and_align_expr(
+                $crate::tests::layout::check_size_and_align_expr(
                     stringify!($($t)*),
                     "",
                     ::std::mem::size_of_val(&val) as u64,

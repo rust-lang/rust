@@ -343,13 +343,9 @@ pub trait HirDatabase: SourceDatabase + 'static {
         let db = self.as_dyn();
         crate::variance::variances_of(db, def)
     }
-}
 
-#[salsa::db]
-impl<T: SourceDatabase> HirDatabase for T {
-    fn as_dyn(&self) -> &dyn HirDatabase {
-        self
-    }
+    // HACK: We need this for MIR intrinsic `type_name()`, and it can't access the display infra because it is inside `hir-ide`.
+    fn type_name<'db>(&'db self, ty: Ty<'db>, module: ModuleId) -> String;
 }
 
 #[test]

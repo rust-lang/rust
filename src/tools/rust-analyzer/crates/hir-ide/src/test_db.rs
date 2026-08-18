@@ -186,6 +186,8 @@ impl TestDB {
     }
 }
 
+crate::impl_hir_database!(TestDB);
+
 impl TestDB {
     pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());

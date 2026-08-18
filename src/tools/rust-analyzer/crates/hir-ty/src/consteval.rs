@@ -1,8 +1,5 @@
 //! Constant evaluation details
 
-#[cfg(test)]
-mod tests;
-
 use base_db::Crate;
 use hir_def::{
     ConstId, EnumVariantId, ExpressionStoreOwnerId, HasModule, StaticId,
@@ -21,7 +18,6 @@ use salsa::SalsaValue;
 use crate::{
     ParamEnvAndCrate, Span,
     db::{AnonConstId, AnonConstLoc, GeneralConstId, HirDatabase},
-    display::DisplayTarget,
     generics::Generics,
     lower::LoweringMode,
     mir::{IsSigned, MirEvalError, MirLowerError, pad16},
@@ -39,25 +35,6 @@ use super::mir::interpret_mir;
 pub enum ConstEvalError<'db> {
     MirLowerError(MirLowerError<'db>),
     MirEvalError(MirEvalError<'db>),
-}
-
-impl ConstEvalError<'_> {
-    pub fn pretty_print(
-        &self,
-        f: &mut String,
-        db: &dyn HirDatabase,
-        span_formatter: impl Fn(span::FileId, span::TextRange) -> String,
-        display_target: DisplayTarget,
-    ) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            ConstEvalError::MirLowerError(e) => {
-                e.pretty_print(f, db, span_formatter, display_target)
-            }
-            ConstEvalError::MirEvalError(e) => {
-                e.pretty_print(f, db, span_formatter, display_target)
-            }
-        }
-    }
 }
 
 impl<'db> From<MirLowerError<'db>> for ConstEvalError<'db> {
