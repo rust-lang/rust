@@ -670,7 +670,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     pub fn clear(&mut self) {
         // avoid moving the allocator
         drop(BTreeMap {
-            root: mem::replace(&mut self.root, None),
+            root: self.root.take(),
             length: mem::replace(&mut self.length, 0),
             alloc: self.alloc.clone(),
             _marker: PhantomData,
