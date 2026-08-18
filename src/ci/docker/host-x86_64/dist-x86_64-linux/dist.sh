@@ -19,7 +19,7 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     # We have to build our own binutils for the GCC build, because the default CentOS 7 binutils are
     # too old, and they do not support `SHF_GNU_RETAIN`.
     BINUTILS="2.47"
-    BINUTILS_ROOT_PATH="/binutils-install"
+    BINUTILS_ROOT_PATH="$(pwd)/binutils-install"
     export BINUTILS_PATH="$BINUTILS_ROOT_PATH/bin"
     curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
     mkdir binutils-build
