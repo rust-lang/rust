@@ -113,9 +113,9 @@ macro_rules! bit_relations_inherent_impls {
 ///
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Eq, PartialEq, Hash)]
-pub struct DenseBitSet<T> {
+pub struct DenseBitSet<T, S = Vec<Word>> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: S,
     marker: PhantomData<T>,
 }
 
