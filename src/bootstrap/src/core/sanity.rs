@@ -111,7 +111,7 @@ pub fn check(build: &mut Build) {
     if cfg!(not(test))
         && !build.config.dry_run()
         && !build.host_target.is_msvc()
-        && build.config.llvm_ci_mode.download_from_ci()
+        && build.config.llvm_ci_mode.requests_download_from_ci()
     {
         let builder = Builder::new(build);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.host_target });
@@ -139,7 +139,7 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = !build.config.llvm_ci_mode.download_from_ci()
+    let building_llvm = !build.config.llvm_ci_mode.requests_download_from_ci()
         && !build.config.local_rebuild
         && build.hosts.iter().any(|host| {
             build.config.llvm_enabled(*host)

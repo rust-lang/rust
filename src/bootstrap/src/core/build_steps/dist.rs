@@ -26,7 +26,7 @@ use crate::core::build_steps::compile::{
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::GccTargetPair;
 use crate::core::build_steps::llvm::{
-    LLVM_CI_LINK_TYPE_PATH, LlvmBuildStatus, get_llvm_build_status,
+    LLVM_CI_LINK_TYPE_PATH, LlvmBuildStatus, LlvmKind, get_llvm_build_status,
 };
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
@@ -2521,12 +2521,7 @@ fn maybe_install_llvm(
     // If the LLVM is coming from ourselves (just from CI) though, we
     // still want to install it, as it otherwise won't be available.
 
-    // FIXME: this should be simplified once we stop pre-setting LLVM CI llvm-config during
-    // config parsing.
-    let is_system_llvm =
-        builder.config.target_config.get(&target).and_then(|t| t.llvm_config.as_ref()).is_some()
-            && !(builder.config.llvm_ci_mode.download_from_ci()
-                && builder.config.is_host_target(target));
+    let is_system_llvm = llvm.llvm_output().kind() == LlvmKind::External;
     if is_system_llvm {
         trace!("system LLVM requested, no install");
         return false;
@@ -2708,11 +2703,10 @@ impl CommandLineStep for LlvmTools {
 
         let target = self.target;
 
+        let llvm_output = builder.ensure(crate::core::build_steps::llvm::Llvm { target });
+
         // Run only if a custom llvm-config is not used
-        if let Some(config) = builder.config.target_config.get(&target)
-            && !builder.config.llvm_ci_mode.download_from_ci()
-            && config.llvm_config.is_some()
-        {
+        if llvm_output.kind() == LlvmKind::External {
             builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
             return None;
         }
@@ -2720,8 +2714,6 @@ impl CommandLineStep for LlvmTools {
         if !builder.config.dry_run() {
             builder.require_submodule("src/llvm-project", None);
         }
-
-        let llvm_output = builder.ensure(crate::core::build_steps::llvm::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
         tarball.set_overlay(OverlayKind::Llvm);
@@ -2734,7 +2726,7 @@ impl CommandLineStep for LlvmTools {
             for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
                 // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
-                if !exe.exists() && builder.config.llvm_ci_mode.download_from_ci() {
+                if !exe.exists() && llvm_output.kind() == LlvmKind::DownloadedFromCi {
                     eprintln!("{} does not exist; skipping copy", exe.display());
                     continue;
                 }

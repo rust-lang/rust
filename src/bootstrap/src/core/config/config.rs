@@ -1752,18 +1752,18 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 Some(commit) => {
                     self.download_ci_rustc(commit);
 
-                    // CI-rustc can't be used without CI-LLVM. If `self.llvm_from_ci` is false, it means the "if-unchanged"
-                    // logic has detected some changes in the LLVM submodule (download-ci-llvm=false can't happen here as
-                    // we don't allow it while parsing the configuration).
-                    if !self.llvm_ci_mode.download_from_ci() {
-                        // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
-                        // to not break CI. For non-CI environments, we should return an error.
-                        if self.is_running_on_ci() {
-                            println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
-                            return None;
-                        } else {
-                            panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
-                        }
+                    let llvm_ci_requested = match self.llvm_ci_mode {
+                        LlvmCiMode::BuildLocally => false,
+                        LlvmCiMode::DownloadFromCi => true
+                    };
+                    // CI-rustc can't be used without CI-LLVM. If LLVM Ci is requested, but the
+                    // LLVM submodule has changes, it is an error.
+                    // FIXME: this whole logic should be refactored to not use
+                    // `has_changes_from_upstream` explicitly
+                    if llvm_ci_requested && self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS) {
+                        // download-ci-rustc should not be used on CI at the moment
+                        assert!(self.is_running_on_ci());
+                        panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
                     }
 
                     if let Some(config_path) = &self.config {

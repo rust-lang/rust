@@ -380,7 +380,9 @@ pub enum LlvmCiMode {
 }
 
 impl LlvmCiMode {
-    pub fn download_from_ci(&self) -> bool {
+    /// Return true if the user has requested LLVM to be downloaded from CI.
+    /// **Note:** this does not mean that it will be actually downloaded.
+    pub fn requests_download_from_ci(&self) -> bool {
         match self {
             LlvmCiMode::BuildLocally => false,
             LlvmCiMode::DownloadFromCi => true,
