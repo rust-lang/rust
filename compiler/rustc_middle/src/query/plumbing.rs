@@ -2,13 +2,13 @@ use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use crate::dep_graph::{
     DepKind, DepKindVTable, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex,
@@ -155,6 +155,11 @@ pub struct QuerySystem<'tcx> {
     ///
     /// Always empty if incremental compilation is off.
     pub side_effects: Lock<FxIndexMap<DepNodeIndex, QuerySideEffect>>,
+
+    /// Enabled features that are used in the current compilation.
+    ///
+    /// The value is the `DepNodeIndex` of the node that encodes the used feature.
+    pub used_features: Lock<FxHashMap<Symbol, DepNodeIndex>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by

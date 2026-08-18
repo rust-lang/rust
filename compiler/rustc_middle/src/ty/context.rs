@@ -1612,7 +1612,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         // Collect first to avoid holding the lock while linting.
-        let used_features = self.sess.used_features.lock();
+        let used_features = self.query_system.used_features.lock();
         let unused_features = self
             .features()
             .enabled_features_iter_stable_order()

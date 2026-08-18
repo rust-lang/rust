@@ -38,6 +38,7 @@ pub fn query_system<'tcx>(
         dep_kind_vtables: dep_kind_vtables::make_dep_kind_vtables(arena),
         query_vtables: query_vtables::make_query_vtables(incremental),
         side_effects: Default::default(),
+        used_features: Default::default(),
         on_disk_cache,
         local_providers,
         extern_providers,
