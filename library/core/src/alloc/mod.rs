@@ -162,8 +162,7 @@ impl fmt::Display for AllocError {
 /// is [*currently allocated*] by the allocator points to valid memory
 /// until that memory block is [*invalidated*]. The implementor must also
 /// not violate this invariant of `Allocator` via allocator equivalences
-/// that are in the implementor's control, and generally ensure that equivalence
-/// is respected.
+/// that are in the implementor's control.
 ///
 /// Additionally, any memory block returned by the allocator must
 /// satisfy the allocation invariants described in `core::ptr`.
