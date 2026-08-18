@@ -2337,6 +2337,7 @@ pub const fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
             .as_i8x32();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 32] = [
             00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to i8 conversions
             32, 34, 36, 38, 40, 42, 44, 46, // b-lo
@@ -2371,6 +2372,7 @@ pub const fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
             .as_i16x16();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 16] = [
             00, 02, 04, 06, // a-lo i32 to i16 conversions
             16, 18, 20, 22, // b-lo
@@ -2405,6 +2407,7 @@ pub const fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
             .as_i8x32();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 32] = [
             00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to u8 conversions
             32, 34, 36, 38, 40, 42, 44, 46, // b-lo
@@ -2439,6 +2442,7 @@ pub const fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
             .as_i16x16();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 16] = [
             00, 02, 04, 06, // a-lo i32 to u16 conversions
             16, 18, 20, 22, // b-lo

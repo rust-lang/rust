@@ -6537,6 +6537,7 @@ pub const fn _mm512_packs_epi32(a: __m512i, b: __m512i) -> __m512i {
             .as_i16x32();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 32] = [
             00, 02, 04, 06,
             32, 34, 36, 38,
@@ -6673,6 +6674,7 @@ pub const fn _mm512_packs_epi16(a: __m512i, b: __m512i) -> __m512i {
             .as_i8x64();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 64] = [
             000, 002, 004, 006, 008, 010, 012, 014,
             064, 066, 068, 070, 072, 074, 076, 078,
@@ -6810,6 +6812,7 @@ pub const fn _mm512_packus_epi32(a: __m512i, b: __m512i) -> __m512i {
             .as_i16x32();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 32] = [
             00, 02, 04, 06,
             32, 34, 36, 38,
@@ -6947,6 +6950,7 @@ pub const fn _mm512_packus_epi16(a: __m512i, b: __m512i) -> __m512i {
             .as_i8x64();
 
         #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         const IDXS: [u32; 64] = [
             000, 002, 004, 006, 008, 010, 012, 014,
             064, 066, 068, 070, 072, 074, 076, 078,
