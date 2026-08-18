@@ -149,6 +149,13 @@ where
             return Err(NoSolution.into());
         }
 
+        // For every `default impl`, there's always a non-default `impl` that will *also* apply.
+        // There's no reason to register a candidate for this impl, since it is *not* proof that
+        // the trait goal holds.
+        if cx.impl_is_default(impl_def_id) {
+            return Err(NoSolution.into());
+        }
+
         let impl_polarity = cx.impl_polarity(impl_def_id);
         let certainty = match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution.into()),
