@@ -10,7 +10,7 @@ build-metrics = ["dep:sysinfo", "build_helper/metrics"]
 tracing = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber", "dep:chrono"]
 
 [lib]
-path = "src/lib.rs"
+path = "src/session.rs"
 doctest = false
 
 [[bin]]
