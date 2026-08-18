@@ -538,6 +538,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// points `live_at`.
     fn add_use_live_facts_for(&mut self, value: Ty<'tcx>, live_at: &IntervalSet<PointIndex>) {
         debug!("add_use_live_facts_for(value={:?})", value);
+        Self::record_polonius_region_variance_from_type(self.typeck, value);
         Self::make_all_regions_live(self.location_map, self.typeck, value, live_at);
     }
 
@@ -587,15 +588,8 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             dropped_ty,
         );
 
-        // When using `-Zpolonius=next`, we record the variance of the type being dropped.
-        if let Some(polonius_context) = self.typeck.polonius_context.as_mut() {
-            debug!("Recording variance for dropped type {dropped_ty:?}");
-            polonius_context.record_live_region_variance(
-                self.typeck.infcx.tcx,
-                self.typeck.universal_regions,
-                dropped_ty,
-            );
-        }
+        // Since the entire dropped local is live, record the variance of its regions.
+        Self::record_polonius_region_variance_from_type(self.typeck, dropped_ty);
 
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
@@ -608,6 +602,23 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                 &kind,
                 self.typeck.universal_regions,
                 self.typeck.polonius_facts,
+            );
+        }
+    }
+
+    /// `live_kind` is the type of a use-live of drop-live local.
+    /// Record the variance of any region(s) appearing in it for
+    /// Polonius. Does nothing if Polonius is not active.
+    fn record_polonius_region_variance_from_type(
+        typeck: &mut TypeChecker<'_, 'tcx>,
+        live_kind: impl TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
+    ) {
+        // When using `-Zpolonius=next`, we record the variance of each live region.
+        if let Some(polonius_context) = typeck.polonius_context.as_mut() {
+            polonius_context.record_live_region_variance(
+                typeck.infcx.tcx,
+                typeck.universal_regions,
+                live_kind,
             );
         }
     }
@@ -633,15 +644,6 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });
-
-        // When using `-Zpolonius=next`, we record the variance of each live region.
-        if let Some(polonius_context) = typeck.polonius_context.as_mut() {
-            polonius_context.record_live_region_variance(
-                typeck.infcx.tcx,
-                typeck.universal_regions,
-                value,
-            );
-        }
     }
 
     fn compute_drop_data(
