@@ -452,7 +452,7 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
     }
 }
 
-/// A `ProjectionPredicate` for an `ExistentialTraitRef`.
+/// A `ProjectionClause` for an `ExistentialTraitRef`.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
@@ -505,11 +505,11 @@ impl<I: Interner> ExistentialProjection<I> {
         ExistentialTraitRef::new_from_args(interner, def_id, args)
     }
 
-    pub fn with_self_ty(&self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
+    pub fn with_self_ty(&self, interner: I, self_ty: I::Ty) -> ProjectionClause<I> {
         // otherwise the escaping regions would be captured by the binders
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        ProjectionPredicate {
+        ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 interner,
                 interner.alias_term_kind_from_def_id(self.def_id.into()),
@@ -519,7 +519,7 @@ impl<I: Interner> ExistentialProjection<I> {
         }
     }
 
-    pub fn erase_self_ty(interner: I, projection_predicate: ProjectionPredicate<I>) -> Self {
+    pub fn erase_self_ty(interner: I, projection_predicate: ProjectionClause<I>) -> Self {
         // Assert there is a Self.
         projection_predicate.projection_term.args.type_at(0);
 
@@ -533,7 +533,7 @@ impl<I: Interner> ExistentialProjection<I> {
 }
 
 impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
-    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionPredicate<I>> {
+    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionClause<I>> {
         self.map_bound(|p| p.with_self_ty(cx, self_ty))
     }
 
@@ -552,7 +552,7 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
 /// normal trait predicate (`T: TraitRef<...>`) and one of these
 /// predicates. Form #2 is a broader form in that it also permits
 /// equality between arbitrary types. Processing an instance of
-/// Form #2 eventually yields one of these `ProjectionPredicate`
+/// Form #2 eventually yields one of these `ProjectionClause`
 /// instances to normalize the LHS.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
@@ -560,19 +560,19 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct ProjectionPredicate<I: Interner> {
+pub struct ProjectionClause<I: Interner> {
     pub projection_term: ty::AliasTerm<I>,
     pub term: I::Term,
 }
 
-impl<I: Interner> Eq for ProjectionPredicate<I> {}
+impl<I: Interner> Eq for ProjectionClause<I> {}
 
-impl<I: Interner> ProjectionPredicate<I> {
+impl<I: Interner> ProjectionClause<I> {
     pub fn self_ty(self) -> I::Ty {
         self.projection_term.self_ty()
     }
 
-    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> ProjectionClause<I> {
         Self {
             projection_term: self.projection_term.with_replaced_self_ty(interner, self_ty),
             ..self
@@ -588,7 +588,7 @@ impl<I: Interner> ProjectionPredicate<I> {
     }
 }
 
-impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
+impl<I: Interner> ty::Binder<I, ProjectionClause<I>> {
     /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
     pub fn trait_def_id(&self, cx: I) -> I::TraitId {
@@ -609,9 +609,9 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     }
 }
 
-impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
+impl<I: Interner> fmt::Debug for ProjectionClause<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_term, self.term)
+        write!(f, "ProjectionClause({:?}, {:?})", self.projection_term, self.term)
     }
 }
 

@@ -28,8 +28,8 @@ pub enum ClauseKind<I: Interner> {
     TypeOutlives(ty::OutlivesClause<I, I::Ty>),
 
     /// `where <T as TraitRef>::Name == X`, approximately.
-    /// See the `ProjectionPredicate` struct for details.
-    Projection(ty::ProjectionPredicate<I>),
+    /// See the `ProjectionClause` struct for details.
+    Projection(ty::ProjectionClause<I>),
 
     /// Ensures that a const generic argument to a parameter `const N: u8`
     /// is of type `u8`.

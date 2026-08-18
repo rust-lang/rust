@@ -137,7 +137,7 @@ where
                 try_visit!(self.visit_trait(clause.trait_ref));
                 clause.constness.visit_with(self)
             }
-            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+            ty::ClauseKind::Projection(ty::ProjectionClause {
                 projection_term: projection_ty,
                 term,
             }) => {

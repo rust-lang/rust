@@ -3314,7 +3314,7 @@ define_print! {
         self.term.print(p)?;
     }
 
-    ty::ProjectionPredicate<'tcx> {
+    ty::ProjectionClause<'tcx> {
         self.projection_term.print(p)?;
         write!(p, " == ")?;
         p.reset_type_limit();

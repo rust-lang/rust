@@ -476,7 +476,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
     fn check_elaborated_projection_mentions_input_lifetimes(
         &self,
-        pred: ty::PolyProjectionPredicate<'tcx>,
+        pred: ty::PolyProjectionClause<'tcx>,
         span: Span,
         supertrait_span: Span,
     ) {

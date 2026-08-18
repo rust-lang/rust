@@ -1234,7 +1234,7 @@ pub enum ClauseKind {
     Trait(TraitPredicate),
     RegionOutlives(RegionOutlivesClause),
     TypeOutlives(TypeOutlivesClause),
-    Projection(ProjectionPredicate),
+    Projection(ProjectionClause),
     ConstArgHasType(TyConst, Ty),
     WellFormed(TermKind),
     ConstEvaluatable(TyConst),
@@ -1279,10 +1279,13 @@ pub type RegionOutlivesPredicate = RegionOutlivesClause;
 pub type TypeOutlivesPredicate = TypeOutlivesClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ProjectionPredicate {
+pub struct ProjectionClause {
     pub projection_term: AliasTerm,
     pub term: TermKind,
 }
+
+#[deprecated = "renamed to [`ProjectionClause`]"]
+pub type ProjectionPredicate = ProjectionClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ImplPolarity {

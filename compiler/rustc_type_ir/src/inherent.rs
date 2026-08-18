@@ -462,7 +462,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
-    + UpcastFrom<I, ty::ProjectionPredicate<I>>
+    + UpcastFrom<I, ty::ProjectionClause<I>>
     + UpcastFrom<I, ty::OutlivesClause<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesClause<I, Region<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
@@ -504,8 +504,8 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitPredicate<I>>>
-    + UpcastFrom<I, ty::ProjectionPredicate<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
+    + UpcastFrom<I, ty::ProjectionClause<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::ProjectionClause<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
     + Elaboratable<I>
 {
@@ -537,7 +537,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
             .transpose()
     }
 
-    fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
+    fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionClause<I>>> {
         self.kind()
             .map_bound(
                 |clause| {

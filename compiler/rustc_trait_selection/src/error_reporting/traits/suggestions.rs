@@ -5529,7 +5529,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let ty = self.infcx.next_ty_var(span);
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
-                ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                ty::ClauseKind::Projection(ty::ProjectionClause {
                     projection_term: ty::AliasTerm::new_from_args(self.tcx, kind.into(), args),
                     term: ty.into(),
                 }),

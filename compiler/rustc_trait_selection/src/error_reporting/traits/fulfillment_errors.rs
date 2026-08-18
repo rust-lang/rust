@@ -1537,8 +1537,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_projection(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        goal: ty::ProjectionPredicate<'tcx>,
-        assumption: ty::PolyProjectionPredicate<'tcx>,
+        goal: ty::ProjectionClause<'tcx>,
+        assumption: ty::PolyProjectionClause<'tcx>,
     ) -> bool {
         let assumption = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,

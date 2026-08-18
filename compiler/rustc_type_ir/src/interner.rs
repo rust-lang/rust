@@ -35,7 +35,7 @@ pub trait Interner:
     + IrPrint<ty::HostEffectClause<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
-    + IrPrint<ty::ProjectionPredicate<Self>>
+    + IrPrint<ty::ProjectionClause<Self>>
     + IrPrint<ty::NormalizesTo<Self>>
     + IrPrint<ty::SubtypePredicate<Self>>
     + IrPrint<ty::CoercePredicate<Self>>

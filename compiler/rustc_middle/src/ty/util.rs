@@ -1040,7 +1040,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
             && let ty::ClauseKind::Projection(projection_pred) = clause
         {
             p.kind()
-                .rebind(ty::ProjectionPredicate {
+                .rebind(ty::ProjectionClause {
                     projection_term: projection_pred.projection_term.fold_with(self),
                     // Don't fold the term on the RHS of the projection predicate.
                     // This is because for default trait methods with RPITITs, we

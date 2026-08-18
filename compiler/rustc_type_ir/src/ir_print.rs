@@ -5,7 +5,7 @@ use crate::{AliasConst, ClosureKind};
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     HostEffectClause, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
-    ProjectionPredicate, Region, SubtypePredicate, TraitPredicate, TraitRef,
+    ProjectionClause, Region, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait IrPrint<T> {
@@ -42,7 +42,7 @@ define_display_via_print!(
     TraitPredicate,
     ExistentialTraitRef,
     ExistentialProjection,
-    ProjectionPredicate,
+    ProjectionClause,
     NormalizesTo,
     SubtypePredicate,
     CoercePredicate,

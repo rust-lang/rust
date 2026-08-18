@@ -872,16 +872,16 @@ where
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
-    type T = crate::ty::ProjectionPredicate;
+impl<'tcx> Stable<'tcx> for ty::ProjectionClause<'tcx> {
+    type T = crate::ty::ProjectionClause;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::ProjectionPredicate { projection_term, term } = self;
-        crate::ty::ProjectionPredicate {
+        let ty::ProjectionClause { projection_term, term } = self;
+        crate::ty::ProjectionClause {
             projection_term: projection_term.stable(tables, cx),
             term: term.kind().stable(tables, cx),
         }

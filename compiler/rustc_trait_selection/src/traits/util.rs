@@ -36,7 +36,7 @@ pub fn expand_trait_aliases<'tcx>(
     clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
 ) -> (
     Vec<(ty::PolyTraitPredicate<'tcx>, SmallVec<[Span; 1]>)>,
-    Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
+    Vec<(ty::PolyProjectionClause<'tcx>, Span)>,
 ) {
     let mut trait_preds = vec![];
     let mut projection_preds = vec![];

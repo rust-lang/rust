@@ -433,7 +433,7 @@ fn check_specialization_on<'tcx>(
                     .emit())
             }
         }
-        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_term, term }) => Err(tcx
+        ty::ClauseKind::Projection(ty::ProjectionClause { projection_term, term }) => Err(tcx
             .dcx()
             .struct_span_err(
                 span,
