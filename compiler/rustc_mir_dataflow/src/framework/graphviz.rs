@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::{io, ops, str};
 
 use regex::Regex;
@@ -696,13 +696,6 @@ where
     }
 }
 
-macro_rules! regex {
-    ($re:literal $(,)?) => {{
-        static RE: OnceLock<regex::Regex> = OnceLock::new();
-        RE.get_or_init(|| Regex::new($re).unwrap())
-    }};
-}
-
 fn diff_pretty<T, C>(new: T, old: T, ctxt: &C) -> String
 where
     T: DebugWithContext<C>,
@@ -711,7 +704,7 @@ where
         return String::new();
     }
 
-    let re = regex!("\t?\u{001f}([+-])");
+    static RE: LazyLock<regex::Regex> = LazyLock::new(|| Regex::new("\t?\u{001f}([+-])").unwrap());
 
     let raw_diff = format!("{:#?}", DebugDiffWithAdapter { new, old, ctxt });
     let raw_diff = dot::escape_html(&raw_diff);
@@ -720,7 +713,7 @@ where
     let raw_diff = raw_diff.replace('\n', r#"<br align="left"/>"#);
 
     let mut inside_font_tag = false;
-    let html_diff = re.replace_all(&raw_diff, |captures: &regex::Captures<'_>| {
+    let html_diff = RE.replace_all(&raw_diff, |captures: &regex::Captures<'_>| {
         let mut ret = String::new();
         if inside_font_tag {
             ret.push_str(r#"</font>"#);
