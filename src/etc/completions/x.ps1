@@ -342,6 +342,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--reproducible-artifact', '--reproducible-artifact', [CompletionResultType]::ParameterName, 'Additional reproducible artifacts that should be added to the reproducible artifacts archive')
             [CompletionResult]::new('--set', '--set', [CompletionResultType]::ParameterName, 'override options in bootstrap.toml')
             [CompletionResult]::new('--ci', '--ci', [CompletionResultType]::ParameterName, 'Make bootstrap to behave as it''s running on the CI environment or not')
+            [CompletionResult]::new('--allow-dirty', '--allow-dirty', [CompletionResultType]::ParameterName, 'Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the current git checkout has uncommitted changes')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-q', '-q', [CompletionResultType]::ParameterName, 'use quiet output')

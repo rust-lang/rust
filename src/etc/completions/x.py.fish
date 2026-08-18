@@ -296,6 +296,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand fix" -l llvm-profile-use -d 'u
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand fix" -l allow-dirty -d 'Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the current git checkout has uncommitted changes'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s i -l incremental -d 'use incremental compilation'
