@@ -245,7 +245,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let build = Build::new(config);
     let builder = Builder::new(&build);
 
-    let expected = PathBuf::from("/some/path/to/llvm-config");
+    let host_llvm_config = PathBuf::from("/some/path/to/llvm-config");
 
     let actual =
         get_llvm_build_status(&builder, TargetSelection::from_user("arm-unknown-linux-gnueabihf"))
@@ -253,14 +253,17 @@ fn test_prebuilt_llvm_config_path_resolution() {
             .llvm_config()
             .to_path_buf();
     let actual = drop_win_disk_prefix_if_present(actual);
-    assert_ne!(expected, actual);
+    assert_ne!(
+        host_llvm_config, actual,
+        "llvm-config should be returned for the given target, not the host"
+    );
 
     let actual = get_llvm_build_status(&builder, builder.config.host_target)
         .llvm_output()
         .llvm_config()
         .to_path_buf();
     let actual = drop_win_disk_prefix_if_present(actual);
-    assert_eq!(expected, actual);
+    assert_eq!(host_llvm_config, actual);
 
     let config = configure(
         r#"
