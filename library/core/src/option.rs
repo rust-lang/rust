@@ -1825,7 +1825,7 @@ impl<T> Option<T> {
             // It could also be expressed as `unsafe { core::ptr::write(self, Some(f())) }`, but
             // no reason is currently known to use additional unsafe code here.
 
-            mem::forget(mem::replace(self, Some(f())));
+            mem::forget(self.replace(f()));
         }
 
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
@@ -1957,6 +1957,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_replace", since = "1.31.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    #[expect(clippy::mem_replace_option_with_some, reason = "implements Option::replace")]
     pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
