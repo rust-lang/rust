@@ -53,7 +53,7 @@ pub mod cli_main;
 mod core;
 mod utils;
 
-pub enum GitRepo {
+pub(crate) enum GitRepo {
     Rustc,
     Llvm,
 }
@@ -68,7 +68,7 @@ pub enum GitRepo {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
-pub struct Build {
+pub(crate) struct Build {
     /// User-specified configuration from `bootstrap.toml`.
     config: Config,
 
@@ -130,7 +130,7 @@ pub struct Build {
 
 /// When building Rust various objects are handled differently.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DependencyType {
+pub(crate) enum DependencyType {
     /// Libraries originating from proc-macros.
     Host,
     /// Typical Rust libraries.
@@ -144,7 +144,7 @@ pub enum DependencyType {
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
+pub(crate) enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Std,
 
@@ -193,7 +193,7 @@ pub enum Mode {
 }
 
 impl Mode {
-    pub fn must_support_dlopen(&self) -> bool {
+    pub(crate) fn must_support_dlopen(&self) -> bool {
         match self {
             Mode::Std | Mode::Codegen => true,
             Mode::ToolBootstrap
@@ -208,7 +208,7 @@ impl Mode {
 /// When `rust.rust_remap_debuginfo` is requested, the compiler needs to know how to
 /// opportunistically unremap compiler vs non-compiler sources. We use two schemes,
 /// [`RemapScheme::Compiler`] and [`RemapScheme::NonCompiler`].
-pub enum RemapScheme {
+pub(crate) enum RemapScheme {
     /// The [`RemapScheme::Compiler`] scheme will remap to `/rustc-dev/{hash}`.
     Compiler,
     /// The [`RemapScheme::NonCompiler`] scheme will remap to `/rustc/{hash}`.
@@ -216,13 +216,13 @@ pub enum RemapScheme {
 }
 
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
-pub enum CLang {
+pub(crate) enum CLang {
     C,
     Cxx,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FileType {
+pub(crate) enum FileType {
     /// An executable binary file (like a `.exe`).
     Executable,
     /// A native, binary library file (like a `.so`, `.dll`, `.a`, `.lib` or `.o`).
@@ -235,14 +235,14 @@ pub enum FileType {
 
 impl FileType {
     /// Get Unix permissions appropriate for this file type.
-    pub fn perms(self) -> u32 {
+    pub(crate) fn perms(self) -> u32 {
         match self {
             FileType::Executable | FileType::Script => 0o755,
             FileType::Regular | FileType::NativeLibrary => 0o644,
         }
     }
 
-    pub fn could_have_split_debuginfo(self) -> bool {
+    pub(crate) fn could_have_split_debuginfo(self) -> bool {
         match self {
             FileType::Executable | FileType::NativeLibrary => true,
             FileType::Script | FileType::Regular => false,
@@ -515,7 +515,7 @@ impl Build {
             fields(submodule = submodule),
         ),
     )]
-    pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+    pub(crate) fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         if self.rust_info().is_from_tarball() {
             return;
         }
@@ -589,7 +589,7 @@ impl Build {
 
     /// Executes the entire build, as configured by the flags and configuration.
     #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Build::build", skip_all))]
-    pub fn build(&mut self) {
+    pub(crate) fn build(&mut self) {
         trace!("setting up job management");
         unsafe {
             crate::utils::job::setup(self);
@@ -1558,7 +1558,7 @@ impl Build {
     /// If `src` is a symlink, `src` will be resolved to the actual path
     /// and copied to `dst` instead of the symlink itself.
     #[track_caller]
-    pub fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
+    pub(crate) fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
         self.copy_link_internal(src, dst, true);
     }
 
@@ -1567,7 +1567,7 @@ impl Build {
     /// You can neither rely on this being a copy nor it being a link,
     /// so do not write to dst.
     #[track_caller]
-    pub fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
+    pub(crate) fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_link_internal(src, dst, false);
 
         if file_type.could_have_split_debuginfo()
@@ -1636,7 +1636,7 @@ impl Build {
     /// when this function is called.
     /// Will attempt to use hard links if possible and fall back to copying.
     #[track_caller]
-    pub fn cp_link_r(&self, src: &Path, dst: &Path) {
+    pub(crate) fn cp_link_r(&self, src: &Path, dst: &Path) {
         if self.config.dry_run() {
             return;
         }
@@ -1659,7 +1659,7 @@ impl Build {
     /// Unwanted files or directories can be skipped
     /// by returning `false` from the filter function.
     #[track_caller]
-    pub fn cp_link_filtered(&self, src: &Path, dst: &Path, filter: &dyn Fn(&Path) -> bool) {
+    pub(crate) fn cp_link_filtered(&self, src: &Path, dst: &Path, filter: &dyn Fn(&Path) -> bool) {
         // Immediately recurse with an empty relative path
         self.cp_link_filtered_recurse(src, dst, Path::new(""), filter)
     }
@@ -1826,11 +1826,12 @@ to download LLVM rather than building it.
         self.config.ninja_in_file
     }
 
-    pub fn colored_stdout<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
+    pub(crate) fn colored_stdout<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
         self.colored_stream_inner(StandardStream::stdout, self.config.stdout_is_tty, f)
     }
 
-    pub fn colored_stderr<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
+    #[expect(dead_code, reason = "symmetric with `colored_stdout`")]
+    pub(crate) fn colored_stderr<R, F: FnOnce(&mut dyn WriteColor) -> R>(&self, f: F) -> R {
         self.colored_stream_inner(StandardStream::stderr, self.config.stderr_is_tty, f)
     }
 
@@ -1851,12 +1852,13 @@ to download LLVM rather than building it.
         result
     }
 
-    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+    #[cfg_attr(not(feature = "tracing"), expect(dead_code))]
+    pub(crate) fn report_summary(&self, path: &Path, start_time: Instant) {
         self.config.exec_ctx.profiler().report_summary(path, start_time);
     }
 
     #[cfg(feature = "tracing")]
-    pub fn report_step_graph(self, directory: &Path) {
+    pub(crate) fn report_step_graph(self, directory: &Path) {
         self.step_graph.into_inner().store_to_dot_files(directory);
     }
 }

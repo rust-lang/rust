@@ -40,7 +40,7 @@ mod tests;
 
 /// Builds and performs different [`Self::kind`]s of stuff and actions, taking
 /// into account build configuration from e.g. bootstrap.toml.
-pub struct Builder<'a> {
+pub(crate) struct Builder<'a> {
     /// Build configuration from e.g. bootstrap.toml.
     pub build: &'a Build,
 
