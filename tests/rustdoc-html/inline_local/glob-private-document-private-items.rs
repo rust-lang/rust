@@ -30,12 +30,12 @@ pub use mod1::*;
 //@ hasraw - "mod2"
 //@ hasraw - "Mod1Public"
 //@ hasraw - "Mod1Private"
-//@ !hasraw - "Mod2Public"
-//@ !hasraw - "Mod2Private"
+//@ hasraw - "Mod2Public"
+//@ hasraw - "Mod2Private"
 //@ has foo/mod1/struct.Mod1Public.html
 //@ has foo/mod1/struct.Mod1Private.html
-//@ !has foo/mod1/struct.Mod2Public.html
-//@ !has foo/mod1/struct.Mod2Private.html
+//@ has foo/mod1/struct.Mod2Public.html
+//@ has foo/mod1/struct.Mod2Private.html
 
 //@ has foo/mod1/mod2/index.html
 //@ hasraw - "Mod2Public"
