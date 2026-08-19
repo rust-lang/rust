@@ -16,8 +16,8 @@ Debug info tests check a few important things:
 
 The first question is typically answered by `tests/codegen-llvm`, but debug info generation is often
 tested incidentally, rather than deliberately.
-At time of writing, there is a much larger focus on
-the latter two questions, and those will be covered in detail here.
+At time of writing, there is a much larger focus on the latter two questions,
+and those will be covered in detail here.
 The tests that answer those questions live in `tests/debuginfo`, which is executed by `compiletest`.
 
 For much of the test suite's lifespan, debuggers were discovered automatically, and tests were
@@ -29,10 +29,9 @@ To help remedy this:
 1. [`tests/debuginfo` is now opt-in](https://github.com/rust-lang/rust/pull/159455) for GDB and LLDB.
 2. a new directive was added: `$DEBUGGER-repr`.
    This directive dispatches to custom logic that polls
-the debugger for additional information that isn't visible in the printed output.
-It also
-automatically separates output by target, allowing the tests to be run on different platforms
-without conflicts.
+   the debugger for additional information that isn't visible in the printed output.
+   It also automatically separates output by target,
+   allowing the tests to be run on different platforms without conflicts.
 
 # The `repr` directive
 
@@ -56,16 +55,15 @@ and runs special logic on them, testing against data stored in
 Those targets are defined by the
  [`Target` enum in `common.py`](https://github.com/rust-lang/rust/blob/bf9944f0b8006b152ef4d5f408ae75a0dde3d044/src/etc/lldb_batchmode/common.py#L54).
 At time of writing, this list includes `non_windows`, `windows_gnu`, and `windows_msvc`.
-It is
-intentionally kept as short as possible, since each target is a new set of test data that must be
-updated when changes are made.
+It is intentionally kept as short as possible,
+since each target is a new set of test data that must be updated when changes are made.
 There is still not a perfect solution for how tests can be
 `--bless`-ed by contributors who do not have access to all of the targets.
 
 The input data can be automatically updated for expected changes by adding `--bless` to the test
-invocation (e.g. `./x test tests/debuginfo/basic-types/main.rs --bless`). `--bless` updates the
-in-memory representation, tests against it, and if no errors occur, saves the data back to the
-target file (or creates a new file if necessary).
+invocation (e.g. `./x test tests/debuginfo/basic-types/main.rs --bless`).
+`--bless` updates the in-memory representation, tests against it,
+and if no errors occur, saves the data back to the target file (or creates a new file if necessary).
 
 The schema of the input data is defined by the classes in
 [`common.py`](https://github.com/rust-lang/rust/blob/be3d26db984c6f96335faca1f254dc04873cb1c1/src/etc/lldb_batchmode/common.py).
@@ -106,8 +104,8 @@ as well (e.g. if you are on a Windows machine, bless once for `x86_64-pc-windows
 built-in JSON library.
 When testing, the data is read into a `dict`, converted to a `TargetData`,
 and stored in the top level `INPUT_DATA` variable.
-The current deserialization logic should be
-resilient to changes in the schema, but requires that all fields contain ONLY types that can be
+The current deserialization logic should be resilient to changes in the schema,
+but requires that all fields contain ONLY types that can be
 directly serialized/deserialized by `json.dumps`.
 The acceptable types are those that make up
 [`common.JsonType`](https://github.com/rust-lang/rust/blob/bf9944f0b8006b152ef4d5f408ae75a0dde3d044/src/etc/lldb_batchmode/common.py#L17)
@@ -137,9 +135,8 @@ To prevent mismatches, pointer variables do not store their value.
 This is equivalent to the wildcard `[...]` used in `-check` directives.
 
 `BlessMetadata` is included in `TargetData`, but is not tested against.
-It exists solely as a record
-of how the test data was generated, to help in diagnosing issues that may occur due to Python or the
-debugger changing versions.
+It exists solely as a record of how the test data was generated,
+to help in diagnosing issues that may occur due to Python or the debugger changing versions.
 
 ### Entry point and `--bless`
 
@@ -148,8 +145,9 @@ Upon encountering a `repr` pseudo-command, `lldb_batchmode.main` dispatches to
 If the `--bless` option was specified, the variable is converted from
 the in-memory representation to our equivalent schema class.
 This includes the variable's type,
-visualizers, children, the children's types, etc. Once inserted into `TargetData`, the variable is
-tested against the data that was just saved to `TargetData`.
+visualizers, children, the children's types, etc.
+Once inserted into `TargetData`,
+the variable is tested against the data that was just saved to `TargetData`.
 
 If no exception or errors occurred and the `--bless` option was specified, `INPUT_DATA` is written
 to the appropriate file just before `lldb_batchmode` exits.
@@ -184,9 +182,8 @@ Errors *do not* immediately end the test.
 This is especially important now that a `--bless` option has been added.
 `--bless` updates all of the input data, so we need to print all of the errors so the reader can
 make an informed decision about whether or not there are further changes that need to be made.
-We
-absolutely do not want people accidentally blessing bad data purely because the 1st error happened
-to be an expected change.
+We absolutely do not want people accidentally blessing bad data
+purely because the first error happened to be an expected change.
 
 Errors are printed directly to `stdout` to appear as visible output from the `repr` pseudo command.
 There are [several error helper functions](https://github.com/rust-lang/rust/blob/e7b595554e664e6bd281c8cf881093d6c71bc0e1/src/etc/lldb_batchmode/common.py#L35-L51)
@@ -222,7 +219,7 @@ lldb version 22.1.2 (https://github.com/llvm/llvm-project revision 1ab49a973e210
 It does not appear that the Apple LLDB's version is derived from LLVM's version, so we cannot easily
 or automatically convert between the two.
 Luckily, we can still check the base LLVM version manually
-by checking the appropraite release branch in the Swift LLVM repo.
+by checking the appropriate release branch in the Swift LLVM repo.
 For our example above, no branch exists for `Swift 6.2.3`, but there is one for `6.2.2`.
 The LLVM version is located in
 [`llvm/utils/gn/secondary/llvm/version.gni`](https://github.com/swiftlang/llvm-project/blob/swift/release/6.2.2/llvm/utils/gn/secondary/llvm/version.gni).
@@ -231,5 +228,5 @@ As we can see from that example, the Apple LLDB version above corresponds to (ro
 
 This can be useful when diagnosing or writing new tests, as it allows us to get a better idea of
 what features are available in the Apple LLDB used in CI.
-For example, LLDB 19 was the first version
-to support Type Recognizer functions, so we can assume our example Apple LLDB supports them.
+For example, LLDB 19 was the first version to support Type Recognizer functions,
+so we can assume our example Apple LLDB supports them.
