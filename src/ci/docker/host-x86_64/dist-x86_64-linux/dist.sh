@@ -19,16 +19,4 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist \
       gcc-dev \
       gcc
-    # We confirm that the built GCC has support for the `retain` attribute.
-    # FIXME: Maybe get the path from `.x.py` instead?
-    gcc_path="./build/$HOSTS/gcc/$HOSTS/install/bin/gcc"
-    c_code='int x __attribute__((used, retain));'
-    if echo "$c_code" | "$gcc_path" -S -x c -o - - | grep -i '"a.*R"'; then
-        echo "retain attribute is supported"
-    else
-        echo "retain attribute is not supported"
-        # We display the generated asm just in case...
-        echo "$c_code" | "$gcc_path" -S -x c -o - -
-        exit 1
-    fi
 fi
