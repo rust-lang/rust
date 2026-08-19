@@ -377,7 +377,7 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 ### Assembly tests
 
 The tests in [`tests/assembly-llvm`] test LLVM assembly output.
-They compile the test with the `--emit=asm` flag to emit a `.s` file with the assembly output.
+They compile the test with the `--emit asm` flag to emit a `.s` file with the assembly output.
 They then run the LLVM [FileCheck] tool.
 
 Each test should be annotated with the `//@ assembly-output:` directive with a
@@ -596,7 +596,7 @@ some reason, use the `//@ ignore-coverage-map` or `//@ ignore-coverage-run` dire
 
 In `coverage-map` mode, these tests verify the mappings between source code
 regions and coverage counters that are emitted by LLVM.
-They compile the test with `--emit=llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
+They compile the test with `--emit llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
 extract and pretty-print the coverage mappings embedded in the IR.
 These tests don't require the profiler runtime, so they run in PR CI jobs and are easy to
 run/bless locally.
@@ -713,12 +713,11 @@ However, it uses the `--extern` flag
 to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
 renaming a dependency.
-For example, `//@ aux-crate:foo=bar.rs` will compile
-`auxiliary/bar.rs` and make it available under then name `foo` within the test.
+For example, `//@ aux-crate: foo=bar.rs` will compile
+`auxiliary/bar.rs` and make it available under the name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
-It is also possible to
-specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
-For example, `//@ aux-crate:noprelude:foo=bar.rs`.
+It is also possible to specify [`--extern` modifiers].
+For example, `//@ aux-crate: noprelude:foo=bar.rs`.
 
 `aux-bin` is similar to `aux-build` but will build a binary instead of a library.
 The binary will be available in `auxiliary/bin` relative to the working directory of the test.
@@ -736,7 +735,7 @@ same parent folder as the main test file.
 However, it also has four additional
 preset behavior compared to `aux-build` for the proc-macro test auxiliary:
 
-1. The aux test file is built with `--crate-type=proc-macro`.
+1. The aux test file is built with `--crate-type proc-macro`.
 2. The aux test file is built without `-C prefer-dynamic`, i.e. it will not try
    to produce a dylib for the aux crate.
 3. The aux crate is made available to the test file via extern prelude with
@@ -905,3 +904,5 @@ Where `N` is the number of threads to use for the parallel frontend, and `M` is 
 Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests, since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
 
 The parallel frontend is available in UI tests only at the moment, and is not currently supported in other test suites.
+
+[`--extern` modifiers]: https://github.com/rust-lang/rust/issues/98405

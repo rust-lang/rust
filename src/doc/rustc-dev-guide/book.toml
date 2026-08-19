@@ -58,7 +58,7 @@ cache-timeout = 90000
 warning-policy = "error"
 
 [output.html.redirect]
-"/backend/inline-asm.html" = "/backend/asm.html"
+"/backend/inline-asm.html" = "/asm.html"
 "/borrow_check.html" = "borrow-check.html"
 "/borrow_check/drop_check.html" = "/borrow-check/drop-check.html"
 "/borrow_check/moves_and_initialization.html" = "/borrow-check/moves-and-initialization.html"
