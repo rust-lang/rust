@@ -1322,7 +1322,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = infcx.tcx;
         if self.can_use_global_caches(param_env, trait_pred) {
             let key = (infcx.typing_env(param_env), trait_pred);
-            if let Some(res) = tcx.evaluation_cache.get(&key, tcx) {
+            if let Some(res) = tcx.caches.evaluation_cache.get(&key, tcx) {
                 Some(res)
             } else {
                 debug_assert_eq!(infcx.evaluation_cache.get(&(param_env, trait_pred), tcx), None);
@@ -1351,7 +1351,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env, trait_pred) {
             debug!(?trait_pred, ?result, "insert_evaluation_cache global");
             // This may overwrite the cache with the same value
-            tcx.evaluation_cache.insert(
+            tcx.caches.evaluation_cache.insert(
                 (infcx.typing_env(param_env), trait_pred),
                 dep_node,
                 result,
@@ -1552,7 +1552,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let pred = cache_fresh_trait_pred.skip_binder();
 
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
-            if let Some(res) = tcx.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx) {
+            if let Some(res) =
+                tcx.caches.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx)
+            {
                 return Some(res);
             } else if cfg!(debug_assertions) {
                 match infcx.selection_cache.get(&(param_env, pred), tcx) {
@@ -1619,7 +1621,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug_assert!(!candidate.has_infer());
 
                 // This may overwrite the cache with the same value.
-                tcx.selection_cache.insert(
+                tcx.caches.selection_cache.insert(
                     (infcx.typing_env(param_env), pred),
                     dep_node,
                     candidate,
