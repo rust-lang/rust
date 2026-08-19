@@ -44,11 +44,14 @@ use rustc_abi::ExternAbi;
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, BoundRegion, BoundRegionKind, BoundTyKind, BoundVar, BoundVariableKind,
+    AliasTyKind, BoundRegion, BoundRegionKind, BoundTyKind, BoundVar, BoundVarIndexKind,
     DebruijnIndex, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    Interner, OutlivesPredicate, TermKind, TyKind, TypeFoldable, TypeVisitableExt, Upcast,
-    UpcastFrom, elaborate,
-    inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
+    Interner, OutlivesPredicate, TermKind, TyKind, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast, UpcastFrom, elaborate,
+    inherent::{
+        Clause as _, GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _,
+    },
+    shift_vars,
 };
 use salsa::SalsaValue;
 use smallvec::SmallVec;
@@ -66,13 +69,13 @@ use crate::{
     generics::{Generics, SingleGenerics, generics},
     infer::unify::InferenceTable,
     next_solver::{
-        AliasTy, Binder, BoundExistentialPredicates, BoundVarKinds, Clause, ClauseKind, Clauses,
-        Const, ConstKind, DbInterner, DefaultAny, EarlyBinder, EarlyParamRegion, ErrorGuaranteed,
-        FnSigKind, FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PatList, Pattern,
-        PolyFnSig, Predicate, Region, StoredClauses, StoredConst, StoredEarlyBinder,
-        StoredGenericArg, StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy,
-        TraitPredicate, TraitRef, Ty, Tys, Unnormalized, abi::Safety, default_types, mk_param,
-        util::BottomUpFolder,
+        AliasTy, Binder, BoundConst, BoundExistentialPredicates, BoundTy, BoundVarKinds,
+        BoundVariableKind, Clause, ClauseKind, Clauses, Const, ConstKind, DbInterner, DefaultAny,
+        EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FnSigKind, FxIndexMap, GenericArg,
+        GenericArgKind, GenericArgs, ParamConst, ParamEnv, PatList, Pattern, PolyFnSig, Predicate,
+        Region, RegionKind, StoredClauses, StoredConst, StoredEarlyBinder, StoredGenericArg,
+        StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitPredicate, TraitRef, Ty,
+        Tys, Unnormalized, abi::Safety, default_types, mk_param, util::BottomUpFolder,
     },
 };
 
@@ -2266,8 +2269,8 @@ pub(crate) fn type_alias_self_bounds<'db>(
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, SalsaValue)]
-pub struct TypeAliasBounds<T> {
-    predicates: T,
+pub struct TypeAliasBounds {
+    predicates: StoredEarlyBinder<StoredClauses>,
     assoc_ty_bounds_start: u32,
 }
 
@@ -2275,7 +2278,7 @@ pub struct TypeAliasBounds<T> {
 pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
-) -> TyLoweringResult<'db, TypeAliasBounds<StoredEarlyBinder<StoredClauses>>> {
+) -> TyLoweringResult<'db, TypeAliasBounds> {
     let type_alias_data = TypeAliasSignature::of(db, type_alias);
     let resolver = type_alias.resolver(db);
     let generics = OnceCell::new();
@@ -2307,6 +2310,27 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
         });
     }
 
+    if let ItemContainerId::TraitId(parent_trait) = type_alias.loc(db).container {
+        let item_trait_ref = TraitRef::identity(interner, parent_trait.into());
+        let parent_predicates = GenericPredicates::query_explicit(db, parent_trait.into());
+        parent_predicates.iter_identity().for_each(|parent_predicate| {
+            let parent_predicate = parent_predicate.skip_norm_wip();
+            let Some((predicate, source)) = remap_gat_vars_and_recurse_into_nested_projections(
+                interner,
+                item_trait_ref,
+                type_alias,
+                &generics,
+                parent_predicate,
+            ) else {
+                return;
+            };
+            match source {
+                GenericPredicateSource::SelfOnly => bounds.push(predicate),
+                GenericPredicateSource::AssocTyBound => assoc_ty_bounds.push(predicate),
+            }
+        });
+    }
+
     if !ctx.unsized_types.contains(&interner_ty) {
         let sized_trait = ctx.lang_items.Sized;
         if let Some(sized_trait) = sized_trait {
@@ -2329,6 +2353,239 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
         },
         ctx,
     )
+}
+
+/// The code below is quite involved, so let me explain.
+///
+/// We loop here, because we also want to collect vars for nested associated items as
+/// well. For example, given a clause like `Self::A::B`, we want to add that to the
+/// item bounds for `A`, so that we may use that bound in the case that `Self::A::B` is
+/// rigid.
+///
+/// Secondly, regarding bound vars, when we see a where clause that mentions a GAT
+/// like `for<'a, ...> Self::Assoc<'a, ...>: Bound<'b, ...>`, we want to turn that into
+/// an item bound on the GAT, where all of the GAT args are substituted with the GAT's
+/// param regions, and then keep all of the other late-bound vars in the bound around.
+/// We need to "compress" the binder so that it doesn't mention any of those vars that
+/// were mapped to params.
+fn remap_gat_vars_and_recurse_into_nested_projections<'db>(
+    interner: DbInterner<'db>,
+    item_trait_ref: TraitRef<'db>,
+    assoc_item_def_id: TypeAliasId,
+    generics: &OnceCell<Generics<'db>>,
+    clause: Clause<'db>,
+) -> Option<(Clause<'db>, GenericPredicateSource)> {
+    let mut clause_ty = match clause.kind().skip_binder() {
+        ClauseKind::Trait(tr) => tr.self_ty(),
+        ClauseKind::Projection(proj) => proj.projection_term.self_ty(),
+        ClauseKind::TypeOutlives(outlives) => outlives.0,
+        ClauseKind::HostEffect(host) => host.self_ty(),
+        _ => return None,
+    };
+
+    let mut predicate_source = GenericPredicateSource::SelfOnly;
+    let gat_vars = loop {
+        if let TyKind::Alias(
+            alias_ty @ AliasTy { kind: AliasTyKind::Projection { def_id: alias_ty_def_id }, .. },
+        ) = clause_ty.kind()
+        {
+            if alias_ty.trait_ref(interner) == item_trait_ref
+                && alias_ty_def_id.0 == assoc_item_def_id
+            {
+                // We have found the GAT in question...
+                // Return the vars, since we may need to remap them.
+                break &alias_ty.args.as_slice()[item_trait_ref.args.len()..];
+            } else {
+                predicate_source = GenericPredicateSource::AssocTyBound;
+
+                clause_ty = alias_ty.self_ty();
+                continue;
+            }
+        }
+
+        return None;
+    };
+
+    // Special-case: No GAT vars, no mapping needed.
+    if gat_vars.is_empty() {
+        return Some((clause, predicate_source));
+    }
+
+    // First, check that all of the GAT args are substituted with a unique late-bound arg.
+    // If we find a duplicate, then it can't be mapped to the definition's params.
+    let mut mapping = FxIndexMap::default();
+    let generics = generics
+        .get_or_init(|| crate::generics::generics(interner.db, assoc_item_def_id.into()))
+        .owner();
+    for ((param_idx, param, _), var) in std::iter::zip(generics.iter_with_idx(), gat_vars) {
+        let existing = match var.kind() {
+            GenericArgKind::Lifetime(re) => {
+                let RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), bv) = re.kind() else {
+                    return None;
+                };
+                if debruijn != rustc_type_ir::INNERMOST {
+                    return None;
+                }
+                mapping.insert(bv.var, mk_param(interner, param_idx, param))
+            }
+            GenericArgKind::Type(ty) => {
+                let TyKind::Bound(BoundVarIndexKind::Bound(debruijn), bv) = ty.kind() else {
+                    return None;
+                };
+                if debruijn != rustc_type_ir::INNERMOST {
+                    return None;
+                }
+                mapping.insert(bv.var, mk_param(interner, param_idx, param))
+            }
+            GenericArgKind::Const(ct) => {
+                let ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), bv) = ct.kind() else {
+                    return None;
+                };
+                if debruijn != rustc_type_ir::INNERMOST {
+                    return None;
+                }
+                mapping.insert(bv.var, mk_param(interner, param_idx, param))
+            }
+        };
+
+        if existing.is_some() {
+            return None;
+        }
+    }
+
+    // Finally, map all of the args in the GAT to the params we expect, and compress
+    // the remaining late-bound vars so that they count up from var 0.
+    let mut folder = MapAndCompressBoundVars {
+        tcx: interner,
+        binder: rustc_type_ir::INNERMOST,
+        still_bound_vars: vec![],
+        mapping,
+    };
+    let pred = clause.kind().skip_binder().fold_with(&mut folder);
+
+    Some((
+        Binder::bind_with_vars(pred, BoundVarKinds::new_from_slice(&folder.still_bound_vars))
+            .upcast(interner),
+        predicate_source,
+    ))
+}
+
+/// Given some where clause like `for<'b, 'c> <Self as Trait<'a_identity>>::Gat<'b>: Bound<'c>`,
+/// the mapping will map `'b` back to the GAT's `'b_identity`. Then we need to compress the
+/// remaining bound var `'c` to index 0.
+///
+/// This folder gives us: `for<'c> <Self as Trait<'a_identity>>::Gat<'b_identity>: Bound<'c>`,
+/// which is sufficient for an item bound for `Gat`, since all of the GAT's args are identity.
+struct MapAndCompressBoundVars<'db> {
+    tcx: DbInterner<'db>,
+    /// How deep are we? Makes sure we don't touch the vars of nested binders.
+    binder: DebruijnIndex,
+    /// List of bound vars that remain unsubstituted because they were not
+    /// mentioned in the GAT's args.
+    still_bound_vars: Vec<BoundVariableKind<'db>>,
+    /// Subtle invariant: If the `GenericArg` is bound, then it should be
+    /// stored with the debruijn index of `INNERMOST` so it can be shifted
+    /// correctly during substitution.
+    mapping: FxIndexMap<BoundVar, GenericArg<'db>>,
+}
+
+impl<'db> TypeFolder<DbInterner<'db>> for MapAndCompressBoundVars<'db> {
+    fn cx(&self) -> DbInterner<'db> {
+        self.tcx
+    }
+
+    fn fold_binder<T>(&mut self, t: Binder<'db, T>) -> Binder<'db, T>
+    where
+        Binder<'db, T>: TypeSuperFoldable<DbInterner<'db>>,
+    {
+        self.binder.shift_in(1);
+        let out = t.super_fold_with(self);
+        self.binder.shift_out(1);
+        out
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
+        if !ty.has_bound_vars() {
+            return ty;
+        }
+
+        if let TyKind::Bound(BoundVarIndexKind::Bound(binder), old_bound) = ty.kind()
+            && self.binder == binder
+        {
+            let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
+                mapped.expect_ty()
+            } else {
+                // If we didn't find a mapped generic, then make a new one.
+                // Allocate a new var idx, and insert a new bound ty.
+                let var = BoundVar::from_usize(self.still_bound_vars.len());
+                self.still_bound_vars.push(BoundVariableKind::Ty(old_bound.kind));
+                let mapped = Ty::new_bound(
+                    self.tcx,
+                    rustc_type_ir::INNERMOST,
+                    BoundTy { var, kind: old_bound.kind },
+                );
+                self.mapping.insert(old_bound.var, mapped.into());
+                mapped
+            };
+
+            shift_vars(self.tcx, mapped, self.binder.as_u32())
+        } else {
+            ty.super_fold_with(self)
+        }
+    }
+
+    fn fold_region(&mut self, re: Region<'db>) -> Region<'db> {
+        if let RegionKind::ReBound(BoundVarIndexKind::Bound(binder), old_bound) = re.kind()
+            && self.binder == binder
+        {
+            let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
+                mapped.expect_region()
+            } else {
+                let var = BoundVar::from_usize(self.still_bound_vars.len());
+                self.still_bound_vars.push(BoundVariableKind::Region(old_bound.kind));
+                let mapped = Region::new_bound(
+                    self.tcx,
+                    rustc_type_ir::INNERMOST,
+                    BoundRegion { var, kind: old_bound.kind },
+                );
+                self.mapping.insert(old_bound.var, mapped.into());
+                mapped
+            };
+
+            shift_vars(self.tcx, mapped, self.binder.as_u32())
+        } else {
+            re
+        }
+    }
+
+    fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
+        if !ct.has_bound_vars() {
+            return ct;
+        }
+
+        if let ConstKind::Bound(BoundVarIndexKind::Bound(binder), old_bound) = ct.kind()
+            && self.binder == binder
+        {
+            let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
+                mapped.expect_const()
+            } else {
+                let var = BoundVar::from_usize(self.still_bound_vars.len());
+                self.still_bound_vars.push(BoundVariableKind::Const);
+                let mapped =
+                    Const::new_bound(self.tcx, rustc_type_ir::INNERMOST, BoundConst::new(var));
+                self.mapping.insert(old_bound.var, mapped.into());
+                mapped
+            };
+
+            shift_vars(self.tcx, mapped, self.binder.as_u32())
+        } else {
+            ct.super_fold_with(self)
+        }
+    }
+
+    fn fold_predicate(&mut self, p: Predicate<'db>) -> Predicate<'db> {
+        if !p.has_bound_vars() { p } else { p.super_fold_with(self) }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
