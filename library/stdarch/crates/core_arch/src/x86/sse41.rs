@@ -424,7 +424,7 @@ pub const fn _mm_min_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi32)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(test, assert_instr(packusdw))]
+#[cfg_attr(test, assert_instr(packusdw, limit(2)))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packus_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe { transmute(packusdw(a.as_i32x4(), b.as_i32x4())) }

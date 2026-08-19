@@ -36,6 +36,11 @@ pub fn assert_instr(
 
     let instr = &invoc.instr;
     let not = invoc.not;
+    let limit = match invoc.limit {
+        None => quote! { None },
+        Some(l) => quote! { Some(#l) },
+    };
+
     let name = &func.sig.ident;
     let maybe_allow_deprecated = if func
         .attrs
@@ -180,7 +185,7 @@ pub fn assert_instr(
         fn #assert_name() {
             #to_test
 
-            ::stdarch_test::assert(#shim_name as usize, stringify!(#shim_name), #instr, &[#(#not),*]);
+            ::stdarch_test::assert(#shim_name as usize, stringify!(#shim_name), #instr, &[#(#not),*], #limit);
         }
     };
 
@@ -194,6 +199,7 @@ pub fn assert_instr(
 struct Invoc {
     instr: String,
     not: Vec<String>,
+    limit: Option<syn::LitInt>,
     args: Vec<(syn::Ident, syn::Expr)>,
 }
 
@@ -229,6 +235,7 @@ impl syn::parse::Parse for Invoc {
 
         let instr = parse_instr(input)?;
         let mut not = Vec::new();
+        let mut limit = None;
         let mut args = Vec::new();
 
         while !input.is_empty() {
@@ -236,9 +243,13 @@ impl syn::parse::Parse for Invoc {
             if input.parse::<Token![,]>().is_err() {
                 return Err(input.error("extra tokens at end"));
             }
+            // Handle trailing comma.
+            if input.is_empty() {
+                break;
+            }
 
-            // This is either `not(instr)` or `arg = val`.
-            // We treat `not` as a magic identifier here.
+            // This is either `not(instr)` or `limit(n)` or `arg = val`.
+            // We treat `not` and `limit` as a magic identifier here.
 
             let name = input.parse::<syn::Ident>()?;
 
@@ -252,12 +263,24 @@ impl syn::parse::Parse for Invoc {
                 not.push(not_instr);
                 continue;
             }
+            if name == "limit" {
+                let content;
+                parenthesized!(content in input);
+                let n = content.parse::<syn::LitInt>()?;
+                limit = Some(n);
+                continue;
+            }
 
             input.parse::<Token![=]>()?;
             let expr = input.parse::<syn::Expr>()?;
             args.push((name, expr));
         }
-        Ok(Self { instr, not, args })
+        Ok(Self {
+            instr,
+            not,
+            limit,
+            args,
+        })
     }
 }
 

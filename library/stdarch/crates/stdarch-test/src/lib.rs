@@ -54,7 +54,7 @@ impl hash::Hash for Function {
 ///
 /// This asserts that the function at `fnptr` contains the instruction
 /// `expected` provided.
-pub fn assert(shim_addr: usize, fnname: &str, expected: &str, not: &[&str]) {
+pub fn assert(shim_addr: usize, fnname: &str, expected: &str, not: &[&str], limit: Option<usize>) {
     // Make sure that the shim is not removed
     black_box(shim_addr);
 
@@ -133,68 +133,67 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str, not: &[&str]) {
 
     let instruction_limit = std::env::var("STDARCH_ASSERT_INSTR_LIMIT")
         .ok()
-        .map_or_else(
-            || match expected {
-                // `cpuid` returns a pretty big aggregate structure, so exempt
-                // it from the slightly more restrictive 22 instructions below.
-                "cpuid" => 30,
+        .map(|v| v.parse().unwrap())
+        .or(limit.map(|n| n + 1)) // adjust for the `<` below: `limit = 2` means 2 instructions is okay
+        .unwrap_or_else(|| match expected {
+            // `cpuid` returns a pretty big aggregate structure, so exempt
+            // it from the slightly more restrictive 22 instructions below.
+            "cpuid" => 30,
 
-                // These require 8 loads and stores, so it _just_ overflows the limit
-                "aesencwide128kl" | "aesencwide256kl" | "aesdecwide128kl" | "aesdecwide256kl" => 24,
+            // These require 8 loads and stores, so it _just_ overflows the limit
+            "aesencwide128kl" | "aesencwide256kl" | "aesdecwide128kl" | "aesdecwide256kl" => 24,
 
-                // Apparently, on Windows, LLVM generates a bunch of
-                // saves/restores of xmm registers around these instructions,
-                // which exceeds the limit of 20 below. As it seems dictated by
-                // Windows's ABI (I believe?), we probably can't do much
-                // about it.
-                "vzeroall" | "vzeroupper" if cfg!(windows) => 30,
+            // Apparently, on Windows, LLVM generates a bunch of
+            // saves/restores of xmm registers around these instructions,
+            // which exceeds the limit of 20 below. As it seems dictated by
+            // Windows's ABI (I believe?), we probably can't do much
+            // about it.
+            "vzeroall" | "vzeroupper" if cfg!(windows) => 30,
 
-                // Intrinsics using `cvtpi2ps` are typically "composites" and
-                // in some cases exceed the limit.
-                "cvtpi2ps" => 25,
-                // core_arch/src/arm_shared/simd32
-                // vfmaq_n_f32_vfma : #instructions = 26 >= 22 (limit)
-                "usad8" | "vfma" | "vfms" => 27,
-                "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
-                // core_arch/src/arm_shared/simd32
-                // vst1q_s64_x4_vst1 : #instructions = 27 >= 22 (limit)
-                "vld3" => 28,
-                // core_arch/src/arm_shared/simd32
-                // vld4q_lane_u32_vld4 : #instructions = 36 >= 22 (limit)
-                "vld4" => 37,
-                // core_arch/src/arm_shared/simd32
-                // vst1q_s64_x4_vst1 : #instructions = 40 >= 22 (limit)
-                "vst1" => 41,
-                // core_arch/src/arm_shared/simd32
-                // vst3q_u32_vst3 : #instructions = 25 >= 22 (limit)
-                "vst3" => 26,
-                // core_arch/src/arm_shared/simd32
-                // vst4q_u32_vst4 : #instructions = 33 >= 22 (limit)
-                "vst4" => 34,
+            // Intrinsics using `cvtpi2ps` are typically "composites" and
+            // in some cases exceed the limit.
+            "cvtpi2ps" => 25,
+            // core_arch/src/arm_shared/simd32
+            // vfmaq_n_f32_vfma : #instructions = 26 >= 22 (limit)
+            "usad8" | "vfma" | "vfms" => 27,
+            "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
+            // core_arch/src/arm_shared/simd32
+            // vst1q_s64_x4_vst1 : #instructions = 27 >= 22 (limit)
+            "vld3" => 28,
+            // core_arch/src/arm_shared/simd32
+            // vld4q_lane_u32_vld4 : #instructions = 36 >= 22 (limit)
+            "vld4" => 37,
+            // core_arch/src/arm_shared/simd32
+            // vst1q_s64_x4_vst1 : #instructions = 40 >= 22 (limit)
+            "vst1" => 41,
+            // core_arch/src/arm_shared/simd32
+            // vst3q_u32_vst3 : #instructions = 25 >= 22 (limit)
+            "vst3" => 26,
+            // core_arch/src/arm_shared/simd32
+            // vst4q_u32_vst4 : #instructions = 33 >= 22 (limit)
+            "vst4" => 34,
 
-                // core_arch/src/arm_shared/simd32
-                // vst1q_p64_x4_nop : #instructions = 33 >= 22 (limit)
-                "nop" if fnname.contains("vst1q_p64") => 34,
+            // core_arch/src/arm_shared/simd32
+            // vst1q_p64_x4_nop : #instructions = 33 >= 22 (limit)
+            "nop" if fnname.contains("vst1q_p64") => 34,
 
-                // AMX intrinsics generate a lot of move instructions to load/store the tile registers
-                // due to Rust ABI
-                _ if fnname.contains("___tile") => 165,
+            // AMX intrinsics generate a lot of move instructions to load/store the tile registers
+            // due to Rust ABI
+            _ if fnname.contains("___tile") => 165,
 
-                // Original limit was 20 instructions, but ARM DSP Intrinsics
-                // are exactly 20 instructions long. So, bump the limit to 22
-                // instead of adding here a long list of exceptions.
-                _ => {
-                    // aarch64_be may add reverse instructions which increases
-                    // the number of instructions generated.
-                    if cfg!(all(target_endian = "big", target_arch = "aarch64")) {
-                        32
-                    } else {
-                        22
-                    }
+            // Original limit was 20 instructions, but ARM DSP Intrinsics
+            // are exactly 20 instructions long. So, bump the limit to 22
+            // instead of adding here a long list of exceptions.
+            _ => {
+                // aarch64_be may add reverse instructions which increases
+                // the number of instructions generated.
+                if cfg!(all(target_endian = "big", target_arch = "aarch64")) {
+                    32
+                } else {
+                    22
                 }
-            },
-            |v| v.parse().unwrap(),
-        );
+            }
+        });
     let probably_only_one_instruction = instrs.len() < instruction_limit;
 
     if found && found_bad.is_none() && probably_only_one_instruction && !inlining_failed {
