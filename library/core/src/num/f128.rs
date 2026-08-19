@@ -10,6 +10,7 @@
 //! defined directly on the `f128` type.
 
 #![unstable(feature = "f128", issue = "116909")]
+#![expect(clippy::approx_constant, reason = "this module defines f128 constants")]
 
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;

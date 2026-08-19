@@ -10,6 +10,7 @@
 //! defined directly on the `f32` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![expect(clippy::approx_constant, reason = "this module defines f32 constants")]
 
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
