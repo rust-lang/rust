@@ -93,3 +93,6 @@ impl fmt::Debug for Dir {
         f.debug_struct("Dir").field("path", &self.path).finish()
     }
 }
+
+pub type ExtraHomeDirs = ();
+pub type ExtraMediaDirs = ();

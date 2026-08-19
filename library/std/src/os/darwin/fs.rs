@@ -7,6 +7,13 @@ use crate::fs::{self, Metadata};
 use crate::sys::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 
+mod dirs;
+
+#[unstable(feature = "dir_discovery", issue = "157515")]
+pub use self::dirs::HomeDirsExt;
+#[unstable(feature = "media_dir_discovery", issue = "157515")]
+pub use self::dirs::MediaDirsExt;
+
 /// OS-specific extensions to [`fs::Metadata`].
 ///
 /// [`fs::Metadata`]: crate::fs::Metadata

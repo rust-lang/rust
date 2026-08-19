@@ -10,7 +10,7 @@ cfg_select! {
         mod unix;
         use unix as imp;
         #[cfg(not(target_os = "wasi"))]
-        pub use unix::{chown, fchown, lchown, mkfifo};
+        pub use unix::{chown, fchown, lchown, mkfifo, ExtraHomeDirs, ExtraMediaDirs};
         #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
         pub use unix::chroot;
         #[cfg(not(target_os = "wasi"))]
@@ -62,6 +62,9 @@ pub use imp::{
     Dir, DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
     ReadDir,
 };
+
+#[cfg(not(target_family = "unix"))]
+pub use self::common::{ExtraHomeDirs, ExtraMediaDirs};
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
     // FIXME: use with_native_path on all platforms
