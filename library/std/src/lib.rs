@@ -335,6 +335,7 @@
 #![feature(core_io)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_io_internals)]
+#![feature(core_time_instant)]
 #![feature(cstr_display)]
 #![feature(cursor_split)]
 #![feature(derive_const)]
