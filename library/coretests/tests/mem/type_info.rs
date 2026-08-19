@@ -223,12 +223,12 @@ fn test_primitives() {
     use TypeKind::*;
 
     const {
-        let Type { kind: Bool(_ty), .. } = (const { Type::of::<bool>() }) else { panic!() };
+        let Type { kind: Bool, .. } = (const { Type::of::<bool>() }) else { panic!() };
         let ty_id = TypeId::of::<bool>();
         assert!(ty_id.size() == Some(size_of::<bool>()));
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Char(_ty), .. } = (const { Type::of::<char>() }) else { panic!() };
+        let Type { kind: Char, .. } = (const { Type::of::<char>() }) else { panic!() };
         let ty_id = TypeId::of::<char>();
         assert!(ty_id.size() == Some(size_of::<char>()));
         assert!(ty_id.variants() == 1);

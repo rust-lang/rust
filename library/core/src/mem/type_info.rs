@@ -90,9 +90,9 @@ pub enum TypeKind {
     /// Unions.
     Union,
     /// Primitive boolean type.
-    Bool(Bool),
+    Bool,
     /// Primitive character type.
-    Char(Char),
+    Char,
     /// Primitive signed and unsigned integer type.
     Int,
     /// Primitive floating-point type.
@@ -197,22 +197,6 @@ pub struct GenericType {
 pub struct Const {
     /// The const's type.
     pub ty: TypeId,
-}
-
-/// Compile-time type information about `bool`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Bool {
-    // No additional information to provide for now.
-}
-
-/// Compile-time type information about `char`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Char {
-    // No additional information to provide for now.
 }
 
 /// Compile-time type information about string slice types.
