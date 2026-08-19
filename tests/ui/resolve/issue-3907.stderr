@@ -14,6 +14,20 @@ help: consider importing this trait instead
 LL + use issue_3907::Foo;
    |
 
-error: aborting due to 1 previous error
+error[E0038]: the trait `issue_3907::Foo` is not dyn compatible
+  --> $DIR/issue-3907.rs:5:1
+   |
+LL | type Foo = dyn issue_3907::Foo;
+   | ^^^^^^^^ `issue_3907::Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/auxiliary/issue-3907.rs:2:8
+   |
+LL |     fn bar();
+   |        ^^^ the trait is not dyn compatible because associated function `bar` has no `self` parameter
 
-For more information about this error, try `rustc --explain E0404`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0404.
+For more information about an error, try `rustc --explain E0038`.
