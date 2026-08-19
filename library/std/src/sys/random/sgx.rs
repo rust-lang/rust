@@ -1,4 +1,5 @@
 use crate::arch::x86_64::{_rdrand16_step, _rdrand32_step, _rdrand64_step};
+use crate::io::BorrowedCursor;
 
 const RETRIES: u32 = 10;
 
@@ -45,23 +46,17 @@ fn rdrand16() -> u16 {
     }
 }
 
-pub fn fill_bytes(bytes: &mut [u8]) {
-    let (chunks, remainder) = bytes.as_chunks_mut();
-    for chunk in chunks {
-        *chunk = rdrand64().to_ne_bytes();
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
+    while cursor.capacity() >= 8 {
+        cursor.append(&rdrand64().to_ne_bytes());
     }
-
-    let (chunks, remainder) = remainder.as_chunks_mut();
-    for chunk in chunks {
-        *chunk = rdrand32().to_ne_bytes();
+    if cursor.capacity() >= 4 {
+        cursor.append(&rdrand32().to_ne_bytes());
     }
-
-    let (chunks, remainder) = remainder.as_chunks_mut();
-    for chunk in chunks {
-        *chunk = rdrand16().to_ne_bytes();
+    if cursor.capacity() >= 2 {
+        cursor.append(&rdrand16().to_ne_bytes());
     }
-
-    if let [byte] = remainder {
-        *byte = rdrand16() as u8;
+    if cursor.capacity() == 1 {
+        cursor.append(&[rdrand16() as u8]);
     }
 }

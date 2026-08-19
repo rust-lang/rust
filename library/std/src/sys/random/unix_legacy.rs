@@ -7,14 +7,14 @@
 //! yet, we just read from the file.
 
 use crate::fs::File;
-use crate::io::Read;
+use crate::io::{BorrowedCursor, Read};
 use crate::sync::OnceLock;
 
 static DEVICE: OnceLock<File> = OnceLock::new();
 
-pub fn fill_bytes(bytes: &mut [u8]) {
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
     DEVICE
         .get_or_try_init(|| File::open("/dev/urandom"))
-        .and_then(|mut dev| dev.read_exact(bytes))
+        .and_then(|mut dev| dev.read_buf_exact(bytes))
         .expect("failed to generate random data");
 }

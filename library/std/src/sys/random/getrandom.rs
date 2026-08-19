@@ -1,7 +1,13 @@
-pub fn fill_bytes(mut bytes: &mut [u8]) {
-    while !bytes.is_empty() {
-        let r = unsafe { libc::getrandom(bytes.as_mut_ptr().cast(), bytes.len(), 0) };
+use crate::io::BorrowedCursor;
+
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
+    while cursor.capacity() != 0 {
+        let r =
+            unsafe { libc::getrandom(cursor.as_mut().as_mut_ptr().cast(), cursor.capacity(), 0) };
         assert_ne!(r, -1, "failed to generate random data");
-        bytes = &mut bytes[r as usize..];
+        // SAFETY: We've just initialized `r` bytes.
+        unsafe {
+            cursor.advance(r as usize);
+        }
     }
 }

@@ -1,7 +1,14 @@
-pub fn fill_bytes(mut bytes: &mut [u8]) {
-    while !bytes.is_empty() {
-        let res = unsafe { hermit_abi::read_entropy(bytes.as_mut_ptr(), bytes.len(), 0) };
+use crate::io::BorrowedCursor;
+
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
+    while cursor.capacity() != 0 {
+        let res = unsafe {
+            hermit_abi::read_entropy(cursor.as_mut().as_mut_ptr().cast(), cursor.capacity(), 0)
+        };
         assert_ne!(res, -1, "failed to generate random data");
-        bytes = &mut bytes[res as usize..];
+        // SAFETY: We've just initialized `res` bytes.
+        unsafe {
+            cursor.advance(res as usize);
+        }
     }
 }

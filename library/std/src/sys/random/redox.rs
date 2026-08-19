@@ -1,12 +1,12 @@
 use crate::fs::File;
-use crate::io::Read;
+use crate::io::{BorrowedCursor, Read};
 use crate::sync::OnceLock;
 
 static SCHEME: OnceLock<File> = OnceLock::new();
 
-pub fn fill_bytes(bytes: &mut [u8]) {
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
     SCHEME
         .get_or_try_init(|| File::open("/scheme/rand"))
-        .and_then(|mut scheme| scheme.read_exact(bytes))
+        .and_then(|mut scheme| scheme.read_buf_exact(cursor))
         .expect("failed to generate random data");
 }
