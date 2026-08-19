@@ -27,8 +27,7 @@ including the `clang` C compiler and our beloved `rustc`.
 LLVM takes input in the form of LLVM IR.
 It is basically assembly code with additional low-level types and annotations added.
 These annotations are helpful for doing optimizations on the LLVM IR and outputted machine code.
-The end
-result of all this is (at long last) something executable (e.g. an ELF object,
+The end result of all this is (at long last) something executable (e.g. an ELF object,
 an EXE, or wasm).
 
 There are a few benefits to using LLVM:
@@ -39,10 +38,8 @@ There are a few benefits to using LLVM:
   project has been collecting.
 - We can automatically compile Rust to any of the platforms for which LLVM has support.
   For example, as soon as LLVM added support for wasm, voila!
-  rustc,
-  clang, and a bunch of other languages were able to compile to wasm!
-  (Well,
-  there was some extra stuff to be done, but we were 90% there anyway).
+  rustc, clang, and a bunch of other languages were able to compile to wasm!
+  (Well, there was some extra stuff to be done, but we were 90% there anyway).
 - We and other compiler projects benefit from each other.
   For example, when the [Spectre and Meltdown security vulnerabilities][spectre] were discovered,
   only LLVM needed to be patched.
@@ -62,16 +59,15 @@ Once LLVM produces objects from these modules, these objects are passed to the
 linker along with, optionally, the metadata object and an archive or an executable is produced.
 
 It is not necessarily the codegen phase described above that runs the optimizations.
-With certain kinds of LTO, the optimization might happen at the linking time instead.
+With certain kinds of LTO, the optimization might happen during linking time instead.
 It is also possible for some optimizations to happen
 before objects are passed on to the linker and some to happen during the linking.
 
 This all happens towards the very end of compilation.
 The code for this can be found in [`rustc_codegen_ssa::back`][ssaback] and
 [`rustc_codegen_llvm::back`][llvmback].
-Sadly, this piece of code is not
-really well-separated into LLVM-dependent code; the [`rustc_codegen_ssa`][ssa]
-contains a fair amount of code specific to the LLVM backend.
+Sadly, this piece of code is not really well-separated into LLVM-dependent code;
+the [`rustc_codegen_ssa`][ssa] contains a fair amount of code specific to the LLVM backend.
 
 Once these components are done with their work you end up with a number of
 files in your filesystem corresponding to the outputs you have requested.
