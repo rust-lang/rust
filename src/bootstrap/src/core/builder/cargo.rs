@@ -8,7 +8,7 @@ use crate::core::build_steps::llvm::prebuilt_llvm_output;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::compiler::Compiler;
-use crate::core::config::flags::Color;
+use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::toml::pgo::PgoConfig;
 use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
@@ -719,6 +719,14 @@ impl Builder<'_> {
             if prebuilt_llvm_output(self, target).is_none() {
                 cargo.env("RUST_CHECK", "1");
             }
+        }
+
+        // Forward `./x fix --allow-dirty` from bootstrap to cargo.
+        if matches!(cmd_kind, Kind::Fix)
+            && let Subcommand::Fix { allow_dirty } = self.config.cmd
+            && allow_dirty
+        {
+            cargo.arg("--allow-dirty");
         }
 
         let build_compiler_stage = if compiler.stage == 0 && self.local_rebuild {
