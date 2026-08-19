@@ -17,18 +17,16 @@ python3 ../x.py build --set rust.debug=true opt-dist
 # Only build GCC on full builds, not try builds
 if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     function hide_output {
-      { set +x; } 2>/dev/null
-      on_err="
-    echo ERROR: An error was encountered with the build.
-    cat /tmp/build.log
-    exit 1
-    "
-      trap "$on_err" ERR
-      bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-      PING_LOOP_PID=$!
-      trap - ERR
-      kill $PING_LOOP_PID
-      set -x
+        { set +x; } 2>/dev/null
+        local log; log="$(mktemp)"
+        trap "echo ERROR: An error was encountered with the build.; cat '$log'; exit 1" ERR
+        bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+        local ping_loop_pid=$!
+        "$@" &> "$log"
+        trap - ERR
+        kill "$ping_loop_pid"
+        rm -f "$log"
+        set -x
     }
 
     # We have to build our own binutils for the GCC build, because the default CentOS 7 binutils are
