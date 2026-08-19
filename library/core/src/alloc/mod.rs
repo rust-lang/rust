@@ -502,7 +502,7 @@ pub const unsafe trait Allocator {
 ///  - [`std::thread_local`],
 ///  - [`std::thread::current`],
 ///  - [`std::thread::park`] and [`std::thread::Thread`]'s [`unpark`] method and
-/// [`Clone`] implementation.
+///    [`Clone`] implementation.
 ///
 /// [`std`]: ../../std/index.html
 /// [`std::sync::Mutex`]: ../../std/sync/struct.Mutex.html

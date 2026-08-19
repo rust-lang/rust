@@ -443,7 +443,7 @@ impl FormattingOptions {
     ///   proper fill, alignment and width if those parameters are set.
     /// - For integral types, this is ignored.
     /// - For floating-point types, this indicates how many digits after the
-    /// decimal point should be printed.
+    ///   decimal point should be printed.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn precision(&mut self, precision: Option<u16>) -> &mut Self {
         if let Some(precision) = precision {

@@ -457,11 +457,11 @@ impl<'f> VaList<'f> {
     /// - There is another c-variadic argument to read.
     /// - The actual type of the argument `U` is compatible with `T` (as defined below).
     /// - If `U` and `T` are both integer types, then the value passed by the caller must be
-    /// representable in both types.
+    ///   representable in both types.
     /// - If `T` is not [`Copy`], then it must not have already been read using `next_arg`
-    /// on a [`clone`][VaList::clone]d copy of this `VaList`.
-    /// (Currently, all types implementing [`VaArgSafe`] also implement [`Copy`],
-    /// but this may change in the future.)
+    ///   on a [`clone`][VaList::clone]d copy of this `VaList`.
+    ///   (Currently, all types implementing [`VaArgSafe`] also implement [`Copy`],
+    ///   but this may change in the future.)
     ///
     /// Types `T` and `U` are compatible when:
     ///

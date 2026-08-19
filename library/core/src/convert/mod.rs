@@ -643,10 +643,10 @@ pub const trait TryInto<T>: Sized {
 ///
 /// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
 /// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
-/// is implemented and cannot fail -- the associated `Error` type for
-/// calling `T::try_from()` on a value of type `T` is [`Infallible`].
-/// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
-/// equivalent.
+///   is implemented and cannot fail -- the associated `Error` type for
+///   calling `T::try_from()` on a value of type `T` is [`Infallible`].
+///   When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
+///   equivalent.
 ///
 /// Prefer using [`TryInto`] over [`TryFrom`] when specifying trait bounds on a generic function
 /// to ensure that types that only implement [`TryInto`] can be used as well.
