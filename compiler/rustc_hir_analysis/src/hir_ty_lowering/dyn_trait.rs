@@ -37,7 +37,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
         lifetime: &hir::Lifetime,
         syntax: TraitObjectSyntax,
     ) -> Ty<'tcx> {
@@ -569,7 +569,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
     ) -> Option<ErrorGuaranteed> {
         struct TraitObjectWithoutDyn<'a, 'tcx> {
             span: Span,
@@ -871,7 +871,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
         diag: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx();

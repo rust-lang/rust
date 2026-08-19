@@ -107,7 +107,7 @@ fn collect_bounds<'a, 'tcx>(
 
 fn collect_sizedness_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+    hir_bounds: &[hir::GenericBound<'_>],
     context: ImpliedBoundsContext<'tcx>,
     span: Span,
 ) -> CollectedSizednessBounds {
@@ -150,7 +150,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
-        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'_>],
         context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
@@ -212,7 +212,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
-        hir_bounds: &[hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'_>],
         context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
@@ -229,7 +229,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_: LangItem,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
-        hir_bounds: &[hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'_>],
         context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
@@ -251,10 +251,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Returns `true` if default trait bound should be added.
-    fn should_add_default_traits<'a>(
+    fn should_add_default_traits(
         &self,
         trait_def_id: DefId,
-        hir_bounds: &'a [hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'_>],
         context: ImpliedBoundsContext<'tcx>,
     ) -> bool {
         let collected = collect_bounds(hir_bounds, context, trait_def_id);
@@ -308,7 +308,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// There is an implied binder around `param_ty` and `hir_bounds`.
     /// See `lower_poly_trait_ref` for more details.
     #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
-    pub(crate) fn lower_bounds<'hir, I: IntoIterator<Item = &'hir hir::GenericBound<'tcx>>>(
+    pub(crate) fn lower_bounds<'a, I: IntoIterator<Item = &'a hir::GenericBound<'a>>>(
         &self,
         param_ty: Ty<'tcx>,
         hir_bounds: I,
@@ -316,9 +316,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
         predicate_filter: PredicateFilter,
         overlapping_assoc_constraints: OverlappingAsssocItemConstraints,
-    ) where
-        'tcx: 'hir,
-    {
+    ) {
         for hir_bound in hir_bounds {
             // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
             // we skip over any traits that don't define the given associated type.
@@ -379,7 +377,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        constraint: &hir::AssocItemConstraint<'tcx>,
+        constraint: &hir::AssocItemConstraint<'_>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         duplicates: Option<&mut FxIndexMap<DefId, Span>>,
         path_span: Span,
@@ -616,7 +614,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// Lower a type, possibly specially handling the type if it's a return type notation
     /// which we otherwise deny in other positions.
-    pub fn lower_ty_maybe_return_type_notation(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    pub fn lower_ty_maybe_return_type_notation(&self, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         let hir::TyKind::Path(qpath) = hir_ty.kind else {
             return self.lower_ty(hir_ty);
         };
