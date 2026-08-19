@@ -1642,6 +1642,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the clamped value and does not modify the original"]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     #[inline]
     pub fn clamp_magnitude(self, limit: f32) -> f32 {
         assert!(limit >= 0.0, "limit must be non-negative");

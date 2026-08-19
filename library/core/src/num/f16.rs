@@ -1436,6 +1436,7 @@ impl f16 {
     #[inline]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[must_use = "this returns the clamped value and does not modify the original"]
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     pub fn clamp_magnitude(self, limit: f16) -> f16 {
         assert!(limit >= 0.0, "limit must be non-negative");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
