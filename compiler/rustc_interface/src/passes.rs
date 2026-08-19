@@ -1011,8 +1011,8 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         untracked,
         incr_comp_session.as_ref(),
         dep_graph,
-        rustc_query_impl::make_dep_kind_vtables(&arena),
         rustc_query_impl::query_system(
+            &arena,
             providers.queries,
             providers.extern_queries,
             query_result_on_disk_cache,

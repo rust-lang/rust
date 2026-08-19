@@ -412,11 +412,6 @@ pub struct Session {
     /// optimization-pass execution candidate during this compilation.
     pub mir_opt_bisect_eval_count: AtomicUsize,
 
-    /// Enabled features that are used in the current compilation.
-    ///
-    /// The value is the `DepNodeIndex` of the node encodes the used feature.
-    pub used_features: Lock<FxHashMap<Symbol, u32>>,
-
     /// Whether the test harness removed a user-written `#[rustc_main]` attribute
     /// while generating the synthetic test entry point.
     pub removed_rustc_main_attr: AtomicBool,
@@ -1388,7 +1383,6 @@ pub fn build_session(
         fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
-        used_features: Lock::default(),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
     };
