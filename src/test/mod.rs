@@ -19,7 +19,7 @@ use crate::{
 };
 
 use rustfmt_config_proc_macro::nightly_only_test;
-use tracing::{debug, warn};
+use tracing::debug;
 
 mod configuration_snippet;
 mod mod_resolver;
@@ -627,7 +627,9 @@ fn stdin_parser_panic_caught() {
     // See issue #3239.
     for text in ["{", "}"].iter().cloned().map(String::from) {
         let mut buf = vec![];
-        let mut session = Session::new(Default::default(), Some(&mut buf));
+        let mut config = Config::default();
+        config.set().show_parse_errors(false);
+        let mut session = Session::new(config, Some(&mut buf));
         let _ = session.format(Input::Text(text));
 
         assert!(session.has_parsing_errors());
@@ -867,9 +869,6 @@ fn read_config(filename: &Path) -> Config {
     for (key, val) in &sig_comments {
         if key != "target" && key != "config" && key != "unstable" {
             config.override_value(key, val);
-            if config.is_default(key) {
-                warn!("Default value {} used explicitly for {}", val, key);
-            }
         }
     }
 
