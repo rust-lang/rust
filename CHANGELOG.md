@@ -6,7 +6,125 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[b147b68...master](https://github.com/rust-lang/rust-clippy/compare/b147b68...master)
+[64c7431...master](https://github.com/rust-lang/rust-clippy/compare/64c7431...master)
+
+## Rust 1.98
+
+Current stable, released 2026-08-20
+
+[View all merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2026-05-27T20%3A48%3A30Z..2026-06-25T09%3A21%3A14Z+base%3Amaster)
+
+### New Lints
+
+* Added [`unnecessary_unwrap_unchecked`] to `complexity`
+  [#16252](https://github.com/rust-lang/rust-clippy/pull/16252)
+* Added [`chunks_exact_to_as_chunks`] to `style`
+  [#16931](https://github.com/rust-lang/rust-clippy/pull/16931)
+* Added [`by_ref_peekable_peek`] to `suspicious`
+  [#17042](https://github.com/rust-lang/rust-clippy/pull/17042)
+* Added [`with_capacity_zero`] to `pedantic`
+  [#17192](https://github.com/rust-lang/rust-clippy/pull/17192)
+* Added [`manual_isolate_lowest_one`] to `complexity`
+  [#17037](https://github.com/rust-lang/rust-clippy/pull/17037)
+* Added [`for_unbounded_range`] to `suspicious`
+  [#16257](https://github.com/rust-lang/rust-clippy/pull/16257)
+* Added [`unused_async_trait_impl`] to `pedantic`
+  [#16244](https://github.com/rust-lang/rust-clippy/pull/16244)
+
+### Moves and Deprecations
+
+* Moved [`empty_enums`] from `pedantic` to `nursery`
+  [#17298](https://github.com/rust-lang/rust-clippy/pull/17298)
+* Deprecated [`from_iter_instead_of_collect`]
+  [#17208](https://github.com/rust-lang/rust-clippy/pull/17208)
+
+### Enhancements
+
+* [`needless_late_init`] extend to cover grouped assignments, and fix FN for if/match in block expr
+  [#16746](https://github.com/rust-lang/rust-clippy/pull/16746)
+* [`unnecessary_cast`] treat `!` the same as `-`, improving suggestions and precedence handling
+  [#17278](https://github.com/rust-lang/rust-clippy/pull/17278)
+* [`manual_slice_fill`] detect `for` loops over `&mut [T; N]` and suggest `.fill()`
+  [#16926](https://github.com/rust-lang/rust-clippy/pull/16926)
+* [`extra_unused_lifetimes`] detect unused `for<'a>` lifetime bounds
+  [#17031](https://github.com/rust-lang/rust-clippy/pull/17031)
+* [`single_range_in_vec_init`] detect more ranges, including `..end`, `start..`, `start..=end`,
+  `..=end`, and `..`
+  [#17146](https://github.com/rust-lang/rust-clippy/pull/17146)
+* [`iter_next_slice`] extend lint to support `iter_mut()`
+  [#17122](https://github.com/rust-lang/rust-clippy/pull/17122)
+* [`large_const_arrays`] check nested large arrays
+  [#17141](https://github.com/rust-lang/rust-clippy/pull/17141)
+* [`manual_is_variant_and`] lint `result.ok().is_some_and(f)`
+  [#17184](https://github.com/rust-lang/rust-clippy/pull/17184)
+* [`mem_replace_with_default`] also emit inside macros
+  [#17191](https://github.com/rust-lang/rust-clippy/pull/17191)
+* [`missing_const_for_fn`] lint more cases involving pointer metadata, such as slice lengths
+  [#17121](https://github.com/rust-lang/rust-clippy/pull/17121)
+* [`never_loop`] add notes for non-trivial cases to indicate why a loop is detected as
+  non-terminating
+  [#17145](https://github.com/rust-lang/rust-clippy/pull/17145)
+* [`double_must_use`] make the lint machine-applicable in the single-attribute case
+  [#17144](https://github.com/rust-lang/rust-clippy/pull/17144)
+* [`result_large_err`] and [`result_unit_err`] fix not triggering on async functions
+  [#17130](https://github.com/rust-lang/rust-clippy/pull/17130)
+* [`unnecessary_lazy_evaluations`] avoid a broken suggestion when the closure has an explicit return
+  type
+  [#17216](https://github.com/rust-lang/rust-clippy/pull/17216)
+* [`unnecessary_sort_by`] fix the reverse-sort suggestion using the second closure parameter name
+  instead of the first
+  [#16868](https://github.com/rust-lang/rust-clippy/pull/16868)
+* [`collapsible_match`] fix wrong suggestions when the match body has no braces
+  [#16749](https://github.com/rust-lang/rust-clippy/pull/16749)
+* [`unused_async_trait_impl`] fix suggestions for statements containing `return`
+  [#17181](https://github.com/rust-lang/rust-clippy/pull/17181)
+* [`map_unwrap_or`] avoid suggesting `map_or` when the `unwrap_or` default requires a type adjustment
+  [#16928](https://github.com/rust-lang/rust-clippy/pull/16928)
+* [`doc_markdown`] add common database engines to the whitelist
+  [#16917](https://github.com/rust-lang/rust-clippy/pull/16917)
+* [`std_instead_of_core`] fix MSRV-unaware issues
+  [#16964](https://github.com/rust-lang/rust-clippy/pull/16964)
+* [`extra_unused_type_parameters`] don't suggest an autofix
+  [#15907](https://github.com/rust-lang/rust-clippy/pull/15907)
+* [`extra_unused_lifetimes`] do not lint expanded code
+  [#17256](https://github.com/rust-lang/rust-clippy/pull/17256)
+* [`unnecessary_box_returns`] no longer fires when the boxed type's size depends on generic
+  parameters, e.g. `Box<[T; N]>`
+  [#17249](https://github.com/rust-lang/rust-clippy/pull/17249)
+* [`inline_trait_bounds`] do not trigger on code automatically derived from procedural macros
+  [#17131](https://github.com/rust-lang/rust-clippy/pull/17131)
+* Fix duplicate diagnostics in `unknown_attribute` and `renamed_builtin_attr`
+  [#17164](https://github.com/rust-lang/rust-clippy/pull/17164)
+
+### False Positive Fixes
+
+* [`manual_option_zip`] don't trigger when the map receiver is a lazily evaluated expression
+  [#17270](https://github.com/rust-lang/rust-clippy/pull/17270)
+* [`std_instead_of_core`] fix FPs for stable items in an unstable module, e.g. `core::io::ErrorKind`
+  [#16964](https://github.com/rust-lang/rust-clippy/pull/16964)
+* [`ref_patterns`] don't trigger on `#[automatically_derived]` annotated code
+  [#17250](https://github.com/rust-lang/rust-clippy/pull/17250)
+* [`needless_borrow`] fix FP for same-name methods, where auto-borrowing might prefer another method
+  [#17171](https://github.com/rust-lang/rust-clippy/pull/17171)
+* [`redundant_closure_call`] fix FP on async closures with early returns
+  [#17107](https://github.com/rust-lang/rust-clippy/pull/17107)
+* [`explicit_counter_loop`] fix FP when the counter is only modified inside the `else` block of a
+  `let...else` binding
+  [#17023](https://github.com/rust-lang/rust-clippy/pull/17023)
+* [`unnecessary_unwrap_unchecked`] don't trigger inside the `_unchecked` function itself
+  [#17351](https://github.com/rust-lang/rust-clippy/pull/17351)
+
+### ICE Fixes
+
+* [`absurd_extreme_comparisons`] avoid an ICE when const evaluation encounters unsized generic type
+  args
+  [#16976](https://github.com/rust-lang/rust-clippy/pull/16976)
+* [`uninit_vec`] fix an OOM panic on large types
+  [#17205](https://github.com/rust-lang/rust-clippy/pull/17205)
+* Fix an ICE when the `clippy::author` attribute is applied to an item
+  [#17245](https://github.com/rust-lang/rust-clippy/pull/17245)
+* [`unnecessary_unwrap_unchecked`] fix ICE when resolving a path to a local variable
+  [#17353](https://github.com/rust-lang/rust-clippy/pull/17353)
 
 ## Rust 1.97
 
