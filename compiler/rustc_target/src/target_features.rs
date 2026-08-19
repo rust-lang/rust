@@ -1467,6 +1467,17 @@ impl Target {
                 // No ABI-relevant target features have been identified thus far.
                 NOTHING
             }
+            Arch::Xtensa => {
+                // All Rust-supported Xtensa targets use the windowed register ABI
+                // (esp32 and later). Non-windowed (historical esp8266 / CALL0) is not
+                // a supported Rust ABI. Requiring `windowed` here means selecting a
+                // -Ctarget-cpu that does not provide windowed produces an ABI mismatch
+                // warning rather than silent UB when mixed with windowed code.
+                //
+                // `windowed` implies `exception` in XTENSA_FEATURES, so exception is
+                // always enabled for this ABI; list it explicitly for complete constraints.
+                FeatureConstraints { required: &["windowed", "exception"], incompatible: &[] }
+            }
             _ => NOTHING,
         }
     }
