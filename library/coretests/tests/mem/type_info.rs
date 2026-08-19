@@ -233,36 +233,31 @@ fn test_primitives() {
         assert!(ty_id.size() == Some(size_of::<char>()));
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int(ty), .. } = (const { Type::of::<i32>() }) else { panic!() };
-        assert!(ty.bits == 32);
-        assert!(ty.signed);
+        let Type { kind: Int, .. } = (const { Type::of::<i32>() }) else { panic!() };
         let ty_id = TypeId::of::<i32>();
+        assert!(ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<i32>()));
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int(ty), .. } = (const { Type::of::<isize>() }) else { panic!() };
-        assert!(ty.bits as usize == size_of::<isize>() * 8);
-        assert!(ty.signed);
+        let Type { kind: Int, .. } = (const { Type::of::<isize>() }) else { panic!() };
         let ty_id = TypeId::of::<isize>();
+        assert!(ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<isize>()));
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int(ty), .. } = (const { Type::of::<u32>() }) else { panic!() };
-        assert!(ty.bits == 32);
-        assert!(!ty.signed);
+        let Type { kind: Int, .. } = (const { Type::of::<u32>() }) else { panic!() };
         let ty_id = TypeId::of::<u32>();
+        assert!(!ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<u32>()));
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Int(ty), .. } = (const { Type::of::<usize>() }) else { panic!() };
-        assert!(ty.bits as usize == size_of::<usize>() * 8);
-        assert!(!ty.signed);
+        let Type { kind: Int, .. } = (const { Type::of::<usize>() }) else { panic!() };
         let ty_id = TypeId::of::<usize>();
+        assert!(!ty_id.is_signed());
         assert!(ty_id.size() == Some(size_of::<usize>()));
         assert!(ty_id.variants() == 1);
 
-        let Type { kind: Float(ty), .. } = (const { Type::of::<f32>() }) else { panic!() };
-        assert!(ty.bits == 32);
+        let Type { kind: Float, .. } = (const { Type::of::<f32>() }) else { panic!() };
         let ty_id = TypeId::of::<f32>();
         assert!(ty_id.size() == Some(size_of::<f32>()));
         assert!(ty_id.variants() == 1);
