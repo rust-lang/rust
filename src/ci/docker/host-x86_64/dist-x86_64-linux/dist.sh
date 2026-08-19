@@ -39,7 +39,7 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     mkdir "$BINUTILS_ROOT_PATH"
     cd binutils-build
 
-    hide_output ../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH"
+    hide_output ../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH" --disable-werror
     hide_output make -j$(nproc)
     hide_output make install
 
