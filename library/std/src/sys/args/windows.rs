@@ -295,7 +295,7 @@ pub(crate) fn make_bat_command_line(
     force_quotes: bool,
 ) -> io::Result<Vec<u16>> {
     const INVALID_ARGUMENT_ERROR: io::Error =
-        io::const_error!(io::ErrorKind::InvalidInput, r#"batch file arguments are invalid"#);
+        io::const_error!(io::ErrorKind::InvalidInput, r"batch file arguments are invalid");
     // Set the start of the command line to `cmd.exe /c "`
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments
