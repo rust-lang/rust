@@ -1357,6 +1357,7 @@ impl OsStr {
     /// assert!(!OsStr::new("foo").starts_with('F'));
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn starts_with<'a, P: Pattern<&'a OsStr>>(&'a self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
@@ -1374,6 +1375,7 @@ impl OsStr {
     /// assert!(!OsStr::new("foo").ends_with('O'));
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn ends_with<'a, P>(&'a self, pat: P) -> bool
     where
         P: Pattern<&'a OsStr, Searcher: ReverseSearcher<&'a OsStr>>,
@@ -1399,6 +1401,7 @@ impl OsStr {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn strip_prefix<'a, P>(&'a self, prefix: P) -> Option<&'a OsStr>
     where
         P: Pattern<&'a OsStr>,
@@ -1424,6 +1427,7 @@ impl OsStr {
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn strip_suffix<'a, P>(&'a self, suffix: P) -> Option<&'a OsStr>
     where
         P: Pattern<&'a OsStr>,
@@ -1446,6 +1450,7 @@ impl OsStr {
     /// assert_eq!(None, OsStr::new("foobar").split_once(','));
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn split_once<'a, P: Pattern<&'a OsStr>>(
         &'a self,
         delimiter: P,
@@ -1470,6 +1475,7 @@ impl OsStr {
     /// assert_eq!(None, OsStr::new("foobar").rsplit_once(','));
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn rsplit_once<'a, P: Pattern<&'a OsStr>>(
         &'a self,
         delimiter: P,
@@ -1498,6 +1504,7 @@ impl OsStr {
     /// assert_eq!(&want[..], &got[..]);
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn split<'hs, P: Pattern<&'hs OsStr>>(&'hs self, delimiter: P) -> Split<'hs, P::Searcher> {
         Split(core::pattern::Split::new(delimiter.into_searcher(self)).with_allow_trailing_empty())
     }
@@ -1555,6 +1562,7 @@ impl OsStr {
     /// assert_eq!(s.find(x), None);
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn find<'a>(&'a self, pat: impl Pattern<&'a OsStr>) -> Option<usize> {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
@@ -1610,6 +1618,7 @@ impl OsStr {
     /// assert_eq!(s.rfind(x), None);
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn rfind<'a, P>(&'a self, pat: P) -> Option<usize>
     where
         P: Pattern<&'a OsStr, Searcher: ReverseSearcher<&'a OsStr>>,
@@ -1640,6 +1649,7 @@ impl OsStr {
     /// assert!(!bananas.contains("apples"));
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
+    #[inline]
     pub fn contains<'a>(&'a self, pat: impl Pattern<&'a OsStr>) -> bool {
         pat.is_contained_in(self)
     }
