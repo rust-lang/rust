@@ -1807,7 +1807,7 @@ dep-bumps = [
 # ------------------------------------------------------------------------------
 
 [no-merges]
-exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update", "subtree sync", "Subtree sync"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]
