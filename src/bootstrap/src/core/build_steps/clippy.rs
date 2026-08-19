@@ -38,6 +38,7 @@ const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
     "too_many_arguments",
     "needless_lifetimes", // people want to keep the lifetimes
     "wrong_self_convention",
+    "redundant_pattern_matching", // can affect drop order
 ];
 
 fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str]) -> Vec<String> {
@@ -610,7 +611,6 @@ impl CommandLineStep for CI {
                 "clippy::print_literal".into(),
                 "clippy::ptr_offset_with_cast".into(),
                 "clippy::redundant_closure".into(),
-                "clippy::redundant_pattern_matching".into(),
                 "clippy::redundant_slicing".into(),
                 "clippy::same_item_push".into(),
                 "clippy::seek_from_current".into(),
