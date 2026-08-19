@@ -207,7 +207,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                     .type_implements_fn_trait(
                         cx.param_env,
                         Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                        ty::PredicatePolarity::Positive,
+                        ty::ClausePolarity::Positive,
                     )
             {
                 span_lint_hir_and_then(

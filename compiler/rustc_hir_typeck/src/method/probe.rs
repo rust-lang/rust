@@ -1139,7 +1139,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for (bound_trait_pred, _) in
                 traits::expand_trait_aliases(self.tcx, [(trait_ref.upcast(self.tcx), self.span)]).0
             {
-                assert_eq!(bound_trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                assert_eq!(bound_trait_pred.polarity(), ty::ClausePolarity::Positive);
                 let bound_trait_ref = bound_trait_pred.map_bound(|pred| pred.trait_ref);
                 for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                     if !self.has_applicable_self(&item) {
