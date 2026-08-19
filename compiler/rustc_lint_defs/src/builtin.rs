@@ -55,7 +55,6 @@ pub mod hardwired {
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
-            INEFFECTIVE_UNSTABLE_REEXPORT,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
             INVALID_DOC_ATTRIBUTES,
@@ -153,6 +152,7 @@ pub mod hardwired {
             UNUSED_MUT,
             UNUSED_QUALIFICATIONS,
             UNUSED_UNSAFE,
+            UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
             UNUSED_VARIABLES,
             UNUSED_VISIBILITIES,
             USELESS_DEPRECATED,
@@ -2793,7 +2793,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `ineffective_unstable_reexport` lint detects `#[unstable]` attributes
+    /// The `unused_unstable_reexport_attributes` lint detects `#[unstable]` attributes
     /// on re-exports where the attribute does not make the re-exported path unstable.
     ///
     /// ### Example
@@ -2817,9 +2817,10 @@ declare_lint! {
     ///
     /// Stability attributes on re-exports do not currently change the
     /// stability of an otherwise stable re-exported item.
-    pub INEFFECTIVE_UNSTABLE_REEXPORT,
+    pub UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
     Deny,
-    "detects ineffective `#[unstable]` attributes on re-exports"
+    "detects ineffective `#[unstable]` attributes on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {

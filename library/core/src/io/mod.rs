@@ -14,18 +14,23 @@ mod write;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub use self::borrowed_buf::{BorrowedBuf, BorrowedCursor};
-pub use self::cursor::Cursor;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
 #[unstable(feature = "io_const_error_internals", issue = "none")]
 pub use self::error::SimpleMessage;
 #[unstable(feature = "io_const_error", issue = "133448")]
 pub use self::error::const_error;
-pub use self::error::{Error, ErrorKind, Result};
-pub use self::io_slice::{IoSlice, IoSliceMut};
-pub use self::seek::{Seek, SeekFrom};
-pub use self::util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
-pub use self::write::Write;
+#[allow(clippy::useless_attribute)]
+#[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
+#[unstable(feature = "core_io", issue = "154046")]
+pub use self::{
+    cursor::Cursor,
+    error::{Error, ErrorKind, Result},
+    io_slice::{IoSlice, IoSliceMut},
+    seek::{Seek, SeekFrom},
+    util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
+    write::Write,
+};
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{

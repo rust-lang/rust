@@ -182,7 +182,7 @@ pub mod rust_future {
     pub use super::v1::*;
 
     #[allow(clippy::useless_attribute)]
-    #[allow(ineffective_unstable_reexport)] // FIXME(#161153)
+    #[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
     #[unstable(feature = "prelude_next", issue = "none")]
     #[doc(no_inline)]
     pub use core::prelude::rust_future::*;
@@ -190,7 +190,7 @@ pub mod rust_future {
     // There are two different panic macros, one in `core` and one in `std`. They are slightly
     // different. For `std` we explicitly want the one defined in `std`.
     #[allow(clippy::useless_attribute)]
-    #[allow(ineffective_unstable_reexport)] // FIXME(#161153)
+    #[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
     #[unstable(feature = "prelude_next", issue = "none")]
     pub use super::v1::panic;
 }

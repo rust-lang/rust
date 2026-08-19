@@ -966,7 +966,7 @@ pub(crate) struct IneffectiveUnstableImpl;
 
 #[derive(Diagnostic)]
 #[diag("`#[unstable]` does not make this re-exported path unstable")]
-pub(crate) struct IneffectiveUnstableReexport;
+pub(crate) struct UnusedUnstableReexportAttributes;
 
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]

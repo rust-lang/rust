@@ -18,8 +18,8 @@ use rustc_hir::{
 };
 use rustc_lint_defs as lint;
 use rustc_lint_defs::builtin::{
-    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_REEXPORT,
-    INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
+    DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
+    UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::metadata::Reexport;
@@ -527,7 +527,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, mod_id: LocalModId) {
     let mut checker = Checker { tcx, mod_id, unstable_reexports: FxIndexMap::default() };
     tcx.hir_visit_item_likes_in_module(mod_id, &mut checker);
-    checker.emit_ineffective_unstable_reexports();
+    checker.emit_unused_unstable_reexport_attributes();
 
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
@@ -674,14 +674,14 @@ impl<'tcx> Checker<'tcx> {
         self.record_unstable_reexport(item, attr_span, path.span, has_target, all_targets_stable);
     }
 
-    fn emit_ineffective_unstable_reexports(&self) {
+    fn emit_unused_unstable_reexport_attributes(&self) {
         for reexport in self.unstable_reexports.values() {
             if reexport.has_target && reexport.all_targets_stable {
                 self.tcx.emit_node_span_lint(
-                    INEFFECTIVE_UNSTABLE_REEXPORT,
+                    UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
                     reexport.hir_id,
                     reexport.span,
-                    diagnostics::IneffectiveUnstableReexport,
+                    diagnostics::UnusedUnstableReexportAttributes,
                 );
             }
         }
