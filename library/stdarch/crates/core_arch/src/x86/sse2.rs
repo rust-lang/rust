@@ -1498,11 +1498,10 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packsswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
-        let max = simd_splat(i8::MAX as i16);
-        let min = simd_splat(i8::MIN as i16);
+        let max = simd_splat(i16::from(i8::MAX));
+        let min = simd_splat(i16::from(i8::MIN));
 
         let clamped_a = simd_imax(simd_imin(a.as_i16x8(), max), min)
             .as_m128i()
@@ -1528,11 +1527,10 @@ pub const fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
-        let max = simd_splat(i16::MAX as i32);
-        let min = simd_splat(i16::MIN as i32);
+        let max = simd_splat(i32::from(i16::MAX));
+        let min = simd_splat(i32::from(i16::MIN));
 
         let clamped_a = simd_imax(simd_imin(a.as_i32x4(), max), min);
         let clamped_b = simd_imax(simd_imin(b.as_i32x4(), max), min);
@@ -1554,11 +1552,10 @@ pub const fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
+pub fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
     unsafe {
-        let max = simd_splat(u8::MAX as i16);
-        let min = simd_splat(u8::MIN as i16);
+        let max = simd_splat(i16::from(u8::MAX));
+        let min = simd_splat(i16::from(u8::MIN));
 
         let clamped_a = simd_imax(simd_imin(a.as_i16x8(), max), min)
             .as_m128i()
@@ -4338,7 +4335,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_packs_epi16() {
+    fn test_mm_packs_epi16() {
         let a = _mm_setr_epi16(0x80, -0x81, 0, 0, 0, 0, 0, 0);
         let b = _mm_setr_epi16(0, 0, 0, 0, 0, 0, -0x81, 0x80);
         let r = _mm_packs_epi16(a, b);
@@ -4352,7 +4349,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_packs_epi32() {
+    fn test_mm_packs_epi32() {
         let a = _mm_setr_epi32(0x8000, -0x8001, 0, 0);
         let b = _mm_setr_epi32(0, 0, -0x8001, 0x8000);
         let r = _mm_packs_epi32(a, b);
@@ -4363,7 +4360,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_packus_epi16() {
+    fn test_mm_packus_epi16() {
         let a = _mm_setr_epi16(0x100, -1, 0, 0, 0, 0, 0, 0);
         let b = _mm_setr_epi16(0, 0, 0, 0, 0, 0, -1, 0x100);
         let r = _mm_packus_epi16(a, b);
