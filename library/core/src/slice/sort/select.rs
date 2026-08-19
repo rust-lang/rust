@@ -116,7 +116,7 @@ fn partition_at_index_loop<'a, T, F>(
                 }
 
                 v = &mut v[mid..];
-                index = index - mid;
+                index -= mid;
                 ancestor_pivot = None;
                 continue;
             }
@@ -131,7 +131,7 @@ fn partition_at_index_loop<'a, T, F>(
 
         if mid < index {
             v = right;
-            index = index - mid - 1;
+            index -= mid + 1;
             ancestor_pivot = Some(pivot);
         } else if mid > index {
             v = left;
