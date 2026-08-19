@@ -747,6 +747,8 @@ pub struct GlobalCtxt<'tcx> {
     pub incr_comp_session: Option<&'tcx IncrCompSession>,
     pub dep_graph: DepGraph,
 
+    /// This duplicates `Session::prof` because this field is hot enough that accessing it via
+    /// `self.sess.prof` is a measurable slowdown (see #161332).
     pub prof: SelfProfilerRef,
 
     /// Common types, pre-interned for your convenience.
