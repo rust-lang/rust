@@ -10,6 +10,7 @@
 //! defined directly on the `f16` type.
 
 #![unstable(feature = "f16", issue = "116909")]
+#![expect(clippy::approx_constant, reason = "this module defines f16 constants")]
 
 use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;

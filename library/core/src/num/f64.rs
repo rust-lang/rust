@@ -10,6 +10,7 @@
 //! defined directly on the `f64` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![expect(clippy::approx_constant, reason = "this module defines f64 constants")]
 
 use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
