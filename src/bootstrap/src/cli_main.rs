@@ -81,7 +81,7 @@ pub fn main() {
             .create(true)
             .truncate(false)
             .open(&lock_path));
-        t!(build_lock.try_lock().or_else(|e| {
+        t!(build_lock::try_lock(&build_lock).or_else(|e| {
             if let TryLockError::Error(e) = e {
                 return Err(e);
             }
@@ -94,7 +94,7 @@ pub fn main() {
             } else {
                 println!("WARNING: build directory locked, waiting for lock");
             }
-            build_lock.lock()
+            build_lock::lock(&build_lock)
         }));
         t!(build_lock.set_len(0));
         t!(build_lock.write_all(process::id().to_string().as_bytes()));
@@ -216,6 +216,68 @@ pub fn main() {
         build.report_step_graph(&tracing_dir);
         guard.copy_to_dir(&tracing_dir);
         eprintln!("Tracing/profiling output has been written to {}", latest_trace_dir.display());
+    }
+}
+
+#[cfg(not(target_os = "solaris"))]
+mod build_lock {
+    use std::fs::{File, TryLockError};
+    use std::io;
+
+    pub fn try_lock(file: &File) -> Result<(), TryLockError> {
+        file.try_lock()
+    }
+
+    pub fn lock(file: &File) -> io::Result<()> {
+        file.lock()
+    }
+}
+
+// Solaris does not provide `flock`, and `std::fs::File` deliberately does not
+// emulate its handle-scoped locking API with process-scoped `fcntl` locks. The
+// bootstrap lock, however, coordinates separate bootstrap processes and is
+// held for the lifetime of the process, so `fcntl` has the semantics it needs.
+#[cfg(target_os = "solaris")]
+mod build_lock {
+    use std::fs::{File, TryLockError};
+    use std::os::fd::AsRawFd;
+    use std::{io, mem};
+
+    pub fn try_lock(file: &File) -> Result<(), TryLockError> {
+        match fcntl_lock(file, libc::F_SETLK) {
+            Ok(()) => Ok(()),
+            Err(error) if is_would_block(&error) => Err(TryLockError::WouldBlock),
+            Err(error) => Err(TryLockError::Error(error)),
+        }
+    }
+
+    pub fn lock(file: &File) -> io::Result<()> {
+        fcntl_lock(file, libc::F_SETLKW)
+    }
+
+    fn fcntl_lock(file: &File, command: libc::c_int) -> io::Result<()> {
+        let mut lock = unsafe { mem::zeroed::<libc::flock>() };
+        lock.l_type = libc::F_WRLCK as libc::c_short;
+        lock.l_whence = libc::SEEK_SET as libc::c_short;
+        lock.l_start = 0;
+        lock.l_len = 0;
+
+        loop {
+            if unsafe { libc::fcntl(file.as_raw_fd(), command, &mut lock) } != -1 {
+                return Ok(());
+            }
+
+            let error = io::Error::last_os_error();
+            if command == libc::F_SETLKW && error.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(error);
+        }
+    }
+
+    fn is_would_block(error: &io::Error) -> bool {
+        matches!(error.raw_os_error(), Some(libc::EACCES | libc::EAGAIN))
+            || error.kind() == io::ErrorKind::WouldBlock
     }
 }
 
