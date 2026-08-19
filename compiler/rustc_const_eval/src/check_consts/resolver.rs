@@ -309,7 +309,7 @@ impl<C> DebugWithContext<C> for State {
 
         if self.borrow != old.borrow {
             f.write_str("borrow: ")?;
-            self.qualif.fmt_diff_with(&old.borrow, ctxt, f)?;
+            self.borrow.fmt_diff_with(&old.borrow, ctxt, f)?;
             f.write_str("\n")?;
         }
 
