@@ -101,17 +101,14 @@ impl LocalDesc {
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
     MirInstruction,
-    /// Stop at the next source line.
-    ///
-    /// `None` means the current interpreter position has no source location, so
-    /// the first mapped source location is good enough to report.
-    SourceLine(Option<(PathBuf, usize)>),
     /// Step over the source position `start_position`, entered from a stack of
     /// depth `start_stack_depth`.
     ///
     /// Execution keeps going while it is deeper than `start_stack_depth` (i.e.
     /// inside a call made from the stepped-over line), and stops once it is back
     /// at that depth or shallower and the displayed source position has changed.
+    /// A `start_stack_depth` of `usize::MAX` means execution is never deeper,
+    /// turning this into a plain source step that also stops inside called functions.
     StepOver { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
     /// Step out of the current user frame, stopping once execution returns to a
     /// shallower user-frame depth.
@@ -135,8 +132,7 @@ enum InstructionVisibility {
 impl ResumeMode {
     fn skipped_breakpoint(&self) -> Option<&(PathBuf, usize)> {
         match self {
-            ResumeMode::SourceLine(Some(position))
-            | ResumeMode::StepOver { start_position: Some(position), .. }
+            ResumeMode::StepOver { start_position: Some(position), .. }
             | ResumeMode::StepOut { start_position: Some(position), .. } => Some(position),
             _ => None,
         }
@@ -217,7 +213,10 @@ impl<'tcx> PrirodaContext<'tcx> {
         if let Some(result) = self.already_finished() {
             return interp_ok(result);
         }
-        self.resume(ResumeMode::SourceLine(self.current_source_position()))
+        self.resume(ResumeMode::StepOver {
+            start_position: self.current_source_position(),
+            start_stack_depth: usize::MAX,
+        })
     }
 
     /// Step over the current source position, not stopping inside any call it makes.
@@ -341,28 +340,6 @@ impl<'tcx> PrirodaContext<'tcx> {
                     ) =>
                 {
                     return interp_ok(ExecutionResult::Stopped(StepResult::Step));
-                }
-
-                ResumeMode::SourceLine(ref prev_location) => {
-                    match (prev_location, &self.current_location) {
-                        // We started from an unmapped location; stop once there
-                        // is a source position the frontend can display.
-                        (None, Some(_)) =>
-                            return interp_ok(ExecutionResult::Stopped(StepResult::Step)),
-
-                        (Some((prev_path, prev_line)), Some(current_location)) => {
-                            if let Some(current_path) = self.local_path(current_location) {
-                                // A source step stops when the displayed source
-                                // position changes to a different file or line.
-                                if *prev_path != current_path || *prev_line != current_location.line
-                                {
-                                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
-                                }
-                            }
-                        }
-
-                        _ => {}
-                    }
                 }
 
                 ResumeMode::StepOver { ref start_position, start_stack_depth } => {
