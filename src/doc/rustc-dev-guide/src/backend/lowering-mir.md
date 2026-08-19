@@ -17,8 +17,8 @@ The code is split into modules which handle particular MIR primitives:
 
 - [`rustc_codegen_ssa::mir::block`][mirblk] will deal with translating
   blocks and their terminators.
-   The most complicated and also the most
-  interesting thing this module does is generating code for function calls,
+  The most complicated and also the most interesting thing this module does
+  is generating code for function calls,
   including the necessary unwinding handling IR.
 - [`rustc_codegen_ssa::mir::statement`][mirst] translates MIR statements.
 - [`rustc_codegen_ssa::mir::operand`][mirop] translates MIR operands.
@@ -44,15 +44,15 @@ Usually a single MIR basic block will map to a LLVM basic block, with very few
 exceptions: intrinsic or function calls and less basic MIR statements like
 `assert` can result in multiple basic blocks.
 This is a perfect lede into the non-portable LLVM-specific part of the code generation.
-Intrinsic generation is
-fairly easy to understand as it involves very few abstraction levels in between
+Intrinsic generation is fairly easy to understand
+as it involves very few abstraction levels in between
 and can be found in [`rustc_codegen_llvm::intrinsic`][llvmint].
 
 [llvmint]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/intrinsic/index.html
 
 Everything else will use the [builder interface][builder].
-This is the code that gets
-called in the [`rustc_codegen_ssa::mir::*`][ssamir] modules discussed above.
+This is the code that gets called in the
+[`rustc_codegen_ssa::mir::*`][ssamir] modules discussed above.
 
 [builder]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/builder/index.html
 [ssamir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/index.html
