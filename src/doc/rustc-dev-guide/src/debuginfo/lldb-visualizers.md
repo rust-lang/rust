@@ -348,8 +348,8 @@ description, list of arguments, and examples.
 
 In the past, we used `command source ...`, which executes a series of CLI commands from the
 file `lldb_commands` to add providers.
-This file was somewhat unwieldy, and has been supplanted by
-the Python API equivalent outlined below.
+This file was somewhat unwieldy,
+and has been supplanted by the Python API equivalent outlined below.
 
 ## `__lldb_init_module`
 
