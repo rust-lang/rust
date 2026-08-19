@@ -19,7 +19,7 @@ use rustc_type_ir::{
     OpaqueTypeKey, PredicateKind, Region, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars,
 };
-use thin_vec::ThinVec;
+use smallvec::SmallVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
 use super::has_only_region_constraints;
@@ -838,11 +838,11 @@ where
         &self,
         canonical_goal: CanonicalInput<I>,
         maybe_info: MaybeInfo,
-        stalled_vars: ThinVec<I::GenericArg>,
+        stalled_vars: SmallVec<[I::GenericArg; 2]>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.
-        let mut sub_roots = ThinVec::new();
+        let mut sub_roots = SmallVec::new();
         let stalled_vars = stalled_vars
             .into_iter()
             .filter_map(|arg| match arg.kind() {

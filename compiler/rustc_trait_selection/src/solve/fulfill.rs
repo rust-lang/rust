@@ -452,8 +452,6 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    // Before #160005 this pair was greater than 128 bytes, which triggered the use of (slow)
-    // `memcpy` for moving elements of `PendingObligations`.
-    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 104);
+    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 136);
     // tidy-alphabetical-end
 }

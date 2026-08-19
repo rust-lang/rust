@@ -21,7 +21,7 @@ use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner, Region,
     TypeFoldable, TypingMode, TypingModeEqWrapper, eager_resolve_vars,
 };
-use thin_vec::ThinVec;
+use smallvec::SmallVec;
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -58,7 +58,7 @@ pub(super) fn canonicalize_goal<D, I>(
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
     typing_mode: TypingMode<I>,
-) -> (ThinVec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
+) -> (SmallVec<[I::GenericArg; 2]>, CanonicalInput<I, I::Predicate>)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -578,7 +578,7 @@ pub fn instantiate_canonical_state<D, I, T>(
     span: I::Span,
     param_env: I::ParamEnv,
     prev_universe: ty::UniverseIndex,
-    orig_values: &mut ThinVec<I::GenericArg>,
+    orig_values: &mut SmallVec<[I::GenericArg; 2]>,
     state: inspect::CanonicalState<I, T>,
 ) -> T
 where
