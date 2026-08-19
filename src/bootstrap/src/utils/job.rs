@@ -1,11 +1,13 @@
 #[cfg(windows)]
 pub use for_windows::*;
 
+use crate::core::session::Build;
+
 #[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
-pub unsafe fn setup(_build: &mut crate::Build) {}
+pub unsafe fn setup(_build: &mut Build) {}
 
 #[cfg(all(unix, not(target_os = "haiku")))]
-pub unsafe fn setup(build: &mut crate::Build) {
+pub unsafe fn setup(build: &mut Build) {
     if build.config.low_priority {
         unsafe {
             libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
@@ -58,7 +60,7 @@ mod for_windows {
     use windows::Win32::System::Threading::{BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess};
     use windows::core::PCWSTR;
 
-    use crate::Build;
+    use crate::core::session::Build;
 
     pub unsafe fn setup(build: &mut Build) {
         // SAFETY: pretty much everything below is unsafe

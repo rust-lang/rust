@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
-use crate::Build;
 use crate::core::config::TargetSelection;
+use crate::core::session::Build;
 
 /// A structure representing a Rust compiler.
 ///
