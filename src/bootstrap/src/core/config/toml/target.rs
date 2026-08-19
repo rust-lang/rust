@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
-use crate::CodegenBackendKind;
+use crate::core::backend::CodegenBackendKind;
 use crate::core::config::macros::define_config;
 use crate::core::config::{
     Allocator, CompilerBuiltins, CompressDebuginfo, LlvmLibunwind, SplitDebuginfo, StringOrBool,

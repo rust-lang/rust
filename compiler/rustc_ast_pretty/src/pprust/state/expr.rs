@@ -585,7 +585,7 @@ impl<'a> State<'a> {
                 binder,
                 capture_clause,
                 constness,
-                coroutine_kind,
+                coroutine_marker,
                 movability,
                 fn_decl,
                 body,
@@ -595,7 +595,8 @@ impl<'a> State<'a> {
                 self.print_closure_binder(binder);
                 self.print_constness(*constness);
                 self.print_movability(*movability);
-                coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
+                coroutine_marker
+                    .map(|coroutine_marker| self.print_coroutine_marker(coroutine_marker));
                 self.print_capture_clause(*capture_clause);
 
                 self.print_fn_params_and_ret(fn_decl, true);
@@ -614,7 +615,7 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(blk, attrs, cb, ib);
             }
             ast::ExprKind::Gen(capture_clause, blk, kind, _decl_span) => {
-                self.word_nbsp(kind.modifier());
+                self.word_nbsp(kind.as_str());
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
                 let cb = self.cbox(0);

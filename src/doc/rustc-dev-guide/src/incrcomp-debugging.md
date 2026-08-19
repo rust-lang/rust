@@ -9,7 +9,7 @@ These are used in [ui] tests to test
 whether the expected set of paths exist in the dependency graph.
 
 [`tests/ui/dep-graph/dep-graph-caller-callee.rs`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/dep-graph/dep-graph-caller-callee.rs
-[ui]: tests/ui.html
+[ui]: tests/ui.md
 
 As an example, see [`tests/ui/dep-graph/dep-graph-caller-callee.rs`], or the tests below.
 

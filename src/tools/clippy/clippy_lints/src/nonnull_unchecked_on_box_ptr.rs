@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for NonnullUncheckedOnBoxPtr {
                 .ty_rel_def_if_named(cx, sym::new_unchecked)
                 .opt_parent(cx)
                 .opt_impl_ty(cx)
-                .is_diag_item(cx, sym::NonNull)
+                .is_lang_item(cx, LangItem::NonNull)
             && box_into_raw
                 .ty_rel_def_if_named(cx, sym::into_raw)
                 .opt_parent(cx)

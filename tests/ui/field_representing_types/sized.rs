@@ -18,9 +18,9 @@ pub struct Generic<T: ?Sized> {
 
 fn generic<T: ?Sized>() {
     impls_field::<field_of!(Generic<T>, count)>();
-    //~^ ERROR: the trait bound `field_of!(Generic<T>, count): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(Generic<T>, count): Field` is not satisfied [E0277]
     impls_field::<field_of!(Generic<T>, last)>();
-    //~^ ERROR: the trait bound `field_of!(Generic<T>, last): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(Generic<T>, last): Field` is not satisfied [E0277]
 }
 
 fn ok<T>() {
@@ -30,9 +30,9 @@ fn ok<T>() {
 
 fn main() {
     impls_field::<field_of!(MyDST, count)>();
-    //~^ ERROR: the trait bound `field_of!(MyDST, count): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyDST, count): Field` is not satisfied [E0277]
     impls_field::<field_of!(MyDST, last)>();
-    //~^ ERROR: the trait bound `field_of!(MyDST, last): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyDST, last): Field` is not satisfied [E0277]
 }
 
 fn impls_field<F: Field>() {}

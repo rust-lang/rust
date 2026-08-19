@@ -1430,7 +1430,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 left_node.val_area_mut(old_left_len + 1..new_left_len),
             );
 
-            slice_remove(&mut parent_node.edge_area_mut(..old_parent_len + 1), parent_idx + 1);
+            slice_remove(parent_node.edge_area_mut(..old_parent_len + 1), parent_idx + 1);
             parent_node.correct_childrens_parent_links(parent_idx + 1..old_parent_len);
             *parent_node.len_mut() -= 1;
 

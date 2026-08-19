@@ -1971,7 +1971,7 @@ impl<'a, T: Ord, A: Allocator + Clone> Iterator for Difference<'a, T, A> {
             }
             DifferenceInner::Search { self_iter, other_set } => loop {
                 let self_next = self_iter.next()?;
-                if !other_set.contains(&self_next) {
+                if !other_set.contains(self_next) {
                     return Some(self_next);
                 }
             },
@@ -2068,7 +2068,7 @@ impl<'a, T: Ord, A: Allocator + Clone> Iterator for Intersection<'a, T, A> {
             }
             IntersectionInner::Search { small_iter, large_set } => loop {
                 let small_next = small_iter.next()?;
-                if large_set.contains(&small_next) {
+                if large_set.contains(small_next) {
                     return Some(small_next);
                 }
             },

@@ -348,7 +348,7 @@
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
-#![feature(fn_ptr_trait)]
+#![feature(fn_static)]
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
 #![feature(generic_atomic)]
@@ -740,7 +740,7 @@ mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
-#[allow(clippy::len_zero)] // FIXME
+#[allow(clippy::len_zero, clippy::needless_borrow)] // FIXME
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]

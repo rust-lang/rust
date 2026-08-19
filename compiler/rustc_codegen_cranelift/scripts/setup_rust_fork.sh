@@ -93,5 +93,5 @@ EOF
 popd
 
 # Allow the testsuite to use llvm tools
-host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
-export LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$host_triple/bin"
+host_tuple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+export LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$host_tuple/bin"

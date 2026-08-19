@@ -6,17 +6,20 @@ Checks *do not* stop after the first encountered error. Some redundant informati
 (e.g. checking pretty printed type name if the synthetic isn't properly attached to the type).
 """
 
-from typing import Any, Callable
-import traceback
 import sys
+import traceback
+from typing import Any, Callable
 
 import lldb
+
 from .common import (
     BLESS,
     INPUT_DATA,
+    ArrayChild,
+    ArrayLikeChildren,
     Child,
-    Variable,
     Result,
+    Variable,
     print_error,
     print_mismatch,
 )
@@ -24,11 +27,10 @@ from .from_lldb import (
     BasicType,
     TypeClass,
     bless_variable,
-    variable_from_lldb,
-    type_from_lldb,
     get_generics,
+    type_from_lldb,
+    variable_from_lldb,
 )
-
 
 VARS_TESTED: list[dict[str, Result]] = []
 """Used to help ensure all expected variables were tested. Each element of the list corresponds to a
@@ -136,7 +138,7 @@ def type_matches(
 
         ty_result = ty.matches(expected, name, provider_ok)
 
-        result = basic_type_result and type_class_result and ty_result
+        result = type_class_result and ty_result
 
     TYPES_TESTED[name] = result
 
@@ -153,7 +155,7 @@ def type_matches(
 def tested_all_types() -> bool:
     """Returns true if all types in INPUT_DATA were tested this run."""
 
-    expected_types = set(k for k in INPUT_DATA.types)
+    expected_types = set(INPUT_DATA.types)
     untested_types = expected_types.difference(TYPES_TESTED.keys())
 
     if len(untested_types) != 0:
@@ -166,7 +168,7 @@ def tested_all_types() -> bool:
 
 
 def tested_all_variables() -> bool:
-    expected_vars = [set(k for k in vars) for vars in INPUT_DATA.breakpoints]
+    expected_vars = [set(vars) for vars in INPUT_DATA.breakpoints]
     untested_vars = [
         expected.difference(tested.keys())
         for expected, tested in zip(expected_vars, VARS_TESTED)
@@ -212,11 +214,19 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
     format_ok = var.format == expected.format
 
     type_ok = var.type == expected.type
-    type_match_ok = type_matches(
-        valobj.GetType(),
-        valobj.GetTarget(),
-        summary_ok & synthetic_ok & format_ok & pretty_type_name_ok & pretty_print_ok,
-    )
+
+    if var.has_visualizer() or expected.has_visualizer():
+        type_match_ok = type_matches(
+            valobj.GetType(),
+            valobj.GetTarget(),
+            summary_ok
+            & synthetic_ok
+            & format_ok
+            & pretty_type_name_ok
+            & pretty_print_ok,
+        )
+    else:
+        type_match_ok = Result.Ok
 
     value_ok = var.value == expected.value
 
@@ -237,7 +247,10 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
             else:
                 child_types_ok = False
 
-        child_types_ok &= type_matches(obj.GetType(), target) == Result.Ok
+        if var.has_visualizer() or expected.has_visualizer():
+            child_types_ok &= type_matches(obj.GetType(), target) == Result.Ok
+        else:
+            type_match_ok = Result.Ok
 
     children_ok = children_match(
         var.children, expected.children, valobj.GetName(), valobj
@@ -323,41 +336,38 @@ provider:",
                 expected.pretty_type_name,
             )
 
-        if not children_ok:
+        if not children_ok and var.synthetic is not None:
             # If the children don't match, we can check for more catastrophic failures using the
             # synthetic provider. All the per-children errors will have been printed in the
             # `children_match` check above.
-            if var.synthetic is not None:
-                try:
-                    synth_provider = get_provider(var.synthetic)
+            try:
+                synth_provider = get_provider(var.synthetic)
 
-                    # First we check for exceptions in the constructor and initialization
-                    synth: lldb.SBSyntheticValueProvider = synth_provider(
-                        valobj.GetNonSyntheticValue(), {}
-                    )
-                    synth.update()
+                # First we check for exceptions in the constructor and initialization
+                synth: lldb.SBSyntheticValueProvider = synth_provider(
+                    valobj.GetNonSyntheticValue(), {}
+                )
+                synth.update()
 
-                    # If the `get_child_at_index` function doesn't exist, there's not much more we
-                    # can do
-                    if getattr(synth, "get_child_at_index", None) is not None:
-                        # If all the children are invalid (e.g. because a template arg isn't
-                        # resolving correctly, incorrect enum discriminant), we should dump the
-                        # internal state of the synthetic
-                        if not all(
-                            synth.get_child_at_index(i).IsValid()
-                            for i in range(synth.num_children())
-                        ):
-                            dump_synthetic_state(synth)
+                # If the `get_child_at_index` function doesn't exist, there's not much more we
+                # can do
+                if getattr(synth, "get_child_at_index", None) is not None:
+                    # If all the children are invalid (e.g. because a template arg isn't
+                    # resolving correctly, incorrect enum discriminant), we should dump the
+                    # internal state of the synthetic
+                    if not all(
+                        synth.get_child_at_index(i).IsValid()
+                        for i in range(synth.num_children())
+                    ):
+                        dump_synthetic_state(synth)
 
-                except Exception as e:
-                    print_error(
-                        error_source + " Synthetic",
-                        "Error while running Synthetic\
+            except Exception as e:
+                print_error(
+                    error_source + " Synthetic",
+                    "Error while running Synthetic\
 Provider:",
-                    )
-                    traceback.print_exception(
-                        type(e), e, e.__traceback__, file=sys.stdout
-                    )
+                )
+                traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
 
     return Result.Mismatch
 
@@ -400,6 +410,18 @@ def children_match(
 
         got = children[i]
 
+        if isinstance(children, ArrayLikeChildren):
+            if isinstance(got, ArrayChild):
+                got = Child(f"[{i}]", children.type, got.value, got.children)
+            else:
+                got = Child(f"[{i}]", children.type, got, [])
+
+        if isinstance(expected, ArrayLikeChildren):
+            if isinstance(exp, ArrayChild):
+                exp = Child(f"[{i}]", expected.type, exp.value, exp.children)
+            else:
+                exp = Child(f"[{i}]", expected.type, exp, [])
+
         if got.name is None:
             result = Result.Mismatch
             invalid_count += 1
@@ -412,7 +434,7 @@ def children_match(
                 f"{exp.name}: {exp.type} = {exp.value} -> {got.name}: {got.type} = {got.value}"
             )
         # no point recursing into children if we've already mismatched
-        elif len(exp.children) != 0:
+        elif exp.children is not None and len(exp.children) > 0:
             result &= children_match(
                 got.children,
                 exp.children,

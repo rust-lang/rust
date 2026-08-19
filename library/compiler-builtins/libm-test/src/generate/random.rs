@@ -12,7 +12,7 @@ use rand_chacha::ChaCha8Rng;
 use crate::CheckCtx;
 use crate::generate::{KnownSize, product2, product3};
 use crate::num::full_range;
-use crate::run_cfg::{int_range, iteration_count};
+use crate::run_cfg::{arg_max_iterations, int_range};
 
 pub(crate) const SEED_ENV: &str = "LIBM_SEED";
 
@@ -57,7 +57,7 @@ macro_rules! impl_random_input {
     ($fty:ty) => {
         impl RandomInput for ($fty,) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count = iteration_count(ctx, 0);
+                let count = arg_max_iterations(ctx, 0);
                 let iter = random_floats(count).map(|f: $fty| (f,));
                 (iter, count)
             }
@@ -65,8 +65,8 @@ macro_rules! impl_random_input {
 
         impl RandomInput for ($fty, $fty) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count0 = iteration_count(ctx, 0);
-                let count1 = iteration_count(ctx, 1);
+                let count0 = arg_max_iterations(ctx, 0);
+                let count1 = arg_max_iterations(ctx, 1);
                 let iter0 = random_floats(count0);
                 let iter1 = random_floats(count1);
                 let iter = product2(iter0, iter1);
@@ -77,9 +77,9 @@ macro_rules! impl_random_input {
 
         impl RandomInput for ($fty, $fty, $fty) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count0 = iteration_count(ctx, 0);
-                let count1 = iteration_count(ctx, 1);
-                let count2 = iteration_count(ctx, 2);
+                let count0 = arg_max_iterations(ctx, 0);
+                let count1 = arg_max_iterations(ctx, 1);
+                let count2 = arg_max_iterations(ctx, 2);
                 let iter0 = random_floats(count0);
                 let iter1 = random_floats(count1);
                 let iter2 = random_floats(count2);
@@ -91,8 +91,8 @@ macro_rules! impl_random_input {
 
         impl RandomInput for (i32, $fty) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count0 = iteration_count(ctx, 0);
-                let count1 = iteration_count(ctx, 1);
+                let count0 = arg_max_iterations(ctx, 0);
+                let count1 = arg_max_iterations(ctx, 1);
                 let range0 = int_range::<i32>(ctx, 0).unwrap_or(full_range());
                 let iter0 = random_ints(count0, range0);
                 let iter1 = random_floats(count1);
@@ -104,8 +104,8 @@ macro_rules! impl_random_input {
 
         impl RandomInput for ($fty, i32) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count0 = iteration_count(ctx, 0);
-                let count1 = iteration_count(ctx, 1);
+                let count0 = arg_max_iterations(ctx, 0);
+                let count1 = arg_max_iterations(ctx, 1);
                 let range1 = int_range::<i32>(ctx, 1).unwrap_or(full_range());
                 let iter0 = random_floats(count0);
                 let iter1 = random_ints(count1, range1.clone());
@@ -128,7 +128,7 @@ macro_rules! impl_random_input_int {
     (@skip_u32 $ity:ty) => {
         impl RandomInput for ($ity,) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count = iteration_count(ctx, 0);
+                let count = arg_max_iterations(ctx, 0);
                 let range = int_range::<$ity>(ctx, 0).unwrap_or(full_range());
                 let iter = random_ints(count, range).map(|f: $ity| (f,));
                 (iter, count)
@@ -137,8 +137,8 @@ macro_rules! impl_random_input_int {
 
         impl RandomInput for ($ity, $ity) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count0 = iteration_count(ctx, 0);
-                let count1 = iteration_count(ctx, 1);
+                let count0 = arg_max_iterations(ctx, 0);
+                let count1 = arg_max_iterations(ctx, 1);
                 let range0 = int_range::<$ity>(ctx, 0).unwrap_or(full_range());
                 let range1 = int_range::<$ity>(ctx, 1).unwrap_or(full_range());
                 let iter0 = random_ints(count0, range0);
@@ -153,8 +153,8 @@ macro_rules! impl_random_input_int {
 
         impl RandomInput for ($ity, u32) {
             fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
-                let count0 = iteration_count(ctx, 0);
-                let count1 = iteration_count(ctx, 1);
+                let count0 = arg_max_iterations(ctx, 0);
+                let count1 = arg_max_iterations(ctx, 1);
                 let range0 = int_range::<$ity>(ctx, 0).unwrap_or(full_range());
                 let range1 = int_range::<u32>(ctx, 1).unwrap_or(full_range());
                 let iter0 = random_ints(count0, range0);

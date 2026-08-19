@@ -1763,6 +1763,30 @@ impl f64 {
     pub const fn algebraic_rem(self, rhs: f64) -> f64 {
         intrinsics::frem_algebraic(self, rhs)
     }
+
+    /// Returns `self` if the value is not NaN, otherwise returns `replacement`
+    /// if `self` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_nan_to)]
+    ///
+    /// let n = f64::NAN;
+    /// let x = 2.0f64;
+    /// let y = f64::INFINITY;
+    ///
+    /// assert_eq!(n.nan_to(0.0f64), 0.0f64);
+    /// assert_eq!(x.nan_to(0.0f64), 2.0f64);
+    /// assert_eq!(y.nan_to(0.0f64), f64::INFINITY);
+    /// ```
+    #[must_use = "method returns a new float and does not mutate the original value"]
+    #[unstable(feature = "float_nan_to", issue = "161248")]
+    #[rustc_const_unstable(feature = "float_nan_to", issue = "161248")]
+    #[inline]
+    pub const fn nan_to(self, replacement: f64) -> f64 {
+        if self.is_nan() { replacement } else { self }
+    }
 }
 
 #[unstable(feature = "core_float_math", issue = "137578")]

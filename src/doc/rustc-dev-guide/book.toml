@@ -26,6 +26,7 @@ level = 0
 
 [output.linkcheck]
 command = "ci/linkcheck.sh"
+require-md-extension = true
 follow-web-links = true
 exclude = [
     "crates\\.io",
@@ -57,6 +58,7 @@ cache-timeout = 90000
 warning-policy = "error"
 
 [output.html.redirect]
+"/backend/inline-asm.html" = "/asm.html"
 "/borrow_check.html" = "borrow-check.html"
 "/borrow_check/drop_check.html" = "/borrow-check/drop-check.html"
 "/borrow_check/moves_and_initialization.html" = "/borrow-check/moves-and-initialization.html"
@@ -77,6 +79,7 @@ warning-policy = "error"
 "/early_late_parameters.html" = "early-late-parameters.html"
 "/generic_parameters_summary.html" = "generic-parameters-summary.html"
 "/implementing_new_features.html" = "implementing-new-features.html"
+"/llm-guidance/index.html" = "/llm-guidance.html"
 "/miri.html" = "const-eval/interpret.html"
 "/profiling/with_perf.html" = "with-perf.html"
 "/profiling/with_rustc_perf.html" = "with-rustc-perf.html"

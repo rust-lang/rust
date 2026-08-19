@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
-use rustc_data_structures::sharded::{self, ShardedHashMap};
+use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_data_structures::unord::UnordMap;
@@ -1231,7 +1231,7 @@ impl CurrentDepGraph {
             encoder: GraphEncoder::new(session, encoder, prev_index_space_len, previous),
             anon_node_to_index: ShardedHashMap::with_capacity(
                 // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
-                new_node_count_estimate / sharded::shards(),
+                new_node_count_estimate,
             ),
             anon_id_seed,
             #[cfg(debug_assertions)]

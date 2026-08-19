@@ -154,7 +154,7 @@ impl ConstValue {
                         /* read_provenance */ true,
                     )
                     .ok()?;
-                let ptr = ptr.to_pointer(&tcx).discard_err()?;
+                let ptr = ptr.to_pointer(&tcx);
                 let len = a
                     .read_scalar(
                         &tcx,

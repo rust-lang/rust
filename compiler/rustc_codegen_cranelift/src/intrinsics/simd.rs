@@ -560,10 +560,13 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             simd_for_each_lane(fx, a, ret, &|fx, lane_ty, _ret_lane_ty, lane| {
                 let lane_ty = match lane_ty.kind() {
+                    // f16 is converted to f32 by maybe_with_f16_to_f32.
+                    ty::Float(FloatTy::F16) => types::F32,
                     ty::Float(FloatTy::F32) => types::F32,
                     ty::Float(FloatTy::F64) => types::F64,
                     _ => unreachable!("{:?}", lane_ty),
                 };
+
                 let name = match (intrinsic, lane_ty) {
                     (sym::simd_fsin, types::F32) => "sinf",
                     (sym::simd_fsin, types::F64) => "sin",
@@ -585,12 +588,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (sym::simd_round_ties_even, types::F64) => "rint",
                     _ => unreachable!("{:?}", intrinsic),
                 };
-                fx.lib_call(
-                    name,
-                    vec![AbiParam::new(lane_ty)],
-                    vec![AbiParam::new(lane_ty)],
-                    &[lane],
-                )[0]
+
+                codegen_f16_f128::maybe_with_f16_to_f32(fx, lane, |fx, lane| {
+                    fx.lib_call(
+                        name,
+                        vec![AbiParam::new(lane_ty)],
+                        vec![AbiParam::new(lane_ty)],
+                        &[lane],
+                    )[0]
+                })
             });
         }
 

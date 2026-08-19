@@ -29,7 +29,7 @@ pub(crate) fn build_sysroot(
     cg_clif_dylib_src: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
-    target_triple: String,
+    target_tuple: String,
 ) -> Compiler {
     let _guard = LogGroup::guard("Build sysroot");
 
@@ -41,7 +41,7 @@ pub(crate) fn build_sysroot(
     fs::create_dir_all(dist_dir.join("bin")).unwrap();
     fs::create_dir_all(dist_dir.join("lib")).unwrap();
 
-    let is_native = bootstrap_host_compiler.triple == target_triple;
+    let is_native = bootstrap_host_compiler.target == target_tuple;
 
     let cg_clif_dylib_path = match cg_clif_dylib_src {
         CodegenBackend::Local(src_path) => {
@@ -52,6 +52,29 @@ pub(crate) fn build_sysroot(
         }
         CodegenBackend::Builtin(name) => CodegenBackend::Builtin(name.clone()),
     };
+
+    let host = build_sysroot_for_target(
+        dirs,
+        bootstrap_host_compiler.clone(),
+        &cg_clif_dylib_path,
+        config,
+    );
+    host.install_into_sysroot(dist_dir);
+
+    if !is_native {
+        build_sysroot_for_target(
+            dirs,
+            {
+                let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
+                bootstrap_target_compiler.target = target_tuple.clone();
+                bootstrap_target_compiler.set_cross_linker_and_runner();
+                bootstrap_target_compiler
+            },
+            &cg_clif_dylib_path,
+            config,
+        )
+        .install_into_sysroot(dist_dir);
+    }
 
     // Build and copy rustc and cargo wrappers
     let wrapper_base_name = get_file_name(&bootstrap_host_compiler.rustc, "____", "bin");
@@ -89,36 +112,13 @@ pub(crate) fn build_sysroot(
         try_hard_link(wrapper_path, dist_dir.join("bin").join(wrapper_name));
     }
 
-    let host = build_sysroot_for_triple(
-        dirs,
-        bootstrap_host_compiler.clone(),
-        &cg_clif_dylib_path,
-        config,
-    );
-    host.install_into_sysroot(dist_dir);
-
-    if !is_native {
-        build_sysroot_for_triple(
-            dirs,
-            {
-                let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
-                bootstrap_target_compiler.triple = target_triple.clone();
-                bootstrap_target_compiler.set_cross_linker_and_runner();
-                bootstrap_target_compiler
-            },
-            &cg_clif_dylib_path,
-            config,
-        )
-        .install_into_sysroot(dist_dir);
-    }
-
     let mut target_compiler = Compiler {
         cargo: bootstrap_host_compiler.cargo.clone(),
         rustc: dist_dir.join(wrapper_base_name.replace("____", "rustc-clif")),
         rustdoc: dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif")),
         rustflags: vec![],
         rustdocflags: vec![],
-        triple: target_triple,
+        target: target_tuple,
         runner: vec![],
     };
     if !is_native {
@@ -129,7 +129,7 @@ pub(crate) fn build_sysroot(
 
 #[must_use]
 struct SysrootTarget {
-    triple: String,
+    tuple: String,
     libs: Vec<PathBuf>,
 }
 
@@ -139,7 +139,7 @@ impl SysrootTarget {
             return;
         }
 
-        let target_rustlib_lib = sysroot.join("lib").join("rustlib").join(&self.triple).join("lib");
+        let target_rustlib_lib = sysroot.join("lib").join("rustlib").join(&self.tuple).join("lib");
         fs::create_dir_all(&target_rustlib_lib).unwrap();
 
         for lib in &self.libs {
@@ -152,28 +152,28 @@ static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(RelPath::build("stdlib/library/sysroot"), "stdlib_target");
 
-fn build_sysroot_for_triple(
+fn build_sysroot_for_target(
     dirs: &Dirs,
     compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
     config: &SysrootConfig,
 ) -> SysrootTarget {
     match config.sysroot_kind {
-        SysrootKind::None => SysrootTarget { triple: compiler.triple, libs: vec![] },
-        SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
+        SysrootKind::None => SysrootTarget { tuple: compiler.target, libs: vec![] },
+        SysrootKind::Llvm => build_llvm_sysroot_for_target(compiler),
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path, config)
+            build_clif_sysroot_for_target(dirs, compiler, cg_clif_dylib_path, config)
         }
     }
 }
 
-fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
+fn build_llvm_sysroot_for_target(compiler: Compiler) -> SysrootTarget {
     let default_sysroot = crate::rustc_info::get_default_sysroot(&compiler.rustc);
 
-    let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
+    let mut target_libs = SysrootTarget { tuple: compiler.target, libs: vec![] };
 
     for entry in fs::read_dir(
-        default_sysroot.join("lib").join("rustlib").join(&target_libs.triple).join("lib"),
+        default_sysroot.join("lib").join("rustlib").join(&target_libs.tuple).join("lib"),
     )
     .unwrap()
     {
@@ -199,15 +199,15 @@ fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
     target_libs
 }
 
-fn build_clif_sysroot_for_triple(
+fn build_clif_sysroot_for_target(
     dirs: &Dirs,
     mut compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
     config: &SysrootConfig,
 ) -> SysrootTarget {
-    let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
+    let mut target_libs = SysrootTarget { tuple: compiler.target.clone(), libs: vec![] };
 
-    let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join("release");
+    let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.target).join("release");
 
     if !config.keep_sysroot {
         let sysroot_src_orig = get_default_sysroot(&compiler.rustc).join("lib/rustlib/src/rust");
@@ -255,7 +255,7 @@ fn build_clif_sysroot_for_triple(
     build_cmd.arg("-Zbuild-dir-new-layout");
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
-    if compiler.triple.contains("apple") {
+    if compiler.target.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");
     }
     // Use incr comp despite release mode unless incremental builds are explicitly disabled

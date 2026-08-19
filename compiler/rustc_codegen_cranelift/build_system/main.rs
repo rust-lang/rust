@@ -157,20 +157,20 @@ fn main() {
         let cargo = rustc_info::get_cargo_path();
         let rustc = rustc_info::get_rustc_path();
         let rustdoc = rustc_info::get_rustdoc_path();
-        let triple =
-            std::env::var("HOST_TRIPLE").unwrap_or_else(|_| rustc_info::get_host_triple(&rustc));
+        let host_tuple =
+            std::env::var("HOST_TUPLE").unwrap_or_else(|_| rustc_info::get_host_tuple(&rustc));
         Compiler {
             cargo,
             rustc,
             rustdoc,
             rustflags: vec![],
             rustdocflags: vec![],
-            triple,
+            target: host_tuple,
             runner: vec![],
         }
     };
-    let target_triple =
-        std::env::var("TARGET_TRIPLE").unwrap_or_else(|_| bootstrap_host_compiler.triple.clone());
+    let target_tuple =
+        std::env::var("TARGET_TUPLE").unwrap_or_else(|_| bootstrap_host_compiler.target.clone());
 
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
@@ -218,11 +218,11 @@ fn main() {
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),
-                target_triple.clone(),
+                target_tuple.clone(),
             );
         }
         Command::AbiCafe => {
-            if bootstrap_host_compiler.triple != target_triple {
+            if bootstrap_host_compiler.target != target_tuple {
                 eprintln!("Abi-cafe doesn't support cross-compilation");
                 process::exit(1);
             }
@@ -241,7 +241,7 @@ fn main() {
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),
-                target_triple,
+                target_tuple,
             );
         }
         Command::Bench => {
@@ -251,7 +251,7 @@ fn main() {
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),
-                target_triple,
+                target_tuple,
             );
             bench::benchmark(&dirs, &compiler);
         }
