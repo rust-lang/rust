@@ -69,7 +69,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let needs_drop = self.needs_drop.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
-            FlowSensitiveAnalysis::new(NeedsDrop, ccx)
+            FlowSensitiveAnalysis::new(ccx)
                 .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
@@ -98,7 +98,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let needs_non_const_drop = self.needs_non_const_drop.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
-            FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
+            FlowSensitiveAnalysis::new(ccx)
                 .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
@@ -127,7 +127,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
-            FlowSensitiveAnalysis::new(HasMutInterior, ccx)
+            FlowSensitiveAnalysis::new(ccx)
                 .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
