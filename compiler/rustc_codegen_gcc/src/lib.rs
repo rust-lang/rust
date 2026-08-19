@@ -95,7 +95,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -195,8 +195,8 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, sess: &Session) {
-        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+    fn init(&self, sess: &EarlySession) -> CodegenBackendInit {
+        fn file_path(sysroot_path: &Path, sess: &EarlySession) -> PathBuf {
             let rustlib_path =
                 rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
             sysroot_path
@@ -232,7 +232,7 @@ impl CodegenBackend for GccCodegenBackend {
         {
             gccjit::set_lang_name(c"GNU Rust");
 
-            let target_cpu = target_cpu(sess);
+            let target_cpu = target_cpu(&sess.opts, &sess.target);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();
@@ -274,10 +274,12 @@ impl CodegenBackend for GccCodegenBackend {
                 .supports_128bit_integers
                 .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
         }
-    }
 
-    fn thin_lto_supported(&self) -> bool {
-        false
+        CodegenBackendInit {
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
+        }
     }
 
     fn provide(&self, providers: &mut Providers) {
@@ -286,7 +288,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
-        target_cpu(sess).to_owned()
+        target_cpu(&sess.opts, &sess.target).to_owned()
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -309,10 +311,6 @@ impl CodegenBackend for GccCodegenBackend {
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess, &self.target_info)
-    }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
     }
 }
 

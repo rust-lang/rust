@@ -1353,7 +1353,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
         // we can never unwind.
         OperandValue::Immediate(bx.const_bool(false)).store(bx, dest);
     } else {
-        if wants_msvc_seh(bx.sess()) {
+        if wants_msvc_seh(&bx.sess().target) {
             unimplemented!();
         }
         #[cfg(feature = "master")]

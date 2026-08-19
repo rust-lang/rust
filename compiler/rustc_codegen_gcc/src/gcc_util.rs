@@ -3,8 +3,8 @@ use gccjit::Context;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::Session;
-use rustc_session::config::NATIVE_CPU;
-use rustc_target::spec::Arch;
+use rustc_session::config::{NATIVE_CPU, Options};
+use rustc_target::spec::{Arch, Target};
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
@@ -130,9 +130,9 @@ fn handle_native(name: &str) -> &str {
     unimplemented!();
 }
 
-pub fn target_cpu(sess: &Session) -> &str {
-    match sess.opts.cg.target_cpu {
+pub fn target_cpu<'a>(sopts: &'a Options, target: &'a Target) -> &'a str {
+    match sopts.cg.target_cpu {
         Some(ref name) => handle_native(name),
-        None => handle_native(sess.target.cpu.as_ref()),
+        None => handle_native(target.cpu.as_ref()),
     }
 }

@@ -13,8 +13,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
-use rustc_session::Session;
 use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
+use rustc_session::{EarlySession, Session};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
 };
@@ -25,7 +25,7 @@ use crate::{diagnostics, llvm};
 
 static INIT: Once = Once::new();
 
-pub(crate) fn init(sess: &Session) {
+pub(crate) fn init(sess: &EarlySession) {
     unsafe {
         // Before we touch LLVM, make sure that multithreading is enabled.
         if !llvm::LLVMIsMultithreaded().is_true() {
@@ -43,7 +43,7 @@ fn require_inited() {
     }
 }
 
-unsafe fn configure_llvm(sess: &Session) {
+unsafe fn configure_llvm(sess: &EarlySession) {
     let n_args = sess.opts.cg.llvm_args.len() + sess.target.llvm_args.len();
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
@@ -105,7 +105,7 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         }
 
-        if wants_wasm_eh(sess) {
+        if wants_wasm_eh(&sess.target) {
             add("-wasm-enable-eh", false);
         }
 
@@ -633,7 +633,7 @@ pub(crate) fn target_cpu(sess: &Session) -> &str {
 
 /// The target features for compiler flags other than `-Ctarget-features`.
 fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
-    if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
+    if wants_wasm_eh(&sess.target) && sess.panic_strategy() == PanicStrategy::Unwind {
         features.push("+exception-handling".into());
     }
 

@@ -36,8 +36,8 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
+    NATIVE_CPU, OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -320,6 +320,53 @@ impl PointerAuthConfig {
 
         attrs
     }
+}
+
+/// Partial session built before the full session. More specifically, `EarlySession` is used to
+/// build the codegen backend, and then both pieces are used to build the full `Session`.
+pub struct EarlySession {
+    pub target: Target,
+    pub host: Target,
+    pub opts: config::Options,
+    pub psess: ParseSess,
+}
+
+// JUSTIFICATION: defn of the suggested wrapper fns
+#[allow(rustc::bad_opt_access)]
+impl EarlySession {
+    #[inline]
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.psess.dcx()
+    }
+
+    /// Note: this is simpler than `Session::lto`, hence the `early_` prefix (to more clearly
+    /// distinguish it).
+    pub fn early_lto(&self) -> LtoCli {
+        self.opts.cg.lto
+    }
+
+    pub fn print_llvm_stats(&self) -> bool {
+        self.opts.unstable_opts.print_codegen_stats
+    }
+
+    pub fn print_llvm_stats_json(&self) -> Option<&String> {
+        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
+    }
+}
+
+/// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
+#[derive(Default)]
+pub struct CodegenBackendInit {
+    /// A list of all intrinsics that this backend definitely replaces, which means their fallback
+    /// bodies do not need to be monomorphized.
+    pub replaced_intrinsics: Vec<Symbol>,
+
+    /// A list of all intrinsics that this backend definitely does *not* replace, which means their
+    /// fallback bodies can be MIR-inlined.
+    pub fallback_intrinsics: Vec<Symbol>,
+
+    /// Is ThinLTO supported by this backend?
+    pub thin_lto_supported: bool = true,
 }
 
 /// Represents the data associated with a compilation
@@ -1252,15 +1299,11 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
-pub fn build_session(
+pub fn build_early_session(
     sopts: config::Options,
-    io: CompilerIO,
-    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
-    cfg_version: &'static str,
     ice_file: Option<PathBuf>,
-    using_internal_features: &'static AtomicBool,
-) -> Session {
+) -> EarlySession {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -1295,6 +1338,24 @@ pub fn build_session(
         dcx.handle().warn(warning)
     }
 
+    let psess = ParseSess::with_dcx(dcx, source_map);
+
+    EarlySession { target, host, opts: sopts, psess }
+}
+
+// JUSTIFICATION: literally session construction
+#[allow(rustc::bad_opt_access)]
+pub fn build_session(
+    sess: EarlySession,
+    codegen_backend_init: CodegenBackendInit,
+    io: CompilerIO,
+    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    cfg_version: &'static str,
+    using_internal_features: &'static AtomicBool,
+) -> Session {
+    let EarlySession { target, host, opts: sopts, psess } = sess;
+    let dcx = psess.dcx();
+
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
         let directory = if let Some(directory) = d { directory } else { std::path::Path::new(".") };
@@ -1315,8 +1376,6 @@ pub fn build_session(
     } else {
         None
     };
-
-    let psess = ParseSess::with_dcx(dcx, source_map);
 
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
@@ -1384,9 +1443,9 @@ pub fn build_session(
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
-        replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
-        fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
-        thin_lto_supported: true,                  // filled by `run_compiler`
+        replaced_intrinsics: FxHashSet::from_iter(codegen_backend_init.replaced_intrinsics),
+        fallback_intrinsics: FxHashSet::from_iter(codegen_backend_init.fallback_intrinsics),
+        thin_lto_supported: codegen_backend_init.thin_lto_supported,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
         removed_rustc_main_attr: AtomicBool::new(false),

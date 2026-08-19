@@ -451,7 +451,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
         let tcx = self.tcx;
         let func = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !wants_msvc_seh(self.sess()) => {
+            Some(def_id) if !wants_msvc_seh(&self.sess().target) => {
                 let instance = ty::Instance::expect_resolve(
                     tcx,
                     self.typing_env(),
@@ -466,7 +466,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.declare_fn(symbol_name, fn_abi)
             }
             _ => {
-                let name = if wants_msvc_seh(self.sess()) {
+                let name = if wants_msvc_seh(&self.sess().target) {
                     "__CxxFrameHandler3"
                 } else {
                     "rust_eh_personality"

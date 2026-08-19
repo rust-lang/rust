@@ -9,7 +9,7 @@ use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
@@ -36,7 +36,9 @@ pub trait BackendTypes {
 pub trait CodegenBackend {
     fn name(&self) -> &'static str;
 
-    fn init(&self, _sess: &Session) {}
+    fn init(&self, _sess: &EarlySession) -> CodegenBackendInit {
+        Default::default()
+    }
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
 
@@ -69,23 +71,6 @@ pub trait CodegenBackend {
     fn print_passes(&self) {}
 
     fn print_version(&self) {}
-
-    /// Returns a list of all intrinsics that this backend definitely
-    /// replaces, which means their fallback bodies do not need to be monomorphized.
-    fn replaced_intrinsics(&self) -> Vec<Symbol> {
-        vec![]
-    }
-
-    /// Returns a list of all intrinsics that this backend definitely
-    /// does *not* replace, which means their fallback bodies can be MIR-inlined.
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![]
-    }
-
-    /// Is ThinLTO supported by this backend?
-    fn thin_lto_supported(&self) -> bool {
-        true
-    }
 
     /// Value printed by `--print=backend-has-zstd`.
     ///

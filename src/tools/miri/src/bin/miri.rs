@@ -45,7 +45,7 @@ use rustc_log::tracing::debug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
-use rustc_session::{EarlyDiagCtxt, Session};
+use rustc_session::{EarlyDiagCtxt, EarlySession, Session};
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -107,7 +107,7 @@ fn run_many_seeds(
 /// Generates the codegen backend for code that Miri will interpret: we basically
 /// use the dummy backend, except that we put the LLVM backend in charge of
 /// target features.
-fn make_miri_codegen_backend(sess: &Session, dep: bool) -> Box<dyn CodegenBackend> {
+fn make_miri_codegen_backend(sess: &EarlySession, dep: bool) -> Box<dyn CodegenBackend> {
     let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
