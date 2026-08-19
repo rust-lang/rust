@@ -1250,40 +1250,14 @@ impl CommandLineStep for OmpOffload {
 
         let llvm_output = builder.ensure(Llvm { target });
 
-        // Running cmake twice in the same folder is known to cause issues, like deleting existing
-        // binaries. We therefore write our offload artifacts into it's own folder, instead of
-        // using the llvm build dir.
-        let out_dir = builder.out.join(self.target.triple).join("offload");
+        let out_dir = builder.offload_out(self.target);
 
-        let mut files = vec![];
         let lib_ext = std::env::consts::DLL_EXTENSION;
-        files.push(out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext));
-        files.push(out_dir.join("lib").join("libomp").with_extension(lib_ext));
-        files.push(out_dir.join("lib").join("libomptarget").with_extension(lib_ext));
-        files.push(
-            out_dir.join("lib").join("amdgcn-amd-amdhsa").join("libompdevice").with_extension("a"),
-        );
-        files.push(
-            out_dir
-                .join("lib")
-                .join("amdgcn-amd-amdhsa")
-                .join("libomptarget-amdgpu")
-                .with_extension("bc"),
-        );
-        files.push(
-            out_dir
-                .join("lib")
-                .join("nvptx64-nvidia-cuda")
-                .join("libompdevice")
-                .with_extension("a"),
-        );
-        files.push(
-            out_dir
-                .join("lib")
-                .join("nvptx64-nvidia-cuda")
-                .join("libomptarget-nvptx")
-                .with_extension("bc"),
-        );
+        let files = vec![
+            out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext),
+            out_dir.join("lib").join("libomp").with_extension(lib_ext),
+            out_dir.join("lib").join("libomptarget").with_extension(lib_ext),
+        ];
 
         // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1378,78 +1352,61 @@ impl CommandLineStep for OmpOffload {
             libstdcxx.parent().map(Path::to_path_buf)
         });
 
-        // In the context of OpenMP offload, some libraries must be compiled for the gpu target,
-        // some for the host, and others for both. We do not perform a full cross-compilation, since
-        // we don't want to run rustc on a GPU.
-        let omp_targets = vec![target.triple.as_ref(), "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
-        for omp_target in omp_targets {
-            let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/runtimes/"));
 
-            // If we use an external clang as opposed to building our own llvm_clang, than that clang will
-            // come with it's own set of default include directories, which are based on a potentially older
-            // LLVM. This can cause issues, so we overwrite it to include headers based on our
-            // `src/llvm-project` submodule instead.
-            let mut cflags = CcFlags::default();
-            if !builder.config.llvm_clang {
-                let base = llvm_output.root_dir().join("include");
-                let inc_dir = base.display();
-                cflags.push_all(format!(" -I {inc_dir}"));
-            }
-
-            // Logic copied from `configure_llvm`
-            // ThinLTO is only available when building with LLVM, enabling LLD is required.
-            // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
-            let mut ldflags = LdFlags::default();
-            if builder.config.llvm_thin_lto && !target.contains("apple") {
-                ldflags.push_all("-fuse-ld=lld");
-            }
-            if *omp_target == *target.triple
-                && let Some(dir) = &cxx_lib_dir
-            {
-                ldflags.push_all(format!("-L{}", dir.display()));
-            }
-
-            configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
-
-            cfg.define("CMAKE_C_COMPILER", &clang)
-                .define("CMAKE_CXX_COMPILER", &clangxx)
-                .define("CMAKE_ASM_COMPILER", &clang);
-
-            // Re-use the same flags as llvm to control the level of debug information
-            // generated for offload.
-            let profile = get_llvm_profile(&builder.config);
-            trace!(?profile);
-
-            // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
-            // runtime to simplify our build. So far, these are still under development.
-            cfg.out_dir(&out_dir)
-                .profile(profile)
-                .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
-                .define("LLVM_ENABLE_ASSERTIONS", "ON")
-                .define("LLVM_INCLUDE_TESTS", "OFF")
-                .define("OFFLOAD_INCLUDE_TESTS", "OFF")
-                .define("LLVM_ROOT", llvm_output.root_dir().join("build"))
-                .define("LLVM_DIR", llvm_output.cmake_dir())
-                .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
-            if let Some(p) = offload_clang_dir.clone() {
-                cfg.define("Clang_DIR", p);
-            }
-
-            // We don't perform a full cross-compilation of rustc, therefore our target.triple
-            // will still be a CPU target.
-            if *omp_target == *target.triple {
-                // The offload library provides functionality which only makes sense on the host.
-                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
-            } else {
-                // OpenMP provides some device libraries, so we also compile it for all gpu targets.
-                cfg.define("OPENMP_INSTALL_LIBDIR", Path::new("lib").join(omp_target));
-                cfg.define("LLVM_USE_LINKER", "lld");
-                cfg.define("LLVM_ENABLE_RUNTIMES", "openmp");
-                cfg.define("CMAKE_C_COMPILER_TARGET", omp_target);
-                cfg.define("CMAKE_CXX_COMPILER_TARGET", omp_target);
-            }
-            cfg.build();
+        // If we use an external clang as opposed to building our own llvm_clang, than that clang will
+        // come with it's own set of default include directories, which are based on a potentially older
+        // LLVM. This can cause issues, so we overwrite it to include headers based on our
+        // `src/llvm-project` submodule instead.
+        let mut cflags = CcFlags::default();
+        if !builder.config.llvm_clang {
+            let base = llvm_output.root_dir().join("include");
+            let inc_dir = base.display();
+            cflags.push_all(format!(" -I {inc_dir}"));
         }
+
+        // Logic copied from `configure_llvm`
+        // ThinLTO is only available when building with LLVM, enabling LLD is required.
+        // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+        let mut ldflags = LdFlags::default();
+        if builder.config.llvm_thin_lto && !target.contains("apple") {
+            ldflags.push_all("-fuse-ld=lld");
+        }
+
+        if let Some(dir) = &cxx_lib_dir {
+            ldflags.push_all(format!("-L{}", dir.display()));
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
+
+        cfg.define("CMAKE_C_COMPILER", &clang)
+            .define("CMAKE_CXX_COMPILER", &clangxx)
+            .define("CMAKE_ASM_COMPILER", &clang);
+
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for offload.
+        let profile = get_llvm_profile(&builder.config);
+        trace!(?profile);
+
+        // FIXME(offload): Once we move from OMP to Offload (Ol) APIs, we should drop the openmp
+        // runtime to simplify our build. So far, these are still under development.
+        cfg.out_dir(&out_dir)
+            .profile(profile)
+            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
+            .define("LLVM_ENABLE_ASSERTIONS", "ON")
+            .define("LLVM_INCLUDE_TESTS", "OFF")
+            .define("OFFLOAD_INCLUDE_TESTS", "OFF")
+            .define("LLVM_ROOT", llvm_output.root_dir().join("build"))
+            .define("LLVM_DIR", llvm_output.cmake_dir())
+            .define("LLVM_DEFAULT_TARGET_TRIPLE", &*target.triple);
+        if let Some(p) = offload_clang_dir {
+            cfg.define("Clang_DIR", p);
+        }
+
+        // The offload library provides functionality which only makes sense on the host.
+        cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
+
+        cfg.build();
 
         t!(stamp.write());
 
