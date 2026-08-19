@@ -335,7 +335,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         goals.push(Goal::new(
                             self.tcx,
                             param_env,
-                            ty::ProjectionPredicate {
+                            ty::ProjectionClause {
                                 projection_term: projection_ty.into(),
                                 term: ty_var.into(),
                             },
