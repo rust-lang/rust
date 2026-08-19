@@ -41,8 +41,8 @@ library which propagate caller information.
 
 Previously, `panic!` made use of the `file!()`, `line!()`, and `column!()` macros to construct a
 [`Location`] pointing to where the panic occurred.
-These macros couldn't be given an overridden
-location, so functions which intentionally invoked `panic!` couldn't provide their own location,
+These macros couldn't be given an overridden location,
+so functions which intentionally invoked `panic!` couldn't provide their own location,
 hiding the actual source of error.
 
 Internally, `panic!()` now calls [`core::panic::Location::caller()`][wrapper] to find out where it
@@ -75,8 +75,8 @@ Once we have a `Span`, we need to allocate static memory for the `Location`, whi
 the [`TyCtxt::const_caller_location()`][const-location-query] query.
 Internally this calls [`InterpCx::alloc_caller_location()`][alloc-location] and results in a unique
 [memory kind][location-memory-kind] (`MemoryKind::CallerLocation`).
-The SSA codegen backend is able
-to emit code for these same values, and we use this code there as well.
+The SSA codegen backend is able to emit code for these same values,
+and we use this code there as well.
 
 Once our `Location` has been allocated in static memory, our intrinsic returns a reference to it.
 
@@ -84,8 +84,8 @@ Once our `Location` has been allocated in static memory, our intrinsic returns a
 
 To generate efficient code for a tracked function and its callers, we need to provide the same
 behavior from the intrinsic's point of view without having a stack to walk up at runtime.
-We invert
-the approach: as we grow the stack down we pass an additional argument to calls of tracked functions
+We invert the approach:
+as we grow the stack down we pass an additional argument to calls of tracked functions
 rather than walking up the stack when the intrinsic is called.
 That additional argument can be returned wherever the caller location is queried.
 
@@ -172,16 +172,16 @@ function:
 * is not `#[naked]`
 
 If the use is valid, we set [`CodegenFnAttrsFlags::TRACK_CALLER`][attrs-flags].
-This flag influences
-the return value of [`InstanceKind::requires_caller_location`][requires-location] which is in turn
+This flag influences the return value of
+[`InstanceKind::requires_caller_location`][requires-location] which is in turn
 used in both const and codegen contexts to ensure correct propagation.
 
 ### Traits
 
 When applied to trait method implementations, the attribute works as it does for regular functions.
 
-When applied to a trait method prototype, the attribute applies to all implementations of the
-method.
+When applied to a trait method prototype,
+the attribute applies to all implementations of the method.
 When applied to a default trait method implementation, the attribute takes effect on
 that implementation *and* any overrides.
 
@@ -245,7 +245,7 @@ fn main() {
 }
 ```
 
-## Background/History
+## Background/history
 
 Broadly speaking, this feature's goal is to improve common Rust error messages without breaking
 stability guarantees, requiring modifications to end-user source, relying on platform-specific
@@ -253,15 +253,14 @@ debug-info, or preventing user-defined types from having the same error-reportin
 
 Improving the output of these panics has been a goal of proposals since at least mid-2016 (see
 [non-viable alternatives] in the approved RFC for details).
-It took two more years until RFC 2091
-was approved, much of its [rationale] for this feature's design having been discovered through the
+It took two more years until RFC 2091 was approved,
+much of its [rationale] for this feature's design having been discovered through the
 discussion around several earlier proposals.
 
 The design in the original RFC limited itself to implementations that could be done inside the
 compiler at the time without significant refactoring.
-However in the year and a half between the
-approval of the RFC and the actual implementation work, a [revised design] was proposed and written
-up on the tracking issue.
+However in the year and a half between the approval of the RFC and the actual implementation work,
+a [revised design] was proposed and written up on the tracking issue.
 During the course of implementing that, it was also discovered that an
 implementation was possible without modifying the number of arguments in a function's MIR, which
 would simplify later stages and unlock use in traits.
