@@ -748,6 +748,99 @@ struct Struct9<#[pointee] T, U>(T) where T: ?Sized;
 }
 
 #[test]
+fn reborrow_expansion() {
+    check(
+        r#"
+//- minicore: reborrow
+
+use core::marker::Reborrow;
+
+#[derive(Reborrow)]
+struct Foo<'a, 'b, T, const N: usize>
+where
+    T: 'a + 'b,
+{
+    left: &'a mut T,
+    right: &'b mut T,
+}"#,
+        expect![[r#"
+
+use core::marker::Reborrow;
+
+#[derive(Reborrow)]
+struct Foo<'a, 'b, T, const N: usize>
+where
+    T: 'a + 'b,
+{
+    left: &'a mut T,
+    right: &'b mut T,
+}
+impl <T, const N: usize, > $crate::marker::Reborrow for Foo<T, N, > where T:'a+'b, {}"#]],
+    );
+}
+
+#[test]
+fn coerce_shared_expansion() {
+    check(
+        r#"
+//- minicore: reborrow
+
+use core::marker::CoerceShared;
+
+mod shared {
+    pub struct Shared<'a, 'b, T, const N: usize>(&'a T, &'b T, [(); N]);
+}
+
+#[derive(CoerceShared)]
+#[coerce_shared(shared::Shared<'a, 'b, (T, u8), N>)]
+struct Foo<'a, 'b, T, const N: usize>(&'a mut T, &'b mut T)
+where
+    T: 'a + 'b;"#,
+        expect![[r#"
+
+use core::marker::CoerceShared;
+
+mod shared {
+    pub struct Shared<'a, 'b, T, const N: usize>(&'a T, &'b T, [(); N]);
+}
+
+#[derive(CoerceShared)]
+#[coerce_shared(shared::Shared<'a, 'b, (T, u8), N>)]
+struct Foo<'a, 'b, T, const N: usize>(&'a mut T, &'b mut T)
+where
+    T: 'a + 'b;
+impl <T, const N: usize, > $crate::marker::CoerceShared<shared::Shared<'a, 'b, (T, u8), N>> for Foo<T, N, > where T:'a+'b, {}"#]],
+    );
+}
+
+#[test]
+fn coerce_shared_errors() {
+    check_errors(
+        r#"
+//- minicore: reborrow
+
+use core::marker::CoerceShared;
+
+#[derive(CoerceShared)]
+struct Missing<'a>(&'a mut ());
+
+#[derive(CoerceShared)]
+#[coerce_shared(Target<'a>)]
+#[coerce_shared(Target<'a>)]
+struct Duplicate<'a>(&'a mut ());
+
+#[derive(CoerceShared)]
+#[coerce_shared(Target<'a>, Other<'a>)]
+struct Malformed<'a>(&'a mut ());
+"#,
+        expect![[r#"
+            34..89: `derive(CoerceShared)` requires exactly one `#[coerce_shared(Target)]` attribute
+            91..206: `derive(CoerceShared)` requires exactly one `#[coerce_shared(Target)]` attribute
+            208..305: `derive(CoerceShared)` requires exactly one `#[coerce_shared(Target)]` attribute"#]],
+    );
+}
+
+#[test]
 fn union_derive() {
     check_errors(
         r#"

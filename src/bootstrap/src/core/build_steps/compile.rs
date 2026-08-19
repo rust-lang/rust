@@ -19,13 +19,16 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::span;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
+use crate::core::build_steps::llvm::{LlvmFromCi, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
     self, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     apply_pgo, crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
@@ -36,10 +39,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{
-    CLang, CodegenBackendKind, Compiler, DependencyType, FileType, GitRepo, LLVM_TOOLS, Mode,
-    debug, trace,
-};
+use crate::{CLang, DependencyType, FileType, GitRepo, Mode, debug, trace};
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -505,14 +505,16 @@ pub fn std_crates_for_make_run(run: &RunConfig<'_>) -> Vec<String> {
 /// downloaded copy of CI LLVM, then we try to use the `compiler-rt` sources from
 /// there instead, which lets us avoid checking out the LLVM submodule.
 fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
-    // Try to use `compiler-rt` sources from downloaded CI LLVM, if possible.
-    if builder.config.llvm_from_ci {
-        // CI LLVM might not have been downloaded yet, so try to download it now.
-        builder.config.maybe_download_ci_llvm();
-        let ci_llvm_compiler_rt = builder.config.ci_llvm_root().join("compiler-rt");
-        if ci_llvm_compiler_rt.exists() {
-            return ci_llvm_compiler_rt;
+    // Try to use `compiler-rt` sources from downloaded CI LLVM, if available
+    if let Some(downloaded_llvm) = builder.ensure(LlvmFromCi { target: builder.host_target }) {
+        let ci_llvm_compiler_rt = downloaded_llvm.output.root_dir().join("compiler-rt");
+        if !builder.config.dry_run() {
+            assert!(
+                ci_llvm_compiler_rt.exists(),
+                "compiler-rt sources not found in LLVM downloaded from CI at {ci_llvm_compiler_rt:?}"
+            );
         }
+        return ci_llvm_compiler_rt;
     }
 
     // Otherwise, fall back to requiring the LLVM submodule.
@@ -1387,9 +1389,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     // (i.e. it's already built or is downloadable), we prefer to maintain a
     // consistent environment between check and non-check builds.
     if builder.config.llvm_enabled(target) {
-        let building_llvm_is_expensive =
-            crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
-                .should_build();
+        let building_llvm_is_expensive = prebuilt_llvm_output(builder, target).is_none();
 
         let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
         if !skip_llvm {
@@ -1419,13 +1419,13 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 /// Note that this has the side-effect of _building LLVM_, which is sometimes
 /// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    if builder.config.is_rust_llvm(target) {
+    let llvm_output = builder.ensure(llvm::Llvm { target });
+    if builder.config.is_rust_llvm(&llvm_output, target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
-    let llvm_output = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
@@ -1484,7 +1484,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         );
         cargo.env("LLVM_STATIC_STDCPP", file);
     }
-    if builder.llvm_link_shared() {
+    if llvm_output.link_shared() {
         cargo.env("LLVM_LINK_SHARED", "1");
     }
     if builder.config.llvm_use_libcxx {
@@ -2179,13 +2179,13 @@ impl CommandLineStep for Assemble {
                 let _llvm_tools_span =
                     span!(tracing::Level::TRACE, "installing llvm tools to sysroot", ?libdir_bin)
                         .entered();
-                for tool in LLVM_TOOLS {
+                for tool in dist::LLVM_TOOLS {
                     trace!("installing `{tool}`");
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
 
                     // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
-                    if !src_path.exists() && builder.config.llvm_from_ci {
+                    if !src_path.exists() && builder.config.llvm_ci_mode.download_from_ci() {
                         eprintln!("{} does not exist; skipping copy", src_path.display());
                         continue;
                     }
@@ -2354,14 +2354,9 @@ impl CommandLineStep for Assemble {
             let is_proc_macro = proc_macros.contains(&filename);
             let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
-            // If we link statically to stdlib, do not copy the libstd dynamic library file
+            // `rustc_driver` statically links to stdlib, so do not copy the libstd dynamic library file
             let can_be_rustc_dynamic_dep =
-                if builder.link_std_into_rustc_driver(target_compiler.host) {
-                    let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
-                    !is_std
-                } else {
-                    true
-                };
+                !(filename.starts_with("std-") || filename.starts_with("libstd-"));
 
             if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename), FileType::Regular);

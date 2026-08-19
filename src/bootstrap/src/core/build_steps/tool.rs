@@ -14,16 +14,18 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use crate::core::build_steps::compile::{CargoMessage, is_lto_stage};
+use crate::core::build_steps::dist::LLD_FILE_NAMES;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{
     self, Builder, Cargo as CargoCommand, CommandLineStep, Kind, RunConfig, ShouldRun, Step,
     StepMetadata, apply_pgo, cargo_profile_var,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Mode};
+use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -407,8 +409,9 @@ macro_rules! bootstrap_tool {
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
-        pub enum Tool {
+        pub(crate) enum Tool {
             $(
+                #[allow(dead_code, reason = "not all bootstrap-tools need a variant")]
                 $name,
             )+
         }
@@ -417,14 +420,14 @@ macro_rules! bootstrap_tool {
             /// Ensure a tool is built, then get the path to its executable.
             ///
             /// The actual building, if any, will be handled via [`ToolBuild`].
-            pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+            pub(crate) fn tool_exe(&self, tool: Tool) -> PathBuf {
                 self.tool(tool).tool_path
             }
 
             /// Ensure a tool is built, then return its build output.
             ///
             /// The actual building, if any, will be handled via [`ToolBuild`].
-            pub fn tool(&self, tool: Tool) -> ToolBuildResult {
+            pub(crate) fn tool(&self, tool: Tool) -> ToolBuildResult {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
@@ -978,7 +981,7 @@ pub(crate) fn copy_lld_artifacts(
     let self_contained_lld_dir = libdir_bin.join("gcc-ld");
     t!(fs::create_dir_all(&self_contained_lld_dir));
 
-    for name in crate::LLD_FILE_NAMES {
+    for name in LLD_FILE_NAMES {
         builder.copy_link(
             &lld_wrapper.tool.tool_path,
             &self_contained_lld_dir.join(exe(name, target)),
@@ -1619,7 +1622,7 @@ impl Builder<'_> {
     /// `host`.
     ///
     /// This also ensures that the given tool is built (using [`ToolBuild`]).
-    pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
+    pub(crate) fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
         let mut cmd = command(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.host_target);
         let host = &compiler.host;

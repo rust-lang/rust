@@ -50,7 +50,7 @@ pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
         #[expect(deprecated)] // we don't want to unnecessarily retrieve the attrs twice in a row.
         let attrs = tcx.get_all_attrs(id);
 
-        if find_attr!(attrs, RustcDumpPredicates) {
+        if find_attr!(attrs, RustcDumpClauses) {
             let clauses = tcx
                 .clauses_of(id)
                 .instantiate_identity(tcx)
@@ -59,7 +59,7 @@ pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
                 .map(Unnormalized::skip_norm_wip);
             let span = tcx.def_span(id);
 
-            let mut diag = tcx.dcx().struct_span_err(span, sym::rustc_dump_predicates.as_str());
+            let mut diag = tcx.dcx().struct_span_err(span, sym::rustc_dump_clauses.as_str());
             for clause in clauses {
                 diag.note(format!("{clause:?}"));
             }

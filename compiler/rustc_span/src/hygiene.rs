@@ -933,6 +933,10 @@ impl SyntaxContext {
     /// This is used to test whether a lint should not even begin to figure out whether it should
     /// be reported on the current node.
     pub fn in_external_macro(self, sm: &SourceMap) -> bool {
+        // fast path to avoid locking/expn-data read: the root context is not in a macro
+        if self.is_root() {
+            return false;
+        }
         let expn_data = self.outer_expn_data();
         match expn_data.kind {
             ExpnKind::Root

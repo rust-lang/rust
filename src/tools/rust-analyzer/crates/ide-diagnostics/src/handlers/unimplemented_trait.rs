@@ -4,7 +4,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unimplemented-trait
 //
-// This diagnostic is triggered when rust-analyzer cannot infer some type.
+// This diagnostic is triggered when a trait bound is not satisfied.
 pub(crate) fn unimplemented_trait<'db>(
     ctx: &DiagnosticsContext<'_, 'db>,
     d: &hir::UnimplementedTrait<'db>,
@@ -86,6 +86,29 @@ fn foo() {
            // | required by the bound `(): IntoIterator`
 }
 
+        "#,
+        );
+    }
+
+    #[test]
+    fn coroutine_non_held_types_with_auto_traits() {
+        check_diagnostics(
+            r#"
+auto trait Send {}
+
+struct NonSend;
+impl !Send for NonSend {}
+
+async fn foo() -> NonSend {
+    let v = NonSend;
+    v
+}
+
+fn require_send<T: Send>(_: T) {}
+
+fn baz() {
+    require_send(foo());
+}
         "#,
         );
     }

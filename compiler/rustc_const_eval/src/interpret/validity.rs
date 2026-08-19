@@ -530,7 +530,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.typing_env);
         match tail.kind() {
             ty::Dynamic(data, _) => {
-                let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
+                let vtable = meta.unwrap_meta().to_pointer(self.ecx);
                 // Make sure it is a genuine vtable pointer for the right trait.
                 try_validation!(
                     self.ecx.get_ptr_vtable_ty(vtable, Some(data)),
@@ -930,7 +930,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
-                    let ptr = scalar.to_pointer(self.ecx)?;
+                    let ptr = scalar.to_pointer(self.ecx);
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,

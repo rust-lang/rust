@@ -175,9 +175,9 @@ dependencies = [
 
 [[package]]
 name = "moto-rt"
-version = "0.16.4"
+version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aadbab5a5ca5a01ec1ff4bc03c2c3a7643f0e1d97ad5a4a5b58ce78504e17da"
+checksum = "bcd8eb21b606833bc3a8c1c343bc75eb1999b288b2c2d515ae872e9e2f153187"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -430,9 +430,9 @@ dependencies = [
 
 [[package]]
 name = "wasip3"
-version = "0.7.0+wasi-0.3.0"
+version = "0.7.1+wasi-0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07aa681120704bf09828d1f7cf7e763666c1dc6a36e5096efd0ad9aadfb302d3"
+checksum = "75e9ed91ee5a995b6fe16c89d4511a8c12eb76967be20b57557618e02e781bcc"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",

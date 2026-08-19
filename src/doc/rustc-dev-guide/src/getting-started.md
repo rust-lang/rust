@@ -186,7 +186,7 @@ The following tasks are doable without much background knowledge but are incredi
 - Answer questions on [users.rust-lang.org][users], or on [Stack Overflow][so].
 - Participate in the [RFC process](https://github.com/rust-lang/rfcs).
 - Find a [requested community library][community-library], build it, and publish
-  it to [Crates.io](http://crates.io).
+  it to [Crates.io](https://crates.io).
   Easier said than done, but very, very valuable!
 
 [users]: https://users.rust-lang.org/

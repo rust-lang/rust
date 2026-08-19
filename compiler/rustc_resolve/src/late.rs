@@ -1147,11 +1147,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         this.visit_generics(generics);
 
                         let declaration = &sig.decl;
-                        let coro_node_id = sig
-                            .header
-                            .coroutine_kind
-                            .map(|coroutine_kind| coroutine_kind.return_id());
-
                         this.resolve_fn_signature(
                             fn_id,
                             declaration.has_self(),
@@ -1160,7 +1155,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                                 .iter()
                                 .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
                             &declaration.output,
-                            coro_node_id.is_some(),
+                            sig.header.coroutine_marker.is_some(),
                         );
 
                         if let Some(contract) = contract {
@@ -1168,12 +1163,13 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         }
 
                         if let Some(body) = body {
-                            // Ignore errors in function bodies if this is rustdoc
-                            // Be sure not to set this until the function signature has been resolved.
+                            // Ignore errors in function bodies if this is rustdoc. Be sure not to
+                            // set this until the function signature has been resolved.
                             let previous_state = replace(&mut this.in_func_body, true);
                             // We only care block in the same function
                             this.last_block_rib = None;
-                            // Resolve the function body, potentially inside the body of an async closure
+                            // Resolve the function body, potentially inside the body of an async
+                            // closure.
                             this.with_lifetime_rib(
                                 LifetimeRibKind::elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),
@@ -4092,7 +4088,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 v.could_be_path = false;
             }
             self.report_error(
-                v.origin.iter().next().unwrap().0,
+                v.origin.first().unwrap().0,
                 ResolutionError::VariableNotBoundInPattern(v, self.parent_scope),
             );
         }
@@ -4757,8 +4753,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         self.resolve_path(&std_path, Some(ns), None, source)
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
-                        let item_span =
-                            path.iter().last().map_or(path_span, |segment| segment.ident.span);
+                        let item_span = path.last().map_or(path_span, |segment| segment.ident.span);
 
                         self.r.confused_type_with_std_module.insert(item_span, path_span);
                         self.r.confused_type_with_std_module.insert(path_span, path_span);

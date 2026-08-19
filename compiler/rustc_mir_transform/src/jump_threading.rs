@@ -720,7 +720,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 // had in the previous arm. All we can conclude is that the replacement condition
                 // `discr != value` can be threaded, and nothing else.
                 if c.polarity == Polarity::Ne
-                    && let Ok(value) = c.value.try_to_bits(discr_layout.size)
+                    && let value = c.value.to_bits(discr_layout.size)
                     && targets.all_values().contains(&value.into())
                 {
                     edges_fulfilling_condition.insert(targets.otherwise());

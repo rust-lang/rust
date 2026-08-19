@@ -10,13 +10,15 @@ use clap_complete::Generator;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+use crate::Build;
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
+use crate::core::build_steps::test::TestTarget;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::Config;
 use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
 use crate::utils::helpers;
-use crate::{Build, CodegenBackendKind, TestTarget};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
 pub enum Color {
@@ -311,6 +313,7 @@ pub enum Subcommand {
         #[arg(global = true, short = 'F', action = clap::ArgAction::Append, value_name = "LINT")]
         forbid: Vec<String>,
     },
+
     /// Run cargo fix
     #[command(long_about = "\n
     Arguments:
@@ -318,7 +321,14 @@ pub enum Subcommand {
         and/or artifacts to run `cargo fix` against. For example:
             ./x.py fix library/core
             ./x.py fix library/core library/proc_macro")]
-    Fix,
+    Fix {
+        /// Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the
+        /// current git checkout has uncommitted changes.
+        #[arg(long)]
+        allow_dirty: bool,
+    },
+
+    /// Run rustfmt
     #[command(
         name = "fmt",
         long_about = "\n
@@ -328,7 +338,6 @@ pub enum Subcommand {
             ./x.py fmt
             ./x.py fmt --check"
     )]
-    /// Run rustfmt
     Format {
         /// check formatting instead of applying
         #[arg(long)]

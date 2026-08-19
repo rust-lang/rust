@@ -71,7 +71,7 @@ impl<'tcx> GlobalCtorState<'tcx> {
                     if let Some((ctor, span)) = ctors.pop() {
                         let this = this.eval_context_mut();
 
-                        let ctor = ctor.to_scalar().to_pointer(this)?;
+                        let ctor = ctor.to_scalar().to_pointer(this);
                         let thread_callback = this.get_ptr_fn(ctor)?.as_instance()?;
 
                         // The signature of this function is `unsafe extern "C" fn()`.

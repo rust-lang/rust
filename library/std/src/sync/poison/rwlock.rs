@@ -770,7 +770,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
         // reference passed to it. If the closure panics, the guard will be dropped.
         let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
         let orig = ManuallyDrop::new(orig);
-        MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock }
+        MappedRwLockReadGuard { data, inner_lock: orig.inner_lock }
     }
 
     /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data. The
@@ -802,7 +802,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
             Some(data) => {
                 let data = NonNull::from(data);
                 let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock })
+                Ok(MappedRwLockReadGuard { data, inner_lock: orig.inner_lock })
             }
             None => Err(orig),
         }
@@ -996,7 +996,7 @@ impl<'rwlock, T: ?Sized> MappedRwLockReadGuard<'rwlock, T> {
         // reference passed to it. If the closure panics, the guard will be dropped.
         let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
         let orig = ManuallyDrop::new(orig);
-        MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock }
+        MappedRwLockReadGuard { data, inner_lock: orig.inner_lock }
     }
 
     /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data.
@@ -1028,7 +1028,7 @@ impl<'rwlock, T: ?Sized> MappedRwLockReadGuard<'rwlock, T> {
             Some(data) => {
                 let data = NonNull::from(data);
                 let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock })
+                Ok(MappedRwLockReadGuard { data, inner_lock: orig.inner_lock })
             }
             None => Err(orig),
         }
