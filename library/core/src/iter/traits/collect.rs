@@ -371,7 +371,7 @@ const impl<I: [const] Iterator> IntoIterator for I {
 ///     // This is a bit simpler with the concrete type signature: we can call
 ///     // extend on anything which can be turned into an Iterator which gives
 ///     // us i32s. Because we need i32s to put into MyCollection.
-///     fn extend<T: IntoIterator<Item=i32>>(&mut self, iter: T) {
+///     fn extend<I: IntoIterator<Item=i32>>(&mut self, iter: I) {
 ///
 ///         // The implementation is very straightforward: loop through the
 ///         // iterator, and add() each element to ourselves.
@@ -452,7 +452,7 @@ pub trait Extend<T> {
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
 impl Extend<()> for () {
-    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = ()>>(&mut self, iter: I) {
         iter.into_iter().for_each(drop)
     }
     fn extend_one(&mut self, _item: ()) {}
@@ -620,7 +620,7 @@ macro_rules! impl_extend_tuple {
         where
             $($extend_ty: Extend<$ty>,)+
         {
-            fn extend<T: IntoIterator<Item = ($($ty,)+)>>(&mut self, iter: T) {
+            fn extend<Iter: IntoIterator<Item = ($($ty,)+)>>(&mut self, iter: Iter) {
                 default_extend(self, iter)
             }
 
