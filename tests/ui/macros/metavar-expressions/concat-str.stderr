@@ -1,0 +1,34 @@
+warning: use of deprecated trait `NewAAAAAA`: blah blah blah AAAAAA trait
+  --> $DIR/concat-str.rs:14:20
+   |
+LL | pub fn foo(x: impl NewAAAAAA) {}
+   |                    ^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error[E0277]: please do not the AAAAAA
+  --> $DIR/concat-str.rs:18:9
+   |
+LL |     foo(());
+   |     --- ^^ the trait `NewAAAAAA` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/concat-str.rs:8:9
+   |
+LL |         pub trait ${concat(New, $name)} {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | make_stuff!("blah blah blah", AAAAAA);
+   | ------------------------------------- in this macro invocation
+note: required by a bound in `foo`
+  --> $DIR/concat-str.rs:14:20
+   |
+LL | pub fn foo(x: impl NewAAAAAA) {}
+   |                    ^^^^^^^^^ required by this bound in `foo`
+   = note: this error originates in the macro `make_stuff` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.
