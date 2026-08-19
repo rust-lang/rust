@@ -288,20 +288,33 @@ pub(crate) struct AttemptToUseNonConstantValueInConstant<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "consider using `{$suggestion}` instead of `{$current}`",
-    style = "verbose",
-    applicability = "has-placeholders"
-)]
-pub(crate) struct AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
-    // #[primary_span]
-    #[suggestion_part(code = "{suggestion} ")]
-    pub(crate) span: Span,
-    pub(crate) suggestion: &'a str,
-    #[suggestion_part(code = ": {type_name}")]
-    pub(crate) type_span: Option<Span>,
-    pub(crate) type_name: &'a str,
-    pub(crate) current: &'a str,
+pub(crate) enum AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
+    #[multipart_suggestion(
+        "consider using `{$suggestion}` instead of `{$current}`",
+        style = "verbose",
+        applicability = "has-placeholders"
+    )]
+    Placeholder {
+        #[suggestion_part(code = "{suggestion} ")]
+        span: Span,
+        suggestion: &'a str,
+        #[suggestion_part(code = ": /* Type */")]
+        type_span: Option<Span>,
+        current: &'a str,
+    },
+    #[multipart_suggestion(
+        "consider using `{$suggestion}` instead of `{$current}`",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Usize {
+        #[suggestion_part(code = "{suggestion} ")]
+        span: Span,
+        suggestion: &'a str,
+        #[suggestion_part(code = ": usize")]
+        type_span: Option<Span>,
+        current: &'a str,
+    },
 }
 
 #[derive(Subdiagnostic)]

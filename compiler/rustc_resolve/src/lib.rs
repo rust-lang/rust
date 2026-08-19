@@ -32,8 +32,8 @@ use effective_visibilities::EffectiveVisibilitiesVisitor;
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
-    ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
-    UnnecessaryQualification,
+    ConstantRequiresType, ForwardGenericParamBanReason, HasGenericParams, PathSource,
+    PatternSource, UnnecessaryQualification,
 };
 pub use macros::registered_lint_tools_ast;
 use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
@@ -283,7 +283,7 @@ enum ResolutionError<'ra> {
         suggestion: &'static str,
         current: &'static str,
         type_span: Option<Span>,
-        type_name: &'static str,
+        requires_type: ConstantRequiresType,
     },
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {

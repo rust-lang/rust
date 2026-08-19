@@ -1515,11 +1515,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         RibKind::ConstantItem(_, item, requires_type) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
-                                let type_name = match requires_type {
-                                    crate::late::ConstantRequiresType::Usize => "usize",
-                                    crate::late::ConstantRequiresType::No => "/* Type */",
-                                };
-
                                 let (span, resolution_error) = match item {
                                     None if rib_ident.name == kw::SelfLower => {
                                         (span, LowercaseSelf)
@@ -1546,7 +1541,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                                 suggestion: "const",
                                                 current: "let",
                                                 type_span,
-                                                type_name,
+                                                requires_type,
                                             },
                                         )
                                     }
@@ -1557,7 +1552,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             suggestion: "let",
                                             current: kind.as_str(),
                                             type_span: None,
-                                            type_name: "",
+                                            requires_type,
                                         },
                                     ),
                                 };

@@ -50,7 +50,7 @@ use crate::diagnostics::{
 };
 use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::{Import, ImportKind, UnresolvedImportError, import_path_to_string};
-use crate::late::{DiagMetadata, PatternSource, Rib};
+use crate::late::{ConstantRequiresType, DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
@@ -1173,7 +1173,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 current,
                 type_span,
-                type_name,
+                requires_type,
             } => {
                 // let foo =...
                 //     ^^^ given this Span
@@ -1210,12 +1210,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                         if is_simple_binding {
                             (
-                                Some(diagnostics::AttemptToUseNonConstantValueInConstantWithSuggestion {
-                                    span: sp,
-                                    suggestion,
-                                    current,
-                                    type_span,
-                                    type_name
+                                Some(match requires_type {
+                                    ConstantRequiresType::Usize => {
+                                        diagnostics::AttemptToUseNonConstantValueInConstantWithSuggestion::Usize {
+                                            span: sp,
+                                            suggestion,
+                                            current,
+                                            type_span,
+                                        }
+                                    }
+                                    ConstantRequiresType::No => {
+                                        diagnostics::AttemptToUseNonConstantValueInConstantWithSuggestion::Placeholder {
+                                            span: sp,
+                                            suggestion,
+                                            current,
+                                            type_span,
+                                        }
+                                    }
                                 }),
                                 Some(diagnostics::AttemptToUseNonConstantValueInConstantLabelWithSuggestion { span }),
                                 None,
