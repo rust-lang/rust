@@ -1501,6 +1501,148 @@ impl OsStr {
     pub fn split<'hs, P: Pattern<&'hs OsStr>>(&'hs self, delimiter: P) -> Split<'hs, P::Searcher> {
         Split(core::pattern::Split::new(delimiter.into_searcher(self)).with_allow_trailing_empty())
     }
+
+    /// Returns the byte index of the first character of this string slice that
+    /// matches the pattern.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: core::pattern
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard Gepardi");
+    ///
+    /// assert_eq!(s.find('L'), Some(0));
+    /// assert_eq!(s.find('é'), Some(14));
+    /// assert_eq!(s.find("pard"), Some(17));
+    /// ```
+    ///
+    /// More complex patterns using point-free style and closures:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use core::pattern::predicate;
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard");
+    ///
+    /// assert_eq!(s.find(predicate(char::is_whitespace)), Some(5));
+    /// assert_eq!(s.find(predicate(char::is_lowercase)), Some(1));
+    /// assert_eq!(s.find(predicate(|c: char| c.is_whitespace() || c.is_lowercase())), Some(1));
+    /// assert_eq!(s.find(predicate(|c: char| (c < 'o') && (c > 'a'))), Some(4));
+    /// ```
+    ///
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard");
+    /// let x: &[_] = &['1', '2'];
+    ///
+    /// assert_eq!(s.find(x), None);
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    pub fn find<'a>(&'a self, pat: impl Pattern<&'a OsStr>) -> Option<usize> {
+        pat.into_searcher(self).next_match().map(|(i, _)| i)
+    }
+
+    /// Returns the byte index for the first character of the last match of the pattern in
+    /// this string slice.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: core::pattern
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard Gepardi");
+    ///
+    /// assert_eq!(s.rfind('L'), Some(13));
+    /// assert_eq!(s.rfind('é'), Some(14));
+    /// assert_eq!(s.rfind("pard"), Some(24));
+    /// ```
+    ///
+    /// More complex patterns with closures:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use core::pattern::predicate;
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard");
+    ///
+    /// assert_eq!(s.rfind(predicate(char::is_whitespace)), Some(12));
+    /// assert_eq!(s.rfind(predicate(char::is_lowercase)), Some(20));
+    /// ```
+    ///
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard");
+    /// let x: &[_] = &['1', '2'];
+    ///
+    /// assert_eq!(s.rfind(x), None);
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    pub fn rfind<'a, P>(&'a self, pat: P) -> Option<usize>
+    where
+        P: Pattern<&'a OsStr, Searcher: ReverseSearcher<&'a OsStr>>,
+    {
+        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
+    }
+
+    /// Returns `true` if the given pattern matches a sub-slice of
+    /// this string slice.
+    ///
+    /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: core::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let bananas = OsStr::new("bananas");
+    ///
+    /// assert!(bananas.contains("nana"));
+    /// assert!(!bananas.contains("apples"));
+    /// ```
+    #[unstable(feature = "pattern", issue = "27721")]
+    pub fn contains<'a>(&'a self, pat: impl Pattern<&'a OsStr>) -> bool {
+        pat.is_contained_in(self)
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]

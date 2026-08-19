@@ -368,18 +368,18 @@ fn test_short_flag_non_utf8() {
 // API so do that for the sake of testing.
 
 fn find<'a>(haystack: &'a str, pat: impl Pattern<&'a OsStr>) -> Option<usize> {
-    pat.into_searcher(os(haystack)).next_match().map(|(i, _)| i)
+    os(haystack).find(pat)
 }
 
 fn rfind<'a, P>(haystack: &'a str, pat: P) -> Option<usize>
 where
     P: Pattern<&'a OsStr, Searcher: ReverseSearcher<&'a OsStr>>,
 {
-    pat.into_searcher(os(haystack)).next_match_back().map(|(i, _)| i)
+    os(haystack).rfind(pat)
 }
 
 pub fn contains<'a>(haystack: &'a str, pat: impl Pattern<&'a OsStr>) -> bool {
-    pat.is_contained_in(os(haystack))
+    os(haystack).contains(pat)
 }
 
 #[test]
