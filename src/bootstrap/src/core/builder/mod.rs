@@ -1524,6 +1524,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         self.ensure(llvm::Llvm { target: self.host_target }).llvm_config().to_owned()
     }
 
+    /// Root output directory of the OpenMP/Offload runtimes for `target`
+    ///
+    /// Deliberately not under `llvm_output_dir`, since running cmake twice in the same folder is
+    /// known to cause issues, like deleting existing binaries.
+    pub fn offload_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(target).join("offload")
+    }
+
     /// Updates all submodules, and exits with an error if submodule
     /// management is disabled and the submodule does not exist.
     pub fn require_and_update_all_submodules(&self) {

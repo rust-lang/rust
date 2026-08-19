@@ -2898,7 +2898,7 @@ impl CommandLineStep for Offload {
         tarball.set_overlay(OverlayKind::Offload);
         tarball.is_preview(true);
 
-        let omp_offload_libdir = builder.out.join(target).join("offload").join("lib");
+        let omp_offload_libdir = builder.offload_out(target).join("lib");
 
         for path in omp_offload.artifact_paths_with_symlink_targets() {
             let relative = t!(path.strip_prefix(&omp_offload_libdir));
