@@ -97,6 +97,13 @@ Thanks! <3
 """
 label = "O-ARM"
 
+[ping.arm-maintainers]
+message = """\
+Dear ARM Maintainers, your feedback has been requested on this issue/PR.
+Thanks! <3
+"""
+label = "O-ARM"
+
 [ping.loongarch]
 message = """\
 Hey LoongArch Group! This issue has been identified as a good "LoongArch candidate".
