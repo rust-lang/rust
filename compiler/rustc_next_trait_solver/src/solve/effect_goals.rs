@@ -485,7 +485,7 @@ where
         goal: Goal<I, ty::HostEffectClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+            let trait_goal: Goal<I, ty::TraitClause<I>> =
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
             ecx.compute_trait_goal(trait_goal).map_err(Into::into)
         })?;

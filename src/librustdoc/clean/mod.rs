@@ -451,7 +451,7 @@ pub(crate) fn clean_clause<'tcx>(
 }
 
 fn clean_poly_trait_predicate<'tcx>(
-    pred: ty::PolyTraitPredicate<'tcx>,
+    pred: ty::PolyTraitClause<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
@@ -524,7 +524,7 @@ fn clean_hir_term<'tcx>(
 }
 
 fn clean_projection_predicate<'tcx>(
-    pred: ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
+    pred: ty::Binder<'tcx, ty::ProjectionClause<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
     WherePredicate::ProjectionPredicate {

@@ -547,7 +547,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     | PredicateFilter::SelfOnly
                     | PredicateFilter::SelfAndAssociatedTypeBounds => {
                         let bound = projection_term.map_bound(|projection_term| {
-                            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+                            ty::ClauseKind::Projection(ty::ProjectionClause {
                                 projection_term,
                                 term,
                             })

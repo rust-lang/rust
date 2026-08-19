@@ -186,7 +186,7 @@ TrivialLiftImpls! {
     rustc_middle::mir::ConstValue,
     rustc_span::Symbol,
     rustc_type_ir::BoundConstness,
-    rustc_type_ir::PredicatePolarity,
+    rustc_type_ir::ClausePolarity,
     // tidy-alphabetical-end
 }
 

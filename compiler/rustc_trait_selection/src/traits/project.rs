@@ -31,9 +31,9 @@ use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 
-pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
+pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionClause<'tcx>>;
 
-pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'tcx>>;
+pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionClause<'tcx>>;
 
 pub type ProjectionTermObligation<'tcx> = Obligation<'tcx, ty::AliasTerm<'tcx>>;
 
@@ -52,14 +52,14 @@ pub enum ProjectionError<'tcx> {
 #[derive(PartialEq, Eq, Debug)]
 enum ProjectionCandidate<'tcx> {
     /// From a where-clause in the env or object type
-    ParamEnv(ty::PolyProjectionPredicate<'tcx>),
+    ParamEnv(ty::PolyProjectionClause<'tcx>),
 
     /// From the definition of `Trait` when you have something like
     /// `<<A as Trait>::B as Trait2>::C`.
-    TraitDef(ty::PolyProjectionPredicate<'tcx>),
+    TraitDef(ty::PolyProjectionClause<'tcx>),
 
     /// Bounds specified on an object type
-    Object(ty::PolyProjectionPredicate<'tcx>),
+    Object(ty::PolyProjectionClause<'tcx>),
 
     /// From an "impl" (or a "pseudo-impl" returned by select)
     Select(Selection<'tcx>),
@@ -868,7 +868,7 @@ fn assemble_candidates_from_clauses<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
-    ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
+    ctor: fn(ty::PolyProjectionClause<'tcx>) -> ProjectionCandidate<'tcx>,
     env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
@@ -1371,7 +1371,7 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
         );
     };
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: ty.into(),
     };
@@ -1418,7 +1418,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         sym::Output
     );
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: return_ty.into(),
     };
@@ -1463,7 +1463,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         sym::Item
     );
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: yield_ty.into(),
     };
@@ -1516,7 +1516,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     };
     let item_ty = args.type_at(0);
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: item_ty.into(),
     };
@@ -1595,7 +1595,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: ty::AliasTerm::new_from_args(
             tcx,
             ty::AliasTermKind::ProjectionTy { def_id: item_def_id },
@@ -1699,7 +1699,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         fn_sig,
         flag,
     )
-    .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
+    .map_bound(|(trait_ref, ret_type)| ty::ProjectionClause {
         projection_term: ty::AliasTerm::new_from_args(
             tcx,
             ty::AliasTermKind::ProjectionTy { def_id: fn_once_output_def_id },
@@ -1754,7 +1754,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             };
 
             args.coroutine_closure_sig()
-                .rebind(ty::ProjectionPredicate { projection_term, term: term.into() })
+                .rebind(ty::ProjectionClause { projection_term, term: term.into() })
         }
         ty::FnDef(..) | ty::FnPtr(..) => {
             let bound_sig = self_ty.fn_sig(tcx);
@@ -1787,7 +1787,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 name => bug!("no such associated type: {name}"),
             };
 
-            bound_sig.rebind(ty::ProjectionPredicate { projection_term, term: term.into() })
+            bound_sig.rebind(ty::ProjectionClause { projection_term, term: term.into() })
         }
         ty::Closure(_, args) => {
             let args = args.as_closure();
@@ -1815,7 +1815,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 name => bug!("no such associated type: {name}"),
             };
 
-            bound_sig.rebind(ty::ProjectionPredicate { projection_term, term: term.into() })
+            bound_sig.rebind(ty::ProjectionClause { projection_term, term: term.into() })
         }
         _ => bug!("expected callable type for AsyncFn candidate"),
     };
@@ -1908,7 +1908,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
         bug!();
     };
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(selcx.tcx(), obligation.predicate.args),
         term: ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
             selcx.tcx(),
@@ -1929,7 +1929,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
 fn confirm_param_env_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
-    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
+    poly_cache_entry: ty::PolyProjectionClause<'tcx>,
     potentially_unnormalized_candidate: bool,
 ) -> Progress<'tcx> {
     let infcx = selcx.infcx;
