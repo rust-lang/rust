@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
             && let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn)
             && panic_expn.is_default_message()
             && let ExprKind::MethodCall(method_segment, recv, [], _) = condition.kind
-            && let result_type_with_refs = cx.typeck_results().expr_ty(recv)
+            && let result_type_with_refs = cx.typeck_results.expr_ty(recv)
             && let result_type = result_type_with_refs.peel_refs()
             && result_type.is_diag_item(cx, sym::Result)
             && let ty::Adt(_, args) = result_type.kind()

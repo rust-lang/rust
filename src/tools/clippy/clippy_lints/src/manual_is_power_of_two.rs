@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
 /// `<int-type>::count_ones(…)`.
 fn count_ones_receiver<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     let (method, ty, receiver) = if let ExprKind::MethodCall(method_name, receiver, [], _) = expr.kind {
-        (method_name, cx.typeck_results().expr_ty_adjusted(receiver), receiver)
+        (method_name, cx.typeck_results.expr_ty_adjusted(receiver), receiver)
     } else if let ExprKind::Call(func, [arg]) = expr.kind
         && let ExprKind::Path(QPath::TypeRelative(ty, func_name)) = func.kind
     {
@@ -117,7 +117,7 @@ fn is_one_less<'tcx>(
     if let Some((lhs, rhs)) = unexpanded_binop_operands(smaller, BinOpKind::Sub)
         && SpanlessEq::new(cx).eq_expr(ctxt, greater, lhs)
         && is_integer_literal(rhs, 1)
-        && matches!(cx.typeck_results().expr_ty_adjusted(greater).kind(), ty::Uint(_))
+        && matches!(cx.typeck_results.expr_ty_adjusted(greater).kind(), ty::Uint(_))
     {
         Some(greater)
     } else {

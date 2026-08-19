@@ -11,7 +11,7 @@ use super::UNINIT_ASSUMED_INIT;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
     if let hir::ExprKind::Call(callee, []) = recv.kind
         && callee.ty_rel_def(cx).is_diag_item(cx, sym::maybe_uninit_uninit)
-        && !is_uninit_value_valid_for_ty(cx, cx.typeck_results().expr_ty_adjusted(expr))
+        && !is_uninit_value_valid_for_ty(cx, cx.typeck_results.expr_ty_adjusted(expr))
     {
         span_lint(
             cx,

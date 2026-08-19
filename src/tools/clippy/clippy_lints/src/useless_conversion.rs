@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         arg.res(cx).assoc_parent(cx).opt_diag_name(cx),
                         Some(sym::Into | sym::From)
                     )
-                    && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
+                    && let ty::FnDef(_, args) = cx.typeck_results.expr_ty(arg).kind()
                     && let &[from_ty, to_ty] = args.no_bound_vars().unwrap().into_type_list(cx.tcx).as_slice()
                     && same_type_modulo_regions(from_ty, to_ty)
                 {
@@ -210,8 +210,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
             ExprKind::MethodCall(name, recv, [], _) => {
                 if name.ident.name == sym::into && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) {
-                    let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(recv);
+                    let a = cx.typeck_results.expr_ty(e);
+                    let b = cx.typeck_results.expr_ty(recv);
                     if same_type_modulo_regions(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = snippet_with_context(cx, recv.span, e.span.ctxt(), "<expr>", &mut app).0;
@@ -246,16 +246,16 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                 Some((
                                     did,
                                     args,
-                                    cx.typeck_results().node_args(recv.hir_id),
+                                    cx.typeck_results.node_args(recv.hir_id),
                                     MethodOrFunction::Function,
                                 ))
                             },
                             ExprKind::MethodCall(.., args, _) => {
-                                cx.typeck_results().type_dependent_def_id(parent.hir_id).map(|did| {
+                                cx.typeck_results.type_dependent_def_id(parent.hir_id).map(|did| {
                                     (
                                         did,
                                         args,
-                                        cx.typeck_results().node_args(parent.hir_id),
+                                        cx.typeck_results.node_args(parent.hir_id),
                                         MethodOrFunction::Method,
                                     )
                                 })
@@ -273,7 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                 cx,
                                 parent_fn_did,
                                 into_iter_did,
-                                cx.typeck_results().expr_ty(into_iter_recv),
+                                cx.typeck_results.expr_ty(into_iter_recv),
                                 param.index,
                                 node_args,
                             )
@@ -323,8 +323,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         return;
                     }
 
-                    let iter_ty = cx.typeck_results().expr_ty(e);
-                    let into_iter_ty = cx.typeck_results().expr_ty(recv);
+                    let iter_ty = cx.typeck_results.expr_ty(e);
+                    let into_iter_ty = cx.typeck_results.expr_ty(recv);
 
                     // If the types are identical then .into_iter() can be removed, unless the type
                     // implements Copy, in which case .into_iter() returns a copy of the receiver and
@@ -337,7 +337,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         if let Some(parent) = get_parent_expr(cx, e)
                             && let ExprKind::MethodCall(_, recv, _, _) = parent.kind
                             && recv.hir_id == e.hir_id
-                            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
+                            && let Some(def_id) = cx.typeck_results.type_dependent_def_id(parent.hir_id)
                             && let sig = cx.tcx.fn_sig(def_id).skip_binder().skip_binder()
                             && let inputs = sig.inputs()
                             && inputs.len() >= 2
@@ -396,8 +396,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
                 if name.ident.name == sym::try_into
                     && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
-                    && let a = cx.typeck_results().expr_ty(e)
-                    && let b = cx.typeck_results().expr_ty(recv)
+                    && let a = cx.typeck_results.expr_ty(e)
+                    && let b = cx.typeck_results.expr_ty(recv)
                     && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
                     && let Some(a_type) = args.types().next()
@@ -420,8 +420,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 {
-                    let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(arg);
+                    let a = cx.typeck_results.expr_ty(e);
+                    let b = cx.typeck_results.expr_ty(arg);
                     if name == sym::try_from_fn
                         && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
@@ -471,7 +471,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
     if cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
         matches!(
-            cx.typeck_results().expr_ty(recv).opt_diag_name(cx),
+            cx.typeck_results.expr_ty(recv).opt_diag_name(cx),
             Some(sym::Option | sym::Result | sym::ControlFlow)
         )
     } else {
@@ -482,7 +482,7 @@ fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>)
 fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {
     let mut prefix = String::new();
 
-    let adjustments = cx.typeck_results().expr_adjustments(expr);
+    let adjustments = cx.typeck_results.expr_adjustments(expr);
 
     let [.., last] = adjustments else { return prefix };
     let target = last.target;

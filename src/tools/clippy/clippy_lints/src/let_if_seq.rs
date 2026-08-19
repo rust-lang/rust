@@ -84,7 +84,7 @@ fn check_block_inner<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'tcx>, 
         let span = stmt.span.to(if_.span);
 
         let has_interior_mutability = !cx
-            .typeck_results()
+            .typeck_results
             .node_type(canonical_id)
             .is_freeze(cx.tcx, cx.typing_env());
         if has_interior_mutability {

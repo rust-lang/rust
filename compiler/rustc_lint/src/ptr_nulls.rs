@@ -71,7 +71,7 @@ fn useless_check<'a, 'tcx: 'a>(
     loop {
         e = e.peel_blocks();
         if let ExprKind::MethodCall(_, _expr, [], _) = e.kind
-            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+            && let Some(def_id) = cx.typeck_results.type_dependent_def_id(e.hir_id)
             && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPtr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
@@ -90,13 +90,13 @@ fn useless_check<'a, 'tcx: 'a>(
             had_at_least_one_cast = true;
             expr
         } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
-            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+            && let Some(def_id) = cx.typeck_results.type_dependent_def_id(e.hir_id)
             && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_cast | sym::ptr_cast_mut))
         {
             had_at_least_one_cast = true;
             expr
         } else if had_at_least_one_cast {
-            let orig_ty = cx.typeck_results().expr_ty(e);
+            let orig_ty = cx.typeck_results.expr_ty(e);
             return if orig_ty.is_fn() {
                 Some(UselessPtrNullChecksDiag::FnPtr { orig_ty, label: e.span })
             } else if orig_ty.is_ref() {
@@ -175,7 +175,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                 for &arg_idx in arg_indices {
                     if let Some(arg) = args.get(arg_idx)
                         && let Some(null_span) = is_null_ptr(cx, arg)
-                        && let Some(ty) = cx.typeck_results().expr_ty_opt(arg)
+                        && let Some(ty) = cx.typeck_results.expr_ty_opt(arg)
                         && let RawPtr(ty, _mutbl) = ty.kind()
                     {
                         // If ZST are fine, don't lint on them
@@ -203,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
             // Catching:
             // (fn_ptr as *<const/mut> <ty>).is_null()
             ExprKind::MethodCall(_, receiver, _, _)
-                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                if let Some(def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
                     && matches!(
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)

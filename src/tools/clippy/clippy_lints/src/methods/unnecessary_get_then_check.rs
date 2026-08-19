@@ -27,7 +27,7 @@ pub(super) fn check(
     arg: &Expr<'_>,
     is_some: bool,
 ) {
-    let caller_ty = cx.typeck_results().expr_ty(get_caller);
+    let caller_ty = cx.typeck_results.expr_ty(get_caller);
 
     let is_set = is_a_std_set_type(cx, caller_ty);
     let is_map = is_a_std_map_type(cx, caller_ty);

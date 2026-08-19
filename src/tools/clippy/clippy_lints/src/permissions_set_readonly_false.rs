@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for PermissionsSetReadonlyFalse {
             && LitKind::Bool(false) == lit.node
             && path.ident.name == sym::set_readonly
             && cx
-                .typeck_results()
+                .typeck_results
                 .expr_ty(receiver)
                 .is_diag_item(cx, sym::FsPermissions)
         {

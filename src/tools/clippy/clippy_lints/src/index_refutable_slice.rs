@@ -108,7 +108,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<Hir
                 return;
             }
 
-            let bound_ty = cx.typeck_results().node_type(pat.hir_id);
+            let bound_ty = cx.typeck_results.node_type(pat.hir_id);
             if let Some(inner_ty) = bound_ty.peel_refs().builtin_index() {
                 // The values need to use the `ref` keyword if they can't be copied.
                 // This will need to be adjusted if the lint want to support mutable access in the future

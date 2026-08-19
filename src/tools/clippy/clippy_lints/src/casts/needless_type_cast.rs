@@ -69,7 +69,7 @@ fn collect_binding_from_let<'a>(
     if let PatKind::Binding(_, hir_id, _, _) = let_expr.pat.kind
         && let Some(ty_hir) = let_expr.ty
     {
-        let ty = cx.typeck_results().pat_ty(let_expr.pat);
+        let ty = cx.typeck_results.pat_ty(let_expr.pat);
         if ty.is_numeric() {
             bindings.insert(
                 hir_id,
@@ -100,7 +100,7 @@ fn collect_binding_from_local<'a>(
     if let PatKind::Binding(_, hir_id, _, _) = let_stmt.pat.kind
         && let Some(ty_hir) = let_stmt.ty
     {
-        let ty = cx.typeck_results().pat_ty(let_stmt.pat);
+        let ty = cx.typeck_results.pat_ty(let_stmt.pat);
         if ty.is_numeric() {
             bindings.insert(
                 hir_id,
@@ -157,7 +157,7 @@ fn has_generic_return_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         })
         .is_some(),
         ExprKind::MethodCall(..) => {
-            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+            if let Some(def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id) {
                 let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                 let ret_ty = sig.output().skip_binder();
                 return ret_ty.has_param();
@@ -214,7 +214,7 @@ fn is_cast_in_generic_context<'a>(cx: &LateContext<'a>, cast_expr: &Expr<'a>) ->
                         }
                     },
                     ExprKind::MethodCall(..) => {
-                        if let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
+                        if let Some(def_id) = cx.typeck_results.type_dependent_def_id(parent_expr.hir_id)
                             && cx
                                 .tcx
                                 .generics_of(def_id)
@@ -263,7 +263,7 @@ fn check_binding_usages<'a>(cx: &LateContext<'a>, body: &Body<'a>, hir_id: HirId
                 && !parent_expr.span.from_expansion()
             {
                 UsageInfo {
-                    cast_to: Some(cx.typeck_results().expr_ty(parent_expr)),
+                    cast_to: Some(cx.typeck_results.expr_ty(parent_expr)),
                     in_generic_context: is_cast_in_generic_context(cx, parent_expr),
                 }
             } else {

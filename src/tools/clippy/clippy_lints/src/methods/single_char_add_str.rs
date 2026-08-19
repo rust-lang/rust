@@ -9,7 +9,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+    if let Some(fn_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id) {
         let mut applicability = Applicability::MachineApplicable;
         let (short_name, arg, extra) = match cx.tcx.get_diagnostic_name(fn_def_id) {
             Some(sym::string_insert_str) => (
@@ -72,9 +72,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, 
 }
 
 fn is_ref_char(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(cx.typeck_results().expr_ty(expr).kind(), ty::Ref(_, ty, _) if ty.is_char())
+    matches!(cx.typeck_results.expr_ty(expr).kind(), ty::Ref(_, ty, _) if ty.is_char())
 }
 
 fn is_char(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.typeck_results().expr_ty(expr).is_char()
+    cx.typeck_results.expr_ty(expr).is_char()
 }

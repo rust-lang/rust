@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for SingleOptionMap {
             let func_body = peel_blocks(body.value);
             if let ExprKind::MethodCall(method_name, callee, args, _span) = func_body.kind
                 && method_name.ident.name == sym::map
-                && let callee_type = cx.typeck_results().expr_ty(callee)
+                && let callee_type = cx.typeck_results.expr_ty(callee)
                 && callee_type.is_diag_item(cx, sym::Option)
                 && let ExprKind::Path(_path) = callee.kind
                 && matches!(callee.basic_res(), Res::Local(_))

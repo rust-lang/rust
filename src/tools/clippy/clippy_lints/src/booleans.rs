@@ -150,8 +150,8 @@ fn check_inverted_bool_in_condition(
     right: &Expr<'_>,
 ) {
     if expr_span.from_expansion()
-        || !cx.typeck_results().node_types()[left.hir_id].is_bool()
-        || !cx.typeck_results().node_types()[right.hir_id].is_bool()
+        || !cx.typeck_results.node_types()[left.hir_id].is_bool()
+        || !cx.typeck_results.node_types()[right.hir_id].is_bool()
     {
         return;
     }
@@ -294,7 +294,7 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
             }
         }
 
-        if self.cx.typeck_results().expr_ty(e).is_never() {
+        if self.cx.typeck_results.expr_ty(e).is_never() {
             return Err("contains never type".to_owned());
         }
 
@@ -434,7 +434,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
             })
         },
         ExprKind::MethodCall(path, receiver, args, _) => {
-            let type_of_receiver = cx.typeck_results().expr_ty(receiver);
+            let type_of_receiver = cx.typeck_results.expr_ty(receiver);
             if !matches!(type_of_receiver.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
                 return None;
             }
@@ -657,11 +657,11 @@ impl<'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'_, 'tcx> {
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {
                     if let ExprKind::Unary(UnOp::Not, ex) = inner.kind
-                        && !self.cx.typeck_results().node_types()[ex.hir_id].is_bool()
+                        && !self.cx.typeck_results.node_types()[ex.hir_id].is_bool()
                     {
                         return;
                     }
-                    if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
+                    if self.cx.typeck_results.node_types()[inner.hir_id].is_bool() {
                         self.bool_expr(e);
                     }
                 },
@@ -673,7 +673,7 @@ impl<'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'_, 'tcx> {
 }
 
 fn implements_ord(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
     cx.tcx
         .get_diagnostic_item(sym::Ord)
         .is_some_and(|id| implements_trait(cx, ty, id, &[]))

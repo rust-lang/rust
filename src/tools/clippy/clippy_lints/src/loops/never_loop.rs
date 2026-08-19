@@ -92,7 +92,7 @@ pub(super) fn check_iterator_reduction<'tcx>(
     closure: &'tcx Closure<'tcx>,
 ) {
     let closure_body = cx.tcx.hir_body(closure.body).value;
-    let body_ty = cx.typeck_results().expr_ty(closure_body);
+    let body_ty = cx.typeck_results.expr_ty(closure_body);
     if body_ty.is_never() && !contains_return(closure_body) {
         span_lint_and_then(
             cx,
@@ -456,7 +456,7 @@ fn never_loop_expr<'tcx>(
     };
 
     let result = combine_seq(result, || {
-        if cx.typeck_results().expr_ty(expr).is_never() {
+        if cx.typeck_results.expr_ty(expr).is_never() {
             NeverLoopResult::Diverging {
                 break_spans: vec![],
                 never_spans: all_spans_after_expr(cx, expr),
@@ -507,7 +507,7 @@ fn find_non_obvious_spans<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> 
     let mut spans = vec![];
 
     for_each_expr_without_closures(e, |expr: &'tcx Expr<'tcx>| -> ControlFlow<(), Descend> {
-        if cx.typeck_results().expr_ty(expr).is_never() && !expr.span.from_expansion() {
+        if cx.typeck_results.expr_ty(expr).is_never() && !expr.span.from_expansion() {
             match expr.kind {
                 // The first arm handles both directly divergent expressions and expressions
                 // that contain divergence indirectly. The latter are inspected to identify

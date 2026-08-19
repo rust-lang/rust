@@ -301,7 +301,7 @@ fn check_expr_for_enum_as_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> Opt
             },
         )) => def_id.as_local().map(|id| (id, span.with_lo(expr.span.hi()))),
         ExprKind::Struct(qpath, ..)
-            if let Def(DefKind::Variant, mut def_id) = cx.typeck_results().qpath_res(qpath, expr.hir_id) =>
+            if let Def(DefKind::Variant, mut def_id) = cx.typeck_results.qpath_res(qpath, expr.hir_id) =>
         {
             let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             if let ty::FnDef(ctor_def_id, _) = ty.kind() {
@@ -317,12 +317,12 @@ fn check_expr_for_enum_as_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> Opt
 fn check_pat_for_enum_as_function(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(LocalDefId, Span)> {
     match pat.kind {
         PatKind::TupleStruct(qpath, ..)
-            if let Def(Ctor(CtorOf::Variant, _), def_id) = cx.typeck_results().qpath_res(&qpath, pat.hir_id) =>
+            if let Def(Ctor(CtorOf::Variant, _), def_id) = cx.typeck_results.qpath_res(&qpath, pat.hir_id) =>
         {
             def_id.as_local().map(|id| (id, qpath.span().with_lo(pat.span.hi())))
         },
         PatKind::Struct(qpath, ..)
-            if let Def(DefKind::Variant, mut def_id) = cx.typeck_results().qpath_res(&qpath, pat.hir_id) =>
+            if let Def(DefKind::Variant, mut def_id) = cx.typeck_results.qpath_res(&qpath, pat.hir_id) =>
         {
             let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             if let ty::FnDef(ctor_def_id, _) = ty.kind() {

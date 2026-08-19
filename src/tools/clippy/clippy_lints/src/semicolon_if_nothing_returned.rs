@@ -40,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
         if !block.span.from_expansion()
             && let Some(expr) = block.expr
             && !from_attr_macro(expr.span)
-            && let t_expr = cx.typeck_results().expr_ty(expr)
+            && let t_expr = cx.typeck_results.expr_ty(expr)
             && t_expr.is_unit()
             && let mut app = Applicability::MachineApplicable
             && let snippet = snippet_with_context(cx, expr.span, block.span.ctxt(), "}", &mut app).0

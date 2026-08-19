@@ -11,11 +11,11 @@ use super::SUSPICIOUS_TO_OWNED;
 
 pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Span) -> bool {
     if cx
-        .typeck_results()
+        .typeck_results
         .type_dependent_def_id(expr.hir_id)
         .opt_parent(cx)
         .is_diag_item(cx, sym::ToOwned)
-        && let input_type = cx.typeck_results().expr_ty(expr)
+        && let input_type = cx.typeck_results.expr_ty(expr)
         && input_type.is_diag_item(cx, sym::Cow)
     {
         let app = Applicability::MaybeIncorrect;

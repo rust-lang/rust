@@ -173,7 +173,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     }
 
     fn is_sig_drop_expr(&mut self, ex: &'tcx Expr<'_>) -> bool {
-        !ex.is_syntactic_place_expr() && self.has_sig_drop_attr(self.cx.typeck_results().expr_ty(ex))
+        !ex.is_syntactic_place_expr() && self.has_sig_drop_attr(self.cx.typeck_results.expr_ty(ex))
     }
 
     fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
@@ -302,7 +302,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         }
 
         if self.sig_drop_holder != SigDropHolder::None {
-            let parent_ty = self.cx.typeck_results().expr_ty(parent_expr);
+            let parent_ty = self.cx.typeck_results.expr_ty(parent_expr);
             if !parent_ty.has_erased_regions() && !parent_expr.is_syntactic_place_expr() {
                 self.replace_current_sig_drop(parent_expr.span, parent_ty.is_unit(), 0);
                 self.sig_drop_holder = SigDropHolder::Moved;
@@ -342,7 +342,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
             return;
         };
 
-        let fn_sig = if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
+        let fn_sig = if let Some(def_id) = self.cx.typeck_results.type_dependent_def_id(parent_expr.hir_id) {
             self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip()
         } else {
             return;

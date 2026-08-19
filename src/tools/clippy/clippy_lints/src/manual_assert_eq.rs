@@ -74,8 +74,8 @@ impl LateLintPass<'_> for ManualAssertEq {
             }
             && !cond.span.from_expansion()
             && let Some(debug_trait) = cx.tcx.get_diagnostic_item(sym::Debug)
-            && let lhs_ty = cx.typeck_results().expr_ty(lhs)
-            && let rhs_ty = cx.typeck_results().expr_ty(rhs)
+            && let lhs_ty = cx.typeck_results.expr_ty(lhs)
+            && let rhs_ty = cx.typeck_results.expr_ty(rhs)
             // Can't print the values unless the types implement `Debug`
             && implements_trait(cx, lhs_ty, debug_trait, &[])
             && implements_trait(cx, rhs_ty, debug_trait, &[])

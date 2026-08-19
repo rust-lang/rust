@@ -18,7 +18,7 @@ use super::UNNECESSARY_FOLD;
 /// Changing `fold` to `sum` needs it sometimes when the return type can't be
 /// inferred. This checks for some common cases where it can be safely omitted
 fn needs_turbofish<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> bool {
-    let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr);
+    let use_site = get_expr_use_site(cx.tcx, cx.typeck_results, expr.span.ctxt(), expr);
     if use_site.same_ctxt
         && let use_node = use_site.use_node(cx)
         && let Some(ty) = use_node.defined_ty(cx)
@@ -150,7 +150,7 @@ fn check_fold_with_op(
             |diag| {
                 let mut applicability = replacement.default_applicability();
                 let turbofish =
-                    replacement.maybe_turbofish(cx.typeck_results().expr_ty_adjusted(right_expr).peel_refs());
+                    replacement.maybe_turbofish(cx.typeck_results.expr_ty_adjusted(right_expr).peel_refs());
                 let (r_snippet, _) =
                     snippet_with_context(cx, triggered_expr_span, expr.span.ctxt(), "EXPR", &mut applicability);
                 let sugg = if replacement.has_args {
@@ -197,7 +197,7 @@ fn check_fold_with_method(
                     format!(
                         "{method}{turbofish}()",
                         method = replacement.method_name,
-                        turbofish = replacement.maybe_turbofish(cx.typeck_results().expr_ty(expr))
+                        turbofish = replacement.maybe_turbofish(cx.typeck_results.expr_ty(expr))
                     ),
                     replacement.default_applicability(),
                 );

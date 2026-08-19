@@ -93,7 +93,7 @@ pub(super) fn check<'tcx>(
                 sugg,
                 Applicability::Unspecified,
             );
-            if is_expr_parent_assignment(cx, expr) || !cx.typeck_results().expr_ty(expr).is_unit() {
+            if is_expr_parent_assignment(cx, expr) || !cx.typeck_results.expr_ty(expr).is_unit() {
                 diag.note("the end suggestion probably needs some adjustments to use the expression result correctly");
             }
         }
@@ -145,7 +145,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ar
         }
         // Same drop-order concern for arm-locals dropped at the end of the arm.
         let arm_local_needs_ordered_drop = block.stmts.iter().any(|stmt| {
-            matches!(stmt.kind, StmtKind::Let(l) if needs_ordered_drop(cx, cx.typeck_results().node_type(l.hir_id)))
+            matches!(stmt.kind, StmtKind::Let(l) if needs_ordered_drop(cx, cx.typeck_results.node_type(l.hir_id)))
         });
         if arm_local_needs_ordered_drop {
             return;
@@ -340,7 +340,7 @@ fn scan_block_for_eq<'tcx>(
         .enumerate()
         .find(|&(i, stmt)| {
             if let StmtKind::Let(l) = stmt.kind
-                && needs_ordered_drop(cx, cx.typeck_results().node_type(l.hir_id))
+                && needs_ordered_drop(cx, cx.typeck_results.node_type(l.hir_id))
             {
                 local_needs_ordered_drop = true;
                 return true;

@@ -96,7 +96,7 @@ pub(crate) fn check_fn<'a>(
         };
 
         // Figure out the signature of the closure
-        let ty::Closure(_, args) = cx.typeck_results().expr_ty(body.value).kind() else {
+        let ty::Closure(_, args) = cx.typeck_results.expr_ty(body.value).kind() else {
             return;
         };
         let sig = args.as_closure().sig().skip_binder();

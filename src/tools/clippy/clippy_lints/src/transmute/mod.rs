@@ -535,12 +535,12 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             // - char conversions (https://github.com/rust-lang/rust/issues/89259)
             let const_context = is_in_const_context(cx);
 
-            let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
-                [] => (cx.typeck_results().expr_ty(arg), false),
+            let (from_ty, from_ty_adjusted) = match cx.typeck_results.expr_adjustments(arg) {
+                [] => (cx.typeck_results.expr_ty(arg), false),
                 [.., a] => (a.target, true),
             };
             // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
-            let to_ty = cx.typeck_results().expr_ty(e);
+            let to_ty = cx.typeck_results.expr_ty(e);
 
             // If useless_transmute is triggered, the other lints can be skipped.
             if useless_transmute::check(cx, e, from_ty, to_ty, arg) {

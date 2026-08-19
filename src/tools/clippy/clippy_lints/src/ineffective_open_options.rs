@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for IneffectiveOpenOptions {
             && name.ident.name == sym::open
             && !expr.span.from_expansion()
             && cx
-                .typeck_results()
+                .typeck_results
                 .expr_ty(recv)
                 .peel_refs()
                 .is_diag_item(cx, sym::FsOpenOptions)

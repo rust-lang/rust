@@ -45,7 +45,7 @@ fn binops_with_local(cx: &LateContext<'_>, local_expr: &Expr<'_>, expr: &Expr<'_
         ExprKind::MethodCall(path, receiver, [arg], _)
             if path.ident.name == sym::contains
                 // ... `contains` called on some kind of range
-                && let Some(receiver_adt) = cx.typeck_results().expr_ty(receiver).peel_refs().ty_adt_def()
+                && let Some(receiver_adt) = cx.typeck_results.expr_ty(receiver).peel_refs().ty_adt_def()
                 && let lang_items = cx.tcx.lang_items()
                 && [
                     lang_items.range_from_struct(),
@@ -76,7 +76,7 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     if let Some(then_some_call) = peel_parent_unsafe_blocks(cx, expr)
         && let ExprKind::MethodCall(path, receiver, [arg], _) = then_some_call.kind
-        && cx.typeck_results().expr_ty(receiver).is_bool()
+        && cx.typeck_results.expr_ty(receiver).is_bool()
         && path.ident.name == sym::then_some
         && is_local_with_projections(transmutable)
         && binops_with_local(cx, transmutable, receiver)

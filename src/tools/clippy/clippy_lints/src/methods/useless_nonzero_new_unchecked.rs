@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, func: &Expr<'
         && segment.ident.name == sym::new_unchecked
         && let [init_arg] = args
         && is_inside_always_const_context(cx.tcx, expr.hir_id)
-        && cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, sym::NonZero)
+        && cx.typeck_results.node_type(ty.hir_id).is_diag_item(cx, sym::NonZero)
         && msrv.meets(cx, msrvs::CONST_UNWRAP)
     {
         let mut app = Applicability::MachineApplicable;

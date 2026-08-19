@@ -168,5 +168,5 @@ fn is_zero(expr: &Expr<'_>) -> bool {
 }
 
 fn is_unsigned_integer(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Uint(_))
+    matches!(cx.typeck_results.expr_ty(expr).peel_refs().kind(), ty::Uint(_))
 }

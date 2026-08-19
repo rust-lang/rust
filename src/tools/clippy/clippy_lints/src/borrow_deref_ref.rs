@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
             && !e.span.from_expansion()
             && !deref_target.span.from_expansion()
             && !addrof_target.span.from_expansion()
-            && let ref_ty = cx.typeck_results().expr_ty(deref_target)
+            && let ref_ty = cx.typeck_results.expr_ty(deref_target)
             && let ty::Ref(_, inner_ty, Mutability::Not) = ref_ty.kind()
             && get_parent_expr(cx, e).is_none_or(|parent| {
                 match parent.kind {
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                 }
             })
             && !is_from_proc_macro(cx, e)
-            && let e_ty = cx.typeck_results().expr_ty_adjusted(e)
+            && let e_ty = cx.typeck_results.expr_ty_adjusted(e)
             // check if the reference is coercing to a mutable reference
             && (!matches!(e_ty.kind(), ty::Ref(_, _, Mutability::Mut)) || is_mutable(cx, deref_target))
             // If the new borrow might be itself borrowed mutably and the original reference is not a temporary

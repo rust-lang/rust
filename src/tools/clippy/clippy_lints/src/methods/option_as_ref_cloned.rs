@@ -16,7 +16,7 @@ pub(super) fn check(
     as_ref_ident_span: Span,
 ) {
     if cx
-        .typeck_results()
+        .typeck_results
         .expr_ty(as_ref_recv)
         .peel_refs()
         .is_diag_item(cx, sym::Option)

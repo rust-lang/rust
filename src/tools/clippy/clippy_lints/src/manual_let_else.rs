@@ -362,7 +362,7 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
     // We do a deep check, to be able to disallow Err(En::Foo(_))
     // for usage of the En::Foo variant, as we disallow En::Foo(_),
     // but we allow Err(_).
-    let typeck_results = cx.typeck_results();
+    let typeck_results = cx.typeck_results;
     let mut has_disallowed = false;
     pat.walk_always(|pat| {
         // Only do the check if the type is "spelled out" in the pattern

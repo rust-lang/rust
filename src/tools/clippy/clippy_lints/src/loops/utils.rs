@@ -156,7 +156,7 @@ impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
         if l.pat.hir_id == self.var_id
             && let PatKind::Binding(.., ident, _) = l.pat.kind
         {
-            let ty = l.ty.map(|_| self.cx.typeck_results().pat_ty(l.pat));
+            let ty = l.ty.map(|_| self.cx.typeck_results.pat_ty(l.pat));
 
             self.state = l.init.map_or(InitializeVisitorState::Declared(ident.name, ty), |init| {
                 InitializeVisitorState::Initialized {
@@ -208,7 +208,7 @@ impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
                                         {
                                             ty = None;
                                         } else {
-                                            ty = self.cx.typeck_results().expr_ty_opt(rhs);
+                                            ty = self.cx.typeck_results.expr_ty_opt(rhs);
                                         }
                                     }
 
@@ -269,7 +269,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     let impls_iterator = cx
         .tcx
         .get_diagnostic_item(sym::Iterator)
-        .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[]));
+        .is_some_and(|id| implements_trait(cx, cx.typeck_results.expr_ty(arg), id, &[]));
     if impls_iterator {
         format!(
             "{}",
@@ -278,7 +278,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     } else {
         // (&x).into_iter() ==> x.iter()
         // (&mut x).into_iter() ==> x.iter_mut()
-        let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+        let arg_ty = cx.typeck_results.expr_ty_adjusted(arg);
         match &arg_ty.kind() {
             ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, *inner_ty).is_some() => {
                 let method_name = match mutbl {

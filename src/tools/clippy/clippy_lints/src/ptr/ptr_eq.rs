@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
     };
 
     // This lint concerns raw pointers
-    let (left_ty, right_ty) = (cx.typeck_results().expr_ty(left), cx.typeck_results().expr_ty(right));
+    let (left_ty, right_ty) = (cx.typeck_results.expr_ty(left), cx.typeck_results.expr_ty(right));
     if !left_ty.is_raw_ptr() || !right_ty.is_raw_ptr() {
         return;
     }
@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
 // E.g., `foo as *const _ as usize` returns `foo as *const _`.
 fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if !cast_expr.span.from_expansion()
-        && cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
+        && cx.typeck_results.expr_ty(cast_expr) == cx.tcx.types.usize
         && let ExprKind::Cast(expr, _) = cast_expr.kind
     {
         Some(expr)
@@ -76,7 +76,7 @@ fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty:
     if !expr.span.from_expansion()
         && let ExprKind::Cast(inner, _) = expr.kind
         && let ty::RawPtr(target_ty, _) = expr_ty.kind()
-        && let inner_ty = cx.typeck_results().expr_ty(inner)
+        && let inner_ty = cx.typeck_results.expr_ty(inner)
         && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()
         && target_ty == inner_target_ty
     {

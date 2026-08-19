@@ -90,7 +90,7 @@ impl CognitiveComplexity {
             ControlFlow::Continue(())
         });
 
-        let ret_ty = cx.typeck_results().node_type(expr.hir_id);
+        let ret_ty = cx.typeck_results.node_type(expr.hir_id);
         let ret_adjust = if ret_ty.is_diag_item(cx, sym::Result) {
             returns
         } else {

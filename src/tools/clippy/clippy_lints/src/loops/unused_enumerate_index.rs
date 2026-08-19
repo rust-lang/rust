@@ -16,11 +16,11 @@ pub(super) fn check<'tcx>(
     body: &'tcx Expr<'tcx>,
 ) {
     if let PatKind::Tuple([idx_pat, inner_pat], _) = pat.kind
-        && cx.typeck_results().expr_ty(iter_expr).is_diag_item(cx, sym::Enumerate)
+        && cx.typeck_results.expr_ty(iter_expr).is_diag_item(cx, sym::Enumerate)
         && pat_is_wild(cx, &idx_pat.kind, body)
         && let enumerate_call = expr_or_init(cx, iter_expr)
         && let ExprKind::MethodCall(_, _, [], enumerate_span) = enumerate_call.kind
-        && let Some(enumerate_id) = cx.typeck_results().type_dependent_def_id(enumerate_call.hir_id)
+        && let Some(enumerate_id) = cx.typeck_results.type_dependent_def_id(enumerate_call.hir_id)
         && cx.tcx.is_diagnostic_item(sym::enumerate_method, enumerate_id)
         && !enumerate_call.span.from_expansion()
         && !pat.span.from_expansion()

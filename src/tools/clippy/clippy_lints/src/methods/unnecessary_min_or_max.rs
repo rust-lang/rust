@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx Expr<'_>,
     arg: &'tcx Expr<'_>,
 ) {
-    let typeck_results = cx.typeck_results();
+    let typeck_results = cx.typeck_results;
     let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), typeck_results);
     if let Some(id) = typeck_results.type_dependent_def_id(expr.hir_id)
         && let Some(fn_name) = cx.tcx.get_diagnostic_name(id)
@@ -81,7 +81,7 @@ enum Extrema {
     Maximum,
 }
 fn detect_extrema<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Extrema> {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
 
     let cv = ConstEvalCtxt::new(cx).eval(expr)?;
 

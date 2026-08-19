@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IoRead)
         && matches!(recv.kind, ExprKind::Path(QPath::Resolved(None, _)))
         && cx
-            .typeck_results()
+            .typeck_results
             .expr_ty_adjusted(recv)
             .peel_refs()
             .is_diag_item(cx, sym::File)

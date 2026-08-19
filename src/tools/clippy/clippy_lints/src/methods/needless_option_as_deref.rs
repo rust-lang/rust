@@ -12,7 +12,7 @@ use rustc_span::Symbol;
 use super::NEEDLESS_OPTION_AS_DEREF;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name: Symbol) {
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     let outer_ty = typeck.expr_ty(expr);
 
     if outer_ty.is_diag_item(cx, sym::Option) && outer_ty == typeck.expr_ty(recv) {

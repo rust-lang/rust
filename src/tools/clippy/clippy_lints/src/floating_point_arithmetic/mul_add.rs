@@ -19,8 +19,8 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
         lhs,
         rhs,
     ) = expr.kind
-        && cx.typeck_results().expr_ty(lhs).is_floating_point()
-        && cx.typeck_results().expr_ty(rhs).is_floating_point()
+        && cx.typeck_results.expr_ty(lhs).is_floating_point()
+        && cx.typeck_results.expr_ty(rhs).is_floating_point()
     {
         return Some((lhs, rhs));
     }
@@ -68,12 +68,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 
     let (recv, arg1, arg2, is_from_rhs, lhs_typ) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs)
-        && let ty::Float(float_ty) = cx.typeck_results().expr_ty(lhs).kind()
+        && let ty::Float(float_ty) = cx.typeck_results.expr_ty(lhs).kind()
     {
         (inner_lhs, inner_rhs, lhs, true, float_ty)
     } else if !is_assign
         && let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs)
-        && let ty::Float(float_ty) = cx.typeck_results().expr_ty(rhs).kind()
+        && let ty::Float(float_ty) = cx.typeck_results.expr_ty(rhs).kind()
     {
         (inner_lhs, inner_rhs, rhs, false, float_ty)
     } else {

@@ -20,7 +20,7 @@ pub(super) fn check(
     name: Symbol,
     _map_span: Span,
 ) {
-    let caller_ty = cx.typeck_results().expr_ty(caller);
+    let caller_ty = cx.typeck_results.expr_ty(caller);
 
     if (cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         || caller_ty.is_diag_item(cx, sym::Result)
@@ -39,7 +39,7 @@ pub(super) fn check(
                 Applicability::MachineApplicable
             };
 
-            let needs_to_be_mutable = cx.typeck_results().expr_ty_adjusted(expr).is_mutable_ptr();
+            let needs_to_be_mutable = cx.typeck_results.expr_ty_adjusted(expr).is_mutable_ptr();
             if needs_to_be_mutable && !is_mutable(cx, caller) {
                 if let Some(hir_id) = path_to_local_with_projections(caller)
                     && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)

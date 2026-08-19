@@ -105,7 +105,7 @@ fn generate_swap_warning<'tcx>(
             && e2.span.ctxt() == ctxt
             && eq_expr_value(cx, ctxt, lhs1, lhs2)
         {
-            let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
+            let ty = cx.typeck_results.expr_ty(lhs1).peel_refs();
 
             if matches!(ty.kind(), ty::Slice(_))
                 || matches!(ty.kind(), ty::Array(_, _))

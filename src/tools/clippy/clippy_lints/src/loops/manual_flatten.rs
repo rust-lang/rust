@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
             Applicability::MachineApplicable
         };
         let arg_snippet = make_iterator_snippet(cx, arg, &mut applicability);
-        let copied = match cx.typeck_results().expr_ty(let_expr).kind() {
+        let copied = match cx.typeck_results.expr_ty(let_expr).kind() {
             ty::Ref(_, inner, _) => match inner.kind() {
                 ty::Ref(..) => ".copied()",
                 _ => "",

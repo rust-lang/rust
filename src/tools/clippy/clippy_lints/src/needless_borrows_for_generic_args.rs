@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if matches!(expr.kind, ExprKind::AddrOf(..))
             && !expr.span.from_expansion()
-            && let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), SyntaxContext::root(), expr)
+            && let use_site = get_expr_use_site(cx.tcx, cx.typeck_results, SyntaxContext::root(), expr)
             && use_site.same_ctxt
             && !use_site.is_ty_unified
             && let use_node = use_site.use_node(cx)
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             && let Some((hir_id, fn_id, i)) = match use_node {
                 ExprUseNode::MethodArg(_, _, 0) => None,
                 ExprUseNode::MethodArg(hir_id, None, i) => cx
-                    .typeck_results()
+                    .typeck_results
                     .type_dependent_def_id(hir_id)
                     .map(|id| (hir_id, id, i)),
                 ExprUseNode::FnArg(
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                         ..
                     },
                     i,
-                ) if !path_has_args(p) => match cx.typeck_results().qpath_res(p, hir_id) {
+                ) if !path_has_args(p) => match cx.typeck_results.qpath_res(p, hir_id) {
                     Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) => Some((hir_id, id, i)),
                     _ => None,
                 },
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                 cx,
                 &mut self.possible_borrowers,
                 fn_id,
-                cx.typeck_results().node_args(hir_id),
+                cx.typeck_results.node_args(hir_id),
                 i,
                 param_ty,
                 expr,
@@ -240,13 +240,13 @@ fn needless_borrow_count<'tcx>(
 
     let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
         if let ExprKind::Field(base, _) = &referent.kind
-            && let base_ty = cx.typeck_results().expr_ty(base)
+            && let base_ty = cx.typeck_results.expr_ty(base)
             && drop_trait_def_id.is_some_and(|id| implements_trait(cx, base_ty, id, &[]))
         {
             return false;
         }
 
-        let referent_ty = cx.typeck_results().expr_ty(referent);
+        let referent_ty = cx.typeck_results.expr_ty(referent);
 
         if !(is_copy(cx, referent_ty)
             || referent_ty.is_ref() && referent_used_exactly_once(cx, possible_borrowers, reference)

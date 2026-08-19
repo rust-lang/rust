@@ -37,7 +37,7 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for FunctionCastsAsInteger {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         let hir::ExprKind::Cast(cast_from_expr, cast_to_expr) = expr.kind else { return };
-        let cast_to_ty = cx.typeck_results().expr_ty(expr);
+        let cast_to_ty = cx.typeck_results.expr_ty(expr);
         // Casting to a function (pointer?), so all good.
         //
         // Normally, only casts to integers is possible, but if it ever changed, this condition
@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for FunctionCastsAsInteger {
         if matches!(cast_to_ty.kind(), ty::FnDef(..) | ty::FnPtr(..) | ty::RawPtr(..)) {
             return;
         }
-        let cast_from_ty = cx.typeck_results().expr_ty(cast_from_expr);
+        let cast_from_ty = cx.typeck_results.expr_ty(cast_from_expr);
         if matches!(cast_from_ty.kind(), ty::FnDef(..)) {
             cx.tcx.emit_node_span_lint(
                 FUNCTION_CASTS_AS_INTEGER,

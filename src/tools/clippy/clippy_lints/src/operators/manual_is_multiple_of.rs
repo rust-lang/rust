@@ -24,11 +24,11 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Binary(operand_op, operand_left, operand_right) = operand.kind
         && operand_op.node == BinOpKind::Rem
         && matches!(
-            cx.typeck_results().expr_ty_adjusted(operand_left).peel_refs().kind(),
+            cx.typeck_results.expr_ty_adjusted(operand_left).peel_refs().kind(),
             ty::Uint(_)
         )
         && matches!(
-            cx.typeck_results().expr_ty_adjusted(operand_right).peel_refs().kind(),
+            cx.typeck_results.expr_ty_adjusted(operand_right).peel_refs().kind(),
             ty::Uint(_)
         )
         && expr_type_is_certain(cx, operand_left)
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
         let mut app = Applicability::MachineApplicable;
         let divisor = deref_sugg(
             Sugg::hir_with_context(cx, operand_right, expr.span.ctxt(), "_", &mut app),
-            cx.typeck_results().expr_ty_adjusted(operand_right),
+            cx.typeck_results.expr_ty_adjusted(operand_right),
         );
         span_lint_and_sugg(
             cx,
@@ -76,7 +76,7 @@ fn uint_compare_to_zero<'tcx>(
         return None;
     };
 
-    matches!(cx.typeck_results().expr_ty_adjusted(operand).kind(), ty::Uint(_)).then_some(operand)
+    matches!(cx.typeck_results.expr_ty_adjusted(operand).kind(), ty::Uint(_)).then_some(operand)
 }
 
 fn deref_sugg<'a>(sugg: Sugg<'a>, ty: Ty<'_>) -> Sugg<'a> {

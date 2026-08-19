@@ -52,7 +52,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Binary(_, _, _) = left_cond.kind
         && let ExprKind::Binary(_, _, _) = right_cond.kind
 
-        && let typeck = cx.typeck_results()
+        && let typeck = cx.typeck_results
 
         // Check that both operands to '&&' compare a non-literal to a literal
         && let Some((left_cmp_op, left_expr, left_const_expr, left_const, left_type)) =

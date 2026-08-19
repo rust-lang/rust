@@ -86,7 +86,7 @@ fn is_method(
             false
         },
         ExprKind::Path(QPath::TypeRelative(ty, mname)) => {
-            let ty = cx.typeck_results().node_type(ty.hir_id);
+            let ty = cx.typeck_results.node_type(ty.hir_id);
             if let Some(did) = cx.tcx.get_diagnostic_item(type_symbol)
                 && ty.ty_adt_def() == cx.tcx.type_of(did).skip_binder().ty_adt_def()
             {
@@ -149,7 +149,7 @@ fn expression_type(
         return None;
     }
     if let ExprKind::MethodCall(_, receiver, _, _) = expr.kind
-        && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+        && let receiver_ty = cx.typeck_results.expr_ty(receiver)
         && let Some(iter_item_ty) = get_iterator_item_ty(cx, receiver_ty)
     {
         if let Some(opt_defid) = cx.tcx.get_diagnostic_item(sym::Option)

@@ -41,7 +41,7 @@ fn is_subtrait_of_any(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 }
 
 pub(super) fn check(cx: &LateContext<'_>, receiver: &Expr<'_>, call_span: Span) {
-    let recv_adjusts = cx.typeck_results().expr_adjustments(receiver);
+    let recv_adjusts = cx.typeck_results.expr_adjustments(receiver);
 
     if let Some(Adjustment { target: recv_ty, .. }) = recv_adjusts.last()
         && let ty::Ref(_, ty, _) = recv_ty.kind()

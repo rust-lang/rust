@@ -192,7 +192,7 @@ fn check_replace_option_with_some(
 }
 
 fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
-    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(src.hir_id)
+    if let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(src.hir_id)
         // check if replacement is mem::MaybeUninit::uninit().assume_init()
         && cx.tcx.is_diagnostic_item(sym::assume_init, method_def_id)
     {
@@ -233,7 +233,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 ),
                 applicability,
             );
-        } else if repl_name == Some(sym::mem_zeroed) && !cx.typeck_results().expr_ty(src).is_primitive() {
+        } else if repl_name == Some(sym::mem_zeroed) && !cx.typeck_results.expr_ty(src).is_primitive() {
             span_lint_and_help(
                 cx,
                 MEM_REPLACE_WITH_UNINIT,
@@ -255,7 +255,7 @@ fn check_replace_with_default(
 ) -> bool {
     if is_expr_used_or_unified(cx.tcx, expr)
         // disable lint for primitives
-        && let expr_type = cx.typeck_results().expr_ty_adjusted(src)
+        && let expr_type = cx.typeck_results.expr_ty_adjusted(src)
         && !is_non_aggregate_primitive_type(expr_type)
         && is_default_equivalent(cx, src)
         && !expr.span.in_external_macro(cx.tcx.sess.source_map())

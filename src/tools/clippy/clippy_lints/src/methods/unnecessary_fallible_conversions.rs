@@ -152,7 +152,7 @@ pub(super) fn check_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
         check(
             cx,
             expr,
-            cx.typeck_results().node_args(expr.hir_id),
+            cx.typeck_results.node_args(expr.hir_id),
             FunctionKind::TryIntoMethod,
             path.ident.span,
         );
@@ -186,7 +186,7 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>, callee: &Exp
         check(
             cx,
             expr,
-            cx.typeck_results().node_args(callee.hir_id),
+            cx.typeck_results.node_args(callee.hir_id),
             match cx.tcx.get_diagnostic_name(trait_def_id) {
                 Some(sym::TryFrom) => FunctionKind::TryFromFunction(qpath_spans),
                 Some(sym::TryInto) => FunctionKind::TryIntoFunction(qpath_spans),

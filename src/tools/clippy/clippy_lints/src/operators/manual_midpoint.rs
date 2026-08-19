@@ -35,8 +35,8 @@ pub(super) fn check<'tcx>(
         && !right.span.from_expansion()
         && let Some((add_l_expr, add_r_expr)) = add_operands(maybe_add_expr)
         && add_operands(add_l_expr).is_none() && add_operands(add_r_expr).is_none()
-        && let left_ty = cx.typeck_results().expr_ty_adjusted(add_l_expr)
-        && let right_ty = cx.typeck_results().expr_ty_adjusted(add_r_expr)
+        && let left_ty = cx.typeck_results.expr_ty_adjusted(add_l_expr)
+        && let right_ty = cx.typeck_results.expr_ty_adjusted(add_r_expr)
         && left_ty == right_ty
         && (!require_uint || matches!(left_ty.kind(), ty::Uint(_)))
         // Do not lint on `(_+1)/2` and `(1+_)/2`, it is likely a `div_ceil()` operation

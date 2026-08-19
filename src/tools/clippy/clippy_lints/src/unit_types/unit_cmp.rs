@@ -22,7 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if is_unit_expr(lhs) || is_unit_expr(rhs) {
                 return;
             }
-            if !cx.typeck_results().expr_ty(lhs).is_unit() {
+            if !cx.typeck_results.expr_ty(lhs).is_unit() {
                 return;
             }
             span_lint(
@@ -40,7 +40,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
     if let ExprKind::Binary(ref cmp, left, _) = expr.kind {
         let op = cmp.node;
-        if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
+        if op.is_comparison() && cx.typeck_results.expr_ty(left).is_unit() {
             let result = match op {
                 BinOpKind::Eq | BinOpKind::Le | BinOpKind::Ge => "true",
                 _ => "false",

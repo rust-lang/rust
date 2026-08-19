@@ -51,7 +51,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
         return;
     }
 
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     let self_ty = typeck.expr_ty(self_arg);
     let adjust = match typeck.expr_adjustments(self_arg) {
         [] => AdjustKind::None,

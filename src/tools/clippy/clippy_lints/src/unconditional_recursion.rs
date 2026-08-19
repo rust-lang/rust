@@ -177,7 +177,7 @@ fn matches_ty<'tcx>(
 
 fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident, expr: &Expr<'_>) {
     let Some(sig) = cx
-        .typeck_results()
+        .typeck_results
         .liberated_fn_sigs()
         .get(cx.tcx.local_def_id_to_hir_id(method_def_id))
     else {
@@ -201,15 +201,15 @@ fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: Loca
         let is_bad = match expr.kind {
             ExprKind::Binary(op, left, right) if op.node == to_check_op => {
                 // Then we check if the LHS matches self_arg and RHS matches other_arg
-                let left_ty = cx.typeck_results().expr_ty_adjusted(left);
-                let right_ty = cx.typeck_results().expr_ty_adjusted(right);
+                let left_ty = cx.typeck_results.expr_ty_adjusted(left);
+                let right_ty = cx.typeck_results.expr_ty_adjusted(right);
                 matches_ty(left_ty, right_ty, self_arg, other_arg)
             },
             ExprKind::MethodCall(segment, receiver, [arg], _) if segment.ident.name == name.name => {
-                let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver);
-                let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+                let receiver_ty = cx.typeck_results.expr_ty_adjusted(receiver);
+                let arg_ty = cx.typeck_results.expr_ty_adjusted(arg);
 
-                if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                if let Some(fn_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                     && trait_id == trait_def_id
                     && matches_ty(receiver_ty, arg_ty, self_arg, other_arg)
@@ -253,7 +253,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
     {
         let is_bad = match expr.kind {
             ExprKind::MethodCall(segment, _receiver, &[_arg], _) if segment.ident.name == name.name => {
-                if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                if let Some(fn_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                     && trait_id == trait_def_id
                 {
@@ -413,7 +413,7 @@ impl UnconditionalRecursion {
 
 fn check_from(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId, expr: &Expr<'_>) {
     let Some(sig) = cx
-        .typeck_results()
+        .typeck_results
         .liberated_fn_sigs()
         .get(cx.tcx.local_def_id_to_hir_id(method_def_id))
     else {

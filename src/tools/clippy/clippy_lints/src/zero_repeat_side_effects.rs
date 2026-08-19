@@ -74,8 +74,8 @@ fn inner_check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, inner_expr: &'_ Expr<'_
     // check if expr is a call or has a call inside it
     if inner_expr.can_have_side_effects() {
         let parent_hir_node = cx.tcx.parent_hir_node(expr.hir_id);
-        let inner_expr_ty = cx.typeck_results().expr_ty(inner_expr);
-        let return_type = cx.typeck_results().expr_ty(expr);
+        let inner_expr_ty = cx.typeck_results.expr_ty(inner_expr);
+        let return_type = cx.typeck_results.expr_ty(expr);
 
         let inner_expr = snippet(cx, inner_expr.span.source_callsite(), "..");
         let indent = snippet_indent(cx, expr.span).unwrap_or_default();

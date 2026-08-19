@@ -24,7 +24,7 @@ pub(super) fn check(
     allowed_dotfiles: &FxHashSet<&'static str>,
 ) {
     if cx
-        .typeck_results()
+        .typeck_results
         .expr_ty(recv)
         .peel_refs()
         .is_diag_item(cx, sym::Path)

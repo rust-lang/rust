@@ -68,7 +68,7 @@ impl AssigningClones {
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Assign(lhs, rhs, _) = e.kind
-            && let typeck = cx.typeck_results()
+            && let typeck = cx.typeck_results
             && let (call_kind, fn_name, fn_def, fn_arg, fn_gen_args) = match rhs.kind {
                 ExprKind::Call(f, [arg])
                     if let ExprKind::Path(fn_path) = &f.kind
@@ -228,7 +228,7 @@ fn build_sugg<'tcx>(
                         // the generated code a bit simpler. In other cases, we don't do this special case, to avoid
                         // having to deal with Deref (https://github.com/rust-lang/rust-clippy/issues/12437).
 
-                        let ty = cx.typeck_results().expr_ty(ref_expr);
+                        let ty = cx.typeck_results.expr_ty(ref_expr);
                         if ty.is_ref() {
                             // Apply special case, remove `*`
                             // `*lhs = self_expr.clone();` -> `lhs.clone_from(self_expr)`
@@ -246,8 +246,8 @@ fn build_sugg<'tcx>(
                     .maybe_paren();
 
                     // Determine whether we need to reference the argument to clone_from().
-                    let clone_receiver_type = cx.typeck_results().expr_ty(fn_arg);
-                    let clone_receiver_adj_type = cx.typeck_results().expr_ty_adjusted(fn_arg);
+                    let clone_receiver_type = cx.typeck_results.expr_ty(fn_arg);
+                    let clone_receiver_adj_type = cx.typeck_results.expr_ty_adjusted(fn_arg);
                     let mut arg_sugg = Sugg::hir_with_context(cx, fn_arg, ctxt, "_", app);
                     if clone_receiver_type != clone_receiver_adj_type {
                         // The receiver may have been a value type, so we need to add an `&` to
@@ -260,7 +260,7 @@ fn build_sugg<'tcx>(
                 CallKind::Ufcs => {
                     let self_sugg = if let ExprKind::Unary(hir::UnOp::Deref, ref_expr) = lhs.kind {
                         // See special case of removing `*` in method handling above
-                        let ty = cx.typeck_results().expr_ty(ref_expr);
+                        let ty = cx.typeck_results.expr_ty(ref_expr);
                         if ty.is_ref() {
                             // `*lhs = Clone::clone(self_expr);` -> `Clone::clone_from(lhs, self_expr)`
                             Sugg::hir_with_applicability(cx, ref_expr, "_", app)
@@ -285,7 +285,7 @@ fn build_sugg<'tcx>(
                 // `*lhs = rhs.to_owned()` -> `rhs.clone_into(lhs)`
                 // `*lhs = ToOwned::to_owned(rhs)` -> `ToOwned::clone_into(rhs, lhs)`
                 let sugg = Sugg::hir_with_applicability(cx, ref_expr, "_", app).maybe_paren();
-                let inner_type = cx.typeck_results().expr_ty(ref_expr);
+                let inner_type = cx.typeck_results.expr_ty(ref_expr);
                 // If after unwrapping the dereference, the type is not a mutable reference, we add &mut to make it
                 // deref to a mutable reference.
                 if matches!(inner_type.kind(), ty::Ref(_, _, Mutability::Mut)) {

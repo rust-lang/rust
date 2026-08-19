@@ -432,7 +432,7 @@ where
             }
         },
         ExprKind::Match(_, arms, _) => {
-            let match_ty = cx.typeck_results().expr_ty(inner_expr);
+            let match_ty = cx.typeck_results.expr_ty(inner_expr);
             if !match_ty.is_unit() && !match_ty.is_never() {
                 return;
             }

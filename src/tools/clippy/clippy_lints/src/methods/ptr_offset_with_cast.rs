@@ -29,13 +29,13 @@ pub(super) fn check(
         return;
     }
 
-    if !cx.typeck_results().expr_ty_adjusted(recv).is_raw_ptr() {
+    if !cx.typeck_results.expr_ty_adjusted(recv).is_raw_ptr() {
         return;
     }
 
     // Check if the argument to the method call is a cast from usize.
     let cast_lhs_expr = match arg.kind {
-        ExprKind::Cast(lhs, _) if cx.typeck_results().expr_ty(lhs).is_usize() => lhs,
+        ExprKind::Cast(lhs, _) if cx.typeck_results.expr_ty(lhs).is_usize() => lhs,
         _ => return,
     };
 

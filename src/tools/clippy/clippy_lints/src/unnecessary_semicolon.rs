@@ -50,7 +50,7 @@ impl UnnecessarySemicolon {
             && let Some(last_stmt) = block.stmts.last()
         {
             if enter {
-                let block_ty = cx.typeck_results().node_type(block.hir_id);
+                let block_ty = cx.typeck_results.node_type(block.hir_id);
                 self.last_statements.push((last_stmt.hir_id, block_ty.is_unit()));
             } else {
                 self.last_statements.pop();
@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessarySemicolon {
                 expr.kind,
                 ExprKind::If(..) | ExprKind::Match(_, _, MatchSource::Normal | MatchSource::Postfix)
             )
-            && cx.typeck_results().expr_ty(expr).is_unit()
+            && cx.typeck_results.expr_ty(expr).is_unit()
             // if a stmt has attrs, then turning it into an expr will break the code, since attrs aren't allowed on exprs
             // -- unless the corresponding feature is enabled
             && (cx.tcx.hir_attrs(stmt.hir_id).is_empty() || cx.tcx.features().stmt_expr_attributes())

@@ -367,7 +367,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         if let Some(id) = e.res_local_id()
             && let Some(param) = self.params.get_by_id_mut(id)
         {
-            let typeck = cx.typeck_results();
+            let typeck = cx.typeck_results;
             let span = e.span;
             let mut e = e;
             loop {

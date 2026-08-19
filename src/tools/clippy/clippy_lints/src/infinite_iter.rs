@@ -229,12 +229,12 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 let not_double_ended = cx
                     .tcx
                     .get_diagnostic_item(sym::DoubleEndedIterator)
-                    .is_some_and(|id| !implements_trait(cx, cx.typeck_results().expr_ty(receiver), id, &[]));
+                    .is_some_and(|id| !implements_trait(cx, cx.typeck_results.expr_ty(receiver), id, &[]));
                 if not_double_ended {
                     return is_infinite(cx, receiver);
                 }
             } else if method.ident.name == sym::collect {
-                let ty = cx.typeck_results().expr_ty(expr);
+                let ty = cx.typeck_results.expr_ty(expr);
                 if matches!(
                     ty.opt_diag_name(cx),
                     Some(

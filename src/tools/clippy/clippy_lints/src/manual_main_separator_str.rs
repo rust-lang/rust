@@ -54,7 +54,7 @@ impl LateLintPass<'_> for ManualMainSeparatorStr {
             && let Res::Def(DefKind::Const { .. }, receiver_def_id) = path.res
             && cx.ty_based_def(target).opt_parent(cx).is_diag_item(cx, sym::ToString)
             && cx.tcx.is_diagnostic_item(sym::path_main_separator, receiver_def_id)
-            && let ty::Ref(_, ty, Mutability::Not) = cx.typeck_results().expr_ty_adjusted(expr).kind()
+            && let ty::Ref(_, ty, Mutability::Not) = cx.typeck_results.expr_ty_adjusted(expr).kind()
             && ty.is_str()
             && self.msrv.meets(cx, msrvs::PATH_MAIN_SEPARATOR_STR)
         {

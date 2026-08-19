@@ -23,7 +23,7 @@ pub(crate) fn check_if_let(
     if_then: &Expr<'_>,
     else_expr: &Expr<'_>,
 ) {
-    if let Some(inner_expr_ty) = option_arg_ty(cx, cx.typeck_results().expr_ty(expr))
+    if let Some(inner_expr_ty) = option_arg_ty(cx, cx.typeck_results.expr_ty(expr))
         && let Some((is_ok, ident)) = is_ok_or_err(cx, let_pat)
         && is_some_ident(cx, if_then, ident, inner_expr_ty)
         && is_none(cx, else_expr)
@@ -33,7 +33,7 @@ pub(crate) fn check_if_let(
 }
 
 pub(crate) fn check_match(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]) {
-    if let Some(inner_expr_ty) = option_arg_ty(cx, cx.typeck_results().expr_ty(expr))
+    if let Some(inner_expr_ty) = option_arg_ty(cx, cx.typeck_results.expr_ty(expr))
         && arms.len() == 2
         && arms.iter().all(|arm| arm.guard.is_none())
         && let Some((idx, is_ok)) = arms.iter().enumerate().find_map(|(arm_idx, arm)| {
@@ -107,7 +107,7 @@ fn is_ok_or_err<'hir>(cx: &LateContext<'_>, pat: &Pat<'hir>) -> Option<(bool, &'
 /// Check if `expr` contains `Some(ident)`, possibly as a block
 fn is_some_ident<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, ident: &Ident, ty: Ty<'tcx>) -> bool {
     if let Some(body_arg) = as_some_expr(cx, peel_blocks(expr))
-        && cx.typeck_results().expr_ty(body_arg) == ty
+        && cx.typeck_results.expr_ty(body_arg) == ty
         && let ExprKind::Path(QPath::Resolved(
             _,
             Path {
@@ -137,7 +137,7 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
     };
     let scrut = Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_paren();
 
-    let scrutinee_ty = cx.typeck_results().expr_ty(scrutinee);
+    let scrutinee_ty = cx.typeck_results.expr_ty(scrutinee);
     let (_, _, mutability) = peel_and_count_ty_refs(scrutinee_ty);
     let prefix = match mutability {
         Some(Mutability::Mut) => ".as_mut()",

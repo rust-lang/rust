@@ -189,7 +189,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                     // and don't need to be inserted into the state map.
                     let vec_snippet = match vec_args {
                         higher::VecArgs::Repeat(expr, len) => {
-                            if is_copy(cx, cx.typeck_results().expr_ty(expr))
+                            if is_copy(cx, cx.typeck_results.expr_ty(expr))
                                 && let Some(Constant::Int(length)) = ConstEvalCtxt::new(cx).eval(len)
                                 && let Ok(length) = u64::try_from(length)
                                 && size_of(cx, expr)
@@ -301,12 +301,12 @@ impl SuggestedType {
 }
 
 fn size_of(cx: &LateContext<'_>, expr: &Expr<'_>) -> u64 {
-    let ty = cx.typeck_results().expr_ty_adjusted(expr);
+    let ty = cx.typeck_results.expr_ty_adjusted(expr);
     cx.layout_of(ty).map_or(0, |l| l.size.bytes())
 }
 
 fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    matches!(cx.typeck_results().expr_ty_adjusted(e).kind(), ty::Ref(_, ty, _) if ty.is_slice())
+    matches!(cx.typeck_results.expr_ty_adjusted(e).kind(), ty::Ref(_, ty, _) if ty.is_slice())
 }
 
 fn suggest_type(expr: &Expr<'_>) -> SuggestedType {

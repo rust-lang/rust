@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
             (PatKind::Binding(ann, _, key, _), value) if pat_is_wild(cx, value, m_arg) => ("key", ann, key),
             _ => return,
         }
-        && let ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
+        && let ty = cx.typeck_results.expr_ty_adjusted(recv).peel_refs()
         && matches!(ty.opt_diag_name(cx), Some(sym::HashMap | sym::BTreeMap))
     {
         let mut applicability = rustc_errors::Applicability::MachineApplicable;

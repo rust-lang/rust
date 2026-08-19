@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
             let match_result = match to_digit_expr.kind {
                 hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
                     if to_digits_path.ident.name == sym::to_digit
-                        && cx.typeck_results().expr_ty_adjusted(char_arg).is_char()
+                        && cx.typeck_results.expr_ty_adjusted(char_arg).is_char()
                     {
                         Some((true, char_arg, radix_arg))
                     } else {

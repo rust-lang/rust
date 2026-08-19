@@ -18,7 +18,7 @@ where
     }
 
     // `!` cannot be deref-ed
-    if cx.typeck_results().expr_ty(scrutinee).is_never() {
+    if cx.typeck_results.expr_ty(scrutinee).is_never() {
         return;
     }
 

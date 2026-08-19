@@ -19,7 +19,7 @@ pub(crate) fn check<'tcx>(
     if op == BinOpKind::Div
         && let ExprKind::MethodCall(method_path, self_arg, [], _) = left.kind
         && cx
-            .typeck_results()
+            .typeck_results
             .expr_ty(self_arg)
             .peel_refs()
             .is_diag_item(cx, sym::Duration)

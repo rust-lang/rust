@@ -69,7 +69,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
             && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
             // make sure we have a struct with no fields (unit struct)
-            && let ty::Adt(def, ..) = cx.typeck_results().expr_ty(expr).kind()
+            && let ty::Adt(def, ..) = cx.typeck_results.expr_ty(expr).kind()
             && def.is_struct()
             && let var @ ty::VariantDef { ctor: Some((hir::def::CtorKind::Const, _)), .. } = def.non_enum_variant()
             && !var.is_field_list_non_exhaustive()

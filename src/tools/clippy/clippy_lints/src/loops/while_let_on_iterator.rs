@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // passed by reference. TODO: If the struct can be partially moved from and the struct isn't used
         // afterwards a mutable borrow of a field isn't necessary.
         let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
-        let iterator_by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
+        let iterator_by_ref = if cx.typeck_results.expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
             || !iter_expr_struct.can_move
             || !iter_expr_struct.fields.is_empty()
             || needs_mutable_borrow(cx, &iter_expr_struct, expr)
@@ -85,7 +85,7 @@ fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExp
     let mut can_move = true;
     loop {
         if cx
-            .typeck_results()
+            .typeck_results
             .expr_adjustments(e)
             .iter()
             .any(|a| matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(..))))
@@ -107,7 +107,7 @@ fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExp
                 e = base;
             },
             // Dereferencing a pointer has no side effects and doesn't affect which field is being used.
-            ExprKind::Unary(UnOp::Deref, base) if cx.typeck_results().expr_ty(base).is_ref() => e = base,
+            ExprKind::Unary(UnOp::Deref, base) if cx.typeck_results.expr_ty(base).is_ref() => e = base,
 
             // Shouldn't have side effects, but there's no way to trace which field is used. So forget which fields have
             // already been seen.
@@ -361,7 +361,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
 /// in which case it applies all derefs (e.g., `&mut **iterator` or `&mut ***iterator`).
 fn make_iterator_snippet<'tcx>(cx: &LateContext<'tcx>, iter_expr: &Expr<'tcx>, iterator: &str) -> String {
     if let Some((n, adjust)) = cx
-        .typeck_results()
+        .typeck_results
         .expr_adjustments(iter_expr)
         .iter()
         .take_while(|x| matches!(x.kind, Adjust::Deref(_)))

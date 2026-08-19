@@ -95,7 +95,7 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
             ExprKind::MethodCall(_, lhs, [rhs], _) if cx.ty_based_def(expr).is_diag_item(cx, sym::sub) => (lhs, rhs),
             _ => return,
         };
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         let lhs_name = typeck.expr_ty(lhs).opt_diag_name(cx);
         let rhs_name = typeck.expr_ty(rhs).opt_diag_name(cx);
 
@@ -159,7 +159,7 @@ fn is_chained_time_subtraction(cx: &LateContext<'_>, lhs: &Expr<'_>) -> bool {
     if let ExprKind::Binary(op, inner_lhs, inner_rhs) = &lhs.kind
         && matches!(op.node, BinOpKind::Sub)
     {
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         let left_ty = typeck.expr_ty(inner_lhs);
         let right_ty = typeck.expr_ty(inner_rhs);
         is_time_type(cx, left_ty) && is_time_type(cx, right_ty)

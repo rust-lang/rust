@@ -199,7 +199,7 @@ fn lint_implicit_returns(
         | ExprKind::Binary(..)
         | ExprKind::Unary(..)
         | ExprKind::Index(..)
-            if cx.typeck_results().expr_ty(expr).is_never() =>
+            if cx.typeck_results.expr_ty(expr).is_never() =>
         {
             LintLocation::Inner
         },
@@ -235,7 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
             return;
         }
 
-        let res_ty = cx.typeck_results().expr_ty(body.value);
+        let res_ty = cx.typeck_results.expr_ty(body.value);
         if res_ty.is_unit() || res_ty.is_never() {
             return;
         }
