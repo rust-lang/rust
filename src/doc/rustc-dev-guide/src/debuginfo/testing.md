@@ -16,7 +16,7 @@ Debug info tests check a few important things:
 
 The first question is typically answered by `tests/codegen-llvm`, but debug info generation is often
 tested incidentally, rather than deliberately.
-At time of writing, there is a much larger focus on the latter two questions,
+As of <!-- date-check --> Jul 2026, there is a much larger focus on the latter two questions,
 and those will be covered in detail here.
 The tests that answer those questions live in `tests/debuginfo`, which is executed by `compiletest`.
 
@@ -54,7 +54,7 @@ and runs special logic on them, testing against data stored in
 "Target groups" cover the set of targets where we cannot guarantee identical output.
 Those targets are defined by the
  [`Target` enum in `common.py`](https://github.com/rust-lang/rust/blob/bf9944f0b8006b152ef4d5f408ae75a0dde3d044/src/etc/lldb_batchmode/common.py#L54).
-At time of writing, this list includes `non_windows`, `windows_gnu`, and `windows_msvc`.
+As of <!-- date-check --> Jul 2026, this list includes `non_windows`, `windows_gnu`, and `windows_msvc`.
 It is intentionally kept as short as possible,
 since each target is a new set of test data that must be updated when changes are made.
 There is still not a perfect solution for how tests can be
@@ -74,7 +74,7 @@ This schema is identical for all debuggers.
 
 Nearly any time a variable is tested, the `repr` directive should be preferred over `command` +
 `check`.
-At time of writing, only a single test has been converted over, but more will follow as
+As of <!-- date-check --> Jul 2026, only a single test has been converted over, but more will follow as
 part of the test rewrite mentioned above.
 Thankfully, the conversion process is fairly easy.
 For a given check:
