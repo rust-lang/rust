@@ -97,41 +97,41 @@ use super::TrustedLen;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        Self = "&[{A}]",
+        Self = "&[{T}]",
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        all(A = "{integer}", any(Self = "&[{integral}]",)),
+        all(T = "{integer}", any(Self = "&[{integral}]",)),
         message = "a slice of type `{Self}` cannot be built since we need to store the elements somewhere",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        Self = "[{A}]",
+        Self = "[{T}]",
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        all(A = "{integer}", any(Self = "[{integral}]",)),
+        all(T = "{integer}", any(Self = "[{integral}]",)),
         message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
-        label = "try explicitly collecting into a `Vec<{A}>`",
+        label = "try explicitly collecting into a `Vec<{T}>`",
     ),
     on(
-        Self = "[{A}; _]",
+        Self = "[{T}; _]",
         message = "an array of type `{Self}` cannot be built directly from an iterator",
-        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
+        label = "try collecting into a `Vec<{T}>`, then using `.try_into()`",
     ),
     on(
-        all(A = "{integer}", any(Self = "[{integral}; _]",)),
+        all(T = "{integer}", any(Self = "[{integral}; _]",)),
         message = "an array of type `{Self}` cannot be built directly from an iterator",
-        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
+        label = "try collecting into a `Vec<{T}>`, then using `.try_into()`",
     ),
     message = "a value of type `{Self}` cannot be built from an iterator \
-               over elements of type `{A}`",
-    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
+               over elements of type `{T}`",
+    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={T}>`"
 )]
 #[rustc_diagnostic_item = "FromIterator"]
-pub trait FromIterator<A>: Sized {
+pub trait FromIterator<T>: Sized {
     /// Creates a value from an iterator.
     ///
     /// See the [module-level documentation] for more.
@@ -149,7 +149,7 @@ pub trait FromIterator<A>: Sized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "from_iter_fn"]
-    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self;
 }
 
 /// Conversion into an [`Iterator`].
