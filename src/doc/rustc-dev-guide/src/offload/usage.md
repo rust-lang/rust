@@ -30,13 +30,16 @@ use core::arch::nvptx::{
     _block_dim_x as block_dim_x, _block_idx_x as block_idx_x, _thread_idx_x as thread_idx_x,
 };
 
+// Kernels can be generic, like any other Rust function.
+// The concrete instantiations required by the host code are collected in a
+// manifest, which the device compilation then reads (see below).
 #[offload_kernel]
-fn kernel(x: *mut [f64; 256]) {
+fn kernel<T: Copy>(x: *mut [T; 256], value: T) {
     unsafe {
         let n = (*x).len();
         let i = (thread_idx_x() + block_idx_x() * block_dim_x()) as usize;
         if i < n {
-            (*x)[i] = i as f64;
+            (*x)[i] = value;
         }
     }
 }
@@ -45,9 +48,13 @@ fn kernel(x: *mut [f64; 256]) {
 #[unsafe(no_mangle)]
 fn main() {
     let mut x = [0.0f64; 256];
-    core::intrinsics::offload::<_, _, ()>(kernel, [256, 1, 1], [1, 1, 1], (&mut x as *mut [f64; 256],));
+    core::offload::offload! {
+        kernel = kernel,
+        workgroup_dim = [256, 1, 1],
+        args = (&mut x as *mut [f64; 256], 2.5),
+    }
     for i in 0..x.len() {
-        assert_eq!(x[i], i as f64);
+        assert_eq!(x[i], 2.5);
     }
     unsafe { libc::printf(c"all checks passed".as_ptr()); }
 }
@@ -58,7 +65,12 @@ It is important to use a clang compiler build on the same LLVM as rustc.
 Just calling clang without the full path will likely use your system clang, which probably will be incompatible.
 So either substitute clang/lld invocations below with absolute path, or set your `PATH` accordingly.
 
-First we generate the device (GPU) code.
+The compilation runs three passes:
+1. `HostMetadata`: compile the host code, writing a manifest that lists the kernel
+   instantiations (including generic ones) required by the host code.
+2. `Device`: compile the kernels for the GPU, reading the manifest so the recorded generic
+   instantiations are codegened.
+3. `Host`: generate the final host code, embedding the device artifact.
 
 <div class="warning">
 
@@ -67,8 +79,15 @@ These are often referred to as "LLVM target names"[^list].
 
 </div>
 
+First we generate the manifest from the host code:
 ```
-RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
+RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=HostMetadata=/absolute/path/to/offload.manifest -Zunstable-options" cargo +offload build -r
+```
+This pass only writes the manifest.
+
+Now we generate the device (GPU) code, passing the manifest:
+```
+RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device=/absolute/path/to/offload.manifest -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
 ```
 You might afterwards need to copy your target/release/deps/<lib_name>.bc to lib.bc for now, before the next step.
 
