@@ -66,6 +66,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         run_make_support_rlib: Default::default(),
         run_make_support_rmeta: Default::default(),
         query_rustc_path: Default::default(),
+        query_rustc_lib_path: Default::default(),
         rustdoc_path: Default::default(),
         coverage_dump_path: Default::default(),
         python: Default::default(),
