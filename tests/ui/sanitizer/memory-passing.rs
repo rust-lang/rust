@@ -1,12 +1,12 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-memory
 //
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer -Z unstable-options
 //
 //@ revisions: unoptimized optimized
 //
-//@ [optimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
-//@ [unoptimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins
+//@ [optimized]compile-flags: -T sanitizer=memory -Zsanitizer-memory-track-origins -O
+//@ [unoptimized]compile-flags: -T sanitizer=memory -Zsanitizer-memory-track-origins
 //
 //@ run-pass
 //

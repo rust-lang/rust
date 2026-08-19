@@ -1,6 +1,6 @@
 // Tests the amdgpu_dispatch_ptr intrinsic.
 
-//@ compile-flags: --crate-type=rlib --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+//@ compile-flags: --crate-type=rlib --target amdgcn-amd-amdhsa -Ttarget-cpu=gfx900
 //@ needs-llvm-components: amdgpu
 //@ add-minicore
 #![feature(intrinsics, no_core, rustc_attrs)]

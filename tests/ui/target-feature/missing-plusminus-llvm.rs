@@ -1,4 +1,4 @@
-//@ compile-flags: -Zllvm-target-feature=banana --crate-type=rlib
+//@ compile-flags: -Tllvm-target-feature=banana --crate-type=rlib -Zunstable-options
 //@ build-pass
 
 //@ ignore-backends: gcc

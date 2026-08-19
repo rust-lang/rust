@@ -236,6 +236,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(Stable, Multi, "C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]"),
+        opt(
+            Stable,
+            Multi,
+            "T",
+            "target-modifier",
+            "pass a target modifier option to rustc",
+            "<OPT>[=<VALUE>]",
+        ),
         opt(Stable, FlagMulti, "", "document-private-items", "document private items", ""),
         opt(
             Unstable,

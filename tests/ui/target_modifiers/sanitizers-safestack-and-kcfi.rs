@@ -2,14 +2,14 @@
 //@ needs-sanitizer-safestack
 
 //@ aux-build:safestack-and-kcfi.rs
-//@ compile-flags: -Cpanic=abort
+//@ compile-flags: -Cpanic=abort -Zunstable-options
 
 //@ revisions: good good_reverted good_multiple missed_safestack missed_kcfi missed_both
-//@[good] compile-flags: -Zsanitizer=safestack,kcfi
-//@[good_reverted] compile-flags: -Zsanitizer=kcfi,safestack
-//@[good_multiple] compile-flags: -Zsanitizer=safestack -Zsanitizer=kcfi
-//@[missed_safestack] compile-flags: -Zsanitizer=kcfi
-//@[missed_kcfi] compile-flags: -Zsanitizer=safestack
+//@[good] compile-flags: -Tsanitizer=safestack,kcfi
+//@[good_reverted] compile-flags: -Tsanitizer=kcfi,safestack
+//@[good_multiple] compile-flags: -Tsanitizer=safestack -Tsanitizer=kcfi
+//@[missed_safestack] compile-flags: -Tsanitizer=kcfi
+//@[missed_kcfi] compile-flags: -Tsanitizer=safestack
 // [missed_both] no additional compile-flags:
 //@[good] check-pass
 //@[good_reverted] check-pass
@@ -21,6 +21,6 @@
 
 extern crate safestack_and_kcfi;
 
-//[missed_safestack]~? ERROR mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`
-//[missed_kcfi]~? ERROR mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`
-//[missed_both]~? ERROR mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`
+//[missed_safestack]~? ERROR mixing `-Tsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`
+//[missed_kcfi]~? ERROR mixing `-Tsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`
+//[missed_both]~? ERROR mixing `-Tsanitizer` will cause an ABI mismatch in crate `sanitizers_safestack_and_kcfi`

@@ -940,6 +940,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     safe_println!(
         "{options}{at_path}\nAdditional help:
     -C help             Print codegen options
+    -T help             Print target modifier options
     -W help             \
               Print 'lint' options and default settings{nightly}{verbose}\n",
         options = options.usage(message),

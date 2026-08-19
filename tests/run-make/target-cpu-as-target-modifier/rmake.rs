@@ -75,37 +75,40 @@ fn verify_cross_crate_compatibility() {
     let targets: Vec<&str> = target_list.lines().collect();
 
     for target in targets.iter() {
-        let compiler = |cpu: &str, input: &str| {
+        let compiler = |cpu: &str, input: &str, prefix: &str| {
             let mut cmd = rustc();
             cmd.target(target)
-                .target_cpu(cpu)
+                .arg(format!("-{prefix}target-cpu={cpu}"))
                 .input(input)
                 .panic("abort")
                 .args(["--emit=metadata", "-Zcodegen-backend=dummy"]);
             cmd
         };
         let (first_cpu, second_cpu) = ("A", "B");
+        let prefix = if EXPECTED.contains(target) { "T" } else { "C" };
 
         // Build dependency.rs using the first target-cpu
-        compiler(first_cpu, "dependency.rs").run();
+        compiler(first_cpu, "dependency.rs", prefix).run();
 
         if EXPECTED.contains(target) {
-            // Testing targets where `-Ctarget-cpu` acts as a target modifier:
+            // Testing targets where `-Ttarget-cpu` acts as a target modifier:
             // Building with the same target cpu must succeed.
-            compiler(first_cpu, "main.rs").run();
+            compiler(first_cpu, "main.rs", prefix).run();
             // Building with a different target cpu must succeed if
             // rustc is invoked with `-Cunsafe-allow-abi-mismatch=target-cpu`
-            compiler(second_cpu, "main.rs").arg("-Cunsafe-allow-abi-mismatch=target-cpu").run();
+            compiler(second_cpu, "main.rs", prefix)
+                .arg("-Cunsafe-allow-abi-mismatch=target-cpu")
+                .run();
             // Building with a different target cpu must fail if
             // rustc is _not_ invoked with `-Cunsafe-allow-abi-mismatch=target-cpu`
-            compiler(second_cpu, "main.rs").run_fail().assert_stderr_contains(
-                "error: mixing `-Ctarget-cpu` will cause \
+            compiler(second_cpu, "main.rs", prefix).run_fail().assert_stderr_contains(
+                "error: mixing `-Ttarget-cpu` will cause \
                      an ABI mismatch in crate `main`",
             );
         } else {
             // Testing targets where `-Ctarget-cpu` does not act as a target modifier:
             // Building with a different target cpu must succeed.
-            compiler(second_cpu, "main.rs").run();
+            compiler(second_cpu, "main.rs", prefix).run();
         }
     }
 }

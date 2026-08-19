@@ -1,6 +1,6 @@
 //@ revisions: x86 x86_64 aarch64
 
-//@ compile-flags: -Zregparm=3
+//@ compile-flags: -Tregparm=3 -Zunstable-options
 
 //@[x86] check-pass
 //@[x86] needs-llvm-components: x86
@@ -19,5 +19,5 @@
 #![no_core]
 #![no_main]
 
-//[x86_64]~? ERROR `-Zregparm=N` is only supported on x86
-//[aarch64]~? ERROR `-Zregparm=N` is only supported on x86
+//[x86_64]~? ERROR `-Tregparm=N` is only supported on x86
+//[aarch64]~? ERROR `-Tregparm=N` is only supported on x86

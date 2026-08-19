@@ -3,7 +3,7 @@
 //@ needs-sanitizer-kcfi
 //@ compile-flags: -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer-kcfi-arity
 
-//~? ERROR `-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`
+//~? ERROR `-Zsanitizer-kcfi-arity` requires `-Tsanitizer=kcfi`
 #![feature(no_core)]
 #![no_core]
 #![no_main]

@@ -2,7 +2,7 @@
 // selectively disable sanitizer instrumentation.
 //
 //@ needs-sanitizer-address
-//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -Copt-level=0
+//@ compile-flags: -Csanitizer=address -Ctarget-feature=-crt-static -Copt-level=0 -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(sanitize)]

@@ -2,7 +2,7 @@
 //@ assembly-output: emit-asm
 //
 //@ revisions: AVR
-//@ [AVR] compile-flags: -Copt-level=3 --target=avr-none -Ctarget-cpu=atmega328p
+//@ [AVR] compile-flags: -Copt-level=3 --target=avr-none -Ttarget-cpu=atmega328p
 //@ [AVR] needs-llvm-components: avr
 #![feature(c_variadic_experimental_arch, no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]

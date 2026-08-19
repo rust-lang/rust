@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ compile-flags: -Copt-level=3 --target=avr-none -C target-cpu=atmega328p --crate-type=rlib -C panic=abort
+//@ compile-flags: -Copt-level=3 --target=avr-none -T target-cpu=atmega328p --crate-type=rlib -C panic=abort
 //@ needs-llvm-components: avr
 
 // This test validates that function pointers can be stored in global variables

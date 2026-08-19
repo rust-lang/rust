@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::num::NonZero;
 
 use decoder::LazyDecoder;
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
@@ -38,7 +38,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{SymbolManglingVersion, TargetModifier};
+use rustc_session::config::{
+    CodegenOptionsKey, SymbolManglingVersion, TargetModifierValue, UnstableOptionsKey,
+};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
@@ -203,6 +205,12 @@ pub enum ProcMacroKind {
     Bang { name: String },
 }
 
+#[derive(MetadataEncodable, LazyDecodable)]
+pub(crate) struct TargetModifiers {
+    codegen: LazyArray<(CodegenOptionsKey, TargetModifierValue)>,
+    unstable: LazyArray<(UnstableOptionsKey, TargetModifierValue)>,
+}
+
 /// Serialized crate metadata.
 ///
 /// This contains just enough information to determine if we should load the `CrateRoot` or not.
@@ -293,8 +301,8 @@ pub(crate) struct CrateRoot {
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
-    target_modifiers: LazyArray<TargetModifier>,
     denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,
+    target_modifiers: TargetModifiers,
 
     compiler_builtins: bool,
     needs_allocator: bool,

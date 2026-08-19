@@ -29,6 +29,8 @@ Options:
                         `html_root_url`
     -C, --codegen OPT[=VALUE]
                         pass a codegen option to rustc
+    -T, --target-modifier <OPT>[=<VALUE>]
+                        pass a target modifier option to rustc
         --document-private-items 
                         document private items
         --document-hidden-items 

@@ -4,7 +4,7 @@
 
 //@ compile-flags: --crate-type=lib
 //@ compile-flags: --target=x86_64-unknown-linux-gnu
-//@ compile-flags: -Zllvm-target-feature=+avx2
+//@ compile-flags: -Tllvm-target-feature=+avx2 -Zunstable-options
 //@ needs-llvm-components: x86
 
 //@ build-pass

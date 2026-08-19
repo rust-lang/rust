@@ -630,6 +630,14 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // tidy-alphabetical-start
+    tracked!(
+        branch_protection,
+        Some(BranchProtection {
+            bti: true,
+            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
+            gcs: true,
+        })
+    );
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
     tracked!(control_flow_guard, CFGuard::Checks);
@@ -637,8 +645,10 @@ fn test_codegen_options_tracking_hash() {
     tracked!(debuginfo, DebugInfo::Limited);
     tracked!(dwarf_version, Some(5));
     tracked!(embed_bitcode, false);
+    tracked!(fixed_x18, true);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
+    tracked!(indirect_branch_cs_prefix, true);
     tracked!(instrument_coverage, InstrumentCoverage::Yes);
     tracked!(jump_tables, false);
     tracked!(link_dead_code, Some(true));
@@ -658,8 +668,14 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profile_use, Some(PathBuf::from("abc")));
+    tracked!(reg_struct_return, true);
+    tracked!(regparm, Some(3));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
+    tracked!(retpoline, true);
+    tracked!(retpoline_external_thunk, true);
+    tracked!(sanitizer, SanitizerSet::CFI);
+    tracked!(sanitizer_cfi_normalize_integers, Some(true));
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
@@ -790,14 +806,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(autodiff_post_passes, Some("function(mem2reg,instsimplify,simplifycfg)".to_string()));
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
-    tracked!(
-        branch_protection,
-        Some(BranchProtection {
-            bti: true,
-            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
-            gcs: true,
-        })
-    );
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(codegen_emit_retag, Some(CodegenRetagOptions::default()));
     tracked!(
@@ -821,7 +829,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(embed_source, true);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
-    tracked!(fixed_x18, true);
     tracked!(flatten_format_args, false);
     tracked!(fmt_debug, FmtDebug::Shallow);
     tracked!(force_unstable_if_unmarked, true);
@@ -831,7 +838,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(human_readable_cgu_names, true);
     tracked!(implicit_sysroot_deps, false);
     tracked!(incremental_ignore_spans, true);
-    tracked!(indirect_branch_cs_prefix, true);
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
@@ -873,14 +879,10 @@ fn test_unstable_options_tracking_hash() {
     tracked!(polonius, Polonius::Legacy);
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(profiler_runtime, "abc".to_string());
-    tracked!(reg_struct_return, true);
-    tracked!(regparm, Some(3));
     tracked!(relax_elf_relocations, Some(true));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
-    tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
-    tracked!(sanitizer_cfi_normalize_integers, Some(true));
     tracked!(sanitizer_dataflow_abilist, vec![String::from("/rustc/abc")]);
     tracked!(sanitizer_kcfi_arity, Some(true));
     tracked!(sanitizer_memory_track_origins, 2);

@@ -2,7 +2,7 @@
 //@ revisions: aarch64 aarch64_fixed_x18 aarch64_no_x18 aarch64_reserve_x18 arm64ec
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
-//@[aarch64_fixed_x18] compile-flags: --target aarch64-unknown-linux-gnu -Zfixed-x18
+//@[aarch64_fixed_x18] compile-flags: --target aarch64-unknown-linux-gnu -Tfixed-x18 -Zunstable-options
 //@[aarch64_fixed_x18] needs-llvm-components: aarch64
 //@[aarch64_no_x18] compile-flags: --target aarch64-pc-windows-msvc
 //@[aarch64_no_x18] needs-llvm-components: aarch64

@@ -6,7 +6,7 @@
 //@ revisions: ENABLED DISABLED
 //@ add-minicore
 //@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3
-//@ [ENABLED] compile-flags: -Zreg-struct-return
+//@ [ENABLED] compile-flags: -Treg-struct-return -Zunstable-options
 //@ needs-llvm-components: x86
 
 #![crate_type = "lib"]

@@ -489,17 +489,17 @@ pub fn flag_to_backend_features<'a>(
 /// Computes the backend target features to be added to account for retpoline flags.
 /// Used by both LLVM and GCC since their target features are, conveniently, the same.
 pub fn retpoline_features_by_flags(sess: &Session, features: &mut Vec<String>) {
-    // -Zretpoline without -Zretpoline-external-thunk enables
+    // -Tretpoline without -Tretpoline-external-thunk enables
     // retpoline-indirect-branches and retpoline-indirect-calls target features
-    let unstable_opts = &sess.opts.unstable_opts;
-    if unstable_opts.retpoline && !unstable_opts.retpoline_external_thunk {
+    let cg = &sess.opts.cg;
+    if cg.retpoline && !cg.retpoline_external_thunk {
         features.push("+retpoline-indirect-branches".into());
         features.push("+retpoline-indirect-calls".into());
     }
-    // -Zretpoline-external-thunk (maybe, with -Zretpoline too) enables
+    // -Tretpoline-external-thunk (maybe, with -Tretpoline too) enables
     // retpoline-external-thunk, retpoline-indirect-branches and
     // retpoline-indirect-calls target features
-    if unstable_opts.retpoline_external_thunk {
+    if cg.retpoline_external_thunk {
         features.push("+retpoline-external-thunk".into());
         features.push("+retpoline-indirect-branches".into());
         features.push("+retpoline-indirect-calls".into());

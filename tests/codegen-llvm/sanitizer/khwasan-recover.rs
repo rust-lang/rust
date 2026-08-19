@@ -6,7 +6,7 @@
 //@ revisions: KHWASAN KHWASAN-RECOVER
 //@ no-prefer-dynamic
 //@ compile-flags: -Copt-level=0
-//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@ compile-flags: -Tsanitizer=kernel-hwaddress --target aarch64-unknown-none -Zunstable-options
 //@[KHWASAN-RECOVER] compile-flags: -Zsanitizer-recover=kernel-hwaddress
 
 #![feature(no_core, sanitize, lang_items)]

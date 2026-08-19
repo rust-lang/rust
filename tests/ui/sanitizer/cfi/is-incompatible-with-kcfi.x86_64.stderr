@@ -1,6 +1,6 @@
 error: cfi sanitizer is not supported for this target
 
-error: `-Zsanitizer=cfi` is incompatible with `-Zsanitizer=kcfi`
+error: `-Tsanitizer=cfi` is incompatible with `-Tsanitizer=kcfi`
 
 error: aborting due to 2 previous errors
 

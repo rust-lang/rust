@@ -1,8 +1,8 @@
-error: mixing `-Zsanitizer-cfi-normalize-integers` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
+error: mixing `-Tsanitizer-cfi-normalize-integers` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
    |
-   = help: the `-Zsanitizer-cfi-normalize-integers` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
-   = note: `-Zsanitizer-cfi-normalize-integers` is unset in this crate which is incompatible with `-Zsanitizer-cfi-normalize-integers` being set in dependency `kcfi_normalize_ints`
-   = help: set `-Zsanitizer-cfi-normalize-integers` in this crate or unset `-Zsanitizer-cfi-normalize-integers` in `kcfi_normalize_ints`
+   = help: the `-Tsanitizer-cfi-normalize-integers` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+   = note: unset `-Tsanitizer-cfi-normalize-integers` in this crate is incompatible with `-Tsanitizer-cfi-normalize-integers` in dependency `kcfi_normalize_ints`
+   = help: set `-Tsanitizer-cfi-normalize-integers` in this crate, unset `-Tsanitizer-cfi-normalize-integers` in `kcfi_normalize_ints`, or use `-Csanitizer-cfi-normalize-integers` in `kcfi_normalize_ints`
    = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=sanitizer-cfi-normalize-integers` to silence this error
 
 error: aborting due to 1 previous error

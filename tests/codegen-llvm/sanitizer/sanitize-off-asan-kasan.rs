@@ -2,7 +2,8 @@
 // the kernel address sanitizer.
 //
 //@ add-minicore
-//@ compile-flags: -Zsanitizer=kernel-address -Ctarget-feature=-crt-static -Copt-level=0
+//@ compile-flags: -Tsanitizer=kernel-address -Ctarget-feature=-crt-static -Copt-level=0
+//@ compile-flags: -Zunstable-options
 //@ revisions: aarch64 aarch64v8r riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64

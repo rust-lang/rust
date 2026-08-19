@@ -8,7 +8,7 @@
 //@ [aarch64v8r] needs-llvm-components: aarch64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86
-//@ compile-flags: -Ctarget-feature=-crt-static -Zsanitizer=kcfi
+//@ compile-flags: -Ctarget-feature=-crt-static -Tsanitizer=kcfi -Zunstable-options
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

@@ -27,7 +27,7 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
@@ -719,9 +719,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
-        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
+        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
             let attrs = tcx.hir_krate_attrs();
@@ -752,6 +752,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 panic_runtime: find_attr!(attrs, PanicRuntime),
                 profiler_runtime: find_attr!(attrs, ProfilerRuntime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
+                target_modifiers,
 
                 crate_deps,
                 dylib_dependency_formats,
@@ -765,7 +766,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 native_libraries,
                 foreign_modules,
                 source_map,
-                target_modifiers,
                 denied_partial_mitigations,
                 traits,
                 impls,
@@ -2117,16 +2117,44 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(deps.iter().map(|(_, dep)| dep))
     }
 
-    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
-        empty_proc_macro!(self);
-        let tcx = self.tcx;
-        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
-    }
-
     fn encode_enabled_denied_partial_mitigations(&mut self) -> LazyArray<DeniedPartialMitigation> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         self.lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
+    }
+
+    fn encode_target_modifiers(&mut self) -> TargetModifiers {
+        if self.is_proc_macro {
+            return TargetModifiers {
+                codegen: LazyArray::default(),
+                unstable: LazyArray::default(),
+            };
+        }
+
+        let tcx = self.tcx;
+        // JUSTIFICATION: Iteration order doesn't matter
+        #[allow(rustc::potential_query_instability)]
+        let codegen = self.lazy_array(
+            tcx.sess
+                .opts
+                .collected_options
+                .target_modifiers
+                .codegen
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
+        // JUSTIFICATION: Iteration order doesn't matter
+        #[allow(rustc::potential_query_instability)]
+        let unstable = self.lazy_array(
+            tcx.sess
+                .opts
+                .collected_options
+                .target_modifiers
+                .unstable
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
+        TargetModifiers { codegen, unstable }
     }
 
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {

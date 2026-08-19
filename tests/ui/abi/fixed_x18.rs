@@ -1,10 +1,10 @@
-// This tests that -Zfixed-x18 causes a compilation failure on targets other than aarch64.
+// This tests that -Tfixed-x18 causes a compilation failure on targets other than aarch64.
 // Behavior on aarch64 is tested by tests/codegen-llvm/fixed-x18.rs.
 //
 //@ revisions: x64 i686 arm riscv32 riscv64
 //@ dont-check-compiler-stderr
 //
-//@ compile-flags: -Zfixed-x18
+//@ compile-flags: -Tfixed-x18 -Zunstable-options
 //@ [x64] needs-llvm-components: x86
 //@ [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
 //@ [i686] needs-llvm-components: x86
@@ -28,4 +28,4 @@ trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 trait Sized: MetaSized {}
 
-//~? ERROR the `-Zfixed-x18` flag is not supported on the `
+//~? ERROR the `-Tfixed-x18` flag is not supported on the `

@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
-use std::str;
+use std::{fmt, str};
 
 use rustc_abi::Align;
 use rustc_ast::attr::version::RustcVersion;
 use rustc_attr_ir::CollapseMacroDebuginfo;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
@@ -25,7 +25,7 @@ use rustc_target::spec::{
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use crate::{EarlyDiagCtxt, Session, lint};
+use crate::{EarlyDiagCtxt, lint};
 
 macro_rules! insert {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {
@@ -41,6 +41,7 @@ macro_rules! insert {
 macro_rules! hash_opt {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [UNTRACKED]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [TRACKED]) => {{ insert!($opt_name, $opt_expr, $sub_hashes) }};
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [TRACKED_UNSTABLE]) => {{ insert!($opt_name, $opt_expr, $sub_hashes) }};
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $for_crate_hash: ident, [TRACKED_NO_CRATE_HASH]) => {{
         if !$for_crate_hash {
             insert!($opt_name, $opt_expr, $sub_hashes)
@@ -52,6 +53,7 @@ macro_rules! hash_opt {
 macro_rules! hash_substruct {
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [UNTRACKED]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_UNSTABLE]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_NO_CRATE_HASH]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [SUBSTRUCT]) => {{
         use crate::config::dep_tracking::DepTrackingHash;
@@ -63,140 +65,7 @@ macro_rules! hash_substruct {
     }};
 }
 
-/// Extended target modifier info.
-/// For example, when external target modifier is '-Zregparm=2':
-/// Target modifier enum value + user value ('2') from external crate
-/// is converted into description: prefix ('Z'), name ('regparm'), tech value ('Some(2)').
-pub struct ExtendedTargetModifierInfo {
-    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags)
-    pub prefix: String,
-    /// Flag name
-    pub name: String,
-    /// Flag parsed technical value
-    pub tech_value: String,
-}
-
-/// A recorded -Zopt_name=opt_value (or -Copt_name=opt_value)
-/// which alter the ABI or effectiveness of exploit mitigations.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub struct TargetModifier {
-    /// Option enum value
-    pub opt: OptionsTargetModifiers,
-    /// User-provided option value (before parsing)
-    pub value_name: String,
-}
-
 pub mod mitigation_coverage;
-
-mod target_modifier_consistency_check {
-    use super::*;
-    pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
-        let mut lparsed: SanitizerSet = Default::default();
-        let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
-        parse::parse_sanitizers(&mut lparsed, lval);
-
-        let mut rparsed: SanitizerSet = Default::default();
-        let rval = r.filter(|v| !v.value_name.is_empty()).map(|v| v.value_name.as_str());
-        parse::parse_sanitizers(&mut rparsed, rval);
-
-        // Some sanitizers need to be target modifiers, and some do not.
-        // For now, we should mark all sanitizers as target modifiers except for these:
-        // AddressSanitizer, LeakSanitizer
-        let tmod_sanitizers = SanitizerSet::MEMORY
-            | SanitizerSet::THREAD
-            | SanitizerSet::HWADDRESS
-            | SanitizerSet::CFI
-            | SanitizerSet::MEMTAG
-            | SanitizerSet::SHADOWCALLSTACK
-            | SanitizerSet::KCFI
-            | SanitizerSet::KERNELADDRESS
-            | SanitizerSet::KERNELHWADDRESS
-            | SanitizerSet::SAFESTACK
-            | SanitizerSet::DATAFLOW;
-
-        lparsed & tmod_sanitizers == rparsed & tmod_sanitizers
-    }
-    pub(super) fn sanitizer_cfi_normalize_integers(
-        sess: &Session,
-        l: &TargetModifier,
-        r: Option<&TargetModifier>,
-    ) -> bool {
-        // For kCFI, the helper flag -Zsanitizer-cfi-normalize-integers should also be a target modifier
-        if sess.sanitizers().contains(SanitizerSet::KCFI) {
-            if let Some(r) = r {
-                return l.extend().tech_value == r.extend().tech_value;
-            } else {
-                return false;
-            }
-        }
-        true
-    }
-    pub(super) fn target_cpu(
-        sess: &Session,
-        l: &TargetModifier,
-        r: Option<&TargetModifier>,
-    ) -> bool {
-        if !sess.target.requires_consistent_cpu {
-            return true;
-        }
-        let l_tech_value = l.extend().tech_value;
-        let r_tech_value = match r {
-            Some(r) => r.extend().tech_value,
-            // If only one of the two compared crates specifies the CPU
-            // explicitly we compare against the target's default CPU.
-            None => {
-                // We reuse the same parsing logic.
-                CodegenOptionsTargetModifiers::TargetCpu
-                    .reparse(sess.target.cpu.as_ref())
-                    .tech_value
-            }
-        };
-        l_tech_value == r_tech_value
-    }
-}
-
-impl TargetModifier {
-    pub fn extend(&self) -> ExtendedTargetModifierInfo {
-        self.opt.reparse(&self.value_name)
-    }
-    // Custom consistency check for target modifiers (or default `l.tech_value == r.tech_value`)
-    // When other is None, consistency with default value is checked
-    pub fn consistent(&self, sess: &Session, other: Option<&TargetModifier>) -> bool {
-        assert!(other.is_none() || self.opt == other.unwrap().opt);
-        match self.opt {
-            OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
-                UnstableOptionsTargetModifiers::Sanitizer => {
-                    return target_modifier_consistency_check::sanitizer(self, other);
-                }
-                UnstableOptionsTargetModifiers::SanitizerCfiNormalizeIntegers => {
-                    return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
-                        sess, self, other,
-                    );
-                }
-                _ => {}
-            },
-            OptionsTargetModifiers::CodegenOptions(codegen) => match codegen {
-                CodegenOptionsTargetModifiers::TargetCpu => {
-                    return target_modifier_consistency_check::target_cpu(sess, self, other);
-                }
-            },
-        };
-        match other {
-            Some(other) => self.extend().tech_value == other.extend().tech_value,
-            None => false,
-        }
-    }
-}
-
-fn tmod_push_impl(
-    opt: OptionsTargetModifiers,
-    tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
-    tmods: &mut Vec<TargetModifier>,
-) {
-    if let Some(v) = tmod_vals.get(&opt) {
-        tmods.push(TargetModifier { opt, value_name: v.clone() })
-    }
-}
 
 macro_rules! top_level_options {
     (
@@ -206,45 +75,10 @@ macro_rules! top_level_options {
                 $(#[$attr:meta])*
                 $opt:ident : $t:ty
                 [$dep_tracking_marker:ident]
-                $( { TARGET_MODIFIER: $tmod_variant:ident($tmod_enum:ident) } )?
                 ,
             )*
         }
     ) => {
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
-        pub enum OptionsTargetModifiers {
-            $(
-                $(
-                    $tmod_variant($tmod_enum),
-                )?
-            )*
-        }
-
-        impl OptionsTargetModifiers {
-            pub fn reparse(&self, user_value: &str) -> ExtendedTargetModifierInfo {
-                match self {
-                    $(
-                        $(
-                            Self::$tmod_variant(v) => v.reparse(user_value),
-                        )?
-                    )*
-                    #[allow(unreachable_patterns)]
-                    _ => panic!("unknown target modifier option: {self:?}"),
-                }
-            }
-
-            pub fn is_target_modifier(flag_name: &str) -> bool {
-                $(
-                    $(
-                        if $tmod_enum::is_target_modifier(flag_name) {
-                            return true
-                        }
-                    )?
-                )*
-                false
-            }
-        }
-
         #[derive(Clone)]
         $(#[$top_level_attr])*
         pub struct Options {
@@ -252,8 +86,7 @@ macro_rules! top_level_options {
                 $(#[$attr])*
                 pub $opt: $t,
             )*
-            pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
-            pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
+            pub collected_options: CollectedOptions,
         }
 
         impl Options {
@@ -286,19 +119,6 @@ macro_rules! top_level_options {
                     );
                 )*
                 hasher.finish()
-            }
-
-            pub fn gather_target_modifiers(&self) -> Vec<TargetModifier> {
-                let mut mods = Vec::<TargetModifier>::new();
-                $(
-                    $(
-                        // Only expand for flags that have `TARGET_MODIFIER`.
-                        ${ignore($tmod_enum)}
-                        self.$opt.gather_target_modifiers(&mut mods, &self.target_modifiers);
-                    )?
-                )*
-                mods.sort_by(|a, b| a.opt.cmp(&b.opt));
-                mods
             }
         }
     }
@@ -361,9 +181,9 @@ top_level_options!(
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
 
-        unstable_opts: UnstableOptions [SUBSTRUCT] { TARGET_MODIFIER: UnstableOptions(UnstableOptionsTargetModifiers) },
+        unstable_opts: UnstableOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
-        cg: CodegenOptions [SUBSTRUCT] { TARGET_MODIFIER: CodegenOptions(CodegenOptionsTargetModifiers) },
+        cg: CodegenOptions [SUBSTRUCT],
         externs: Externs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         /// Indicates how the compiler should treat unstable features.
@@ -439,43 +259,224 @@ top_level_options!(
     }
 );
 
-#[derive(Default)]
+/// Enum of types that command-line options can take - eventually stored into cross-crate metadata
+/// instead of a `Box<dyn Any>`.
+#[derive(BlobDecodable, Clone, Encodable, PartialEq)]
+pub enum TargetModifierValue {
+    Bool(bool),
+    U32(u32),
+    Usize(usize),
+    String(String),
+    BranchProtection(BranchProtection),
+    Sanitizers(SanitizerSet),
+    PointerAuthentication(Vec<(PointerAuthOption, bool)>),
+}
+
+impl fmt::Display for TargetModifierValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bool(_) => write!(f, ""),
+            Self::U32(val) => write!(f, "={val}"),
+            Self::Usize(val) => write!(f, "={val}"),
+            Self::String(val) => write!(f, "={val}"),
+            Self::BranchProtection(val) => write!(f, "={val}"),
+            Self::Sanitizers(val) => write!(f, "={val}"),
+            Self::PointerAuthentication(vals) => {
+                let mut parts = Vec::new();
+                for (opt, pos) in vals {
+                    let polarity = if *pos { "+" } else { "-" };
+                    parts.push(format!("{polarity}{opt}"));
+                }
+                write!(f, "={}", parts.join(","))
+            }
+        }
+    }
+}
+
+macro_rules! noop_target_modifier_ty {
+    ($($ty:ty => $ctor:expr,)+) => {
+        $(
+            impl From<$ty> for TargetModifierValue {
+                fn from(value: $ty) -> Self {
+                    $ctor(value)
+                }
+            }
+        )+
+    }
+}
+
+noop_target_modifier_ty!(
+    // tidy-alphabetical-start
+    SanitizerSet => Self::Sanitizers,
+    String => Self::String,
+    Vec<(PointerAuthOption, bool)> => Self::PointerAuthentication,
+    bool => Self::Bool,
+    u32 => Self::U32,
+    usize => Self::Usize,
+    // tidy-alphabetical-end
+);
+
+macro_rules! opt_or_default_target_modifier_ty {
+    ($($ty:ty => $ctor:expr,)+) => {
+        $(
+            impl From<Option<$ty>> for TargetModifierValue {
+                fn from(value: Option<$ty>) -> Self {
+                    $ctor(value.unwrap_or_default())
+                }
+            }
+        )+
+    }
+}
+
+opt_or_default_target_modifier_ty!(
+    // tidy-alphabetical-start
+    BranchProtection => Self::BranchProtection,
+    String => Self::String,
+    bool => Self::Bool,
+    u32 => Self::U32,
+    usize => Self::Usize,
+    // tidy-alphabetical-end
+);
+
+macro_rules! unsupported_target_modifier_ty {
+    ($($ty:ty,)*) => {
+        $(
+            impl From<$ty> for TargetModifierValue {
+                fn from(_: $ty) -> Self {
+                    unimplemented!("type not supported for a target modifier: {}", stringify!($ty))
+                }
+            }
+        )+
+    }
+}
+
+unsupported_target_modifier_ty!(
+    // tidy-alphabetical-start
+    (),
+    AnnotateMoves,
+    CFGuard,
+    CFProtection,
+    CollapseMacroDebuginfo,
+    CoverageOptions,
+    DebugInfo,
+    DebugInfoCompression,
+    DumpMonoStatsFormat,
+    FmtDebug,
+    FramePointer,
+    FunctionReturn,
+    InliningThreshold,
+    InstrumentCoverage,
+    InstrumentMcount,
+    LinkSelfContained,
+    LinkerFeaturesCli,
+    LinkerPluginLto,
+    LocationDetail,
+    LtoCli,
+    MirIncludeSpans,
+    MirStripDebugInfo,
+    NextSolverConfig,
+    OnBrokenPipe,
+    Option<Align>,
+    Option<CodeModel>,
+    Option<CodegenRetagOptions>,
+    Option<IncrementalStateAssertion>,
+    Option<InstrumentXRay>,
+    Option<LinkerFlavorCli>,
+    Option<MergeFunctions>,
+    Option<NonZero<usize>>,
+    Option<PanicStrategy>,
+    Option<PathBuf>,
+    Option<RelocModel>,
+    Option<RelroLevel>,
+    Option<RustcVersion>,
+    Option<SourceFileHashAlgorithm>,
+    Option<SplitDebuginfo>,
+    Option<SymbolManglingVersion>,
+    Option<SymbolVisibility>,
+    Option<TlsModel>,
+    Option<Vec<String>>,
+    Option<WasiExecModel>,
+    Option<u64>,
+    PanicStrategy,
+    Passes,
+    PatchableFunctionEntry,
+    Polonius,
+    ProcMacroExecutionStrategy,
+    SplitDwarfKind,
+    StackProtector,
+    Strip,
+    SwitchWithOptPath,
+    TerminalUrl,
+    TimePassesFormat,
+    Vec<(String, bool)>,
+    Vec<(String, u32, String)>,
+    Vec<String>,
+    Vec<crate::config::AutoDiff>,
+    Vec<crate::config::Offload>,
+    // tidy-alphabetical-end
+);
+
+#[derive(Clone, Default)]
+pub struct CollectedTargetModifiers {
+    pub codegen: FxHashMap<CodegenOptionsKey, TargetModifierValue>,
+    pub unstable: FxHashMap<UnstableOptionsKey, TargetModifierValue>,
+}
+
+#[derive(Clone, Default)]
+pub struct CollectedIsSet {
+    pub codegen: FxHashSet<CodegenOptionsKey>,
+    pub unstable: FxHashSet<UnstableOptionsKey>,
+}
+
+#[derive(Clone, Default)]
 pub struct CollectedOptions {
-    pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
     pub mitigations: mitigation_coverage::MitigationCoverageMap,
+    pub is_set: CollectedIsSet,
+    pub target_modifiers: CollectedTargetModifiers,
 }
 
 macro_rules! setter_for {
     // the allow/deny-mitigations options use collected/index instead of the cg, since they
     // work across option groups
-    (allow_partial_mitigations, $struct_name:ident, $parse:ident) => {
+    (allow_partial_mitigations, $struct_name:ident, $group_name:ident, $key_name:ident, $parse:ident) => {
         pub(super) fn allow_partial_mitigations(
             _cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
             v: Option<&str>,
             index: usize,
+            _: bool,
         ) -> bool {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, true)
         }
     };
-    (deny_partial_mitigations, $struct_name:ident, $parse:ident) => {
+    (deny_partial_mitigations, $struct_name:ident, $group_name:ident, $key_name:ident, $parse:ident) => {
         pub(super) fn deny_partial_mitigations(
             _cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
             v: Option<&str>,
             index: usize,
+            _: bool,
         ) -> bool {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, false)
         }
     };
-    ($opt:ident, $struct_name:ident, $parse:ident) => {
+    ($opt:ident, $struct_name:ident, $group_name:ident, $key_name:ident, $parse:ident) => {
         pub(super) fn $opt(
             cg: &mut super::$struct_name,
-            _collected: &mut super::CollectedOptions,
+            collected: &mut super::CollectedOptions,
             v: Option<&str>,
             _index: usize,
+            is_target_modifier: bool,
         ) -> bool {
-            super::parse::$parse(&mut redirect_field!(cg.$opt), v)
+            collected.is_set.$group_name.insert(super::$key_name::$opt);
+            let res = super::parse::$parse(&mut redirect_field!(cg.$opt), v, is_target_modifier);
+            if is_target_modifier {
+                let _ = collected
+                    .target_modifiers
+                    .$group_name
+                    .insert(super::$key_name::$opt, redirect_field!(cg.$opt).clone().into());
+            }
+            res
         }
     };
 }
@@ -490,12 +491,14 @@ macro_rules! setter_for {
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
     (
-        $struct_name:ident,
-        $tmod_enum:ident,
-        $stat:ident,
-        $optmod:ident,
-        $prefix:expr,
-        $outputname:expr,
+        $(#[$struct_attr:meta])*
+        $struct_name:ident, // e.g. `UnstableOptions`
+        $key_name: ident, // e.g. `UnstableOptionsKey`
+        $opt_descs_var:ident, // e.g. `Z_OPTIONS`
+        $opt_mod_name:ident, // e.g. `dbopts`
+        $prefix:expr, // e.g. `-Z`
+        $target_modifier_prefix:expr, // e.g. `Some("-T")` or `None`
+        $group_name:ident, // e.g. `unstable`
 
         $(
             $(#[$attr:meta])*
@@ -503,14 +506,15 @@ macro_rules! options {
                 $init:expr,
                 $parse:ident,
                 [$dep_tracking_marker:ident]
-                $( { TARGET_MODIFIER: $tmod_variant:ident } )?
                 $( { MITIGATION: $mitigation_variant:ident } )?
+                $( { TARGET_MODIFIER: $target_modifier_filter:ident } )?
                 ,
                 $desc:literal
                 $(, removed: $removed:ident )?
             ),
         )*
     ) => {
+        $(#[$struct_attr])*
         #[derive(Clone)]
         #[rustc_lint_opt_ty]
         pub struct $struct_name {
@@ -520,46 +524,21 @@ macro_rules! options {
             )*
         }
 
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
-        pub enum $tmod_enum {
+        #[allow(nonstandard_style)]
+        #[derive(BlobDecodable, Copy, Clone, Eq, Encodable, Hash, PartialEq, PartialOrd, Ord)]
+        #[repr(u32)]
+        pub enum $key_name {
             $(
-                $( $tmod_variant, )?
+                $opt,
             )*
         }
 
-        impl $tmod_enum {
-            pub fn reparse(&self, _user_value: &str) -> ExtendedTargetModifierInfo {
+        impl fmt::Display for $key_name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
                     $(
-                        $(
-                            Self::$tmod_variant => {
-                                let mut parsed: $t = Default::default();
-                                let val = if _user_value.is_empty() { None } else { Some(_user_value) };
-                                parse::$parse(&mut parsed, val);
-                                ExtendedTargetModifierInfo {
-                                    prefix: $prefix.to_string(),
-                                    name: stringify!($opt).to_string().replace('_', "-"),
-                                    tech_value: format!("{:?}", parsed),
-                                }
-                            }
-                        )?
-                    )*
-
-                    #[allow(unreachable_patterns)]
-                    _ => panic!("unknown target modifier option: {:?}", *self)
-                }
-            }
-
-            pub fn is_target_modifier(flag_name: &str) -> bool {
-                match flag_name.replace('-', "_").as_str() {
-                    $(
-                        $(
-                            // Only expand for flags that have `TARGET_MODIFIER`.
-                            ${ignore($tmod_variant)}
-                            stringify!($opt) => true,
-                        )?
-                    )*
-                    _ => false,
+                        Self::$opt => write!(f, "{}", stringify!($opt).replace('_', "-"))
+                    ),*
                 }
             }
         }
@@ -578,9 +557,17 @@ macro_rules! options {
             pub fn build(
                 early_dcx: &EarlyDiagCtxt,
                 matches: &getopts::Matches,
-                target_modifiers: &mut CollectedOptions,
+                collected_options: &mut CollectedOptions,
             ) -> $struct_name {
-                build_options(early_dcx, matches, target_modifiers, $stat, $prefix, $outputname)
+                build_options(
+                    early_dcx,
+                    matches,
+                    collected_options,
+                    $opt_descs_var,
+                    $prefix,
+                    $target_modifier_prefix,
+                    stringify!($group_name)
+                )
             }
 
             fn dep_tracking_hash(
@@ -608,36 +595,98 @@ macro_rules! options {
                 hasher.finish()
             }
 
-            pub fn gather_target_modifiers(
-                &self,
-                _mods: &mut Vec<TargetModifier>,
-                _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
+            pub fn require_unstable_options(
+                _early_dcx: &EarlyDiagCtxt,
+                _collected_options: &CollectedOptions,
+                _unstable_opts: bool
             ) {
                 $(
-                    $(
-                        if self.$opt != $init {
-                            tmod_push_impl(
-                                OptionsTargetModifiers::$struct_name($tmod_enum::$tmod_variant),
-                                _tmod_vals,
-                                _mods,
-                            );
+                   require_unstable_options!(
+                       $opt,
+                       $group_name,
+                       $key_name,
+                       [$dep_tracking_marker],
+                       (_early_dcx, _collected_options, _unstable_opts)
+                   );
+                )*
+            }
+
+            pub fn is_target_modifier(&self, flag_name: &str) -> bool {
+                let flag_name = flag_name.replace('-', "_").to_string();
+                match $opt_descs_var.iter().find(|opt_desc| opt_desc.name == flag_name) {
+                    Some(OptionDesc { target_modifier_filter: Some(TargetModifierFilter::Never), .. }) => false,
+                    Some(_) => true,
+                    None => false,
+                }
+            }
+
+            pub fn report_mismatched_flags_with_dep(
+                &self,
+                sess: &crate::Session,
+                local_crate: rustc_span::Symbol,
+                extern_opts: CollectedTargetModifiers,
+                extern_crate: rustc_span::Symbol
+            ) {
+                let allowed_flag_mismatches = &sess.opts.cg.unsafe_allow_abi_mismatch;
+                let compare = |local_value: Option<&TargetModifierValue>, extern_value: Option<&TargetModifierValue>, flag_name| {
+                        match (local_value, extern_value) {
+                            (Some(local_value), Some(extern_value)) if local_value != extern_value => {
+                                sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsMismatched {
+                                    local_crate,
+                                    extern_crate,
+                                    prefix: $prefix,
+                                    target_modifier_prefix: $target_modifier_prefix.expect("mismatch w/out prefix"),
+                                    flag_name,
+                                    local_value: local_value.to_string(),
+                                    extern_value: extern_value.to_string(),
+                                });
+                            },
+                            (None, Some(extern_value)) => {
+                                sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsUnsetLocally {
+                                    local_crate,
+                                    extern_crate,
+                                    prefix: $prefix,
+                                    target_modifier_prefix: $target_modifier_prefix.expect("mismatch w/out prefix"),
+                                    flag_name,
+                                    extern_value: extern_value.to_string(),
+                                });
+                            },
+                            (Some(local_value), None) => {
+                                sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsUnsetExternally {
+                                    local_crate,
+                                    extern_crate,
+                                    prefix: $prefix,
+                                    target_modifier_prefix: $target_modifier_prefix.expect("mismatch w/out prefix"),
+                                    flag_name,
+                                    local_value: local_value.to_string(),
+                                });
+                            },
+                            (Some(_), Some(_)) => { /* no-op, matching flag values */ }
+                            (None, None) => { /* no-op, neither flag is passed as a target modifier */ }
                         }
-                    )?
+                };
+
+                $(
+                    let flag_name = stringify!($opt).replace('_', "-").to_string();
+                    let allowed = allowed_flag_mismatches.contains(&flag_name);
+                    if !allowed {
+                        let local_value = sess.opts.collected_options.target_modifiers.$group_name.get(&$key_name::$opt);
+                        let extern_value = extern_opts.$group_name.get(&$key_name::$opt);
+                        compare(local_value, extern_value, flag_name);
+                    }
                 )*
             }
         }
 
-        pub const $stat: OptionDescrs<$struct_name> = &[
+        pub const $opt_descs_var: OptionDescrs<$struct_name> = &[
             $(
                 OptionDesc {
                     name: stringify!($opt),
-                    setter: $optmod::$opt,
+                    setter: $opt_mod_name::$opt,
                     type_desc: desc::$parse,
                     desc: $desc,
                     removed: None $( .or(Some(RemovedOption::$removed)) )?,
-                    tmod: None $( .or(Some(
-                        OptionsTargetModifiers::$struct_name($tmod_enum::$tmod_variant)
-                    )))?,
+                    target_modifier_filter: None $( .or(Some(TargetModifierFilter::$target_modifier_filter)) )?,
                     mitigation: None $( .or(Some(
                         mitigation_coverage::DeniedPartialMitigationKind::$mitigation_variant
                     )))?,
@@ -645,12 +694,31 @@ macro_rules! options {
             )*
         ];
 
-        mod $optmod {
+        mod $opt_mod_name {
             $(
-                setter_for!($opt, $struct_name, $parse);
+                setter_for!($opt, $struct_name, $group_name, $key_name, $parse);
             )*
         }
     }
+}
+
+macro_rules! require_unstable_options {
+    ($opt:ident, $group_name:ident, $key_name:ident, [UNTRACKED],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [TRACKED],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [TRACKED_UNSTABLE],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{
+        if $collected_options.is_set.$group_name.contains(&$key_name::$opt) && !$unstable_opts {
+            $early_dcx
+                .early_err(format!("`-T{}` requires `-Zunstable-options`", stringify!($opt)))
+                .raise_fatal();
+        }
+    }};
+    ($opt:ident, $group_name:ident, $key_name:ident, [TRACKED_NO_CRATE_HASH],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [SUBSTRUCT],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
 }
 
 impl CodegenOptions {
@@ -675,7 +743,13 @@ macro_rules! redirect_field {
     };
 }
 
-type OptionSetter<O> = fn(&mut O, &mut CollectedOptions, v: Option<&str>, pos: usize) -> bool;
+type OptionSetter<O> = fn(
+    &mut O,
+    &mut CollectedOptions,
+    v: Option<&str>,
+    pos: usize,
+    is_target_modifier: bool,
+) -> bool;
 type OptionDescrs<O> = &'static [OptionDesc<O>];
 
 /// Indicates whether a removed option should warn or error.
@@ -683,6 +757,13 @@ enum RemovedOption {
     #[allow(unused)] // we might want deprecated options that warn again in the future
     Warn,
     Err,
+}
+
+enum TargetModifierFilter {
+    // Option cannot be passed as a target modifier
+    Never,
+    // Option can only be passed as a target modifier
+    Only,
 }
 
 pub struct OptionDesc<O> {
@@ -693,7 +774,7 @@ pub struct OptionDesc<O> {
     // description for option from options table
     desc: &'static str,
     removed: Option<RemovedOption>,
-    tmod: Option<OptionsTargetModifiers>,
+    target_modifier_filter: Option<TargetModifierFilter>,
     mitigation: Option<mitigation_coverage::DeniedPartialMitigationKind>,
 }
 
@@ -713,93 +794,98 @@ fn build_options<O: Default>(
     collected_options: &mut CollectedOptions,
     descrs: OptionDescrs<O>,
     prefix: &str,
+    target_modifier_prefix: Option<&str>,
     outputname: &str,
 ) -> O {
     let mut op = O::default();
-    for (index, option) in matches.opt_strs_pos(prefix) {
-        let (key, value) = match option.split_once('=') {
-            None => (option, None),
-            Some((k, v)) => (k.to_string(), Some(v)),
-        };
+    let mut build_with_prefix = |current_prefix: &str, is_target_modifier: bool| {
+        for (index, option) in matches.opt_strs_pos(current_prefix) {
+            let (key, value) = match option.split_once('=') {
+                None => (option, None),
+                Some((k, v)) => (k.to_string(), Some(v)),
+            };
 
-        let option_to_lookup = key.replace('-', "_");
-        match descrs.iter().find(|opt_desc| opt_desc.name == option_to_lookup) {
-            Some(OptionDesc { name: _, setter, type_desc, desc, removed, tmod, mitigation }) => {
-                if let Some(removed) = removed {
-                    // deprecation works for prefixed options only
-                    assert!(!prefix.is_empty());
-                    match removed {
-                        RemovedOption::Warn => {
-                            early_dcx.early_warn(format!("`-{prefix} {key}`: {desc}"))
-                        }
-                        RemovedOption::Err => {
-                            early_dcx.early_fatal(format!("`-{prefix} {key}`: {desc}"))
+            let option_to_lookup = key.replace('-', "_");
+            match descrs.iter().find(|opt_desc| opt_desc.name == option_to_lookup) {
+                Some(OptionDesc {
+                    name: _,
+                    setter,
+                    type_desc,
+                    desc,
+                    removed,
+                    mitigation,
+                    target_modifier_filter,
+                }) => {
+                    if let Some(removed) = removed {
+                        // deprecation works for prefixed options only
+                        assert!(!current_prefix.is_empty());
+                        match removed {
+                            RemovedOption::Warn => {
+                                early_dcx.early_warn(format!("`-{current_prefix} {key}`: {desc}"))
+                            }
+                            RemovedOption::Err => {
+                                early_dcx.early_fatal(format!("`-{current_prefix} {key}`: {desc}"))
+                            }
                         }
                     }
-                }
-                if !setter(&mut op, collected_options, value, index) {
-                    match value {
-                        None => early_dcx.early_fatal(
-                            format!(
-                                "{outputname} option `{key}` requires {type_desc} (`-{prefix} {key}=<value>`)"
+                    match target_modifier_filter {
+                        Some(TargetModifierFilter::Only) if !is_target_modifier => {
+                            early_dcx.early_fatal(format!("`-{current_prefix} {key}`: can only be passed with `-{}`", target_modifier_prefix.expect("option only allowed with target modifier but substruct does not have a target modifier variant")))
+                        },
+                        Some(TargetModifierFilter::Never) if is_target_modifier => {
+                            early_dcx.early_fatal(format!("`-{current_prefix} {key}`: can only be passed with `-{}`", prefix))
+                        },
+                        _ => (),
+                    }
+                    if !setter(&mut op, collected_options, value, index, is_target_modifier) {
+                        match value {
+                            None => early_dcx.early_fatal(
+                                format!(
+                                    "{outputname} option `{key}` requires {type_desc} (`-{current_prefix} {key}=<value>`)"
+                                ),
                             ),
-                        ),
-                        Some(value) => early_dcx.early_fatal(
-                            format!(
-                                "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
+                            Some(value) => early_dcx.early_fatal(
+                                format!(
+                                    "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
+                                ),
                             ),
-                        ),
-                    }
-                }
-                if let Some(tmod) = *tmod {
-                    let v = value.map_or(String::new(), ToOwned::to_owned);
-
-                    // Accumulate all the -Zsanitizer flags into a single target modifier.
-                    match tmod {
-                        OptionsTargetModifiers::UnstableOptions(
-                            UnstableOptionsTargetModifiers::Sanitizer,
-                        ) => {
-                            collected_options
-                                .target_modifiers
-                                .entry(tmod)
-                                .and_modify(|existing| {
-                                    existing.push(',');
-                                    existing.push_str(&v);
-                                })
-                                .or_insert(v);
-                        }
-                        _ => {
-                            collected_options.target_modifiers.insert(tmod, v);
                         }
                     }
+                    if let Some(mitigation) = mitigation {
+                        collected_options.mitigations.reset_mitigation(*mitigation, index);
+                    }
                 }
-                if let Some(mitigation) = mitigation {
-                    collected_options.mitigations.reset_mitigation(*mitigation, index);
+                None => {
+                    let mut error = early_dcx
+                        .early_struct_fatal(format!("unknown {outputname} option: `{key}`"));
+                    let max_dist = option_to_lookup.chars().count().max(3) / 3;
+                    if let Some(option) = descrs
+                        .iter()
+                        .filter(|option| option.removed.is_none())
+                        .filter_map(|option| {
+                            edit_distance(&option_to_lookup, option.name, max_dist)
+                                .map(|dist| (dist, option))
+                        })
+                        .min_by_key(|(dist, _)| *dist)
+                        .map(|(_, option)| option)
+                    {
+                        let name = option.name.replace('_', "-");
+                        let value =
+                            if option.type_desc == desc::parse_no_value { "" } else { "=<value>" };
+                        error
+                            .help(format!("you might have meant to use `-{prefix} {name}{value}`"));
+                    }
+                    error.emit()
                 }
-            }
-            None => {
-                let mut error =
-                    early_dcx.early_struct_fatal(format!("unknown {outputname} option: `{key}`"));
-                let max_dist = option_to_lookup.chars().count().max(3) / 3;
-                if let Some(option) = descrs
-                    .iter()
-                    .filter(|option| option.removed.is_none())
-                    .filter_map(|option| {
-                        edit_distance(&option_to_lookup, option.name, max_dist)
-                            .map(|dist| (dist, option))
-                    })
-                    .min_by_key(|(dist, _)| *dist)
-                    .map(|(_, option)| option)
-                {
-                    let name = option.name.replace('_', "-");
-                    let value =
-                        if option.type_desc == desc::parse_no_value { "" } else { "=<value>" };
-                    error.help(format!("you might have meant to use `-{prefix} {name}{value}`"));
-                }
-                error.emit()
             }
         }
+    };
+
+    build_with_prefix(prefix, false);
+    if let Some(prefix) = target_modifier_prefix {
+        build_with_prefix(prefix, true);
     }
+
     op
 }
 
@@ -832,7 +918,8 @@ mod desc {
     pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
+    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, or `leak` with `-C`; and `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime' with `-T`";
+    pub(crate) const parse_sanitizers_unfiltered: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `leak`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
     pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub(crate) const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -922,7 +1009,7 @@ pub mod parse {
 
     /// Ignore the value. Used for removed options where we don't actually want to store
     /// anything in the session.
-    pub(crate) fn parse_ignore(_slot: &mut (), _v: Option<&str>) -> bool {
+    pub(crate) fn parse_ignore(_slot: &mut (), _v: Option<&str>, _: bool) -> bool {
         true
     }
 
@@ -931,7 +1018,7 @@ pub mod parse {
     ///
     /// This style of option is deprecated, and is mainly used by old options
     /// beginning with `no-`.
-    pub(crate) fn parse_no_value(slot: &mut bool, v: Option<&str>) -> bool {
+    pub(crate) fn parse_no_value(slot: &mut bool, v: Option<&str>, _: bool) -> bool {
         match v {
             None => {
                 *slot = true;
@@ -943,7 +1030,7 @@ pub mod parse {
     }
 
     /// Use this for any boolean option that has a static default.
-    pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
+    pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = true;
@@ -960,7 +1047,7 @@ pub mod parse {
     /// Use this for any boolean option that lacks a static default. (The
     /// actions taken when such an option is not specified will depend on
     /// other factors, such as other options, or target options.)
-    pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = Some(true);
@@ -975,7 +1062,7 @@ pub mod parse {
     }
 
     /// Parses whether polonius is enabled, and if so, which version.
-    pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>) -> bool {
+    pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("legacy") | None => {
                 *slot = Polonius::Legacy;
@@ -993,7 +1080,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_annotate_moves(slot: &mut AnnotateMoves, v: Option<&str>) -> bool {
+    pub(crate) fn parse_annotate_moves(
+        slot: &mut AnnotateMoves,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut bslot = false;
         let mut nslot = 0u64;
 
@@ -1001,7 +1092,7 @@ pub mod parse {
             // No value provided: -Z annotate-moves (enable with default limit)
             None => AnnotateMoves::Enabled(None),
             // Explicit boolean value provided: -Z annotate-moves=yes/no
-            s @ Some(_) if parse_bool(&mut bslot, s) => {
+            s @ Some(_) if parse_bool(&mut bslot, s, is_target_modifier) => {
                 if bslot {
                     AnnotateMoves::Enabled(None)
                 } else {
@@ -1009,7 +1100,9 @@ pub mod parse {
                 }
             }
             // With numeric limit provided: -Z annotate-moves=1234
-            s @ Some(_) if parse_number(&mut nslot, s) => AnnotateMoves::Enabled(Some(nslot)),
+            s @ Some(_) if parse_number(&mut nslot, s, is_target_modifier) => {
+                AnnotateMoves::Enabled(Some(nslot))
+            }
             _ => return false,
         };
 
@@ -1017,7 +1110,7 @@ pub mod parse {
     }
 
     /// Use this for any string option that has a static default.
-    pub(crate) fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
+    pub(crate) fn parse_string(slot: &mut String, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 *slot = s.to_string();
@@ -1028,7 +1121,7 @@ pub mod parse {
     }
 
     /// Use this for any string option that lacks a static default.
-    pub(crate) fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 *slot = Some(s.to_string());
@@ -1038,7 +1131,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 *slot = Some(PathBuf::from(s));
@@ -1048,7 +1141,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 slot.push(s.to_string());
@@ -1058,7 +1151,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 slot.extend(s.split_whitespace().map(|s| s.to_string()));
@@ -1071,6 +1164,7 @@ pub mod parse {
     pub(crate) fn parse_list_with_polarity(
         slot: &mut Vec<(String, bool)>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => {
@@ -1087,6 +1181,7 @@ pub mod parse {
     pub(crate) fn parse_pointer_authentication_list_with_polarity(
         slot: &mut Vec<(PointerAuthOption, bool)>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         let Some(s) = v else {
             return false;
@@ -1115,7 +1210,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
+    pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>, _: bool) -> bool {
         *opt = match v {
             Some("full") => FmtDebug::Full,
             Some("shallow") => FmtDebug::Shallow,
@@ -1125,7 +1220,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>) -> bool {
+    pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>, _: bool) -> bool {
         if let Some(v) = v {
             ld.line = false;
             ld.file = false;
@@ -1147,7 +1242,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
@@ -1159,7 +1254,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_comma_list(
+        slot: &mut Option<Vec<String>>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some(s) => {
                 let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
@@ -1172,7 +1271,7 @@ pub mod parse {
     }
 
     /// Use this for any numeric option that has a static default.
-    pub(crate) fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>) -> bool {
+    pub(crate) fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>, _: bool) -> bool {
         match v.and_then(|s| s.parse().ok()) {
             Some(i) => {
                 *slot = i;
@@ -1186,6 +1285,7 @@ pub mod parse {
     pub(crate) fn parse_opt_number<T: Copy + FromStr>(
         slot: &mut Option<T>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => {
@@ -1196,11 +1296,17 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
+    pub(crate) fn parse_frame_pointer(
+        slot: &mut FramePointer,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut yes = false;
         match v {
-            _ if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
-            _ if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
+            _ if parse_bool(&mut yes, v, is_target_modifier) && yes => {
+                slot.ratchet(FramePointer::Always)
+            }
+            _ if parse_bool(&mut yes, v, is_target_modifier) => slot.ratchet(FramePointer::MayOmit),
             Some("always") => slot.ratchet(FramePointer::Always),
             Some("non-leaf") => slot.ratchet(FramePointer::NonLeaf),
             _ => return false,
@@ -1208,7 +1314,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
+    pub(crate) fn parse_passes(
+        slot: &mut Passes,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         match v {
             Some("all") => {
                 *slot = Passes::All;
@@ -1216,7 +1326,7 @@ pub mod parse {
             }
             v => {
                 let mut passes = vec![];
-                if parse_list(&mut passes, v) {
+                if parse_list(&mut passes, v, is_target_modifier) {
                     slot.extend(passes);
                     true
                 } else {
@@ -1229,6 +1339,7 @@ pub mod parse {
     pub(crate) fn parse_opt_panic_strategy(
         slot: &mut Option<PanicStrategy>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
@@ -1239,7 +1350,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+    pub(crate) fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
@@ -1249,7 +1360,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>) -> bool {
+    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>, _: bool) -> bool {
         match v {
             // OnBrokenPipe::Default can't be explicitly specified
             Some("kill") => *slot = OnBrokenPipe::Kill,
@@ -1263,21 +1374,22 @@ pub mod parse {
     pub(crate) fn parse_patchable_function_entry(
         slot: &mut PatchableFunctionEntry,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         let mut total_nops = 0;
         let mut prefix_nops = 0;
         let mut section = None;
 
-        if !parse_number(&mut total_nops, v) {
+        if !parse_number(&mut total_nops, v, is_target_modifier) {
             let parts: Vec<_> = v.unwrap_or("").split(',').collect();
             if parts.len() < 2 || parts.len() > 3 {
                 return false;
             }
 
-            if !parse_number(&mut total_nops, Some(parts[0])) {
+            if !parse_number(&mut total_nops, Some(parts[0]), is_target_modifier) {
                 return false;
             }
-            if !parse_number(&mut prefix_nops, Some(parts[1])) {
+            if !parse_number(&mut prefix_nops, Some(parts[1]), is_target_modifier) {
                 return false;
             }
             section = parts.get(2).map(|x| x.to_string());
@@ -1290,7 +1402,11 @@ pub mod parse {
         false
     }
 
-    pub(crate) fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_relro_level(
+        slot: &mut Option<RelroLevel>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some(s) => match s.parse::<RelroLevel>() {
                 Ok(level) => *slot = Some(level),
@@ -1301,24 +1417,51 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizers(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
+        parse_sanitizers_with_filter(slot, v, is_target_modifier, true)
+    }
+
+    pub(crate) fn parse_sanitizers_unfiltered(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
+        parse_sanitizers_with_filter(slot, v, is_target_modifier, false)
+    }
+
+    fn parse_sanitizers_with_filter(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        is_target_modifier: bool,
+        with_filter: bool,
+    ) -> bool {
         if let Some(v) = v {
             for s in v.split(',') {
                 *slot |= match s {
-                    "address" => SanitizerSet::ADDRESS,
-                    "cfi" => SanitizerSet::CFI,
-                    "dataflow" => SanitizerSet::DATAFLOW,
-                    "kcfi" => SanitizerSet::KCFI,
-                    "kernel-address" => SanitizerSet::KERNELADDRESS,
-                    "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
-                    "leak" => SanitizerSet::LEAK,
-                    "memory" => SanitizerSet::MEMORY,
-                    "memtag" => SanitizerSet::MEMTAG,
-                    "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-                    "thread" => SanitizerSet::THREAD,
-                    "hwaddress" => SanitizerSet::HWADDRESS,
-                    "safestack" => SanitizerSet::SAFESTACK,
-                    "realtime" => SanitizerSet::REALTIME,
+                    "cfi" if !with_filter || is_target_modifier => SanitizerSet::CFI,
+                    "dataflow" if !with_filter || is_target_modifier => SanitizerSet::DATAFLOW,
+                    "kcfi" if !with_filter || is_target_modifier => SanitizerSet::KCFI,
+                    "kernel-address" if !with_filter || is_target_modifier => {
+                        SanitizerSet::KERNELADDRESS
+                    }
+                    "kernel-hwaddress" if !with_filter || is_target_modifier => {
+                        SanitizerSet::KERNELHWADDRESS
+                    }
+                    "memory" if !with_filter || is_target_modifier => SanitizerSet::MEMORY,
+                    "memtag" if !with_filter || is_target_modifier => SanitizerSet::MEMTAG,
+                    "shadow-call-stack" if !with_filter || is_target_modifier => {
+                        SanitizerSet::SHADOWCALLSTACK
+                    }
+                    "thread" if !with_filter || is_target_modifier => SanitizerSet::THREAD,
+                    "hwaddress" if !with_filter || is_target_modifier => SanitizerSet::HWADDRESS,
+                    "safestack" if !with_filter || is_target_modifier => SanitizerSet::SAFESTACK,
+                    "realtime" if !with_filter || is_target_modifier => SanitizerSet::REALTIME,
+                    "address" if !with_filter || !is_target_modifier => SanitizerSet::ADDRESS,
+                    "leak" if !with_filter || !is_target_modifier => SanitizerSet::LEAK,
                     _ => return false,
                 }
             }
@@ -1328,7 +1471,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_sanitizer_memory_track_origins(slot: &mut usize, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizer_memory_track_origins(
+        slot: &mut usize,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("2") | None => {
                 *slot = 2;
@@ -1346,7 +1493,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>) -> bool {
+    pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("none") => *slot = Strip::None,
             Some("debuginfo") => *slot = Strip::Debuginfo,
@@ -1356,10 +1503,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
+    pub(crate) fn parse_cfguard(
+        slot: &mut CFGuard,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { CFGuard::Checks } else { CFGuard::Disabled };
                 return true;
             }
@@ -1374,10 +1525,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_cfprotection(slot: &mut CFProtection, v: Option<&str>) -> bool {
+    pub(crate) fn parse_cfprotection(
+        slot: &mut CFProtection,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { CFProtection::Full } else { CFProtection::None };
                 return true;
             }
@@ -1393,7 +1548,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>) -> bool {
+    pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("0") | Some("none") => *slot = DebugInfo::None,
             Some("line-directives-only") => *slot = DebugInfo::LineDirectivesOnly,
@@ -1408,6 +1563,7 @@ pub mod parse {
     pub(crate) fn parse_debuginfo_compression(
         slot: &mut DebugInfoCompression,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some("none") => *slot = DebugInfoCompression::None,
@@ -1418,7 +1574,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_mir_strip_debuginfo(slot: &mut MirStripDebugInfo, v: Option<&str>) -> bool {
+    pub(crate) fn parse_mir_strip_debuginfo(
+        slot: &mut MirStripDebugInfo,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("none") => *slot = MirStripDebugInfo::None,
             Some("locals-in-tiny-functions") => *slot = MirStripDebugInfo::LocalsInTinyFunctions,
@@ -1428,7 +1588,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_flavor(
+        slot: &mut Option<LinkerFlavorCli>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|v| LinkerFlavorCli::from_str(v).ok()) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
@@ -1439,6 +1603,7 @@ pub mod parse {
     pub(crate) fn parse_opt_symbol_visibility(
         slot: &mut Option<SymbolVisibility>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         if let Some(v) = v {
             if let Ok(vis) = SymbolVisibility::from_str(v) {
@@ -1450,7 +1615,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             None => false,
             Some(s) if s.split('=').count() <= 2 => {
@@ -1461,7 +1626,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_time_passes_format(slot: &mut TimePassesFormat, v: Option<&str>) -> bool {
+    pub(crate) fn parse_time_passes_format(
+        slot: &mut TimePassesFormat,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             None => true,
             Some("json") => {
@@ -1476,7 +1645,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_dump_mono_stats(slot: &mut DumpMonoStatsFormat, v: Option<&str>) -> bool {
+    pub(crate) fn parse_dump_mono_stats(
+        slot: &mut DumpMonoStatsFormat,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             None => true,
             Some("json") => {
@@ -1491,7 +1664,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_offload(slot: &mut Vec<Offload>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_offload(slot: &mut Vec<Offload>, v: Option<&str>, _: bool) -> bool {
         let Some(v) = v else {
             *slot = vec![];
             return true;
@@ -1543,7 +1716,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_autodiff(slot: &mut Vec<AutoDiff>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_autodiff(slot: &mut Vec<AutoDiff>, v: Option<&str>, _: bool) -> bool {
         let Some(v) = v else {
             *slot = vec![];
             return true;
@@ -1592,10 +1765,11 @@ pub mod parse {
     pub(crate) fn parse_instrument_coverage(
         slot: &mut InstrumentCoverage,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         if v.is_some() {
             let mut bool_arg = false;
-            if parse_bool(&mut bool_arg, v) {
+            if parse_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg { InstrumentCoverage::Yes } else { InstrumentCoverage::No };
                 return true;
             }
@@ -1619,6 +1793,7 @@ pub mod parse {
     pub(crate) fn parse_codegen_retag_options(
         slot: &mut Option<CodegenRetagOptions>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         let mut no_precise_im = false;
         let mut no_precise_pin = false;
@@ -1639,7 +1814,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
+    pub(crate) fn parse_coverage_options(
+        slot: &mut CoverageOptions,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         let Some(v) = v else { return true };
 
         for option in v.split(',') {
@@ -1654,10 +1833,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_instrument_mcount(slot: &mut InstrumentMcount, v: Option<&str>) -> bool {
+    pub(crate) fn parse_instrument_mcount(
+        slot: &mut InstrumentMcount,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut use_mcount = false;
         let mut opts = InstrumentMcountOpts::default();
-        if parse_bool(&mut use_mcount, v) {
+        if parse_bool(&mut use_mcount, v, is_target_modifier) {
             *slot = if use_mcount {
                 InstrumentMcount::Mcount(opts)
             } else {
@@ -1688,10 +1871,11 @@ pub mod parse {
     pub(crate) fn parse_instrument_xray(
         slot: &mut Option<InstrumentXRay>,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { Some(InstrumentXRay::default()) } else { None };
                 return true;
             }
@@ -1750,6 +1934,7 @@ pub mod parse {
     pub(crate) fn parse_treat_err_as_bug(
         slot: &mut Option<NonZero<usize>>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => match s.parse() {
@@ -1769,7 +1954,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
+    pub(crate) fn parse_next_solver_config(
+        slot: &mut NextSolverConfig,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         if let Some(config) = v {
             *slot = match config {
                 "no" => NextSolverConfig { coherence: false, globally: false },
@@ -1784,10 +1973,10 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
+    pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>, is_target_modifier: bool) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { LtoCli::Yes } else { LtoCli::No };
                 return true;
             }
@@ -1802,10 +1991,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_linker_plugin_lto(slot: &mut LinkerPluginLto, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_plugin_lto(
+        slot: &mut LinkerPluginLto,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() {
                     LinkerPluginLto::LinkerPluginAuto
                 } else {
@@ -1825,6 +2018,7 @@ pub mod parse {
     pub(crate) fn parse_switch_with_opt_path(
         slot: &mut SwitchWithOptPath,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             None => SwitchWithOptPath::Enabled(None),
@@ -1836,6 +2030,7 @@ pub mod parse {
     pub(crate) fn parse_merge_functions(
         slot: &mut Option<MergeFunctions>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| MergeFunctions::from_str(s).ok()) {
             Some(mergefunc) => *slot = Some(mergefunc),
@@ -1844,7 +2039,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_relocation_model(slot: &mut Option<RelocModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_relocation_model(
+        slot: &mut Option<RelocModel>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|s| RelocModel::from_str(s).ok()) {
             Some(relocation_model) => *slot = Some(relocation_model),
             None if v == Some("default") => *slot = None,
@@ -1853,7 +2052,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_code_model(slot: &mut Option<CodeModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_code_model(slot: &mut Option<CodeModel>, v: Option<&str>, _: bool) -> bool {
         match v.and_then(|s| CodeModel::from_str(s).ok()) {
             Some(code_model) => *slot = Some(code_model),
             _ => return false,
@@ -1861,7 +2060,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>, _: bool) -> bool {
         match v.and_then(|s| TlsModel::from_str(s).ok()) {
             Some(tls_model) => *slot = Some(tls_model),
             _ => return false,
@@ -1869,7 +2068,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>) -> bool {
+    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>, _: bool) -> bool {
         *slot = match v {
             Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
             Some("off" | "no" | "n") => TerminalUrl::No,
@@ -1882,6 +2081,7 @@ pub mod parse {
     pub(crate) fn parse_symbol_mangling_version(
         slot: &mut Option<SymbolManglingVersion>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             Some("legacy") => Some(SymbolManglingVersion::Legacy),
@@ -1895,6 +2095,7 @@ pub mod parse {
     pub(crate) fn parse_src_file_hash(
         slot: &mut Option<SourceFileHashAlgorithm>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => *slot = Some(hash_kind),
@@ -1906,6 +2107,7 @@ pub mod parse {
     pub(crate) fn parse_cargo_src_file_hash(
         slot: &mut Option<SourceFileHashAlgorithm>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => {
@@ -1916,7 +2118,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_target_feature(slot: &mut String, v: Option<&str>) -> bool {
+    pub(crate) fn parse_target_feature(slot: &mut String, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 if !slot.is_empty() {
@@ -1929,7 +2131,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_link_self_contained(slot: &mut LinkSelfContained, v: Option<&str>) -> bool {
+    pub(crate) fn parse_link_self_contained(
+        slot: &mut LinkSelfContained,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         // Whenever `-C link-self-contained` is passed without a value, it's an opt-in
         // just like `parse_opt_bool`, the historical value of this flag.
         //
@@ -1958,7 +2164,11 @@ pub mod parse {
     }
 
     /// Parse a comma-separated list of enabled and disabled linker features.
-    pub(crate) fn parse_linker_features(slot: &mut LinkerFeaturesCli, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_features(
+        slot: &mut LinkerFeaturesCli,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some(s) => {
                 for feature in s.split(',') {
@@ -1973,7 +2183,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_wasi_exec_model(
+        slot: &mut Option<WasiExecModel>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("command") => *slot = Some(WasiExecModel::Command),
             Some("reactor") => *slot = Some(WasiExecModel::Reactor),
@@ -1985,6 +2199,7 @@ pub mod parse {
     pub(crate) fn parse_split_debuginfo(
         slot: &mut Option<SplitDebuginfo>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| SplitDebuginfo::from_str(s).ok()) {
             Some(e) => *slot = Some(e),
@@ -1993,7 +2208,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_split_dwarf_kind(slot: &mut SplitDwarfKind, v: Option<&str>) -> bool {
+    pub(crate) fn parse_split_dwarf_kind(
+        slot: &mut SplitDwarfKind,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|s| SplitDwarfKind::from_str(s).ok()) {
             Some(e) => *slot = e,
             _ => return false,
@@ -2001,7 +2220,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
+    pub(crate) fn parse_stack_protector(
+        slot: &mut StackProtector,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|s| StackProtector::from_str(s).ok()) {
             Some(ssp) => *slot = ssp,
             _ => return false,
@@ -2012,6 +2235,7 @@ pub mod parse {
     pub(crate) fn parse_branch_protection(
         slot: &mut Option<BranchProtection>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => {
@@ -2051,10 +2275,11 @@ pub mod parse {
     pub(crate) fn parse_collapse_macro_debuginfo(
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() {
                     CollapseMacroDebuginfo::Yes
                 } else {
@@ -2074,6 +2299,7 @@ pub mod parse {
     pub(crate) fn parse_proc_macro_execution_strategy(
         slot: &mut ProcMacroExecutionStrategy,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             Some("same-thread") => ProcMacroExecutionStrategy::SameThread,
@@ -2083,7 +2309,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_inlining_threshold(slot: &mut InliningThreshold, v: Option<&str>) -> bool {
+    pub(crate) fn parse_inlining_threshold(
+        slot: &mut InliningThreshold,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("always" | "yes") => {
                 *slot = InliningThreshold::Always;
@@ -2106,6 +2336,7 @@ pub mod parse {
     pub(crate) fn parse_llvm_module_flag(
         slot: &mut Vec<(String, u32, String)>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         let elements = v.unwrap_or_default().split(':').collect::<Vec<_>>();
         let [key, md_type, value, behavior] = elements.as_slice() else {
@@ -2130,7 +2361,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_function_return(slot: &mut FunctionReturn, v: Option<&str>) -> bool {
+    pub(crate) fn parse_function_return(
+        slot: &mut FunctionReturn,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("keep") => *slot = FunctionReturn::Keep,
             Some("thunk-extern") => *slot = FunctionReturn::ThunkExtern,
@@ -2139,11 +2374,15 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>) -> bool {
+    pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>, _: bool) -> bool {
         v == Some("spec")
     }
 
-    pub(crate) fn parse_mir_include_spans(slot: &mut MirIncludeSpans, v: Option<&str>) -> bool {
+    pub(crate) fn parse_mir_include_spans(
+        slot: &mut MirIncludeSpans,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         *slot = match v {
             Some("on" | "yes" | "y" | "true") | None => MirIncludeSpans::On,
             Some("off" | "no" | "n" | "false") => MirIncludeSpans::Off,
@@ -2154,9 +2393,13 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_align(slot: &mut Option<Align>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_align(
+        slot: &mut Option<Align>,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut bytes = 0u64;
-        if !parse_number(&mut bytes, v) {
+        if !parse_number(&mut bytes, v, is_target_modifier) {
             return false;
         }
 
@@ -2172,6 +2415,7 @@ pub mod parse {
     pub(crate) fn parse_assert_incr_state(
         slot: &mut Option<IncrementalStateAssertion>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             Some("loaded") => Some(IncrementalStateAssertion::Loaded),
@@ -2181,7 +2425,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_rust_version(slot: &mut Option<RustcVersion>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_rust_version(
+        slot: &mut Option<RustcVersion>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         let Some(v) = v else {
             return false;
         };
@@ -2195,147 +2443,193 @@ pub mod parse {
 }
 
 options! {
-    CodegenOptions, CodegenOptionsTargetModifiers, CG_OPTIONS, cgopts, "C", "codegen",
+    CodegenOptions, CodegenOptionsKey, CG_OPTIONS, cgopts, "C", Some("T"), codegen,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
 
     // tidy-alphabetical-start
-    ar: () = ((), parse_ignore, [UNTRACKED],
+    ar: () = ((), parse_ignore, [UNTRACKED] { TARGET_MODIFIER: Never },
         "this option has been removed",
         removed: Err),
+    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
+    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "set options for branch target identification and pointer authentication on AArch64"),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
-    code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
+    code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED] { TARGET_MODIFIER: Never },
         "choose the code model to use (`rustc --print code-models` for details)"),
-    codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
+    codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED] { TARGET_MODIFIER: Never },
         "divide crate into N units to optimize in parallel"),
     collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
-        parse_collapse_macro_debuginfo, [TRACKED],
+        parse_collapse_macro_debuginfo, [TRACKED] { TARGET_MODIFIER: Never },
         "set option to collapse debuginfo for macros"),
-    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED] { MITIGATION: ControlFlowGuard },
+    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED] { MITIGATION: ControlFlowGuard } { TARGET_MODIFIER: Never },
         "use Windows Control Flow Guard (default: no)"),
-    debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "explicitly enable the `cfg(debug_assertions)` directive"),
-    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED],
+    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED] { TARGET_MODIFIER: Never },
         "debug info emission level (0-2, none, line-directives-only, \
         line-tables-only, limited, or full; default: 0)"),
-    default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
+    default_linker_libraries: bool = (false, parse_bool, [UNTRACKED] { TARGET_MODIFIER: Never },
         "allow the linker to link its default libraries (default: no)"),
-    dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+    dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED] { TARGET_MODIFIER: Never },
         "import library generation tool (ignored except when targeting windows-gnu)"),
     #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
-    dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
+    dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED] { TARGET_MODIFIER: Never },
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
-    embed_bitcode: bool = (true, parse_bool, [TRACKED],
+    embed_bitcode: bool = (true, parse_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "emit bitcode in rlibs (default: yes)"),
-    extra_filename: String = (String::new(), parse_string, [UNTRACKED],
+    extra_filename: String = (String::new(), parse_string, [UNTRACKED] { TARGET_MODIFIER: Never },
         "extra data to put in each output filename"),
-    force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
+    fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "make the x18 register reserved on AArch64 (default: no)"),
+    force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED] { TARGET_MODIFIER: Never },
         "force use of the frame pointers"),
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
-    force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "force use of unwind tables"),
-    help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
-    incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
+    help: bool = (false, parse_no_value, [UNTRACKED] { TARGET_MODIFIER: Never }, "Print codegen options"),
+    incremental: Option<String> = (None, parse_opt_string, [UNTRACKED] { TARGET_MODIFIER: Never },
         "enable incremental compilation"),
-    inline_threshold: () = ((), parse_ignore, [UNTRACKED],
+    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
+    inline_threshold: () = ((), parse_ignore, [UNTRACKED] { TARGET_MODIFIER: Never },
         "this option has been removed \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
         removed: Err),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
-    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
+    instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED] { TARGET_MODIFIER: Never },
         "instrument the generated code to support LLVM source-based code coverage reports \
         (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`"),
-    jump_tables: bool = (true, parse_bool, [TRACKED],
+    jump_tables: bool = (true, parse_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "allow jump table and lookup table generation from switch case lowering (default: yes)"),
-    link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
+    link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED] { TARGET_MODIFIER: Never },
         "a single extra argument to append to the linker invocation (can be used several times)"),
-    link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
+    link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED] { TARGET_MODIFIER: Never },
         "extra arguments to append to the linker invocation (space separated)"),
     #[rustc_lint_opt_deny_field_access("use `Session::link_dead_code` instead of this field")]
-    link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "try to generate and link dead code (default: no)"),
-    link_self_contained: LinkSelfContained = (LinkSelfContained::default(), parse_link_self_contained, [UNTRACKED],
+    link_self_contained: LinkSelfContained = (LinkSelfContained::default(), parse_link_self_contained, [UNTRACKED] { TARGET_MODIFIER: Never },
         "control whether to link Rust provided C objects/libraries or rely \
         on a C toolchain or linker installed in the system"),
-    linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+    linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED] { TARGET_MODIFIER: Never },
         "system linker to link outputs with"),
-    linker_features: LinkerFeaturesCli = (LinkerFeaturesCli::default(), parse_linker_features, [UNTRACKED],
+    linker_features: LinkerFeaturesCli = (LinkerFeaturesCli::default(), parse_linker_features, [UNTRACKED] { TARGET_MODIFIER: Never },
         "a comma-separated list of linker features to enable (+) or disable (-): `lld`"),
-    linker_flavor: Option<LinkerFlavorCli> = (None, parse_linker_flavor, [UNTRACKED],
+    linker_flavor: Option<LinkerFlavorCli> = (None, parse_linker_flavor, [UNTRACKED] { TARGET_MODIFIER: Never },
         "linker flavor"),
     linker_plugin_lto: LinkerPluginLto = (LinkerPluginLto::Disabled,
-        parse_linker_plugin_lto, [TRACKED],
+        parse_linker_plugin_lto, [TRACKED] { TARGET_MODIFIER: Never },
         "generate build artifacts that are compatible with linker-based LTO"),
-    llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED] { TARGET_MODIFIER: Never },
         "a list of arguments to pass to LLVM (space separated)"),
+    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enable/disable LLVM-level target features. \
+        This feature is unsafe and can cause ABI issues and compiler crashes, \
+        because LLVM does not support all target feature combinations."),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
-    lto: LtoCli = (LtoCli::Unspecified, parse_lto, [TRACKED],
+    lto: LtoCli = (LtoCli::Unspecified, parse_lto, [TRACKED] { TARGET_MODIFIER: Never },
         "perform LLVM link-time optimizations"),
-    metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED] { TARGET_MODIFIER: Never },
         "metadata to mangle symbol names with"),
-    no_prepopulate_passes: bool = (false, parse_no_value, [TRACKED],
+    no_prepopulate_passes: bool = (false, parse_no_value, [TRACKED] { TARGET_MODIFIER: Never },
         "give an empty list of passes to the pass manager"),
-    no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "disable the use of the redzone"),
-    no_stack_check: () = ((), parse_ignore, [UNTRACKED],
+    no_stack_check: () = ((), parse_ignore, [UNTRACKED] { TARGET_MODIFIER: Never },
         "this option has been removed",
         removed: Err),
-    no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
+    no_vectorize_loops: bool = (false, parse_no_value, [TRACKED] { TARGET_MODIFIER: Never },
         "disable loop vectorization optimization passes"),
-    no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],
+    no_vectorize_slp: bool = (false, parse_no_value, [TRACKED] { TARGET_MODIFIER: Never },
         "disable LLVM's SLP vectorization pass"),
-    opt_level: String = ("0".to_string(), parse_string, [TRACKED],
+    opt_level: String = ("0".to_string(), parse_string, [TRACKED] { TARGET_MODIFIER: Never },
         "optimization level (0-3, s, or z; default: 0)"),
     #[rustc_lint_opt_deny_field_access("use `Session::overflow_checks` instead of this field")]
-    overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "use overflow checks for integer arithmetic"),
     #[rustc_lint_opt_deny_field_access("use `Session::panic_strategy` instead of this field")]
-    panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED],
+    panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED] { TARGET_MODIFIER: Never },
         "panic strategy to compile crate with"),
-    passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+    passes: Vec<String> = (Vec::new(), parse_list, [TRACKED] { TARGET_MODIFIER: Never },
         "a list of extra LLVM passes to run (space separated)"),
-    prefer_dynamic: bool = (false, parse_bool, [TRACKED],
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
+    prefer_dynamic: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: Never },
         "prefer dynamic linking to static linking (default: no)"),
     profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
-        parse_switch_with_opt_path, [TRACKED],
+        parse_switch_with_opt_path, [TRACKED] { TARGET_MODIFIER: Never },
         "compile the program with profiling instrumentation"),
-    profile_sample_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+    profile_sample_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED] { TARGET_MODIFIER: Never },
         "use the given `.prof` file for sample-based profile-guided optimization"),
-    profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+    profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED] { TARGET_MODIFIER: Never },
         "use the given `.profdata` file for profile-guided optimization"),
+    reg_struct_return: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "On x86-32 targets, it overrides the default ABI to return small structs in registers."),
+    regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
+        in registers EAX, EDX, and ECX instead of on the stack for\
+        \"C\", \"cdecl\", and \"stdcall\" fn."),
     #[rustc_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field")]
-    relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
+    relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED] { TARGET_MODIFIER: Never },
         "control generation of position-independent code (PIC) \
         (`rustc --print relocation-models` for details)"),
-    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
+    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED] { TARGET_MODIFIER: Never },
         "choose which RELRO level to use"),
-    remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
+    remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED] { TARGET_MODIFIER: Never },
         "output remarks for these optimization passes (space separated, or \"all\")"),
-    rpath: bool = (false, parse_bool, [UNTRACKED],
+    retpoline: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
+    rpath: bool = (false, parse_bool, [UNTRACKED] { TARGET_MODIFIER: Never },
         "set rpath values in libs/exes (default: no)"),
-    save_temps: bool = (false, parse_bool, [UNTRACKED],
+    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
+    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED_UNSTABLE],
+        "use a sanitizer"),
+    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enable normalizing integer types (default: no)"),
+    save_temps: bool = (false, parse_bool, [UNTRACKED] { TARGET_MODIFIER: Never },
         "save all temporary output files during compilation (default: no)"),
-    soft_float: () = ((), parse_ignore, [UNTRACKED],
+    soft_float: () = ((), parse_ignore, [UNTRACKED] { TARGET_MODIFIER: Never },
         "this option has been removed \
         (use a corresponding *eabi target instead)",
         removed: Err),
     #[rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
-    split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
+    split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED] { TARGET_MODIFIER: Never },
         "how to handle split-debuginfo, a platform-specific option"),
-    strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
+    strip: Strip = (Strip::None, parse_strip, [UNTRACKED] { TARGET_MODIFIER: Never },
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
-        parse_symbol_mangling_version, [TRACKED],
+        parse_symbol_mangling_version, [TRACKED] { TARGET_MODIFIER: Never },
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
-    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED] { TARGET_MODIFIER: TargetCpu },
+    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
-    target_feature: String = (String::new(), parse_target_feature, [TRACKED],
+    target_feature: String = (String::new(), parse_target_feature, [TRACKED] { TARGET_MODIFIER: Never },
         "target specific attributes. (`rustc --print target-features` for details). \
         This feature is unsafe."),
-    unsafe_allow_abi_mismatch: Vec<String> = (Vec::new(), parse_comma_list, [UNTRACKED],
+    unsafe_allow_abi_mismatch: Vec<String> = (Vec::new(), parse_comma_list, [UNTRACKED] { TARGET_MODIFIER: Never },
         "Allow incompatible target modifiers in dependency crates (comma separated list)"),
     // tidy-alphabetical-end
 
@@ -2345,7 +2639,7 @@ options! {
 }
 
 options! {
-    UnstableOptions, UnstableOptionsTargetModifiers, Z_OPTIONS, dbopts, "Z", "unstable",
+    UnstableOptions, UnstableOptionsKey, Z_OPTIONS, dbopts, "Z", None, unstable,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
@@ -2396,9 +2690,6 @@ options! {
         (default: no)"),
     box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
-    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED] { TARGET_MODIFIER: BranchProtection },
-        "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
         "whether the stable interface is being built"),
     cache_proc_macros: bool = (false, parse_bool, [TRACKED],
@@ -2504,8 +2795,6 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
-    fixed_x18: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: FixedX18 },
-        "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: yes)"),
@@ -2555,8 +2844,6 @@ options! {
         - hashes of green query instances
         - hash collisions of query keys
         - hash collisions when creating dep-nodes"),
-    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: IndirectBranchCsPrefix },
-        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2611,10 +2898,6 @@ options! {
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list LLVM plugins to enable (space separated)"),
-    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED] { TARGET_MODIFIER: LlvmTargetFeature },
-        "enable/disable LLVM-level target features. \
-        This feature is unsafe and can cause ABI issues and compiler crashes, \
-        because LLVM does not support all target feature combinations."),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     llvm_writable: bool = (false, parse_bool, [TRACKED],
@@ -2723,26 +3006,6 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
-    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
-        Vec::new(),
-        parse_pointer_authentication_list_with_polarity,
-        [TRACKED]
-        { TARGET_MODIFIER: PointerAuthentication },
-        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
-        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
-        `auth-traps` - trap immediately on pointer authentication failure
-        `calls` - enable signing and authentication of all indirect calls
-        `elf-got` - enable authentication of pointers from GOT (ELF only)
-        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
-        `indirect-gotos` - enable signing and authentication of indirect goto targets
-        `init-fini` - enable signing of function pointers in init/fini arrays
-        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
-        `intrinsics` - pointer authentication intrinsics
-        `return-addresses` - enable signing and authentication of return addresses
-        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
-        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
-        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
-        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
@@ -2778,14 +3041,6 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
-    reg_struct_return: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RegStructReturn },
-        "On x86-32 targets, it overrides the default ABI to return small structs in registers.
-        It is UNSOUND to link together crates that use different values for this flag!"),
-    regparm: Option<u32> = (None, parse_opt_number, [TRACKED] { TARGET_MODIFIER: Regparm },
-        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
-        in registers EAX, EDX, and ECX instead of on the stack for\
-        \"C\", \"cdecl\", and \"stdcall\" fn.\
-        It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
@@ -2795,20 +3050,15 @@ options! {
 written to standard error output)"),
     renormalize_rigid_aliases: bool = (false, parse_bool, [TRACKED],
         "do not skip rigid aliases in normalization for internal debugging"),
-    retpoline: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: Retpoline },
+    retpoline: bool = (false, parse_bool, [TRACKED],
         "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
-    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RetpolineExternalThunk },
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED],
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED] { TARGET_MODIFIER: Sanitizer },
-        "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable generalizing pointer types (default: no)"),
-    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiNormalizeIntegers },
-        "enable normalizing integer types (default: no)"),
     sanitizer_cfi_diag: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable CFI diagnostics (default: no)"),
     sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2819,7 +3069,7 @@ written to standard error output)"),
         "enable KCFI arity indicator (default: no)"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
-    sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
+    sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers_unfiltered, [TRACKED],
         "enable recovery for selected sanitizers"),
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \

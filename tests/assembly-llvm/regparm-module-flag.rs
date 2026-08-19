@@ -2,11 +2,11 @@
 // Issue: https://github.com/rust-lang/rust/issues/145271
 //@ add-minicore
 //@ assembly-output: emit-asm
-//@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static
+//@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static -Zunstable-options
 //@ revisions: REGPARM1 REGPARM2 REGPARM3
-//@[REGPARM1] compile-flags: -Zregparm=1
-//@[REGPARM2] compile-flags: -Zregparm=2
-//@[REGPARM3] compile-flags: -Zregparm=3
+//@[REGPARM1] compile-flags: -Tregparm=1
+//@[REGPARM2] compile-flags: -Tregparm=2
+//@[REGPARM3] compile-flags: -Tregparm=3
 //@ needs-llvm-components: x86
 #![feature(no_core)]
 #![no_std]

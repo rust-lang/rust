@@ -396,7 +396,7 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    if let Some(regparm_count) = sess.opts.unstable_opts.regparm {
+    if let Some(regparm_count) = sess.opts.cg.regparm {
         llvm::add_module_flag_u32(
             llmod,
             llvm::ModuleFlagMergeBehavior::Error,
@@ -514,7 +514,7 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+    if sess.opts.cg.indirect_branch_cs_prefix {
         llvm::add_module_flag_u32(
             llmod,
             llvm::ModuleFlagMergeBehavior::Override,

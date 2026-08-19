@@ -13,7 +13,19 @@
 use run_make_support::{run_fail, rustc};
 
 fn main() {
-    rustc().arg("-g").arg("-Zsanitizer=address").crate_type("cdylib").input("library.rs").run();
-    rustc().arg("-g").arg("-Zsanitizer=address").crate_type("bin").input("program.rs").run();
+    rustc()
+        .arg("-g")
+        .arg("-Csanitizer=address")
+        .arg("-Zunstable-options")
+        .crate_type("cdylib")
+        .input("library.rs")
+        .run();
+    rustc()
+        .arg("-g")
+        .arg("-Csanitizer=address")
+        .arg("-Zunstable-options")
+        .crate_type("bin")
+        .input("program.rs")
+        .run();
     run_fail("program").assert_stderr_contains("stack-buffer-overflow");
 }

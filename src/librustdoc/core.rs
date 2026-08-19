@@ -218,6 +218,7 @@ pub(crate) fn create_config(
         check_cfgs,
         codegen_options,
         unstable_opts,
+        collected_options,
         target,
         edition,
         sysroot,
@@ -227,7 +228,6 @@ pub(crate) fn create_config(
         scrape_examples_options,
         remap_path_prefix,
         remap_path_scope,
-        target_modifiers,
         ..
     }: RustdocOptions,
     render_options: &RenderOptions,
@@ -274,6 +274,7 @@ pub(crate) fn create_config(
         lint_opts,
         lint_cap,
         cg: codegen_options,
+        collected_options,
         externs,
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
@@ -293,7 +294,6 @@ pub(crate) fn create_config(
         } else {
             OutputTypes::new(&[])
         },
-        target_modifiers,
         ..Options::default()
     };
 

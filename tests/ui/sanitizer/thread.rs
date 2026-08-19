@@ -13,7 +13,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-thread
 //
-//@ compile-flags: -Z sanitizer=thread -O -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -T sanitizer=thread -O -C unsafe-allow-abi-mismatch=sanitizer -Zunstable-options
 //
 //@ run-fail-or-crash
 //@ error-pattern: WARNING: ThreadSanitizer: data race

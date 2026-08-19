@@ -299,9 +299,13 @@ pub(crate) struct SanitizersNotSupported {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer={$first}` is incompatible with `-Zsanitizer={$second}`")]
+#[diag(
+    "`-{$first_prefix}sanitizer={$first}` is incompatible with `-{$second_prefix}sanitizer={$second}`"
+)]
 pub(crate) struct CannotMixAndMatchSanitizers {
+    pub(crate) first_prefix: &'static str,
     pub(crate) first: String,
+    pub(crate) second_prefix: &'static str,
     pub(crate) second: String,
 }
 
@@ -318,31 +322,31 @@ pub(crate) struct CannotEnableCrtStaticLinux;
 pub(crate) struct CannotEnableCrtStaticPointerAuth;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]
+#[diag("`-Tsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]
 pub(crate) struct SanitizerCfiRequiresLto;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`")]
+#[diag("`-Tsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`")]
 pub(crate) struct SanitizerCfiRequiresSingleCodegenUnit;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-cfi-canonical-jump-tables` requires `-Zsanitizer=cfi`")]
+#[diag("`-Zsanitizer-cfi-canonical-jump-tables` requires `-Tsanitizer=cfi`")]
 pub(crate) struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`")]
+#[diag("`-Zsanitizer-cfi-generalize-pointers` requires `-Tsanitizer=cfi` or `-Tsanitizer=kcfi`")]
 pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`")]
+#[diag("`-Tsanitizer-cfi-normalize-integers` requires `-Tsanitizer=cfi` or `-Tsanitizer=kcfi`")]
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`")]
+#[diag("`-Zsanitizer-kcfi-arity` requires `-Tsanitizer=kcfi`")]
 pub(crate) struct SanitizerKcfiArityRequiresKcfi;
 
 #[derive(Diagnostic)]
-#[diag("`-Z sanitizer=kcfi` requires `-C panic=abort`")]
+#[diag("`-Tsanitizer=kcfi` requires `-C panic=abort`")]
 pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 
 #[derive(Diagnostic)]
@@ -389,7 +393,7 @@ pub(crate) struct PointerAuthenticationTypeDiscriminationNotSupportedForTarget<'
 
 #[derive(Diagnostic)]
 #[diag(
-    "`-Z pointer-authentication` is not supported for target {$target_triple} and will be ignored"
+    "`-T pointer-authentication` is not supported for target {$target_triple} and will be ignored"
 )]
 pub(crate) struct PointerAuthenticationNotSupportedForTarget<'a> {
     pub(crate) target_triple: &'a TargetTuple,
@@ -404,7 +408,7 @@ pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zbranch-protection` is only supported on aarch64")]
+#[diag("`-Tbranch-protection` is only supported on aarch64")]
 pub(crate) struct BranchProtectionRequiresAArch64;
 
 #[derive(Diagnostic)]
@@ -667,21 +671,21 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
-#[diag("`-Zindirect-branch-cs-prefix` is only supported on x86 and x86_64")]
+#[diag("`-Tindirect-branch-cs-prefix` is only supported on x86 and x86_64")]
 pub(crate) struct IndirectBranchCsPrefixRequiresX86OrX8664;
 
 #[derive(Diagnostic)]
-#[diag("`-Zregparm={$regparm}` is unsupported (valid values 0-3)")]
+#[diag("`-Tregparm={$regparm}` is unsupported (valid values 0-3)")]
 pub(crate) struct UnsupportedRegparm {
     pub(crate) regparm: u32,
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zregparm=N` is only supported on x86")]
+#[diag("`-Tregparm=N` is only supported on x86")]
 pub(crate) struct UnsupportedRegparmArch;
 
 #[derive(Diagnostic)]
-#[diag("`-Zreg-struct-return` is only supported on x86")]
+#[diag("`-Treg-struct-return` is only supported on x86")]
 pub(crate) struct UnsupportedRegStructReturnArch;
 
 #[derive(Diagnostic)]
@@ -729,3 +733,83 @@ pub(crate) struct ResolveRelativePath {
     pub span: Span,
     pub path: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "mixing `-{$target_modifier_prefix}{$flag_name}` will cause an ABI mismatch in crate `{$local_crate}`"
+)]
+#[help(
+    "the `-{$target_modifier_prefix}{$flag_name}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "`-{$target_modifier_prefix}{$flag_name}{$local_value}` in this crate is incompatible with `-{$target_modifier_prefix}{$flag_name}{$extern_value}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "set `-{$target_modifier_prefix}{$flag_name}{$extern_value}` in this crate or `-{$target_modifier_prefix}{$flag_name}{$local_value}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
+pub(crate) struct IncompatibleFlagsMismatched {
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub prefix: &'static str,
+    pub target_modifier_prefix: &'static str,
+    pub flag_name: String,
+    pub local_value: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "mixing `-{$target_modifier_prefix}{$flag_name}` will cause an ABI mismatch in crate `{$local_crate}`"
+)]
+#[help(
+    "the `-{$target_modifier_prefix}{$flag_name}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "unset `-{$target_modifier_prefix}{$flag_name}` in this crate is incompatible with `-{$target_modifier_prefix}{$flag_name}{$extern_value}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "set `-{$target_modifier_prefix}{$flag_name}{$extern_value}` in this crate, unset `-{$target_modifier_prefix}{$flag_name}` in `{$extern_crate}`, or use `-{$prefix}{$flag_name}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
+pub(crate) struct IncompatibleFlagsUnsetLocally {
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub prefix: &'static str,
+    pub target_modifier_prefix: &'static str,
+    pub flag_name: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "mixing `-{$target_modifier_prefix}{$flag_name}` will cause an ABI mismatch in crate `{$local_crate}`"
+)]
+#[help(
+    "the `-{$target_modifier_prefix}{$flag_name}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "unset `-{$target_modifier_prefix}{$flag_name}` in `{$extern_crate}` is incompatible with `-{$target_modifier_prefix}{$flag_name}{$local_value}` in this crate"
+)]
+#[help(
+    "set `-{$target_modifier_prefix}{$flag_name}{$local_value}` in `{$extern_crate}`, unset `-{$target_modifier_prefix}{$flag_name}` in this crate, or use `-{$prefix}{$flag_name}` in this crate instead"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
+pub(crate) struct IncompatibleFlagsUnsetExternally {
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub prefix: &'static str,
+    pub target_modifier_prefix: &'static str,
+    pub flag_name: String,
+    pub local_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("`target-cpu` must be set with `-Ttarget-cpu` for this target")]
+pub(crate) struct TargetCpuNeedsTargetModifierOpt;

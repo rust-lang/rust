@@ -7,11 +7,11 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
-//@ compile-flags: -Copt-level=0 -Zsanitizer=address -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Copt-level=0 -Csanitizer=address -C unsafe-allow-abi-mismatch=sanitizer -Zunstable-options
 //@ run-pass
 
 pub struct Wrap {
-    pub t: [usize; 1]
+    pub t: [usize; 1],
 }
 
 impl Wrap {
