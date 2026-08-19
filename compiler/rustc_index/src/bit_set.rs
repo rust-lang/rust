@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::rc::Rc;
 use std::{fmt, iter, slice};
 
@@ -82,7 +82,7 @@ pub struct DenseBitSet<T, S = Vec<Word>> {
     marker: PhantomData<T>,
 }
 
-impl<T> DenseBitSet<T> {
+impl<T, S> DenseBitSet<T, S> {
     /// Gets the domain size.
     pub fn domain_size(&self) -> usize {
         self.domain_size
@@ -108,7 +108,7 @@ impl<T: Idx> DenseBitSet<T> {
     }
 }
 
-impl<T: Idx> DenseBitSet<T> {
+impl<T: Idx, S: DerefMut<Target = [Word]>> DenseBitSet<T, S> {
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
@@ -135,9 +135,9 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
-    pub fn superset(&self, other: &DenseBitSet<T>) -> bool {
+    pub fn superset<OS: Deref<Target = [Word]>>(&self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        self.words.iter().zip(&*other.words).all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
@@ -286,7 +286,7 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     /// Sets `self = self | !other`.
-    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
+    pub fn union_not<OS: Deref<Target = [Word]>>(&mut self, other: &DenseBitSet<T, OS>) {
         assert_eq!(self.domain_size, other.domain_size);
 
         // FIXME(Zalathar): If we were to forcibly _set_ all excess bits before
@@ -301,21 +301,21 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     /// Returns true if `self` was modified.
-    pub fn union(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn union<OS: Deref<Target = [Word]>>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a | b)
     }
 
     /// Returns true if `self` was modified.
-    pub fn subtract(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn subtract<OS: Deref<Target = [Word]>>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a & !b)
     }
 
     /// Returns true if `self` was modified.
-    pub fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn intersect<OS: Deref<Target = [Word]>>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        update_words(&mut self.words, &other.words, |a, b| a & b)
+        update_words(&mut *self.words, &other.words, |a, b| a & b)
     }
 }
 
@@ -325,7 +325,7 @@ impl<T: Idx> From<GrowableBitSet<T>> for DenseBitSet<T> {
     }
 }
 
-impl<T> Clone for DenseBitSet<T> {
+impl<T, S: Clone> Clone for DenseBitSet<T, S> {
     fn clone(&self) -> Self {
         DenseBitSet {
             domain_size: self.domain_size,
@@ -340,13 +340,13 @@ impl<T> Clone for DenseBitSet<T> {
     }
 }
 
-impl<T: Idx> fmt::Debug for DenseBitSet<T> {
+impl<T: Idx, S: DerefMut<Target = [Word]>> fmt::Debug for DenseBitSet<T, S> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<T: Idx> ToString for DenseBitSet<T> {
+impl<T: Idx, S: DerefMut<Target = [Word]>> ToString for DenseBitSet<T, S> {
     fn to_string(&self) -> String {
         let mut result = String::new();
         let mut sep = '[';
@@ -355,7 +355,7 @@ impl<T: Idx> ToString for DenseBitSet<T> {
 
         // i tracks how many bits we have printed so far.
         let mut i = 0;
-        for word in &self.words {
+        for word in &*self.words {
             let mut word = *word;
             for _ in 0..WORD_BYTES {
                 // for each byte in `word`:
