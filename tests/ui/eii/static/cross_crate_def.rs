@@ -1,3 +1,5 @@
+//@ revisions: rlib dylib
+//@[dylib] needs-crate-type: dylib
 //@ run-pass
 //@ check-run-results
 //@ aux-build: cross_crate_def.rs
