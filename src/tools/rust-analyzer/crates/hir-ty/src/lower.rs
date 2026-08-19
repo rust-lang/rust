@@ -71,7 +71,7 @@ use crate::{
         FnSigKind, FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PatList, Pattern,
         PolyFnSig, Predicate, Region, StoredClauses, StoredConst, StoredEarlyBinder,
         StoredGenericArg, StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy,
-        TraitPredicate, TraitRef, Ty, Tys, Unnormalized, abi::Safety, mk_param,
+        TraitPredicate, TraitRef, Ty, Tys, Unnormalized, abi::Safety, default_types, mk_param,
         util::BottomUpFolder,
     },
 };
@@ -284,7 +284,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self.def = ExpressionStoreOwnerId::Signature(owner.def());
     }
 
-    pub(crate) fn with_interning_mode(mut self, interning_mode: LoweringMode) -> Self {
+    pub fn with_interning_mode(mut self, interning_mode: LoweringMode) -> Self {
         self.interning_mode = interning_mode;
         self
     }
@@ -880,7 +880,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
     fn lower_trait_ref(
         &mut self,
-        trait_ref: &HirTraitRef,
+        trait_ref: HirTraitRef,
         explicit_self_ty: Ty<'db>,
     ) -> Option<TraitRef<'db>> {
         self.lower_trait_ref_from_path(trait_ref.path, explicit_self_ty).map(|it| it.0)
@@ -1494,7 +1494,7 @@ pub(crate) fn impl_trait_with_diagnostics<'db>(
         LifetimeLoweringMode::Bound,
     );
     let self_ty = db.impl_self_ty(impl_id).skip_binder();
-    let target_trait = impl_data.target_trait.as_ref()?;
+    let target_trait = impl_data.target_trait?;
     let trait_ref = ctx.lower_trait_ref(target_trait, self_ty)?;
     Some(TyLoweringResult::from_ctx(StoredEarlyBinder::bind(StoredTraitRef::new(trait_ref)), ctx))
 }
@@ -1846,26 +1846,24 @@ pub(crate) fn impl_self_ty_with_diagnostics_cycle_result<'db>(
 }
 
 pub(crate) fn const_param_ty<'db>(db: &'db dyn HirDatabase, def: ConstParamId) -> Ty<'db> {
-    let param_types = const_param_types(db, def.parent());
-    match param_types.get(def.local_id()) {
-        Some(ty) => ty.as_ref(),
-        None => Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed),
-    }
+    const_param_types(db, def.parent()).get(def.local_id())
 }
 
 /// Wrapper struct around `ArenaMap` which implements [`SalsaValue`].
 ///
 /// Required to make the `SalsaValue` derive for [`TyLoweringResult`] work.
-#[derive(Default, PartialEq, Eq, SalsaValue)]
+#[derive(Debug, Default, PartialEq, Eq, SalsaValue)]
 pub struct ConstParamTypes {
     map: ArenaMap<LocalTypeOrConstParamId, StoredTy>,
 }
 
-impl Deref for ConstParamTypes {
-    type Target = ArenaMap<LocalTypeOrConstParamId, StoredTy>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.map
+impl ConstParamTypes {
+    #[inline]
+    pub fn get(&self, local_id: LocalTypeOrConstParamId) -> Ty<'_> {
+        match self.map.get(local_id) {
+            Some(ty) => ty.as_ref(),
+            None => default_types().types.error,
+        }
     }
 }
 
@@ -2149,9 +2147,8 @@ fn resolve_type_param_assoc_type_shorthand(
             if target != param.into() {
                 continue;
             }
-            let Some(TypeNs::TraitId(bounded_trait)) =
-                resolver.resolve_path_in_type_ns_fully(db, &ctx.store[bounded_trait_path])
-            else {
+            let mut ctx = ctx.at_path(bounded_trait_path);
+            let Some(TypeNs::TraitId(bounded_trait)) = ctx.resolve_path_in_type_ns_fully() else {
                 continue;
             };
             if !SupertraitsInfo::query(db, bounded_trait)
@@ -2162,11 +2159,8 @@ fn resolve_type_param_assoc_type_shorthand(
                 continue;
             }
 
-            let Some((bounded_trait_ref, _)) =
-                ctx.lower_trait_ref_from_path(bounded_trait_path, param_ty)
-            else {
-                continue;
-            };
+            let bounded_trait_ref =
+                ctx.lower_trait_ref_from_resolved_path(bounded_trait, param_ty, false, Span::Dummy);
             // Now, search from the start on the *bounded* trait like if we wrote `Self::Assoc`. Eventually, we'll get
             // the correct trait ref (or a cycle).
             let lookup_on_bounded_trait = resolve_type_param_assoc_type_shorthand(
@@ -2342,16 +2336,16 @@ pub struct GenericPredicates {
     // The order is the following:
     //
     // 1. If `has_trait_implied_predicate == true`, the implicit trait predicate.
-    // 2. The bounds of the associated types of the parents, coming from `Trait<Assoc: Trait>`.
+    // 2. The explicit, self-only predicates for the parent.
+    // 3. The bounds of the associated types of the parents, coming from `Trait<Assoc: Trait>`.
     //    Note: associated type bounds from `Self::Assoc: Trait` on traits *won't* be included
     //    here, they are in 3.
-    // 3. The explicit, self-only predicates for the parent.
     // 4. The explicit, self-only trait predicate for the child,
     // 5. The bounds of the associated types of the child.
     predicates: StoredEarlyBinder<StoredClauses>,
     // Keep this ordered according to the above.
     has_trait_implied_predicate: bool,
-    parent_explicit_self_predicates_start: u32,
+    parent_assoc_ty_bounds_start: u32,
     own_predicates_start: u32,
     own_assoc_ty_bounds_start: u32,
 }
@@ -2386,9 +2380,9 @@ impl GenericPredicates {
     pub fn empty() -> &'static GenericPredicates {
         static EMPTY: OnceLock<GenericPredicates> = OnceLock::new();
         EMPTY.get_or_init(|| GenericPredicates {
-            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&[]).store()),
+            predicates: StoredEarlyBinder::bind(Clauses::default().store()),
             has_trait_implied_predicate: false,
-            parent_explicit_self_predicates_start: 0,
+            parent_assoc_ty_bounds_start: 0,
             own_predicates_start: 0,
             own_assoc_ty_bounds_start: 0,
         })
@@ -2402,7 +2396,7 @@ impl GenericPredicates {
         Self {
             predicates,
             has_trait_implied_predicate: false,
-            parent_explicit_self_predicates_start: 0,
+            parent_assoc_ty_bounds_start: 0,
             own_predicates_start: 0,
             own_assoc_ty_bounds_start: len,
         }
@@ -2461,10 +2455,16 @@ impl GenericPredicates {
         &self,
     ) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
         self.predicates.get().map_bound(|it| {
-            it.as_slice()[self.parent_explicit_self_predicates_start as usize
-                ..self.own_assoc_ty_bounds_start as usize]
-                .iter()
-                .copied()
+            std::iter::chain(
+                it.as_slice()[usize::from(self.has_trait_implied_predicate)
+                    ..self.parent_assoc_ty_bounds_start as usize]
+                    .iter()
+                    .copied(),
+                it.as_slice()
+                    [self.own_predicates_start as usize..self.own_assoc_ty_bounds_start as usize]
+                    .iter()
+                    .copied(),
+            )
         })
     }
 
@@ -2472,13 +2472,14 @@ impl GenericPredicates {
     pub fn explicit_assoc_types_predicates(
         &self,
     ) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
-        self.predicates.get().map_bound(|predicates| {
-            let predicates = predicates.as_slice();
-            predicates[usize::from(self.has_trait_implied_predicate)
-                ..self.parent_explicit_self_predicates_start as usize]
-                .iter()
-                .copied()
-                .chain(predicates[self.own_assoc_ty_bounds_start as usize..].iter().copied())
+        self.predicates.get().map_bound(|it| {
+            std::iter::chain(
+                it.as_slice()[self.parent_assoc_ty_bounds_start as usize
+                    ..self.own_predicates_start as usize]
+                    .iter()
+                    .copied(),
+                it.as_slice()[self.own_assoc_ty_bounds_start as usize..].iter().copied(),
+            )
         })
     }
 }
@@ -2536,124 +2537,92 @@ fn generic_predicates<'db>(
     );
     let generics = generics.get().unwrap();
     let sized_trait = ctx.lang_items.Sized;
+    let myself = generics.owner();
 
-    // We need to lower parents and self separately - see the comment below lowering of implicit
-    // `Sized` predicates for why.
     let mut own_predicates = Vec::new();
-    let mut parent_predicates = Vec::new();
     let mut own_assoc_ty_bounds = Vec::new();
-    let mut parent_assoc_ty_bounds = Vec::new();
     let own_implicit_trait_predicate = implicit_trait_predicate(interner, def);
-    let parent_implicit_trait_predicate = if let Some(parent) = generics.parent() {
-        implicit_trait_predicate(interner, parent.def())
+    let parent = if let Some(parent) = generics.parent() {
+        &GenericPredicates::query_with_diagnostics(db, parent.def()).value
     } else {
-        None
+        GenericPredicates::empty()
     };
-    for maybe_parent_generics in generics.iter_owners() {
-        // Collect only diagnostics from the child, not including parents.
-        ctx.diagnostics.clear();
 
-        ctx.set_owner(maybe_parent_generics);
-        for pred in maybe_parent_generics.where_predicates() {
-            tracing::debug!(?pred);
-            for (pred, source) in ctx.lower_where_predicate(pred, false) {
-                match source {
-                    GenericPredicateSource::SelfOnly => {
-                        if maybe_parent_generics.def() == def {
-                            own_predicates.push(pred);
-                        } else {
-                            parent_predicates.push(pred);
-                        }
-                    }
-                    GenericPredicateSource::AssocTyBound => {
-                        if maybe_parent_generics.def() == def {
-                            own_assoc_ty_bounds.push(pred);
-                        } else {
-                            parent_assoc_ty_bounds.push(pred);
-                        }
-                    }
-                }
+    let generics = myself;
+
+    for pred in generics.where_predicates() {
+        tracing::debug!(?pred);
+        for (pred, source) in ctx.lower_where_predicate(pred, false) {
+            match source {
+                GenericPredicateSource::SelfOnly => own_predicates.push(pred),
+                GenericPredicateSource::AssocTyBound => own_assoc_ty_bounds.push(pred),
             }
         }
+    }
 
-        if maybe_parent_generics.def() == def {
-            push_const_arg_has_type_predicates(db, &mut own_predicates, maybe_parent_generics);
-        } else {
-            push_const_arg_has_type_predicates(db, &mut parent_predicates, maybe_parent_generics);
-        }
+    push_const_arg_has_type_predicates(db, &mut own_predicates, generics);
 
-        if let Some(sized_trait) = sized_trait {
-            let mut add_sized_clause = |param_idx, param_id, param_data| {
-                let (
-                    GenericParamId::TypeParamId(param_id),
-                    GenericParamDataRef::TypeParamData(param_data),
-                ) = (param_id, param_data)
-                else {
-                    return;
-                };
-
-                if param_data.provenance == TypeParamProvenance::TraitSelf {
-                    return;
-                }
-
-                let param_ty = Ty::new_param(interner, param_id, param_idx);
-                if ctx.unsized_types.contains(&param_ty) {
-                    return;
-                }
-                let trait_ref = TraitRef::new_from_args(
-                    interner,
-                    sized_trait.into(),
-                    GenericArgs::new_from_slice(&[param_ty.into()]),
-                );
-                let clause = Clause(Predicate::new(
-                    interner,
-                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                            trait_ref,
-                            polarity: rustc_type_ir::PredicatePolarity::Positive,
-                        }),
-                    )),
-                ));
-                if maybe_parent_generics.def() == def {
-                    own_predicates.push(clause);
-                } else {
-                    parent_predicates.push(clause);
-                }
+    if let Some(sized_trait) = sized_trait {
+        let mut add_sized_clause = |param_idx, param_id, param_data| {
+            let (
+                GenericParamId::TypeParamId(param_id),
+                GenericParamDataRef::TypeParamData(param_data),
+            ) = (param_id, param_data)
+            else {
+                return;
             };
-            maybe_parent_generics.iter_with_idx().for_each(|(param_idx, param_id, param_data)| {
-                add_sized_clause(param_idx, param_id, param_data);
-            });
-        }
 
-        // We do not clear `ctx.unsized_types`, as the `?Sized` clause of a child (e.g. an associated type) can
-        // be declared on the parent (e.g. the trait). It is nevertheless fine to register the implicit `Sized`
-        // predicates before lowering the child, as a child cannot define a `?Sized` predicate for its parent.
-        // But we do have to lower the parent first.
+            if param_data.provenance == TypeParamProvenance::TraitSelf {
+                return;
+            }
+
+            let param_ty = Ty::new_param(interner, param_id, param_idx);
+            if ctx.unsized_types.contains(&param_ty) {
+                return;
+            }
+            let trait_ref = TraitRef::new_from_args(
+                interner,
+                sized_trait.into(),
+                GenericArgs::new_from_slice(&[param_ty.into()]),
+            );
+            let clause = Clause(Predicate::new(
+                interner,
+                Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                    rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                        trait_ref,
+                        polarity: rustc_type_ir::PredicatePolarity::Positive,
+                    }),
+                )),
+            ));
+            own_predicates.push(clause);
+        };
+        generics.iter_with_idx().for_each(|(param_idx, param_id, param_data)| {
+            add_sized_clause(param_idx, param_id, param_data);
+        });
     }
 
     let diagnostics = mem::take(&mut ctx.diagnostics);
     let defined_anon_consts = mem::take(&mut ctx.defined_anon_consts);
 
-    let predicates = parent_implicit_trait_predicate
+    let parent_predicates = parent.predicates.get().skip_binder().as_slice();
+    let predicates = parent_predicates
         .iter()
         .chain(own_implicit_trait_predicate.iter())
-        .chain(parent_assoc_ty_bounds.iter())
-        .chain(parent_predicates.iter())
         .chain(own_predicates.iter())
         .chain(own_assoc_ty_bounds.iter())
         .copied()
         .collect::<Vec<_>>();
     let has_trait_implied_predicate =
-        parent_implicit_trait_predicate.is_some() || own_implicit_trait_predicate.is_some();
-    let parent_explicit_self_predicates_start =
-        has_trait_implied_predicate as u32 + parent_assoc_ty_bounds.len() as u32;
+        parent.has_trait_implied_predicate || own_implicit_trait_predicate.is_some();
+    let parent_assoc_ty_bounds_start =
+        parent.own_assoc_ty_bounds_start + u32::from(own_implicit_trait_predicate.is_some());
     let own_predicates_start =
-        parent_explicit_self_predicates_start + parent_predicates.len() as u32;
+        parent_predicates.len() as u32 + u32::from(own_implicit_trait_predicate.is_some());
     let own_assoc_ty_bounds_start = own_predicates_start + own_predicates.len() as u32;
 
     let predicates = GenericPredicates {
         has_trait_implied_predicate,
-        parent_explicit_self_predicates_start,
+        parent_assoc_ty_bounds_start,
         own_predicates_start,
         own_assoc_ty_bounds_start,
         predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
@@ -2687,19 +2656,23 @@ fn generic_predicates<'db>(
 fn push_const_arg_has_type_predicates<'db>(
     db: &'db dyn HirDatabase,
     predicates: &mut Vec<Clause<'db>>,
-    single_generics: &SingleGenerics<'db>,
+    generics: &SingleGenerics<'db>,
 ) {
+    let mut const_param_tys = None;
     let interner = DbInterner::new_no_crate(db);
-    for (param_index, param_id, _) in single_generics.iter_with_idx() {
-        let GenericParamId::ConstParamId(param_id) = param_id else { continue };
+    generics.iter_with_idx().for_each(|(param_index, param_id, _)| {
+        let GenericParamId::ConstParamId(param_id) = param_id else { return };
+
+        let const_param_tys =
+            *const_param_tys.get_or_insert_with(|| const_param_types(db, generics.def()));
         predicates.push(Clause(
             ClauseKind::ConstArgHasType(
                 Const::new_param(interner, ParamConst { id: param_id, index: param_index }),
-                db.const_param_ty(param_id),
+                const_param_tys.get(param_id.local_id()),
             )
             .upcast(interner),
         ));
-    }
+    });
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
@@ -2709,6 +2682,11 @@ impl GenericDefaults {
     #[inline]
     pub fn as_ref(&self) -> GenericDefaultsRef<'_> {
         GenericDefaultsRef(&self.0)
+    }
+
+    fn push(&mut self, index: usize, default: StoredEarlyBinder<StoredGenericArg>) {
+        self.0.extend((0..index - self.0.len()).map(|_| None));
+        self.0.push(Some(default));
     }
 }
 
@@ -2754,21 +2732,19 @@ pub(crate) fn generic_defaults_with_diagnostics<'db>(
     )
     .with_impl_trait_mode(ImplTraitLoweringMode::Disallowed);
     let generics = generics.get().unwrap();
-    let mut defaults = ThinVec::new();
-    if let Some(parent) = generics.parent() {
-        ctx.set_owner(parent);
-        defaults.extend(
-            parent.iter_with_idx().map(|(idx, _id, p)| handle_generic_param(&mut ctx, idx, p)),
-        );
-    }
-    ctx.diagnostics.clear(); // Don't include diagnostics from the parent.
-    ctx.defined_anon_consts.clear();
-    ctx.set_owner(generics.owner());
-    defaults.extend(
-        generics.iter_self_with_idx().map(|(idx, _id, p)| handle_generic_param(&mut ctx, idx, p)),
-    );
-    defaults.shrink_to_fit();
-    return TyLoweringResult::from_ctx(GenericDefaults(defaults), ctx);
+
+    let mut defaults = if let Some(parent) = generics.parent() {
+        generic_defaults_with_diagnostics(db, parent.def()).value.clone()
+    } else {
+        GenericDefaults(ThinVec::new())
+    };
+
+    generics
+        .iter_self_with_idx()
+        .filter_map(|(idx, _id, p)| Some((idx as usize, handle_generic_param(&mut ctx, idx, p)?)))
+        .for_each(|(idx, default)| defaults.push(idx, default));
+    defaults.0.shrink_to_fit();
+    return TyLoweringResult::from_ctx(defaults, ctx);
 
     fn handle_generic_param<'db>(
         ctx: &mut TyLoweringContext<'db, '_>,
@@ -2909,85 +2885,6 @@ fn fn_sig_for_enum_variant_constructor(
     def: EnumVariantId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
     ctor_signature(db, def.into(), def.lookup(db).parent.into())
-}
-
-// FIXME: Remove this.
-pub(crate) fn associated_ty_item_bounds<'db>(
-    db: &'db dyn HirDatabase,
-    type_alias: TypeAliasId,
-) -> EarlyBinder<'db, BoundExistentialPredicates<'db>> {
-    let type_alias_data = TypeAliasSignature::of(db, type_alias);
-    let resolver = type_alias.resolver(db);
-    let interner = DbInterner::new_no_crate(db);
-    let generics = OnceCell::new();
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &type_alias_data.store,
-        ExpressionStoreOwnerId::Signature(type_alias.into()),
-        type_alias.into(),
-        &generics,
-        LifetimeElisionKind::AnonymousReportError,
-        LifetimeLoweringMode::Bound,
-    );
-    // FIXME: we should never create non-existential predicates in the first place
-    // For now, use an error type so we don't run into dummy binder issues
-    let self_ty = Ty::new_error(interner, ErrorGuaranteed);
-
-    let mut bounds = Vec::new();
-    for bound in &type_alias_data.bounds {
-        ctx.lower_type_bound(bound, self_ty, false).for_each(|(pred, _)| {
-            if let Some(bound) = pred
-                .kind()
-                .map_bound(|c| match c {
-                    rustc_type_ir::ClauseKind::Trait(t) => {
-                        let id = t.def_id();
-                        let is_auto = TraitSignature::of(db, id.0).flags.contains(TraitFlags::AUTO);
-                        if is_auto {
-                            Some(ExistentialPredicate::AutoTrait(t.def_id()))
-                        } else {
-                            Some(ExistentialPredicate::Trait(ExistentialTraitRef::new_from_args(
-                                interner,
-                                t.def_id(),
-                                GenericArgs::new_from_slice(&t.trait_ref.args[1..]),
-                            )))
-                        }
-                    }
-                    rustc_type_ir::ClauseKind::Projection(p) => Some(
-                        ExistentialPredicate::Projection(ExistentialProjection::new_from_args(
-                            interner,
-                            p.def_id(),
-                            GenericArgs::new_from_slice(&p.projection_term.args[1..]),
-                            p.term,
-                        )),
-                    ),
-                    rustc_type_ir::ClauseKind::TypeOutlives(_) => None,
-                    rustc_type_ir::ClauseKind::RegionOutlives(_)
-                    | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
-                    | rustc_type_ir::ClauseKind::WellFormed(_)
-                    | rustc_type_ir::ClauseKind::ConstEvaluatable(_)
-                    | rustc_type_ir::ClauseKind::HostEffect(_)
-                    | rustc_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
-                })
-                .transpose()
-            {
-                bounds.push(bound);
-            }
-        });
-    }
-
-    if !ctx.unsized_types.contains(&self_ty)
-        && let Some(sized_trait) = ctx.lang_items.Sized
-    {
-        let sized_clause = Binder::dummy(ExistentialPredicate::Trait(ExistentialTraitRef::new(
-            interner,
-            sized_trait.into(),
-            [] as [GenericArg<'_>; 0],
-        )));
-        bounds.push(sized_clause);
-    }
-
-    EarlyBinder::bind(BoundExistentialPredicates::new_from_slice(&bounds))
 }
 
 pub(crate) fn associated_type_by_name_including_super_traits_allow_ambiguity<'db>(
