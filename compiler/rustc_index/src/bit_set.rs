@@ -6,6 +6,7 @@ use std::{fmt, iter, slice};
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+use smallvec::SmallVec;
 
 use crate::{Idx, IndexVec};
 
@@ -126,6 +127,19 @@ impl<T, S> DenseBitSet<T, S> {
     }
 }
 
+impl<T: Idx> DenseBitSet<T, SmallVec<[Word; 2]>> {
+    /// Creates a new, empty bitset with a given `domain_size`.
+    #[inline]
+    pub fn new_empty_in_smallvec(domain_size: usize) -> DenseBitSet<T, SmallVec<[Word; 2]>> {
+        let num_words = num_words(domain_size);
+        DenseBitSet {
+            domain_size,
+            words: std::iter::repeat(0).take(num_words).collect(),
+            marker: PhantomData,
+        }
+    }
+}
+
 impl<T: Idx> DenseBitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
@@ -145,7 +159,12 @@ impl<T: Idx> DenseBitSet<T> {
     }
 }
 
-impl<T: Idx, S: DerefMut<Target=[Word]>> DenseBitSet<T, S> {
+impl<T: Idx, S: DerefMut<Target = [Word]>> DenseBitSet<T, S> {
+    #[inline]
+    pub fn borrow_as_mut_slice(&mut self) -> DenseBitSet<T, &mut [Word]> {
+        DenseBitSet { domain_size: self.domain_size, words: &mut self.words, marker: PhantomData }
+    }
+
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
@@ -172,7 +191,7 @@ impl<T: Idx, S: DerefMut<Target=[Word]>> DenseBitSet<T, S> {
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
-    pub fn superset<OS: Deref<Target=[Word]>>(&self, other: &DenseBitSet<T, OS>) -> bool {
+    pub fn superset<OS: Deref<Target = [Word]>>(&self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         self.words.iter().zip(&*other.words).all(|(a, b)| (a & b) == *b)
     }
@@ -344,7 +363,9 @@ impl<T: Idx, S: DerefMut<Target=[Word]>> DenseBitSet<T, S> {
 }
 
 // dense REL dense
-impl<T: Idx, S: DerefMut<Target=[Word]>, OS: Deref<Target=[Word]>> BitRelations<DenseBitSet<T, OS>> for DenseBitSet<T, S> {
+impl<T: Idx, S: DerefMut<Target = [Word]>, OS: Deref<Target = [Word]>>
+    BitRelations<DenseBitSet<T, OS>> for DenseBitSet<T, S>
+{
     fn union(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a | b)
@@ -382,13 +403,13 @@ impl<T, S: Clone> Clone for DenseBitSet<T, S> {
     }
 }
 
-impl<T: Idx, S: DerefMut<Target=[Word]>> fmt::Debug for DenseBitSet<T, S> {
+impl<T: Idx, S: DerefMut<Target = [Word]>> fmt::Debug for DenseBitSet<T, S> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<T: Idx, S: DerefMut<Target=[Word]>> ToString for DenseBitSet<T, S> {
+impl<T: Idx, S: DerefMut<Target = [Word]>> ToString for DenseBitSet<T, S> {
     fn to_string(&self) -> String {
         let mut result = String::new();
         let mut sep = '[';

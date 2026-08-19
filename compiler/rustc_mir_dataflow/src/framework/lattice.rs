@@ -38,6 +38,8 @@
 //! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
+use std::ops::DerefMut;
+
 use rustc_index::Idx;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 
@@ -71,7 +73,10 @@ pub trait HasTop {
 /// A `DenseBitSet` represents the lattice formed by the powerset of all possible values of the
 /// index type `T` ordered by inclusion. Equivalently, it is a tuple of "two-point" lattices, one
 /// for each possible value of `T`.
-impl<T: Idx> JoinSemiLattice for DenseBitSet<T> {
+impl<T: Idx, S: DerefMut<Target = [u64]>> JoinSemiLattice for DenseBitSet<T, S>
+where
+    DenseBitSet<T, S>: Eq,
+{
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
     }
