@@ -866,6 +866,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::atomic_load => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
             let ptr = ptr.load_scalar(fx);
+            // FIXME: this ignores the atomic ordering and the volatile flag.
 
             let ty = generic_args.type_at(0);
             match ty.kind() {
@@ -901,6 +902,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::atomic_store => {
             intrinsic_args!(fx, args => (ptr, val); intrinsic);
             let ptr = ptr.load_scalar(fx);
+            // FIXME: this ignores the atomic ordering and the volatile flag.
 
             let ty = generic_args.type_at(0);
             match ty.kind() {
