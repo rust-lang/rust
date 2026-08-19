@@ -8,7 +8,6 @@ Language
 - [Allow shortening lifetime of `&mut` when unsize-coercing, even in an invariant position.](https://github.com/rust-lang/rust/pull/149219) For example, you can now coerce a `Cell<&'long mut i32>` to a `Cell<&'short mut dyn Send>`. Such shortenings were already previously allowed when coercing a `&mut` to a `&`, or coercing a `&` to a `&`.
 - [Add deny-by-default `invalid_runtime_symbol_definitions` lint and warn-by-default `suspicious_runtime_symbol_definitions` lint](https://github.com/rust-lang/rust/pull/155521)
     - The lints currently specifically targets `core` runtime symbols like `memcmp`, `memset`, `strlen`, ... and is planned to be expanded in the next few releases.
-- [riscv: `d`, `e`, and `f` target_features are now stable in `cfg(target_feature = "?")`](https://github.com/rust-lang/rust/pull/156188)
 - [Add warn-by-default `c_void_returns` lint to check `core::ffi::c_void` as a return type](https://github.com/rust-lang/rust/pull/156379)
 
 
@@ -39,7 +38,7 @@ Libraries
 - [Document that `ManuallyDrop`'s `Box` interaction has been fixed](https://github.com/rust-lang/rust/pull/155750)
 - [Stabilize LoongArch CRC Intrinsics](https://github.com/rust-lang/rust/issues/156908)
 - [The `derive` macro is available at `{core,std}::derive`.](https://github.com/rust-lang/rust/issues/154645) This was previously [unintentionally stabilized in 1.96](https://github.com/rust-lang/rust/issues/159856), but is now [explicitly accepted](https://github.com/rust-lang/rust/issues/154645) as a stabilized API.
-  - Please note that the MSRV for `{core,std}::derive` will be 1.96, and not 1.98. 
+  - Please note that the MSRV for `{core,std}::derive` will be 1.96, and not 1.98.
 
 
 <a id="1.98.0-Stabilized-APIs"></a>
