@@ -1,8 +1,8 @@
 # Method lookup
 
 Method lookup can be rather complex due to the interaction of a number
-of factors, such as self types, autoderef, trait lookup, etc. This
-file provides an overview of the process.
+of factors, such as self types, autoderef, trait lookup, etc.
+This file provides an overview of the process.
 More detailed notes are in the code itself, naturally.
 
 One way to think of method lookup is that we convert an expression of
@@ -22,13 +22,12 @@ Method lookup is divided into two major phases:
 1. Probing ([`probe.rs`][probe]).
    The probe phase is when we decide what method to call and how to adjust the receiver.
 2. Confirmation ([`confirm.rs`][confirm]).
-   The confirmation phase "applies"
-   this selection, updating the side-tables, unifying type variables, and
-   otherwise doing side-effectful things.
+   The confirmation phase "applies" this selection, updating the side-tables,
+   unifying type variables, and otherwise doing side-effectful things.
 
 One reason for this division is to be more amenable to caching.
- The probe phase produces a "pick" (`probe::Pick`), which is designed to be
-cacheable across method-call sites.
+The probe phase produces a "pick" (`probe::Pick`),
+which is designed to be cacheable across method-call sites.
 Therefore, it does not include inference variables or other information.
 
 [fully-qualified syntax]: https://doc.rust-lang.org/nightly/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
@@ -59,15 +58,15 @@ For each candidate, we'll derive a "transformed self type" that takes into accou
 Candidates are grouped into two kinds, inherent and extension.
 
 **Inherent candidates** are those that are derived from the type of the receiver itself.
- So, if you have a receiver of some
-nominal type `Foo` (e.g., a struct), any methods defined within an
-impl like `impl Foo` are inherent methods.
- Nothing needs to be imported to use an inherent method, they are associated with the type
-itself (note that inherent impls can only be defined in the same crate as the type itself).
+So, if you have a receiver of some nominal type `Foo` (e.g., a struct),
+any methods defined within an impl like `impl Foo` are inherent methods.
+Nothing needs to be imported to use an inherent method;
+they are associated with the type itself.
+Note that inherent impls can only be defined in the same crate as the type itself.
 
 <!--
 FIXME: Inherent candidates are not always derived from impls.
- If you have a trait object, such as a value of type `Box<ToString>`, then the
+If you have a trait object, such as a value of type `Box<ToString>`, then the
 trait methods (`to_string()`, in this case) are inherently associated with it.
 Another case is type parameters, in which case the methods of their bounds are inherent.
 However, this part of the rules is subject
@@ -79,7 +78,7 @@ Is this still accurate?
 -->
 
 **Extension candidates** are derived from imported traits.
- If I have the trait `ToString` imported, and I call `to_string()` as a method,
+If I have the trait `ToString` imported, and I call `to_string()` as a method,
 then we will list the `to_string()` definition in each impl of `ToString` as a candidate.
 These kinds of method calls are called "extension methods".
 
