@@ -251,7 +251,7 @@ fn find_1byte_str_long_nomatch_os(b: &mut Bencher) {
     let s = haystack_without_needle_os();
     let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
-    b.iter(|| black_box(haystack.split_once(",")))
+    b.iter(|| black_box(haystack.find(",")))
 }
 
 #[bench]
@@ -259,7 +259,7 @@ fn find_char_long_nomatch_os(b: &mut Bencher) {
     let s = haystack_without_needle_os();
     let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
-    b.iter(|| black_box(haystack.split_once(',')))
+    b.iter(|| black_box(haystack.find(',')))
 }
 
 #[bench]
@@ -269,7 +269,7 @@ fn find_1byte_str_long_match_end_os(b: &mut Bencher) {
     let s = OsString::from(s);
     let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
-    b.iter(|| black_box(haystack.split_once(",")))
+    b.iter(|| black_box(haystack.find(",")))
 }
 
 #[bench]
@@ -279,7 +279,7 @@ fn find_char_long_match_end_os(b: &mut Bencher) {
     let s = OsString::from(s);
     let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
-    b.iter(|| black_box(haystack.split_once(',')))
+    b.iter(|| black_box(haystack.find(',')))
 }
 
 #[bench]
@@ -287,7 +287,7 @@ fn rfind_1byte_str_long_nomatch_os(b: &mut Bencher) {
     let s = haystack_without_needle_os();
     let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
-    b.iter(|| black_box(haystack.rsplit_once(",")))
+    b.iter(|| black_box(haystack.rfind(",")))
 }
 
 #[bench]
@@ -295,7 +295,7 @@ fn rfind_char_long_nomatch_os(b: &mut Bencher) {
     let s = haystack_without_needle_os();
     let haystack = black_box(s.as_os_str());
     b.bytes = haystack.len() as u64;
-    b.iter(|| black_box(haystack.rsplit_once(',')))
+    b.iter(|| black_box(haystack.rfind(',')))
 }
 
 #[bench]
@@ -306,7 +306,7 @@ fn find_1byte_str_early_return_os(b: &mut Bencher) {
     let haystack = black_box(s.as_os_str());
     b.iter(|| {
         for _ in 0..1024 {
-            black_box(black_box(haystack).split_once(","));
+            black_box(black_box(haystack).find(","));
         }
     })
 }
@@ -319,7 +319,7 @@ fn find_char_early_return_os(b: &mut Bencher) {
     let haystack = black_box(s.as_os_str());
     b.iter(|| {
         for _ in 0..1024 {
-            black_box(black_box(haystack).split_once(','));
+            black_box(black_box(haystack).find(','));
         }
     })
 }
@@ -330,7 +330,7 @@ fn find_1byte_str_short_haystack_os(b: &mut Bencher) {
     let haystack = black_box(OsStr::new("abcdefg,ijklmno"));
     b.iter(|| {
         for _ in 0..1024 {
-            black_box(black_box(haystack).split_once(","));
+            black_box(black_box(haystack).find(","));
         }
     })
 }
@@ -340,7 +340,7 @@ fn find_char_short_haystack_os(b: &mut Bencher) {
     let haystack = black_box(OsStr::new("abcdefg,ijklmno"));
     b.iter(|| {
         for _ in 0..1024 {
-            black_box(black_box(haystack).split_once(','));
+            black_box(black_box(haystack).find(','));
         }
     })
 }
