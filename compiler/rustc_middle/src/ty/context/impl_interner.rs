@@ -144,14 +144,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
-        f(&mut *self.new_solver_evaluation_cache.lock())
+        f(&mut *self.caches.new_solver_evaluation_cache.lock())
     }
 
     fn with_canonical_param_env_cache<R>(
         self,
         f: impl FnOnce(&mut ty::CanonicalParamEnvCache<Self>) -> R,
     ) -> R {
-        f(&mut *self.new_solver_canonical_param_env_cache.lock())
+        f(&mut *self.caches.new_solver_canonical_param_env_cache.lock())
     }
 
     fn assert_evaluation_is_concurrent(&self) {
