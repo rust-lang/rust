@@ -140,12 +140,8 @@ where
         if let mir::Operand::Move(place) = operand
             && let Some(local) = place.as_local()
         {
-            // For backward compatibility with the MaybeMutBorrowedLocals used in an earlier
-            // implementation we retain qualif if a local had been borrowed before. This might
-            // not be strictly necessary since the local is no longer initialized.
-            if !self.state.borrow.contains(local) {
-                self.state.qualif.remove(local);
-            }
+            // The local is no longer initialized so we can remove the qualif.
+            self.state.qualif.remove(local);
         }
     }
 
@@ -319,7 +315,8 @@ impl<C> DebugWithContext<C> for State {
 
 impl JoinSemiLattice for State {
     fn join(&mut self, other: &Self) -> bool {
-        self.qualif.join(&other.qualif) || self.borrow.join(&other.borrow)
+        // Use `|` not `||` here; we don't want short-circuiting.
+        self.qualif.join(&other.qualif) | self.borrow.join(&other.borrow)
     }
 }
 
