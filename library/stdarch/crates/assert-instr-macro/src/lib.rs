@@ -35,6 +35,7 @@ pub fn assert_instr(
     };
 
     let instr = &invoc.instr;
+    let not = invoc.not;
     let name = &func.sig.ident;
     let maybe_allow_deprecated = if func
         .attrs
@@ -179,7 +180,7 @@ pub fn assert_instr(
         fn #assert_name() {
             #to_test
 
-            ::stdarch_test::assert(#shim_name as usize, stringify!(#shim_name), #instr);
+            ::stdarch_test::assert(#shim_name as usize, stringify!(#shim_name), #instr, &[#(#not),*]);
         }
     };
 
@@ -192,51 +193,71 @@ pub fn assert_instr(
 
 struct Invoc {
     instr: String,
+    not: Vec<String>,
     args: Vec<(syn::Ident, syn::Expr)>,
+}
+
+fn parse_instr(input: syn::parse::ParseStream<'_>) -> syn::Result<String> {
+    use syn::{Token, ext::IdentExt};
+
+    let mut instr = String::new();
+    while !input.is_empty() {
+        if let Ok(ident) = syn::Ident::parse_any(input) {
+            instr.push_str(&ident.to_string());
+            continue;
+        }
+        if input.parse::<Token![.]>().is_ok() {
+            instr.push('.');
+            continue;
+        }
+        if let Ok(s) = input.parse::<syn::LitStr>() {
+            instr.push_str(&s.value());
+            continue;
+        }
+        // Some other token, must be start of the next thing.
+        break;
+    }
+    if instr.is_empty() {
+        return Err(input.error("expected an instruction"));
+    }
+    Ok(instr)
 }
 
 impl syn::parse::Parse for Invoc {
     fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
-        use syn::{Token, ext::IdentExt};
+        use syn::{Token, parenthesized};
 
-        let mut instr = String::new();
-        while !input.is_empty() {
-            if input.parse::<Token![,]>().is_ok() {
-                break;
-            }
-            if let Ok(ident) = syn::Ident::parse_any(input) {
-                instr.push_str(&ident.to_string());
-                continue;
-            }
-            if input.parse::<Token![.]>().is_ok() {
-                instr.push('.');
-                continue;
-            }
-            if let Ok(s) = input.parse::<syn::LitStr>() {
-                instr.push_str(&s.value());
-                continue;
-            }
-            println!("{:?}", input.cursor().token_stream());
-            return Err(input.error("expected an instruction"));
-        }
-        if instr.is_empty() {
-            return Err(input.error("expected an instruction before comma"));
-        }
+        let instr = parse_instr(input)?;
+        let mut not = Vec::new();
         let mut args = Vec::new();
+
         while !input.is_empty() {
+            // Parse the comma after the previous thing
+            if input.parse::<Token![,]>().is_err() {
+                return Err(input.error("extra tokens at end"));
+            }
+
+            // This is either `not(instr)` or `arg = val`.
+            // We treat `not` as a magic identifier here.
+
             let name = input.parse::<syn::Ident>()?;
+
+            if name == "not" {
+                let content;
+                parenthesized!(content in input);
+                let not_instr = parse_instr(&content)?;
+                if !content.is_empty() {
+                    return Err(input.error("expected just an instruction in `not(...)`"));
+                }
+                not.push(not_instr);
+                continue;
+            }
+
             input.parse::<Token![=]>()?;
             let expr = input.parse::<syn::Expr>()?;
             args.push((name, expr));
-
-            if input.parse::<Token![,]>().is_err() {
-                if !input.is_empty() {
-                    return Err(input.error("extra tokens at end"));
-                }
-                break;
-            }
         }
-        Ok(Self { instr, args })
+        Ok(Self { instr, not, args })
     }
 }
 

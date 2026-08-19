@@ -54,7 +54,7 @@ impl hash::Hash for Function {
 ///
 /// This asserts that the function at `fnptr` contains the instruction
 /// `expected` provided.
-pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
+pub fn assert(shim_addr: usize, fnname: &str, expected: &str, not: &[&str]) {
     // Make sure that the shim is not removed
     black_box(shim_addr);
 
@@ -99,6 +99,12 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
             // TODO: resolve the conflicts (x86_64 and aarch64 have a bunch, probably others)
             // && !instruction[expected.len()..].starts_with(|c: char| c.is_ascii_alphanumeric())
         });
+
+    let found_bad = not
+        .iter()
+        // We deliberately only check `sarts_with` here, so one can exclude a bunch of related
+        // instructions at once.
+        .find(|not| instrs.iter().any(|instr| instr.starts_with(**not)));
 
     // Look for subroutine call instructions in the disassembly to detect whether
     // inlining failed: all intrinsics are `#[inline(always)]`, so calling one
@@ -191,7 +197,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
         );
     let probably_only_one_instruction = instrs.len() < instruction_limit;
 
-    if found && probably_only_one_instruction && !inlining_failed {
+    if found && found_bad.is_none() && probably_only_one_instruction && !inlining_failed {
         return;
     }
 
@@ -204,6 +210,8 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
 
     if !found {
         panic!("failed to find instruction `{expected}` in the disassembly");
+    } else if let Some(bad) = found_bad {
+        panic!("instruction found, but the disassembly also contains the bad instructions `{bad}`");
     } else if !probably_only_one_instruction {
         panic!(
             "instruction found, but the disassembly contains too many \
