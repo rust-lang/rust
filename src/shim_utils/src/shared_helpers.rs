@@ -29,6 +29,14 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 
 /// Returns the executable filename for the given target platform.
 pub fn exe(name: &str, target: &str) -> String {
+    // On Cygwin, the decision to append .exe or not is not as straightforward.
+    // Executable files do actually have .exe extensions so on hosts other than
+    // Cygwin it is necessary. But on a Cygwin host there is magic happening
+    // that redirects requests for file X to file X.exe if it exists, and
+    // furthermore /proc/self/exe (and thus std::env::current_exe) always
+    // returns the name *without* the .exe extension. For comparisons against
+    // that to match, we therefore do not append .exe for Cygwin targets on
+    // a Cygwin host.
     let ext = if target.contains("windows")
         || (cfg!(not(target_os = "cygwin")) && target.contains("cygwin"))
     {
@@ -120,14 +128,9 @@ pub fn collect_args() -> Vec<OsString> {
 
 /// Reads arguments from a file, one per line.
 fn args_from_argfile(path: &Path) -> Vec<OsString> {
-    match std::fs::File::open(path) {
-        Ok(file) => io::BufReader::new(file)
-            .lines()
-            .filter_map(|line| line.ok().map(OsString::from))
-            .collect(),
-        Err(e) => {
-            eprintln!("failed to read argfile `{path:?}`: {e}");
-            vec![]
-        }
-    }
+    let file = std::fs::File::open(path).expect("read args from argfile {path:?}");
+    io::BufReader::new(file)
+        .lines()
+        .filter_map(|line| line.ok().map(OsString::from))
+        .collect()
 }
