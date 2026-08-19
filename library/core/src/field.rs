@@ -32,17 +32,17 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> fmt::Debug
             }
         }
         let (variant, field) = const {
-            use crate::mem::type_info::{Type, TypeKind};
+            use crate::mem::type_info::{self, Type, TypeKind};
+            let type_id = type_info::of::<T>();
             match Type::of::<T>().kind {
-                TypeKind::Struct(struct_) => {
-                    (None, Member::Name(struct_.fields[FIELD as usize].name))
+                TypeKind::Struct => (None, Member::Name(type_id.field(0, FIELD as usize).name())),
+                TypeKind::Tuple => (None, Member::Index(FIELD)),
+                TypeKind::Enum => {
+                    let variant_name = type_id.variant(VARIANT as usize).name();
+                    let field_name = type_id.field(VARIANT as usize, FIELD as usize).name();
+                    (Some(variant_name), Member::Name(field_name))
                 }
-                TypeKind::Tuple(_) => (None, Member::Index(FIELD)),
-                TypeKind::Enum(enum_) => {
-                    let variant = &enum_.variants[VARIANT as usize];
-                    (Some(variant.name), Member::Name(variant.fields[FIELD as usize].name))
-                }
-                TypeKind::Union(union) => (None, Member::Name(union.fields[FIELD as usize].name)),
+                TypeKind::Union => (None, Member::Name(type_id.field(0, FIELD as usize).name())),
                 _ => unreachable!(),
             }
         };

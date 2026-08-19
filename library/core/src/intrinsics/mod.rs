@@ -3157,6 +3157,28 @@ pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize>;
 #[rustc_comptime]
 pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
 
+/// Gets the name of the variant represented by the base `TypeId` and variant_idx.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::VariantId::name`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
+
+/// Returns true when the variant represented by the base `TypeId` and variant_idx is non
+/// exhaustive.
+///
+/// The more user-friendly version of this intrinsic is
+/// [`core::mem::type_info::VariantId::non_exhaustive`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn variant_non_exhaustive(base: crate::any::TypeId, variant: usize) -> bool;
+
 /// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::fields`].
