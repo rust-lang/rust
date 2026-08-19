@@ -60,7 +60,7 @@ represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
 [`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TraitRef.html
 [`AdtDef` and `DefId`]: ./ty.md#adts-representation
 [`def-id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
-[`GenericArgs`]: ./generic_arguments.html#GenericArgs
+[`GenericArgs`]: ./generic_arguments.md#GenericArgs
 [`mk_args`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.mk_args
 [`AdtDef and DefId`]: ./ty-module/generic-arguments.md#adtdef-and-defid
 [`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html

@@ -4,8 +4,7 @@ This chapter contains a few tips to debug the compiler.
 These tips aim to be useful no matter what you are working on.
 Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
-Testing chapter](./incrcomp-debugging.html) or the [LLVM Debugging
-chapter](./backend/debugging.md)).
+Testing chapter](./incrcomp-debugging.md) or the [LLVM Debugging chapter](./backend/debugging.md)).
 
 ## Configuring the compiler
 
@@ -315,7 +314,23 @@ $ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
 $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ```
 
-### Debugging type layouts
+Graphviz also comes with a preprocessor program,
+[`unflatten`](https://graphviz.org/docs/cli/unflatten/), that
+sometimes helps making the outputs look less oddly spread out.
+It reads a dot file and outputs another dot file, so you can use it in a pipe,
+e.g:
+```
+$ unflatten mir_dump/*.foo.-------.nll.0.regioncx.all.dot | dot -Tpdf  -o foo-outlives.pdf
+```
+
+This is particularly useful for complicated region outlives graphs from 
+[the borrow checker](borrow-check/debugging.md).
+
+[An online Graphviz editor and visualiser is
+also available](https://dreampuf.github.io/GraphvizOnline).
+
+
+## Narrowing (Bisecting) Regressions
 
 The internal attribute `#[rustc_dump_layout(...)]` can be used to dump the
 [`Layout`] of the type it is attached to.
@@ -376,6 +391,9 @@ error: aborting due to previous error
 
 [`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_public/abi/struct.Layout.html
 
+## Debugging borrowcheck
+
+Debugging the borrow checker has [its own chapter](borrow-check/debugging.md).
 
 ## Configuring CodeLLDB for debugging `rustc`
 
