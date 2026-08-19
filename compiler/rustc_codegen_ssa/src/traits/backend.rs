@@ -36,7 +36,7 @@ pub trait BackendTypes {
 pub trait CodegenBackend {
     fn name(&self) -> &'static str;
 
-    fn init(&self, _sess: &EarlySession) -> CodegenBackendInit {
+    fn init(&mut self, _sess: &EarlySession) -> CodegenBackendInit {
         Default::default()
     }
 

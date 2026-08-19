@@ -112,7 +112,7 @@ fn make_miri_codegen_backend(sess: &EarlySession, dep: bool) -> Box<dyn CodegenB
 
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
-    let native_codegen_backend = rustc_interface::util::get_codegen_backend(
+    let mut native_codegen_backend = rustc_interface::util::get_codegen_backend(
         &early_dcx,
         &sess.opts.sysroot,
         None,
