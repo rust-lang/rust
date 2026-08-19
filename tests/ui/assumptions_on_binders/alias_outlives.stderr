@@ -23,3 +23,4 @@ LL |     let _: ReqTrait<U::Assoc>;
    |            ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
+
