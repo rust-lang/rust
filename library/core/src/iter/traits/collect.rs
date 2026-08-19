@@ -394,7 +394,7 @@ const impl<I: [const] Iterator> IntoIterator for I {
 /// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{c:?}"));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Extend<A> {
+pub trait Extend<T> {
     /// Extends a collection with the contents of an iterator.
     ///
     /// As this is the only required method for this trait, the [trait-level] docs
@@ -413,11 +413,11 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I);
 
     /// Extends a collection with exactly one element.
     #[unstable(feature = "extend_one", issue = "72631")]
-    fn extend_one(&mut self, item: A) {
+    fn extend_one(&mut self, item: T) {
         self.extend(Some(item));
     }
 
@@ -442,7 +442,7 @@ pub trait Extend<A> {
     // This method is for internal usage only. It is only on the trait because of specialization's limitations.
     #[unstable(feature = "extend_one_unchecked", issue = "none")]
     #[doc(hidden)]
-    unsafe fn extend_one_unchecked(&mut self, item: A)
+    unsafe fn extend_one_unchecked(&mut self, item: T)
     where
         Self: Sized,
     {
