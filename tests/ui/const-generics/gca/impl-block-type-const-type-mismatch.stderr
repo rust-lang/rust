@@ -1,0 +1,24 @@
+error[E0271]: type mismatch resolving `A<1f64> == _`
+  --> $DIR/impl-block-type-const-type-mismatch.rs:10:1
+   |
+LL | impl [(); A::<1f64>] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: the type `[(); A::<1f64>]` is not well-formed
+  --> $DIR/impl-block-type-const-type-mismatch.rs:10:6
+   |
+LL | impl [(); A::<1f64>] {}
+   |      ^^^^^^^^^^^^^^^
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/impl-block-type-const-type-mismatch.rs:10:1
+   |
+LL | impl [(); A::<1f64>] {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0271, E0390.
+For more information about an error, try `rustc --explain E0271`.

@@ -1,0 +1,32 @@
+error[E0271]: type mismatch resolving `ADD1<*b""> == _`
+  --> $DIR/rp-type-const-type-mismatch.rs:6:11
+   |
+LL | fn a() -> [usize; ADD1::<b"">] {}
+   |           ^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: the type `[usize; ADD1::<*b"">]` is not well-formed
+  --> $DIR/rp-type-const-type-mismatch.rs:6:11
+   |
+LL | fn a() -> [usize; ADD1::<b"">] {}
+   |           ^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/rp-type-const-type-mismatch.rs:6:11
+   |
+LL | fn a() -> [usize; ADD1::<b"">] {}
+   |    -      ^^^^^^^^^^^^^^^^^^^^ expected `[usize; _]`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0271]: type mismatch resolving `ADD1<*b""> == _`
+  --> $DIR/rp-type-const-type-mismatch.rs:6:11
+   |
+LL | fn a() -> [usize; ADD1::<b"">] {}
+   |           ^^^^^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

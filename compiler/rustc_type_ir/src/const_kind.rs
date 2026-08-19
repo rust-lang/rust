@@ -9,6 +9,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
+use crate::inherent::*;
 use crate::{self as ty, AliasConst, BoundVarIndexKind, Interner};
 
 /// Represents a constant in Rust.
@@ -82,6 +83,10 @@ impl<I: Interner> AliasConst<I> {
             interner.debug_assert_args_compatible(def_id, args);
         }
         AliasConst { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn to_const(self, interner: I, is_rigid: ty::IsRigid) -> I::Const {
+        I::Const::new_alias(interner, is_rigid, self)
     }
 
     pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {

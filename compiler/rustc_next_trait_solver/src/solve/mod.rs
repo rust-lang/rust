@@ -221,13 +221,19 @@ where
                 // error in that case is unnecessary noise. This may change in the future once
                 // evaluation failures are allowed to impact selection, e.g. generic const
                 // expressions in impl headers or `where`-clauses.
+                //
+                // `evaluate_const` itself can return `NoSolution` if alias' WF doesn't hold in
+                // empty environment.
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, alias_const)? {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                match self.evaluate_const(param_env, alias_const)? {
+                    (None, certainty) => self.evaluate_added_goals_and_make_canonical_response(
+                        certainty.and(Certainty::AMBIGUOUS),
+                    ),
+                    (Some(_normalized), _) => {
+                        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
                 }
             }
 
