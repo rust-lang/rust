@@ -4,8 +4,7 @@ This chapter contains a few tips to debug the compiler.
 These tips aim to be useful no matter what you are working on.
 Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
-Testing chapter](./incrcomp-debugging.md) or the [LLVM Debugging
-chapter](./backend/debugging.md)).
+Testing chapter](./incrcomp-debugging.md) or the [LLVM Debugging chapter](./backend/debugging.md)).
 
 ## Configuring the compiler
 
@@ -317,8 +316,8 @@ $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 
 Graphviz also comes with a preprocessor program,
 [`unflatten`](https://graphviz.org/docs/cli/unflatten/), that
-sometimes helps making the outputs look less oddly spread out. It reads
-a dot file and outputs another dot file, so you can use it in a pipe,
+sometimes helps making the outputs look less oddly spread out.
+It reads a dot file and outputs another dot file, so you can use it in a pipe,
 e.g:
 ```
 $ unflatten mir_dump/*.foo.-------.nll.0.regioncx.all.dot | dot -Tpdf  -o foo-outlives.pdf
