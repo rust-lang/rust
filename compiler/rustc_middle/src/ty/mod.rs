@@ -1904,10 +1904,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match (impl1.polarity, impl2.polarity) {
-            (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
-                // `#[rustc_reservation_impl]` impls don't overlap with anything
-                return Some(ImplOverlapKind::Permitted { marker: false });
-            }
             (ImplPolarity::Positive, ImplPolarity::Negative)
             | (ImplPolarity::Negative, ImplPolarity::Positive) => {
                 // `impl AutoTrait for Type` + `impl !AutoTrait for Type`

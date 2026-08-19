@@ -381,7 +381,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcPubTransparent(..) => (),
             AttributeKind::RustcReallocator => (),
             AttributeKind::RustcRegions => (),
-            AttributeKind::RustcReservationImpl(..) => (),
             AttributeKind::RustcScalableVector { .. } => (),
             AttributeKind::RustcShouldNotBeCalledOnConstItems => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),

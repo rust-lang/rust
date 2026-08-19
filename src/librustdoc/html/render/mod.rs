@@ -948,7 +948,7 @@ fn short_item_info(
 fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
     let trait_ = i.inner_impl().trait_.as_ref()?;
     let prefix = match i.inner_impl().polarity {
-        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Positive => "",
         ty::ImplPolarity::Negative => "!",
     };
     Some(format!("{prefix}{:#}", print_path(trait_, cx)))
@@ -964,7 +964,7 @@ fn render_impls<'a, 'cx>(
 ) -> impl fmt::Display + use<'a, 'cx> {
     impls.sort_by_cached_key(|imp| {
         let prefix = match imp.inner_impl().polarity {
-            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => Ordering::Greater,
+            ty::ImplPolarity::Positive => Ordering::Greater,
             ty::ImplPolarity::Negative => Ordering::Less,
         };
         (prefix, ImplString::new_path(imp, cx))

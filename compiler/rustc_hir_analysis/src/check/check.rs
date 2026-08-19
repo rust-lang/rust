@@ -1274,7 +1274,7 @@ fn check_impl_items_against_trait<'tcx>(
 
     // Negative impls are not expected to have any items
     match impl_trait_header.polarity {
-        ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
+        ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
             if let [first_item_ref, ..] = *impl_item_refs {
                 let first_item_span = tcx.def_span(first_item_ref);

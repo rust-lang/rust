@@ -170,7 +170,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
 
     let param_env = tcx.param_env(impl_did);
 
-    if let ty::ImplPolarity::Negative | ty::ImplPolarity::Reservation = header.polarity {
+    if let ty::ImplPolarity::Negative = header.polarity {
         return Ok(());
     }
 

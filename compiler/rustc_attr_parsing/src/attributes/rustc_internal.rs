@@ -1102,23 +1102,6 @@ impl NoArgsAttributeParser for RustcStrictCoherenceParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcStrictCoherence;
 }
 
-pub(crate) struct RustcReservationImplParser;
-
-impl SingleAttributeParser for RustcReservationImplParser {
-    const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "reservation message");
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
-
-    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let value_str = cx.expect_string_literal(nv)?;
-
-        Some(AttributeKind::RustcReservationImpl(value_str))
-    }
-}
-
 pub(crate) struct PreludeImportParser;
 
 impl NoArgsAttributeParser for PreludeImportParser {

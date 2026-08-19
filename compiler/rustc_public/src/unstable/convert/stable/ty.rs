@@ -896,7 +896,6 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
         match self {
             Positive => crate::ty::ImplPolarity::Positive,
             Negative => crate::ty::ImplPolarity::Negative,
-            Reservation => crate::ty::ImplPolarity::Reservation,
         }
     }
 }

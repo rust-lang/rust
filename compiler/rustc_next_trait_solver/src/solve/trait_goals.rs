@@ -62,7 +62,7 @@ where
         goal: Goal<I, TraitPredicate<I>>,
         goal_trait_ref: TraitRef<I>,
         impl_def_id: I::ImplId,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
@@ -73,37 +73,18 @@ where
             return Err(NoSolution.into());
         }
 
-        // An upper bound of the certainty of this goal, used to lower the certainty
-        // of reservation impl to ambiguous during coherence.
-        let impl_polarity = cx.impl_polarity(impl_def_id);
-        let maximal_certainty = match (impl_polarity, goal.predicate.polarity) {
-            // In coherence mode, this is ambiguous. But outside of coherence, it's not a real impl.
-            (ty::ImplPolarity::Reservation, _) => {
-                if ecx.typing_mode().is_coherence() {
-                    Certainty::AMBIGUOUS
-                } else {
-                    return Err(NoSolution.into());
-                }
-            }
-
-            // Impl matches polarity
-            (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
-            | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
-                if ecx.typing_mode().is_reflection()
-                    && !cx.is_fully_generic_for_reflection(impl_def_id)
-                {
-                    return Err(NoSolution.into());
-                } else {
-                    Certainty::Yes
-                }
-            }
-
+        match (cx.impl_polarity(impl_def_id), goal.predicate.polarity) {
             // Impl doesn't match polarity
             (ty::ImplPolarity::Positive, ty::PredicatePolarity::Negative)
             | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Positive) => {
                 return Err(NoSolution.into());
             }
-        };
+            _ => {}
+        }
+
+        if ecx.typing_mode().is_reflection() && !cx.is_fully_generic_for_reflection(impl_def_id) {
+            return Err(NoSolution.into());
+        }
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
@@ -129,7 +110,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             )?;
 
-            then(ecx, maximal_certainty)
+            then(ecx)
         })
     }
 
